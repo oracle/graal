@@ -28,6 +28,10 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -38,6 +42,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -49,9 +54,12 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicMapWrap;
 import org.graalvm.collections.Equivalence;
@@ -70,7 +78,7 @@ import jdk.internal.misc.Unsafe;
  * in the first process and {@linkplain #decode decoding} it back into an object in the second
  * process. This copying requires that the classes of the copied objects are the same in both
  * processes with respect to fields.
- *
+ * <p>
  * See the {@link Builtin} subclasses for encoding of specific types.
  */
 public class ObjectCopier {
@@ -177,6 +185,32 @@ public class ObjectCopier {
                 case "void" -> void.class;
                 default -> decoder.loadClass(encoded);
             };
+        }
+    }
+
+    /**
+     * Builtin for handling boxed primitives.
+     */
+    static final class BoxBuiltin extends Builtin {
+
+        private static final Map<Class<?>, JavaKind> CONCRETE_CLASSES = //
+                        Stream.of(JavaKind.values())//
+                                        .filter(k -> k.isPrimitive() && k != JavaKind.Void)//
+                                        .collect(Collectors.toMap(JavaKind::toBoxedJavaClass, Function.identity()));
+
+        BoxBuiltin() {
+            super(Number.class, CONCRETE_CLASSES.keySet().toArray(Class<?>[]::new));
+        }
+
+        @Override
+        protected void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
+            stream.writeUntypedValue(obj);
+        }
+
+        @Override
+        protected Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            char typeCh = CONCRETE_CLASSES.get(concreteType).getTypeChar();
+            return stream.readUntypedValue(typeCh);
         }
     }
 
@@ -318,7 +352,7 @@ public class ObjectCopier {
      *            have the same name in which case the descriptor includes the qualified name of the
      *            class declaring the field as a prefix.
      */
-    public record ClassInfo(Class<?> clazz, SortedMap<String, Field> fields, short fingerprint) {
+    public record ClassInfo(Class<?> clazz, SortedMap<String, Field> fields) implements Comparable<ClassInfo> {
         public static ClassInfo of(Class<?> declaringClass) {
             SortedMap<String, Field> fields = new TreeMap<>();
             for (Class<?> c = declaringClass; !c.equals(Object.class); c = c.getSuperclass()) {
@@ -334,12 +368,68 @@ public class ObjectCopier {
                     }
                 }
             }
-            int h = fields.size();
-            for (var entry : fields.entrySet()) {
-                h = h * 31 + entry.getKey().hashCode();
-                h = h * 31 + entry.getValue().getType().getName().hashCode();
+            return new ClassInfo(declaringClass, fields);
+        }
+
+        @Override
+        public int compareTo(ClassInfo o) {
+            return clazz.getName().compareTo(o.clazz.getName());
+        }
+
+        ClassInfo makeChildIds(Encoder encoder, ObjectPath objectPath) {
+            encoder.makeStringId(clazz.getName(), objectPath);
+            for (Field field : fields.values()) {
+                encoder.makeStringId(field.getDeclaringClass().getName(), objectPath);
+                encoder.makeStringId(field.getName(), objectPath);
+                encoder.makeStringId(field.getType().getName(), objectPath);
             }
-            return new ClassInfo(declaringClass, fields, hashIntToShort(h));
+            return this;
+        }
+
+        void encode(Encoder encoder, ObjectCopierOutputStream out) throws IOException {
+            encoder.writeString(out, clazz.getName());
+            out.writePackedUnsignedInt(fields.size());
+            for (Field field : fields.values()) {
+                encoder.writeString(out, field.getDeclaringClass().getName());
+                encoder.writeString(out, field.getName());
+                encoder.writeString(out, field.getType().getName());
+            }
+        }
+
+        public static ClassInfo decode(Decoder decoder, ObjectCopierInputStream in) throws IOException {
+            String className = decoder.readString(in);
+            Class<?> clazz = decoder.loadClass(className);
+            ClassInfo classInfo = of(clazz);
+            int count = in.readPackedUnsignedInt();
+            if (count != classInfo.fields.size()) {
+                throw new GraalError("field count mismatch (%d != %d) for %s", count, classInfo.fields.size(), classInfo);
+            }
+            for (Field field : classInfo.fields.values()) {
+                classInfo.checkField("declaring class", field.getDeclaringClass().getName(), decoder.readString(in));
+                classInfo.checkField("name", field.getName(), decoder.readString(in));
+                classInfo.checkField("type", field.getType().getName(), decoder.readString(in));
+            }
+            return classInfo;
+        }
+
+        private void checkField(String attr, String expect, String actual) {
+            if (!expect.equals(actual)) {
+                throw new GraalError("field %s mismatch (%s != %s) for %s", attr, expect, actual, this);
+            }
+        }
+
+        private String fieldString(Field field) {
+            String res = field.getName() + ":" + field.getType().getName();
+            if (field.getDeclaringClass() != clazz) {
+                res = field.getDeclaringClass().getName() + "." + res;
+            }
+            return res;
+        }
+
+        @Override
+        public String toString() {
+            String allFields = fields.values().stream().map(this::fieldString).collect(Collectors.joining(","));
+            return clazz.getName() + "{" + allFields + "}";
         }
     }
 
@@ -349,7 +439,8 @@ public class ObjectCopier {
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
-    final Map<Class<?>, ClassInfo> classInfos = new HashMap<>();
+    private static final Comparator<Class<?>> CLASS_COMPARATOR = Comparator.comparing(Class::getName);
+    final Map<Class<?>, ClassInfo> classInfos = new TreeMap<>(CLASS_COMPARATOR);
     final Map<Class<?>, Builtin> builtinClasses = new HashMap<>();
     final Set<Class<?>> notBuiltins = new HashSet<>();
 
@@ -369,6 +460,7 @@ public class ObjectCopier {
 
     public ObjectCopier() {
         addBuiltin(new ClassBuiltin());
+        addBuiltin(new BoxBuiltin());
         addBuiltin(new EconomicMapBuiltin());
         addBuiltin(new EnumBuiltin());
 
@@ -471,6 +563,13 @@ public class ObjectCopier {
                 for (int i = 0; i < nstrings; i++) {
                     strings[i] = stream.readStringValue();
                 }
+                int nClassInfos = stream.readPackedUnsignedInt();
+                for (int i = 0; i < nClassInfos; i++) {
+                    ClassInfo classInfo = ClassInfo.decode(this, stream);
+                    ClassInfo conflict = classInfos.put(classInfo.clazz, classInfo);
+                    GraalError.guarantee(conflict == null, "Duplicate class infos found for %s", classInfo.clazz);
+                }
+
                 rootId = readId(stream);
                 for (int id = 1;; id++) {
                     recordNum = id;
@@ -523,9 +622,8 @@ public class ObjectCopier {
                             Class<?> clazz = loadClass(className);
                             Object obj = allocateInstance(clazz);
                             addDecodedObject(id, obj);
-                            ClassInfo classInfo = classInfos.computeIfAbsent(clazz, ClassInfo::of);
-                            short fingerprint = stream.readShort();
-                            GraalError.guarantee(fingerprint == classInfo.fingerprint, "Type mismatch on %s", clazz);
+                            ClassInfo classInfo = classInfos.get(clazz);
+                            GraalError.guarantee(classInfo != null, "No class info for %s", clazz);
                             fieldNum = 0;
                             for (Field field : classInfo.fields.values()) {
                                 Class<?> type = field.getType();
@@ -787,8 +885,9 @@ public class ObjectCopier {
                 checkIllegalValue(LocationIdentity.class, obj, objectPath, "must come from a static field");
                 checkIllegalValue(HashSet.class, obj, objectPath, "hashes are typically not stable across VM executions");
 
+                prepareObject(obj);
                 makeStringId(clazz.getName(), objectPath);
-                ClassInfo classInfo = makeClassInfo(clazz, objectPath);
+                ClassInfo classInfo = makeClassInfo(clazz, this, objectPath);
                 classInfo.fields().forEach((fieldDesc, f) -> {
                     String fieldName = f.getDeclaringClass().getSimpleName() + "#" + f.getName();
                     if (!f.getType().isPrimitive()) {
@@ -799,9 +898,19 @@ public class ObjectCopier {
             }
         }
 
-        private ClassInfo makeClassInfo(Class<?> clazz, ObjectPath objectPath) {
+        @SuppressWarnings("unused")
+        protected void prepareObject(Object obj) {
+            /* Hook to prepare special objects */
+        }
+
+        private ClassInfo makeClassInfo(Class<?> clazz, Encoder encoder, ObjectPath objectPath) {
             try {
-                return classInfos.computeIfAbsent(clazz, this::makeClassInfo);
+                ClassInfo classInfo = classInfos.get(clazz);
+                if (classInfo == null) {
+                    classInfo = makeClassInfo(clazz).makeChildIds(encoder, objectPath);
+                    classInfos.put(clazz, classInfo);
+                }
+                return classInfo;
             } catch (Throwable e) {
                 throw new GraalError(e, "Error creating ClassInfo%n  Path: %s", objectPath);
             }
@@ -812,6 +921,10 @@ public class ObjectCopier {
             out.internalWritePackedUnsignedInt(encodedStrings.length);
             for (String s : encodedStrings) {
                 out.writeStringValue(s);
+            }
+            out.internalWritePackedUnsignedInt(classInfos.size());
+            for (ClassInfo ci : classInfos.values()) {
+                ci.encode(this, out);
             }
             Object[] encodedObjects = objects.encodeAll(new Object[objects.getLength()]);
             debugf("root:");
@@ -860,7 +973,6 @@ public class ObjectCopier {
                     debugf("%d:{", id);
                     writeString(out, clazz.getName());
                     debugf(" }");
-                    out.writeShort(classInfo.fingerprint);
                     for (var e : classInfo.fields().entrySet()) {
                         Field f = e.getValue();
                         debugf("%n ");
@@ -928,10 +1040,27 @@ public class ObjectCopier {
         }
     }
 
+    /**
+     * Denotes a field that should not be treated as an external value.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.FIELD)
+    public @interface NotExternalValue {
+        /**
+         * Documents the reason why the annotated field is not an external value.
+         */
+        String reason();
+    }
+
+    /**
+     * Gets the set of static, final fields whose values are not serialized.
+     *
+     * @see NotExternalValue
+     */
     public static List<Field> getExternalValueFields() throws IOException {
         List<Field> externalValues = new ArrayList<>();
         addImmutableCollectionsFields(externalValues);
-        addStaticFinalObjectFields(LocationIdentity.class, externalValues);
+        externalValues.addAll(getStaticFinalObjectFields(LocationIdentity.class));
 
         try (FileSystem fs = FileSystems.newFileSystem(URI.create("jrt:/"), Collections.emptyMap())) {
             for (String module : List.of("jdk.internal.vm.ci", "jdk.graal.compiler", "com.oracle.graal.graal_enterprise")) {
@@ -947,7 +1076,7 @@ public class ObjectCopier {
                             className = className.replace('/', '.').substring(0, className.length() - ".class".length());
                             try {
                                 Class<?> graalClass = Class.forName(className);
-                                addStaticFinalObjectFields(graalClass, externalValues);
+                                externalValues.addAll(getStaticFinalObjectFields(graalClass));
                             } catch (ClassNotFoundException e) {
                                 throw new GraalError(e);
                             }
@@ -964,22 +1093,28 @@ public class ObjectCopier {
      * {@code fields}. In the process, the fields are made {@linkplain Field#setAccessible
      * accessible}.
      */
-    public static void addStaticFinalObjectFields(Class<?> declaringClass, List<Field> fields) {
+    public static List<Field> getStaticFinalObjectFields(Class<?> declaringClass) {
         if (Enum.class.isAssignableFrom(declaringClass)) {
-            return;
+            return List.of();
         }
+        List<Field> fields = new ArrayList<>();
         for (Field field : declaringClass.getDeclaredFields()) {
             int fieldModifiers = field.getModifiers();
             int fieldMask = Modifier.STATIC | Modifier.FINAL;
-            if ((fieldModifiers & fieldMask) != fieldMask) {
+            boolean isStaticAndFinal = (fieldModifiers & fieldMask) == fieldMask;
+            if (!isStaticAndFinal) {
                 continue;
             }
             if (field.getType().isPrimitive()) {
                 continue;
             }
+            if (field.getAnnotation(NotExternalValue.class) != null) {
+                continue;
+            }
             field.setAccessible(true);
             fields.add(field);
         }
+        return fields;
     }
 
     /**

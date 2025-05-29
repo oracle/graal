@@ -20,12 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.meta;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -113,21 +114,29 @@ public final class ExceptionDispatch extends ContextAccessImpl {
 
     @CompilerDirectives.TruffleBoundary
     private static void doFullInit(StaticObject ex, ObjectKlass klass, StaticObject message, StaticObject cause) {
-        klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_String_Throwable).invokeDirectSpecial(ex, message, cause);
+        Method method = klass.lookupDeclaredMethod(Names._init_, Signatures._void_String_Throwable);
+        assert method != null : "No (String, Throwable) constructor in " + klass;
+        method.invokeDirectSpecial(ex, message, cause);
     }
 
     @CompilerDirectives.TruffleBoundary
     private static void doCauseInit(StaticObject ex, ObjectKlass klass, StaticObject cause) {
-        klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_Throwable).invokeDirectSpecial(ex, cause);
+        Method method = klass.lookupDeclaredMethod(Names._init_, Signatures._void_Throwable);
+        assert method != null : "No (Throwable) constructor in " + klass;
+        method.invokeDirectSpecial(ex, cause);
     }
 
     @CompilerDirectives.TruffleBoundary
     private static void doMessageInit(StaticObject ex, ObjectKlass klass, StaticObject message) {
-        klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_String).invokeDirectSpecial(ex, message);
+        Method method = klass.lookupDeclaredMethod(Names._init_, Signatures._void_String);
+        assert method != null : "No (String) constructor in " + klass;
+        method.invokeDirectSpecial(ex, message);
     }
 
     @CompilerDirectives.TruffleBoundary
     private static void doInit(StaticObject ex, ObjectKlass klass) {
-        klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void).invokeDirectSpecial(ex);
+        Method method = klass.lookupDeclaredMethod(Names._init_, Signatures._void);
+        assert method != null : "No () constructor in " + klass;
+        method.invokeDirectSpecial(ex);
     }
 }

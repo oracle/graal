@@ -20,16 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.nodes.quick.invoke.inline;
 
 import static com.oracle.truffle.espresso.nodes.quick.invoke.inline.ConditionalInlinedMethodNode.getFallback;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeQuickNode;
-import com.oracle.truffle.espresso.resolver.ResolvedCall;
+import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
 
 public final class GuardedConditionalInlinedMethodNode extends InlinedMethodNode {
     private final ConditionalInlinedMethodNode.Recipes recipes;
@@ -38,7 +39,7 @@ public final class GuardedConditionalInlinedMethodNode extends InlinedMethodNode
     private final InlinedMethodPredicate condition;
     private final InlinedMethodPredicate guard;
 
-    public GuardedConditionalInlinedMethodNode(ResolvedCall resolvedCall, int top, int opcode, int callerBCI, int statementIndex,
+    public GuardedConditionalInlinedMethodNode(ResolvedCall<Klass, Method, Field> resolvedCall, int top, int opcode, int callerBCI, int statementIndex,
                     ConditionalInlinedMethodNode.Recipes recipes,
                     InlinedMethodPredicate condition, InlinedMethodPredicate guard) {
         super(resolvedCall.getResolvedMethod().getMethodVersion(), top, opcode, callerBCI, statementIndex, null);
@@ -62,7 +63,7 @@ public final class GuardedConditionalInlinedMethodNode extends InlinedMethodNode
             }
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            return getBytecodeNode().reQuickenInvoke(frame, top, opcode, getCallerBCI(), statementIndex, method.getMethod());
+            return getBytecodeNode().reQuickenInvoke(frame, top, opcode, getCallerBCI(), statementIndex);
         }
     }
 

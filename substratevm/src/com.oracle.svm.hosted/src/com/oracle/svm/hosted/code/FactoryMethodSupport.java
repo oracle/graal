@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.code.FactoryMethodHolder;
 import com.oracle.svm.core.code.FactoryThrowMethodHolder;
@@ -54,8 +55,11 @@ public class FactoryMethodSupport {
         return ImageSingletons.lookup(FactoryMethodSupport.class);
     }
 
-    private final Map<AnalysisMethod, FactoryMethod> factoryMethods = new ConcurrentHashMap<>();
-    private final Map<AnalysisMethod, FactoryMethod> factoryThrowMethods = new ConcurrentHashMap<>();
+    private record ConstructorDescription(AnalysisMethod aConstructor, AnalysisType aInstantiatedType) {
+    }
+
+    private final Map<ConstructorDescription, FactoryMethod> factoryMethods = new ConcurrentHashMap<>();
+    private final Map<ConstructorDescription, FactoryMethod> factoryThrowMethods = new ConcurrentHashMap<>();
 
     public static boolean isFactoryMethod(AnalysisMethod method) {
         var javaClass = method.getDeclaringClass().getJavaClass();
@@ -63,9 +67,15 @@ public class FactoryMethodSupport {
     }
 
     public AnalysisMethod lookup(AnalysisMetaAccess aMetaAccess, AnalysisMethod aConstructor, boolean throwAllocatedObject) {
-        VMError.guarantee(aConstructor.getDeclaringClass().isInstanceClass() && !aConstructor.getDeclaringClass().isAbstract(), "Must be a non-abstract instance class");
-        Map<AnalysisMethod, FactoryMethod> methods = throwAllocatedObject ? factoryThrowMethods : factoryMethods;
-        FactoryMethod factoryMethod = methods.computeIfAbsent(aConstructor, key -> {
+        return lookup(aMetaAccess, aConstructor, aConstructor.getDeclaringClass(), throwAllocatedObject);
+    }
+
+    public AnalysisMethod lookup(AnalysisMetaAccess aMetaAccess, AnalysisMethod aConstructor, AnalysisType aInstantiatedType, boolean throwAllocatedObject) {
+        AnalysisType aInstType = aInstantiatedType == null ? aConstructor.getDeclaringClass() : aInstantiatedType;
+        VMError.guarantee(aConstructor.getDeclaringClass().isAssignableFrom(aInstType), "Must be assignable from");
+        VMError.guarantee(aInstType.isInstanceClass() && !aInstType.isAbstract(), "Must be a non-abstract instance class");
+        Map<ConstructorDescription, FactoryMethod> methods = throwAllocatedObject ? factoryThrowMethods : factoryMethods;
+        FactoryMethod factoryMethod = methods.computeIfAbsent(new ConstructorDescription(aConstructor, aInstType), key -> {
             /*
              * Computing the factory method name via the analysis universe ensures that type name
              * modifications, like to make lambda names unique, are incorporated in the name.
@@ -79,12 +89,13 @@ public class FactoryMethodSupport {
             for (int i = 0; i < unwrappedParameterTypes.length; i++) {
                 unwrappedParameterTypes[i] = aConstructor.getSignature().getParameterType(i).getWrapped();
             }
-            ResolvedJavaType unwrappedReturnType = (throwAllocatedObject ? aMetaAccess.lookupJavaType(void.class) : aConstructor.getDeclaringClass()).getWrapped();
+            ResolvedJavaType unwrappedReturnType = (throwAllocatedObject ? aMetaAccess.lookupJavaType(void.class) : aInstType).getWrapped();
             Signature unwrappedSignature = ResolvedSignature.fromArray(unwrappedParameterTypes, unwrappedReturnType);
             ResolvedJavaMethod unwrappedConstructor = aConstructor.getWrapped();
+            ResolvedJavaType unwrappedInstantiatedType = aInstType.getWrapped();
             ResolvedJavaType unwrappedDeclaringClass = (aMetaAccess.lookupJavaType(throwAllocatedObject ? FactoryThrowMethodHolder.class : FactoryMethodHolder.class)).getWrapped();
             ConstantPool unwrappedConstantPool = unwrappedConstructor.getConstantPool();
-            return new FactoryMethod(name, unwrappedConstructor, unwrappedDeclaringClass, unwrappedSignature, unwrappedConstantPool, throwAllocatedObject);
+            return new FactoryMethod(name, unwrappedConstructor, unwrappedInstantiatedType, unwrappedDeclaringClass, unwrappedSignature, unwrappedConstantPool, throwAllocatedObject);
         });
 
         AnalysisMethod aMethod = aMetaAccess.getUniverse().lookup(factoryMethod);

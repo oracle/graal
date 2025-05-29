@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.meta;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -35,27 +34,49 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
+import com.oracle.svm.util.LogUtils;
+
+import jdk.graal.compiler.options.Option;
 
 @AutomaticallyRegisteredFeature
 public class HostedMethodNameFactory implements InternalFeature {
+    public static final class Options {
+        @Option(help = "Log unique names which do not match across layers. This is an experimental option which will be removed.") //
+        public static final HostedOptionKey<Boolean> LogUniqueNameInconsistencies = new HostedOptionKey<>(false);
+    }
+
     private Map<String, Integer> methodNameCount = new ConcurrentHashMap<>();
     private Set<String> uniqueShortNames = ConcurrentHashMap.newKeySet();
     private final boolean buildingExtensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
-    private Set<String> reservedUniqueShortNames = buildingExtensionLayer ? HostedDynamicLayerInfo.singleton().getReservedNames() : null;
+    private final boolean logUniqueNameInconsistencies = Options.LogUniqueNameInconsistencies.getValue();
+    private Set<String> reservedUniqueShortNames;
 
     public record MethodNameInfo(String name, String uniqueShortName) {
+    }
+
+    public interface NameGenerator {
+        MethodNameInfo generateMethodNameInfo(int collisionCount);
+
+        String generateUniqueName(String name);
     }
 
     public static HostedMethodNameFactory singleton() {
         return ImageSingletons.lookup(HostedMethodNameFactory.class);
     }
 
-    MethodNameInfo createNames(Function<Integer, MethodNameInfo> nameGenerator, AnalysisMethod aMethod) {
-        MethodNameInfo result = buildingExtensionLayer ? HostedDynamicLayerInfo.singleton().loadMethodNameInfo(aMethod) : null;
+    MethodNameInfo createNames(NameGenerator generator, AnalysisMethod aMethod) {
+        MethodNameInfo result = buildingExtensionLayer ? HostedDynamicLayerInfo.loadMethodNameInfo(aMethod) : null;
         if (result != null) {
             assert reservedUniqueShortNames.contains(result.uniqueShortName()) : result;
+            if (logUniqueNameInconsistencies) {
+                boolean consistentNames = generator.generateUniqueName(result.name()).equals(result.uniqueShortName);
+                if (!consistentNames) {
+                    LogUtils.warning("Unique names are inconsistent for %s", aMethod.getQualifiedName());
+                }
+            }
 
             boolean added = uniqueShortNames.add(result.uniqueShortName());
             if (added) {
@@ -67,13 +88,13 @@ public class HostedMethodNameFactory implements InternalFeature {
             }
         }
 
-        MethodNameInfo initialName = nameGenerator.apply(0);
+        MethodNameInfo initialName = generator.generateMethodNameInfo(0);
         result = initialName;
 
         do {
             int collisionCount = methodNameCount.merge(initialName.uniqueShortName(), 0, (oldValue, value) -> oldValue + 1);
             if (collisionCount != 0) {
-                result = nameGenerator.apply(collisionCount);
+                result = generator.generateMethodNameInfo(collisionCount);
             }
             /*
              * Redo if the short name is reserved.
@@ -84,6 +105,11 @@ public class HostedMethodNameFactory implements InternalFeature {
         VMError.guarantee(added, "failed to generate uniqueShortName for HostedMethod: %s", result.uniqueShortName());
 
         return result;
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        reservedUniqueShortNames = buildingExtensionLayer ? HostedDynamicLayerInfo.singleton().getReservedNames() : null;
     }
 
     @Override

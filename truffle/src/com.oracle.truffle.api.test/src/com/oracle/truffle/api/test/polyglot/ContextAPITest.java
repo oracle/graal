@@ -75,6 +75,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.oracle.truffle.api.test.common.TestUtils;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -1378,4 +1379,25 @@ public class ContextAPITest extends AbstractPolyglotTest {
 
     }
 
+    @Test
+    public void testGR63778() {
+        try (Context c = Context.create()) {
+            assertFails(() -> c.eval(TestUtils.getDefaultLanguageId(TestGR63778Internal.class), ""),
+                            IllegalArgumentException.class,
+                            (ia) -> {
+                                String message = ia.getMessage();
+                                assertTrue(message.contains(" language with id '" + TestUtils.getDefaultLanguageId(TestGR63778Internal.class) + "' is not available."));
+                                assertTrue(message.contains("A language with this id is installed, but only available internally."));
+                            });
+        }
+    }
+
+    @TruffleLanguage.Registration(internal = true)
+    static class TestGR63778Internal extends AbstractExecutableTestLanguage {
+
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return null;
+        }
+    }
 }

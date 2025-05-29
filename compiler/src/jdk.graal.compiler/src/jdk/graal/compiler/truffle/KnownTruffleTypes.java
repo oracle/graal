@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,6 @@ import java.util.Set;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -104,7 +103,9 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField FrameDescriptor_defaultValue = findField(FrameDescriptor, "defaultValue");
     public final ResolvedJavaField FrameDescriptor_materializeCalled = findField(FrameDescriptor, "materializeCalled");
     public final ResolvedJavaField FrameDescriptor_indexedSlotTags = findField(FrameDescriptor, "indexedSlotTags");
+    public final ResolvedJavaField FrameDescriptor_indexedSlotCount = findField(FrameDescriptor, "indexedSlotCount", false);
     public final ResolvedJavaField FrameDescriptor_auxiliarySlotCount = findField(FrameDescriptor, "auxiliarySlotCount");
+    public final ResolvedJavaField FrameDescriptor_illegalDefaultValue = findField(FrameDescriptor, "ILLEGAL_DEFAULT_VALUE", false);
 
     public final ResolvedJavaType FrameSlotKind = lookupTypeCached("com.oracle.truffle.api.frame.FrameSlotKind");
     public final ResolvedJavaField FrameSlotKind_Object = findField(FrameSlotKind, "Object");
@@ -124,7 +125,7 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     // truffle.api.object
     public final ResolvedJavaType Shape = lookupType("com.oracle.truffle.api.object.Shape");
     public final ResolvedJavaType DynamicObject = lookupType("com.oracle.truffle.api.object.DynamicObject");
-    public final ResolvedJavaType UnsafeAccess = lookupType("com.oracle.truffle.object.UnsafeAccess");
+    public final ResolvedJavaType UnsafeAccess = lookupType("com.oracle.truffle.api.object.UnsafeAccess");
 
     // truffle.api.string
     public final ResolvedJavaType TruffleString = lookupType("com.oracle.truffle.api.strings.TruffleString");
@@ -216,23 +217,16 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
         Throwable_jfrTracing = getThrowableJFRTracingField(metaAccess);
     }
 
-    private static boolean throwableUsesJFRTracing() {
-        return JavaVersionUtil.JAVA_SPEC >= 22;
-    }
-
     private static ResolvedJavaField getThrowableJFRTracingField(MetaAccessProvider metaAccess) {
-        if (throwableUsesJFRTracing()) {
-            ResolvedJavaType throwableType = metaAccess.lookupJavaType(Throwable.class);
-            for (ResolvedJavaField staticField : throwableType.getStaticFields()) {
-                if (staticField.getName().equals("jfrTracing") &&
-                                staticField.getType().equals(metaAccess.lookupJavaType(boolean.class)) && staticField.isVolatile()) {
-                    return staticField;
-                }
+        ResolvedJavaType throwableType = metaAccess.lookupJavaType(Throwable.class);
+        for (ResolvedJavaField staticField : throwableType.getStaticFields()) {
+            if (staticField.getName().equals("jfrTracing") &&
+                            staticField.getType().equals(metaAccess.lookupJavaType(boolean.class)) && staticField.isVolatile()) {
+                return staticField;
             }
-            throw GraalError.shouldNotReachHere("Field Throwable.jfrTracing not found. This field was added in JDK-22+24 and must be present. " +
-                            "This either means this field was removed in which case this code needs to be adapted or the meta access lookup above failed which should never happen.");
         }
-        return null;
+        throw GraalError.shouldNotReachHere("Field Throwable.jfrTracing not found. This field was added in JDK-22+24 and must be present. " +
+                        "This either means this field was removed in which case this code needs to be adapted or the meta access lookup above failed which should never happen.");
     }
 
     private ResolvedJavaType[] createSkippedExceptionTypes() {

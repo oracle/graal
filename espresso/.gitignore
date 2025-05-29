@@ -46,15 +46,6 @@
 *.idb
 *.pdb
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
-
 ### Eclipse ###
 
 .metadata
@@ -393,5 +384,6 @@ test-output/
 workingsets.xml
 bench-results.json
 jmh_result.json
+compile_commands.json
 
 # End of https://www.gitignore.io/api/c,java,python,eclipse,intellij+iml

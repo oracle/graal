@@ -23,23 +23,16 @@
 package com.oracle.truffle.espresso.constantpool;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-public interface ResolvedDynamicConstant extends DynamicConstant, Resolvable.ResolvedConstant {
+public interface ResolvedDynamicConstant extends ResolvedConstant {
     void putResolved(VirtualFrame frame, int top, BytecodeNode node);
 
-    @Override
-    default Symbol<Type> getTypeSymbol(ConstantPool pool) {
-        throw EspressoError.shouldNotReachHere("Getting type symbol of a resolved dynamic constant");
-    }
+    JavaKind getKind();
 
     default StaticObject guestBoxedValue(Meta meta) {
         Object value = value();
@@ -49,6 +42,8 @@ public interface ResolvedDynamicConstant extends DynamicConstant, Resolvable.Res
         return Meta.box(meta, value);
     }
 
-    default void checkFail() {
+    @Override
+    default Tag tag() {
+        return Tag.DYNAMIC;
     }
 }

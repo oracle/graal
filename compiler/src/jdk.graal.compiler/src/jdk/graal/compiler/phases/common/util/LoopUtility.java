@@ -53,6 +53,7 @@ import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.OpaqueValueNode;
 import jdk.graal.compiler.nodes.loop.BasicInductionVariable;
+import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
 import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
@@ -60,6 +61,32 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopUtility {
+
+    /**
+     * Policy method for the GraalVM compiler loop optimizer.
+     *
+     * If for any reason a loop should be left totally untouched by loop optimizations this method
+     * returns true.
+     */
+    public static boolean excludeLoopFromOptimizer(Loop loop) {
+        /*
+         * Strip mining should be considered a pure "structural" transformation. It rewrites IR to
+         * serve the purpose of enabling other optimizations. The outer loop created in this process
+         * is mere a means to achieve something else. The optimizer should not have to spend any
+         * time optimizing it since it is visited infrequently and only there to enable a more
+         * optimal inner loop.
+         */
+        return loop.loopBegin().isAnyStripMinedOuter();
+    }
+
+    public static long tripCountSignedExact(CountedLoopInfo loop) {
+        ValueNode maxTripCountNode = loop.maxTripCountNode();
+        final long maxTripCountAsSigned = maxTripCountNode.asJavaConstant().asLong();
+        if (maxTripCountAsSigned < 0) {
+            throw new ArithmeticException("Unsigned value " + maxTripCountAsSigned + " overflows signed range");
+        }
+        return maxTripCountAsSigned;
+    }
 
     public static long addExact(int bits, long a, long b) {
         if (bits == 8) {
@@ -244,9 +271,13 @@ public class LoopUtility {
      * @param canonicalizer must not be {@code null}, will be applied incrementally to nodes whose
      *            inputs changed
      */
-    @SuppressWarnings("try")
     public static void removeObsoleteProxies(StructuredGraph graph, CoreProviders context, CanonicalizerPhase canonicalizer) {
         LoopsData loopsData = context.getLoopsDataProvider().getLoopsData(graph);
+        removeObsoleteProxies(graph, context, canonicalizer, loopsData);
+    }
+
+    @SuppressWarnings("try")
+    public static void removeObsoleteProxies(StructuredGraph graph, CoreProviders context, CanonicalizerPhase canonicalizer, LoopsData loopsData) {
         final EconomicSetNodeEventListener inputChanges = new EconomicSetNodeEventListener(EnumSet.of(NodeEvent.INPUT_CHANGED));
         try (NodeEventScope s = graph.trackNodeEvents(inputChanges)) {
             for (Loop loop : loopsData.loops()) {

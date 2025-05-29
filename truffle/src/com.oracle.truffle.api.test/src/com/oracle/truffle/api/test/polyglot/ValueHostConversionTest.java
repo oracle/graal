@@ -198,7 +198,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         Integer get();
     }
 
-    private class SuplierExtensionImpl implements SupplierExtension {
+    private final class SuplierExtensionImpl implements SupplierExtension {
         @Override
         public Integer get() {
             return 42;

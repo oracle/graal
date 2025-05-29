@@ -32,11 +32,11 @@ import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.mach_
 import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.mach_vm_region;
 import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.vm_region_basic_info_data_64_t;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -66,12 +66,12 @@ final class DarwinStackOverflowSupport implements StackOverflowCheck.PlatformSup
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord vmComputeStackGuardSize(UnsignedWord stackend) {
-        UnsignedWord guardsize = WordFactory.zero();
+        UnsignedWord guardsize = Word.zero();
 
         WordPointer address = StackValue.get(WordPointer.class);
         address.write(stackend);
         WordPointer size = StackValue.get(WordPointer.class);
-        size.write(WordFactory.zero());
+        size.write(Word.zero());
 
         vm_region_basic_info_data_64_t info = StackValue.get(vm_region_basic_info_data_64_t.class);
         WordPointer task = mach_task_self();

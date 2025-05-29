@@ -34,6 +34,7 @@ import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -45,7 +46,7 @@ import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 
 public class TestThreadCPULoadEvent extends JfrRecordingTest {
-    private static final int TIMEOUT = 10000;
+    private static final int TIMEOUT = 30000;
     private static final String THREAD_NAME_1 = "Thread-1";
     private static final String THREAD_NAME_2 = "Thread-2";
     private static final String THREAD_NAME_3 = "Thread-3";
@@ -55,9 +56,13 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
         String[] events = new String[]{JfrEvent.ThreadCPULoad.getName()};
         Recording recording = startRecording(events);
 
-        WeakReference<Thread> thread1 = createAndStartBusyWaitThread(THREAD_NAME_1, 10, 250);
-        WeakReference<Thread> thread2 = createAndStartBusyWaitThread(THREAD_NAME_2, 250, 10);
-        Thread thread3 = createAndStartBusyWaitThread(THREAD_NAME_3, 20, TIMEOUT).get();
+        CountDownLatch threadsStarted = new CountDownLatch(3);
+        WeakReference<Thread> thread1 = new WeakReference<>(createAndStartBusyWaitThread(THREAD_NAME_1, 10, 250, threadsStarted));
+        WeakReference<Thread> thread2 = new WeakReference<>(createAndStartBusyWaitThread(THREAD_NAME_2, 250, 10, threadsStarted));
+        Thread thread3 = createAndStartBusyWaitThread(THREAD_NAME_3, 20, TIMEOUT, threadsStarted);
+
+        /* Wait until all threads are started. */
+        threadsStarted.await();
 
         /* For threads 1 and 2, the event is emitted when the thread exits. */
         waitUntilCollected(thread1);
@@ -68,6 +73,7 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
 
         Assert.assertTrue(thread3.isAlive());
         thread3.interrupt();
+        thread3.join();
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
@@ -88,14 +94,15 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
         assertTrue(cpuTimes.get(THREAD_NAME_1) < cpuTimes.get(THREAD_NAME_2));
     }
 
-    private static WeakReference<Thread> createAndStartBusyWaitThread(String name, int busyMs, int idleMs) {
+    private static Thread createAndStartBusyWaitThread(String name, int busyMs, int idleMs, CountDownLatch threadsStarted) {
         Thread thread = new Thread(() -> {
+            threadsStarted.countDown();
             busyWait(busyMs);
             sleep(idleMs);
         });
         thread.setName(name);
         thread.start();
-        return new WeakReference<>(thread);
+        return thread;
     }
 
     private static void busyWait(long waitMs) {

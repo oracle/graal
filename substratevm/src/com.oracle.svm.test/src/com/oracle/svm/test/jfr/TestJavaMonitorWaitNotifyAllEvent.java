@@ -108,12 +108,13 @@ public class TestJavaMonitorWaitNotifyAllEvent extends JfrRecordingTest {
                 waitersFound++;
             }
 
+            checkTopStackFrame(event, "await");
         }
         assertTrue("Couldn't find expected wait events. NotifierFound: " + notifierFound + " waitersFound: " + waitersFound,
                         notifierFound && waitersFound == 2);
     }
 
-    private class Helper {
+    private final class Helper {
         public synchronized void doWork() throws InterruptedException {
             if (Thread.currentThread().equals(consumerThread)) {
                 wait(MILLIS);

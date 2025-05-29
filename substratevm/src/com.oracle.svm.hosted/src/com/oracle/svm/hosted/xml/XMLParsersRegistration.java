@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.configure.ResourcesRegistry;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -47,9 +47,6 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
         List<String> parserClasses = xmlParserClasses();
         registerReflectionClasses(access, parserClasses);
         registerResources();
-        if (!access.concurrentReachabilityHandlers()) {
-            access.requireAnalysisIteration();
-        }
     }
 
     abstract List<String> xmlParserClasses();

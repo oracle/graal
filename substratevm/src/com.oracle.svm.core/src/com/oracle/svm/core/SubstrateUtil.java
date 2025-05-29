@@ -30,7 +30,6 @@ import java.io.FileOutputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -45,12 +44,13 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.common.meta.GuaranteeFolded;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.util.HostedSubstrateUtil;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
@@ -59,6 +59,7 @@ import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.BreakpointNode;
 import jdk.graal.compiler.util.Digest;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -68,7 +69,7 @@ public class SubstrateUtil {
     /**
      * Field that is true during native image generation, but false at run time.
      */
-    public static final boolean HOSTED;
+    @GuaranteeFolded public static final boolean HOSTED;
 
     static {
         /*
@@ -81,37 +82,27 @@ public class SubstrateUtil {
 
     public static String getArchitectureName() {
         String arch = System.getProperty("os.arch");
-        switch (arch) {
-            case "x86_64":
-                arch = "amd64";
-                break;
-            case "arm64":
-                arch = "aarch64";
-                break;
-        }
-        return arch;
+        return switch (arch) {
+            case "x86_64" -> "amd64";
+            case "arm64" -> "aarch64";
+            default -> arch;
+        };
     }
-
-    private static final Method IS_TERMINAL_METHOD = ReflectionUtil.lookupMethod(true, Console.class, "isTerminal");
 
     private static boolean isTTY() {
         Console console = System.console();
         if (console == null) {
             return false;
         }
-        if (IS_TERMINAL_METHOD != null) {
-            try {
-                return (boolean) IS_TERMINAL_METHOD.invoke(console);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new Error(e);
-            }
-        } else {
-            return true;
-        }
+        return console.isTerminal();
     }
 
-    public static boolean isRunningInCI() {
-        return !isTTY() || System.getenv("CI") != null;
+    public static boolean isNonInteractiveTerminal() {
+        return isCISetToTrue() || !isTTY();
+    }
+
+    public static boolean isCISetToTrue() {
+        return Boolean.parseBoolean(System.getenv("CI"));
     }
 
     /**
@@ -183,7 +174,7 @@ public class SubstrateUtil {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord strlen(CCharPointer str) {
-        UnsignedWord n = WordFactory.zero();
+        UnsignedWord n = Word.zero();
         while (((Pointer) str).readByte(n) != 0) {
             n = n.add(1);
         }
@@ -202,7 +193,7 @@ public class SubstrateUtil {
                 return str.addressOf(index);
             }
             if (b == 0) {
-                return WordFactory.zero();
+                return Word.zero();
             }
             index += 1;
         }
@@ -376,12 +367,14 @@ public class SubstrateUtil {
      * @return A unique identifier for the classloader or the empty string when the loader is one of
      *         the special set whose method names do not need qualification.
      */
-    public static String classLoaderNameAndId(ClassLoader loader) {
-        if (loader == null) {
+    public static String runtimeClassLoaderNameAndId(ClassLoader loader) {
+        ClassLoader runtimeClassLoader = SubstrateUtil.HOSTED ? HostedSubstrateUtil.getRuntimeClassLoader(loader) : loader;
+
+        if (runtimeClassLoader == null) {
             return "";
         }
         try {
-            return (String) classLoaderNameAndId.get(loader);
+            return (String) classLoaderNameAndId.get(runtimeClassLoader);
         } catch (IllegalAccessException e) {
             throw VMError.shouldNotReachHere("Cannot reflectively access ClassLoader.nameAndId");
         }
@@ -526,5 +519,19 @@ public class SubstrateUtil {
         } else {
             return defaultClass;
         }
+    }
+
+    /** Sanitizes a name to be used in a file name. Special characters are replaced with '_'. */
+    public static String sanitizeForFileName(String name) {
+        StringBuilder buf = new StringBuilder(name.length());
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '.' || (c >= '0' && c <= '9')) {
+                buf.append(c);
+            } else {
+                buf.append('_');
+            }
+        }
+        return buf.toString();
     }
 }

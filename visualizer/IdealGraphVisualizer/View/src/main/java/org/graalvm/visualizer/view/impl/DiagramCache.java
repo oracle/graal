@@ -215,7 +215,7 @@ public class DiagramCache implements DiagramCacheBase {
     }
 
     public final class FilterDiagramCache extends DiagramCacheValue<List<Filter>> {
-        public final Map<LayoutSettingBean, LayoutDiagramCache> layoutedDiagramMap = new HashMap<>();
+        public final Map<LayoutSettingBean, LayoutDiagramCache> laidOutDiagramMap = new HashMap<>();
 
         protected FilterDiagramCache(Diagram referent, Reference<List<Filter>> key, DiagramCacheBase parent) {
             super(referent, key, parent);
@@ -224,7 +224,7 @@ public class DiagramCache implements DiagramCacheBase {
         @Override
         public synchronized Diagram getDiagram(DiagramViewModel model, Consumer<Diagram> diagramReadyCallback) {
             LayoutSettingBean layoutSetting = model.getLayoutSetting();
-            LayoutDiagramCache layoutDiagramCache = layoutedDiagramMap.get(layoutSetting);
+            LayoutDiagramCache layoutDiagramCache = laidOutDiagramMap.get(layoutSetting);
             Diagram tmp = null;
             if (layoutDiagramCache != null) {
                 tmp = layoutDiagramCache.get();
@@ -241,16 +241,16 @@ public class DiagramCache implements DiagramCacheBase {
         @Override
         public synchronized DiagramCacheBase makeCache(DiagramViewModel model, Diagram baseDiagram) {
             LayoutSettingBean layoutSetting = model.getLayoutSetting();
-            LayoutDiagramCache layoutDiagramCache = layoutedDiagramMap.get(layoutSetting);
+            LayoutDiagramCache layoutDiagramCache = laidOutDiagramMap.get(layoutSetting);
             Diagram tmp = null;
             if (layoutDiagramCache != null) {
                 tmp = layoutDiagramCache.get();
             }
             if (tmp != null && tmp.getSize() == null) {
                 // size of Diagram is null, so we have cached only extracted Diagrams after this stub.
-                LOG.log(Level.FINE, "Exchanging stub Diagram: {0} for its layouted counterpart: {1}", new Object[]{tmp, baseDiagram});
+                LOG.log(Level.FINE, "Exchanging stub Diagram: {0} for its laid out counterpart: {1}", new Object[]{tmp, baseDiagram});
                 LayoutDiagramCache layoutDiagramCacheNew = new LayoutDiagramCache(baseDiagram, new WeakReference<>(layoutSetting), this);
-                layoutedDiagramMap.put(layoutSetting, layoutDiagramCacheNew);
+                laidOutDiagramMap.put(layoutSetting, layoutDiagramCacheNew);
                 for (ExtractedDiagramCache c : layoutDiagramCache.extractedDiagramMap.values()) {
                     Set<Integer> key = c.key.get();
                     Diagram d = c.get();
@@ -260,7 +260,7 @@ public class DiagramCache implements DiagramCacheBase {
                 }
                 layoutDiagramCache = layoutDiagramCacheNew;
             } else if (tmp == null) {
-                layoutedDiagramMap.put(layoutSetting, layoutDiagramCache = new LayoutDiagramCache(baseDiagram, new WeakReference<>(layoutSetting), this));
+                laidOutDiagramMap.put(layoutSetting, layoutDiagramCache = new LayoutDiagramCache(baseDiagram, new WeakReference<>(layoutSetting), this));
             }
             return layoutDiagramCache;
         }
@@ -272,7 +272,7 @@ public class DiagramCache implements DiagramCacheBase {
 
         @Override
         public Map getMap() {
-            return layoutedDiagramMap;
+            return laidOutDiagramMap;
         }
     }
 
@@ -289,7 +289,7 @@ public class DiagramCache implements DiagramCacheBase {
             if (hidNodes.isEmpty()) {
                 Diagram fin = get();
                 assert fin != null;
-                assert fin.getSize() != null : "Diagram wasn't layouted, but would be returned as finished.";
+                assert fin.getSize() != null : "Diagram wasn't laid out, but would be returned as finished.";
                 LOG.log(Level.FINE, "Loaded cached unextracted Diagram: {0}.", fin);
                 return fin;
             }

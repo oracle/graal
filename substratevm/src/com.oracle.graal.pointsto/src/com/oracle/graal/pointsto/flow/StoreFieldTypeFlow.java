@@ -45,8 +45,11 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
         super(original, methodFlows);
     }
 
+    /**
+     * Filters the incoming type state using the declared type.
+     */
     @Override
-    public TypeState filter(PointsToAnalysis bb, TypeState newState) {
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState newState) {
         /*
          * If the type flow constraints are relaxed filter the stored value using the field's
          * declared type.
@@ -100,10 +103,10 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
     /**
      * The state of the StoreFieldTypeFlow reflects the state of the stored value. The
      * StoreFieldTypeFlow is an observer of the receiver flow, i.e. flow modeling the receiver
-     * object of the store operation..
+     * object of the store operation.
      *
      * Every time the state of the receiver flow changes the corresponding field flows are added as
-     * uses to the store field flow. Thus the stored value is propagated to the store field flow
+     * uses to the store field flow. Thus, the stored value is propagated to the store field flow
      * into the field flows.
      */
     public static class StoreInstanceFieldTypeFlow extends StoreFieldTypeFlow {

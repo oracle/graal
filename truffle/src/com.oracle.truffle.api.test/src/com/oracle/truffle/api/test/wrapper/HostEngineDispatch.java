@@ -42,6 +42,7 @@ package com.oracle.truffle.api.test.wrapper;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.ref.Reference;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.Set;
@@ -72,30 +73,35 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
     }
 
     @Override
-    public Object createContext(Object receiver, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, Object hostAccess,
+    public Context createContext(Object receiver, Engine engineApi, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, Object hostAccess,
                     Object polyglotAccess,
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostClassLoading, boolean allowInnerContextOptions,
                     boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, Object ioAccess, Object logHandler,
                     boolean allowCreateProcess, ProcessHandler processHandler, Object environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl,
-                    String currentWorkingDirectory, String tmpDir, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
+                    String currentWorkingDirectory, String tmpDir, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit, boolean registerInActiveContexts) {
         HostEngine engine = (HostEngine) receiver;
         Engine localEngine = (Engine) engine.localEngine;
         AbstractEngineDispatch dispatch = api.getEngineDispatch(localEngine);
         Object engineReceiver = api.getEngineReceiver(localEngine);
-        Context localContext = (Context) dispatch.createContext(engineReceiver, sandboxPolicy, out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread,
+        Context localContext = dispatch.createContext(engineReceiver, localEngine, sandboxPolicy, out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess,
+                        allowCreateThread,
                         allowHostClassLoading,
                         allowInnerContextOptions, allowExperimentalOptions, classFilter, options, arguments, onlyLanguages, ioAccess, logHandler, allowCreateProcess, processHandler,
-                        environmentAccess, environment, zone, limitsImpl, currentWorkingDirectory, tmpDir, hostClassLoader, true, useSystemExit);
+                        environmentAccess, environment, zone, limitsImpl, currentWorkingDirectory, tmpDir, hostClassLoader, true, useSystemExit, false);
         long guestContextId = hostToGuest.remoteCreateContext(engine.remoteEngine, sandboxPolicy, tmpDir);
         HostContext context = new HostContext(engine, guestContextId, localContext);
         hostToGuest.registerHostContext(guestContextId, context);
-        return polyglot.getAPIAccess().newContext(remoteContext, context, engine.api);
+        Context contextApi = polyglot.getAPIAccess().newContext(remoteContext, context, engineApi, registerInActiveContexts);
+        if (registerInActiveContexts) {
+            polyglot.getAPIAccess().processReferenceQueue();
+        }
+        return contextApi;
     }
 
     @Override
-    public void setAPI(Object receiver, Object key) {
-        ((HostEngine) receiver).setApi((Engine) key);
+    public void setEngineAPIReference(Object receiver, Reference<Engine> key) {
+        ((HostEngine) receiver).setPolyglotAPIReference(key);
     }
 
     @Override
@@ -171,5 +177,15 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
         AbstractEngineDispatch dispatch = api.getEngineDispatch(localEngine);
         Object engineReceiver = api.getEngineReceiver(localEngine);
         return dispatch.getSandboxPolicy(engineReceiver);
+    }
+
+    @Override
+    public void onEngineCollected(Object receiver) {
+        HostEngine engine = (HostEngine) receiver;
+        Engine localEngine = (Engine) engine.localEngine;
+        AbstractEngineDispatch dispatch = api.getEngineDispatch(localEngine);
+        Object engineReceiver = api.getEngineReceiver(localEngine);
+        dispatch.onEngineCollected(engineReceiver);
+        hostToGuest.shutdown(engine.remoteEngine);
     }
 }

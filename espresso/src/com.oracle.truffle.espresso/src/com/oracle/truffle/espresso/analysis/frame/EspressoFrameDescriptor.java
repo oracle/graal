@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.analysis.frame;
 
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
@@ -34,17 +33,17 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.verifier.StackMapFrameParser;
-import com.oracle.truffle.espresso.verifier.StackMapFrameParser.FrameAndLocalEffect;
-import com.oracle.truffle.espresso.verifier.VerificationTypeInfo;
+import com.oracle.truffle.espresso.shared.verifier.StackMapFrameParser;
+import com.oracle.truffle.espresso.shared.verifier.StackMapFrameParser.FrameAndLocalEffect;
+import com.oracle.truffle.espresso.shared.verifier.VerificationTypeInfo;
 
 /**
  * Provides a description of an Espresso frame, used in bytecode execution.
@@ -272,7 +271,7 @@ public class EspressoFrameDescriptor {
         }
     }
 
-    public static class Builder implements StackMapFrameParser.FrameState {
+    public static class Builder implements StackMapFrameParser.FrameState<Builder, FrameAnalysis> {
         int bci = -1;
 
         final FrameType[] types;
@@ -455,19 +454,16 @@ public class EspressoFrameDescriptor {
         }
 
         @Override
-        public Builder sameLocalsWith1Stack(VerificationTypeInfo vfi, StackMapFrameParser.FrameBuilder<?> builder) {
-            if (builder instanceof FrameAnalysis analysis) {
-                Builder newFrame = copy().clearStack();
-                newFrame.clearStack();
-                FrameType k = fromTypeInfo(vfi, analysis);
-                newFrame.push(k);
-                return newFrame;
-            }
-            throw EspressoError.shouldNotReachHere();
+        public Builder sameLocalsWith1Stack(VerificationTypeInfo vfi, FrameAnalysis analysis) {
+            Builder newFrame = copy().clearStack();
+            newFrame.clearStack();
+            FrameType k = fromTypeInfo(vfi, analysis);
+            newFrame.push(k);
+            return newFrame;
         }
 
         @Override
-        public FrameAndLocalEffect chop(int chop, int lastLocal) {
+        public FrameAndLocalEffect<Builder, FrameAnalysis> chop(int chop, int lastLocal, FrameAnalysis analysis) {
             Builder newFrame = copy().clearStack();
             int pos = lastLocal;
             for (int i = 0; i < chop; i++) {
@@ -478,35 +474,35 @@ public class EspressoFrameDescriptor {
                     pos--;
                 }
             }
-            return new FrameAndLocalEffect(newFrame, pos - lastLocal);
+            return new FrameAndLocalEffect<>(newFrame, pos - lastLocal);
         }
 
         @Override
-        public FrameAndLocalEffect append(VerificationTypeInfo[] vtis, StackMapFrameParser.FrameBuilder<?> builder, int lastLocal) {
-            if (builder instanceof FrameAnalysis analysis) {
-                Builder newFrame = copy().clearStack();
-                int pos = lastLocal;
-                for (VerificationTypeInfo vti : vtis) {
-                    FrameType k = fromTypeInfo(vti, analysis);
-                    newFrame.putLocal(++pos, k);
-                    if (k.kind().needsTwoSlots()) {
-                        pos++;
-                    }
+        public FrameAndLocalEffect<Builder, FrameAnalysis> append(VerificationTypeInfo[] vtis, FrameAnalysis analysis, int lastLocal) {
+            Builder newFrame = copy().clearStack();
+            int pos = lastLocal;
+            for (VerificationTypeInfo vti : vtis) {
+                FrameType k = fromTypeInfo(vti, analysis);
+                newFrame.putLocal(++pos, k);
+                if (k.kind().needsTwoSlots()) {
+                    pos++;
                 }
-                return new FrameAndLocalEffect(newFrame, pos - lastLocal);
             }
-            throw EspressoError.shouldNotReachHere();
+            return new FrameAndLocalEffect<>(newFrame, pos - lastLocal);
         }
     }
 
-    public static FrameType fromTypeInfo(VerificationTypeInfo vfi, FrameAnalysis analysis) {
+    public static FrameType fromTypeInfo(VerificationTypeInfo vti, FrameAnalysis analysis) {
         FrameType k;
-        if (vfi.isIllegal()) {
+        if (vti.isIllegal()) {
             k = FrameType.ILLEGAL;
-        } else if (vfi.isNull()) {
+        } else if (vti.isNull()) {
             k = FrameType.NULL;
+        } else if (vti.isUninitializedThis()) {
+            k = FrameType.forType(analysis.targetKlass().getType());
         } else {
-            k = FrameType.forType(vfi.getType(analysis.pool(), analysis.targetKlass(), analysis.stream()));
+            assert vti.hasType();
+            k = FrameType.forType(vti.getType(analysis.pool(), analysis.targetKlass().getTypes(), analysis.stream()));
         }
         return k;
     }

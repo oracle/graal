@@ -55,6 +55,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -66,7 +67,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.LinkerInvocation;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -75,7 +75,6 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
@@ -309,12 +308,21 @@ public class FeatureImpl {
 
         /**
          * Register a callback that is executed when an object of the specified type or any of its
-         * subtypes is marked as reachable.
+         * subtypes is marked as reachable. The callback is executed before the object is added to
+         * the shadow heap. A callback may throw an {@link UnsupportedFeatureException} to reject an
+         * object based on specific validation rules. This will stop the image build and report how
+         * the object was reached.
          *
          * @since 24.0
          */
         public <T> void registerObjectReachableCallback(Class<T> clazz, ObjectReachableCallback<T> callback) {
             getMetaAccess().lookupJavaType(clazz).registerObjectReachableCallback(callback);
+        }
+
+        @Override
+        public <T> void registerObjectReachabilityHandler(Consumer<T> callback, Class<T> clazz) {
+            ObjectReachableCallback<T> wrapper = (access, obj, reason) -> callback.accept(obj);
+            getMetaAccess().lookupJavaType(clazz).registerObjectReachableCallback(wrapper);
         }
 
         public void registerSubstitutionProcessor(SubstitutionProcessor substitution) {
@@ -350,17 +358,15 @@ public class FeatureImpl {
     public static class BeforeAnalysisAccessImpl extends AnalysisAccessBase implements Feature.BeforeAnalysisAccess {
 
         private final NativeLibraries nativeLibraries;
-        private final boolean concurrentReachabilityHandlers;
         private final ReachabilityHandler reachabilityHandler;
-        private ClassForNameSupport classForNameSupport;
+        private final ClassForNameSupport classForNameSupport;
 
         public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries,
                         DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
             this.nativeLibraries = nativeLibraries;
-            this.concurrentReachabilityHandlers = SubstrateOptions.RunReachabilityHandlersConcurrently.getValue(bb.getOptions());
-            this.reachabilityHandler = concurrentReachabilityHandlers ? ConcurrentReachabilityHandler.singleton() : ReachabilityHandlerFeature.singleton();
-            this.classForNameSupport = ClassForNameSupport.singleton();
+            this.reachabilityHandler = new ConcurrentReachabilityHandler();
+            this.classForNameSupport = ClassForNameSupport.currentLayer();
         }
 
         public NativeLibraries getNativeLibraries() {
@@ -481,10 +487,6 @@ public class FeatureImpl {
             reachabilityHandler.registerClassInitializerReachabilityHandler(this, callback, clazz);
         }
 
-        public boolean concurrentReachabilityHandlers() {
-            return concurrentReachabilityHandlers;
-        }
-
         @Override
         public void registerFieldValueTransformer(Field field, FieldValueTransformer transformer) {
             FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(field, transformer);
@@ -524,8 +526,6 @@ public class FeatureImpl {
 
     public static class ConcurrentAnalysisAccessImpl extends DuringAnalysisAccessImpl {
 
-        private static final String concurrentReachabilityOption = SubstrateOptionsParser.commandArgument(SubstrateOptions.RunReachabilityHandlersConcurrently, "-");
-
         public ConcurrentAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, nativeLibraries, debugContext);
         }
@@ -533,11 +533,14 @@ public class FeatureImpl {
         @Override
         public void requireAnalysisIteration() {
             if (bb.executorIsStarted()) {
-                String msg = "Calling DuringAnalysisAccessImpl.requireAnalysisIteration() is not necessary when running the reachability handlers concurrently during analysis. " +
-                                "To fallback to running the reachability handlers sequentially, i.e., from Feature.duringAnalysis(), you can add the " + concurrentReachabilityOption +
-                                " option to the native-image command. Note that the fallback option is deprecated and it will be removed in a future release.";
-                throw VMError.shouldNotReachHere(msg);
+                throw VMError.shouldNotReachHere("Calling DuringAnalysisAccessImpl.requireAnalysisIteration() is not necessary when running the reachability handlers concurrently during analysis.");
             }
+            /*
+             * While it may seem wrong that the concurrent analysis accessor can request an
+             * additional analysis iteration this is necessary because the concurrent reachability
+             * callbacks can be forced to run synchronously in the single-threaded "during analysis"
+             * phase when elements are marked as reachable from Feature.duringAnalysis hooks.
+             */
             super.requireAnalysisIteration();
         }
 
@@ -736,6 +739,10 @@ public class FeatureImpl {
 
         public AbstractImage getImage() {
             return image;
+        }
+
+        public String getOutputFilename() {
+            return image.getImageKind().getOutputFilename(imageName);
         }
 
         public RuntimeConfiguration getRuntimeConfiguration() {

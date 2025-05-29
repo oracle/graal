@@ -20,14 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.impl.generics.reflectiveObjects;
+
+import java.util.Objects;
 
 import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.impl.GenericArrayEspressoType;
 import com.oracle.truffle.espresso.impl.Klass;
-
-import java.util.Objects;
 
 /**
  * Implementation of GenericArrayType interface.

@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.impl;
 
 import static com.oracle.truffle.espresso.impl.LoadingConstraints.INVALID_LOADER_ID;
@@ -31,18 +30,22 @@ import java.util.List;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.ErrorType;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 public final class ClassRegistries {
@@ -72,7 +75,7 @@ public final class ClassRegistries {
     }
 
     public void initJavaBaseModule() {
-        this.javaBaseModule = bootClassRegistry.modules().createAndAddEntry(Symbol.Name.java_base, bootClassRegistry);
+        this.javaBaseModule = bootClassRegistry.modules().createAndAddEntry(Names.java_base, null, null, false, null);
     }
 
     public ClassRegistry getClassRegistry(@JavaType(ClassLoader.class) StaticObject classLoader) {
@@ -124,31 +127,51 @@ public final class ClassRegistries {
 
     public ModuleTable.ModuleEntry getPolyglotAPIModule() {
         if (polyglotAPIModule == null) {
-            ModuleRef[] allModuleRefs = getAllModuleRefs();
-            for (ModuleRef module : allModuleRefs) {
-                if ("espresso.polyglot".equals(module.jdwpName())) {
-                    polyglotAPIModule = (ModuleTable.ModuleEntry) module;
-                    break;
-                }
-            }
+            polyglotAPIModule = findPlatformOrBootModule(Names.espresso_polyglot);
         }
         return polyglotAPIModule;
     }
 
+    private ModuleTable.ModuleEntry findPlatformOrBootModule(Symbol<Name> name) {
+        ModuleTable.ModuleEntry m = bootClassRegistry.modules().lookup(name);
+        if (m != null) {
+            return m;
+        }
+        ObjectKlass platformClassLoaderKlass = context.getMeta().jdk_internal_loader_ClassLoaders$PlatformClassLoader;
+        if (platformClassLoaderKlass == null) {
+            return null;
+        }
+        synchronized (weakClassLoaderSet) {
+            for (StaticObject loader : weakClassLoaderSet) {
+                if (loader != null) {
+                    if (platformClassLoaderKlass.isAssignableFrom(loader.getKlass())) {
+                        m = getClassRegistry(loader).modules().lookup(name);
+                        if (m != null) {
+                            return m;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     public boolean javaBaseDefined() {
-        return javaBaseModule != null && !StaticObject.isNull(javaBaseModule.module());
+        boolean result = javaBaseModule != null && javaBaseModule.module() != null;
+        assert !result || StaticObject.notNull(javaBaseModule.module());
+        return result;
     }
 
     @TruffleBoundary
     public Klass findLoadedClass(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
 
-        if (Types.isArray(type)) {
+        if (TypeSymbols.isArray(type)) {
             Klass elemental = findLoadedClass(context.getTypes().getElementalType(type), classLoader);
             if (elemental == null) {
                 return null;
             }
-            return elemental.getArrayClass(Types.getArrayDimensions(type));
+            return elemental.getArrayClass(TypeSymbols.getArrayDimensions(type));
         }
 
         ClassRegistry registry = getClassRegistry(classLoader);
@@ -192,7 +215,7 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
-    public Klass[] getAllLoadedClasses() {
+    public List<Klass> getAllLoadedClasses() {
         ArrayList<Klass> list = new ArrayList<>();
         // add classes from boot registry
         for (RegistryEntry entry : bootClassRegistry.classes.values()) {
@@ -206,24 +229,24 @@ public final class ClassRegistries {
                 }
             }
         }
-        return list.toArray(Klass.EMPTY_ARRAY);
+        return list;
     }
 
     public ModuleRef[] getAllModuleRefs() {
         ArrayList<ModuleRef> list = new ArrayList<>();
         // add modules from boot registry
-        list.addAll(bootClassRegistry.modules().values());
+        bootClassRegistry.modules().collectValues(list::add);
 
         // add modules from all other registries
         synchronized (weakClassLoaderSet) {
             for (StaticObject classLoader : weakClassLoaderSet) {
-                list.addAll(getClassRegistry(classLoader).modules().values());
+                getClassRegistry(classLoader).modules().collectValues(list::add);
             }
         }
         return list.toArray(ModuleRef.EMPTY_ARRAY);
     }
 
-    public ModuleTable.ModuleEntry findUniqueModule(Symbol<Symbol.Name> name) {
+    public ModuleTable.ModuleEntry findUniqueModule(Symbol<Name> name) {
         ModuleTable.ModuleEntry result = bootClassRegistry.modules().lookup(name);
         synchronized (weakClassLoaderSet) {
             for (StaticObject classLoader : weakClassLoaderSet) {
@@ -251,12 +274,12 @@ public final class ClassRegistries {
     public Klass loadKlass(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) throws EspressoClassLoadingException {
         assert classLoader != null : "use StaticObject.NULL for BCL";
 
-        if (Types.isArray(type)) {
+        if (TypeSymbols.isArray(type)) {
             Klass elemental = loadKlass(context.getTypes().getElementalType(type), classLoader, protectionDomain);
             if (elemental == null) {
                 return null;
             }
-            return elemental.getArrayClass(Types.getArrayDimensions(type));
+            return elemental.getArrayClass(TypeSymbols.getArrayDimensions(type));
         }
         ClassRegistry registry = getClassRegistry(classLoader);
         return registry.loadKlass(context, type, protectionDomain);
@@ -274,17 +297,19 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
-    public void checkLoadingConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2) {
+    public void checkLoadingConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2, Function<String, RuntimeException> errorHandler) {
         Symbol<Type> toCheck = context.getTypes().getElementalType(type);
-        if (!Types.isPrimitive(toCheck) && loader1 != loader2) {
-            constraints.checkConstraint(toCheck, loader1, loader2);
+        if (!TypeSymbols.isPrimitive(toCheck) && loader1 != loader2) {
+            constraints.checkConstraint(toCheck, loader1, loader2, errorHandler);
         }
     }
 
     void recordConstraint(Symbol<Type> type, Klass klass, StaticObject loader) {
-        assert !Types.isArray(type);
-        if (!Types.isPrimitive(type)) {
-            constraints.recordConstraint(type, klass, loader);
+        assert !TypeSymbols.isArray(type);
+        if (!TypeSymbols.isPrimitive(type)) {
+            constraints.recordConstraint(type, klass, loader, m -> {
+                throw context.throwError(ErrorType.LinkageError, m);
+            });
         }
     }
 
@@ -356,6 +381,7 @@ public final class ClassRegistries {
         private volatile Set<StaticObject> domains = null;
 
         RegistryEntry(Klass k) {
+            assert k != null;
             this.klass = k;
         }
 

@@ -127,6 +127,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
             DebugContext debug = new Builder(compiler.getOrCreateCompilerOptions(target)).build();
             try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
                 final OptimizedCallTarget compilable = target;
+                compilable.ensureInitialized();
                 TruffleCompilationTask task = PartialEvaluationTest.newTask();
                 try (TruffleCompilation compilation = compiler.openCompilation(task, compilable)) {
                     compiler.compileAST(debug, compilable, compilation.getCompilationId(), task, null);
@@ -173,7 +174,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
         void doVirtual();
     }
 
-    private static class VirtualObject1 implements Interface {
+    private static final class VirtualObject1 implements Interface {
         @Override
         public void doVirtual() {
         }
@@ -183,7 +184,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
         }
     }
 
-    private static class VirtualObject2 implements Interface {
+    private static final class VirtualObject2 implements Interface {
         @Override
         public void doVirtual() {
         }
@@ -199,7 +200,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
         }
     }
 
-    private static class SubClass extends SingleImplementorClass {
+    private static final class SubClass extends SingleImplementorClass {
     }
 
     private static class L1 {
@@ -226,10 +227,10 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     private static class L8 extends L7 {
     }
 
-    private static class L9a extends L8 {
+    private static final class L9a extends L8 {
     }
 
-    private static class L9b extends L8 {
+    private static final class L9b extends L8 {
     }
 
     private abstract static class TestRootNode extends RootNode {

@@ -234,4 +234,5 @@ Which data is printed in detail depends on the used GC.
 
 ### Further Reading
 
+* [Optimize Memory Footprint of a Native Executable](guides/optimize-memory-footprint.md)
 * [Memory Configuration for Native Image Build](BuildConfiguration.md#memory-configuration-for-native-image-build)

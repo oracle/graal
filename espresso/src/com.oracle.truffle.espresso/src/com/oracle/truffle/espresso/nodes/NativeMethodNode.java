@@ -37,16 +37,17 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
@@ -79,7 +80,7 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
     @ExplodeLoop
     private Object[] preprocessArgs(JNIHandles handles, Object[] args) {
         Symbol<Type>[] parsedSignature = getMethodVersion().getMethod().getParsedSignature();
-        int paramCount = Signatures.parameterCount(parsedSignature);
+        int paramCount = SignatureSymbols.parameterCount(parsedSignature);
         Object[] nativeArgs = new Object[2 /* JNIEnv* + class or receiver */ + paramCount];
 
         assert !InteropLibrary.getUncached().isNull(env.getNativePointer());
@@ -93,8 +94,8 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
 
         int skipReceiver = getMethodVersion().isStatic() ? 0 : 1;
         for (int i = 0; i < paramCount; ++i) {
-            Symbol<Type> paramType = Signatures.parameterType(parsedSignature, i);
-            if (Types.isReference(paramType)) {
+            Symbol<Type> paramType = SignatureSymbols.parameterType(parsedSignature, i);
+            if (TypeSymbols.isReference(paramType)) {
                 nativeArgs[i + 2] = toObjectHandle(handles, args[i + skipReceiver]);
             } else {
                 nativeArgs[i + 2] = args[i + skipReceiver];
@@ -142,8 +143,8 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
     private Object processResult(JNIHandles handles, Object result) {
         // JNI exception handling.
         maybeThrowAndClearPendingException(EspressoLanguage.get(this));
-        Symbol<Type> returnType = Signatures.returnType(getMethodVersion().getMethod().getParsedSignature());
-        if (Types.isReference(returnType)) {
+        Symbol<Type> returnType = SignatureSymbols.returnType(getMethodVersion().getMethod().getParsedSignature());
+        if (TypeSymbols.isReference(returnType)) {
             long addr;
             if (result instanceof Long) {
                 addr = (Long) result;
@@ -153,7 +154,7 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
             }
             return handles.get(Math.toIntExact(addr));
         }
-        assert !(returnType == Type._void) || result == StaticObject.NULL;
+        assert !(returnType == Types._void) || result == StaticObject.NULL;
         return result;
     }
 

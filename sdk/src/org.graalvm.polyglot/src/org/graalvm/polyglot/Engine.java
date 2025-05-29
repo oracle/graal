@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.lang.invoke.MethodHandles;
+import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -69,6 +72,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -76,7 +80,6 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -143,20 +146,23 @@ public final class Engine implements AutoCloseable {
 
     private static volatile Throwable initializationException;
     private static volatile boolean shutdownHookInitialized;
-    private static final Map<Engine, Void> ENGINES = Collections.synchronizedMap(new WeakHashMap<>());
+    private static final Set<CleanableReference<Engine>> ENGINES = Collections.synchronizedSet(new HashSet<>());
 
     final AbstractEngineDispatch dispatch;
     final Object receiver;
     final Engine currentAPI;
+    /**
+     * Strong reference to the creator {@link Engine} to prevent it from being garbage collected and
+     * closed while API {@link Engine} is still reachable.
+     */
+    final Engine creatorEngine;
 
     @SuppressWarnings("unchecked")
     <T> Engine(AbstractEngineDispatch dispatch, T receiver) {
         this.dispatch = dispatch;
         this.receiver = receiver;
         this.currentAPI = new Engine(this);
-        if (dispatch != null) {
-            dispatch.setAPI(receiver, this);
-        }
+        this.creatorEngine = this;
     }
 
     @SuppressWarnings("unchecked")
@@ -164,6 +170,7 @@ public final class Engine implements AutoCloseable {
         this.dispatch = engine.dispatch;
         this.receiver = engine.receiver;
         this.currentAPI = null;
+        this.creatorEngine = engine;
     }
 
     private static final class ImplHolder {
@@ -213,7 +220,11 @@ public final class Engine implements AutoCloseable {
      */
     @SuppressWarnings("unchecked")
     public Map<String, Language> getLanguages() {
-        return (Map<String, Language>) (Map<String, ?>) dispatch.getLanguages(receiver);
+        try {
+            return (Map<String, Language>) (Map<String, ?>) dispatch.getLanguages(receiver);
+        } finally {
+            Reference.reachabilityFence(creatorEngine);
+        }
     }
 
     /**
@@ -227,7 +238,11 @@ public final class Engine implements AutoCloseable {
      */
     @SuppressWarnings("unchecked")
     public Map<String, Instrument> getInstruments() {
-        return (Map<String, Instrument>) (Map<String, ?>) dispatch.getInstruments(receiver);
+        try {
+            return (Map<String, Instrument>) (Map<String, ?>) dispatch.getInstruments(receiver);
+        } finally {
+            Reference.reachabilityFence(creatorEngine);
+        }
     }
 
     /**
@@ -248,7 +263,11 @@ public final class Engine implements AutoCloseable {
      * @since 19.0
      */
     public OptionDescriptors getOptions() {
-        return dispatch.getOptions(receiver);
+        try {
+            return dispatch.getOptions(receiver);
+        } finally {
+            Reference.reachabilityFence(creatorEngine);
+        }
     }
 
     /**
@@ -278,6 +297,7 @@ public final class Engine implements AutoCloseable {
             throw new IllegalStateException("Engine instances that were indirectly received using Context.getCurrent() cannot be closed.");
         }
         dispatch.close(receiver, this, cancelIfExecuting);
+        Reference.reachabilityFence(creatorEngine);
     }
 
     /**
@@ -381,7 +401,11 @@ public final class Engine implements AutoCloseable {
      */
     @SuppressWarnings("unchecked")
     public Set<Source> getCachedSources() {
-        return (Set<Source>) (Set<?>) dispatch.getCachedSources(receiver);
+        try {
+            return (Set<Source>) (Set<?>) dispatch.getCachedSources(receiver);
+        } finally {
+            Reference.reachabilityFence(creatorEngine);
+        }
     }
 
     /**
@@ -447,7 +471,14 @@ public final class Engine implements AutoCloseable {
     @SuppressWarnings("unchecked")
     static Collection<Engine> findActiveEngines() {
         synchronized (ENGINES) {
-            return new ArrayList<>(ENGINES.keySet());
+            List<Engine> result = new ArrayList<>(ENGINES.size());
+            for (Reference<Engine> engineRef : ENGINES) {
+                Engine engine = engineRef.get();
+                if (engine != null) {
+                    result.add(engine);
+                }
+            }
+            return result;
         }
     }
 
@@ -737,7 +768,7 @@ public final class Engine implements AutoCloseable {
             Object logHandler = customLogHandler != null ? polyglot.newLogHandler(customLogHandler) : null;
             Map<String, String> useOptions = useSystemProperties ? readOptionsFromSystemProperties(options) : options;
             boolean useAllowExperimentalOptions = allowExperimentalOptions || readAllowExperimentalOptionsFromSystemProperties();
-            Engine engine = (Engine) polyglot.buildEngine(permittedLanguages, sandboxPolicy, out, err, useIn, useOptions, useAllowExperimentalOptions,
+            Engine engine = polyglot.buildEngine(permittedLanguages, sandboxPolicy, out, err, useIn, useOptions, useAllowExperimentalOptions,
                             boundEngine, messageTransport, logHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false, true, null);
             return engine;
         }
@@ -859,13 +890,34 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Object newContext(AbstractContextDispatch dispatch, Object receiver, Object engine) {
-            return new Context(dispatch, receiver, (Engine) engine);
+        public Context newContext(AbstractContextDispatch dispatch, Object receiver, Engine engine, boolean registerInActiveContexts) {
+            Context context = new Context(dispatch, receiver, null, engine);
+            Reference<Context> apiReference;
+            if (registerInActiveContexts) {
+                apiReference = new ContextReference(context, dispatch, receiver);
+            } else {
+                /*
+                 * A decorated context that is not exposed to the embedder, such as the host context
+                 * in the isolated enterprise polyglot.
+                 */
+                apiReference = new WeakReference<>(context);
+            }
+            dispatch.setContextAPIReference(receiver, apiReference);
+            return context;
         }
 
         @Override
-        public Object newEngine(AbstractEngineDispatch dispatch, Object receiver, boolean registerInActiveEngines) {
+        public Context newInnerContext(AbstractContextDispatch dispatch, Object receiver, Context parentContext, Engine engine) {
+            Context innerContext = new Context(dispatch, receiver, parentContext, engine);
+            Reference<Context> apiReference = new ContextReference(innerContext, dispatch, receiver);
+            dispatch.setContextAPIReference(receiver, apiReference);
+            return innerContext;
+        }
+
+        @Override
+        public Engine newEngine(AbstractEngineDispatch dispatch, Object receiver, boolean registerInActiveEngines) {
             Engine engine = new Engine(dispatch, receiver);
+            Reference<Engine> apiReference;
             if (registerInActiveEngines) {
                 if (!shutdownHookInitialized) {
                     synchronized (ENGINES) {
@@ -880,24 +932,67 @@ public final class Engine implements AutoCloseable {
                         }
                     }
                 }
-                ENGINES.put(engine, null);
+                EngineReference cleanableReference = new EngineReference(engine, dispatch, receiver);
+                ENGINES.add(cleanableReference);
+                apiReference = cleanableReference;
+            } else {
+                /*
+                 * A decorated engine that is not exposed to the embedder, such as the host engine
+                 * in the enterprise polyglot.
+                 */
+                apiReference = new WeakReference<>(engine);
             }
+            dispatch.setEngineAPIReference(receiver, apiReference);
             return engine;
         }
 
         @Override
-        public void engineClosed(Object engine) {
-            ENGINES.remove(engine);
+        public void processReferenceQueue() {
+            CleanableReference.processReferenceQueue();
         }
 
         @Override
-        public Object newLanguage(AbstractLanguageDispatch dispatch, Object receiver) {
-            return new Language(dispatch, receiver);
+        public void engineClosed(Reference<Engine> engineReference) {
+            ENGINES.remove(engineReference);
+            if (engineReference.get() != null) {
+                engineReference.clear();
+            }
         }
 
         @Override
-        public Object newInstrument(AbstractInstrumentDispatch dispatch, Object receiver) {
-            return new Instrument(dispatch, receiver);
+        public void contextClosed(Reference<Context> contextReference) {
+            /*
+             * A decorated context that is not exposed to the embedder, such as the host context in
+             * the isolated enterprise polyglot uses ordinary WeakReference.
+             */
+            if (contextReference instanceof ContextReference) {
+                /*
+                 * In the case of an inner context, the Context may become weakly reachable while
+                 * the TruffleContext remains strongly reachable. When the inner context is closed
+                 * via the TruffleContext, it is desirable to reset the receiver, ensuring that it
+                 * does not retain a reference to the PolyglotContextImpl until the reference queue
+                 * has been processed.
+                 */
+                ((ContextReference) contextReference).receiver = null;
+            }
+            if (contextReference.get() != null) {
+                contextReference.clear();
+                /*
+                 * Invoke `contextClosed` only for non-collected contexts. Otherwise, reference
+                 * queue processing turns from a loop into recursion.
+                 */
+                CleanableReference.processReferenceQueue();
+            }
+        }
+
+        @Override
+        public Language newLanguage(AbstractLanguageDispatch dispatch, Object receiver, Engine engine) {
+            return new Language(dispatch, receiver, engine);
+        }
+
+        @Override
+        public Instrument newInstrument(AbstractInstrumentDispatch dispatch, Object receiver, Engine engine) {
+            return new Instrument(dispatch, receiver, engine);
         }
 
         @Override
@@ -911,8 +1006,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Object newValue(AbstractValueDispatch dispatch, Object context, Object receiver) {
-            return new Value(dispatch, context, receiver);
+        public Value newValue(AbstractValueDispatch dispatch, Object context, Object receiver, Context creatorContext) {
+            return new Value(dispatch, context, receiver, creatorContext);
         }
 
         @Override
@@ -991,8 +1086,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public RuntimeException newLanguageException(String message, AbstractExceptionDispatch dispatch, Object receiver) {
-            return new PolyglotException(message, dispatch, receiver);
+        public RuntimeException newLanguageException(String message, AbstractExceptionDispatch dispatch, Object receiver, Object anchor) {
+            return new PolyglotException(message, dispatch, receiver, anchor);
         }
 
         @Override
@@ -1611,13 +1706,28 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Object getContextEngine(Object context) {
-            return ((Context) context).getEngine();
+        public Class<?> getPolyglotExceptionClass() {
+            return PolyglotException.class;
         }
 
         @Override
-        public Class<?> getPolyglotExceptionClass() {
-            return PolyglotException.class;
+        public Engine getPolyglotExceptionAPIEngine(RuntimeException polyglotException) {
+            Object anchor = ((PolyglotException) polyglotException).anchor;
+            if (anchor instanceof Context context) {
+                return context.engine;
+            } else if (anchor instanceof Engine engine) {
+                return engine;
+            }
+            return null;
+        }
+
+        @Override
+        public Context getPolyglotExceptionAPIContext(RuntimeException polyglotException) {
+            Object anchor = ((PolyglotException) polyglotException).anchor;
+            if (anchor instanceof Context context) {
+                return context;
+            }
+            return null;
         }
 
         @Override
@@ -1777,7 +1887,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Object buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments,
+        public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments,
                         boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage,
                         boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService) {
             throw noPolyglotImplementationFound();
@@ -1851,6 +1961,16 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public FileSystem newCompositeFileSystem(FileSystem fallbackFileSystem, FileSystem.Selector... delegates) {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public FileSystem newDenyIOFileSystem() {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
         public ByteSequence asByteSequence(Object object) {
             throw noPolyglotImplementationFound();
         }
@@ -1893,7 +2013,7 @@ public final class Engine implements AutoCloseable {
         @Override
         public Source buildSource(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding,
                         URL url,
-                        String path)
+                        String path, Map<String, String> options)
                         throws IOException {
             throw noPolyglotImplementationFound();
         }
@@ -1932,12 +2052,71 @@ public final class Engine implements AutoCloseable {
     private static final class EngineShutDownHook implements Runnable {
 
         public void run() {
-            Engine[] engines;
+            List<Reference<Engine>> engines;
             synchronized (ENGINES) {
-                engines = ENGINES.keySet().toArray(new Engine[0]);
+                engines = List.copyOf(ENGINES);
             }
-            for (Engine engine : engines) {
-                engine.dispatch.shutdown(engine.receiver);
+            for (Reference<Engine> engineRef : engines) {
+                Engine engine = engineRef.get();
+                if (engine != null) {
+                    engine.dispatch.shutdown(engine.receiver);
+                }
+            }
+        }
+    }
+
+    private abstract static class CleanableReference<T> extends WeakReference<T> {
+
+        private static final ReferenceQueue<Object> QUEUE = new ReferenceQueue<>();
+
+        protected CleanableReference(T referent) {
+            super(referent, QUEUE);
+        }
+
+        protected abstract void clean();
+
+        static void processReferenceQueue() {
+            Reference<?> ref;
+            while ((ref = QUEUE.poll()) != null) {
+                ((CleanableReference<?>) ref).clean();
+            }
+        }
+    }
+
+    private static final class EngineReference extends CleanableReference<Engine> {
+
+        private final AbstractEngineDispatch dispatch;
+        private final Object receiver;
+
+        EngineReference(Engine engine, AbstractEngineDispatch dispatch, Object receiver) {
+            super(engine);
+            this.dispatch = Objects.requireNonNull(dispatch, "Dispatch must be non-null");
+            this.receiver = Objects.requireNonNull(receiver, "Receiver must be non-null");
+        }
+
+        @Override
+        protected void clean() {
+            ENGINES.remove(this);
+            dispatch.onEngineCollected(receiver);
+        }
+    }
+
+    private static final class ContextReference extends CleanableReference<Context> {
+
+        private final AbstractContextDispatch dispatch;
+        private volatile Object receiver;
+
+        ContextReference(Context context, AbstractContextDispatch dispatch, Object receiver) {
+            super(context);
+            this.dispatch = Objects.requireNonNull(dispatch, "Dispatch must be non-null");
+            this.receiver = Objects.requireNonNull(receiver, "Receiver must be non-null");
+        }
+
+        @Override
+        protected void clean() {
+            Object target = receiver;
+            if (target != null) {
+                dispatch.onContextCollected(target);
             }
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,12 @@
  */
 package com.oracle.svm.agent;
 
+import static com.oracle.svm.agent.NativeImageAgent.ExitCodes.AGENT_ERROR;
+import static com.oracle.svm.agent.NativeImageAgent.ExitCodes.PARSE_ERROR;
+import static com.oracle.svm.agent.NativeImageAgent.ExitCodes.SUCCESS;
+import static com.oracle.svm.agent.NativeImageAgent.ExitCodes.USAGE_ERROR;
+
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -38,9 +44,12 @@ import java.nio.file.attribute.FileTime;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.ConcurrentModificationException;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -65,17 +74,16 @@ import com.oracle.svm.agent.tracing.ConfigurationResultWriter;
 import com.oracle.svm.agent.tracing.TraceFileWriter;
 import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.agent.tracing.core.TracingResultWriter;
+import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.PredefinedClassesConfigurationParser;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.conditional.ConditionalConfigurationPredicate;
 import com.oracle.svm.configure.filters.ComplexFilter;
-import com.oracle.svm.configure.filters.ConfigurationFilter;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
-import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
@@ -101,6 +109,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     private Path configOutputDirPath;
     private Path configOutputLockFilePath;
     private FileTime expectedConfigModifiedBefore;
+    Set<String> classPathEntries;
 
     private static String getTokenValue(String token) {
         return token.substring(token.indexOf('=') + 1);
@@ -132,6 +141,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     protected int onLoadCallback(JNIJavaVM vm, JvmtiEnv jvmti, JvmtiEventCallbacks callbacks, String options) {
         String traceOutputFile = null;
         String configOutputDir = null;
+        String ignoredEntriesFile = null;
         ConfigurationFileCollection mergeConfigs = new ConfigurationFileCollection();
         ConfigurationFileCollection omittedConfigs = new ConfigurationFileCollection();
         boolean builtinCallerFilter = true;
@@ -154,17 +164,24 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         for (String token : tokens) {
             if (token.startsWith("trace-output=")) {
                 if (traceOutputFile != null) {
-                    return usage(1, "cannot specify trace-output= more than once.");
+                    return usage("cannot specify trace-output= more than once.");
                 }
                 traceOutputFile = getTokenValue(token);
             } else if (token.startsWith("config-output-dir=") || token.startsWith("config-merge-dir=")) {
                 if (configOutputDir != null) {
-                    return usage(1, "cannot specify more than one of config-output-dir= or config-merge-dir=.");
+                    return usage("cannot specify more than one of config-output-dir= or config-merge-dir=.");
                 }
                 configOutputDir = transformPath(getTokenValue(token));
                 if (token.startsWith("config-merge-dir=")) {
                     mergeConfigs.addDirectory(Paths.get(configOutputDir));
                 }
+            } else if (token.startsWith("experimental-ignored-entries-output=")) {
+                if (ignoredEntriesFile != null) {
+                    return usage("cannot specify ignored-entries-output= more than once.");
+                }
+                warn("Ignored entries logging (enabled by the \"experimental-ignored-entries-output\" argument) is " +
+                                "experimental and will be removed in the future. Do not rely on this feature.");
+                ignoredEntriesFile = getTokenValue(token);
             } else if (token.startsWith("config-to-omit=")) {
                 String omittedConfigDir = getTokenValue(token);
                 omittedConfigDir = transformPath(omittedConfigDir);
@@ -197,12 +214,12 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             } else if (token.startsWith("config-write-period-secs=")) {
                 configWritePeriod = parseIntegerOrNegative(getTokenValue(token));
                 if (configWritePeriod <= 0) {
-                    return usage(1, "config-write-period-secs must be an integer greater than 0");
+                    return usage("config-write-period-secs must be an integer greater than 0");
                 }
             } else if (token.startsWith("config-write-initial-delay-secs=")) {
                 configWritePeriodInitialDelay = parseIntegerOrNegative(getTokenValue(token));
                 if (configWritePeriodInitialDelay < 0) {
-                    return usage(1, "config-write-initial-delay-secs must be an integer greater or equal to 0");
+                    return usage("config-write-initial-delay-secs must be an integer greater or equal to 0");
                 }
             } else if (isBooleanOption(token, "experimental-configuration-with-origins")) {
                 configurationWithOrigins = getBooleanTokenValue(token);
@@ -215,8 +232,12 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             } else if (isBooleanOption(token, "track-reflection-metadata")) {
                 trackReflectionMetadata = getBooleanTokenValue(token);
             } else {
-                return usage(1, "unknown option: '" + token + "'.");
+                return usage("unknown option: '" + token + "'.");
             }
+        }
+
+        if (!checkJVMVersion(jvmti)) {
+            return USAGE_ERROR;
         }
 
         if (traceOutputFile == null && configOutputDir == null) {
@@ -225,7 +246,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         }
 
         if (configurationWithOrigins && !conditionalConfigUserPackageFilterFiles.isEmpty()) {
-            return error(5, "The agent can only be used in either the configuration with origins mode or the predefined classes mode.");
+            return error(USAGE_ERROR, "The agent can only be used in either the configuration with origins mode or the predefined classes mode.");
         }
 
         if (configurationWithOrigins && !mergeConfigs.isEmpty()) {
@@ -250,7 +271,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 callerFilter = new ComplexFilter(callerFilterHierarchyFilterNode);
             }
             if (!parseFilterFiles(callerFilter, callerFilterFiles)) {
-                return 1;
+                return PARSE_ERROR;
             }
         }
 
@@ -258,13 +279,15 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         if (!accessFilterFiles.isEmpty()) {
             accessFilter = new ComplexFilter(AccessAdvisor.copyBuiltinAccessFilterTree());
             if (!parseFilterFiles(accessFilter, accessFilterFiles)) {
-                return 1;
+                return PARSE_ERROR;
             }
         }
 
         if (!conditionalConfigUserPackageFilterFiles.isEmpty() && conditionalConfigPartialRun) {
-            return error(6, "The agent can generate conditional configuration either for the current run or in the partial mode but not both at the same time.");
+            return error(USAGE_ERROR, "The agent can generate conditional configuration either for the current run or in the partial mode but not both at the same time.");
         }
+
+        classPathEntries = new HashSet<>(Arrays.asList(getClasspathEntries(jvmti)));
 
         boolean isConditionalConfigurationRun = !conditionalConfigUserPackageFilterFiles.isEmpty() || conditionalConfigPartialRun;
         boolean shouldTraceOriginInformation = configurationWithOrigins || isConditionalConfigurationRun;
@@ -274,7 +297,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
 
         if (configOutputDir != null) {
             if (traceOutputFile != null) {
-                return usage(1, "can only once specify exactly one of trace-output=, config-output-dir= or config-merge-dir=.");
+                return usage("can only once specify exactly one of trace-output=, config-output-dir= or config-merge-dir=.");
             }
             try {
                 configOutputDirPath = Files.createDirectories(Path.of(configOutputDir));
@@ -289,7 +312,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                     } catch (Exception ignored) {
                         process = "(unknown)";
                     }
-                    return error(2, "Output directory '" + configOutputDirPath + "' is locked by process " + process + ", " +
+                    return error(AGENT_ERROR, "Output directory '" + configOutputDirPath + "' is locked by process " + process + ", " +
                                     "which means another agent instance is already writing to this directory. " +
                                     "Only one agent instance can safely write to a specific target directory at the same time. " +
                                     "Unless file '" + ConfigurationFile.LOCK_FILE_NAME + "' is a leftover from an earlier process that terminated abruptly, it is unsafe to delete it. " +
@@ -299,7 +322,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 if (experimentalOmitClasspathConfig) {
                     ignoreConfigFromClasspath(jvmti, omittedConfigs);
                 }
-                AccessAdvisor advisor = createAccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter);
+                AccessAdvisor advisor = new AccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter, ignoredEntriesFile);
                 TraceProcessor processor = new TraceProcessor(advisor);
                 ConfigurationSet omittedConfiguration = new ConfigurationSet();
                 Predicate<String> shouldExcludeClassesWithHash = null;
@@ -322,13 +345,13 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                         } else {
                             ComplexFilter userCodeFilter = new ComplexFilter(HierarchyFilterNode.createRoot());
                             if (!parseFilterFiles(userCodeFilter, conditionalConfigUserPackageFilterFiles)) {
-                                return 2;
+                                return PARSE_ERROR;
                             }
                             ComplexFilter classNameFilter;
                             if (!conditionalConfigClassNameFilterFiles.isEmpty()) {
                                 classNameFilter = new ComplexFilter(HierarchyFilterNode.createRoot());
                                 if (!parseFilterFiles(classNameFilter, conditionalConfigClassNameFilterFiles)) {
-                                    return 3;
+                                    return PARSE_ERROR;
                                 }
                             } else {
                                 classNameFilter = new ComplexFilter(HierarchyFilterNode.createInclusiveRoot());
@@ -360,16 +383,16 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 }
                 expectedConfigModifiedBefore = getMostRecentlyModified(configOutputDirPath, getMostRecentlyModified(configOutputLockFilePath, null));
             } catch (Throwable t) {
-                return error(2, t.toString());
+                return error(AGENT_ERROR, t.toString());
             }
-        } else if (traceOutputFile != null) {
+        } else {
             try {
                 Path path = Paths.get(transformPath(traceOutputFile));
                 TraceFileWriter writer = new TraceFileWriter(path);
                 tracer = writer;
                 tracingResultWriter = writer;
             } catch (Throwable t) {
-                return error(2, t.toString());
+                return error(AGENT_ERROR, t.toString());
             }
         }
 
@@ -381,16 +404,16 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             BreakpointInterceptor.onLoad(jvmti, callbacks, tracer, this, interceptedStateSupplier,
                             experimentalClassLoaderSupport, experimentalClassDefineSupport, experimentalUnsafeAllocationSupport, trackReflectionMetadata);
         } catch (Throwable t) {
-            return error(3, t.toString());
+            return error(AGENT_ERROR, t.toString());
         }
         try {
             JniCallInterceptor.onLoad(tracer, this, interceptedStateSupplier);
         } catch (Throwable t) {
-            return error(4, t.toString());
+            return error(AGENT_ERROR, t.toString());
         }
 
         setupExecutorServiceForPeriodicConfigurationCapture(configWritePeriod, configWritePeriodInitialDelay);
-        return 0;
+        return SUCCESS;
     }
 
     private static void inform(String message) {
@@ -408,23 +431,39 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         return result;
     }
 
-    private static <T> T usage(T result, String message) {
+    private static int usage(String message) {
         inform(message);
         inform("Example usage: -agentlib:native-image-agent=config-output-dir=/path/to/config-dir/");
         inform("For details, please read AutomaticMetadataCollection.md or https://www.graalvm.org/dev/reference-manual/native-image/metadata/AutomaticMetadataCollection/");
-        return result;
+        return USAGE_ERROR;
     }
 
-    private static AccessAdvisor createAccessAdvisor(boolean builtinHeuristicFilter, ConfigurationFilter callerFilter, ConfigurationFilter accessFilter) {
-        AccessAdvisor advisor = new AccessAdvisor();
-        advisor.setHeuristicsEnabled(builtinHeuristicFilter);
-        if (callerFilter != null) {
-            advisor.setCallerFilterTree(callerFilter);
+    private static boolean checkJVMVersion(JvmtiEnv jvmti) {
+        String agentVersion = System.getProperty("java.vm.version");
+        int agentMajorVersion = Runtime.version().feature();
+
+        String vmVersion = Support.getSystemProperty(jvmti, "java.vm.version");
+        if (vmVersion == null) {
+            warn(String.format("Unable to determine the \"java.vm.version\" of the running JVM. Note that the JVM should have major version %d, otherwise metadata may be incorrect.",
+                            agentMajorVersion));
+            return true;
         }
-        if (accessFilter != null) {
-            advisor.setAccessFilterTree(accessFilter);
+
+        // Fail if the major versions differ.
+        String[] parts = vmVersion.split("\\D");
+        if (parts.length == 0 || Integer.parseInt(parts[0]) != agentMajorVersion) {
+            return error(false, String.format(
+                            "The current VM (%s) is incompatible with the agent, which was built for a JVM with major version %d. To resolve this issue, run the agent using a JVM with major version %d.",
+                            vmVersion, agentMajorVersion, agentMajorVersion));
         }
-        return advisor;
+
+        // Warn if the VM is different.
+        if (!vmVersion.startsWith(agentVersion)) {
+            warn(String.format(
+                            "The running JVM (%s) is different from the JVM used to build the agent (%s). If the generated metadata is incorrect or incomplete, consider running the agent using the same JVM that built it.",
+                            vmVersion, agentVersion));
+        }
+        return true;
     }
 
     private static int parseIntegerOrNegative(String number) {
@@ -469,7 +508,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                         initialDelay, writePeriod, TimeUnit.SECONDS);
     }
 
-    private static void ignoreConfigFromClasspath(JvmtiEnv jvmti, ConfigurationFileCollection ignoredConfigCollection) {
+    private static String[] getClasspathEntries(JvmtiEnv jvmti) {
         String classpath = Support.getSystemProperty(jvmti, "java.class.path");
         String sep = Support.getSystemProperty(jvmti, "path.separator");
         if (sep == null) {
@@ -478,13 +517,25 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             } else if (Platform.includedIn(Platform.WINDOWS.class)) {
                 sep = "[:;]";
             } else {
-                warn("Running on unknown platform. Not omitting existing config from classpath.");
-                return;
+                warn("Running on unknown platform. Could not process classpath.");
+                return new String[]{};
             }
         }
+        String[] entries = classpath.split(sep);
+        for (int i = 0; i < entries.length; i++) {
+            try {
+                entries[i] = new File(entries[i]).getCanonicalPath();
+            } catch (IOException ex) {
+                warn("Could not normalize classpath entry %s. Agent output may be incorrect.".formatted(entries[i]));
+            }
+        }
+        return entries;
+    }
 
+    private static void ignoreConfigFromClasspath(JvmtiEnv jvmti, ConfigurationFileCollection ignoredConfigCollection) {
+        String[] entries = getClasspathEntries(jvmti);
         AgentMetaInfProcessor processor = new AgentMetaInfProcessor(ignoredConfigCollection);
-        for (String cpEntry : classpath.split(sep)) {
+        for (String cpEntry : entries) {
             try {
                 NativeImageMetaInfWalker.walkMetaInfForCPEntry(Paths.get(cpEntry), processor);
             } catch (NativeImageMetaInfWalker.MetaInfWalkException e) {
@@ -689,7 +740,14 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
          * The epilogue of this method does not tear down our VM: we don't seem to observe all
          * threads that end and therefore can't detach them, so we would wait forever for them.
          */
-        return 0;
+        return SUCCESS;
+    }
+
+    static class ExitCodes {
+        static final int SUCCESS = 0;
+        static final int USAGE_ERROR = 1;
+        static final int PARSE_ERROR = 2;
+        static final int AGENT_ERROR = 3;
     }
 
     @SuppressWarnings("unused")

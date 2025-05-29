@@ -288,7 +288,7 @@ final class PolyglotContextConfig {
         this.classFilter = classFilter;
         this.applicationArguments = applicationArguments;
         this.onlyLanguages = onlyLanguages;
-        this.allowedPublicLanguages = onlyLanguages.isEmpty() ? engine.getLanguages().keySet() : onlyLanguages;
+        this.allowedPublicLanguages = onlyLanguages.isEmpty() ? engine.getPublicLanguages().keySet() : onlyLanguages;
         this.fileSystemConfig = fileSystemConfig;
         this.optionsById = new HashMap<>();
         this.logHandler = logHandler;
@@ -336,7 +336,8 @@ final class PolyglotContextConfig {
                 targetOptions = engineOptionValues.copy();
                 optionsById.put(id, targetOptions);
             }
-            OptionDescriptor d = targetOptions.put(engine, optionKey, options.get(optionKey), allowExperimentalOptions);
+
+            OptionDescriptor d = targetOptions.put(optionKey, options.get(optionKey), allowExperimentalOptions, engine::getAllOptions);
             if (d != null && d.isDeprecated()) {
                 if (deprecatedOptions == null) {
                     deprecatedOptions = new ArrayList<>();

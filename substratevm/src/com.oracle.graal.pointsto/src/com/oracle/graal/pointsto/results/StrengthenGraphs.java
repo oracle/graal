@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -117,7 +117,7 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase.CustomSimplification;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.graal.compiler.replacements.nodes.MacroNode;
+import jdk.graal.compiler.replacements.nodes.MacroInvokable;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -190,7 +190,7 @@ public abstract class StrengthenGraphs {
     private final StrengthenGraphsCounters afterCounters;
 
     /** Used to avoid aggressive optimizations for open type world analysis. */
-    private final boolean isClosedTypeWorld;
+    protected final boolean isClosedTypeWorld;
 
     public StrengthenGraphs(BigBang bb, Universe converter) {
         this.bb = bb;
@@ -234,15 +234,25 @@ public abstract class StrengthenGraphs {
                         ? ptaMethod.getTypeFlow().getMethodFlowsGraph().getNodeFlows().getKeys()
                         : null;
         var debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).build();
+
+        if (method.analyzedInPriorLayer()) {
+            /*
+             * The method was already strengthened in a prior layer. If the graph was persisted, it
+             * will be loaded on demand during compilation, so there is no need to strengthen it in
+             * this layer.
+             *
+             * GR-59646: The graphs from the base layer could be strengthened again in the
+             * application layer using closed world assumptions.
+             */
+            return;
+        }
+
         var graph = method.decodeAnalyzedGraph(debug, nodeReferences);
         if (graph == null) {
             return;
         }
 
-        if (method.analyzedInPriorLayer()) {
-            useSharedLayerGraph(method);
-            return;
-        }
+        preStrengthenGraphs(graph, method);
 
         graph.resetDebug(debug);
         if (beforeCounters != null) {
@@ -256,6 +266,9 @@ public abstract class StrengthenGraphs {
         if (afterCounters != null) {
             afterCounters.collect(graph);
         }
+
+        postStrengthenGraphs(graph, method);
+
         method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE));
 
         persistStrengthenGraph(method);
@@ -268,7 +281,9 @@ public abstract class StrengthenGraphs {
         }
     }
 
-    protected abstract void useSharedLayerGraph(AnalysisMethod method);
+    protected abstract void preStrengthenGraphs(StructuredGraph graph, AnalysisMethod method);
+
+    protected abstract void postStrengthenGraphs(StructuredGraph graph, AnalysisMethod method);
 
     protected abstract void persistStrengthenGraph(AnalysisMethod method);
 
@@ -395,7 +410,7 @@ public abstract class StrengthenGraphs {
 
         @Override
         public void simplify(Node n, SimplifierTool tool) {
-            if (n instanceof ValueNode && !(n instanceof LimitedValueProxy) && !(n instanceof PhiNode) && !(n instanceof MacroNode)) {
+            if (n instanceof ValueNode && !(n instanceof LimitedValueProxy) && !(n instanceof PhiNode) && !(n instanceof MacroInvokable)) {
                 /*
                  * The stamp of proxy nodes and phi nodes is inferred automatically, so we do not
                  * need to improve them. Macro nodes prohibit changing their stamp because it is
@@ -497,24 +512,39 @@ public abstract class StrengthenGraphs {
                 Stamp newStamp = strengthenStamp(oldStamp);
                 if (newStamp != null) {
                     LogicNode replacement = graph.addOrUniqueWithInputs(InstanceOfNode.createHelper((ObjectStamp) oldStamp.improveWith(newStamp), node.getValue(), node.profile(), node.getAnchor()));
+                    /*
+                     * GR-59681: Once isAssignable is implemented for BaseLayerType, this check can
+                     * be removed
+                     */
+                    AnalysisError.guarantee(node != replacement, "The new stamp needs to be different from the old stamp");
                     node.replaceAndDelete(replacement);
                     tool.addToWorkList(replacement);
+                } else {
+                    maybeAssignInstanceOfProfiles(node);
                 }
 
-            } else if (n instanceof ClassIsAssignableFromNode) {
-                ClassIsAssignableFromNode node = (ClassIsAssignableFromNode) n;
-                AnalysisType nonReachableType = asConstantNonReachableType(node.getThisClass(), tool);
-                if (nonReachableType != null) {
-                    node.replaceAndDelete(LogicConstantNode.contradiction(graph));
+            } else if (n instanceof ClassIsAssignableFromNode node) {
+                if (isClosedTypeWorld) {
+                    /*
+                     * If the constant receiver of a Class#isAssignableFrom is an unreachable type
+                     * we can constant-fold the ClassIsAssignableFromNode to false. See also
+                     * MethodTypeFlowBuilder#ignoreConstant where we avoid marking the corresponding
+                     * type as reachable just because it is used by the ClassIsAssignableFromNode.
+                     * We only apply this optimization if it's a closed type world, for open world
+                     * we cannot fold the type check since the type may be used later.
+                     */
+                    AnalysisType nonReachableType = asConstantNonReachableType(node.getThisClass(), tool);
+                    if (nonReachableType != null) {
+                        node.replaceAndDelete(LogicConstantNode.contradiction(graph));
+                    }
                 }
-
-            } else if (n instanceof BytecodeExceptionNode) {
+            } else if (n instanceof BytecodeExceptionNode node) {
                 /*
                  * We do not want a type to be reachable only to be used for the error message of a
                  * ClassCastException. Therefore, in that case we replace the java.lang.Class with a
-                 * java.lang.String that is then used directly in the error message.
+                 * java.lang.String that is then used directly in the error message. We can apply
+                 * this optimization optimistically for both closed and open type world.
                  */
-                BytecodeExceptionNode node = (BytecodeExceptionNode) n;
                 if (node.getExceptionKind() == BytecodeExceptionNode.BytecodeExceptionKind.CLASS_CAST) {
                     AnalysisType nonReachableType = asConstantNonReachableType(node.getArguments().get(1), tool);
                     if (nonReachableType != null) {
@@ -546,7 +576,13 @@ public abstract class StrengthenGraphs {
                 Stamp oldStamp = node.piStamp();
                 Stamp newStamp = strengthenStamp(oldStamp);
                 if (newStamp != null) {
-                    node.strengthenPiStamp(oldStamp.improveWith(newStamp));
+                    Stamp newPiStamp = oldStamp.improveWith(newStamp);
+                    /*
+                     * GR-59681: Once isAssignable is implemented for BaseLayerType, this check can
+                     * be removed
+                     */
+                    AnalysisError.guarantee(!newPiStamp.equals(oldStamp), "The new stamp needs to be different from the old stamp");
+                    node.strengthenPiStamp(newPiStamp);
                     tool.addToWorkList(node);
                 }
             }
@@ -576,7 +612,8 @@ public abstract class StrengthenGraphs {
                  * trigger. But when only running the reachability analysis, there is no detailed
                  * list of callees.
                  */
-                unreachableInvoke(invoke, tool);
+                unreachableInvoke(invoke, tool, () -> "method " + getQualifiedName(graph) + ", node " + invoke +
+                                ": target method is not marked as simply implementation invoked");
                 /* Invoke is unreachable, there is no point in improving any types further. */
                 return;
             }
@@ -586,11 +623,21 @@ public abstract class StrengthenGraphs {
                 /* No points-to analysis results. */
                 return;
             }
+            if (!invokeFlow.isFlowEnabled()) {
+                unreachableInvoke(invoke, tool, () -> "method " + getQualifiedName(graph) + ", node " + invoke +
+                                ": flow is not enabled by its predicate " + invokeFlow.getPredicate());
+                /* Invoke is unreachable, there is no point in improving any types further. */
+                return;
+            }
 
             Collection<AnalysisMethod> callees = invokeFlow.getOriginalCallees();
             if (callees.isEmpty()) {
-                unreachableInvoke(invoke, tool);
-                /* Invoke is unreachable, there is no point in improving any types further. */
+                if (isClosedTypeWorld) {
+                    /* Invoke is unreachable, there is no point in improving any types further. */
+                    unreachableInvoke(invoke, tool, () -> "method " + getQualifiedName(graph) + ", node " + invoke +
+                                    ": empty list of callees for call to " + ((AnalysisMethod) invoke.callTarget().targetMethod()).getQualifiedName());
+                }
+                /* In open world we cannot make any assumptions about an invoke with 0 callees. */
                 return;
             }
             assert invokeFlow.isFlowEnabled() : "Disabled invoke should have no callees: " + invokeFlow + ", in method " + getQualifiedName(graph);
@@ -675,7 +722,7 @@ public abstract class StrengthenGraphs {
                 /* Last resort, try to inject profiles optimistically. */
                 TypeState receiverTypeState = null;
                 if (invokeFlow.getTargetMethod().hasReceiver()) {
-                    if (invokeFlow.isSaturated()) {
+                    if (methodFlow.isSaturated((PointsToAnalysis) bb, invokeFlow)) {
                         /*
                          * For saturated invokes use all seen instantiated subtypes of target method
                          * declaring class. In an open world this is incomplete as new types may be
@@ -800,7 +847,7 @@ public abstract class StrengthenGraphs {
         /**
          * The invoke has no callee, i.e., it is unreachable.
          */
-        private void unreachableInvoke(Invoke invoke, SimplifierTool tool) {
+        private void unreachableInvoke(Invoke invoke, SimplifierTool tool, Supplier<String> messageSupplier) {
             if (invoke.getInvokeKind() != CallTargetNode.InvokeKind.Static) {
                 /*
                  * Ensure that a null check for the receiver remains in the graph. There should be
@@ -809,8 +856,7 @@ public abstract class StrengthenGraphs {
                 InliningUtil.nonNullReceiver(invoke);
             }
 
-            makeUnreachable(invoke.asFixedNode(), tool, () -> "method " + getQualifiedName(graph) + ", node " + invoke +
-                            ": empty list of callees for call to " + ((AnalysisMethod) invoke.callTarget().targetMethod()).getQualifiedName());
+            makeUnreachable(invoke.asFixedNode(), tool, messageSupplier);
         }
 
         /**
@@ -929,7 +975,13 @@ public abstract class StrengthenGraphs {
              */
             boolean hasUsages = node.usages().filter(n -> !(n instanceof FrameState)).isNotEmpty();
 
-            TypeState nodeTypeState = nodeFlow.isFlowEnabled() ? methodFlow.foldTypeFlow((PointsToAnalysis) bb, nodeFlow) : TypeState.forEmpty();
+            if (!nodeFlow.isFlowEnabled()) {
+                makeUnreachable(anchorPoint.next(), tool,
+                                () -> "method " + getQualifiedName(graph) + ", node " + node + ": flow is not enabled by its predicate " + nodeFlow.getPredicate());
+                unreachableValues.add(node);
+                return null;
+            }
+            TypeState nodeTypeState = methodFlow.foldTypeFlow((PointsToAnalysis) bb, nodeFlow);
 
             if (hasUsages && allowConstantFolding && !nodeTypeState.canBeNull()) {
                 JavaConstant constantValue = nodeTypeState.asConstant();
@@ -1077,7 +1129,8 @@ public abstract class StrengthenGraphs {
                 return null;
             }
 
-            if (!originalType.isReachable()) {
+            /* In open world the type may become reachable later. */
+            if (isClosedTypeWorld && !originalType.isReachable()) {
                 /* We must be in dead code. */
                 if (stamp.nonNull()) {
                     /* We must be in dead code. */
@@ -1127,6 +1180,11 @@ public abstract class StrengthenGraphs {
             }
             return newStamp;
         }
+    }
+
+    @SuppressWarnings("unused")
+    protected void maybeAssignInstanceOfProfiles(InstanceOfNode iof) {
+        // placeholder
     }
 
     private static String getQualifiedName(StructuredGraph graph) {

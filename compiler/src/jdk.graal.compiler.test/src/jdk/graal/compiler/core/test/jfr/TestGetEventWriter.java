@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,9 +69,9 @@ public class TestGetEventWriter extends SubprocessTest {
         }
         // Make sure EventWriterFactory can be accessed.
         try {
-            Class.forName("jdk.jfr.internal.event.EventWriterFactory");
+            Class.forName("jdk.jfr.internal.event.EventWriter");
         } catch (ClassNotFoundException e) {
-            throw new AssertionError("Not able to access jdk.jfr.internal.event.EventWriterFactory class", e);
+            throw new AssertionError("Not able to access jdk.jfr.internal.event.EventWriter class", e);
         }
     }
 
@@ -229,8 +229,8 @@ public class TestGetEventWriter extends SubprocessTest {
         }
         MethodVisitor commit = cw.visitMethod(commitAccess, commitName, "()V", null, null);
         commit.visitCode();
-        commit.visitInsn(Opcodes.LCONST_1);
-        commit.visitMethodInsn(Opcodes.INVOKESTATIC, "jdk/jfr/internal/event/EventWriterFactory", "getEventWriter", "(J)Ljdk/jfr/internal/event/EventWriter;", false);
+        commit.visitMethodInsn(Opcodes.INVOKESTATIC, "jdk/jfr/internal/event/EventWriter", "getEventWriter", "()Ljdk/jfr/internal/event/EventWriter;", false);
+        commit.visitInsn(Opcodes.POP);
         commit.visitInsn(Opcodes.RETURN);
         commit.visitMaxs(0, 0);
         commit.visitEnd();

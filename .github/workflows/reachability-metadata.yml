@@ -41,9 +41,6 @@
 name: Weekly Reachability Metadata Tests
 
 on:
-  push:
-    paths:
-      - '.github/workflows/reachability-metadata.yml'
   pull_request:
     paths:
       - '.github/workflows/reachability-metadata.yml'
@@ -61,7 +58,7 @@ permissions:
 jobs:
   build-graalvm-and-populate-matrix:
     name: Build GraalVM and populate matrix
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     if: (github.event_name == 'schedule' && github.repository == 'oracle/graal') || (github.event_name != 'schedule')
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -110,7 +107,7 @@ jobs:
         with:
           repository: oracle/graalvm-reachability-metadata
       - name: Download GraalVM JDK build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           name: graalvm
           path: .

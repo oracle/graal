@@ -26,9 +26,13 @@ package jdk.graal.compiler.truffle.phases;
 
 import java.util.ListIterator;
 
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.loop.phases.LoopSafepointEliminationPhase;
 import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.common.DeoptimizationGroupingPhase;
 import jdk.graal.compiler.phases.common.LoopSafepointInsertionPhase;
+import jdk.graal.compiler.phases.schedule.SchedulePhase;
+import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
@@ -39,7 +43,7 @@ public final class TruffleCompilerPhases {
     private TruffleCompilerPhases() {
     }
 
-    public static void register(KnownTruffleTypes types, Providers providers, Suites suites) {
+    public static void register(KnownTruffleTypes types, Providers providers, Suites suites, ForeignCallDescriptor deoptimizeCallDescriptor) {
         if (suites.isImmutable()) {
             throw new IllegalStateException("Suites are already immutable.");
         }
@@ -51,6 +55,17 @@ public final class TruffleCompilerPhases {
         // truffle safepoints have additional requirements to get eliminated and can not just use
         // default loop safepoint elimination.
         suites.getMidTier().replaceAllPhases(LoopSafepointEliminationPhase.class, () -> new TruffleLoopSafepointEliminationPhase(types));
+
+        ListIterator<BasePhase<? super MidTierContext>> midTierPhasesIterator = suites.getMidTier().findPhase(DeoptimizationGroupingPhase.class);
+        if (midTierPhasesIterator != null) {
+            BasePhase<? super MidTierContext> deoptimizationGroupingPhase = midTierPhasesIterator.previous();
+            midTierPhasesIterator.set(new DynamicDeoptimizationGroupingPhase((DeoptimizationGroupingPhase) deoptimizationGroupingPhase));
+        }
+        ListIterator<BasePhase<? super LowTierContext>> lowTierPhasesIterator = suites.getLowTier().findPhase(SchedulePhase.FinalSchedulePhase.class);
+        if (lowTierPhasesIterator != null) {
+            lowTierPhasesIterator.previous();
+            lowTierPhasesIterator.add(new TruffleForceDeoptSpeculationPhase(deoptimizeCallDescriptor));
+        }
     }
 
 }

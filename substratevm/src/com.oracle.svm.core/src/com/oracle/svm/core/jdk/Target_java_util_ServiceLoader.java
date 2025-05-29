@@ -26,7 +26,6 @@
 package com.oracle.svm.core.jdk;
 
 import java.lang.reflect.Constructor;
-import java.security.AccessControlContext;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,8 +41,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 final class Target_java_util_ServiceLoader {
     @Alias Class<?> service;
 
-    @Alias AccessControlContext acc;
-
     @Alias
     static native void fail(Class<?> service, String msg);
 
@@ -52,17 +49,4 @@ final class Target_java_util_ServiceLoader {
 
     @Alias @RecomputeFieldValue(declClass = ArrayList.class, kind = RecomputeFieldValue.Kind.NewInstance)//
     private List<?> instantiatedProviders;
-}
-
-@TargetClass(value = java.util.ServiceLoader.class, innerClass = "ProviderImpl")
-final class Target_java_util_ServiceLoader_ProviderImpl {
-
-    @SuppressWarnings("unused")
-    @Alias
-    Target_java_util_ServiceLoader_ProviderImpl(Class<?> service,
-                    Class<?> type,
-                    Constructor<?> ctor,
-                    AccessControlContext acc) {
-    }
-
 }

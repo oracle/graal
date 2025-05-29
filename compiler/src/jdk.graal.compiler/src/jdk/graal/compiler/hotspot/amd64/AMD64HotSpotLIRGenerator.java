@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,7 +55,6 @@ import jdk.graal.compiler.hotspot.HotSpotLIRGenerationResult;
 import jdk.graal.compiler.hotspot.HotSpotLIRGenerator;
 import jdk.graal.compiler.hotspot.HotSpotLockStack;
 import jdk.graal.compiler.hotspot.amd64.g1.AMD64HotSpotG1BarrierSetLIRTool;
-import jdk.graal.compiler.hotspot.amd64.x.AMD64HotSpotXBarrierSetLIRGenerator;
 import jdk.graal.compiler.hotspot.amd64.z.AMD64HotSpotZBarrierSetLIRGenerator;
 import jdk.graal.compiler.hotspot.debug.BenchmarkCounters;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
@@ -76,7 +75,6 @@ import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import jdk.graal.compiler.lir.amd64.AMD64Move;
 import jdk.graal.compiler.lir.amd64.AMD64Move.MoveFromRegOp;
 import jdk.graal.compiler.lir.amd64.AMD64PrefetchOp;
-import jdk.graal.compiler.lir.amd64.AMD64ReadTimestampCounterWithProcid;
 import jdk.graal.compiler.lir.amd64.AMD64RestoreRegistersOp;
 import jdk.graal.compiler.lir.amd64.AMD64SaveRegistersOp;
 import jdk.graal.compiler.lir.amd64.AMD64VZeroUpper;
@@ -92,7 +90,6 @@ import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -117,9 +114,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     protected static BarrierSetLIRGeneratorTool getBarrierSet(GraalHotSpotVMConfig config, HotSpotProviders providers) {
-        if (config.gc == HotSpotGraalRuntime.HotSpotGC.X) {
-            return new AMD64HotSpotXBarrierSetLIRGenerator(config, providers);
-        }
         if (config.gc == HotSpotGraalRuntime.HotSpotGC.G1) {
             return new AMD64G1BarrierSetLIRGenerator(new AMD64HotSpotG1BarrierSetLIRTool(config, providers));
         }
@@ -383,7 +377,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
      * @param exclude
      */
     protected Register[] getSaveableRegisters(boolean forSafepoint, AllocatableValue exclude) {
-        RegisterArray allocatableRegisters = getResult().getRegisterAllocationConfig().getAllocatableRegisters();
+        List<Register> allocatableRegisters = getResult().getRegisterAllocationConfig().getAllocatableRegisters();
 
         ArrayList<Register> registers = new ArrayList<>(allocatableRegisters.size());
         for (Register reg : allocatableRegisters) {
@@ -629,30 +623,29 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public Value emitTimeStamp() {
-        AMD64ReadTimestampCounterWithProcid timestamp = new AMD64ReadTimestampCounterWithProcid();
-        append(timestamp);
-        // Combine RDX and RAX into a single 64-bit register.
-        AllocatableValue lo = timestamp.getLowResult();
-        Value hi = getArithmetic().emitZeroExtend(timestamp.getHighResult(), 32, 64);
-        return combineLoAndHi(lo, hi);
-    }
-
-    /**
-     * Combines two 32 bit values to a 64 bit value: ( (hi << 32) | lo ).
-     */
-    private Value combineLoAndHi(Value lo, Value hi) {
-        Value shiftedHi = getArithmetic().emitShl(hi, emitConstant(LIRKind.value(AMD64Kind.DWORD), JavaConstant.forInt(32)));
-        return getArithmetic().emitOr(shiftedHi, lo);
-    }
-
-    @Override
     public int getArrayLengthOffset() {
-        return config.arrayOopDescLengthOffset();
+        return config.arrayLengthOffsetInBytes;
     }
 
     @Override
-    public Register getHeapBaseRegister() {
-        return getProviders().getRegisters().getHeapBaseRegister();
+    public boolean isReservedRegister(Register r) {
+        return getProviders().getRegisters().isReservedRegister(r);
+    }
+
+    // no need to call super because HotSpot already overrides the value according to the CPU
+    // features
+    @Override
+    public boolean usePopCountInstruction() {
+        return config.usePopCountInstruction;
+    }
+
+    @Override
+    public boolean useCountLeadingZerosInstruction() {
+        return config.useCountLeadingZerosInstruction;
+    }
+
+    @Override
+    public boolean useCountTrailingZerosInstruction() {
+        return config.useCountTrailingZerosInstruction;
     }
 }

@@ -75,6 +75,11 @@ public class CompositeValueReplacementTest1 {
         protected void visitEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueConsumer proc) {
             proc.visitValue(inst, value, mode, flags);
         }
+
+        @Override
+        public String toString() {
+            return String.valueOf(value);
+        }
     }
 
     private static class DummyValue extends Value {

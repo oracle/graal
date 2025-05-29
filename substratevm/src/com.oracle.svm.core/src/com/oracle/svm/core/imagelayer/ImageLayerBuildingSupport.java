@@ -78,8 +78,10 @@ public abstract class ImageLayerBuildingSupport {
      */
     public static void openModules() {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "java.base", "java.lang");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "java.base", "java.lang.reflect");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "java.base", "java.util");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "java.base", "java.util.concurrent");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "java.base", "sun.reflect.annotation");
     }
 
     private static ImageLayerBuildingSupport singleton() {

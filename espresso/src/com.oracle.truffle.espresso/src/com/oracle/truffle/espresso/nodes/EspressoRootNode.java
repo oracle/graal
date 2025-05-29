@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.nodes;
 
 import java.util.Arrays;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -42,6 +43,7 @@ import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.JniEnv;
+import com.oracle.truffle.espresso.libs.SubstitutionFactoryWrapper;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.ForeignStackTraceElementObject;
@@ -58,7 +60,6 @@ import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
  */
 public abstract class EspressoRootNode extends RootNode implements ContextAccess {
 
-    // must not be of type EspressoMethodNode as it might be wrapped by instrumentation
     @Child protected EspressoInstrumentableRootNode methodNode;
 
     private static final int SLOT_UNUSED = -2;
@@ -214,6 +215,10 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
      * Creates a root node that can execute a native Java method.
      */
     public static EspressoRootNode createNative(JniEnv env, Method.MethodVersion methodVersion, TruffleObject nativeMethod) {
+        if (nativeMethod instanceof SubstitutionFactoryWrapper substitutionFactoryWrapper) {
+            // Not a substitution, but actually a "native" method implementation in host java.
+            return createSubstitution(methodVersion, substitutionFactoryWrapper.getSubstitution());
+        }
         return create(null, new NativeMethodNode(env, nativeMethod, methodVersion));
     }
 
@@ -246,6 +251,12 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     public static EspressoRootNode createContinuable(Method.MethodVersion methodVersion, int bci, EspressoFrameDescriptor fd) {
         BytecodeNode bytecodeNode = new BytecodeNode(methodVersion);
         return create(bytecodeNode.getFrameDescriptor(), new ContinuableMethodWithBytecode(bytecodeNode, bci, fd));
+    }
+
+    @Override
+    protected void prepareForInstrumentation(Set<Class<?>> tags) {
+        // delegate to the instrumentable method node
+        methodNode.prepareForInstrumentation(tags);
     }
 
     public final int readBCI(Frame frame) {

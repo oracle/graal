@@ -22,11 +22,11 @@
  */
 package com.oracle.truffle.espresso.preinit;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class DefaultParserKlassProvider implements ParserKlassProvider {

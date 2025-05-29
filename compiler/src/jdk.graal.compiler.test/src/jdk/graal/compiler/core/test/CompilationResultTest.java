@@ -77,7 +77,7 @@ public class CompilationResultTest {
         assertTrue(result.toString().length() > 0); // test for NPE
     }
 
-    private static class TestMarkId implements CompilationResult.MarkId {
+    private static final class TestMarkId implements CompilationResult.MarkId {
         @Override
         public String getName() {
             return "test";

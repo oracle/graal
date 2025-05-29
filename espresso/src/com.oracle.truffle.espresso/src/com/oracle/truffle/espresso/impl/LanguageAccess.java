@@ -24,23 +24,23 @@ package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.classfile.descriptors.Names;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.classfile.JavaVersion;
+import com.oracle.truffle.espresso.classfile.descriptors.NameSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 
 public interface LanguageAccess {
     EspressoLanguage getLanguage();
 
-    default Names getNames() {
+    default NameSymbols getNames() {
         return getLanguage().getNames();
     }
 
-    default Types getTypes() {
+    default TypeSymbols getTypes() {
         return getLanguage().getTypes();
     }
 
-    default Signatures getSignatures() {
+    default SignatureSymbols getSignatures() {
         return getLanguage().getSignatures();
     }
 

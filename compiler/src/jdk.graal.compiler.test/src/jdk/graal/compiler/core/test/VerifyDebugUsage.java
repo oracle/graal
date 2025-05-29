@@ -203,7 +203,9 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
     protected void verifyDumpObjectParameter(MethodCallTargetNode debugCallTarget, ValueNode arg, ResolvedJavaMethod verifiedCallee, Integer dumpLevel)
                     throws VerifyPhase.VerificationError {
         ResolvedJavaType argType = ((ObjectStamp) arg.stamp(NodeView.DEFAULT)).type();
-        if (metaAccess.lookupJavaType(Graph.class).isAssignableFrom(argType)) {
+        // GR-64309: Calls returning interface type are built with an unrestricted stamp. ArgType is
+        // null for SubstrateInstalledCode.
+        if (argType != null && metaAccess.lookupJavaType(Graph.class).isAssignableFrom(argType)) {
             verifyStructuredGraphDumping(debugCallTarget, verifiedCallee, dumpLevel);
         }
     }

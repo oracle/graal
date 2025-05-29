@@ -204,7 +204,7 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
 
     @Override
     public ProfilingInfo getProfilingInfo(boolean includeNormal, boolean includeOSR) {
-        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+        return annotated.getProfilingInfo(includeNormal, includeOSR);
     }
 
     @Override

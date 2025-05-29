@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ package org.graalvm.wasm.predefined.wasi.types;
 
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 /**
  * The contents of an {@code event} when type is {@code eventtype::fd_read} or
@@ -62,23 +63,23 @@ public final class EventFdReadwrite {
     public static final int BYTES = 16;
 
     /** Reads the number of bytes available for reading or writing. */
-    public static long readNbytes(Node node, WasmMemory memory, int address) {
-        return memory.load_i64(node, address + 0);
+    public static long readNbytes(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return memoryLib.load_i64(memory, node, address + 0);
     }
 
     /** Writes the number of bytes available for reading or writing. */
-    public static void writeNbytes(Node node, WasmMemory memory, int address, long value) {
-        memory.store_i64(node, address + 0, value);
+    public static void writeNbytes(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, long value) {
+        memoryLib.store_i64(memory, node, address + 0, value);
     }
 
     /** Reads the state of the file descriptor. */
-    public static short readFlags(Node node, WasmMemory memory, int address) {
-        return (short) memory.load_i32_16u(node, address + 8);
+    public static short readFlags(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return (short) memoryLib.load_i32_16u(memory, node, address + 8);
     }
 
     /** Writes the state of the file descriptor. */
-    public static void writeFlags(Node node, WasmMemory memory, int address, short value) {
-        memory.store_i32_16(node, address + 8, value);
+    public static void writeFlags(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, short value) {
+        memoryLib.store_i32_16(memory, node, address + 8, value);
     }
 
 }

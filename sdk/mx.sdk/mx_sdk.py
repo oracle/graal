@@ -46,6 +46,7 @@ import mx
 import mx_gate
 import mx_sdk_vm
 import mx_sdk_vm_impl
+import mx_sdk_vm_ng
 import pathlib
 import mx_sdk_benchmark # pylint: disable=unused-import
 import mx_sdk_clangformat # pylint: disable=unused-import
@@ -133,7 +134,7 @@ graalvm_sdk_component = mx_sdk_vm.GraalVmJreComponent(
 )
 mx_sdk_vm.register_graalvm_component(graalvm_sdk_component)
 
-# SDK modules included the compiler is included
+# SDK modules included if the compiler (jargraal) is included
 graal_sdk_compiler_component = mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='Graal SDK Compiler',
@@ -158,7 +159,7 @@ graalvm_sdk_native_image_component = mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=['sdkc'],
     jar_distributions=[],
-    boot_jars=['sdk:NATIVEIMAGE'],
+    boot_jars=['sdk:NATIVEIMAGE', 'sdk:NATIVEIMAGE_LIBGRAAL'],
     stability="supported",
 )
 mx_sdk_vm.register_graalvm_component(graalvm_sdk_native_image_component)
@@ -193,6 +194,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     mx_sdk_vm_impl.mx_register_dynamic_suite_constituents(register_project, register_distribution)
+    mx_sdk_vm_ng.mx_register_dynamic_suite_constituents(register_project, register_distribution)
 
 
 def mx_post_parse_cmd_line(args):
@@ -259,6 +261,16 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                                    default_to_jvmci=default_to_jvmci)
 
 class GraalVMJDKConfig(mx.JDKConfig):
+
+    # Oracle JDK includes the libjvmci compiler, allowing it to function as GraalVM.
+    # However, the Graal compiler is disabled by default and must be explicitly
+    # enabled using the -XX:+UseGraalJIT option.
+    libgraal_additional_vm_args = [
+        '-XX:+UnlockExperimentalVMOptions',
+        '-XX:+EnableJVMCI',
+        '-XX:+UseGraalJIT',
+        '-XX:-UnlockExperimentalVMOptions'
+    ]
     """
     A JDKConfig that configures the built GraalVM as a JDK config.
     """
@@ -268,11 +280,8 @@ class GraalVMJDKConfig(mx.JDKConfig):
             graalvm_home = default_jdk.home
             additional_vm_args = []
         elif GraalVMJDKConfig.is_libgraal_jdk(default_jdk.home):
-            # Oracle JDK includes the libjvmci compiler, allowing it to function as GraalVM.
-            # However, the Graal compiler is disabled by default and must be explicitly enabled using the -XX:+UseJVMCICompiler option.
             graalvm_home = default_jdk.home
-            # GR-58388: Switch '-XX:+UseJVMCINativeLibrary' to '-XX:+UseGraalJIT'
-            additional_vm_args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI', '-XX:+UseJVMCINativeLibrary', '-XX:-UnlockExperimentalVMOptions']
+            additional_vm_args = GraalVMJDKConfig.libgraal_additional_vm_args
         else:
             graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
             additional_vm_args = []

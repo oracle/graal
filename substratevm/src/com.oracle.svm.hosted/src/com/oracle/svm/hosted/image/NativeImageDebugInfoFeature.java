@@ -33,7 +33,6 @@ import java.util.function.Supplier;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.Timer;
@@ -41,6 +40,7 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.io.AssemblyBuffer;
+import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.UniqueShortNameProviderDefaultImpl;
@@ -62,6 +62,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
@@ -117,14 +118,16 @@ class NativeImageDebugInfoFeature implements InternalFeature {
         access.registerAsAccessed(ReflectionUtil.lookupField(ClassLoader.class, "nameAndId"));
 
         CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
-        CGlobalData<PointerBase> compressionShift = CGlobalDataFactory.createWord(WordFactory.signed(compressEncoding.getShift()), "__svm_compression_shift");
-        CGlobalData<PointerBase> useHeapBase = CGlobalDataFactory.createWord(WordFactory.unsigned(compressEncoding.hasBase() ? 1 : 0), "__svm_use_heap_base");
-        CGlobalData<PointerBase> reservedBitsMask = CGlobalDataFactory.createWord(WordFactory.unsigned(Heap.getHeap().getObjectHeader().getReservedBitsMask()), "__svm_reserved_bits_mask");
-        CGlobalData<PointerBase> objectAlignment = CGlobalDataFactory.createWord(WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment()), "__svm_object_alignment");
+        CGlobalData<PointerBase> compressionShift = CGlobalDataFactory.createWord(Word.signed(compressEncoding.getShift()), "__svm_compression_shift");
+        CGlobalData<PointerBase> useHeapBase = CGlobalDataFactory.createWord(Word.unsigned(compressEncoding.hasBase() ? 1 : 0), "__svm_use_heap_base");
+        CGlobalData<PointerBase> reservedHubBitsMask = CGlobalDataFactory.createWord(Word.unsigned(Heap.getHeap().getObjectHeader().getReservedHubBitsMask()), "__svm_reserved_bits_mask");
+        CGlobalData<PointerBase> objectAlignment = CGlobalDataFactory.createWord(Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment()), "__svm_object_alignment");
+        CGlobalData<PointerBase> heapBaseRegnum = CGlobalDataFactory.createWord(Word.unsigned(ReservedRegisters.singleton().getHeapBaseRegister().number), "__svm_heap_base_regnum");
         CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(compressionShift);
         CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(useHeapBase);
-        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(reservedBitsMask);
+        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(reservedHubBitsMask);
         CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(objectAlignment);
+        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(heapBaseRegnum);
     }
 
     @Override

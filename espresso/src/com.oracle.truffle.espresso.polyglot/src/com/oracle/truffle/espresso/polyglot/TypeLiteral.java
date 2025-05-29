@@ -155,7 +155,7 @@ public abstract class TypeLiteral<T> {
 
     // only used by the VM internally
     @SuppressWarnings("unused")
-    private class InternalTypeLiteral extends TypeLiteral<T> {
+    private final class InternalTypeLiteral extends TypeLiteral<T> {
     }
 }
 

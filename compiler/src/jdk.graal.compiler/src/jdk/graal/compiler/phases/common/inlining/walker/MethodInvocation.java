@@ -130,7 +130,7 @@ public class MethodInvocation {
         }
         CallTargetNode callTarget = callee.invoke().callTarget();
         if (callTarget instanceof MethodCallTargetNode) {
-            ResolvedJavaMethod calleeMethod = ((MethodCallTargetNode) callTarget).targetMethod();
+            ResolvedJavaMethod calleeMethod = callTarget.targetMethod();
             return calleeMethod.format("Invoke#%H.%n(%p)");
         } else {
             return "Invoke#" + callTarget.targetName();

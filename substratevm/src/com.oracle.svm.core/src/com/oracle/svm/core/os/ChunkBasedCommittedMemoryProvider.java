@@ -28,28 +28,44 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.thread.VMOperation;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
+    private static final OutOfMemoryError ALIGNED_OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Could not allocate an aligned heap chunk. " +
+                    "Either the OS/container is out of memory or another system-level resource limit was reached (such as the number of memory mappings).");
+    private static final OutOfMemoryError UNALIGNED_OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Could not allocate an unaligned heap chunk. " +
+                    "Either the OS/container is out of memory or another system-level resource limit was reached (such as the number of memory mappings).");
+
     @Fold
     public static ChunkBasedCommittedMemoryProvider get() {
         return (ChunkBasedCommittedMemoryProvider) ImageSingletons.lookup(CommittedMemoryProvider.class);
     }
 
+    /** Returns a non-null value or throws a pre-allocated exception. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment) {
-        return allocate(nbytes, alignment, false, NmtCategory.JavaHeap);
+        Pointer result = allocate(nbytes, alignment, false, NmtCategory.JavaHeap);
+        if (result.isNull()) {
+            throw ALIGNED_OUT_OF_MEMORY_ERROR;
+        }
+        return result;
     }
 
+    /** Returns a non-null value or throws a pre-allocated exception. */
     public Pointer allocateUnalignedChunk(UnsignedWord nbytes) {
-        return allocate(nbytes, getAlignmentForUnalignedChunks(), false, NmtCategory.JavaHeap);
+        Pointer result = allocate(nbytes, getAlignmentForUnalignedChunks(), false, NmtCategory.JavaHeap);
+        if (result.isNull()) {
+            throw UNALIGNED_OUT_OF_MEMORY_ERROR;
+        }
+        return result;
     }
 
     /**
@@ -77,7 +93,7 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
     @Fold
     protected static UnsignedWord getAlignmentForUnalignedChunks() {
         int alignment = Math.max(ConfigurationValues.getTarget().wordSize, ConfigurationValues.getObjectLayout().getAlignment());
-        return WordFactory.unsigned(alignment);
+        return Word.unsigned(alignment);
     }
 
     /**
@@ -86,6 +102,7 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called by the GC.")
     public void beforeGarbageCollection() {
+        assert VMOperation.isGCInProgress() : "may only be called by the GC";
     }
 
     /**
@@ -94,6 +111,7 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called by the GC.")
     public void afterGarbageCollection() {
+        assert VMOperation.isGCInProgress() : "may only be called by the GC";
     }
 
     /**
@@ -102,5 +120,6 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called by the GC.")
     public void uncommitUnusedMemory() {
+        assert VMOperation.isGCInProgress() : "may only be called by the GC";
     }
 }

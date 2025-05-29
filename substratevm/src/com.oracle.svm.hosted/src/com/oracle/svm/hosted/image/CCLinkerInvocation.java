@@ -273,7 +273,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 additionalPreOptions.add("-Wl,--gc-sections");
             }
 
-            if (!imageKind.isExecutable) {
+            if (imageKind.isImageLayer) {
                 /*
                  * We do not want interposition to affect the resolution of symbols we define and
                  * reference within this library.
@@ -340,13 +340,18 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         @Override
         protected List<String> getLibrariesCommand() {
             List<String> cmd = new ArrayList<>();
+            String pushState = "-Wl,--push-state";
+            String popState = "-Wl,--pop-state";
             if (customStaticLibs) {
-                cmd.add("-Wl,--push-state");
+                cmd.add(pushState);
             }
+            String previousLayerLib = null;
             for (String lib : libs) {
                 String linkingMode = null;
-                if (ImageLayerBuildingSupport.buildingImageLayer() && HostedDynamicLayerInfo.singleton().isImageLayerLib(lib)) {
-                    linkingMode = "dynamic";
+                if (ImageLayerBuildingSupport.buildingExtensionLayer() && HostedDynamicLayerInfo.singleton().isImageLayerLib(lib)) {
+                    VMError.guarantee(!lib.isEmpty());
+                    VMError.guarantee(previousLayerLib == null, "We currently only support one previous layer."); // GR-58631
+                    previousLayerLib = lib;
                 } else if (dynamicLibC) {
                     linkingMode = LIB_C_NAMES.contains(lib) ? "dynamic" : "static";
                 } else if (staticLibCpp) {
@@ -358,7 +363,14 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 cmd.add("-l" + lib);
             }
             if (customStaticLibs) {
-                cmd.add("-Wl,--pop-state");
+                cmd.add(popState);
+            }
+
+            if (previousLayerLib != null) {
+                cmd.add(pushState);
+                cmd.add("-Wl,-Bdynamic");
+                cmd.add("-l" + previousLayerLib);
+                cmd.add(popState);
             }
 
             // Make sure libgcc gets statically linked
@@ -591,7 +603,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 break;
         }
 
-        Path outputFile = outputDirectory.resolve(imageName + imageKind.getFilenameSuffix());
+        Path outputFile = outputDirectory.resolve(imageKind.getOutputFilename(imageName));
         UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory (use '-o /path/to/image').", outputFile);
         inv.setOutputFile(outputFile);
         inv.setTempDirectory(tempDirectory);

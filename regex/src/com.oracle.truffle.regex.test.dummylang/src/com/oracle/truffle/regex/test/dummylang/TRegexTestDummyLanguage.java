@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexObject;
+import com.oracle.truffle.regex.RegexSyntaxException;
 
 @TruffleLanguage.Registration(name = TRegexTestDummyLanguage.NAME, id = TRegexTestDummyLanguage.ID, characterMimeTypes = TRegexTestDummyLanguage.MIME_TYPE, version = "0.1", dependentLanguages = RegexLanguage.ID)
 public class TRegexTestDummyLanguage extends TruffleLanguage<TRegexTestDummyLanguage.DummyLanguageContext> {
@@ -111,8 +112,12 @@ public class TRegexTestDummyLanguage extends TruffleLanguage<TRegexTestDummyLang
                 }
             }.getCallTarget();
         }
-        return DummyLanguageContext.get(null).getEnv().parseInternal(
-                        Source.newBuilder(RegexLanguage.ID, src, parsingRequest.getSource().getName()).internal(true).build());
+        try {
+            return DummyLanguageContext.get(null).getEnv().parseInternal(
+                            Source.newBuilder(RegexLanguage.ID, src, parsingRequest.getSource().getName()).internal(true).build());
+        } catch (RegexSyntaxException e) {
+            throw e.withErrorCodeInMessage();
+        }
     }
 
     @GenerateInline

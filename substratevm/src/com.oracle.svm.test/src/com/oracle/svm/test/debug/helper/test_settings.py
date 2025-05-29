@@ -185,11 +185,17 @@ class TestParameters(unittest.TestCase):
         gdb_set_breakpoint("com.oracle.svm.test.debug.helper.PrettyPrinterTest::testObject")
         gdb_run()
         gdb_set_param('svm-print-field-limit', '1')
-        self.assertIn('f7 = "test string"', gdb_output('object'))
-        self.assertIn('f8 = ...', gdb_output('object'))
+        exec_string_1 = gdb_output('object')
+        self.assertTrue(exec_string_1.startswith('com.oracle.svm.test.debug.helper.PrettyPrinterTest$ExampleClass = {'))
+        self.assertEqual(exec_string_1.count('='), 3)  # 3 '=' signs, one each for object, first field, cut off field
+        self.assertTrue(exec_string_1.endswith('= ...}'))
         gdb_set_param('svm-print-field-limit', 'unlimited')
-        self.assertIn('f7 = "test string"', gdb_output('object'))
-        self.assertIn('f8 = Monday(0)', gdb_output('object'))
+        exec_string = gdb_output('object')
+        # check if at least 2 member fields are printed
+        self.assertIn('f7 = "test string"', exec_string)
+        self.assertIn('f8 = Monday(0)', exec_string)
+        self.assertNotIn('= ...', exec_string)
+        self.assertNotEqual(exec_string, exec_string_1)
 
     def test_svm_print_depth_limit(self):
         gdb_set_breakpoint("com.oracle.svm.test.debug.helper.PrettyPrinterTest::testObject")

@@ -614,6 +614,7 @@ public final class GraphState {
         FLOATING_READS,
         GUARD_MOVEMENT,
         GUARD_LOWERING,
+        STRIP_MINING,
         VALUE_PROXY_REMOVAL,
         SAFEPOINTS_INSERTION,
         MID_TIER_LOWERING,

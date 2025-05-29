@@ -25,27 +25,29 @@
 package jdk.graal.compiler.serviceprovider;
 
 import static java.lang.Thread.currentThread;
-import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
+import jdk.graal.compiler.core.ArchitectureSpecific;
+import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.options.ExcludeFromJacocoGeneratedReport;
 import jdk.internal.misc.VM;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.EncodedSpeculationReason;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.services.Services;
-import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 /**
  * Interface to functionality that abstracts over which JDK version Graal is running on.
@@ -53,34 +55,80 @@ import org.graalvm.nativeimage.Platforms;
 public final class GraalServices {
 
     /**
-     * Returns true if code is executing in the context of building libgraal. Note that this is more
-     * specific than {@link ImageInfo#inImageBuildtimeCode()}. The latter will return true when
-     * building any native image, not just libgraal.
+     * The set of services available in libgraal.
      */
-    public static boolean isBuildingLibgraal() {
-        return Services.IS_BUILDING_NATIVE_IMAGE;
+    private static final Map<Class<?>, List<?>> libgraalServices;
+
+    @LibGraalSupport.HostedOnly
+    private static Class<?> loadClassOrNull(String name) {
+        try {
+            return GraalServices.class.getClassLoader().loadClass(name);
+        } catch (Throwable e) {
+            return null;
+        }
     }
 
     /**
-     * Returns true if code is executing in the context of executing libgraal. Note that this is
-     * more specific than {@link ImageInfo#inImageRuntimeCode()}. The latter will return true when
-     * executing any native image, not just libgraal.
+     * Gets a name for the current architecture that is compatible with
+     * {@link Architecture#getName()}.
      */
-    public static boolean isInLibgraal() {
-        return Services.IS_IN_NATIVE_IMAGE;
+    @LibGraalSupport.HostedOnly
+    private static String getJVMCIArch() {
+        String rawArch = getSavedProperty("os.arch");
+        return switch (rawArch) {
+            case "x86_64" -> "AMD64";
+            case "amd64" -> "AMD64";
+            case "aarch64" -> "aarch64";
+            case "riscv64" -> "riscv64";
+            default -> throw new GraalError("Unknown or unsupported arch: %s", rawArch);
+        };
+    }
+
+    @LibGraalSupport.HostedOnly
+    @SuppressWarnings("unchecked")
+    private static void addProviders(String arch, Class<?> service) {
+        List<Object> providers = (List<Object>) GraalServices.libgraalServices.computeIfAbsent(service, key -> new ArrayList<>());
+        for (Object provider : ServiceLoader.load(service, GraalServices.class.getClassLoader())) {
+            if (provider instanceof ArchitectureSpecific as && !as.getArchitecture().equals(arch)) {
+                // Skip provider for another architecture
+                continue;
+            }
+            if (provider.getClass().getAnnotation(LibGraalSupport.HostedOnly.class) != null) {
+                // Skip hosted-only providers
+                continue;
+            }
+            providers.add(provider);
+        }
     }
 
     /**
-     * The set of services available in libgraal. This field is only non-null when
-     * {@link GraalServices} is loaded by the LibGraalClassLoader.
+     * Determines if {@code c} is annotated by {@link LibGraalService}.
      */
-    private static Map<Class<?>, List<?>> libgraalServices;
+    static boolean isLibGraalService(Class<?> c) {
+        if (c != null && c.getAnnotation(LibGraalService.class) != null) {
+            if (c.getAnnotation(LibGraalSupport.HostedOnly.class) != null) {
+                throw new GraalError("Class %s cannot be annotated by both %s and %s as they are mutually exclusive)",
+                                c.getName(),
+                                LibGraalService.class.getName(),
+                                LibGraalSupport.HostedOnly.class.getName());
+            }
+            return true;
+        }
+        return false;
+    }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    @ExcludeFromJacocoGeneratedReport("only called when building libgraal")
-    public static void setLibgraalServices(Map<Class<?>, List<?>> services) {
-        GraalError.guarantee(libgraalServices == null, "Libgraal services must be set exactly once");
-        GraalServices.libgraalServices = services;
+    static {
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (libgraal != null) {
+            libgraalServices = new HashMap<>();
+            String arch = getJVMCIArch();
+            libgraal.getClassModuleMap().keySet().stream()//
+                            .map(GraalServices::loadClassOrNull)//
+                            .filter(GraalServices::isLibGraalService)//
+                            .forEach(service -> addProviders(arch, service));
+        } else {
+            libgraalServices = null;
+        }
     }
 
     private GraalServices() {
@@ -92,7 +140,7 @@ public final class GraalServices {
      */
     @SuppressWarnings("unchecked")
     public static <S> Iterable<S> load(Class<S> service) {
-        if (inImageRuntimeCode() || libgraalServices != null) {
+        if (libgraalServices != null) {
             List<?> list = libgraalServices.get(service);
             if (list == null) {
                 throw new InternalError(String.format("No %s providers found in libgraal (missing %s annotation on %s?)",
@@ -100,7 +148,24 @@ public final class GraalServices {
             }
             return (Iterable<S>) list;
         }
+        if (NativeImageSupport.inRuntimeCode()) {
+            // Service loading by Graal can only be done at build time
+            return List.of();
+        }
         return load0(service);
+    }
+
+    /**
+     * An escape hatch for calling {@link System#getProperties()} without falling afoul of
+     * {@code VerifySystemPropertyUsage}.
+     *
+     * @param justification explains why {@link #getSavedProperties()} cannot be used
+     */
+    public static Properties getSystemProperties(String justification) {
+        if (justification == null || justification.isEmpty()) {
+            throw new IllegalArgumentException("non-empty justification required");
+        }
+        return System.getProperties();
     }
 
     /**
@@ -111,9 +176,9 @@ public final class GraalServices {
      * @see VM#getSavedProperties
      */
     public static Map<String, String> getSavedProperties() {
-        if (inImageBuildtimeCode()) {
+        if (!LibGraalSupport.inLibGraalRuntime() && LibGraalSupport.INSTANCE != null) {
             // Avoid calling down to JVMCI native methods as they will fail to
-            // link in a copy of JVMCI loaded by the LibGraalClassLoader.
+            // link in a copy of JVMCI loaded by a LibGraalLoader.
             return jdk.internal.misc.VM.getSavedProperties();
         }
         return Services.getSavedProperties();
@@ -133,6 +198,7 @@ public final class GraalServices {
         return getSavedProperties().get(name);
     }
 
+    @LibGraalSupport.HostedOnly
     private static <S> Iterable<S> load0(Class<S> service) {
         Module module = GraalServices.class.getModule();
         // Graal cannot know all the services used by another module
@@ -172,11 +238,8 @@ public final class GraalServices {
      *
      * @param other all JVMCI packages will be opened to the module defining this class
      */
+    @LibGraalSupport.HostedOnly
     static void openJVMCITo(Class<?> other) {
-        if (inImageRuntimeCode()) {
-            return;
-        }
-
         Module jvmciModule = JVMCI_MODULE;
         Module otherModule = other.getModule();
         if (jvmciModule != otherModule) {
@@ -229,6 +292,7 @@ public final class GraalServices {
     /**
      * Gets the class file bytes for {@code c}.
      */
+    @LibGraalSupport.HostedOnly
     public static InputStream getClassfileAsStream(Class<?> c) throws IOException {
         String classfilePath = c.getName().replace('.', '/') + ".class";
         return c.getModule().getResourceAsStream(classfilePath);
@@ -249,7 +313,7 @@ public final class GraalServices {
      * trusted code.
      */
     public static boolean isToStringTrusted(Class<?> c) {
-        if (inImageRuntimeCode()) {
+        if (inRuntimeCode()) {
             return true;
         }
 
@@ -283,7 +347,7 @@ public final class GraalServices {
         return Long.toString(ProcessHandle.current().pid());
     }
 
-    private static final GlobalAtomicLong globalTimeStamp = new GlobalAtomicLong(0L);
+    private static final GlobalAtomicLong globalTimeStamp = new GlobalAtomicLong("GLOBAL_TIME_STAMP", 0L);
 
     /**
      * Gets a time stamp for the current process. This method will always return the same value for
@@ -291,9 +355,18 @@ public final class GraalServices {
      */
     public static long getGlobalTimeStamp() {
         if (globalTimeStamp.get() == 0L) {
-            globalTimeStamp.compareAndSet(0L, System.currentTimeMillis());
+            globalTimeStamp.compareAndSet(0L, milliTimeStamp());
         }
         return globalTimeStamp.get();
+    }
+
+    /**
+     * Returns the current time in milliseconds. This is to guard against the incorrect use of
+     * {@link System#currentTimeMillis()} for measuring elapsed time since it is affected by changes
+     * to the system clock.
+     */
+    public static long milliTimeStamp() {
+        return System.currentTimeMillis();
     }
 
     /**
@@ -321,7 +394,6 @@ public final class GraalServices {
      *             measurement.
      */
     public static long getThreadAllocatedBytes(long id) {
-        JMXService jmx = JMXService.instance;
         if (jmx == null) {
             throw new UnsupportedOperationException();
         }
@@ -370,7 +442,6 @@ public final class GraalServices {
      *             the current thread
      */
     public static long getCurrentThreadCpuTime() {
-        JMXService jmx = JMXService.instance;
         if (jmx == null) {
             throw new UnsupportedOperationException();
         }
@@ -382,7 +453,6 @@ public final class GraalServices {
      * measurement.
      */
     public static boolean isThreadAllocatedMemorySupported() {
-        JMXService jmx = JMXService.instance;
         if (jmx == null) {
             return false;
         }
@@ -393,7 +463,6 @@ public final class GraalServices {
      * Determines if the Java virtual machine supports CPU time measurement for the current thread.
      */
     public static boolean isCurrentThreadCpuTimeSupported() {
-        JMXService jmx = JMXService.instance;
         if (jmx == null) {
             return false;
         }
@@ -415,11 +484,26 @@ public final class GraalServices {
      * @return the input arguments to the JVM or {@code null} if they are unavailable
      */
     public static List<String> getInputArguments() {
-        JMXService jmx = JMXService.instance;
         if (jmx == null) {
             return null;
         }
         return jmx.getInputArguments();
+    }
+
+    /**
+     * Dumps the heap to {@code outputFile} in hprof format.
+     *
+     * @param live if true, performs a full GC first so that only live objects are dumped
+     * @throws IOException if an IO error occurred during dumping
+     * @throws UnsupportedOperationException if this operation is not supported.
+     */
+    public static void dumpHeap(String outputFile, boolean live) throws IOException, UnsupportedOperationException {
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (libgraal != null) {
+            libgraal.dumpHeap(outputFile, live);
+        } else if (jmx != null) {
+            jmx.dumpHeap(outputFile, live);
+        }
     }
 
     /**
@@ -449,33 +533,5 @@ public final class GraalServices {
         return Runtime.version().update();
     }
 
-    /**
-     * Notifies that the compiler is at a point where memory usage is expected to be minimal like
-     * after the completion of compilation.
-     *
-     * @param forceFullGC controls whether to explicitly perform a full GC
-     */
-    public static void notifyLowMemoryPoint(boolean forceFullGC) {
-        notifyLowMemoryPoint(true, forceFullGC);
-    }
-
-    /**
-     * Notifies that the compiler is at a point where memory usage is might have dropped
-     * significantly like after some major phase execution.
-     */
-    public static void notifyLowMemoryPoint() {
-        notifyLowMemoryPoint(false, false);
-    }
-
-    /**
-     * Notifies that the compiler is at a point where memory usage is expected to be relatively low
-     * (e.g., just before/after a compilation). The garbage collector might be able to make use of
-     * such a hint to optimize its performance.
-     *
-     * @param hintFullGC controls whether the hinted GC should be a full GC.
-     * @param forceFullGC controls whether to explicitly perform a full GC
-     */
-    private static void notifyLowMemoryPoint(boolean hintFullGC, boolean forceFullGC) {
-        VMSupport.notifyLowMemoryPoint(hintFullGC, forceFullGC);
-    }
+    private static final JMXService jmx = loadSingle(JMXService.class, libgraalServices != null);
 }

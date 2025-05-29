@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.analysis.liveness;
 
 import java.io.PrintStream;
@@ -36,6 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.DepthFirstBlockIterator;
 import com.oracle.truffle.espresso.analysis.GraphBuilder;
 import com.oracle.truffle.espresso.analysis.Util;
@@ -45,12 +45,13 @@ import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.analysis.liveness.actions.MultiAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.NullOutAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.SelectEdgeAction;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
 import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
 import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 public final class LivenessAnalysis {
 
@@ -88,7 +89,7 @@ public final class LivenessAnalysis {
     private final CatchUpMap catchUpMap;
 
     public void performOnEdge(VirtualFrame frame, int bci, int nextBci, boolean disable) {
-        if (CompilerDirectives.inCompiledCode()) {
+        if (CompilerDirectives.inCompiledCode() || EspressoOptions.LivenessAnalysisInInterpreter) {
             if (!disable) {
                 if (edge != null && edge[nextBci] != null) {
                     edge[nextBci].onEdge(frame, bci);
@@ -98,7 +99,7 @@ public final class LivenessAnalysis {
     }
 
     public void onStart(VirtualFrame frame, boolean disable) {
-        if (CompilerDirectives.inCompiledCode()) {
+        if (CompilerDirectives.inCompiledCode() || EspressoOptions.LivenessAnalysisInInterpreter) {
             if (!disable) {
                 if (onStart != null) {
                     onStart.execute(frame);
@@ -108,7 +109,7 @@ public final class LivenessAnalysis {
     }
 
     public void performPostBCI(VirtualFrame frame, int bci, boolean disable) {
-        if (CompilerDirectives.inCompiledCode()) {
+        if (CompilerDirectives.inCompiledCode() || EspressoOptions.LivenessAnalysisInInterpreter) {
             if (!disable) {
                 if (postBci != null && postBci[bci] != null) {
                     postBci[bci].execute(frame);
@@ -149,14 +150,15 @@ public final class LivenessAnalysis {
     }
 
     @SuppressWarnings("try")
-    public static LivenessAnalysis analyze(Method.MethodVersion methodVersion) {
+    public static LivenessAnalysis analyze(EspressoOptions.LivenessAnalysisMode mode, Method.MethodVersion methodVersion) {
 
         EspressoLanguage language = methodVersion.getMethod().getLanguage();
-        if (!enableLivenessAnalysis(language, methodVersion)) {
+        if (!enableLivenessAnalysis(mode, language, methodVersion)) {
             return NO_ANALYSIS;
         }
 
         Method method = methodVersion.getMethod();
+
         TimerCollection scope = method.getContext().getTimers();
         try (DebugCloseable liveness = LIVENESS_TIMER.scope(scope)) {
             Graph<? extends LinkedBlock> graph;
@@ -164,11 +166,17 @@ public final class LivenessAnalysis {
                 graph = GraphBuilder.build(method);
             }
 
+            Klass declaringKlass = method.getDeclaringKlass();
+            // For cooperation with continuation serialization, we do not clear the "this" argument
+            // for hidden/anonymous classes.
+            // We implement that by simply having RETURN (and ATHROW) load local 0.
+            boolean doNotClearThis = !method.isStatic() && (declaringKlass.isHidden() || declaringKlass.isAnonymous());
+
             // Transform the graph into a more manageable graph consisting of only the history of
             // load/stores.
             LoadStoreFinder loadStoreClosure;
             try (DebugCloseable loadStore = LOADSTORE_TIMER.scope(scope)) {
-                loadStoreClosure = new LoadStoreFinder(graph, method);
+                loadStoreClosure = new LoadStoreFinder(graph, method, doNotClearThis);
                 loadStoreClosure.analyze();
             }
 
@@ -211,11 +219,11 @@ public final class LivenessAnalysis {
         }
     }
 
-    private static boolean enableLivenessAnalysis(EspressoLanguage language, Method.MethodVersion methodVersion) {
+    private static boolean enableLivenessAnalysis(EspressoOptions.LivenessAnalysisMode mode, EspressoLanguage language, Method.MethodVersion methodVersion) {
         if (isExempt(methodVersion.getMethod())) {
             return false;
         }
-        switch (language.getLivenessAnalysisMode()) {
+        switch (mode) {
             case NONE:
                 return false;
             case ALL:
@@ -235,7 +243,7 @@ public final class LivenessAnalysis {
 
     private static boolean isExempt(Method m) {
         if ((m.getDeclaringKlass() == m.getMeta().java_security_AccessController &&
-                        m.getName() == Symbol.Name.executePrivileged) || m.isScoped()) {
+                        m.getName() == Names.executePrivileged) || m.isScoped()) {
             // Special case:
             // Frame locals inspection is necessary for access control.
             return true;
@@ -463,7 +471,7 @@ public final class LivenessAnalysis {
         }
     }
 
-    private static final class CatchUpMap {
+    protected static final class CatchUpMap {
         @CompilationFinal(dimensions = 1) //
         private final int[] loopStarts;
         @CompilationFinal(dimensions = 1) //
@@ -489,5 +497,4 @@ public final class LivenessAnalysis {
             }
         }
     }
-
 }

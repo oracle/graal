@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,12 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.util.stream.Collectors;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
@@ -32,6 +37,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.vm.ci.code.CPUFeatureName;
 
 @TargetClass(className = "jdk.internal.vm.vector.VectorSupport")
 final class Target_jdk_internal_vm_vector_VectorSupport {
@@ -42,6 +50,23 @@ final class Target_jdk_internal_vm_vector_VectorSupport {
     @Substitute
     private static int getMaxLaneCount(Class<?> etype) {
         return VectorAPISupport.singleton().getMaxLaneCount(etype);
+    }
+
+    /**
+     * Substitutes the native method with a constant string defined at build time.
+     */
+    @Substitute
+    public static String getCPUFeatures() {
+        return Helper_jdk_internal_vm_vector_VectorSupport.getCPUFeatures();
+    }
+}
+
+final class Helper_jdk_internal_vm_vector_VectorSupport {
+    @Fold
+    public static String getCPUFeatures() {
+        return ImageSingletons.lookup(SubstrateTargetDescription.class).arch.getFeatures().stream()
+                        .map(CPUFeatureName::name)
+                        .collect(Collectors.joining(","));
     }
 }
 
@@ -59,6 +84,18 @@ final class Target_jdk_incubator_vector_VectorOperators {
          * implementation clearly expects them to be inlined. They are on the hot path, and both
          * their hot path callers and their callees are all @ForceInline.
          */
+
+        @AnnotateOriginal
+        @AlwaysInline("Vector API performance")
+        native char kind();
+
+        @AnnotateOriginal
+        @AlwaysInline("Vector API performance")
+        native Target_jdk_incubator_vector_LaneType domain();
+
+        @AnnotateOriginal
+        @AlwaysInline("Vector API performance")
+        native Target_jdk_incubator_vector_LaneType range();
 
         @AnnotateOriginal
         @AlwaysInline("Vector API performance")

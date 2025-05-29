@@ -160,7 +160,7 @@ public abstract class ToEspressoNode extends EspressoNode {
 
         @Specialization
         public static Object doStaticObject(StaticObject value, EspressoType targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
             assert !value.isForeignObject();
@@ -177,7 +177,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isStaticObject(value)"
         })
         public static Object doForeignNull(Object value, @SuppressWarnings("unused") EspressoType targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
             if (targetType.getRawType().isPrimitive()) {
@@ -193,7 +193,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isStaticObject(value)"
         })
         public static Object doMappedInterface(Object value, EspressoType targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @Cached ProxyInstantiateNode proxyInstantiateNode,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
@@ -217,7 +217,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isStaticObject(value)"
         })
         public static Object doArray(Object value, ArrayKlass targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
             Meta meta = EspressoContext.get(node).getMeta();
@@ -239,8 +239,9 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isStaticObject(value)"
         })
         public static Object doTypeConverter(Object value, EspressoType targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached LookupTypeConverterNode lookupTypeConverter,
+                        @Cached InstanceOf.Dynamic instanceOf,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
             try {
@@ -254,7 +255,10 @@ public abstract class ToEspressoNode extends EspressoNode {
                     if (targetType instanceof ParameterizedEspressoType parameterizedEspressoType) {
                         EspressoLanguage.get(node).getTypeArgumentProperty().setObject(foreignWrapper, parameterizedEspressoType.getTypeArguments());
                     }
-                    return converter.convert(foreignWrapper);
+                    StaticObject result = (StaticObject) converter.convert(foreignWrapper);
+                    if (instanceOf.execute(result.getKlass(), targetType.getRawType())) {
+                        return result;
+                    }
                 }
             } catch (UnsupportedMessageException e) {
                 // no meta object, fall through to throw unsupported type
@@ -269,7 +273,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isStaticObject(value)"
         })
         public static Object doInternalTypeConverter(Object value, EspressoType targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached ToReference.DynamicToReference converterToEspresso,
                         @Cached LookupInternalTypeConverterNode lookupInternalTypeConverter,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
@@ -296,14 +300,29 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isStaticObject(value)"
         })
         public static Object doBuiltinCollectionMapped(Object value, EspressoType targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @Cached ProxyInstantiateNode proxyInstantiateNode,
+                        @Cached InstanceOf.Dynamic instanceOf,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached InlinedBranchProfile converterProfile,
                         @Cached InlinedBranchProfile errorProfile) throws UnsupportedTypeException {
             try {
                 Object metaObject = interop.getMetaObject(value);
                 String metaName = getMetaName(metaObject, interop);
+                // first check if there's a user-defined custom type converter defined
+                PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
+                if (converter != null) {
+                    converterProfile.enter(node);
+                    EspressoContext context = EspressoContext.get(node);
+                    StaticObject foreignWrapper = StaticObject.createForeign(context.getLanguage(), context.getMeta().java_lang_Object, value, interop);
+                    StaticObject result = (StaticObject) converter.convert(foreignWrapper);
+                    if (instanceOf.execute(result.getKlass(), targetType.getRawType())) {
+                        return result;
+                    }
+                }
+                // then check if there's a type-mapped interface
                 WrappedProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaName, targetType.getRawType());
                 if (proxyKlass != null) {
                     return proxyInstantiateNode.execute(proxyKlass, value, targetType);
@@ -325,7 +344,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isInternalTypeConverterEnabled(targetType)",
         })
         public static Object doGeneric(Object value, EspressoType targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,

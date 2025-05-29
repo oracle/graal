@@ -31,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
@@ -40,6 +41,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
+import com.oracle.svm.common.meta.GuaranteeFolded;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
@@ -64,10 +66,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     private static final AtomicReferenceFieldUpdater<AnalysisField, Object> isUnsafeAccessedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisField.class, Object.class, "isUnsafeAccessed");
-
-    private static final AtomicReferenceFieldUpdater<AnalysisField, Object> trackAcrossLayersUpdater = AtomicReferenceFieldUpdater
-                    .newUpdater(AnalysisField.class, Object.class, "trackAcrossLayers");
-
     private final int id;
     /** Marks a field loaded from a base layer. */
     private final boolean isInBaseLayer;
@@ -93,12 +91,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     @SuppressWarnings("unused") private volatile Object isFolded;
     @SuppressWarnings("unused") private volatile Object isUnsafeAccessed;
 
-    /**
-     * See {@link AnalysisElement#isTrackedAcrossLayers} for explanation.
-     */
-    @SuppressWarnings("unused") private volatile Object trackAcrossLayers;
-    private final boolean enableTrackAcrossLayers;
-
     private ConcurrentMap<Object, Boolean> readBy;
     private ConcurrentMap<Object, Boolean> writtenBy;
 
@@ -115,8 +107,16 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
      */
     protected Object fieldValueInterceptor;
 
+    /**
+     * When building layered images, for static fields we must keep track of what layer's static
+     * fields array the field is assigned in. This also impacts when the underlying value can be
+     * read and/or constant folded.
+     */
+    private final boolean isLayeredStaticField;
+
     @SuppressWarnings("this-escape")
     public AnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
+        super(universe.hostVM.enableTrackAcrossLayers());
         assert !wrappedField.isInternal() : wrappedField;
 
         this.position = -1;
@@ -159,8 +159,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
             id = universe.computeNextFieldId();
             isInBaseLayer = false;
         }
-
-        this.enableTrackAcrossLayers = universe.hostVM.enableTrackAcrossLayers();
+        isLayeredStaticField = isStatic() && universe.hostVM.buildingImageLayer();
     }
 
     @Override
@@ -197,6 +196,22 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return isInBaseLayer;
     }
 
+    public boolean installableInLayer() {
+        if (isLayeredStaticField) {
+            return getUniverse().hostVM.installableInLayer(this);
+        } else {
+            return true;
+        }
+    }
+
+    public boolean preventConstantFolding() {
+        if (isLayeredStaticField) {
+            return getUniverse().hostVM.preventConstantFolding(this);
+        } else {
+            return false;
+        }
+    }
+
     @Override
     public int hashCode() {
         return id;
@@ -228,6 +243,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     public boolean registerAsAccessed(Object reason) {
+        checkGuaranteeFolded();
         getDeclaringClass().registerAsReachable(this);
 
         assert isValidReason(reason) : "Registering a field as accessed needs to provide a valid reason.";
@@ -242,6 +258,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
      * @param reason the reason why this field is read, non-null
      */
     public boolean registerAsRead(Object reason) {
+        checkGuaranteeFolded();
         getDeclaringClass().registerAsReachable(this);
 
         assert isValidReason(reason) : "Registering a field as read needs to provide a valid reason.";
@@ -261,6 +278,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
      * @param reason the reason why this field is written, non-null
      */
     public boolean registerAsWritten(Object reason) {
+        checkGuaranteeFolded();
         getDeclaringClass().registerAsReachable(this);
 
         assert isValidReason(reason) : "Registering a field as written needs to provide a valid reason.";
@@ -275,6 +293,23 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         });
     }
 
+    public void injectDeclaredType() {
+        BigBang bb = getUniverse().getBigbang();
+        if (getStorageKind().isObject()) {
+            bb.injectFieldTypes(this, List.of(this.getType()), true);
+        } else if (bb.trackPrimitiveValues() && getStorageKind().isPrimitive()) {
+            ((PointsToAnalysisField) this).saturatePrimitiveField();
+        }
+    }
+
+    public boolean isGuaranteeFolded() {
+        return getAnnotation(GuaranteeFolded.class) != null;
+    }
+
+    public void checkGuaranteeFolded() {
+        AnalysisError.guarantee(!isGuaranteeFolded(), "A field that is guaranteed to always be folded is seen as accessed: %s. ", this);
+    }
+
     public void registerAsFolded(Object reason) {
         getDeclaringClass().registerAsReachable(this);
 
@@ -286,6 +321,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     public boolean registerAsUnsafeAccessed(Object reason) {
+        checkGuaranteeFolded();
         assert isValidReason(reason) : "Registering a field as unsafe accessed needs to provide a valid reason.";
         registerAsAccessed(reason);
         /*
@@ -308,13 +344,22 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
             registerAsWritten(reason);
 
-            if (isStatic()) {
-                /* Register the static field as unsafe accessed with the analysis universe. */
-                getUniverse().registerUnsafeAccessedStaticField(this);
+            if (getUniverse().analysisPolicy().useConservativeUnsafeAccess()) {
+                /*
+                 * With conservative unsafe access we don't need to track unsafe accessed fields.
+                 * Instead, fields marked as unsafe-accessed are injected all instantiated subtypes
+                 * of their declared type. Moreover, all unsafe loads are pre-saturated.
+                 */
+                injectDeclaredType();
             } else {
-                /* Register the instance field as unsafe accessed on the declaring type. */
-                AnalysisType declaringType = getDeclaringClass();
-                declaringType.registerUnsafeAccessedField(this);
+                if (isStatic()) {
+                    /* Register the static field as unsafe accessed with the analysis universe. */
+                    getUniverse().registerUnsafeAccessedStaticField(this);
+                } else {
+                    /* Register the instance field as unsafe accessed on the declaring type. */
+                    AnalysisType declaringType = getDeclaringClass();
+                    declaringType.registerUnsafeAccessedField(this);
+                }
             }
         });
     }
@@ -383,15 +428,13 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     @Override
     public void onReachable(Object reason) {
-        if (enableTrackAcrossLayers) {
-            AtomicUtils.atomicSet(this, reason, trackAcrossLayersUpdater);
-        }
+        registerAsTrackedAcrossLayers(reason);
         notifyReachabilityCallbacks(declaringClass.getUniverse(), new ArrayList<>());
     }
 
     @Override
-    public boolean isTrackedAcrossLayers() {
-        return AtomicUtils.isSet(this, trackAcrossLayersUpdater);
+    protected void onTrackedAcrossLayers(Object reason) {
+        AnalysisError.guarantee(!getUniverse().sealed(), "Field %s was marked as tracked after the universe was sealed", this);
     }
 
     public Object getFieldValueInterceptor() {
@@ -408,6 +451,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     public void setPosition(int newPosition) {
+        AnalysisError.guarantee(position == -1 || newPosition == position, "Position already set for field %s, old position: %d, new position: %d", this, position, newPosition);
         this.position = newPosition;
     }
 
@@ -473,9 +517,9 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     /**
-     * Ensure that all reachability handler that were present at the time the declaring type was
-     * marked as reachable are executed before accessing field values. This allows field value
-     * transformer to be installed reliably in reachability handler.
+     * Ensure that all reachability handlers that were present at the time the declaring type was
+     * marked as reachable are executed before accessing field values. This allows a field value
+     * transformer to be installed reliably in a reachability handler.
      */
     public void beforeFieldValueAccess() {
         declaringClass.registerAsReachable(this);

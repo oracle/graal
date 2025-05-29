@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,22 +39,24 @@ import java.util.Map;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.allocationprofile.AllocationCounter;
 import com.oracle.svm.core.allocationprofile.AllocationSite;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
+import com.oracle.svm.core.graal.nodes.SubstrateNewDynamicHubNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -72,6 +74,7 @@ import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.api.replacements.Snippet.NonNullParameter;
 import jdk.graal.compiler.api.replacements.Snippet.VarargsParameter;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -79,6 +82,7 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.SnippetAnchorNode;
@@ -138,7 +142,19 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData,
                     @ConstantParameter boolean withException) {
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.unsigned(size), forceSlowPath, fillContents, emitMemoryBarrier, true, profilingData, withException);
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), Word.unsigned(size), forceSlowPath, fillContents, emitMemoryBarrier, true, profilingData, withException);
+        return piCastToSnippetReplaceeStamp(result);
+    }
+
+    @Snippet
+    protected Object allocateInstanceConstantHeader(long objectHeader,
+                    @ConstantParameter long size,
+                    @ConstantParameter boolean forceSlowPath,
+                    @ConstantParameter FillContent fillContents,
+                    @ConstantParameter boolean emitMemoryBarrier,
+                    @ConstantParameter AllocationProfilingData profilingData,
+                    @ConstantParameter boolean withException) {
+        Object result = allocateInstanceImpl(Word.unsigned(objectHeader), Word.unsigned(size), forceSlowPath, fillContents, emitMemoryBarrier, true, profilingData, withException);
         return piCastToSnippetReplaceeStamp(result);
     }
 
@@ -156,6 +172,24 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter AllocationProfilingData profilingData,
                     @ConstantParameter boolean withException) {
         Object result = allocateArrayImpl(encodeAsTLABObjectHeader(hub), length, forceSlowPath, arrayBaseOffset, log2ElementSize, fillContents,
+                        afterArrayLengthOffset(), emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData, withException);
+        return piArrayCastToSnippetReplaceeStamp(result, length);
+    }
+
+    @Snippet
+    public Object allocateArrayConstantHeader(long objectHeader,
+                    int length,
+                    @ConstantParameter boolean forceSlowPath,
+                    @ConstantParameter int arrayBaseOffset,
+                    @ConstantParameter int log2ElementSize,
+                    @ConstantParameter FillContent fillContents,
+                    @ConstantParameter boolean emitMemoryBarrier,
+                    @ConstantParameter boolean maybeUnroll,
+                    @ConstantParameter boolean supportsBulkZeroing,
+                    @ConstantParameter boolean supportsOptimizedFilling,
+                    @ConstantParameter AllocationProfilingData profilingData,
+                    @ConstantParameter boolean withException) {
+        Object result = allocateArrayImpl(Word.unsigned(objectHeader), length, forceSlowPath, arrayBaseOffset, log2ElementSize, fillContents,
                         afterArrayLengthOffset(), emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData, withException);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -225,6 +259,22 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         }
         profileAllocation(profilingData, allocationSize);
         return piArrayCastToSnippetReplaceeStamp(verifyOop(result), arrayLength);
+    }
+
+    @Snippet
+    public Object allocateDynamicHub(int vTableEntries,
+                    @ConstantParameter int vTableBaseOffset,
+                    @ConstantParameter int log2VTableEntrySize,
+                    @ConstantParameter AllocationProfilingData profilingData) {
+        profilingData.snippetCounters.stub.inc();
+
+        // always slow path, because DynamicHubs are allocated into dedicated chunks
+        Object result = callNewDynamicHub(gcAllocationSupport().getNewDynamicHub(), vTableEntries);
+
+        UnsignedWord allocationSize = arrayAllocationSize(vTableEntries, vTableBaseOffset, log2VTableEntrySize);
+        profileAllocation(profilingData, allocationSize);
+
+        return piArrayCastToSnippetReplaceeStamp(verifyOop(result), vTableEntries);
     }
 
     @Snippet
@@ -327,7 +377,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             throw new InstantiationException("Cannot allocate objects of special hybrid types: " + DynamicHub.toClass(hub).getTypeName());
         } else {
             if (hub.canUnsafeInstantiateAsInstanceSlowPath()) {
-                hub.getCompanion().setUnsafeAllocate();
+                hub.setCanUnsafeAllocate();
                 return hub;
             } else {
                 if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
@@ -384,7 +434,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     public Object formatStoredContinuation(Word objectHeader, UnsignedWord allocationSize, int arrayLength, Word memory, boolean emitMemoryBarrier, long ipOffset,
                     AllocationSnippetCounters snippetCounters) {
         Object result = formatArray(objectHeader, allocationSize, arrayLength, memory, FillContent.DO_NOT_FILL, false, false, false, false, snippetCounters);
-        memory.writeWord(WordFactory.unsigned(ipOffset), WordFactory.nullPointer(), LocationIdentity.init());
+        memory.writeWord(Word.unsigned(ipOffset), Word.nullPointer(), LocationIdentity.init());
         emitMemoryBarrierIf(emitMemoryBarrier);
         return result;
     }
@@ -522,6 +572,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     private static native Object callSlowNewStoredContinuation(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int length);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
+    private static native Object callNewDynamicHub(@ConstantNodeParameter ForeignCallDescriptor descriptor, int vTableEntries);
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
     private static native Object callNewMultiArray(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int rank, Word dimensions);
 
     @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)
@@ -529,7 +582,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
     @Override
     public void initializeObjectHeader(Word memory, Word objectHeader, boolean isArrayLike) {
-        Heap.getHeap().getObjectHeader().initializeHeaderOfNewObject(memory, objectHeader, isArrayLike);
+        Heap.getHeap().getObjectHeader().initializeHeaderOfNewObjectInit(memory, objectHeader, isArrayLike);
     }
 
     @Override
@@ -581,7 +634,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         private final AllocationProfilingData profilingData;
 
         private final SnippetInfo allocateInstance;
+        private final SnippetInfo allocateInstanceConstantHeader;
         private final SnippetInfo allocateArray;
+        private final SnippetInfo allocateArrayConstantHeader;
         private final SnippetInfo newmultiarray;
 
         private final SnippetInfo allocateArrayDynamic;
@@ -591,6 +646,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
         private final SnippetInfo allocateStoredContinuation;
         private final SnippetInfo allocatePod;
+        private final SnippetInfo allocateDynamicHub;
 
         @SuppressWarnings("this-escape")
         public Templates(OptionValues options, Providers providers, SubstrateAllocationSnippets receiver) {
@@ -604,9 +660,21 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                             null,
                             receiver,
                             ALLOCATION_LOCATIONS);
+            allocateInstanceConstantHeader = snippet(providers,
+                            SubstrateAllocationSnippets.class,
+                            "allocateInstanceConstantHeader",
+                            null,
+                            receiver,
+                            ALLOCATION_LOCATIONS);
             allocateArray = snippet(providers,
                             SubstrateAllocationSnippets.class,
                             "allocateArray",
+                            null,
+                            receiver,
+                            ALLOCATION_LOCATIONS);
+            allocateArrayConstantHeader = snippet(providers,
+                            SubstrateAllocationSnippets.class,
+                            "allocateArrayConstantHeader",
                             null,
                             receiver,
                             ALLOCATION_LOCATIONS);
@@ -659,16 +727,27 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                                 podLocations);
             }
             allocatePod = allocatePodSnippet;
+
+            SnippetInfo allocateDynamicHubSnippet = null;
+            if (RuntimeClassLoading.isSupported()) {
+                allocateDynamicHubSnippet = snippet(providers,
+                                SubstrateAllocationSnippets.class,
+                                "allocateDynamicHub",
+                                null,
+                                receiver,
+                                ALLOCATION_LOCATIONS);
+            }
+            allocateDynamicHub = allocateDynamicHubSnippet;
         }
 
         public void registerLowering(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
             lowerings.put(NewInstanceNode.class, new NewInstanceLowering());
-            lowerings.put(NewInstanceWithExceptionNode.class, new NewInstanceWithExceptionLowering());
+            lowerings.put(NewInstanceWithExceptionNode.class, new NewInstanceLowering());
 
             lowerings.put(SubstrateNewHybridInstanceNode.class, new NewHybridInstanceLowering());
 
             lowerings.put(NewArrayNode.class, new NewArrayLowering());
-            lowerings.put(NewArrayWithExceptionNode.class, new NewArrayWithExceptionLowering());
+            lowerings.put(NewArrayWithExceptionNode.class, new NewArrayLowering());
 
             lowerings.put(DynamicNewInstanceNode.class, new DynamicNewInstanceLowering());
             lowerings.put(DynamicNewInstanceWithExceptionNode.class, new DynamicNewInstanceWithExceptionLowering());
@@ -686,6 +765,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
             if (Pod.RuntimeSupport.isPresent()) {
                 lowerings.put(NewPodInstanceNode.class, new NewPodInstanceLowering());
+            }
+            if (RuntimeClassLoading.isSupported()) {
+                lowerings.put(SubstrateNewDynamicHubNode.class, new NewDynamicHubLowering());
             }
         }
 
@@ -725,60 +807,58 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             return GraalOptions.ReduceCodeSize.getValue(graph.getOptions());
         }
 
-        private class NewInstanceLowering implements NodeLoweringProvider<NewInstanceNode> {
+        private final class NewInstanceLowering implements NodeLoweringProvider<FixedNode> {
             @Override
-            public void lower(NewInstanceNode node, LoweringTool tool) {
+            public void lower(FixedNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
                 if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
 
-                SharedType type = (SharedType) node.instanceClass();
-                DynamicHub hub = ensureMarkedAsInstantiated(type.getHub());
-
-                ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
-                long size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding()).rawValue();
-
-                Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
-                args.add("hub", hubConstant);
-                args.addConst("size", size);
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
-                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("profilingData", getProfilingData(node, type));
-                args.addConst("withException", false);
-
-                template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
-            }
-        }
-
-        private class NewInstanceWithExceptionLowering implements NodeLoweringProvider<NewInstanceWithExceptionNode> {
-            @Override
-            public void lower(NewInstanceWithExceptionNode node, LoweringTool tool) {
-                StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
-                    return;
+                SharedType type;
+                boolean fillContents;
+                boolean emitMemoryBarrier;
+                boolean withException;
+                if (node instanceof NewInstanceNode n) {
+                    type = (SharedType) n.instanceClass();
+                    fillContents = n.fillContents();
+                    emitMemoryBarrier = n.emitMemoryBarrier();
+                    withException = false;
+                } else if (node instanceof NewInstanceWithExceptionNode n) {
+                    type = (SharedType) n.instanceClass();
+                    fillContents = n.fillContents();
+                    emitMemoryBarrier = n.emitMemoryBarrier();
+                    withException = true;
+                } else {
+                    throw VMError.shouldNotReachHereUnexpectedInput(node);
                 }
-                SharedType type = (SharedType) node.instanceClass();
+
                 DynamicHub hub = ensureMarkedAsInstantiated(type.getHub());
-
-                ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
                 long size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding()).rawValue();
+                Arguments args;
 
-                Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
-                args.add("hub", hubConstant);
-                args.addConst("size", size);
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("fillContents", FillContent.fromBoolean(true));
-                args.addConst("emitMemoryBarrier", true);
-                args.addConst("profilingData", getProfilingData(node, type));
-                args.addConst("withException", true);
+                ValueNode objectHeaderConstant = snippetReflection.forTLABObjectHeader(hub, graph);
+                if (objectHeaderConstant != null) {
+                    args = new Arguments(allocateInstanceConstantHeader, graph.getGuardsStage(), tool.getLoweringStage());
+                    args.add("objectHeader", objectHeaderConstant);
+                } else {
+                    ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
+                    args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
+                    args.add("hub", hubConstant);
+                }
+
+                args.add("size", size);
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("fillContents", FillContent.fromBoolean(fillContents));
+                args.add("emitMemoryBarrier", emitMemoryBarrier);
+                args.add("profilingData", getProfilingData(node, type));
+                args.add("withException", withException);
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
             }
         }
 
-        private class NewHybridInstanceLowering implements NodeLoweringProvider<SubstrateNewHybridInstanceNode> {
+        private final class NewHybridInstanceLowering implements NodeLoweringProvider<SubstrateNewHybridInstanceNode> {
             @Override
             public void lower(SubstrateNewHybridInstanceNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -800,22 +880,22 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("arrayBaseOffset", arrayBaseOffset);
-                args.addConst("log2ElementSize", log2ElementSize);
-                args.addConst("fillContents", FillContent.fromBoolean(fillContents));
-                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("maybeUnroll", length.isConstant());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("profilingData", getProfilingData(node, instanceClass));
-                args.addConst("withException", false);
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("arrayBaseOffset", arrayBaseOffset);
+                args.add("log2ElementSize", log2ElementSize);
+                args.add("fillContents", FillContent.fromBoolean(fillContents));
+                args.add("emitMemoryBarrier", node.emitMemoryBarrier());
+                args.add("maybeUnroll", length.isConstant());
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("profilingData", getProfilingData(node, instanceClass));
+                args.add("withException", false);
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
-        private class NewStoredContinuationLowering implements NodeLoweringProvider<NewStoredContinuationNode> {
+        private final class NewStoredContinuationLowering implements NodeLoweringProvider<NewStoredContinuationNode> {
             @Override
             public void lower(NewStoredContinuationNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -835,87 +915,79 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateStoredContinuation, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("arrayBaseOffset", arrayBaseOffset);
-                args.addConst("log2ElementSize", log2ElementSize);
-                args.addConst("ipOffset", ContinuationSupport.singleton().getIPOffset());
-                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("profilingData", getProfilingData(node, instanceClass));
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("arrayBaseOffset", arrayBaseOffset);
+                args.add("log2ElementSize", log2ElementSize);
+                args.add("ipOffset", ContinuationSupport.singleton().getIPOffset());
+                args.add("emitMemoryBarrier", node.emitMemoryBarrier());
+                args.add("profilingData", getProfilingData(node, instanceClass));
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
-        private class NewArrayLowering implements NodeLoweringProvider<NewArrayNode> {
+        private final class NewArrayLowering implements NodeLoweringProvider<FixedNode> {
             @Override
-            public void lower(NewArrayNode node, LoweringTool tool) {
+            public void lower(FixedNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
                 if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
 
-                ValueNode length = node.length();
-                SharedType type = (SharedType) node.elementType().getArrayClass();
-                DynamicHub hub = ensureMarkedAsInstantiated(type.getHub());
-                int layoutEncoding = hub.getLayoutEncoding();
-                int arrayBaseOffset = getArrayBaseOffset(layoutEncoding);
-                int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
-                ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
-
-                Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
-                args.add("hub", hubConstant);
-                args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("arrayBaseOffset", arrayBaseOffset);
-                args.addConst("log2ElementSize", log2ElementSize);
-                args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
-                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("maybeUnroll", length.isConstant());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("profilingData", getProfilingData(node, type));
-                args.addConst("withException", false);
-
-                template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
-            }
-        }
-
-        private class NewArrayWithExceptionLowering implements NodeLoweringProvider<NewArrayWithExceptionNode> {
-            @Override
-            public void lower(NewArrayWithExceptionNode node, LoweringTool tool) {
-                StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
-                    return;
+                ValueNode length;
+                SharedType type;
+                boolean fillContents;
+                boolean emitMemoryBarrier;
+                boolean withException;
+                if (node instanceof NewArrayNode n) {
+                    length = n.length();
+                    type = (SharedType) n.elementType().getArrayClass();
+                    fillContents = n.fillContents();
+                    emitMemoryBarrier = n.emitMemoryBarrier();
+                    withException = false;
+                } else if (node instanceof NewArrayWithExceptionNode n) {
+                    length = n.length();
+                    type = (SharedType) n.elementType().getArrayClass();
+                    fillContents = n.fillContents();
+                    emitMemoryBarrier = n.emitMemoryBarrier();
+                    withException = true;
+                } else {
+                    throw VMError.shouldNotReachHereUnexpectedInput(node);
                 }
-                // lowered with exception path early on
 
-                ValueNode length = node.length();
-                SharedType type = (SharedType) node.elementType().getArrayClass();
                 DynamicHub hub = ensureMarkedAsInstantiated(type.getHub());
                 int layoutEncoding = hub.getLayoutEncoding();
                 int arrayBaseOffset = getArrayBaseOffset(layoutEncoding);
                 int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
-                ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
+                Arguments args;
 
-                Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
-                args.add("hub", hubConstant);
+                ValueNode objectHeaderConstant = snippetReflection.forTLABObjectHeader(hub, graph);
+                if (objectHeaderConstant != null) {
+                    args = new Arguments(allocateArrayConstantHeader, graph.getGuardsStage(), tool.getLoweringStage());
+                    args.add("objectHeader", objectHeaderConstant);
+                } else {
+                    ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
+                    args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
+                    args.add("hub", hubConstant);
+                }
+
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("arrayBaseOffset", arrayBaseOffset);
-                args.addConst("log2ElementSize", log2ElementSize);
-                args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
-                args.addConst("emitMemoryBarrier", true);
-                args.addConst("maybeUnroll", length.isConstant());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("profilingData", getProfilingData(node, type));
-                args.addConst("withException", true);
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("arrayBaseOffset", arrayBaseOffset);
+                args.add("log2ElementSize", log2ElementSize);
+                args.add("fillContents", FillContent.fromBoolean(fillContents));
+                args.add("emitMemoryBarrier", emitMemoryBarrier);
+                args.add("maybeUnroll", length.isConstant());
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("profilingData", getProfilingData(node, type));
+                args.add("withException", withException);
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
-        private class NewMultiArrayLowering implements NodeLoweringProvider<NewMultiArrayNode> {
+        private final class NewMultiArrayLowering implements NodeLoweringProvider<NewMultiArrayNode> {
             @Override
             public void lower(NewMultiArrayNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -934,15 +1006,15 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 Arguments args = new Arguments(newmultiarray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
-                args.addConst("rank", rank);
-                args.addConst("withException", false);
+                args.add("rank", rank);
+                args.add("withException", false);
                 args.addVarargs("dimensions", int.class, StampFactory.forKind(JavaKind.Int), dims);
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
-        private class NewMultiArrayWithExceptionLowering implements NodeLoweringProvider<NewMultiArrayWithExceptionNode> {
+        private final class NewMultiArrayWithExceptionLowering implements NodeLoweringProvider<NewMultiArrayWithExceptionNode> {
             @Override
             public void lower(NewMultiArrayWithExceptionNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -961,15 +1033,15 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 Arguments args = new Arguments(newmultiarray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
-                args.addConst("rank", rank);
-                args.addConst("withException", true);
+                args.add("rank", rank);
+                args.add("withException", true);
                 args.addVarargs("dimensions", int.class, StampFactory.forKind(JavaKind.Int), dims);
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
-        private class DynamicNewInstanceLowering implements NodeLoweringProvider<DynamicNewInstanceNode> {
+        private final class DynamicNewInstanceLowering implements NodeLoweringProvider<DynamicNewInstanceNode> {
             @Override
             public void lower(DynamicNewInstanceNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -979,19 +1051,19 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 Arguments args = new Arguments(allocateInstanceDynamic, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", node.getInstanceType());
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
-                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("profilingData", getProfilingData(node, null));
-                args.addConst("withException", false);
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
+                args.add("emitMemoryBarrier", node.emitMemoryBarrier());
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("profilingData", getProfilingData(node, null));
+                args.add("withException", false);
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
-        private class DynamicNewInstanceWithExceptionLowering implements NodeLoweringProvider<DynamicNewInstanceWithExceptionNode> {
+        private final class DynamicNewInstanceWithExceptionLowering implements NodeLoweringProvider<DynamicNewInstanceWithExceptionNode> {
             @Override
             public void lower(DynamicNewInstanceWithExceptionNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -1001,19 +1073,19 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 Arguments args = new Arguments(allocateInstanceDynamic, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", node.getInstanceType());
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("fillContents", FillContent.fromBoolean(true));
-                args.addConst("emitMemoryBarrier", true/* barriers */);
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("profilingData", getProfilingData(node, null));
-                args.addConst("withException", true);
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("fillContents", FillContent.fromBoolean(true));
+                args.add("emitMemoryBarrier", true/* barriers */);
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("profilingData", getProfilingData(node, null));
+                args.add("withException", true);
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
-        private class DynamicNewArrayLowering implements NodeLoweringProvider<DynamicNewArrayNode> {
+        private final class DynamicNewArrayLowering implements NodeLoweringProvider<DynamicNewArrayNode> {
             @Override
             public void lower(DynamicNewArrayNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -1024,19 +1096,19 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateArrayDynamic, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("elementType", node.getElementType());
                 args.add("length", node.length());
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
-                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("withException", false);
-                args.addConst("profilingData", getProfilingData(node, null));
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
+                args.add("emitMemoryBarrier", node.emitMemoryBarrier());
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("withException", false);
+                args.add("profilingData", getProfilingData(node, null));
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
-        private class DynamicNewArrayWithExceptionLowering implements NodeLoweringProvider<DynamicNewArrayWithExceptionNode> {
+        private final class DynamicNewArrayWithExceptionLowering implements NodeLoweringProvider<DynamicNewArrayWithExceptionNode> {
             @Override
             public void lower(DynamicNewArrayWithExceptionNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -1047,19 +1119,19 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateArrayDynamic, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("elementType", node.getElementType());
                 args.add("length", node.length());
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("fillContents", FillContent.fromBoolean(true));
-                args.addConst("emitMemoryBarrier", true/* barriers */);
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("withException", true);
-                args.addConst("profilingData", getProfilingData(node, null));
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("fillContents", FillContent.fromBoolean(true));
+                args.add("emitMemoryBarrier", true/* barriers */);
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("withException", true);
+                args.add("profilingData", getProfilingData(node, null));
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
-        private class ValidateNewInstanceClassLowering implements NodeLoweringProvider<ValidateNewInstanceClassNode> {
+        private final class ValidateNewInstanceClassLowering implements NodeLoweringProvider<ValidateNewInstanceClassNode> {
             @Override
             public void lower(ValidateNewInstanceClassNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -1071,7 +1143,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
         }
 
-        private class NewPodInstanceLowering implements NodeLoweringProvider<NewPodInstanceNode> {
+        private final class NewPodInstanceLowering implements NodeLoweringProvider<NewPodInstanceNode> {
             @Override
             public void lower(NewPodInstanceNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -1086,13 +1158,46 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocatePod, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", node.getHub());
                 args.add("arrayLength", node.getArrayLength());
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
                 args.add("referenceMap", node.getReferenceMap());
-                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("maybeUnroll", node.getArrayLength().isConstant());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("profilingData", getProfilingData(node, node.getKnownInstanceType()));
+                args.add("emitMemoryBarrier", node.emitMemoryBarrier());
+                args.add("maybeUnroll", node.getArrayLength().isConstant());
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("profilingData", getProfilingData(node, node.getKnownInstanceType()));
+
+                template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            }
+        }
+
+        private final class NewDynamicHubLowering implements NodeLoweringProvider<SubstrateNewDynamicHubNode> {
+            @Override
+            public void lower(SubstrateNewDynamicHubNode node, LoweringTool tool) {
+                StructuredGraph graph = node.graph();
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
+                    return;
+                }
+
+                assert node.getVTableEntries() != null;
+                assert node.fillContents() : "fillContents must be true for DynamicHub allocations";
+
+                ValueNode vTableEntries = node.getVTableEntries();
+                SharedType type = (SharedType) tool.getMetaAccess().lookupJavaType(Class.class);
+                DynamicHub hubOfDynamicHub = type.getHub();
+
+                int layoutEncoding = hubOfDynamicHub.getLayoutEncoding();
+
+                int vTableBaseOffset = getArrayBaseOffset(layoutEncoding);
+                assert vTableBaseOffset == KnownOffsets.singleton().getVTableBaseOffset();
+
+                int log2VTableEntrySize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
+                assert log2VTableEntrySize == NumUtil.unsignedLog2(KnownOffsets.singleton().getVTableEntrySize());
+
+                Arguments args = new Arguments(allocateDynamicHub, graph.getGuardsStage(), tool.getLoweringStage());
+                args.add("vTableEntries", vTableEntries);
+                args.add("vTableBaseOffset", vTableBaseOffset);
+                args.add("log2VTableEntrySize", log2VTableEntrySize);
+                args.add("profilingData", getProfilingData(node, type));
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }

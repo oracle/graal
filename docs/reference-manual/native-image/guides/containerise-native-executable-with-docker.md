@@ -20,7 +20,7 @@ You will use a GraalVM container image with Native Image to compile a Java appli
 
 ## Download a Sample Application
 
-This guide uses the [Spring Boot 3 Native Image Microservice example](https://github.com/graalvm/graalvm-demos/blob/master/spring-native-image/README.md). 
+This guide uses the [Spring Boot 3 Native Image Microservice example](https://github.com/graalvm/graalvm-demos/tree/master/native-image/spring-boot-microservice-jibber/src/main/java/com/example/benchmarks/jibber).
 The example is a minimal REST-based API application, built on top of Spring Boot 3.
 If you call the HTTP endpoint `/jibber`, it will return some nonsense verse generated in the style of the Jabberwocky poem, by Lewis Carroll. 
 
@@ -33,12 +33,12 @@ For other installation options, visit the [Downloads section](https://www.graalv
 
 2. Clone the GraalVM Demos repository:
     ```shell
-    git clone https://github.com/graalvm/graalvm-demos
+    git clone https://github.com/graalvm/graalvm-demos.git
     ```
     
-3. Change directory to _spring-native-image/_:
+3. Navigate to the demo directory:
     ```shell
-    cd spring-native-image
+    cd graalvm-demos/native-image/spring-boot-microservice-jibber
     ```
 
 ## Build and Run as a Native Executable
@@ -71,9 +71,9 @@ With the built-in support for GraalVM Native Image in Spring Boot 3, it has beco
 
 The generated native executable is platform-dependent.
 
-1. Containerize the native executable using the following command:
+1. Containerize the native executable using the following commands.
 
-    - On Linux, containerize the native executable generated in the previous step using the following command:
+    - On Linux, containerize the native executable generated in the previous step:
         ```shell
         docker build -f Dockerfiles/Dockerfile.native --build-arg APP_FILE=benchmark-jibber -t jibber-benchmark:native.0.0.1-SNAPSHOT .
         ```
@@ -109,10 +109,10 @@ The generated native executable is platform-dependent.
 
 In this guide, you saw how to use GraalVM container images to containerize a native executable for your Java application.
 
-With GraalVM Native Image you can build a statically linked native executable by packaging the native executable directly into tiny containers such as scratch or distroless images. 
+With GraalVM Native Image you can also [build fully static native executables](build-static-and-mostly-static-executable.md) and package them directly into tiny containers such as scratch or distroless containers.
 
 ### Related Documentation
 
-* [Build a Static or Mostly-Static Native Executable](build-static-and-mostly-static-executable.md)
-* <a href="https://docs.oracle.com/en/graalvm/jdk/17/docs/getting-started/container-images/" target="_blank">Oracle GraalVM Container Images</a>
+* [Build a Native Executable from a Spring Boot Application](build-spring-boot-application-aot.md)
+* <a href="https://docs.oracle.com/en/graalvm/jdk/23/docs/getting-started/container-images/" target="_blank">Oracle GraalVM Container Images</a>
 * <a href="https://luna.oracle.com/lab/fdfd090d-e52c-4481-a8de-dccecdca7d68" target="_blank">Hands-on Lab: GraalVM Native Image, Spring and Containerisation</a>

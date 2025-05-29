@@ -172,6 +172,10 @@ public class CodeTreeBuilder {
         return createBuilder().type(s).build();
     }
 
+    public static CodeTree singleVariable(VariableElement s) {
+        return createBuilder().variable(s).build();
+    }
+
     private CodeTreeBuilder push(CodeTreeKind kind) {
         return push(new BuilderCodeTree(currentElement, kind, null, null), kind == NEW_LINE);
     }
@@ -261,6 +265,10 @@ public class CodeTreeBuilder {
 
     public CodeTreeBuilder startCall(String callSite) {
         return startCall((CodeTree) null, callSite);
+    }
+
+    public CodeTreeBuilder startCall(VariableElement receiver, String callSite) {
+        return startCall(receiver.getSimpleName().toString(), callSite);
     }
 
     public CodeTreeBuilder startCall(String receiver, ExecutableElement method) {
@@ -486,6 +494,14 @@ public class CodeTreeBuilder {
         return startGroup().string(" else if ").startParanthesesCommaGroup().endAndWhitespaceAfter().startGroup().endAfter();
     }
 
+    public CodeTreeBuilder startElseBlock(boolean elseIf) {
+        if (elseIf) {
+            return startElseBlock();
+        } else {
+            return startGroup();
+        }
+    }
+
     public CodeTreeBuilder startElseBlock() {
         clearLast(CodeTreeKind.NEW_LINE);
         return startGroup().string(" else ").startBlock().endAfter();
@@ -576,12 +592,37 @@ public class CodeTreeBuilder {
         return string("// ").string(text).newLine();
     }
 
-    public CodeTreeBuilder startNew(TypeMirror uninializedNodeClass) {
-        return startGroup().string("new ").type(uninializedNodeClass).startParanthesesCommaGroup().endAfter();
+    public CodeTreeBuilder lineCommentf(String text, Object... args) {
+        return lineComment(String.format(text, args));
+    }
+
+    public CodeTreeBuilder startComment() {
+        string("/*");
+        startGroup();
+        registerCallBack(new EndCallback() {
+
+            public void beforeEnd() {
+                string("*/");
+
+            }
+
+            public void afterEnd() {
+            }
+        });
+
+        return this;
+    }
+
+    public CodeTreeBuilder startNew(TypeMirror uninitializedNodeClass) {
+        return startGroup().string("new ").type(uninitializedNodeClass).startParanthesesCommaGroup().endAfter();
     }
 
     public CodeTreeBuilder startNew(String typeName) {
         return startGroup().string("new ").string(typeName).startParanthesesCommaGroup().endAfter();
+    }
+
+    public CodeTreeBuilder startNew(CodeTree typeTree) {
+        return startGroup().string("new ").tree(typeTree).startParanthesesCommaGroup().endAfter();
     }
 
     public CodeTreeBuilder startIndention() {
@@ -662,6 +703,23 @@ public class CodeTreeBuilder {
 
     public CodeTreeBuilder declaration(TypeMirror type, String name, String init) {
         return declaration(type, name, singleString(init));
+    }
+
+    public CodeTreeBuilder startDeclaration(TypeMirror type, String name) {
+        if (ElementUtils.isVoid(type)) {
+            startStatement();
+        } else {
+            startStatement();
+            type(type);
+            string(" ");
+            string(name);
+            string(" = ");
+        }
+        return this;
+    }
+
+    public CodeTreeBuilder declaration(TypeMirror type, String name) {
+        return declaration(type, name, (CodeTree) null);
     }
 
     public CodeTreeBuilder declarationDefault(TypeMirror type, String name) {
@@ -769,6 +827,10 @@ public class CodeTreeBuilder {
         return this;
     }
 
+    public CodeTreeBuilder cast(TypeMirror type, String content) {
+        return cast(type, CodeTreeBuilder.singleString(content));
+    }
+
     public CodeTreeBuilder cast(TypeMirror type, CodeTree content) {
         if (ElementUtils.isVoid(type)) {
             tree(content);
@@ -807,6 +869,14 @@ public class CodeTreeBuilder {
 
     public CodeTreeBuilder instanceOf(CodeTree var, TypeMirror type) {
         return tree(var).string(" instanceof ").type(type);
+    }
+
+    public CodeTreeBuilder instanceOf(String var, TypeMirror type) {
+        return string(var).string(" instanceof ").type(type);
+    }
+
+    public CodeTreeBuilder instanceOf(String var, TypeMirror type, String binding) {
+        return string(var).string(" instanceof ").type(type).string(" " + binding);
     }
 
     public CodeTreeBuilder instanceOf(TypeMirror type) {
@@ -957,6 +1027,7 @@ public class CodeTreeBuilder {
                     }
                     break;
                 case TYPE:
+                case TYPE_LITERAL:
                     write(ElementUtils.getSimpleName(e.getType()));
                     break;
                 case STATIC_METHOD_REFERENCE:
@@ -1011,6 +1082,25 @@ public class CodeTreeBuilder {
         return startStatement().field(receiver, field).string(" = ");
     }
 
+    public CodeTreeBuilder startAssign(String variableName) {
+        return startStatement().string(variableName).string(" = ");
+    }
+
+    public CodeTreeBuilder startAssign(VariableElement variable) {
+        return startAssign(variable.getSimpleName().toString());
+    }
+
+    public CodeTreeBuilder variable(VariableElement variable) {
+        return string(variable.getSimpleName().toString());
+    }
+
+    public CodeTreeBuilder variables(List<? extends VariableElement> variables) {
+        for (VariableElement variable : variables) {
+            variable(variable);
+        }
+        return this;
+    }
+
     public CodeTreeBuilder field(String receiver, VariableElement field) {
         if (receiver == null && field.getModifiers().contains(Modifier.STATIC)) {
             return staticReference(field);
@@ -1024,6 +1114,13 @@ public class CodeTreeBuilder {
             return string("(byte) ", String.valueOf(index));
         }
         return null;
+    }
+
+    public CodeTreeBuilder lines(List<String> lines) {
+        for (String line : lines) {
+            string(line).newLine();
+        }
+        return this;
     }
 
 }

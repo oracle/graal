@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
@@ -32,6 +33,7 @@ import java.lang.reflect.Modifier;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -39,7 +41,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Policy used to determine which classes, methods and fields need to be included in the image when
- * the {@code IncludeAllFromPath} and/or {@code IncludeAllFromModule} options are specified
+ * {@code LayerCreate} sub-options {@code module}, {@code package} or {@code path} are specified
  * depending on the configuration.
  */
 public abstract class ClassInclusionPolicy {
@@ -54,12 +56,28 @@ public abstract class ClassInclusionPolicy {
         this.bb = bb;
     }
 
+    public static boolean isClassIncludedBase(Class<?> cls) {
+        if (Feature.class.isAssignableFrom(cls)) {
+            return false;
+        }
+
+        if (AnnotationAccess.isAnnotationPresent(cls, TargetClass.class)) {
+            return false;
+        }
+        try {
+            Class<?> enclosingClass = cls.getEnclosingClass();
+            return enclosingClass == null || isClassIncludedBase(enclosingClass);
+        } catch (LinkageError e) {
+            return true;
+        }
+    }
+
     /**
      * Determine if the given class needs to be included in the image according to the policy.
      */
     public boolean isClassIncluded(Class<?> cls) {
         Class<?> enclosingClass = cls.getEnclosingClass();
-        return !Feature.class.isAssignableFrom(cls) && !AnnotationAccess.isAnnotationPresent(cls, TargetClass.class) && (enclosingClass == null || isClassIncluded(enclosingClass));
+        return isClassIncludedBase(cls) && (enclosingClass == null || isClassIncluded(enclosingClass));
     }
 
     /**
@@ -82,6 +100,16 @@ public abstract class ClassInclusionPolicy {
      * Determine if the given field needs to be included in the image according to the policy.
      */
     public boolean isFieldIncluded(Field field) {
+        if (!bb.getHostVM().platformSupported(field)) {
+            return false;
+        }
+        return bb.getHostVM().isFieldIncluded(bb, field);
+    }
+
+    /**
+     * Determine if the given field needs to be included in the image according to the policy.
+     */
+    public boolean isFieldIncluded(AnalysisField field) {
         if (!bb.getHostVM().platformSupported(field)) {
             return false;
         }
@@ -118,6 +146,13 @@ public abstract class ClassInclusionPolicy {
      * Includes the given field in the image.
      */
     public void includeField(Field field) {
+        bb.postTask(debug -> bb.addRootField(field));
+    }
+
+    /**
+     * Includes the given field in the image.
+     */
+    public void includeField(AnalysisField field) {
         bb.postTask(debug -> bb.addRootField(field));
     }
 
@@ -163,7 +198,7 @@ public abstract class ClassInclusionPolicy {
                 Class<?> declaringClass = method.getDeclaringClass();
                 AnalysisMethod analysisMethod = bb.getMetaAccess().lookupJavaMethod(method);
                 registerMethod(method.getModifiers(), declaringClass, analysisMethod);
-                bb.forcedAddRootMethod(analysisMethod, false, reason);
+                bb.forcedAddRootMethod(analysisMethod, analysisMethod.isConstructor(), reason);
             });
         }
 
@@ -172,7 +207,7 @@ public abstract class ClassInclusionPolicy {
             bb.postTask(debug -> {
                 Class<?> declaringClass = method.getDeclaringClass().getJavaClass();
                 registerMethod(method.getModifiers(), declaringClass, method);
-                bb.forcedAddRootMethod(method, false, reason);
+                bb.forcedAddRootMethod(method, method.isConstructor(), reason);
             });
         }
 
@@ -203,12 +238,12 @@ public abstract class ClassInclusionPolicy {
 
         @Override
         public void includeMethod(Executable method) {
-            bb.postTask(debug -> bb.addRootMethod(method, false, reason));
+            bb.postTask(debug -> bb.addRootMethod(method, method instanceof Constructor<?>, reason));
         }
 
         @Override
         public void includeMethod(AnalysisMethod method) {
-            bb.postTask(debug -> bb.addRootMethod(method, false, reason));
+            bb.postTask(debug -> bb.addRootMethod(method, method.isConstructor(), reason));
         }
     }
 

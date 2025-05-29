@@ -25,6 +25,7 @@
 package com.oracle.svm.core.foreign;
 
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
 import static jdk.vm.ci.amd64.AMD64.rax;
 
 import java.lang.foreign.FunctionDescriptor;
@@ -32,6 +33,7 @@ import java.lang.foreign.Linker;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodType;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -39,24 +41,33 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.foreign.AbiUtils.Adapter.Adaptation;
 import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.util.BasedOnJDKClass;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.asm.Label;
+import jdk.graal.compiler.asm.aarch64.AArch64Address;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
@@ -72,9 +83,11 @@ import jdk.internal.foreign.abi.Binding;
 import jdk.internal.foreign.abi.CallingSequence;
 import jdk.internal.foreign.abi.LinkerOptions;
 import jdk.internal.foreign.abi.NativeEntryPoint;
+import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.foreign.abi.VMStorage;
+import jdk.internal.foreign.abi.aarch64.AArch64Architecture;
 import jdk.internal.foreign.abi.x64.X86_64Architecture;
-import jdk.internal.foreign.abi.x64.sysv.CallArranger;
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
@@ -123,10 +136,10 @@ public abstract class AbiUtils {
         }
 
         public static Result.FullNativeAdaptation adaptToNative(AbiUtils self, List<Adaptation> adaptations, List<ValueNode> originalArguments, NativeEntryPointInfo nep) {
-            originalArguments = Collections.unmodifiableList(originalArguments);
+            List<ValueNode> originalUnmodifiableArguments = Collections.unmodifiableList(originalArguments);
 
             AssignedLocation[] originalAssignment = self.toMemoryAssignment(nep.parametersAssignment(), false);
-            VMError.guarantee(allEqual(adaptations.size(), originalArguments.size(), nep.methodType().parameterCount(), originalAssignment.length));
+            VMError.guarantee(allEqual(adaptations.size(), originalUnmodifiableArguments.size(), nep.methodType().parameterCount(), originalAssignment.length));
 
             Map<Extracted, ValueNode> extractedArguments = new EnumMap<>(Extracted.class);
             List<ValueNode> arguments = new ArrayList<>();
@@ -141,7 +154,7 @@ public abstract class AbiUtils {
                     adaptation = NOOP;
                 }
 
-                arguments.addAll(adaptation.apply(originalArguments.get(i), extractedArguments, originalArguments, i, nodesToAppendToGraph::add));
+                arguments.addAll(adaptation.apply(originalUnmodifiableArguments.get(i), extractedArguments, originalUnmodifiableArguments, i, nodesToAppendToGraph::add));
                 assignment.addAll(adaptation.apply(originalAssignment[i]));
                 argumentTypes.addAll(adaptation.apply(nep.methodType().parameterType(i)));
 
@@ -230,11 +243,15 @@ public abstract class AbiUtils {
         }
 
         public static Adaptation extract(Extracted as, Class<?> type) {
-            return new Extract(Objects.requireNonNull(as), Objects.requireNonNull(type));
+            return new ExtractSingle(as, type);
+        }
+
+        public static Adaptation extractSegmentPair(Extracted as) {
+            return new ExtractSegmentPair(as);
         }
 
         public static Adaptation drop() {
-            return Extract.DROP;
+            return Drop.SINGLETON;
         }
 
         public static Adaptation reinterpret(JavaKind to) {
@@ -307,9 +324,9 @@ public abstract class AbiUtils {
          * (segments allocated using an Arena), and these have a method `unsafeGetOffset` which
          * straightforwardly returns the raw pointer. <br>
          * However, when `allowHeapAccess` is true (the argument to Linker.Option.critical), one may
-         * pass a {@link HeapMemorySegmentImpl} as well. For reasons detailed in its documentation,
-         * heap segments are represented as an Object + offset pair, where the raw pointer should be
-         * derived from their sum. <br>
+         * pass a {@link jdk.internal.foreign.HeapMemorySegmentImpl} as well. For reasons detailed
+         * in its documentation, heap segments are represented as an Object + offset pair, where the
+         * raw pointer should be derived from their sum. <br>
          * Hence, when `allowHeapAccess` is true,
          * {@link CallArranger.UnboxBindingCalculator#getBindings(Class, MemoryLayout)} passes two
          * arguments for every AddressLayout, the result of `unsafeGetBase` (of type Object) and
@@ -323,6 +340,7 @@ public abstract class AbiUtils {
          * {@code null} is when Linker.Option.critical(true) is passed. See
          * {@link CallArranger.UnboxBindingCalculator#getBindings(Class, MemoryLayout)}.
          */
+        @SuppressWarnings("javadoc")
         private static final class ComputeAddressFromSegmentPair extends Adaptation {
             private static final ComputeAddressFromSegmentPair SINGLETON = new ComputeAddressFromSegmentPair();
 
@@ -342,29 +360,70 @@ public abstract class AbiUtils {
             @Override
             public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex,
                             Consumer<Node> appendToGraph) {
+                return List.of(computeAbsolutePointerFromSegmentPair(parameter, originalArguments, originalArgumentIndex, appendToGraph));
+            }
+
+            static ValueNode computeAbsolutePointerFromSegmentPair(ValueNode parameter, List<ValueNode> originalArguments, int originalArgumentIndex, Consumer<Node> appendToGraph) {
                 var offsetArg = originalArguments.get(originalArgumentIndex + 1);
 
-                // I originally wanted to use an OffsetAddressNode here
-                // (followed by WordCastNode.addressToWord),
-                // but NativeMemorySegmentImpls return null for `unsafeGetBase`,
-                // which seems to break the graph somewhere later.
+                /*
+                 * It would be most suitable to use OffsetAddressNode here (followed by
+                 * WordCastNode.addressToWord) but NativeMemorySegmentImpls return null for
+                 * `unsafeGetBase`,which seems to break the graph somewhere later.
+                 */
                 var basePointer = WordCastNode.objectToUntrackedPointer(parameter, ConfigurationValues.getWordKind());
                 appendToGraph.accept(basePointer);
                 var absolutePointer = AddNode.add(basePointer, offsetArg);
                 appendToGraph.accept(absolutePointer);
 
-                return List.of(absolutePointer);
+                return absolutePointer;
             }
         }
 
-        private static final class Extract extends Adaptation {
-            private static final Extract DROP = new Extract(null, null);
-            private final Extracted as;
+        /**
+         * Extract adaptations consume one or more stub parameters. In this case, "consuming" means
+         * that the adapted parameter(s) won't be passed to the stub's target but will be used by
+         * the stub itself. The result is usually one ValueNode that will be put into the
+         * 'extractedArguments' table.
+         */
+        private abstract static class Extract extends Adaptation {
+            final Extracted as;
+
+            private Extract(Extracted as) {
+                this.as = as;
+            }
+
+            @Override
+            public final List<AssignedLocation> apply(AssignedLocation parameter) {
+                return List.of();
+            }
+        }
+
+        private static final class Drop extends Extract {
+            private static final Drop SINGLETON = new Drop();
+
+            private Drop() {
+                super(null);
+            }
+
+            @Override
+            public List<Class<?>> apply(Class<?> parameter) {
+                return List.of();
+            }
+
+            @Override
+            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex,
+                            Consumer<Node> appendToGraph) {
+                return List.of();
+            }
+        }
+
+        private static final class ExtractSingle extends Extract {
             private final Class<?> type;
 
-            private Extract(Extracted as, Class<?> type) {
-                this.as = as;
-                this.type = type;
+            private ExtractSingle(Extracted as, Class<?> type) {
+                super(Objects.requireNonNull(as));
+                this.type = Objects.requireNonNull(type);
             }
 
             @Override
@@ -372,11 +431,6 @@ public abstract class AbiUtils {
                 if (type != null && parameter != type) {
                     throw new IllegalArgumentException("Expected type " + type + ", got " + parameter);
                 }
-                return List.of();
-            }
-
-            @Override
-            public List<AssignedLocation> apply(AssignedLocation parameter) {
                 return List.of();
             }
 
@@ -392,6 +446,37 @@ public abstract class AbiUtils {
                 return List.of();
             }
         }
+
+        /**
+         * Similar to {@link ComputeAddressFromSegmentPair}, consumes two parameters, i.e., an
+         * Object + offset pair, and creates and AddNode that computes the absolute address.
+         */
+        private static final class ExtractSegmentPair extends Extract {
+
+            private ExtractSegmentPair(Extracted as) {
+                super(Objects.requireNonNull(as));
+            }
+
+            @Override
+            public List<Class<?>> apply(Class<?> parameter) {
+                if (parameter != Object.class) {
+                    throw new IllegalArgumentException("Expected type " + Object.class + ", got " + parameter);
+                }
+                return List.of();
+            }
+
+            @Override
+            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex,
+                            Consumer<Node> appendToGraph) {
+                assert as != null;
+                if (extractedArguments.containsKey(as)) {
+                    throw new IllegalStateException("%s was already extracted (%s).".formatted(as, extractedArguments.get(as)));
+                }
+                ValueNode extracted = ComputeAddressFromSegmentPair.computeAbsolutePointerFromSegmentPair(parameter, originalArguments, originalArgumentIndex, appendToGraph);
+                extractedArguments.put(as, extracted);
+                return List.of();
+            }
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -399,6 +484,8 @@ public abstract class AbiUtils {
         return switch (CABI.current()) {
             case SYS_V -> new ABIs.SysV();
             case WIN_64 -> new ABIs.Win64();
+            case MAC_OS_AARCH_64 -> new ABIs.MacOsAArch64();
+            case LINUX_AARCH_64 -> new ABIs.LinuxAArch64();
             default -> new ABIs.Unsupported(CABI.current().name());
         };
     }
@@ -409,12 +496,68 @@ public abstract class AbiUtils {
     }
 
     /**
+     * Specifies if a method handle invoked by an upcall stub needs to drop its return value in case
+     * of an in-memory return type. See also: {@link java.lang.invoke.MethodHandles#dropReturn} and
+     * {@code jdk.internal.foreign.abi.SharedUtils#adaptUpcallForIMR}
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public abstract boolean dropReturn();
+
+    /**
+     * Calls method {@code isInMemoryReturn} of the appropriate {@code CallArranger}. This method
+     * determines, if a given return type requires an in-memory return on the current platform.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public abstract boolean isInMemoryReturn(Optional<MemoryLayout> returnLayout);
+
+    protected abstract CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options);
+
+    /**
      * This method re-implements a part of the logic from the JDK so that we can get the callee-type
      * (i.e. the ABI low-level type) of a function from its descriptor.
      */
-    public abstract NativeEntryPointInfo makeNativeEntrypoint(FunctionDescriptor desc, Linker.Option... options);
+    @Platforms(HOSTED_ONLY.class)
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L99")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/DowncallLinker.java#L71-L85")
+    public final NativeEntryPointInfo makeNativeEntrypoint(FunctionDescriptor desc, LinkerOptions linkerOptions) {
+        // From Linker.downcallHandle implemented in AbstractLinker.downcallHandle:
+        // From AbstractLinker.downcallHandle0
+        MethodType type = desc.toMethodType();
 
-    public abstract JavaEntryPointInfo makeJavaEntryPoint(FunctionDescriptor desc, Linker.Option... options);
+        // makeCallingSequence calls platform specific code
+        var callingSequence = makeCallingSequence(type, desc, false, linkerOptions);
+
+        // From DowncallLinker.getBoundMethodHandle
+        var argMoveBindings = ABIs.Downcalls.argMoveBindingsStream(callingSequence).toArray(Binding.VMStore[]::new);
+        var argMoves = ABIs.Downcalls.toStorageArray(argMoveBindings);
+        var returnMoves = ABIs.Downcalls.toStorageArray(ABIs.Downcalls.retMoveBindings(callingSequence));
+        var boundaryType = callingSequence.calleeMethodType();
+        var needsReturnBuffer = callingSequence.needsReturnBuffer();
+
+        // From NativeEntrypoint.make
+        return NativeEntryPointInfo.make(argMoves, returnMoves, boundaryType, needsReturnBuffer, callingSequence.capturedStateMask(), callingSequence.needsTransition(),
+                        linkerOptions.allowsHeapAccess());
+    }
+
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L126")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/UpcallLinker.java#L62-L110")
+    public final JavaEntryPointInfo makeJavaEntryPoint(FunctionDescriptor desc, LinkerOptions linkerOptions) {
+        // Linker.upcallStub implemented in AbstractLinker.upcallStub
+        MethodType type = desc.toMethodType();
+
+        // From CallArranger.arrangeUpcall
+        var callingSequence = makeCallingSequence(type, desc, true, linkerOptions);
+
+        // From SharedUtil.arrangeUpcallHelper
+        // From UpcallLinker.makeFactory
+        Binding.VMLoad[] argMoves = ABIs.Upcalls.argMoveBindings(callingSequence);
+        Binding.VMStore[] retMoves = ABIs.Upcalls.retMoveBindings(callingSequence);
+        VMStorage[] args = Arrays.stream(argMoves).map(Binding.Move::storage).toArray(VMStorage[]::new);
+        VMStorage[] rets = Arrays.stream(retMoves).map(Binding.Move::storage).toArray(VMStorage[]::new);
+        Target_jdk_internal_foreign_abi_UpcallLinker_CallRegs cr = new Target_jdk_internal_foreign_abi_UpcallLinker_CallRegs(args, rets);
+
+        return JavaEntryPointInfo.make(callingSequence.callerMethodType(), cr, callingSequence.needsReturnBuffer(), callingSequence.returnBufferSize());
+    }
 
     /**
      * Generate a register allocation for SubstrateVM from the one generated by and for HotSpot.
@@ -438,6 +581,7 @@ public abstract class AbiUtils {
     /**
      * Generate additional argument adaptations which are not done by HotSpot.
      */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/jdk/internal/foreign/abi/CallingSequenceBuilder.java#L103-L147")
     @Platforms(Platform.HOSTED_ONLY.class)
     protected List<Adapter.Adaptation> generateAdaptations(NativeEntryPointInfo nep) {
         List<Adapter.Adaptation> adaptations = new ArrayList<>(Collections.nCopies(nep.methodType().parameterCount(), null));
@@ -446,34 +590,53 @@ public abstract class AbiUtils {
             adaptations.set(current++, Adapter.check(long.class));
         }
         adaptations.set(current++, Adapter.extract(Adapter.Extracted.CallTarget, long.class));
-        if (nep.capturesCallState()) {
-            adaptations.set(current++, Adapter.extract(Adapter.Extracted.CaptureBufferAddress, long.class));
-        }
 
         // Special handling in case Linker.Option.critical(true) is passed.
-        // See the doc of Adapter.CastObjectToWord.apply.
+        // See the doc of class Adapter.ComputeAddressFromSegmentPair
         var storages = nep.parametersAssignment();
+
+        /*
+         * It is possible to combine linker options 'captureCallState(...)' and 'critical(true)'.
+         * This means that one can pass a heap memory segment as capture buffer address.
+         */
+        if (nep.capturesCallState()) {
+            if (nep.allowHeapAccess()) {
+                VMError.guarantee(storages[current] != null && storages[current + 1] == null);
+                // consumes two parameters (i.e. object + offset pair)
+                handleCriticalWithHeapAccess(nep, current + 1, adaptations, Adapter.extractSegmentPair(Adapter.Extracted.CaptureBufferAddress));
+                current += 2;
+            } else {
+                adaptations.set(current, Adapter.extract(Adapter.Extracted.CaptureBufferAddress, long.class));
+                current++;
+            }
+        }
+
         for (int i = current; i < storages.length; ++i) {
             var storage = storages[i];
             if (storage == null) {
-                VMError.guarantee(nep.allowHeapAccess(), "A storage may only be null when the Linker.Option.critical(true) option is passed.");
-                VMError.guarantee(JavaKind.fromJavaClass(
-                                nep.methodType().parameterArray()[i]) == JavaKind.Long &&
-                                JavaKind.fromJavaClass(nep.methodType().parameterArray()[i - 1]) == JavaKind.Object,
-                                """
-                                                Storage is null, but the other parameters are inconsistent.
-                                                Storage may be null only if its kind is Long and previous kind is Object.
-                                                See jdk/internal/foreign/abi/x64/sysv/CallArranger.java:286""");
-                VMError.guarantee(
-                                adaptations.get(i) == null && adaptations.get(i - 1) == null,
-                                "This parameter already has an adaptation when it should not.");
-
-                adaptations.set(i, Adapter.drop());
-                adaptations.set(i - 1, Adapter.computeAddressFromSegmentPair());
+                handleCriticalWithHeapAccess(nep, i, adaptations, Adapter.computeAddressFromSegmentPair());
             }
         }
 
         return adaptations;
+    }
+
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/jdk/internal/foreign/abi/x64/sysv/CallArranger.java#L280-L290")
+    private static void handleCriticalWithHeapAccess(NativeEntryPointInfo nep, int i, List<Adaptation> adaptations, Adaptation adaptation) {
+        VMError.guarantee(nep.allowHeapAccess(), "A storage may only be null when the Linker.Option.critical(true) option is passed.");
+        VMError.guarantee(
+                        JavaKind.fromJavaClass(nep.methodType().parameterArray()[i]) == JavaKind.Long &&
+                                        JavaKind.fromJavaClass(nep.methodType().parameterArray()[i - 1]) == JavaKind.Object,
+                        """
+                                        Storage is null, but the other parameters are inconsistent.
+                                        Storage may be null only if its kind is Long and previous kind is Object.
+                                        See jdk/internal/foreign/abi/x64/sysv/CallArranger.java:286""");
+        VMError.guarantee(
+                        adaptations.get(i) == null && adaptations.get(i - 1) == null,
+                        "This parameter already has an adaptation when it should not.");
+
+        adaptations.set(i, Adapter.drop());
+        adaptations.set(i - 1, adaptation);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -516,7 +679,7 @@ public abstract class AbiUtils {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public abstract TrampolineTemplate generateTrampolineTemplate();
+    abstract TrampolineTemplate generateTrampolineTemplate();
 }
 
 class ABIs {
@@ -536,12 +699,7 @@ class ABIs {
         }
 
         @Override
-        public NativeEntryPointInfo makeNativeEntrypoint(FunctionDescriptor desc, Linker.Option... options) {
-            return fail();
-        }
-
-        @Override
-        public JavaEntryPointInfo makeJavaEntryPoint(FunctionDescriptor desc, Linker.Option... options) {
+        protected CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options) {
             return fail();
         }
 
@@ -557,7 +715,6 @@ class ABIs {
 
         @Override
         public void checkLibrarySupport() {
-            fail();
         }
 
         @Override
@@ -577,7 +734,163 @@ class ABIs {
 
         @Override
         public TrampolineTemplate generateTrampolineTemplate() {
+            return null;
+        }
+
+        @Override
+        public boolean dropReturn() {
             return fail();
+        }
+
+        @Override
+        public boolean isInMemoryReturn(Optional<MemoryLayout> returnLayout) {
+            return fail();
+        }
+    }
+
+    @BasedOnJDKClass(AArch64Architecture.class)
+    @BasedOnJDKClass(jdk.internal.foreign.abi.DowncallLinker.class)
+    @BasedOnJDKClass(jdk.internal.foreign.abi.UpcallLinker.class)
+    abstract static class ARM64 extends AbiUtils {
+
+        @Platforms(Platform.HOSTED_ONLY.class) //
+        private static final Method IS_IN_MEMORY_RETURN = ReflectionUtil.lookupMethod(jdk.internal.foreign.abi.aarch64.CallArranger.class, "isInMemoryReturn", Optional.class);
+
+        @Override
+        public Registers upcallSpecialArgumentsRegisters() {
+            return new Registers(SubstrateAArch64MacroAssembler.scratch1, SubstrateAArch64MacroAssembler.scratch2);
+        }
+
+        @Override
+        public AssignedLocation[] toMemoryAssignment(VMStorage[] argMoves, boolean forReturn) {
+            AssignedLocation[] storages = new AssignedLocation[argMoves.length];
+            int i = 0;
+            for (VMStorage move : argMoves) {
+                if (move == null) {
+                    storages[i++] = AssignedLocation.placeholder();
+                    continue;
+                }
+                storages[i++] = switch (move.type()) {
+                    case AArch64Architecture.StorageType.PLACEHOLDER -> AssignedLocation.placeholder();
+                    case AArch64Architecture.StorageType.INTEGER -> {
+                        Register reg = AArch64.cpuRegisters.get(move.indexOrOffset());
+                        assert reg.name.equals(move.debugName());
+                        assert reg.getRegisterCategory().equals(AArch64.CPU);
+                        yield AssignedLocation.forRegister(reg, JavaKind.Long);
+                    }
+                    case AArch64Architecture.StorageType.VECTOR -> {
+                        Register reg = AArch64.simdRegisters.get(move.indexOrOffset());
+                        assert reg.name.equals(move.debugName());
+                        assert reg.getRegisterCategory().equals(AArch64.SIMD);
+                        yield AssignedLocation.forRegister(reg, JavaKind.Double);
+                    }
+                    case AArch64Architecture.StorageType.STACK -> AssignedLocation.forStack(move.indexOrOffset());
+                    default -> throw unsupportedFeature("Unhandled VMStorage: " + move);
+                };
+            }
+            assert i == storages.length;
+
+            return storages;
+        }
+
+        @Override
+        public Map<String, MemoryLayout> canonicalLayouts() {
+            return SharedUtils.canonicalLayouts(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT);
+        }
+
+        @Override
+        public int trampolineSize() {
+            return 64;
+        }
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        @Override
+        public TrampolineTemplate generateTrampolineTemplate() {
+            AArch64MacroAssembler masm = new SubstrateAArch64MacroAssembler(ConfigurationValues.getTarget());
+
+            Register mhRegister = upcallSpecialArgumentsRegisters().methodHandle();
+            Register isolateRegister = upcallSpecialArgumentsRegisters().isolate();
+
+            Label loadIsolate = new Label();
+            masm.jmp(loadIsolate);
+            int posIsolate = masm.position();
+            masm.emitLong(0x1111_2222_3333_4444L);
+            int posMHArray = masm.position();
+            masm.emitLong(0x5555_6666_7777_8888L);
+            int posCallTarget = masm.position();
+            masm.emitLong(0x9999_aaaa_bbbb_ccccL);
+
+            masm.bind(loadIsolate);
+            /* r10 contains the isolate address */
+            masm.ldr(64, isolateRegister, AArch64Address.createPCLiteralAddress(64, posIsolate - masm.position()));
+
+            masm.ldr(64, mhRegister, AArch64Address.createPCLiteralAddress(64, posMHArray - masm.position()));
+            /* r9 contains the method handle */
+            masm.ldr(64, mhRegister, AArch64Address.createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, mhRegister, 0));
+
+            /*
+             * NOTE: do not use r8, it's part of the CallArranger ABI ("indirect result register"),
+             * also do not use scratch registers (r9/r10 on SVM).
+             */
+            Register scratch = AArch64.r11;
+            assert !scratch.equals(mhRegister) && !scratch.equals(isolateRegister);
+            masm.ldr(64, scratch, AArch64Address.createPCLiteralAddress(64, posCallTarget - masm.position()));
+            /* deref it */
+            masm.ldr(64, scratch, AArch64Address.createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, scratch, 0));
+
+            /* jump into the target */
+            masm.jmp(scratch);
+
+            assert trampolineSize() >= masm.position();
+            masm.align(trampolineSize());
+
+            byte[] assembly = masm.close(true);
+            assert assembly.length == trampolineSize();
+
+            return new TrampolineTemplate(assembly, posIsolate, posMHArray, posCallTarget);
+        }
+
+        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/aarch64/CallArranger.java#L195")
+        @Override
+        public boolean dropReturn() {
+            return true;
+        }
+
+        @Override
+        public boolean isInMemoryReturn(Optional<MemoryLayout> returnLayout) {
+            return ReflectionUtil.invokeMethod(IS_IN_MEMORY_RETURN, null, returnLayout);
+        }
+    }
+
+    @BasedOnJDKClass(jdk.internal.foreign.abi.aarch64.linux.LinuxAArch64Linker.class)
+    @BasedOnJDKClass(jdk.internal.foreign.abi.aarch64.linux.LinuxAArch64CallArranger.class)
+    static final class LinuxAArch64 extends ARM64 {
+
+        @Override
+        protected CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options) {
+            return jdk.internal.foreign.abi.aarch64.CallArranger.LINUX.getBindings(type, desc, forUpcall, options).callingSequence();
+        }
+
+        @Override
+        public void checkLibrarySupport() {
+            String name = "Linux AArch64";
+            VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on %s", name);
+        }
+    }
+
+    @BasedOnJDKClass(jdk.internal.foreign.abi.aarch64.macos.MacOsAArch64Linker.class)
+    @BasedOnJDKClass(jdk.internal.foreign.abi.aarch64.macos.MacOsAArch64CallArranger.class)
+    static final class MacOsAArch64 extends ARM64 {
+
+        @Override
+        protected CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options) {
+            return jdk.internal.foreign.abi.aarch64.CallArranger.MACOS.getBindings(type, desc, forUpcall, options).callingSequence();
+        }
+
+        @Override
+        public void checkLibrarySupport() {
+            String name = "Darwin AArch64";
+            VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on %s", name);
         }
     }
 
@@ -585,93 +898,9 @@ class ABIs {
     @BasedOnJDKClass(jdk.internal.foreign.abi.DowncallLinker.class)
     @BasedOnJDKClass(jdk.internal.foreign.abi.UpcallLinker.class)
     abstract static class X86_64 extends AbiUtils {
-        @BasedOnJDKClass(jdk.internal.foreign.abi.DowncallLinker.class)
-        static class Downcalls {
-            protected static Stream<Binding.VMStore> argMoveBindingsStream(CallingSequence callingSequence) {
-                return callingSequence.argumentBindings()
-                                .filter(Binding.VMStore.class::isInstance)
-                                .map(Binding.VMStore.class::cast);
-            }
 
-            protected static Stream<Binding.VMLoad> retMoveBindingsStream(CallingSequence callingSequence) {
-                return callingSequence.returnBindings().stream()
-                                .filter(Binding.VMLoad.class::isInstance)
-                                .map(Binding.VMLoad.class::cast);
-            }
-
-            protected static Binding.VMLoad[] retMoveBindings(CallingSequence callingSequence) {
-                return retMoveBindingsStream(callingSequence).toArray(Binding.VMLoad[]::new);
-            }
-
-            static VMStorage[] toStorageArray(Binding.Move[] moves) {
-                return Arrays.stream(moves).map(Binding.Move::storage).toArray(VMStorage[]::new);
-            }
-        }
-
-        @BasedOnJDKClass(jdk.internal.foreign.abi.UpcallLinker.class)
-        static class Upcalls {
-            static Binding.VMLoad[] argMoveBindings(CallingSequence callingSequence) {
-                return callingSequence.argumentBindings()
-                                .filter(Binding.VMLoad.class::isInstance)
-                                .map(Binding.VMLoad.class::cast)
-                                .toArray(Binding.VMLoad[]::new);
-            }
-
-            static Binding.VMStore[] retMoveBindings(CallingSequence callingSequence) {
-                return callingSequence.returnBindings().stream()
-                                .filter(Binding.VMStore.class::isInstance)
-                                .map(Binding.VMStore.class::cast)
-                                .toArray(Binding.VMStore[]::new);
-            }
-        }
-
+        @Override
         protected abstract CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options);
-
-        @Override
-        public NativeEntryPointInfo makeNativeEntrypoint(FunctionDescriptor desc, Linker.Option... options) {
-            // From Linker.downcallHandle implemented in AbstractLinker.downcallHandle:
-            // From AbstractLinker.downcallHandle0
-            LinkerOptions optionSet = LinkerOptions.forDowncall(desc, options);
-            MethodType type = desc.toMethodType();
-
-            // OS specific!
-            // From AbstractLinker.arrangeDowncall implemented in SysVx64Linker.arrangeDowncall
-            // or Windowsx64Linker.arrangeDowncall:
-            // From CallArranger.arrangeDowncall
-            var callingSequence = makeCallingSequence(type, desc, false, optionSet);
-
-            // From DowncallLinker.getBoundMethodHandle
-            var argMoveBindings = Downcalls.argMoveBindingsStream(callingSequence).toArray(Binding.VMStore[]::new);
-            var argMoves = Downcalls.toStorageArray(argMoveBindings);
-            var returnMoves = Downcalls.toStorageArray(Downcalls.retMoveBindings(callingSequence));
-            var boundaryType = callingSequence.calleeMethodType();
-            var needsReturnBuffer = callingSequence.needsReturnBuffer();
-
-            // From NativeEntrypoint.make
-            return NativeEntryPointInfo.make(argMoves, returnMoves, boundaryType, needsReturnBuffer, callingSequence.capturedStateMask(), callingSequence.needsTransition(),
-                            optionSet.allowsHeapAccess());
-        }
-
-        @Override
-        public JavaEntryPointInfo makeJavaEntryPoint(FunctionDescriptor desc, Linker.Option... options) {
-            // Linker.upcallStub implemented in
-            // AbstractLinker.upcallStub
-            MethodType type = desc.toMethodType();
-
-            // From CallArranger.arrangeUpcall
-            LinkerOptions optionSet = LinkerOptions.forUpcall(desc, options);
-            var callingSequence = makeCallingSequence(type, desc, true, optionSet);
-
-            // From SharedUtil.arrangeUpcallHelper
-
-            // From UpcallLinker.makeFactory
-            Binding.VMLoad[] argMoves = Upcalls.argMoveBindings(callingSequence);
-            Binding.VMStore[] retMoves = Upcalls.retMoveBindings(callingSequence);
-            VMStorage[] args = Arrays.stream(argMoves).map(Binding.Move::storage).toArray(VMStorage[]::new);
-            VMStorage[] rets = Arrays.stream(retMoves).map(Binding.Move::storage).toArray(VMStorage[]::new);
-            Target_jdk_internal_foreign_abi_UpcallLinker_CallRegs cr = new Target_jdk_internal_foreign_abi_UpcallLinker_CallRegs(args, rets);
-            return JavaEntryPointInfo.make(callingSequence.callerMethodType(), cr, callingSequence.needsReturnBuffer(), callingSequence.returnBufferSize());
-        }
 
         @Override
         public AssignedLocation[] toMemoryAssignment(VMStorage[] argMoves, boolean forReturn) {
@@ -702,7 +931,7 @@ class ABIs {
                 storages[i++] = switch (move.type()) {
                     case X86_64Architecture.StorageType.PLACEHOLDER -> AssignedLocation.placeholder();
                     case X86_64Architecture.StorageType.INTEGER -> {
-                        Register reg = AMD64.cpuRegisters[move.indexOrOffset()];
+                        Register reg = AMD64.cpuRegisters.get(move.indexOrOffset());
                         assert reg.name.equals(move.debugName());
                         assert reg.getRegisterCategory().equals(AMD64.CPU);
                         yield AssignedLocation.forRegister(reg, JavaKind.Long);
@@ -712,7 +941,7 @@ class ABIs {
                          * Only the first four xmm registers should ever be used; in particular,
                          * this means we never need to index in xmmRegistersAVX512
                          */
-                        Register reg = AMD64.xmmRegistersSSE[move.indexOrOffset()];
+                        Register reg = AMD64.xmmRegistersSSE.get(move.indexOrOffset());
                         assert reg.name.equals(move.debugName());
                         assert reg.getRegisterCategory().equals(AMD64.XMM);
                         yield AssignedLocation.forRegister(reg, JavaKind.Double);
@@ -724,36 +953,6 @@ class ABIs {
             assert i == storages.length;
 
             return storages;
-        }
-
-        protected static Map<String, MemoryLayout> canonicalLayouts(ValueLayout longLayout, ValueLayout sizetLayout, ValueLayout wchartLayout) {
-            return Map.ofEntries(
-                            // specified canonical layouts
-                            Map.entry("bool", ValueLayout.JAVA_BOOLEAN),
-                            Map.entry("char", ValueLayout.JAVA_BYTE),
-                            Map.entry("short", ValueLayout.JAVA_SHORT),
-                            Map.entry("int", ValueLayout.JAVA_INT),
-                            Map.entry("float", ValueLayout.JAVA_FLOAT),
-                            Map.entry("long", longLayout),
-                            Map.entry("long long", ValueLayout.JAVA_LONG),
-                            Map.entry("double", ValueLayout.JAVA_DOUBLE),
-                            Map.entry("void*", ValueLayout.ADDRESS),
-                            Map.entry("size_t", sizetLayout),
-                            Map.entry("wchar_t", wchartLayout),
-                            // unspecified size-dependent layouts
-                            Map.entry("int8_t", ValueLayout.JAVA_BYTE),
-                            Map.entry("int16_t", ValueLayout.JAVA_SHORT),
-                            Map.entry("int32_t", ValueLayout.JAVA_INT),
-                            Map.entry("int64_t", ValueLayout.JAVA_LONG),
-                            // unspecified JNI layouts
-                            Map.entry("jboolean", ValueLayout.JAVA_BOOLEAN),
-                            Map.entry("jchar", ValueLayout.JAVA_CHAR),
-                            Map.entry("jbyte", ValueLayout.JAVA_BYTE),
-                            Map.entry("jshort", ValueLayout.JAVA_SHORT),
-                            Map.entry("jint", ValueLayout.JAVA_INT),
-                            Map.entry("jlong", ValueLayout.JAVA_LONG),
-                            Map.entry("jfloat", ValueLayout.JAVA_FLOAT),
-                            Map.entry("jdouble", ValueLayout.JAVA_DOUBLE));
         }
 
         @Override
@@ -808,6 +1007,10 @@ class ABIs {
     @BasedOnJDKClass(jdk.internal.foreign.abi.x64.sysv.SysVx64Linker.class)
     @BasedOnJDKClass(jdk.internal.foreign.abi.x64.sysv.CallArranger.class)
     static final class SysV extends X86_64 {
+
+        @Platforms(Platform.HOSTED_ONLY.class) //
+        private static final Method IS_IN_MEMORY_RETURN = ReflectionUtil.lookupMethod(jdk.internal.foreign.abi.x64.sysv.CallArranger.class, "isInMemoryReturn", Optional.class);
+
         @Override
         protected CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options) {
             return jdk.internal.foreign.abi.x64.sysv.CallArranger.getBindings(type, desc, forUpcall, options).callingSequence();
@@ -847,13 +1050,28 @@ class ABIs {
 
         @Override
         public Map<String, MemoryLayout> canonicalLayouts() {
-            return canonicalLayouts(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT);
+            return SharedUtils.canonicalLayouts(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT);
+        }
+
+        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/x64/sysv/CallArranger.java#L147")
+        @Override
+        public boolean dropReturn() {
+            return true;
+        }
+
+        @Override
+        public boolean isInMemoryReturn(Optional<MemoryLayout> returnLayout) {
+            return ReflectionUtil.invokeMethod(IS_IN_MEMORY_RETURN, null, returnLayout);
         }
     }
 
     @BasedOnJDKClass(jdk.internal.foreign.abi.x64.windows.Windowsx64Linker.class)
     @BasedOnJDKClass(jdk.internal.foreign.abi.x64.windows.CallArranger.class)
     static final class Win64 extends X86_64 {
+
+        @Platforms(Platform.HOSTED_ONLY.class) //
+        private static final Method IS_IN_MEMORY_RETURN = ReflectionUtil.lookupMethod(jdk.internal.foreign.abi.x64.windows.CallArranger.class, "isInMemoryReturn", Optional.class);
+
         @Override
         protected CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options) {
             return jdk.internal.foreign.abi.x64.windows.CallArranger.getBindings(type, desc, forUpcall, options).callingSequence();
@@ -903,7 +1121,58 @@ class ABIs {
 
         @Override
         public Map<String, MemoryLayout> canonicalLayouts() {
-            return canonicalLayouts(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.JAVA_CHAR);
+            return SharedUtils.canonicalLayouts(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.JAVA_CHAR);
+        }
+
+        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/x64/windows/CallArranger.java#L139")
+        @Override
+        public boolean dropReturn() {
+            return false;
+        }
+
+        @Override
+        public boolean isInMemoryReturn(Optional<MemoryLayout> returnLayout) {
+            return ReflectionUtil.invokeMethod(IS_IN_MEMORY_RETURN, null, returnLayout);
+        }
+    }
+
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+11/src/java.base/share/classes/jdk/internal/foreign/abi/DowncallLinker.java#L122-L140")
+    static class Downcalls {
+        protected static Stream<Binding.VMStore> argMoveBindingsStream(CallingSequence callingSequence) {
+            return callingSequence.argumentBindings()
+                            .filter(Binding.VMStore.class::isInstance)
+                            .map(Binding.VMStore.class::cast);
+        }
+
+        protected static Stream<Binding.VMLoad> retMoveBindingsStream(CallingSequence callingSequence) {
+            return callingSequence.returnBindings().stream()
+                            .filter(Binding.VMLoad.class::isInstance)
+                            .map(Binding.VMLoad.class::cast);
+        }
+
+        protected static Binding.VMLoad[] retMoveBindings(CallingSequence callingSequence) {
+            return retMoveBindingsStream(callingSequence).toArray(Binding.VMLoad[]::new);
+        }
+
+        static VMStorage[] toStorageArray(Binding.Move[] moves) {
+            return Arrays.stream(moves).map(Binding.Move::storage).toArray(VMStorage[]::new);
+        }
+    }
+
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+11/src/java.base/share/classes/jdk/internal/foreign/abi/UpcallLinker.java#L124-L134")
+    static class Upcalls {
+        static Binding.VMLoad[] argMoveBindings(CallingSequence callingSequence) {
+            return callingSequence.argumentBindings()
+                            .filter(Binding.VMLoad.class::isInstance)
+                            .map(Binding.VMLoad.class::cast)
+                            .toArray(Binding.VMLoad[]::new);
+        }
+
+        static Binding.VMStore[] retMoveBindings(CallingSequence callingSequence) {
+            return callingSequence.returnBindings().stream()
+                            .filter(Binding.VMStore.class::isInstance)
+                            .map(Binding.VMStore.class::cast)
+                            .toArray(Binding.VMStore[]::new);
         }
     }
 }

@@ -150,20 +150,20 @@ public abstract class TypeState {
         return NullTypeState.SINGLETON;
     }
 
-    public static TypeState defaultValueForKind(JavaKind javaKind) {
+    public static TypeState defaultValueForKind(PointsToAnalysis bb, JavaKind javaKind) {
         if (javaKind.isPrimitive()) {
-            return TypeState.forPrimitiveConstant(0);
+            return TypeState.forPrimitiveConstant(bb, 0);
         } else {
             return TypeState.forNull();
         }
     }
 
-    public static TypeState forPrimitiveConstant(long value) {
-        return PrimitiveConstantTypeState.forValue(value);
+    public static TypeState forPrimitiveConstant(PointsToAnalysis bb, long value) {
+        return PrimitiveConstantTypeState.forValue(bb, value);
     }
 
-    public static TypeState forBoolean(boolean value) {
-        return value ? TypeState.forPrimitiveConstant(1) : TypeState.forPrimitiveConstant(0);
+    public static TypeState forBoolean(PointsToAnalysis bb, boolean value) {
+        return value ? TypeState.forPrimitiveConstant(bb, 1) : TypeState.forPrimitiveConstant(bb, 0);
     }
 
     public static TypeState anyPrimitiveState() {
@@ -274,13 +274,13 @@ public abstract class TypeState {
     }
 
     /** Returns a type state representing left filtered with respect to the comparison and right. */
-    public static TypeState filter(TypeState left, PrimitiveComparison comparison, TypeState right) {
+    public static TypeState filter(TypeState left, PrimitiveComparison comparison, TypeState right, boolean isUnsigned) {
         assert left.isPrimitive() || left.isEmpty() : left;
         assert right.isPrimitive() || right.isEmpty() : right;
         if (left.isEmpty() || right.isEmpty()) {
             return forEmpty();
         }
-        return ((PrimitiveTypeState) left).filter(comparison, (PrimitiveTypeState) right);
+        return ((PrimitiveTypeState) left).filter(comparison, isUnsigned, (PrimitiveTypeState) right);
     }
 }
 

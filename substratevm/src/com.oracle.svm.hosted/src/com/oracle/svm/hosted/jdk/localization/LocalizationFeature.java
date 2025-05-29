@@ -84,6 +84,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.util.LocaleUtil;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.nodes.ValueNode;
@@ -92,7 +93,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.access.SharedSecrets;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -261,7 +261,7 @@ public class LocalizationFeature implements InternalFeature {
         allLocales = processLocalesOption();
         if (Options.DefaultLocale.hasBeenSet()) {
             LogUtils.warning("Option %s is deprecated and has no effect. The program's default locale is determined at run-time. " +
-                            "Use %s and %s to manage the locales included in the image.\n",
+                            "Use %s and %s to manage the locales included in the image.%n",
                             Options.DefaultLocale.getName(), Options.IncludeLocales.getName(), Options.IncludeAllLocales.getName());
         }
         String defaultCharsetOptionValue = Options.DefaultCharset.getValue();
@@ -291,16 +291,9 @@ public class LocalizationFeature implements InternalFeature {
         }
         langAliasesCacheField = access.findField(CLDRLocaleProviderAdapter.class, "langAliasesCache");
         parentLocalesMapField = access.findField(CLDRLocaleProviderAdapter.class, "parentLocalesMap");
-
-        if (JavaVersionUtil.JAVA_SPEC >= 23) {
-            baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale$1InterningCache", "CACHE");
-            localeCacheField = access.findField("java.util.Locale$LocaleCache", "LOCALE_CACHE");
-            localeObjectCacheMapField = null;
-        } else {
-            baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale$Cache", "CACHE");
-            localeCacheField = access.findField("java.util.Locale$Cache", "LOCALECACHE");
-            localeObjectCacheMapField = access.findField("sun.util.locale.LocaleObjectCache", "map");
-        }
+        baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale$1InterningCache", "CACHE");
+        localeCacheField = access.findField("java.util.Locale$LocaleCache", "LOCALE_CACHE");
+        localeObjectCacheMapField = null;
         candidatesCacheField = access.findField("java.util.ResourceBundle$Control", "CANDIDATES_CACHE");
 
         String reason = "All ResourceBundleControlProvider that are registered as services end up as objects in the image heap, and are therefore registered to be initialized at image build time";
@@ -385,7 +378,7 @@ public class LocalizationFeature implements InternalFeature {
         }
         List<String> invalid = new ArrayList<>();
         for (String tag : Options.IncludeLocales.getValue().values()) {
-            Locale locale = LocalizationSupport.parseLocaleFromTag(tag);
+            Locale locale = LocaleUtil.parseLocaleFromTag(tag);
             if (locale != null) {
                 locales.add(locale);
             } else {
@@ -548,7 +541,7 @@ public class LocalizationFeature implements InternalFeature {
         int splitIndex = input.indexOf('_');
         boolean specificLocaleRequested = splitIndex != -1;
         if (specificLocaleRequested) {
-            Locale locale = splitIndex + 1 < input.length() ? LocalizationSupport.parseLocaleFromTag(input.substring(splitIndex + 1)) : Locale.ROOT;
+            Locale locale = splitIndex + 1 < input.length() ? LocaleUtil.parseLocaleFromTag(input.substring(splitIndex + 1)) : Locale.ROOT;
             if (locale != null) {
                 /* Get rid of locale specific suffix. */
                 String baseName = input.substring(0, splitIndex);
@@ -564,6 +557,10 @@ public class LocalizationFeature implements InternalFeature {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareClassResourceBundle(String basename, String className) {
         Class<?> bundleClass = findClassByName.apply(className);
+        if (bundleClass == null) {
+            /* Unknown classes are ignored */
+            return;
+        }
         UserError.guarantee(ResourceBundle.class.isAssignableFrom(bundleClass), "%s is not a subclass of ResourceBundle", bundleClass.getName());
         trace("Adding class based resource bundle: " + className + " " + bundleClass);
         support.registerRequiredReflectionAndResourcesForBundle(basename, Set.of(), false);

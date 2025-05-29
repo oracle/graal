@@ -25,34 +25,40 @@
 package com.oracle.svm.core.posix;
 
 import java.io.FileDescriptor;
+import java.util.EnumSet;
 
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 @AutomaticallyRegisteredFeature
 class PosixLogHandlerFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        Log.finalizeDefaultLogHandler(new PosixLogHandler());
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            Log.finalizeDefaultLogHandler(new PosixLogHandler());
+        }
     }
 }
 
-public class PosixLogHandler implements LogHandler {
+public class PosixLogHandler implements LogHandler, InitialLayerOnlyImageSingleton {
 
     @Override
     public void log(CCharPointer bytes, UnsignedWord length) {
         /* Save and restore errno around calls that would otherwise change errno. */
         final int savedErrno = LibC.errno();
         try {
-            if (!PosixUtils.writeBytes(getOutputFile(), bytes, length)) {
+            if (!PosixUtils.write(getOutputFile(), bytes, length)) {
                 /*
                  * We are in a low-level log routine and output failed, so there is little we can
                  * do.
@@ -87,5 +93,15 @@ public class PosixLogHandler implements LogHandler {
 
     private static FileDescriptor getOutputFile() {
         return FileDescriptor.err;
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
+    }
+
+    @Override
+    public boolean accessibleInFutureLayers() {
+        return true;
     }
 }

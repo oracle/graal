@@ -10,6 +10,7 @@ cons protected init(java.lang.String,com.oracle.truffle.api.nodes.Node)
 cons protected init(java.lang.String,java.lang.Throwable,int,com.oracle.truffle.api.nodes.Node)
 fld public final static int UNLIMITED_STACK_TRACE = -1
 intf com.oracle.truffle.api.interop.TruffleObject
+meth public com.oracle.truffle.api.source.SourceSection getEncapsulatingSourceSection()
 meth public final com.oracle.truffle.api.nodes.Node getLocation()
 meth public final int getStackTraceElementLimit()
 meth public final java.lang.Throwable fillInStackTrace()

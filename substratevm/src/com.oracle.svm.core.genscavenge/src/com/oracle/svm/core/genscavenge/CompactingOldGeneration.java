@@ -48,11 +48,13 @@ import com.oracle.svm.core.genscavenge.compacting.SweepingVisitor;
 import com.oracle.svm.core.genscavenge.remset.BrickTable;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
+import com.oracle.svm.core.util.Timer;
 
 import jdk.graal.compiler.word.Word;
 
@@ -140,9 +142,14 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
+    void appendChunk(AlignedHeapChunk.AlignedHeader hdr) {
+        space.appendAlignedHeapChunk(hdr);
+    }
+
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor) {
-        RememberedSet.get().walkDirtyObjects(space, visitor, true);
+    void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor, GreyToBlackObjRefVisitor refVisitor) {
+        RememberedSet.get().walkDirtyObjects(space.getFirstAlignedHeapChunk(), space.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, refVisitor, true);
     }
 
     @Override
@@ -159,7 +166,7 @@ final class CompactingOldGeneration extends OldGeneration {
             }
             GreyToBlackObjectVisitor visitor = GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
             do {
-                visitor.visitObjectInline(markStack.pop());
+                visitor.visitObject(markStack.pop());
             } while (!markStack.isEmpty());
         }
         return true;
@@ -174,7 +181,8 @@ final class CompactingOldGeneration extends OldGeneration {
             return space.copyAlignedObject(original, originalSpace);
         }
         assert originalSpace == space;
-        Word header = ObjectHeader.readHeaderFromObject(original);
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        Word header = oh.readHeaderFromObject(original);
         if (ObjectHeaderImpl.isMarkedHeader(header)) {
             return original;
         }
@@ -188,7 +196,7 @@ final class CompactingOldGeneration extends OldGeneration {
              * object's size. The easiest way to handle this is to copy the object.
              */
             result = space.copyAlignedObject(original, originalSpace);
-            assert !ObjectHeaderImpl.hasIdentityHashFromAddressInline(ObjectHeader.readHeaderFromObject(result));
+            assert !ObjectHeaderImpl.hasIdentityHashFromAddressInline(oh.readHeaderFromObject(result));
         }
         ObjectHeaderImpl.setMarked(result);
         markStack.push(result);
@@ -246,25 +254,25 @@ final class CompactingOldGeneration extends OldGeneration {
          */
         ReferenceObjectProcessing.updateForwardedRefs();
 
-        Timer oldPlanningTimer = timers.oldPlanning.open();
+        Timer oldPlanningTimer = timers.oldPlanning.start();
         try {
             planCompaction();
         } finally {
-            oldPlanningTimer.close();
+            oldPlanningTimer.stop();
         }
 
-        Timer oldFixupTimer = timers.oldFixup.open();
+        Timer oldFixupTimer = timers.oldFixup.start();
         try {
             fixupReferencesBeforeCompaction(chunkReleaser, timers);
         } finally {
-            oldFixupTimer.close();
+            oldFixupTimer.stop();
         }
 
-        Timer oldCompactionTimer = timers.oldCompaction.open();
+        Timer oldCompactionTimer = timers.oldCompaction.start();
         try {
             compact(timers);
         } finally {
-            oldCompactionTimer.close();
+            oldCompactionTimer.stop();
         }
     }
 
@@ -275,66 +283,76 @@ final class CompactingOldGeneration extends OldGeneration {
 
     @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
     private void fixupReferencesBeforeCompaction(ChunkReleaser chunkReleaser, Timers timers) {
-        Timer oldFixupAlignedChunksTimer = timers.oldFixupAlignedChunks.open();
+        Timer oldFixupAlignedChunksTimer = timers.oldFixupAlignedChunks.start();
         try {
             AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
             while (aChunk.isNonNull()) {
-                ObjectMoveInfo.walkObjects(aChunk, fixupVisitor);
+                ObjectMoveInfo.walkObjectsForFixup(aChunk, fixupVisitor);
                 aChunk = HeapChunk.getNext(aChunk);
             }
         } finally {
-            oldFixupAlignedChunksTimer.close();
+            oldFixupAlignedChunksTimer.stop();
         }
 
-        Timer oldFixupImageHeapTimer = timers.oldFixupImageHeap.open();
+        Timer oldFixupImageHeapTimer = timers.oldFixupImageHeap.start();
         try {
             for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
-                GCImpl.walkImageHeapRoots(info, fixupVisitor);
+                fixupImageHeapRoots(info);
             }
             if (AuxiliaryImageHeap.isPresent()) {
                 ImageHeapInfo auxImageHeapInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
                 if (auxImageHeapInfo != null) {
-                    GCImpl.walkImageHeapRoots(auxImageHeapInfo, fixupVisitor);
+                    fixupImageHeapRoots(auxImageHeapInfo);
                 }
             }
         } finally {
-            oldFixupImageHeapTimer.close();
+            oldFixupImageHeapTimer.stop();
         }
 
-        Timer oldFixupThreadLocalsTimer = timers.oldFixupThreadLocals.open();
+        Timer oldFixupThreadLocalsTimer = timers.oldFixupThreadLocals.start();
         try {
             for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
                 VMThreadLocalSupport.singleton().walk(isolateThread, refFixupVisitor);
             }
         } finally {
-            oldFixupThreadLocalsTimer.close();
+            oldFixupThreadLocalsTimer.stop();
         }
 
-        Timer oldFixupStackTimer = timers.oldFixupStack.open();
+        Timer oldFixupStackTimer = timers.oldFixupStack.start();
         try {
             fixupStackReferences();
         } finally {
-            oldFixupStackTimer.close();
+            oldFixupStackTimer.stop();
         }
 
         /*
          * Check each unaligned object and fix its references if the object is marked. Add the chunk
          * to the releaser's list in case the object is not marked and therefore won't survive.
          */
-        Timer oldFixupUnalignedChunksTimer = timers.oldFixupUnalignedChunks.open();
+        Timer oldFixupUnalignedChunksTimer = timers.oldFixupUnalignedChunks.start();
         try {
             fixupUnalignedChunkReferences(chunkReleaser);
         } finally {
-            oldFixupUnalignedChunksTimer.close();
+            oldFixupUnalignedChunksTimer.stop();
         }
 
-        Timer oldFixupRuntimeCodeCacheTimer = timers.oldFixupRuntimeCodeCache.open();
+        Timer oldFixupRuntimeCodeCacheTimer = timers.oldFixupRuntimeCodeCache.start();
         try {
             if (RuntimeCompilation.isEnabled()) {
                 RuntimeCodeInfoMemory.singleton().walkRuntimeMethodsDuringGC(runtimeCodeCacheFixupWalker);
             }
         } finally {
-            oldFixupRuntimeCodeCacheTimer.close();
+            oldFixupRuntimeCodeCacheTimer.stop();
+        }
+    }
+
+    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
+    private void fixupImageHeapRoots(ImageHeapInfo info) {
+        if (HeapImpl.usesImageHeapCardMarking()) {
+            // Note that cards have already been cleaned and roots re-marked during the initial scan
+            GCImpl.walkDirtyImageHeapChunkRoots(info, fixupVisitor, refFixupVisitor, false);
+        } else {
+            GCImpl.walkImageHeapRoots(info, fixupVisitor);
         }
     }
 
@@ -344,7 +362,7 @@ final class CompactingOldGeneration extends OldGeneration {
         while (uChunk.isNonNull()) {
             UnalignedHeapChunk.UnalignedHeader next = HeapChunk.getNext(uChunk);
             Pointer objPointer = UnalignedHeapChunk.getObjectStart(uChunk);
-            Object obj = objPointer.toObject();
+            Object obj = objPointer.toObjectNonNull();
             if (ObjectHeaderImpl.isMarked(obj)) {
                 ObjectHeaderImpl.unsetMarkedAndKeepRememberedSetBit(obj);
                 RememberedSet.get().clearRememberedSet(uChunk);
@@ -379,26 +397,20 @@ final class CompactingOldGeneration extends OldGeneration {
             chunk = HeapChunk.getNext(chunk);
         }
 
-        Timer oldCompactionRememberedSetsTimer = timers.oldCompactionRememberedSets.open();
+        Timer oldCompactionRememberedSetsTimer = timers.oldCompactionRememberedSets.start();
         try {
+            // Clear the card tables (which currently contain brick tables).
+            // The first-object tables have already been populated.
             chunk = space.getFirstAlignedHeapChunk();
             while (chunk.isNonNull()) {
-                /*
-                 * Clears the card table (which currently contains the brick table) and updates the
-                 * first object table.
-                 *
-                 * GR-54022: we should be able to avoid this pass and build the first object tables
-                 * during planning and reset card tables once we detect that we are finished with a
-                 * chunk during compaction. The remembered set bits are already set after planning.
-                 */
                 if (!AlignedHeapChunk.isEmpty(chunk)) {
-                    RememberedSet.get().enableRememberedSetForChunk(chunk);
+                    RememberedSet.get().clearRememberedSet(chunk);
                 } // empty chunks will be freed or reset before reuse, no need to reinitialize here
 
                 chunk = HeapChunk.getNext(chunk);
             }
         } finally {
-            oldCompactionRememberedSetsTimer.close();
+            oldCompactionRememberedSetsTimer.stop();
         }
     }
 
@@ -430,8 +442,13 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
-    public boolean walkObjects(ObjectVisitor visitor) {
-        return space.walkObjects(visitor);
+    boolean printLocationInfo(Log log, Pointer ptr) {
+        return space.printLocationInfo(log, ptr);
+    }
+
+    @Override
+    public void walkObjects(ObjectVisitor visitor) {
+        space.walkObjects(visitor);
     }
 
     @Override

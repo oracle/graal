@@ -62,19 +62,36 @@ import java.util.concurrent.TimeUnit;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.TestAPIAccessor;
+import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
+import com.oracle.truffle.api.test.common.NullObject;
+import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
@@ -600,6 +617,238 @@ public class ContextsEventsTest extends AbstractPolyglotTest {
         } finally {
             executorService.shutdownNow();
             Assert.assertTrue(executorService.awaitTermination(1, TimeUnit.MINUTES));
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class ExecutableObject implements TruffleObject {
+        private final CallTarget target;
+
+        ExecutableObject(CallTarget target) {
+            this.target = target;
+        }
+
+        @ExportMessage
+        static boolean isExecutable(ExecutableObject obj) {
+            return obj.target != null;
+        }
+
+        @ExportMessage
+        static Object execute(ExecutableObject obj, Object[] args) {
+            return obj.target.call(args);
+        }
+
+        @ExportMessage
+        static boolean isNull(ExecutableObject obj) {
+            return obj.target == null;
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class UseBeforeContextInitFinishedLanguage extends AbstractExecutableTestLanguage {
+        static final String ID = TestUtils.getDefaultLanguageId(UseBeforeContextInitFinishedLanguage.class);
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            ExecutableContext execCtx = TestAPIAccessor.engineAccess().getCurrentContext(UseBeforeContextInitFinishedLanguage.class);
+            String memberKey = "thread" + Thread.currentThread().threadId();
+            appendElement(execCtx, memberKey, "executed");
+            return memberKey;
+        }
+
+        @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
+        private void appendElement(ExecutableContext ctx, String memberKey, String element) {
+            synchronized (ctx) {
+                try {
+                    Object scope = getScope(ctx);
+                    InteropLibrary uncached = InteropLibrary.getUncached();
+                    String prev = "";
+                    if (uncached.isMemberReadable(scope, memberKey)) {
+                        prev = uncached.readMember(scope, memberKey) + ",";
+                    }
+                    String newValue = prev + element;
+                    uncached.writeMember(scope, memberKey, newValue);
+                } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
+                    throw new AssertionError(e);
+                }
+            }
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
+
+        @Override
+        protected void initializeContext(ExecutableContext ctx) throws Exception {
+            com.oracle.truffle.api.source.Source useBeforeInitExecutableSrc = com.oracle.truffle.api.source.Source.newBuilder(UseBeforeContextInitFinishedLanguage.ID, "doesnotmatter",
+                            "dummy").build();
+            CallTarget useBeforeInitExecutableTarget = ctx.env.parsePublic(useBeforeInitExecutableSrc);
+            com.oracle.truffle.api.source.Source populateOtherLangExecutableSrc = com.oracle.truffle.api.source.Source.newBuilder(UseOtherLangObjectOnDifferentThreadLanguage.ID,
+                            "populateOtherLangExecutable", "dummy").build();
+            CallTarget populateOtherLangExecutableTarget = ctx.env.parsePublic(populateOtherLangExecutableSrc);
+            populateOtherLangExecutableTarget.call(new ExecutableObject(useBeforeInitExecutableTarget));
+        }
+
+        @Override
+        protected void initializeThread(ExecutableContext ctx, Thread thread) {
+            appendElement(ctx, "thread" + thread.threadId(), "initializeThread");
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class UseOtherLangObjectOnDifferentThreadLanguage extends TruffleLanguage<UseOtherLangObjectOnDifferentThreadLanguage.UseOtherLangObjectLanguageContext> {
+        static final String ID = TestUtils.getDefaultLanguageId(UseOtherLangObjectOnDifferentThreadLanguage.class);
+
+        static class UseOtherLangObjectLanguageContext {
+            private Object otherLangExecutable;
+
+            private static final ContextReference<UseOtherLangObjectLanguageContext> REFERENCE = ContextReference.create(UseOtherLangObjectOnDifferentThreadLanguage.class);
+
+            void populateOtherLangExecutable(Object o) {
+                assertNull(otherLangExecutable);
+                synchronized (this) {
+                    otherLangExecutable = o;
+                    notifyAll();
+                }
+            }
+
+            @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
+            Object waitForAndExecuteOtherLangExecutable(Node node) {
+                TruffleSafepoint.setBlockedThreadInterruptible(node, langContext -> {
+                    synchronized (langContext) {
+                        while (langContext.otherLangExecutable == null) {
+                            langContext.wait();
+                        }
+                    }
+
+                }, this);
+                try {
+                    return InteropLibrary.getUncached().execute(otherLangExecutable);
+                } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                    throw new AssertionError(e);
+                }
+            }
+        }
+
+        @Override
+        protected UseOtherLangObjectLanguageContext createContext(Env env) {
+            return new UseOtherLangObjectLanguageContext();
+        }
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            String srcString = request.getSource().getCharacters().toString();
+            return new RootNode(this) {
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    UseOtherLangObjectLanguageContext langContext = UseOtherLangObjectLanguageContext.REFERENCE.get(this);
+                    return populateOrExecuteOtherLangObject(langContext, srcString, frame.getArguments());
+                }
+
+                @CompilerDirectives.TruffleBoundary
+                private Object populateOrExecuteOtherLangObject(UseOtherLangObjectLanguageContext langContext, String branchName, Object[] args) {
+                    switch (branchName) {
+                        case "populateOtherLangExecutable":
+                            langContext.populateOtherLangExecutable(args[0]);
+                            break;
+                        case "waitForAndExecuteOtherLangExecutable":
+                            return langContext.waitForAndExecuteOtherLangExecutable(this);
+                        default:
+                            throw CompilerDirectives.shouldNotReachHere("Unimplemented branch");
+                    }
+                    return NullObject.SINGLETON;
+                }
+            }.getCallTarget();
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
+    }
+
+    @Test
+    public void testUseOtherLangObjectOnDifferentThread() throws InterruptedException, ExecutionException {
+        /*
+         * This test executes code of UseBeforeContextInitFinishedLanguage on another thread before
+         * TruffleLanguage#initializeContext callback for that language finishes on the main thread.
+         * The test then verifies that the TruffleLanguage#initializeThread callback was called
+         * before the code was executed on the other thread.
+         */
+        setupEnv(Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL), new ProxyLanguage() {
+            @Override
+            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+                return true;
+            }
+        });
+        CountDownLatch langContextInitFinishLatch = new CountDownLatch(1);
+        CountDownLatch langContextInitLatch = new CountDownLatch(1);
+        instrumentEnv.getInstrumenter().attachContextsListener(new ContextsListener() {
+            @Override
+            public void onContextCreated(TruffleContext ctx) {
+
+            }
+
+            @Override
+            public void onLanguageContextCreated(TruffleContext ctx, LanguageInfo lang) {
+
+            }
+
+            @Override
+            public void onLanguageContextInitialized(TruffleContext ctx, LanguageInfo lang) {
+                if (UseBeforeContextInitFinishedLanguage.ID.equals(lang.getId())) {
+                    langContextInitLatch.countDown();
+                    try {
+                        langContextInitFinishLatch.await();
+                    } catch (InterruptedException ie) {
+                        throw new AssertionError(ie);
+                    }
+                }
+            }
+
+            @Override
+            public void onLanguageContextFinalized(TruffleContext ctx, LanguageInfo lang) {
+
+            }
+
+            @Override
+            public void onLanguageContextDisposed(TruffleContext ctx, LanguageInfo lang) {
+
+            }
+
+            @Override
+            public void onContextClosed(TruffleContext ctx) {
+
+            }
+        }, false);
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        try {
+            Future<String> future = executorService.submit(() -> {
+                String toRet;
+                context.enter();
+                try {
+                    langContextInitLatch.countDown();
+                    toRet = context.eval(UseOtherLangObjectOnDifferentThreadLanguage.ID, "waitForAndExecuteOtherLangExecutable").asString();
+                } finally {
+                    context.leave();
+                }
+                langContextInitFinishLatch.countDown();
+                return toRet;
+            });
+            try {
+                langContextInitLatch.await();
+            } catch (InterruptedException ie) {
+                throw new AssertionError(ie);
+            }
+            context.initialize(UseBeforeContextInitFinishedLanguage.ID);
+            Assert.assertEquals("initializeThread,executed", context.getBindings(UseBeforeContextInitFinishedLanguage.ID).getMember(future.get()).asString());
+        } finally {
+            executorService.shutdownNow();
+            Assert.assertTrue(executorService.awaitTermination(100, TimeUnit.SECONDS));
         }
     }
 }

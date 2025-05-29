@@ -42,6 +42,12 @@ public class KnownIntrinsics {
     public static native Pointer heapBase();
 
     /**
+     * Returns the value of the code base, which is the address which
+     * {@linkplain com.oracle.svm.core.meta.MethodOffset method offsets} are relative to.
+     */
+    public static native Pointer codeBase();
+
+    /**
      * Returns the hub of the given object.
      */
     public static native DynamicHub readHub(Object obj);
@@ -117,4 +123,10 @@ public class KnownIntrinsics {
      * the static analysis, and without the check that the class is already initialized.
      */
     public static native Object unvalidatedAllocateInstance(Class<?> hub);
+
+    /**
+     * Like {@link java.lang.reflect.Array#newInstance(Class, int)} but without the checks that the
+     * array of the desired class is registered for reflection.
+     */
+    public static native Object unvalidatedNewArray(Class<?> componentType, int length) throws NegativeArraySizeException;
 }

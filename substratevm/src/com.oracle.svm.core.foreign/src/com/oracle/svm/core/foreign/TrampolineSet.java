@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package com.oracle.svm.core.foreign;
 
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -34,12 +35,16 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.code.AbstractRuntimeCodeInstaller.RuntimeCodeInstallerPlatformHelper;
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.word.Word;
 
 /**
  * A set of trampolines that can be assigned to specific upcall stubs with specific method handles.
@@ -73,7 +78,21 @@ final class TrampolineSet {
     private final int trampolineCount = maxTrampolineCount();
     private final PointerBase[] methodHandles = new PointerBase[trampolineCount];
     private final CFunctionPointer[] stubs = new CFunctionPointer[trampolineCount];
+    private final BitSet patchedStubs;
     private final Pointer trampolines;
+
+    private static BitSet initializedPatchedStubs(int nbits) {
+        BitSet patchedStubs = null;
+        assert (patchedStubs = new BitSet(nbits)).isEmpty();
+        return patchedStubs;
+    }
+
+    private boolean getAndSetPatchedStub(int id) {
+        assert patchedStubs != null;
+        boolean res = patchedStubs.get(id);
+        patchedStubs.set(id);
+        return res;
+    }
 
     private PinnedObject pin(Object object) {
         PinnedObject pinned = PinnedObject.create(object);
@@ -86,6 +105,7 @@ final class TrampolineSet {
 
         assert trampolineCount <= maxTrampolineCount();
         trampolines = prepareTrampolines(pin(methodHandles), pin(stubs), template);
+        this.patchedStubs = initializedPatchedStubs(stubs.length);
     }
 
     Pointer base() {
@@ -103,15 +123,24 @@ final class TrampolineSet {
 
         methodHandles[id] = pinned.addressOfObject();
         stubs[id] = upcallStubPointer;
+        assert !patchedStubs.get(id);
 
         return trampolines.add(id * AbiUtils.singleton().trampolineSize());
+    }
+
+    void patchTrampolineForDirectUpcall(Pointer trampolinePointer, CFunctionPointer directUpcallStubPointer) {
+        VMError.guarantee(trampolinePointer.aboveOrEqual(trampolines), "invalid trampoline pointer");
+        int id = UnsignedUtils.safeToInt(trampolinePointer.subtract(trampolines).unsignedDivide(AbiUtils.singleton().trampolineSize()));
+        VMError.guarantee(id >= 0 && id < stubs.length, "invalid trampoline id");
+        assert !getAndSetPatchedStub(id) : "attempt to patch trampoline twice";
+        stubs[id] = directUpcallStubPointer;
     }
 
     private Pointer prepareTrampolines(PinnedObject mhsArray, PinnedObject stubsArray, AbiUtils.TrampolineTemplate template) {
         VirtualMemoryProvider memoryProvider = VirtualMemoryProvider.get();
         UnsignedWord pageSize = allocationSize();
         /* We request a specific alignment to guarantee correctness of getAllocationBase */
-        Pointer page = memoryProvider.commit(WordFactory.nullPointer(), pageSize, VirtualMemoryProvider.Access.WRITE | VirtualMemoryProvider.Access.FUTURE_EXECUTE);
+        Pointer page = memoryProvider.commit(Word.nullPointer(), pageSize, VirtualMemoryProvider.Access.WRITE | VirtualMemoryProvider.Access.FUTURE_EXECUTE);
         if (page.isNull()) {
             throw new OutOfMemoryError("Could not allocate memory for trampolines.");
         }
@@ -128,6 +157,15 @@ final class TrampolineSet {
         VMError.guarantee(memoryProvider.protect(page, pageSize, VirtualMemoryProvider.Access.EXECUTE) == 0,
                         "Error when making the trampoline allocation executable");
 
+        /*
+         * On some architectures, it is necessary to flush the instruction cache if new code was
+         * installed and/or to issue an instruction synchronization barrier on other cores currently
+         * running a thread that may execute the newly installed code.
+         */
+        if (RuntimeCodeInstallerPlatformHelper.singleton().needsInstructionCacheSynchronization()) {
+            new InstructionCacheOperation(page.rawValue(), pageSize.rawValue()).enqueue();
+        }
+
         return page;
     }
 
@@ -142,6 +180,25 @@ final class TrampolineSet {
         }
         VirtualMemoryProvider.get().free(trampolines, allocationSize());
         assigned = FREED;
+        if (patchedStubs != null) {
+            patchedStubs.clear();
+        }
         return true;
+    }
+
+    private static class InstructionCacheOperation extends JavaVMOperation {
+        private final long codeStart;
+        private final long codeSize;
+
+        InstructionCacheOperation(long codeStart, long codeSize) {
+            super(VMOperationInfos.get(InstructionCacheOperation.class, "Prepare FFM API trampoline set", SystemEffect.SAFEPOINT));
+            this.codeStart = codeStart;
+            this.codeSize = codeSize;
+        }
+
+        @Override
+        protected void operate() {
+            RuntimeCodeInstallerPlatformHelper.singleton().performCodeSynchronization(codeStart, codeSize);
+        }
     }
 }

@@ -50,6 +50,8 @@ import org.junit.Test;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 
+import java.nio.ByteOrder;
+
 public class TStringUTF32Tests extends TStringTestBase {
 
     @Test
@@ -79,5 +81,33 @@ public class TStringUTF32Tests extends TStringTestBase {
         Assert.assertEquals(2, ts4.codePointLengthUncached(TruffleString.Encoding.UTF_32));
         Assert.assertEquals(0xD801, ts4.codePointAtIndexUncached(0, TruffleString.Encoding.UTF_32));
         Assert.assertEquals(0xDC00, ts4.codePointAtIndexUncached(1, TruffleString.Encoding.UTF_32));
+    }
+
+    private static TruffleString.Encoding getForeignEndian() {
+        return ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? TruffleString.Encoding.UTF_32BE : TruffleString.Encoding.UTF_32LE;
+    }
+
+    private static byte[] getByteSwappedArray(String s) {
+        byte[] array = new byte[s.length() << 2];
+        int i = 0;
+        for (int cp : s.codePoints().toArray()) {
+            int c = cp; // checkstyle
+            if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
+                c = Integer.reverseBytes(c);
+            }
+            array[i << 2] = (byte) (c >> 24);
+            array[(i << 2) + 1] = (byte) (c >> 16);
+            array[(i << 2) + 2] = (byte) (c >> 8);
+            array[(i << 2) + 3] = (byte) c;
+            i++;
+        }
+        return array;
+    }
+
+    @Test
+    public void testForeignEndian() {
+        TruffleString a = TruffleString.fromByteArrayUncached(getByteSwappedArray("a\udc00b"), getForeignEndian());
+        Assert.assertEquals(3, a.codePointLengthUncached(getForeignEndian()));
+        Assert.assertEquals("a\udc00b", a.toJavaStringUncached());
     }
 }

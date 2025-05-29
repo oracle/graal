@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,7 @@ import jdk.graal.compiler.nodes.ControlSplitNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopEndNode;
 import jdk.graal.compiler.nodes.LoopExitNode;
@@ -333,6 +334,14 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                 return lastCFG;
             }
         }
+        if (graph.getLastSchedule() != null && !graph.isAfterStage(GraphState.StageFlag.FINAL_SCHEDULE)) {
+            /*
+             * There is no up to date CFG. If there is a current schedule, its CFG must also be out
+             * of date. So invalidate the schedule. The only exception is during cleanup phases
+             * after final scheduling, where we don't want to destroy that schedule.
+             */
+            graph.clearLastSchedule();
+        }
         return null;
     }
 
@@ -398,7 +407,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
      * will return the updated value. This is useful for phases to record temporary effects of
      * transformations on loop frequencies, without having to recompute a CFG.
      * </p>
-     *
+     * <p>
      * The updated frequency is a cached value local to this CFG. It is <em>not</em> persisted in
      * the IR graph. Newly computed {@link ControlFlowGraph} instances will recompute a frequency
      * from loop exit probabilities, they will not see this locally cached value. Persistent changes
@@ -688,7 +697,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
      * it is not an endless loop) {@link LoopExitNode}. For every path exiting a loop a
      * {@link LoopExitNode} is required. There is one exception to that rule:
      * {@link DeoptimizeNode}.
-     *
+     * <p>
      * Graal does not mandate that a {@link DeoptimizeNode} is preceded by a {@link LoopExitNode}.
      * In the following example
      *
@@ -699,7 +708,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
      *     }
      * }
      * </pre>
-     *
+     * <p>
      * the IR does not have a preceding loop exit node before the deopt node. However, for regular
      * control flow sinks (returns, throws, etc) like in the following example
      *
@@ -710,9 +719,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
      *     }
      * }
      * </pre>
-     *
+     * <p>
      * Graal IR creates a {@link LoopExitNode} before the {@link ReturnNode}.
-     *
+     * <p>
      * Because of the "imprecision" in the definition a regular basic block exiting a loop and a
      * "dominator tree" loop exit are not necessarily the same. If a path after a control flow split
      * unconditionally flows into a deopt it is a "dominator loop exit" while a regular loop exit
@@ -810,9 +819,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     /**
      * Determine if sequential predecessor blocks of this block in a not-fully-canonicalized graph
      * exit a loop.
-     *
+     * <p>
      * Example: Sequential basic block: loop exit -> invoke -> killing begin -> loopend/exit
-     *
+     * <p>
      * These cases cause problems in the {@link #verifyRPOInnerLoopsFirst()} loop verification of
      * inner loop blocks because the granularity of loop ends and exits are not on block boundaries:
      * a loop exit block can also be a loop end to an outer loop, which makes verification that the

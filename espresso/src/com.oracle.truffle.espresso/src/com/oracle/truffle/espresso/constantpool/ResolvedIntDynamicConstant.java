@@ -23,15 +23,20 @@
 package com.oracle.truffle.espresso.constantpool;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class ResolvedIntDynamicConstant implements ResolvedDynamicConstant {
     final int resolved;
+    final JavaKind kind;
 
-    public ResolvedIntDynamicConstant(int resolved) {
+    public ResolvedIntDynamicConstant(int resolved, JavaKind kind) {
         this.resolved = resolved;
+        this.kind = kind;
     }
 
     @Override
@@ -45,7 +50,21 @@ public final class ResolvedIntDynamicConstant implements ResolvedDynamicConstant
     }
 
     @Override
-    public String toString(ConstantPool pool) {
-        return "ResolvedDynamicConstant(" + resolved + ")";
+    public JavaKind getKind() {
+        return kind;
+    }
+
+    @Override
+    public StaticObject guestBoxedValue(Meta meta) {
+        Object value = switch (kind) {
+            case Boolean -> resolved != 0;
+            case Byte -> (byte) resolved;
+            case Short -> (short) resolved;
+            case Char -> (char) resolved;
+            case Int -> resolved;
+            default ->
+                throw EspressoError.shouldNotReachHere(kind.toString());
+        };
+        return Meta.box(meta, value);
     }
 }

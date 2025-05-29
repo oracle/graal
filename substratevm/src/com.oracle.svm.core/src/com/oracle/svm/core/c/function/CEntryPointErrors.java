@@ -41,13 +41,14 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * Errors returned by {@link CEntryPointActions} and {@link CEntryPointNativeFunctions} and their
@@ -112,7 +113,7 @@ public final class CEntryPointErrors {
     @Description("Some exception is not caught.") //
     public static final int UNCAUGHT_EXCEPTION = 12;
 
-    @Description("Initialization the isolate failed.") //
+    @Description("Initializing the isolate failed.") //
     public static final int ISOLATE_INITIALIZATION_FAILED = 13;
 
     @Description("Opening the located auxiliary image file failed.") //
@@ -219,7 +220,7 @@ public final class CEntryPointErrors {
             }
             offset++;
         }
-        return WordFactory.nullPointer();
+        return Word.nullPointer();
     }
 
     private static final String[] DESCRIPTIONS;

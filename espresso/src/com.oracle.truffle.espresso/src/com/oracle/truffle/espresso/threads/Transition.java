@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.threads;
 
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -55,7 +54,7 @@ public interface Transition extends AutoCloseable {
 }
 
 final class NativeToGuestTransition implements Transition {
-    private final ThreadsAccess access;
+    private final ThreadAccess access;
     private final int old;
     private final StaticObject thread;
 
@@ -74,7 +73,7 @@ final class NativeToGuestTransition implements Transition {
 }
 
 final class ThreadStateTransitionImpl implements Transition {
-    private final ThreadsAccess access;
+    private final ThreadAccess access;
     private final int old;
     private final StaticObject thread;
 

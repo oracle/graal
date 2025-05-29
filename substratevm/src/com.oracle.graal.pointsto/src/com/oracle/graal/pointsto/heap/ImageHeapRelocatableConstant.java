@@ -39,8 +39,8 @@ public final class ImageHeapRelocatableConstant extends ImageHeapConstant {
     public static final class RelocatableConstantData extends ConstantData {
         public final String key;
 
-        RelocatableConstantData(AnalysisType type, String key) {
-            super(type, null, -1);
+        RelocatableConstantData(AnalysisType type, String key, int id) {
+            super(type, null, -1, id);
             this.key = key;
         }
     }
@@ -54,9 +54,13 @@ public final class ImageHeapRelocatableConstant extends ImageHeapConstant {
         return (RelocatableConstantData) constantData;
     }
 
-    public static ImageHeapRelocatableConstant create(AnalysisType type, String key) {
-        var data = new RelocatableConstantData(type, key);
+    public static ImageHeapRelocatableConstant create(AnalysisType type, String key, int id) {
+        var data = new RelocatableConstantData(type, key, id);
         return new ImageHeapRelocatableConstant(data, false);
+    }
+
+    public static ImageHeapRelocatableConstant create(AnalysisType type, String key) {
+        return create(type, key, -1);
     }
 
     @Override
@@ -72,5 +76,10 @@ public final class ImageHeapRelocatableConstant extends ImageHeapConstant {
     @Override
     public ImageHeapConstant forObjectClone() {
         throw AnalysisError.shouldNotReachHere("Unsupported in ImageHeapRelocatableConstant");
+    }
+
+    @Override
+    public String toString() {
+        return "(ImageHeapRelocatableConstant) " + super.toString();
     }
 }

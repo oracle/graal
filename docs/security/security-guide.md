@@ -58,7 +58,7 @@ In managed mode, all access to unmanaged code including the operating system is 
 * Regarding type safety, it is not possible to reinterpret a data pointer into a function pointer and execute arbitrary instructions (since these are distinct pointer types for LLVM runtime).
 * System calls are intercepted and routed to the corresponding Truffle APIs. For example, file IO is mapped to the Truffle `FileSystem` API.
 The set of currently supported system calls is very limited&mdash;only syscalls that can safely be mapped to the Truffle API level are available. Since LLVM Runtime in managed mode always runs bitcode compiled for Linux/x86, it only needs to implement system calls for this platform.
-* All dependent libraries are executed in managed mode as well, removing all references to natively executed system libraries. This includes libraries that are provided by the LLVM Runtime, such as muslibc.
+* All dependent libraries are executed in managed mode as well, removing all references to natively executed system libraries. This includes libraries that are provided by the LLVM Runtime, such as `muslibc`.
 
 Managed mode can be selected when creating a context `(Context.create())` or when calling the `bin/lli` binary by specifying the `--llvm.managed` option. A "managed" context will adhere to any restrictions (for example, `allowIO`) passed during context creation and does not need the `allowNativeAccess` privilege.
 

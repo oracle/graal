@@ -65,7 +65,7 @@ public final class MissingRegistrationUtils {
                 int printed = 0;
                 StackTraceElement entryPoint = null;
                 StringBuilder sb = new StringBuilder(exception.toString());
-                sb.append("\n");
+                sb.append(System.lineSeparator());
                 for (StackTraceElement stackTraceElement : stackTrace) {
                     if (printed == 0) {
                         String moduleName = stackTraceElement.getModuleName();

@@ -65,10 +65,10 @@ The words are delimited by commas and may be enclosed by an arbitrary number of 
     native-image IthWord --emit build-report
     ```
 
-    The command generates an executable file, `_ithword_`, in the current working directory.
+    The command generates an executable file, `ithword`, in the current working directory.
     The Build Report file, _ithword-build-report.html_, is automatically created alongside the native executable.
     A link to the report is also listed in the _Build artifacts_ section at the end of the build output.
-    You can specify a different filename or path for the report by appending it to the `build-report` argument, for example, `--emit build-report=/tmp/custom-name-build-report.html`.
+    You can specify a different filename or path for the report by appending it to the `build-report` option, for example, `--emit build-report=/tmp/custom-name-build-report.html`.
 
     (Optional) Run this executable with the same argument:
     ```shell

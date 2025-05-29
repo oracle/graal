@@ -42,10 +42,10 @@ suite = {
   "mxversion": "7.33.0",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
-  "version" : "24.2.0",
+  "version" : "25.0.0",
   "release" : False,
   "versionConflictResolution" : "latest",
-  "url" : "http://graalvm.org/",
+  "url" : "http://graalvm.org/webassembly",
   "developer" : {
     "name": "GraalVM Development",
     "email": "graalvm-dev@oss.oracle.com",
@@ -88,7 +88,7 @@ suite = {
       "requires": [
         "jdk.unsupported", # sun.misc.Unsafe
       ],
-      "checkstyleVersion" : "10.7.0",
+      "checkstyleVersion" : "10.21.0",
       "javaCompliance" : "17+",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
@@ -214,7 +214,40 @@ suite = {
       "workingSets": "WebAssembly",
       "javaCompliance" : "17+",
       "defaultBuild": False,
-    }
+    },
+
+    "graalwasm_licenses": {
+      "class": "StandaloneLicenses",
+      "community_license_file": "LICENSE",
+      "community_3rd_party_license_file": "THIRD_PARTY_LICENSE.txt",
+    },
+
+    "graalwasm_thin_launcher": {
+      "class": "ThinLauncherProject",
+      "mainClass": "org.graalvm.wasm.launcher.WasmLauncher",
+      "jar_distributions": ["wasm:WASM_LAUNCHER"],
+      "relative_home_paths": {
+        "wasm": "..",
+      },
+      "relative_jre_path": "../jvm",
+      "relative_module_path": "../modules",
+      "relative_extracted_lib_paths": {
+        "truffle.attach.library": "../jvmlibs/<lib:truffleattach>",
+      },
+      "liblang_relpath": "../lib/<lib:wasmvm>",
+    },
+
+    "libwasmvm": {
+      "class": "LanguageLibraryProject",
+      "dependencies": [
+        "GRAALWASM_STANDALONE_DEPENDENCIES",
+      ],
+      "build_args": [
+        # From mx.wasm/native-image.properties
+        # Configure launcher
+        "-Dorg.graalvm.launcher.class=org.graalvm.wasm.launcher.WasmLauncher",
+      ],
+    },
   },
 
   "externalProjects": {
@@ -250,7 +283,7 @@ suite = {
         "truffle:TRUFFLE_API",
         "sdk:POLYGLOT",
       ],
-      "description" : "GraalWasm, an engine for the WebAssembly language in GraalVM.",
+      "description" : "GraalWasm, a high-performance embeddable WebAssembly runtime for Java. This artifact includes the core language runtime. It is not recommended to depend on the artifact directly. Instead, use `org.graalvm.polyglot:wasm` or `org.graalvm.polyglot:wasm-community` to ensure all dependencies are pulled in correctly.", # pylint: disable=line-too-long
       "allowsJavadocWarnings": True,
       "license" : "UPL",
       "maven" : {
@@ -270,7 +303,7 @@ suite = {
         "artifactId": "wasm-community",
         "tag": ["default", "public"],
       },
-      "description": "Graal WASM engine.",
+      "description": "GraalWasm, a high-performance embeddable WebAssembly runtime for Java. This POM dependency includes GraalWasm dependencies and Truffle Community Edition.",
       "license": "UPL",
     },
 
@@ -387,6 +420,98 @@ suite = {
         "LICENSE_WASM.txt": "file:LICENSE",
       },
       "maven": False,
+    },
+
+    "GRAALWASM_STANDALONE_DEPENDENCIES": {
+      "description": "GraalWasm standalone dependencies",
+      "class": "DynamicPOMDistribution",
+      "distDependencies": [
+        "wasm:WASM_LAUNCHER",
+        "wasm:WASM",
+        "sdk:TOOLS_FOR_STANDALONE",
+      ],
+      "dynamicDistDependencies": "graalwasm_standalone_deps",
+      "maven": False,
+    },
+
+    "GRAALWASM_STANDALONE_COMMON": {
+      "description": "Common layout for Native and JVM standalones",
+      "type": "dir",
+      "platformDependent": True,
+      "platforms": "local",
+      "layout": {
+        "./": [
+          "extracted-dependency:WASM_GRAALVM_SUPPORT",
+          "dependency:graalwasm_licenses/*",
+        ],
+        "bin/<exe:wasm>": "dependency:graalwasm_thin_launcher",
+        "release": "dependency:sdk:STANDALONE_JAVA_HOME/release",
+      },
+    },
+
+    "GRAALWASM_NATIVE_STANDALONE": {
+      "description": "GraalWasm Native standalone",
+      "type": "dir",
+      "platformDependent": True,
+      "platforms": "local",
+      "layout": {
+        "./": [
+          "dependency:GRAALWASM_STANDALONE_COMMON/*",
+        ],
+        "lib/": "dependency:libwasmvm",
+      },
+    },
+
+    "GRAALWASM_JVM_STANDALONE": {
+      "description": "GraalWasm JVM standalone",
+      "type": "dir",
+      "platformDependent": True,
+      "platforms": "local",
+      "layout": {
+        "./": [
+          "dependency:GRAALWASM_STANDALONE_COMMON/*",
+        ],
+        "jvm/": {
+          "source_type": "dependency",
+          "dependency": "sdk:STANDALONE_JAVA_HOME",
+          "path": "*",
+          "exclude": [
+            # Native Image-related
+            "bin/native-image*",
+            "lib/static",
+            "lib/svm",
+            "lib/<lib:native-image-agent>",
+            "lib/<lib:native-image-diagnostics-agent>",
+            # Unnecessary and big
+            "lib/src.zip",
+            "jmods",
+          ],
+        },
+        "jvmlibs/": [
+          "extracted-dependency:truffle:TRUFFLE_ATTACH_GRAALVM_SUPPORT",
+        ],
+        "modules/": [
+          "classpath-dependencies:GRAALWASM_STANDALONE_DEPENDENCIES",
+        ],
+      },
+    },
+
+    "GRAALWASM_NATIVE_STANDALONE_RELEASE_ARCHIVE": {
+        "class": "DeliverableStandaloneArchive",
+        "platformDependent": True,
+        "standalone_dist": "GRAALWASM_NATIVE_STANDALONE",
+        "language_id": "wasm",
+        "community_archive_name": "graalwasm-community",
+        "enterprise_archive_name": "graalwasm",
+    },
+
+    "GRAALWASM_JVM_STANDALONE_RELEASE_ARCHIVE": {
+        "class": "DeliverableStandaloneArchive",
+        "platformDependent": True,
+        "standalone_dist": "GRAALWASM_JVM_STANDALONE",
+        "language_id": "wasm",
+        "community_archive_name": "graalwasm-community-jvm",
+        "enterprise_archive_name": "graalwasm-jvm",
     },
   }
 }

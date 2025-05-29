@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.constantpool;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 
@@ -45,7 +45,7 @@ public final class ResolvedDoubleDynamicConstant implements ResolvedDynamicConst
     }
 
     @Override
-    public String toString(ConstantPool pool) {
-        return "ResolvedDynamicConstant(" + resolved + ")";
+    public JavaKind getKind() {
+        return JavaKind.Double;
     }
 }

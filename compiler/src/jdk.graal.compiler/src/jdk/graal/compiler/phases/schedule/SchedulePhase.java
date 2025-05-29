@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -266,6 +266,10 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         public void run(StructuredGraph graph, SchedulingStrategy selectedStrategy, boolean immutableGraph) {
             if (this.cfg == null) {
                 this.cfg = ControlFlowGraph.computeForSchedule(graph);
+            } else {
+                GraalError.guarantee(this.cfg == graph.getLastCFG() && graph.isLastCFGValid(),
+                                "Cannot compute schedule for stale CFG; given: %s, graph's last CFG is %s, is valid: %s.",
+                                this.cfg, graph.getLastCFG(), graph.isLastCFGValid());
             }
 
             NodeMap<HIRBlock> currentNodeMap = graph.createNodeMap();
@@ -334,9 +338,9 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                             // We are scheduling a floating read node => check memory
                             // anti-dependencies.
                             FloatingReadNode floatingReadNode = (FloatingReadNode) currentNode;
-                            LocationIdentity location = floatingReadNode.getLocationIdentity();
-                            if (location.isMutable()) {
+                            if (floatingReadNode.potentialAntiDependency()) {
                                 // Location can be killed.
+                                LocationIdentity location = floatingReadNode.getLocationIdentity();
                                 constrainingLocation = location;
                                 if (currentBlock.canKill(location)) {
                                     if (killed == null) {
@@ -1122,7 +1126,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             }
         }
 
-        private static class GuardOrder {
+        private static final class GuardOrder {
             /**
              * After an earliest schedule, this will re-sort guards to honor their
              * {@linkplain StaticDeoptimizingNode#computePriority() priority}.

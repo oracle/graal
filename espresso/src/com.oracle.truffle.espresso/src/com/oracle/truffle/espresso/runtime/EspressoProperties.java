@@ -38,6 +38,7 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.substitutions.ModuleExtension;
 
@@ -261,7 +262,7 @@ public interface EspressoProperties {
         }
 
         // The boot classpath is an aggregation of several options, the logical order is:
-        // PrependBootClasspath + BootClasspath + polyglot.jar + AppendBootClasspath.
+        /*- PrependBootClasspath + java.base injections + BootClasspath + polyglot.jar + AppendBootClasspath. */
         List<Path> bootClasspath = new ArrayList<>(builder.bootClasspath());
         if (options.hasBeenSet(EspressoOptions.BootClasspath)) {
             bootClasspath = new ArrayList<>(options.get(EspressoOptions.BootClasspath));
@@ -269,7 +270,7 @@ public interface EspressoProperties {
 
         Path espressoLibs = context.getEspressoLibs();
 
-        for (ModuleExtension me : ModuleExtension.getAllExtensions(context)) {
+        for (ModuleExtension me : ModuleExtension.getBootExtensions(context)) {
             Path jarPath = espressoLibs.resolve(me.jarName());
             if (Files.isReadable(jarPath)) {
                 TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding " + me.jarName() + " to the boot classpath");
@@ -285,6 +286,18 @@ public interface EspressoProperties {
         }
         if (options.hasBeenSet(EspressoOptions.BootClasspathPrepend)) {
             bootClasspath.addAll(0, options.get(EspressoOptions.BootClasspathPrepend));
+        }
+
+        // When Espresso libs are in use:
+        // - Inject (prepend) truffle-io.jar
+        if (context.getLanguage().useEspressoLibs()) {
+            Path jarPath = espressoLibs.resolve(TruffleIO.JAR_NAME);
+            if (Files.isReadable(jarPath)) {
+                TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding TruffleIO to java.base");
+                bootClasspath.add(0, jarPath);
+            } else {
+                TruffleLogger.getLogger(EspressoLanguage.ID).warning(jarPath + " not found at " + espressoLibs);
+            }
         }
 
         builder.bootClasspath(bootClasspath);

@@ -39,12 +39,14 @@ public class BooleanPrimitiveCheckTypeFlow extends BooleanCheckTypeFlow {
     private final TypeFlow<?> left;
     private final TypeFlow<?> right;
     private final PrimitiveComparison comparison;
+    private final boolean isUnsigned;
 
-    public BooleanPrimitiveCheckTypeFlow(BytecodePosition position, AnalysisType declaredType, TypeFlow<?> left, TypeFlow<?> right, PrimitiveComparison comparison) {
+    public BooleanPrimitiveCheckTypeFlow(BytecodePosition position, AnalysisType declaredType, TypeFlow<?> left, TypeFlow<?> right, PrimitiveComparison comparison, boolean isUnsigned) {
         super(position, declaredType);
         this.left = left;
         this.right = right;
         this.comparison = comparison;
+        this.isUnsigned = isUnsigned;
     }
 
     private BooleanPrimitiveCheckTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, BooleanPrimitiveCheckTypeFlow original) {
@@ -52,6 +54,7 @@ public class BooleanPrimitiveCheckTypeFlow extends BooleanCheckTypeFlow {
         this.left = methodFlows.lookupCloneOf(bb, original.left);
         this.right = methodFlows.lookupCloneOf(bb, original.right);
         this.comparison = original.comparison;
+        this.isUnsigned = original.isUnsigned;
     }
 
     @Override
@@ -60,25 +63,21 @@ public class BooleanPrimitiveCheckTypeFlow extends BooleanCheckTypeFlow {
     }
 
     @Override
-    public boolean addState(PointsToAnalysis bb, TypeState add) {
-        return super.addState(bb, eval(bb));
-    }
-
-    @Override
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
         /*
          * If an input saturated, it does not mean that the condition has to always saturate as
          * well, e.g. Any == {5} will return {5}.
          */
-        super.addState(bb, eval(bb));
+        addState(bb, TypeState.forEmpty());
     }
 
     /**
-     * Compares the type states of left and right.
+     * Computes new type state of this flow by comparing the type states of left and right.
      *
      * @return can be either empty, true, false, or any.
      */
-    public TypeState eval(PointsToAnalysis bb) {
+    @Override
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState newState) {
         var leftState = left.getOutputState(bb);
         var rightState = right.getOutputState(bb);
         if (leftState.isEmpty() || rightState.isEmpty()) {
@@ -86,6 +85,6 @@ public class BooleanPrimitiveCheckTypeFlow extends BooleanCheckTypeFlow {
         }
         assert leftState.isPrimitive() : left;
         assert rightState.isPrimitive() : right;
-        return convertToBoolean(TypeState.filter(leftState, comparison, rightState), TypeState.filter(leftState, comparison.negate(), rightState));
+        return convertToBoolean(bb, TypeState.filter(leftState, comparison, rightState, isUnsigned), TypeState.filter(leftState, comparison.negate(), rightState, isUnsigned));
     }
 }

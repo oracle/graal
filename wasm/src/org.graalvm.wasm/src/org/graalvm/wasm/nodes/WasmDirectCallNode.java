@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,30 +40,30 @@
  */
 package org.graalvm.wasm.nodes;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.NeverDefault;
 
+/**
+ * Direct call node for direct function (code entry) calls within the same module. The call target
+ * is resolved during module instantiation, before linking.
+ */
 public final class WasmDirectCallNode extends WasmCallNode {
 
-    private final int bytecodeOffset;
     private final CallTarget target;
 
     WasmDirectCallNode(CallTarget target, int bytecodeOffset) {
-        this.target = target;
-        this.bytecodeOffset = bytecodeOffset;
+        super(bytecodeOffset);
+        this.target = Objects.requireNonNull(target);
     }
 
-    public CallTarget getTarget() {
+    public CallTarget target() {
         return target;
     }
 
     public Object execute(Object[] args) {
         return target.call(this, args);
-    }
-
-    @Override
-    public int getBytecodeOffset() {
-        return bytecodeOffset;
     }
 
     @NeverDefault

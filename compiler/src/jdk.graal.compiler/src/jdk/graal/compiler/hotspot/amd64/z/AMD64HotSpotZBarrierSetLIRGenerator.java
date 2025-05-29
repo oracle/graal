@@ -41,10 +41,8 @@ import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
-import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64SIMDInstructionEncoding;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
-import jdk.graal.compiler.asm.amd64.AVXKind;
 import jdk.graal.compiler.core.amd64.AMD64LIRGenerator;
 import jdk.graal.compiler.core.amd64.AMD64ReadBarrierSetLIRGenerator;
 import jdk.graal.compiler.core.common.LIRKind;
@@ -58,7 +56,6 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotMarkId;
 import jdk.graal.compiler.hotspot.ZWriteBarrierSetLIRGeneratorTool;
-import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstruction;
@@ -68,11 +65,9 @@ import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
 import jdk.graal.compiler.lir.amd64.AMD64BinaryConsumer;
 import jdk.graal.compiler.lir.amd64.AMD64Call;
-import jdk.graal.compiler.lir.amd64.vector.AMD64VectorMove;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.MemoryBarriers;
@@ -106,7 +101,10 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
     /**
      * Convert a normal oop into a colored pointer in a single register.
      */
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/x86/gc/z/z_x86_64.ad#L37-L42", sha1 = "344c51c07478c916bdaabb0c697a053e7a2f64dd")
+    // @formatter:off
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/x86/gc/z/z_x86_64.ad#L37-L42",
+              sha1 = "344c51c07478c916bdaabb0c697a053e7a2f64dd")
+    // @formatter:on
     public static void zColor(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register ref) {
         crb.recordMark(HotSpotMarkId.Z_BARRIER_RELOCATION_FORMAT_LOAD_GOOD_BEFORE_SHL);
         masm.shlq(ref, UNPATCHED);
@@ -126,7 +124,10 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
     /**
      * Convert a colored pointer into normal oop.
      */
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/x86/gc/z/z_x86_64.ad#L44-L47", sha1 = "5024a425db7a0d1504713ad9029a68da6089967f")
+    // @formatter:off
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/x86/gc/z/z_x86_64.ad#L44-L47",
+              sha1 = "5024a425db7a0d1504713ad9029a68da6089967f")
+    // @formatter:on
     public static void zUncolor(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register ref) {
         crb.recordMark(HotSpotMarkId.Z_BARRIER_RELOCATION_FORMAT_LOAD_GOOD_BEFORE_SHL);
         masm.shrq(ref, UNPATCHED);
@@ -136,8 +137,12 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
      * Emit the full store barrier with a fast path, and an out of line medium path with a final
      * slow path call to the runtime.
      */
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L304-L321", sha1 = "9a628c1771df79ae8b4cee89d2863fbd4a4964bc")
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/d8430efb5e159b8e08d2cac66b46cb4ff1112927/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L374-L418", sha1 = "7688e7aeab5f1aa413690066355a17c18a4273fa")
+    // @formatter:off
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/7e69b98e0548803b85b04b518929c073f8ffaf8c/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L302-L319",
+              sha1 = "9a628c1771df79ae8b4cee89d2863fbd4a4964bc")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/7e69b98e0548803b85b04b518929c073f8ffaf8c/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L372-L416",
+              sha1 = "7688e7aeab5f1aa413690066355a17c18a4273fa")
+    // @formatter:on
     public static void emitPreWriteBarrier(CompilationResultBuilder crb,
                     AMD64MacroAssembler masm,
                     LIRInstruction op,
@@ -213,7 +218,10 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
     /**
      * Try to perform any local store barrier fixups or dispatch to the slow path.
      */
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/d8430efb5e159b8e08d2cac66b46cb4ff1112927/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L454-L509", sha1 = "4b729acf92e6a297229b7f1e957601708c315f4f")
+    // @formatter:off
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/7e69b98e0548803b85b04b518929c073f8ffaf8c/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L452-L507",
+              sha1 = "4b729acf92e6a297229b7f1e957601708c315f4f")
+    // @formatter:on
     static void storeBarrierMedium(CompilationResultBuilder crb,
                     AMD64MacroAssembler masm,
                     AMD64Address address,
@@ -278,7 +286,10 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
     /**
      * Add a value to the store buffer.
      */
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/d8430efb5e159b8e08d2cac66b46cb4ff1112927/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L420-L452", sha1 = "638b10c65bb14fa4b254efa4d5bbb1751fdbb6bf")
+    // @formatter:off
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/7e69b98e0548803b85b04b518929c073f8ffaf8c/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L418-L450",
+              sha1 = "638b10c65bb14fa4b254efa4d5bbb1751fdbb6bf")
+    // @formatter:on
     static void storeBarrierBufferAdd(AMD64MacroAssembler masm,
                     AMD64Address address,
                     Register tmp1,
@@ -316,7 +327,10 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
      * done with a special stack-only calling convention that saves and restores all registers
      * around the call. This simplifies the code generation as no extra registers are required.
      */
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L219-L302", sha1 = "16f5bff0a0f68ae40be8dd980b7728d7ee60cd2c")
+    // @formatter:off
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/73c8c755ea638c09147d28080646ee8887ee8283/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L218-L300",
+              sha1 = "b115de722f09759f23e6778fda61d7701fc1cee7")
+    // @formatter:on
     public static void emitLoadBarrier(CompilationResultBuilder crb,
                     AMD64MacroAssembler masm,
                     Register resultReg,
@@ -376,20 +390,6 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
             tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
             boolean isNotStrong = barrierType == BarrierType.REFERENCE_GET || barrierType == BarrierType.WEAK_REFERS_TO || barrierType == BarrierType.PHANTOM_REFERS_TO;
             tool.append(new AMD64HotSpotZReadBarrierOp(result, loadAddress, state, config, callTarget, isNotStrong));
-            return result;
-        }
-        if (kind.getPlatformKind().getVectorLength() > 1) {
-            // Emit a vector barrier
-            assert barrierType == BarrierType.READ : Assertions.errorMessage(barrierType);
-            ForeignCallLinkage callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.Z_ARRAY_BARRIER);
-            AMD64AddressValue loadAddress = ((AMD64LIRGenerator) tool).asAddressValue(address);
-            Variable result = tool.newVariable(tool.toRegisterKind(kind));
-
-            AMD64Assembler.VexMoveOp op = AMD64VectorMove.getVectorMemMoveOp((AMD64Kind) kind.getPlatformKind(),
-                            AMD64SIMDInstructionEncoding.forFeatures(((AMD64) tool.target().arch).getFeatures()));
-            Variable temp = tool.newVariable(tool.toRegisterKind(kind));
-            tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-            tool.append(new AMD64HotSpotZVectorReadBarrierOp(AVXKind.getRegisterSize((AMD64Kind) kind.getPlatformKind()), op, result, loadAddress, state, config, callTarget, temp));
             return result;
         }
         throw GraalError.shouldNotReachHere("unhandled barrier");

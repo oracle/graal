@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import static com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistryFeature.INVALID;
+
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -36,7 +38,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
-import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -57,9 +58,12 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.Assertions;
+import jdk.vm.ci.meta.JavaConstant;
 
 @AutomaticallyRegisteredFeature
 public class CrossLayerConstantRegistryFeature implements InternalFeature, FeatureSingleton, CrossLayerConstantRegistry {
+    static final int INVALID = -1;
+    private static final Object NULL_CONSTANT_MARKER = new Object();
 
     private record FutureConstantCandidateInfo(ImageHeapRelocatableConstant constant) {
     }
@@ -67,7 +71,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
     ImageLayerIdTrackingSingleton tracker;
     boolean candidateRegistrySealed = false;
     boolean patchingSealed = false;
-    ImageLayerLoader loader;
+    SVMImageLayerLoader loader;
 
     Map<String, Object> constantCandidates;
     Map<String, Object> requiredConstants;
@@ -112,7 +116,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
     @Override
     public void duringSetup(DuringSetupAccess access) {
         var config = (FeatureImpl.DuringSetupAccessImpl) access;
-        loader = config.getUniverse().getImageLayerLoader();
+        loader = HostedImageLayerBuildingSupport.singleton().getLoader();
         LayeredImageHeapObjectAdder.singleton().registerObjectAdder(this::addInitialObjects);
         var registry = CrossLayerConstantRegistry.singletonOrNull();
         config.registerObjectToConstantReplacer(obj -> replacePriorMarkersWithConstant(registry, obj));
@@ -123,7 +127,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
      */
     ImageHeapConstant replacePriorMarkersWithConstant(CrossLayerConstantRegistry registry, Object object) {
         if (object instanceof PriorLayerMarker priorLayerMarker) {
-            return registry.getConstant(priorLayerMarker.getKey());
+            return (ImageHeapConstant) registry.getConstant(priorLayerMarker.getKey());
         }
 
         return null;
@@ -143,7 +147,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
              * used by a prior layer. However, currently it is not worth introducing this
              * complication to the code.
              */
-            ImageHeapConstant singletonConstant = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(futureConstant);
+            JavaConstant singletonConstant = futureConstant == NULL_CONSTANT_MARKER ? JavaConstant.NULL_POINTER : (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(futureConstant);
             heap.addConstant(singletonConstant, false, addReason);
         }
     }
@@ -160,7 +164,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
             FutureConstantCandidateInfo futureConstant = (FutureConstantCandidateInfo) entry.getValue();
             var constant = futureConstant.constant();
             AnalysisType type = constant.getType();
-            tracker.registerFutureTrackingInfo(new FutureTrackingInfo(key, FutureTrackingInfo.State.Type, type.getId(), -1));
+            tracker.registerFutureTrackingInfo(new FutureTrackingInfo(key, FutureTrackingInfo.State.Type, type.getId(), INVALID));
 
         });
     }
@@ -195,11 +199,17 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
          */
         for (var entry : finalizedFutureConstants.entrySet()) {
             // We know these constants have been installed via addInitialObjects
-            var futureConstant = (ImageHeapConstant) snippetReflection.forObject(entry.getValue());
-            var objectInfo = heap.getConstantInfo(futureConstant);
-            int id = ImageHeapConstant.getConstantID(futureConstant);
-            FutureTrackingInfo info = (FutureTrackingInfo) tracker.getTrackingInfo(entry.getKey());
-            tracker.updateFutureTrackingInfo(new FutureTrackingInfo(info.key(), FutureTrackingInfo.State.Final, id, NumUtil.safeToInt(objectInfo.getOffset())));
+            Object value = entry.getValue();
+            if (value == NULL_CONSTANT_MARKER) {
+                FutureTrackingInfo info = (FutureTrackingInfo) tracker.getTrackingInfo(entry.getKey());
+                tracker.updateFutureTrackingInfo(new FutureTrackingInfo(info.key(), FutureTrackingInfo.State.Final, INVALID, INVALID));
+            } else {
+                var futureConstant = (ImageHeapConstant) snippetReflection.forObject(value);
+                var objectInfo = heap.getConstantInfo(futureConstant);
+                int id = ImageHeapConstant.getConstantID(futureConstant);
+                FutureTrackingInfo info = (FutureTrackingInfo) tracker.getTrackingInfo(entry.getKey());
+                tracker.updateFutureTrackingInfo(new FutureTrackingInfo(info.key(), FutureTrackingInfo.State.Final, id, NumUtil.safeToInt(objectInfo.getOffset())));
+            }
         }
 
         if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
@@ -242,7 +252,8 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
             FutureTrackingInfo info = (FutureTrackingInfo) tracker.getTrackingInfo(entry.getKey());
             VMError.guarantee(info.state() == FutureTrackingInfo.State.Final, "Invalid future %s", info);
 
-            int referenceEncoding = info.offset() >>> shift;
+            int offset = info.offset();
+            int referenceEncoding = offset == INVALID ? 0 : offset >>> shift;
             for (int heapOffset : offsetsToPatch) {
                 patchArray.add(heapOffset - heapBeginOffset);
                 patchArray.add(referenceEncoding);
@@ -272,7 +283,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
     }
 
     @Override
-    public ImageHeapConstant getConstant(String keyName) {
+    public JavaConstant getConstant(String keyName) {
         TrackingInfo idInfo = tracker.getTrackingInfo(keyName);
         if (idInfo instanceof PriorTrackingInfo prior) {
             return loader.getOrCreateConstant(prior.constantId());
@@ -288,13 +299,17 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
         if (idInfo instanceof FutureTrackingInfo future) {
             VMError.guarantee(!finalizedFutureConstants.containsKey(keyName), "Future was finalized in this layer: %s", future);
 
+            if (future.loaderId() == INVALID) {
+                return JavaConstant.NULL_POINTER;
+            }
+
             if (future.state() != FutureTrackingInfo.State.Type) {
                 return loader.getOrCreateConstant(future.loaderId());
             }
 
             // A constant has not been stored in the heap yet. Create and cache a constant candidate
             FutureConstantCandidateInfo info = (FutureConstantCandidateInfo) constantCandidates.computeIfAbsent(keyName, (k) -> {
-                AnalysisType type = loader.getAnalysisType(future.loaderId());
+                AnalysisType type = loader.getAnalysisTypeForBaseLayerId(future.loaderId());
                 return new FutureConstantCandidateInfo(ImageHeapRelocatableConstant.create(type, k));
             });
             return info.constant();
@@ -315,6 +330,10 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
         VMError.guarantee(previous == null && !constantExists(keyName), "This key has been registered before: %s", keyName);
     }
 
+    public boolean isConstantRegistered(Object obj) {
+        return constantCandidates.containsValue(obj);
+    }
+
     @Override
     public void registerHeapConstant(String keyName, Object obj) {
         registerConstantCandidate(keyName, obj);
@@ -323,10 +342,12 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
     }
 
     @Override
-    public void registerFutureHeapConstant(String keyName, AnalysisType futureType) {
+    public ImageHeapConstant registerFutureHeapConstant(String keyName, AnalysisType futureType) {
         assert futureType != null;
-        var futureConstant = new FutureConstantCandidateInfo(ImageHeapRelocatableConstant.create(futureType, keyName));
-        registerConstantCandidate(keyName, futureConstant);
+        var imageHeapConstant = ImageHeapRelocatableConstant.create(futureType, keyName);
+        var constantInfo = new FutureConstantCandidateInfo(imageHeapConstant);
+        registerConstantCandidate(keyName, constantInfo);
+        return constantInfo.constant();
     }
 
     @Override
@@ -334,7 +355,8 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
         checkCandidateRegistry();
         VMError.guarantee(tracker.getTrackingInfo(keyName) instanceof FutureTrackingInfo, "This key was not registered as a future constant %s", keyName);
 
-        var previous = finalizedFutureConstants.putIfAbsent(keyName, obj);
+        Object object = obj == null ? NULL_CONSTANT_MARKER : obj;
+        var previous = finalizedFutureConstants.putIfAbsent(keyName, object);
         VMError.guarantee(previous == null, "This key has been registered before: %s", keyName);
     }
 
@@ -346,7 +368,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
         VMError.guarantee(!patchingSealed, "Cross layer patching is sealed");
         var data = constant.getConstantData();
         tracker.registerPatchSite(data.key, heapOffset);
-        tracker.updateFutureTrackingInfo(new FutureTrackingInfo(data.key, FutureTrackingInfo.State.Relocatable, ImageHeapConstant.getConstantID(constant), -1));
+        tracker.updateFutureTrackingInfo(new FutureTrackingInfo(data.key, FutureTrackingInfo.State.Relocatable, ImageHeapConstant.getConstantID(constant), INVALID));
     }
 
     /**
@@ -501,7 +523,7 @@ class ImageLayerIdTrackingSingleton implements LayeredImageSingleton {
             String key = futureKeys.next();
             FutureTrackingInfo.State state = FutureTrackingInfo.State.values()[futureStates.next()];
             int loaderId = futureLoaderIds.next();
-            int offset = state == FutureTrackingInfo.State.Final ? futureOffsets.next() : -1;
+            int offset = state == FutureTrackingInfo.State.Final ? futureOffsets.next() : INVALID;
             tracker.registerFutureTrackingInfo(new FutureTrackingInfo(key, state, loaderId, offset));
 
             List<Integer> offsetsToPatch = loader.readIntList(futureKeyPatchKey(key));
@@ -526,14 +548,14 @@ record FutureTrackingInfo(String key, State state, int loaderId, int offset) imp
     }
 
     public FutureTrackingInfo {
-        assert key != null && loaderId >= 0 : Assertions.errorMessage(key, loaderId);
+        assert key != null && loaderId >= INVALID : Assertions.errorMessage(key, loaderId);
         switch (state) {
             case Type:
             case Relocatable:
-                assert offset == -1 : Assertions.errorMessage(state, offset);
+                assert offset == INVALID : Assertions.errorMessage(state, offset);
                 break;
             case Final:
-                assert offset > 0 : Assertions.errorMessage(state, offset);
+                assert offset > 0 || (offset == INVALID && loaderId == INVALID) : Assertions.errorMessage(state, offset);
         }
     }
 }

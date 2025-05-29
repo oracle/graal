@@ -33,17 +33,17 @@ questions.
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
             <artifactId>selenium-api</artifactId>
-            <version>4.15.0</version>
+            <version>[4.28,6.0)</version>
         </dependency>
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
             <artifactId>selenium-chrome-driver</artifactId>
-            <version>4.15.0</version>
+            <version>[4.28,6.0)</version>
         </dependency>
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
             <artifactId>selenium-support</artifactId>
-            <version>4.15.0</version>
+            <version>[4.28,6.0)</version>
         </dependency>
     </dependencies>
     <build>

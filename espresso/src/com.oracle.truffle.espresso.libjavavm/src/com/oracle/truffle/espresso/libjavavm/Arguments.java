@@ -55,7 +55,7 @@ public final class Arguments {
 
     private static final String AGENT_LIB = "java.AgentLib.";
     private static final String AGENT_PATH = "java.AgentPath.";
-    private static final String JAVA_AGENT = "java.JavaAgent";
+    public static final String JAVA_AGENT = "java.JavaAgent";
 
     /*
      * HotSpot comment:
@@ -76,7 +76,8 @@ public final class Arguments {
                     // `TieredStopAtLevel=0` is handled separately, other values are ignored
                     "TieredStopAtLevel",
                     "MaxMetaspaceSize",
-                    "HeapDumpOnOutOfMemoryError");
+                    "HeapDumpOnOutOfMemoryError",
+                    "UseJVMCICompiler");
 
     private static final Map<String, String> MAPPED_XX_OPTIONS = Map.of(
                     "TieredCompilation", "engine.MultiTier");
@@ -125,7 +126,7 @@ public final class Arguments {
                         builder.option("java.JDWPOptions", value);
                     } else if (optionString.startsWith("-javaagent:")) {
                         String value = optionString.substring("-javaagent:".length());
-                        builder.option(JAVA_AGENT, value);
+                        handler.addJavaAgent(value);
                         handler.addModules("java.instrument");
                     } else if (optionString.startsWith("-agentlib:")) {
                         String[] split = splitEquals(optionString.substring("-agentlib:".length()));
@@ -214,7 +215,7 @@ public final class Arguments {
                         builder.option("engine.CompileImmediately", "true");
                     } else if (optionString.startsWith("-Xint") || "-XX:TieredStopAtLevel=0".equals(optionString)) {
                         builder.option("engine.Compilation", "false");
-                    } else if (optionString.startsWith("-Xshare:auto") || "-Xshare:off".equals(optionString)) {
+                    } else if ("-Xshare:auto".equals(optionString) || "-Xshare:off".equals(optionString)) {
                         // ignore
                     } else if (optionString.startsWith("-XX:")) {
                         handler.handleXXArg(optionString);

@@ -318,7 +318,7 @@ public class NodePropertiesTest extends GraalCompilerTest {
         }
     }
 
-    private static class GraphCostPhase extends TestBasePhase<CoreProviders> {
+    private static final class GraphCostPhase extends TestBasePhase<CoreProviders> {
         private double finalCycles;
         private double finalSize;
 

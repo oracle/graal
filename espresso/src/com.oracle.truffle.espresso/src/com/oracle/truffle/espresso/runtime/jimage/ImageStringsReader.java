@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.runtime.jimage;
 
 import java.io.IOException;
@@ -28,8 +27,8 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
 import com.oracle.truffle.espresso.classfile.descriptors.Validation;
-import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUtf8;
 
 public class ImageStringsReader {
     public static final int HASH_MULTIPLIER = 0x01000193;
@@ -98,7 +97,7 @@ public class ImageStringsReader {
     static String stringFromByteBuffer(ByteBuffer buffer, int startOffset) {
         ByteBuffer raw = rawStringFromByteBuffer(buffer, startOffset);
         try {
-            return ModifiedUtf8.toJavaString(raw);
+            return ModifiedUTF8.toJavaString(raw);
         } catch (IOException e) {
             throw new InternalError(e);
         }

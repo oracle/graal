@@ -90,8 +90,17 @@ final class DefaultInliningPolicy implements InliningPolicy {
         if (node.getState() == CallNode.State.Expanded) {
             data.callDiff = -1 * node.getRootRelativeFrequency();
             for (CallNode child : node.getChildren()) {
-                if (child.getState() != CallNode.State.Indirect && child.getState() != CallNode.State.Removed && child.getState() != CallNode.State.BailedOut) {
-                    data.callDiff += data(child).callDiff;
+                switch (child.getState()) {
+                    case Indirect:
+                    case Removed:
+                    case BailedOut:
+                        // nothing to do
+                        break;
+                    case Cutoff:
+                    case Inlined:
+                    case Expanded:
+                        data.callDiff += data(child).callDiff;
+                        break;
                 }
             }
             if (data.callDiff > 0) {

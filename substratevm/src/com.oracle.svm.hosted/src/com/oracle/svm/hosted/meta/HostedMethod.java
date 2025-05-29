@@ -34,7 +34,6 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.Function;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
@@ -62,6 +61,7 @@ import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
 import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.JavaMethodContext;
 import jdk.graal.compiler.java.StableMethodNameFormatter;
 import jdk.internal.vm.annotation.ForceInline;
@@ -83,6 +83,9 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     public static final String METHOD_NAME_COLLISION_SEPARATOR = "%";
 
+    public static final int MISSING_VTABLE_IDX = -1;
+    public static final int INVALID_CODE_ADDRESS_OFFSET = -1;
+
     public final AnalysisMethod wrapped;
 
     private final HostedType holder;
@@ -96,14 +99,13 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
      * However, within the open type world, each type and interface has a unique table, so this
      * index is relative to the start of the appropriate table.
      */
-    int vtableIndex = -1;
+    int vtableIndex = MISSING_VTABLE_IDX;
 
     /**
      * The address offset of the compiled code relative to the code of the first method in the
      * buffer.
      */
-    private int codeAddressOffset;
-    private boolean codeAddressOffsetValid;
+    private int codeAddressOffset = INVALID_CODE_ADDRESS_OFFSET;
     private boolean compiled;
     private boolean compiledInPriorLayer;
 
@@ -150,20 +152,30 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     private static HostedMethod create0(AnalysisMethod wrapped, HostedType holder, ResolvedSignature<HostedType> signature,
                     ConstantPool constantPool, ExceptionHandler[] handlers, MultiMethodKey key, Map<MultiMethodKey, MultiMethod> multiMethodMap, LocalVariableTable localVariableTable) {
-        Function<Integer, HostedMethodNameFactory.MethodNameInfo> nameGenerator = (collisionCount) -> {
-            String name = wrapped.wrapped.getName(); // want name w/o any multimethodkey suffix
-            if (key != ORIGINAL_METHOD) {
-                name += StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR + key;
-            }
-            if (collisionCount > 0) {
-                name = name + METHOD_NAME_COLLISION_SEPARATOR + collisionCount;
-            }
-            String uniqueShortName = SubstrateUtil.uniqueShortName(holder.getJavaClass().getClassLoader(), holder, name, signature, wrapped.isConstructor());
+        var generator = new HostedMethodNameFactory.NameGenerator() {
 
-            return new HostedMethodNameFactory.MethodNameInfo(name, uniqueShortName);
+            @Override
+            public HostedMethodNameFactory.MethodNameInfo generateMethodNameInfo(int collisionCount) {
+                String name = wrapped.wrapped.getName(); // want name w/o any multimethodkey suffix
+                if (key != ORIGINAL_METHOD) {
+                    name += StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR + key;
+                }
+                if (collisionCount > 0) {
+                    name = name + METHOD_NAME_COLLISION_SEPARATOR + collisionCount;
+                }
+
+                String uniqueShortName = generateUniqueName(name);
+
+                return new HostedMethodNameFactory.MethodNameInfo(name, uniqueShortName);
+            }
+
+            @Override
+            public String generateUniqueName(String name) {
+                return SubstrateUtil.uniqueShortName(holder.getJavaClass().getClassLoader(), holder, name, signature, wrapped.isConstructor());
+            }
         };
 
-        HostedMethodNameFactory.MethodNameInfo names = HostedMethodNameFactory.singleton().createNames(nameGenerator, wrapped);
+        HostedMethodNameFactory.MethodNameInfo names = HostedMethodNameFactory.singleton().createNames(generator, wrapped);
 
         return new HostedMethod(wrapped, holder, signature, constantPool, handlers, names.name(), names.uniqueShortName(), localVariableTable, key, multiMethodMap);
     }
@@ -218,10 +230,9 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     public void setCodeAddressOffset(int address) {
         assert isCompiled();
-        assert !codeAddressOffsetValid;
+        assert codeAddressOffset == INVALID_CODE_ADDRESS_OFFSET && address != INVALID_CODE_ADDRESS_OFFSET : Assertions.errorMessage(codeAddressOffset, address);
 
         codeAddressOffset = address;
-        codeAddressOffsetValid = true;
     }
 
     /**
@@ -229,14 +240,14 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
      * the buffer.
      */
     public int getCodeAddressOffset() {
-        if (!codeAddressOffsetValid) {
+        if (!isCodeAddressOffsetValid()) {
             throw VMError.shouldNotReachHere(format("%H.%n(%p)") + ": has no code address offset set.");
         }
         return codeAddressOffset;
     }
 
     public boolean isCodeAddressOffsetValid() {
-        return codeAddressOffsetValid;
+        return codeAddressOffset != INVALID_CODE_ADDRESS_OFFSET;
     }
 
     public void setCompiled() {
@@ -338,12 +349,12 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     public boolean hasVTableIndex() {
-        return vtableIndex != -1;
+        return vtableIndex != MISSING_VTABLE_IDX;
     }
 
     @Override
     public int getVTableIndex() {
-        assert vtableIndex != -1 : "Missing vtable index for method " + this.format("%H.%n(%p)");
+        assert vtableIndex != MISSING_VTABLE_IDX : "Missing vtable index for method " + this.format("%H.%n(%p)");
         return vtableIndex;
     }
 
@@ -362,7 +373,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
      */
     @Override
     public boolean isEntryPoint() {
-        return wrapped.isEntryPoint();
+        return wrapped.isNativeEntryPoint();
     }
 
     @Override
@@ -385,6 +396,15 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     @Override
     public String getName() {
         return name;
+    }
+
+    /**
+     * Returns the original name of the method, without any suffix that might have been added by
+     * {@link HostedMethodNameFactory}.
+     */
+    public String getReflectionName() {
+        VMError.guarantee(this.isOriginalMethod());
+        return wrapped.getName();
     }
 
     @Override

@@ -41,7 +41,9 @@ import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph.Stage;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -71,6 +73,7 @@ public abstract class HostVM {
 
     protected final OptionValues options;
     protected final ClassLoader classLoader;
+    protected final List<BiConsumer<AnalysisMethod, StructuredGraph>> methodAfterBytecodeParsedListeners;
     protected final List<BiConsumer<AnalysisMethod, StructuredGraph>> methodAfterParsingListeners;
     private final List<BiConsumer<DuringAnalysisAccess, Class<?>>> classReachabilityListeners;
     protected HostedProviders providers;
@@ -78,6 +81,7 @@ public abstract class HostVM {
     protected HostVM(OptionValues options, ClassLoader classLoader) {
         this.options = options;
         this.classLoader = classLoader;
+        this.methodAfterBytecodeParsedListeners = new CopyOnWriteArrayList<>();
         this.methodAfterParsingListeners = new CopyOnWriteArrayList<>();
         this.classReachabilityListeners = new ArrayList<>();
     }
@@ -124,6 +128,14 @@ public abstract class HostVM {
                 }
             }
         }
+    }
+
+    /**
+     * Run validation checks for reachable objects before registering them in the shadow heap.
+     *
+     * @param obj the object to validate
+     */
+    public void validateReachableObject(Object obj) {
     }
 
     /**
@@ -215,12 +227,36 @@ public abstract class HostVM {
     public void recordActivity() {
     }
 
-    public void addMethodAfterParsingListener(BiConsumer<AnalysisMethod, StructuredGraph> methodAfterParsingHook) {
-        methodAfterParsingListeners.add(methodAfterParsingHook);
+    public void addMethodAfterBytecodeParsedListener(BiConsumer<AnalysisMethod, StructuredGraph> listener) {
+        methodAfterBytecodeParsedListeners.add(listener);
+    }
+
+    public void addMethodAfterParsingListener(BiConsumer<AnalysisMethod, StructuredGraph> listener) {
+        methodAfterParsingListeners.add(listener);
     }
 
     /**
-     * Can be overwritten to run code after a method is parsed.
+     * Can be overwritten to run code after the bytecode of a method is parsed. This hook is only
+     * invoked if
+     * {@link com.oracle.graal.pointsto.flow.AnalysisParsedGraph.Stage#isRequiredStage(Stage, AnalysisMethod)}
+     * is true for the given method and stage {@link Stage#BYTECODE_PARSED}. If the hook is invoked,
+     * it is guaranteed to be invoked before
+     * {@link #methodAfterParsingHook(BigBang, AnalysisMethod, StructuredGraph)} .
+     *
+     * @param bb the analysis engine
+     * @param method the newly parsed method
+     * @param graph the method graph
+     */
+    public void methodAfterBytecodeParsedHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
+        AnalysisError.guarantee(Stage.isRequiredStage(Stage.firstStage(), method));
+        for (BiConsumer<AnalysisMethod, StructuredGraph> listener : methodAfterBytecodeParsedListeners) {
+            listener.accept(method, graph);
+        }
+    }
+
+    /**
+     * Can be overwritten to run code after a method is parsed and all pre-analysis optimizations
+     * are finished. This hook will be invoked before the graph is made available to the analysis.
      *
      * @param bb the analysis engine
      * @param method the newly parsed method
@@ -269,6 +305,10 @@ public abstract class HostVM {
      */
     public boolean platformSupported(AnnotatedElement element) {
         return true;
+    }
+
+    public boolean sortFields() {
+        return false;
     }
 
     public void clearInThread() {
@@ -330,8 +370,20 @@ public abstract class HostVM {
         return providers;
     }
 
+    /**
+     * This method should only be used by the {@code ClassInclusionPolicy} to determine which fields
+     * should be included in the shared layer.
+     */
     @SuppressWarnings("unused")
     public boolean isFieldIncluded(BigBang bb, Field field) {
+        return true;
+    }
+
+    /**
+     * See {@link HostVM#isFieldIncluded(BigBang, Field)}.
+     */
+    @SuppressWarnings("unused")
+    public boolean isFieldIncluded(BigBang bb, AnalysisField field) {
         return true;
     }
 
@@ -340,6 +392,24 @@ public abstract class HostVM {
     }
 
     public boolean enableTrackAcrossLayers() {
+        return false;
+    }
+
+    public boolean enableReachableInCurrentLayer() {
+        return false;
+    }
+
+    public boolean buildingImageLayer() {
+        return false;
+    }
+
+    @SuppressWarnings("unused")
+    public boolean installableInLayer(AnalysisField aField) {
+        return true;
+    }
+
+    @SuppressWarnings("unused")
+    public boolean preventConstantFolding(AnalysisField aField) {
         return false;
     }
 

@@ -28,6 +28,7 @@ package com.oracle.svm.core.nmt;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -35,7 +36,6 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
@@ -61,7 +61,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * model of virtual memory is maintained.
  */
 public class NativeMemoryTracking {
-    private static final UnsignedWord ALIGNMENT = WordFactory.unsigned(16);
+    private static final UnsignedWord ALIGNMENT = Word.unsigned(16);
     private static final int MAGIC = 0xF0F1F2F3;
     private static final long KB = 1024;
 
@@ -140,7 +140,7 @@ public class NativeMemoryTracking {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public PointerBase untrack(PointerBase innerPtr) {
         if (innerPtr.isNull()) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         NmtMallocHeader header = getHeader(innerPtr);
@@ -325,8 +325,9 @@ public class NativeMemoryTracking {
         };
     }
 
-    private void printStatistics() {
+    public void printStatistics() {
         if (VMInspectionOptions.PrintNMTStatistics.getValue()) {
+            System.out.println();
             System.out.println(generateReportString());
         }
     }
@@ -335,7 +336,6 @@ public class NativeMemoryTracking {
         String lineBreak = System.lineSeparator();
 
         StringBuilder result = new StringBuilder(3000);
-        result.append(lineBreak);
         result.append("Native memory tracking").append(lineBreak).append(lineBreak);
 
         result.append("Total").append(lineBreak);

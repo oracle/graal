@@ -41,6 +41,7 @@
 package com.oracle.truffle.api;
 
 import java.util.concurrent.Future;
+import java.util.function.Consumer;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
@@ -79,6 +80,34 @@ import com.oracle.truffle.api.nodes.Node;
  * by the guest language implementation. The only exception is for truffle exceptions that are
  * thrown for non-side-effecting events.
  * <p>
+ * Notifications of blocking:
+ * <p>
+ * {@link #notifyBlocked(Access)} and {@link #notifyUnblocked(Access)} notify thread local actions
+ * that their processing has been blocked/unblocked due to
+ * {@link TruffleSafepoint#setBlockedFunction(Node, TruffleSafepoint.Interrupter, TruffleSafepoint.InterruptibleFunction, Object, Runnable, Consumer)
+ * a blocked call}. {@link #notifyBlocked(Access)} is called for each pending action at the
+ * beginning of a blocked call and for each of the continuations of the blocked call after it is
+ * interrupted and thread local actions are processed.
+ * {@link ThreadLocalAction#notifyUnblocked(Access)} is called for each pending action at the end of
+ * a blocked call and also right after each of its interruptions, before thread local actions are
+ * processed and the blocked call continues.
+ * <p>
+ * In case a thread local action is submitted during a blocked call, the call is interrupted and
+ * {@link #notifyUnblocked(Access)} is called without a previous call to
+ * {@link #notifyBlocked(Access)}. Recurring thread local actions do not repeatedly interrupt a
+ * blocked call - a blocked call is not interrupted if all pending actions are recurring actions
+ * submitted before the blocked call. New submissions of thread local actions still interrupt
+ * blocked calls, no matter if the new thread local actions are recurring or not. When a blocked
+ * call is interrupted, all pending actions are processed no matter if they are recurring or not.
+ * <p>
+ * The notifications of blocking are especially useful for recurring thread local actions as those
+ * actions don't interrupt blocked calls and the notifications inform them about the potentially
+ * long time intervals when those actions are not executed due to the blocked calls. Non-recurring
+ * thread local actions mainly benefit from the {@link ThreadLocalAction#notifyUnblocked(Access)}
+ * notification telling them that they interrupted a blocked call. For example, a safepoint sampler
+ * might want to exclude the samples from blocked calls.
+ *
+ * <p>
  * Example Usage:
  *
  * <pre>
@@ -90,6 +119,16 @@ import com.oracle.truffle.api.nodes.Node;
  *         assert access.getThread() == Thread.currentThread();
  *     }
  *
+ *     &#64;Override
+ *     protected void notifyBlocked(Access access) {
+ *         assert access.getThread() == Thread.currentThread();
+ *     }
+ *
+ *     &#64;Override
+ *     protected void notifyUnblocked(Access access) {
+ *         assert access.getThread() == Thread.currentThread();
+ *     }
+
  *     &#64;Override
  *     protected String name() {
  *        return "MyAction"
@@ -159,12 +198,38 @@ public abstract class ThreadLocalAction {
     /**
      * Performs the thread local action on a given thread.
      *
-     * @param access allows access to the current thread, the code location and whether a context
-     *            was active while executing the event.
+     * @param access allows access to the current thread and the current code location.
      * @see ThreadLocalAction
      * @since 21.1
      */
     protected abstract void perform(Access access);
+
+    /**
+     * Callback for notifying the thread local action that its processing has been blocked due to
+     * {@link TruffleSafepoint#setBlockedFunction(Node, TruffleSafepoint.Interrupter, TruffleSafepoint.InterruptibleFunction, Object, Runnable, Consumer)
+     * a blocked call}.
+     *
+     * @param access allows access to the current thread and the current code location.
+     * @see ThreadLocalAction
+     * @since 24.2
+     */
+    protected void notifyBlocked(Access access) {
+
+    }
+
+    /**
+     * Callback for notifying the thread local action that its processing has been unblocked during
+     * or while leaving
+     * {@link TruffleSafepoint#setBlockedFunction(Node, TruffleSafepoint.Interrupter, TruffleSafepoint.InterruptibleFunction, Object, Runnable, Consumer)
+     * a blocked call}.
+     *
+     * @param access allows access to the current thread and the current code location.
+     * @see ThreadLocalAction
+     * @since 24.2
+     */
+    protected void notifyUnblocked(Access access) {
+
+    }
 
     /**
      * Argument class for {@link ThreadLocalAction#perform(Access)}.

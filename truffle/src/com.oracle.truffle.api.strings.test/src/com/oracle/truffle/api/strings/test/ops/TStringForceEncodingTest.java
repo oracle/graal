@@ -72,7 +72,8 @@ public class TStringForceEncodingTest extends TStringTestBase {
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
             for (TruffleString.Encoding targetEncoding : TruffleString.Encoding.values()) {
-                if (targetEncoding == TruffleString.Encoding.UTF_32 && (array.length & 3) != 0 || targetEncoding == TruffleString.Encoding.UTF_16 && (array.length & 1) != 0) {
+                if ((targetEncoding == TruffleString.Encoding.UTF_32LE || targetEncoding == TruffleString.Encoding.UTF_32BE) && (array.length & 3) != 0 ||
+                                (targetEncoding == TruffleString.Encoding.UTF_16LE || targetEncoding == TruffleString.Encoding.UTF_16BE) && (array.length & 1) != 0) {
                     expectIllegalArgumentException(() -> node.execute(a, encoding, targetEncoding));
                     expectIllegalArgumentException(() -> nodeMutable.execute(a, encoding, targetEncoding));
                 } else {

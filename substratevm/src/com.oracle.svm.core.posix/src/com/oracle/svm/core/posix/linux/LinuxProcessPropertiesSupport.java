@@ -24,17 +24,31 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 
-import com.oracle.svm.core.posix.PosixProcessPropertiesSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.posix.PosixProcessPropertiesSupport;
 
 @AutomaticallyRegisteredImageSingleton(ProcessPropertiesSupport.class)
-public class LinuxProcessPropertiesSupport extends PosixProcessPropertiesSupport {
+public class LinuxProcessPropertiesSupport extends PosixProcessPropertiesSupport implements InitialLayerOnlyImageSingleton {
 
     @Override
     public String getExecutableName() {
         final String exefileString = "/proc/self/exe";
         return realpath(exefileString);
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
+    }
+
+    @Override
+    public boolean accessibleInFutureLayers() {
+        return true;
     }
 }

@@ -85,7 +85,6 @@ import static java.lang.String.format;
 import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.joining;
 
-import java.io.PrintStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URI;
@@ -129,10 +128,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Entry points in HotSpot for {@link TruffleFromLibGraal calls} from libgraal.
  */
 final class TruffleFromLibGraalEntryPoints {
-
-    static {
-        assert checkHotSpotCalls();
-    }
 
     @TruffleFromLibGraal(Id.OnIsolateShutdown)
     static void onIsolateShutdown(long isolateId) {
@@ -236,9 +231,19 @@ final class TruffleFromLibGraalEntryPoints {
         return output.getArray();
     }
 
+    @SuppressWarnings("deprecation")
     @TruffleFromLibGraal(Id.PrepareForCompilation)
     static void prepareForCompilation(Object compilable) {
         ((TruffleCompilable) compilable).prepareForCompilation();
+    }
+
+    // new method for new target reflectively resolved
+    static boolean prepareForCompilation(Object compilable, boolean rootCompilation, int tier, boolean lastTier) {
+        return ((TruffleCompilable) compilable).prepareForCompilation(rootCompilation, tier, lastTier);
+    }
+
+    static int getSuccessfulCompilationCount(Object compilable) {
+        return ((TruffleCompilable) compilable).getSuccessfulCompilationCount();
     }
 
     @TruffleFromLibGraal(GetURI)
@@ -293,7 +298,7 @@ final class TruffleFromLibGraalEntryPoints {
 
     @TruffleFromLibGraal(CompilableToString)
     static String compilableToString(Object compilable) {
-        return ((TruffleCompilable) compilable).toString();
+        return compilable.toString();
     }
 
     @TruffleFromLibGraal(GetCompilableName)
@@ -339,6 +344,10 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(OnCompilationFailed)
     static void onCompilationFailed(Object compilable, Supplier<String> serializedException, boolean silent, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
         ((TruffleCompilable) compilable).onCompilationFailed(serializedException, silent, bailout, permanentBailout, graphTooBig);
+    }
+
+    static void onCompilationSuccess(Object compilable, int compilationTier, boolean lastTier) {
+        ((TruffleCompilable) compilable).onCompilationSuccess(compilationTier, lastTier);
     }
 
     @TruffleFromLibGraal(OnSuccess)
@@ -491,7 +500,7 @@ final class TruffleFromLibGraalEntryPoints {
      * </ol>
      * </p>
      */
-    private static boolean checkHotSpotCalls() {
+    static boolean checkHotSpotCalls() {
         Set<Id> unimplemented = EnumSet.allOf(Id.class);
         Map<String, Id> entryPointMethodNames = unimplemented.stream().collect(Collectors.toMap(Id::getMethodName, (id) -> id));
         Map<Id, List<Method>> idToMethod = new LinkedHashMap<>();
@@ -549,13 +558,8 @@ final class TruffleFromLibGraalEntryPoints {
     private static void check(Id id, boolean condition, String format, Object... args) {
         if (!condition) {
             String msg = format(format, args);
-            PrintStream err = System.err;
-            if (id != null) {
-                err.printf("ERROR: %s.%s: %s%n", TruffleFromLibGraalEntryPoints.class.getName(), id, msg);
-            } else {
-                err.printf("ERROR: %s: %s%n", TruffleFromLibGraalEntryPoints.class.getName(), msg);
-            }
-            System.exit(99);
+            String target = id != null ? format("%s.%s", TruffleFromLibGraalEntryPoints.class.getName(), id) : TruffleFromLibGraalEntryPoints.class.getName();
+            throw new AssertionError(format("Incompatible Truffle runtime change: %s: %s", target, msg));
         }
     }
 }

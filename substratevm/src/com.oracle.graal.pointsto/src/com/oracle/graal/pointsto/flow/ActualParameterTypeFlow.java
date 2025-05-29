@@ -32,7 +32,7 @@ import jdk.graal.compiler.nodes.ValueNode;
  * A sink type flow for the context insensitive invoke used to link in parameters in each caller
  * context.
  */
-public class ActualParameterTypeFlow extends TypeFlow<ValueNode> {
+public class ActualParameterTypeFlow extends TypeFlow<ValueNode> implements GlobalFlow {
     public ActualParameterTypeFlow(AnalysisType declaredType) {
         super(null, filterUncheckedInterface(declaredType));
     }

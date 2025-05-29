@@ -59,7 +59,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.TypeCheckHints;
 import jdk.graal.compiler.replacements.SnippetCounter;
 import jdk.graal.compiler.replacements.SnippetCounter.Group;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -91,12 +90,12 @@ public class TypeCheckSnippetUtils {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/7131f053b0d26b62cbf0d8376ec117d6e8d79f9e/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L4802-L4897",
-              sha1 = "c0e2fdd973dc975757d58080ba94efe628d6a380")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/a8cd01f6e2075bef89fcd82893cf417c9e1fa877/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L4233-L4451",
+              sha1 = "10849f217123323ad73af5fe2aee2876a2943e1d")
     // @formatter:on
     static boolean checkSecondarySubType(KlassPointer t, KlassPointer s, boolean isTAlwaysAbstract, Counters counters) {
         // if (S.cache == T) return true
-        if ((JavaVersionUtil.JAVA_SPEC == 21 || (JavaVersionUtil.JAVA_SPEC >= 23 && useSecondarySupersCache(INJECTED_VMCONFIG))) &&
+        if (useSecondarySupersCache(INJECTED_VMCONFIG) &&
                         probability(FREQUENT_PROBABILITY, s.readKlassPointer(secondarySuperCacheOffset(INJECTED_VMCONFIG), SECONDARY_SUPER_CACHE_LOCATION).equal(t))) {
             counters.cacheHit.inc();
             return true;
@@ -108,7 +107,7 @@ public class TypeCheckSnippetUtils {
             return true;
         }
 
-        if (JavaVersionUtil.JAVA_SPEC == 21 || (JavaVersionUtil.JAVA_SPEC >= 23 && !useSecondarySupersTable(INJECTED_VMCONFIG))) {
+        if (!useSecondarySupersTable(INJECTED_VMCONFIG)) {
             Word secondarySupers = s.readWord(secondarySupersOffset(INJECTED_VMCONFIG), SECONDARY_SUPERS_LOCATION);
             int length = secondarySupers.readInt(metaspaceArrayLengthOffset(INJECTED_VMCONFIG), METASPACE_ARRAY_LENGTH_LOCATION);
             for (int i = 0; i < length; i++) {

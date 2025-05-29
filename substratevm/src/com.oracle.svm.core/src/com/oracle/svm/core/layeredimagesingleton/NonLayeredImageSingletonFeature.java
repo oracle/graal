@@ -24,12 +24,16 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
+import static jdk.graal.compiler.core.common.calc.Condition.NE;
+
 import java.lang.reflect.Array;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -42,11 +46,13 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.InvocationPluginHelper;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Adds support for layered image singleton features within traditional builds.
+ * Adds support for layered image singleton features within traditional builds. We know traditional
+ * builds have at most exactly one singleton, so we can optimize these calls accordingly.
  */
 @AutomaticallyRegisteredFeature
 public class NonLayeredImageSingletonFeature implements InternalFeature, FeatureSingleton {
@@ -60,18 +66,23 @@ public class NonLayeredImageSingletonFeature implements InternalFeature, Feature
 
     @Override
     public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+        Function<Class<?>, Object> lookupMultiLayeredImageSingleton = (key) -> {
+            Object singleton = LayeredImageSingletonSupport.singleton().lookup(key, true, true);
+            boolean conditions = singleton.getClass().equals(key) &&
+                            singleton instanceof MultiLayeredImageSingleton multiLayerSingleton &&
+                            multiLayerSingleton.getImageBuilderFlags().contains(LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS);
+            VMError.guarantee(conditions, "Illegal singleton %s", singleton);
+
+            return singleton;
+        };
+
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), MultiLayeredImageSingleton.class);
         r.register(new InvocationPlugin.RequiredInvocationPlugin("getAllLayers", Class.class) {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<?> key = b.getSnippetReflection().asObject(Class.class, classNode.asJavaConstant());
-
-                Object singleton = LayeredImageSingletonSupport.singleton().runtimeLookup(key);
-                boolean conditions = singleton.getClass().equals(key) &&
-                                singleton instanceof MultiLayeredImageSingleton multiLayerSingleton &&
-                                multiLayerSingleton.getImageBuilderFlags().contains(LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS);
-                VMError.guarantee(conditions, "Illegal singleton %s", singleton);
+                Object singleton = lookupMultiLayeredImageSingleton.apply(key);
 
                 var multiLayeredArray = multiLayeredArrays.computeIfAbsent(key, k -> {
                     var result = Array.newInstance(k, 1);
@@ -81,6 +92,27 @@ public class NonLayeredImageSingletonFeature implements InternalFeature, Feature
 
                 b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(multiLayeredArray), 1, true, b.getMetaAccess()));
                 return true;
+            }
+        });
+
+        r.register(new InvocationPlugin.RequiredInvocationPlugin("getForLayer", Class.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode, ValueNode indexNode) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    Class<?> key = b.getSnippetReflection().asObject(Class.class, classNode.asJavaConstant());
+                    Object singleton = lookupMultiLayeredImageSingleton.apply(key);
+
+                    /*
+                     * We know this index has to be zero. For performance reasons we validate this
+                     * only when assertions are enabled.
+                     */
+                    if (SubstrateUtil.assertionsEnabled()) {
+                        helper.intrinsicRangeCheck(indexNode, NE, ConstantNode.forInt(0));
+                    }
+
+                    helper.emitFinalReturn(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(singleton), b.getMetaAccess(), b.getGraph()));
+                    return true;
+                }
             }
         });
     }

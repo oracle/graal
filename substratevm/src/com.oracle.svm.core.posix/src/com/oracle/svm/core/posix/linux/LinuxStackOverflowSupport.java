@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -42,8 +42,8 @@ final class LinuxStackOverflowSupport implements StackOverflowCheck.PlatformSupp
     public boolean lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr) {
         boolean result = lookupStack0(stackBasePtr, stackEndPtr);
         if (!result) {
-            stackBasePtr.write(WordFactory.zero());
-            stackEndPtr.write(WordFactory.zero());
+            stackBasePtr.write(Word.zero());
+            stackEndPtr.write(Word.zero());
         }
         return result;
     }

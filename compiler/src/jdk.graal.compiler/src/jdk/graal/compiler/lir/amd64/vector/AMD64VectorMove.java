@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -180,13 +180,18 @@ public class AMD64VectorMove {
         public AllocatableValue getResult() {
             return result;
         }
+
+        @Override
+        public boolean canRematerializeToStack() {
+            return true;
+        }
     }
 
     @Opcode("VMOVE")
     public static class MoveFromArrayConstOp extends AMD64LIRInstruction implements StandardOp.LoadConstantOp {
         public static final LIRInstructionClass<MoveFromArrayConstOp> TYPE = LIRInstructionClass.create(MoveFromArrayConstOp.class);
 
-        @Def({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue result;
+        @Def({OperandFlag.REG}) protected AllocatableValue result;
         private final DataPointerConstant input;
         private final AMD64SIMDInstructionEncoding encoding;
 
@@ -213,6 +218,11 @@ public class AMD64VectorMove {
         @Override
         public AllocatableValue getResult() {
             return result;
+        }
+
+        @Override
+        public boolean canRematerializeToStack() {
+            return false;
         }
     }
 
@@ -358,6 +368,49 @@ public class AMD64VectorMove {
         @Override
         public void emitMemAccess(AMD64MacroAssembler masm) {
             op.emit(masm, size, address.toAddress(masm), asRegister(input));
+        }
+    }
+
+    public static class VectorMaskedStoreOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<VectorMaskedStoreOp> TYPE = LIRInstructionClass.create(VectorMaskedStoreOp.class);
+
+        protected final AVXSize size;
+        protected final VexOp op;
+
+        @Use({OperandFlag.COMPOSITE}) protected AMD64AddressValue address;
+        @Use({OperandFlag.REG}) protected AllocatableValue mask;
+        @Use({OperandFlag.REG}) protected AllocatableValue value;
+        @State protected LIRFrameState state;
+
+        public VectorMaskedStoreOp(AVXSize size, VexMaskedMoveOp op, AMD64AddressValue address, AllocatableValue mask, AllocatableValue value, LIRFrameState state) {
+            super(TYPE);
+            this.size = size;
+            this.op = op;
+            this.address = address;
+            this.mask = mask;
+            this.value = value;
+            this.state = state;
+        }
+
+        public VectorMaskedStoreOp(AVXSize size, VexMoveOp op, AMD64AddressValue address, AllocatableValue mask, AllocatableValue value, LIRFrameState state) {
+            super(TYPE);
+            this.size = size;
+            this.op = op;
+            this.address = address;
+            this.mask = mask;
+            this.value = value;
+            this.state = state;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            GraalError.guarantee(state == null, "Implicit exception not supported yet");
+            if (op instanceof VexMaskedMoveOp o) {
+                o.emit(masm, size, address.toAddress(masm), asRegister(mask), asRegister(value));
+            } else {
+                VexMoveOp o = (VexMoveOp) op;
+                o.emit(masm, size, address.toAddress(masm), asRegister(value), asRegister(mask));
+            }
         }
     }
 

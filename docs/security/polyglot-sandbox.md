@@ -58,7 +58,7 @@ The CONSTRAINED policy:
 * Disallows [environment access](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowEnvironmentAccess-org.graalvm.polyglot.EnvironmentAccess-).
 * Restricts host access:
   * Disallows [host class loading](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowHostClassLoading-boolean-).
-  * Disallows [to all public host classes and methods by default](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#allowPublicAccess-boolean-).
+  * Disallows [access to all public host classes and methods by default](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#allowPublicAccess-boolean-).
   * Disallows [access inheritance](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#allowAccessInheritance-boolean-).
   * Disallows implementation of arbitrary host [classes](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#allowAllClassImplementations-boolean-) and [interfaces](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#allowAllImplementations-boolean-).
   * Disallows implementation of `java.lang.FunctionalInterface`.
@@ -109,7 +109,7 @@ Isolated versions of the languages can be downloaded from Maven using the follow
 <dependency>
     <groupId>org.graalvm.polyglot</groupId>
     <artifactId>js-isolate</artifactId>
-    <version>${graalvm.version}</version>
+    <version>${graalvm.polyglot.version}</version>
     <type>pom</type>
 </dependency>
 ```
@@ -124,10 +124,9 @@ The attack surface of GraalVM when running untrusted code consists of the entire
 In addition to the restrictions of the ISOLATED policy, the UNTRUSTED policy:
 * Requires redirection of the standard [input](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#in-java.io.InputStream-) stream.
 * Requires setting the maximum memory consumption of the guest code. This is a limit in addition to the maximum isolate heap size backed by a mechanism that keeps track of the size of objects allocated by the guest code on the guest VM heap. This limit can be thought of as a "soft" memory limit, whereas the isolate heap size is the "hard" limit.
-* Requires setting the maximum number of stack frames that can be pushed onto the stack by guest code. This limit can protect against unbounded recursion that exhausts the stack.
-* Requires setting the maximum depth of any Abstract Syntax Tree (AST) of the guest code. Together with the stack frame limit, this puts a bound on the stack space consumed by guest code.
+* Requires setting the maximum depth of any Abstract Syntax Tree (AST) of the guest code. This puts a bound on the stack space consumed by a single guest method.
 * Requires setting the maximum output and error stream sizes. As output and error streams have to be redirected, the receiving ends are on the host side. Limiting the output and error stream sizes protects against availability issues on the host.
-* Requires untrusted code mitigations to be enabled. Untrusted code mitigations address risks from JIT spraying and speculative execution attacks. They include constant blinding as well as comprehensive use of speculative execution barriers.
+* Requires untrusted code mitigations to be enabled. Untrusted code mitigations address risks from JIT spraying and speculative execution attacks. They include constant blinding as well as masking memory accesses and use of speculative execution barriers.
 * Further restricts host access to ensure there are no implicit entry points to host code. This means that guest-code access to host arrays, lists, maps, buffers, iterables and iterators is disallowed. The reason is that there may be various implementations of these APIs on the host side, resulting in implicit entry points. In addition, direct mappings of guest implementations to host interfaces via [HostAccess.Builder#allowImplementationsAnnotatedBy](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html) are disallowed. The [HostAccess.UNTRUSTED](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html#UNTRUSTED) host access policy is preconfigured to fulfill the requirements for the UNTRUSTED sandboxing policy.
 
 Example:
@@ -183,7 +182,7 @@ As an example, an antipattern would be to implement a third party interface and 
 
 The ISOLATED and UNTRUSTED sandbox policies require setting resource limits for a context.
 Different configurations can be provided for each context.
-If a limit is exceeded, evaluation of the code fails and the context is canceled with a [`PolyglotException`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException.html) which returns `true` for `isResourceExhausted()`.
+If a limit is exceeded, evaluation of the code fails and the context is cancelled with a [`PolyglotException`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException.html) which returns `true` for `isResourceExhausted()`.
 At this point, no more guest code can be executed in the context
 
 The `--sandbox.TraceLimits` option allows you to trace guest code and record the maximum resource utilization.
@@ -233,7 +232,7 @@ Certain limits can be [reset](#resetting-resource-limits) at any point of time d
 
 The `sandbox.MaxCPUTime` option allows you to specify the maximum CPU time spent running guest code.
 CPU time spent depends on the underlying hardware.
-The maximum [CPU time](https://docs.oracle.com/en/java/javase/22/docs/api/java.management/java/lang/management/ThreadMXBean.html#getThreadCpuTime\(long\)) specifies how long a context can be active until it is automatically canceled and the context is closed.
+The maximum [CPU time](https://docs.oracle.com/en/java/javase/23/docs/api/java.management/java/lang/management/ThreadMXBean.html#getThreadCpuTime\(long\)) specifies how long a context can be active until it is automatically cancelled and the context is closed.
 By default the time limit is checked every 10 milliseconds.
 This can be customized using the `sandbox.MaxCPUTimeCheckInterval` option.
 
@@ -247,7 +246,7 @@ The CPU time of all threads will be added and checked against the CPU time limit
 This can mean that if two threads execute the same context then the time limit will be exceeded twice as fast.
 
 The time limit is enforced by a separate high-priority thread that will be woken regularly.
-There is no guarantee that the context will be canceled within the accuracy specified.
+There is no guarantee that the context will be cancelled within the accuracy specified.
 The accuracy may be significantly missed, for example, if the host VM causes a full garbage collection.
 If the time limit is never exceeded then the throughput of the guest context is not affected.
 If the time limit is exceeded for one context then it may slow down the throughput for other contexts with the same explicit engine temporarily.
@@ -272,7 +271,7 @@ try (Context context = Context.newBuilder("js")
 
 ### Limiting the Number of Executed Statements
 
-Specifies the maximum number of statements a context may execute until it is canceled.
+Specifies the maximum number of statements a context may execute until it is cancelled.
 After the statement limit was triggered for a context, it is no longer usable and every use of the context will throw a `PolyglotException` that returns `true` for `PolyglotException.isCancelled()`.
 The statement limit is independent of the number of threads executing.
 
@@ -343,14 +342,14 @@ try (Context context = Context.newBuilder("js")
 }
 ```
 
-The limit is checked by retained size computation triggered either based on [allocated](https://docs.oracle.com/en/java/javase/22/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) bytes or on [low memory notification](https://docs.oracle.com/en/java/javase/22/docs/api/java.management/java/lang/management/MemoryMXBean.html).
+The limit is checked by retained size computation triggered either based on [allocated](https://docs.oracle.com/en/java/javase/23/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) bytes or on [low memory notification](https://docs.oracle.com/en/java/javase/23/docs/api/java.management/java/lang/management/MemoryMXBean.html).
 
 The allocated bytes are checked by a separate high-priority thread that will be woken regularly.
 There is one such thread for each memory-limited context (one with `sandbox.MaxHeapMemory` set).
 The retained bytes computation is done by yet another high-priority thread that is started from the allocated bytes checking thread as needed.
 The retained bytes computation thread also cancels the context if the heap memory limit is exceeded.
 Additionally, when the low memory trigger is invoked, all memory-limited contexts are paused together with their allocation checkers.
-All individual retained size computations are canceled.
+All individual retained size computations are cancelled.
 Retained bytes in the heap for each memory-limited context are computed by a single high-priority thread.
 
 The heap memory limit will not prevent the context from causing `OutOfMemory` errors.
@@ -360,7 +359,7 @@ Retained size computation for a context can be customized using the expert optio
 
 Retained size computation for a context is triggered when a retained bytes estimate exceeds a certain factor of specified `sandbox.MaxHeapMemory`.
 The estimate is based on heap memory
-[allocated](https://docs.oracle.com/en/java/javase/22/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) by threads where the context has been active.
+[allocated](https://docs.oracle.com/en/java/javase/23/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) by threads where the context has been active.
 More precisely, the estimate is the result of previous retained bytes computation, if available, plus bytes allocated since the start of the previous computation.
 By default the factor of `sandbox.MaxHeapMemory` is 1.0 and it can be customized by the `sandbox.AllocatedBytesCheckFactor` option.
 The factor must be positive.
@@ -377,8 +376,8 @@ This can be configured by the `sandbox.RetainedBytesCheckInterval` option. The i
 The allocated bytes checking for a context can be disabled by the `sandbox.AllocatedBytesCheckEnabled` option.
 By default it is enabled ("true"). If disabled ("false"), retained size checking for the context can be triggered only by the low memory trigger.
 
-When the total number of bytes allocated in the heap for the whole host VM exceeds a certain factor of the total heap memory of the VM, [low memory notification](https://docs.oracle.com/en/java/javase/22/docs/api/java.management/java/lang/management/MemoryMXBean.html) is invoked and initiates the following process.
-The execution for all engines with at least one execution context which has the `sandbox.MaxHeapMemory` option set is paused, retained bytes in the heap for each memory-limited context are computed, contexts exceeding their limits are canceled, and then the execution is resumed.
+When the total number of bytes allocated in the heap for the whole host VM exceeds a certain factor of the total heap memory of the VM, [low memory notification](https://docs.oracle.com/en/java/javase/23/docs/api/java.management/java/lang/management/MemoryMXBean.html) is invoked and initiates the following process.
+The execution pauses for all execution contexts where the `sandbox.MaxHeapMemory` option is set. The execution is resumed only when retained bytes in the heap for each memory-limited context are computed and contexts exceeding their limits are cancelled.
 The default factor is 0.7. This can be configured by the `sandbox.RetainedBytesCheckFactor` option.
 The factor must be between 0.0 and 1.0. All contexts using the `sandbox.MaxHeapMemory` option must use the same value for `sandbox.RetainedBytesCheckFactor`.
 

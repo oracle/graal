@@ -22,25 +22,23 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
-import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-import java.util.Arrays;
-
-public final class ResolvedInvokeDynamicConstant implements LinkableInvokeDynamicConstant {
+public final class ResolvedInvokeDynamicConstant implements ResolvedConstant {
     private final BootstrapMethodsAttribute.Entry bootstrapMethod;
     private final Symbol<Type>[] parsedInvokeSignature;
     private final Symbol<Name> nameSymbol;
@@ -56,11 +54,6 @@ public final class ResolvedInvokeDynamicConstant implements LinkableInvokeDynami
     public Object value() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("Use indy.link() rather than Resolved.value()");
-    }
-
-    @Override
-    public boolean isResolved() {
-        return true;
     }
 
     /**
@@ -83,14 +76,12 @@ public final class ResolvedInvokeDynamicConstant implements LinkableInvokeDynami
      *     4: invokedynamic #1 // Immediately fails without calling MHN.linkCallSite
      * </pre>
      *
-     * @see RuntimeConstantPool#linkInvokeDynamic(ObjectKlass, int, int,
-     *      com.oracle.truffle.espresso.impl.Method)
+     * @see RuntimeConstantPool#linkInvokeDynamic(ObjectKlass, int, Method, int)
      */
-    @Override
     public CallSiteLink link(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex, Method method, int bci) {
-        int existingIndex = findCallSiteLinkIndex(method, bci);
-        if (existingIndex >= 0) {
-            return getCallSiteLink(existingIndex);
+        CallSiteLink existingLink = getCallSiteLink(method, bci);
+        if (existingLink != null) {
+            return existingLink;
         }
         // The call site linking must not happen under the lock, it is racy
         // However insertion should be done under a lock
@@ -102,14 +93,13 @@ public final class ResolvedInvokeDynamicConstant implements LinkableInvokeDynami
                 CallSiteLink[] newLinks = new CallSiteLink[1];
                 newLinks[0] = newLink;
                 callSiteLinks = newLinks;
-                return newLink;
             } else {
                 int i = 0;
                 for (; i < existingLinks.length; i++) {
                     CallSiteLink link = existingLinks[i];
                     if (link == null) {
                         existingLinks[i] = newLink;
-                        return existingLinks[i];
+                        return newLink;
                     }
                     if (link.matchesCallSite(method, bci)) {
                         return link;
@@ -121,9 +111,24 @@ public final class ResolvedInvokeDynamicConstant implements LinkableInvokeDynami
                 CallSiteLink[] newLinks = Arrays.copyOf(existingLinks, existingLinks.length * 2);
                 newLinks[i] = newLink;
                 callSiteLinks = newLinks;
-                return newLink;
+            }
+            return newLink;
+        }
+    }
+
+    public CallSiteLink getCallSiteLink(Method method, int bci) {
+        CallSiteLink[] existingLinks = callSiteLinks;
+        if (existingLinks != null) {
+            for (CallSiteLink link : existingLinks) {
+                if (link == null) {
+                    break;
+                }
+                if (link.matchesCallSite(method, bci)) {
+                    return link;
+                }
             }
         }
+        return null;
     }
 
     private CallSiteLink createCallSiteLink(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex, Method method, int bci) {
@@ -135,7 +140,7 @@ public final class ResolvedInvokeDynamicConstant implements LinkableInvokeDynami
             StaticObject[] args = pool.getStaticArguments(bootstrapMethod, accessingKlass);
 
             StaticObject name = meta.toGuestString(nameSymbol);
-            StaticObject methodType = Resolution.signatureToMethodType(parsedInvokeSignature, accessingKlass, meta.getContext().getJavaVersion().java8OrEarlier(), meta);
+            StaticObject methodType = RuntimeConstantPool.signatureToMethodType(parsedInvokeSignature, accessingKlass, meta.getContext().getJavaVersion().java8OrEarlier(), meta);
             /*
              * the 4 objects resolved above are not actually call-site specific. We don't cache them
              * to minimize footprint since most indy constant are only used by one call-site
@@ -161,59 +166,21 @@ public final class ResolvedInvokeDynamicConstant implements LinkableInvokeDynami
             }
             StaticObject unboxedAppendix = appendix.get(meta.getLanguage(), 0);
 
-            return new CallSiteLink(method, bci, memberName, unboxedAppendix, parsedInvokeSignature);
+            return new SuccessfulCallSiteLink(method, bci, memberName, unboxedAppendix, parsedInvokeSignature);
         } catch (EspressoException e) {
-            throw new CallSiteLinkingFailure(e);
-        }
-    }
-
-    public int findCallSiteLinkIndex(Method method, int bci) {
-        CallSiteLink[] existingLinks = callSiteLinks;
-        if (existingLinks == null) {
-            return -1;
-        }
-        for (int i = 0; i < existingLinks.length; i++) {
-            CallSiteLink link = existingLinks[i];
-            if (link == null) {
-                break;
+            if (meta.java_lang_LinkageError.isAssignableFrom(e.getGuestException().getKlass())) {
+                return new FailedCallSiteLink(method, bci, e);
             }
-            if (link.matchesCallSite(method, bci)) {
-                return i;
-            }
+            throw e;
         }
-        return -1;
     }
 
-    public CallSiteLink getCallSiteLink(int index) {
-        return callSiteLinks[index];
-    }
-
-    @Override
-    public int getBootstrapMethodAttrIndex() {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("String already resolved");
-    }
-
-    @Override
-    public Symbol<Name> getName(ConstantPool pool) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("String already resolved");
-    }
-
-    @Override
-    public Symbol<Signature> getSignature(ConstantPool pool) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("String already resolved");
-    }
-
-    @Override
-    public NameAndTypeConstant getNameAndType(ConstantPool pool) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("String already resolved");
-    }
-
-    @Override
     public Symbol<Type>[] getParsedSignature() {
         return parsedInvokeSignature;
+    }
+
+    @Override
+    public Tag tag() {
+        return Tag.INVOKEDYNAMIC;
     }
 }

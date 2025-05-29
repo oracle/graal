@@ -29,6 +29,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 
 /**
  * Interface that defines required methods for a guest language when implementing JDWP.
@@ -72,7 +73,7 @@ public interface JDWPContext {
      * @param root the Truffle root node object
      * @return the declaring method of the root node
      */
-    MethodRef getMethodFromRootNode(RootNode root);
+    MethodVersionRef getMethodFromRootNode(RootNode root);
 
     /**
      * @return guest language array of all active threads
@@ -498,4 +499,10 @@ public interface JDWPContext {
     boolean isSingleSteppingDisabled();
 
     Object allocateInstance(KlassRef klass);
+
+    void steppingInProgress(Thread t, boolean value);
+
+    boolean isSteppingInProgress(Thread t);
+
+    void replaceController(DebuggerController newController);
 }

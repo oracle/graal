@@ -59,9 +59,11 @@ import jdk.graal.compiler.api.replacements.Fold;
  * static analysis starts, i.e., in a {@link Feature#beforeAnalysis} method.
  */
 public final class SystemInOutErrSupport implements InitialLayerOnlyImageSingleton {
-    private InputStream in = new BufferedInputStream(new FileInputStream(FileDescriptor.in));
+    private final InputStream initialIn = new BufferedInputStream(new FileInputStream(FileDescriptor.in));
+    private InputStream in = initialIn;
     private PrintStream out = newPrintStream(new FileOutputStream(FileDescriptor.out), System.getProperty("sun.stdout.encoding"));
-    private PrintStream err = newPrintStream(new FileOutputStream(FileDescriptor.err), System.getProperty("sun.stderr.encoding"));
+    private final PrintStream initialErr = newPrintStream(new FileOutputStream(FileDescriptor.err), System.getProperty("sun.stderr.encoding"));
+    private PrintStream err = initialErr;
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     final AtomicBoolean isSealed = new AtomicBoolean(false);
@@ -121,6 +123,18 @@ public final class SystemInOutErrSupport implements InitialLayerOnlyImageSinglet
     public PrintStream err() {
         seal();
         return err;
+    }
+
+    @Fold
+    public InputStream initialIn() {
+        seal();
+        return initialIn;
+    }
+
+    @Fold
+    public PrintStream initialErr() {
+        seal();
+        return initialErr;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

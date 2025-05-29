@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import static jdk.graal.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATI
 import static jdk.graal.compiler.nodes.calc.BinaryArithmeticNode.branchlessMax;
 import static jdk.graal.compiler.nodes.calc.BinaryArithmeticNode.branchlessMin;
 import static jdk.graal.compiler.nodes.java.ArrayLengthNode.readArrayLength;
+import static jdk.graal.compiler.phases.common.LockEliminationPhase.removeMonitorAccess;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
@@ -67,7 +68,6 @@ import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GetObjectAddressNode;
-import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.MergeNode;
@@ -122,6 +122,7 @@ import jdk.graal.compiler.nodes.extended.UnsafeMemoryStoreNode;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.java.AccessIndexedNode;
+import jdk.graal.compiler.nodes.java.AccessMonitorNode;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.java.AtomicReadAndAddNode;
 import jdk.graal.compiler.nodes.java.AtomicReadAndWriteNode;
@@ -166,6 +167,8 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.IdentityHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
+import jdk.graal.compiler.vector.architecture.VectorArchitecture;
+import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -183,7 +186,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * VM-independent lowerings for standard Java nodes. VM-specific methods are abstract and must be
  * implemented by VM-specific subclasses.
  */
-public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
+public abstract class DefaultJavaLoweringProvider implements LoweringProvider, VectorLoweringProvider {
 
     protected final MetaAccessProvider metaAccess;
     protected final ForeignCallsProvider foreignCalls;
@@ -191,6 +194,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected final MetaAccessExtensionProvider metaAccessExtensionProvider;
     protected final TargetDescription target;
     private final boolean useCompressedOops;
+    protected final VectorArchitecture vectorArchitecture;
     protected Replacements replacements;
 
     private BoxingSnippets.Templates boxingSnippets;
@@ -201,13 +205,14 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     public DefaultJavaLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                     MetaAccessExtensionProvider metaAccessExtensionProvider,
-                    TargetDescription target, boolean useCompressedOops) {
+                    TargetDescription target, boolean useCompressedOops, VectorArchitecture vectorArchitecture) {
         this.metaAccess = metaAccess;
         this.foreignCalls = foreignCalls;
         this.barrierSet = platformConfig.getBarrierSet();
         this.metaAccessExtensionProvider = metaAccessExtensionProvider;
         this.target = target;
         this.useCompressedOops = useCompressedOops;
+        this.vectorArchitecture = vectorArchitecture;
     }
 
     public void initialize(OptionValues options, SnippetCounter.Group.Factory factory, Providers providers) {
@@ -325,7 +330,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                     lowerComputeObjectAddressNode((ComputeObjectAddressNode) n);
                 }
-            } else if (n instanceof FloatingIntegerDivRemNode<?> divRem && divRem.graph().isAfterStage(GraphState.StageFlag.FSA)) {
+            } else if (n instanceof FloatingIntegerDivRemNode<?> && tool.getLoweringStage() == LoweringTool.StandardLoweringStage.MID_TIER) {
                 lowerFloatingIntegerDivRem((FloatingIntegerDivRemNode<?>) n, tool);
             } else if (!(n instanceof LIRLowerable)) {
                 // Assume that nodes that implement both Lowerable and LIRLowerable will be handled
@@ -406,7 +411,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 // lowering to emit the stub assembly code instead of the Node lowering.
                 return;
             }
-            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && tool.getMetaAccess().lookupJavaType(Math.class).equals(method.getDeclaringClass())) {
+            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && method.getDeclaringClass().getName().equals("Ljava/lang/Math;")) {
                 // A root compilation of the intrinsic method should emit the full assembly
                 // implementation.
                 return;
@@ -427,7 +432,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
         ResolvedJavaMethod method = math.graph().method();
         if (method != null) {
-            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && tool.getMetaAccess().lookupJavaType(Math.class).equals(method.getDeclaringClass())) {
+            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && method.getDeclaringClass().getName().equals("Ljava/lang/Math;")) {
                 // A root compilation of the intrinsic method should emit the full assembly
                 // implementation.
                 return;
@@ -485,7 +490,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         AddressNode address = createFieldAddress(graph, object, field);
 
         BarrierType barrierType = barrierSet.fieldReadBarrierType(field, getStorageKind(field));
-        ReadNode memoryRead = graph.add(new ReadNode(address, overrideFieldLocationIdentity(loadField.getLocationIdentity()), loadStamp, barrierType, loadField.getMemoryOrder()));
+        ReadNode memoryRead = graph.add(new ReadNode(address, overrideFieldLocationIdentity(loadField.getLocationIdentity()),
+                        loadStamp, barrierType, loadField.getMemoryOrder(), loadField.field(), loadField.trustInjected()));
         ValueNode readValue = implicitLoadConvert(graph, getStorageKind(field), memoryRead);
         loadField.replaceAtUsages(readValue);
         graph.replaceFixed(loadField, memoryRead);
@@ -1116,6 +1122,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
     }
 
+    private static boolean isNestedLock(MonitorIdNode lock, CommitAllocationNode commit) {
+        for (MonitorIdNode otherLock : commit.getLocks()) {
+            if (otherLock.getLockDepth() < lock.getLockDepth() && commit.getObjectIndex(lock) == commit.getObjectIndex(otherLock)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void finishAllocatedObjects(LoweringTool tool, FixedWithNextNode insertAfter, CommitAllocationNode commit, ValueNode[] allocations) {
         FixedWithNextNode insertionPoint = insertAfter;
         StructuredGraph graph = commit.graph();
@@ -1127,13 +1142,22 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
         /*
          * Note that the FrameState that is assigned to these MonitorEnterNodes isn't the correct
-         * state. It will be the state from before the allocation occurred instead of a valid state
-         * after the locking is performed. In practice this should be fine since these are newly
-         * allocated objects. The bytecodes themselves permit allocating an object, doing a
-         * monitorenter and then dropping all references to the object which would produce the same
-         * state, though that would normally produce an IllegalMonitorStateException. In HotSpot
-         * some form of fast path locking should always occur so the FrameState should never
-         * actually be used.
+         * state. The FrameState on the CommitAllocationNode is the nearest previous side effecting
+         * FrameState. The objects being materialized correspond to some side effecting state which
+         * most likely no longer exists as the virtualization of the objects means operations like
+         * storing to the virtual object are no longer side effecting.
+         *
+         * In Substrate and versions of HotSpot that used stack locking, acquiring these locks
+         * doesn't create any global side effects so it was always ok if we deoptimized after
+         * acquiring these locks.
+         *
+         * Starting with the introduction of lightweight locking in HotSpot and some features of
+         * Loom, acquiring locks created global side effects that must be cleaned up unlocking of
+         * these objects. This means PEA must treat MonitorEnterNodes as having a side effect even
+         * after being virtualized to ensure that the lock is released after being acquired..
+         * Additionally we must ensure that the MonitorEnterNodes can't deoptimize as it will use
+         * the FrameState where the locks are still virtual and the lock acquired by the
+         * MonitorEnterNode won't be released.
          */
         ArrayList<MonitorEnterNode> enters = null;
         FrameState stateBefore = GraphUtil.findLastFrameState(insertionPoint);
@@ -1143,14 +1167,32 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             // Ensure that the lock operations are performed in lock depth order
             ArrayList<MonitorIdNode> newList = new ArrayList<>(locks);
             newList.sort((a, b) -> Integer.compare(a.getLockDepth(), b.getLockDepth()));
+            // Eliminate nested locks
+            newList.removeIf(lock -> isNestedLock(lock, commit));
+
+            for (MonitorIdNode lock : locks) {
+                if (!newList.contains(lock)) {
+                    // lock is nested and eliminated
+                    for (Node usage : lock.usages().snapshot()) {
+                        if (usage.isAlive() && usage instanceof AccessMonitorNode access) {
+                            removeMonitorAccess(access);
+                        }
+                    }
+                    lock.setEliminated();
+                }
+            }
             locks = newList;
         }
+
+        insertionPoint = maybeEmitLockingCheck(locks, insertionPoint, stateBefore);
 
         int lastDepth = -1;
         for (MonitorIdNode monitorId : locks) {
             GraalError.guarantee(lastDepth < monitorId.getLockDepth(), Assertions.errorMessage(lastDepth, monitorId, insertAfter, commit, allocations));
+            GraalError.guarantee(!monitorId.isEliminated(), Assertions.errorMessage(lastDepth, monitorId, insertAfter, commit, allocations));
             lastDepth = monitorId.getLockDepth();
             MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[commit.getObjectIndex(monitorId)], monitorId));
+            enter.setSynthetic();
             graph.addAfterFixed(insertionPoint, enter);
             enter.setStateAfter(stateBefore.duplicate());
             insertionPoint = enter;
@@ -1179,6 +1221,17 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         // Insert the required ALLOCATION_INIT barrier after all objects are initialized.
         graph.addAfterFixed(insertAfter, graph.add(MembarNode.forInitialization()));
+    }
+
+    /**
+     * Emit any extra checks before acquired locks on the thread local objects.
+     *
+     * @param locks the locks to be acquired in order
+     * @param insertionPoint the fixed node to insert new nodes after
+     * @param stateBefore the state used by the {@link CommitAllocationNode}
+     */
+    protected FixedWithNextNode maybeEmitLockingCheck(List<MonitorIdNode> locks, FixedWithNextNode insertionPoint, FrameState stateBefore) {
+        return insertionPoint;
     }
 
     public abstract int fieldOffset(ResolvedJavaField field);
@@ -1391,5 +1444,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     @Override
     public boolean supportsOptimizedFilling(OptionValues options) {
         return false;
+    }
+
+    @Override
+    public VectorArchitecture getVectorArchitecture() {
+        return vectorArchitecture;
+    }
+
+    @Override
+    public DefaultJavaLoweringProvider getBasicLoweringProvider() {
+        return this;
     }
 }

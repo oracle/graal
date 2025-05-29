@@ -65,6 +65,8 @@ public final class DAPInstrument extends TruffleInstrument {
     static final OptionType<HostAndPort> ADDRESS_OR_BOOLEAN = new OptionType<>("[[host:]port]", (address) -> {
         if (address.isEmpty() || address.equals("true")) {
             return DEFAULT_ADDRESS;
+        } else if (address.equals("false")) {
+            return HostAndPort.disabled();
         } else {
             return HostAndPort.parse(address);
         }
@@ -158,7 +160,7 @@ public final class DAPInstrument extends TruffleInstrument {
     @Override
     protected void onCreate(Env env) {
         options = env.getOptions();
-        if (options.hasSetOptions()) {
+        if (options.hasSetOptions() && options.get(Dap).isEnabled()) {
             launchServer(env, new PrintWriter(env.out(), true), new PrintWriter(env.err(), true));
         }
     }
@@ -230,19 +232,31 @@ public final class DAPInstrument extends TruffleInstrument {
 
     static final class HostAndPort {
 
+        private final boolean enabled;
         private final String host;
         private String portStr;
         private int port;
         private InetAddress inetAddress;
 
+        private HostAndPort() {
+            this.enabled = false;
+            this.host = null;
+        }
+
         private HostAndPort(String host, int port) {
+            this.enabled = true;
             this.host = host;
             this.port = port;
         }
 
         private HostAndPort(String host, String portStr) {
+            this.enabled = true;
             this.host = host;
             this.portStr = portStr;
+        }
+
+        static HostAndPort disabled() {
+            return new HostAndPort();
         }
 
         static HostAndPort parse(String address) {
@@ -267,6 +281,9 @@ public final class DAPInstrument extends TruffleInstrument {
         }
 
         void verify() {
+            if (!enabled) {
+                return;
+            }
             // Check port:
             if (port == 0) {
                 try {
@@ -298,6 +315,10 @@ public final class DAPInstrument extends TruffleInstrument {
                 }
             }
             return hostName + ":" + port;
+        }
+
+        boolean isEnabled() {
+            return enabled;
         }
 
         InetSocketAddress createSocket() {

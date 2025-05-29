@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import static jdk.graal.compiler.nodes.StaticDeoptimizingNode.mergeActions;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -195,7 +196,12 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                     cfg.visitDominatorTree(new MoveGuardsUpwards(), deferLoopExits);
                 }
                 try (DebugContext.Scope scheduleScope = graph.getDebug().scope(SchedulePhase.class)) {
+                    if (!graph.isLastCFGValid()) {
+                        cfg = null;
+                    }
                     SchedulePhase.run(graph, SchedulePhase.SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER, cfg, context, false);
+                    cfg = graph.getLastCFG();
+                    cfg.computePostdominators();
                 } catch (Throwable t) {
                     throw graph.getDebug().handle(t);
                 }
@@ -350,7 +356,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                                     Speculation speculation = trueGuard.getSpeculation();
                                     if (speculation == null) {
                                         speculation = falseGuard.getSpeculation();
-                                    } else if (falseGuard.getSpeculation() != null && falseGuard.getSpeculation() != speculation) {
+                                    } else if (falseGuard.getSpeculation() != null && !falseGuard.getSpeculation().equals(speculation)) {
                                         // Cannot optimize due to different speculations.
                                         continue;
                                     }
@@ -738,7 +744,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
             AbstractObjectStamp stamp = (AbstractObjectStamp) compression.stamp(NodeView.DEFAULT);
             ConditionalEliminationUtil.InfoElement infoElement = infoElementProvider.infoElements(compression.getValue());
             while (infoElement != null) {
-                if (infoElement.getStamp() instanceof AbstractObjectStamp objStamp) {
+                if (infoElement.getStamp() instanceof AbstractObjectStamp) {
                     Stamp improvedStamp = compression.foldStamp(infoElement.getStamp());
                     if (!stamp.equals(improvedStamp)) {
                         registerNewStamp(compression, improvedStamp, infoElement.getGuard());
@@ -1102,7 +1108,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
 
         protected boolean foldGuard(DeoptimizingGuard thisGuard, DeoptimizingGuard otherGuard, boolean outcome, Stamp guardedValueStamp, ConditionalEliminationUtil.GuardRewirer rewireGuardFunction) {
             DeoptimizationAction action = mergeActions(otherGuard.getAction(), thisGuard.getAction());
-            if (action != null && otherGuard.getSpeculation() == thisGuard.getSpeculation()) {
+            if (action != null && Objects.equals(otherGuard.getSpeculation(), thisGuard.getSpeculation())) {
                 LogicNode condition = (LogicNode) thisGuard.getCondition().copyWithInputs();
                 /*
                  * We have ...; guard(C1); guard(C2);...

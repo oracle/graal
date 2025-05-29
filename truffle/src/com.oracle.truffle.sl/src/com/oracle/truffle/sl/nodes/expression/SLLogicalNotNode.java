@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,12 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
+import com.oracle.truffle.api.bytecode.OperationProxy;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
@@ -53,16 +56,17 @@ import com.oracle.truffle.sl.nodes.SLExpressionNode;
  */
 @NodeChild("valueNode")
 @NodeInfo(shortName = "!")
+@OperationProxy.Proxyable(allowUncached = true)
 public abstract class SLLogicalNotNode extends SLExpressionNode {
 
     @Specialization
-    protected boolean doBoolean(boolean value) {
+    public static boolean doBoolean(boolean value) {
         return !value;
     }
 
     @Fallback
-    protected Object typeError(Object value) {
-        throw SLException.typeError(this, value);
+    public static boolean typeError(Object value, @Bind Node node) {
+        throw SLException.typeError(node, "!", value);
     }
 
 }

@@ -41,7 +41,6 @@
 package com.oracle.truffle.polyglot;
 
 import java.io.IOException;
-import java.io.PrintStream;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.file.NoSuchFileException;
@@ -63,8 +62,6 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import org.graalvm.home.HomeFinder;
 import org.graalvm.polyglot.SandboxPolicy;
@@ -274,7 +271,12 @@ final class LanguageCache implements Comparable<LanguageCache> {
             if (loader == null) {
                 continue;
             }
-            loadProviders(loader).filter((p) -> supplier.accepts(p.getClass())).forEach((p) -> loadLanguageImpl(p, caches, optionalResources));
+
+            for (TruffleLanguageProvider provider : ServiceLoader.load(TruffleLanguageProvider.class, loader)) {
+                if (supplier.accepts(provider.getClass())) {
+                    loadLanguageImpl(provider, caches, optionalResources);
+                }
+            }
         }
 
         Map<String, LanguageCache> idToCache = new LinkedHashMap<>();
@@ -298,10 +300,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
          */
         maxStaticIndex = Math.max(maxStaticIndex, languageId);
         return idToCache;
-    }
-
-    private static Stream<? extends TruffleLanguageProvider> loadProviders(ClassLoader loader) {
-        return StreamSupport.stream(ServiceLoader.load(TruffleLanguageProvider.class, loader).spliterator(), false);
     }
 
     private static boolean hasSameCodeSource(LanguageCache first, LanguageCache second) {
@@ -385,6 +383,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
             InternalResourceCache old = resources.put(resourceSupplier.getKey(), resource);
             if (old != null) {
                 throw InternalResourceCache.throwDuplicateOptionalResourceException(old, resource);
+            }
+        }
+        for (String optionalResourceId : reg.optionalResources()) {
+            if (!resources.containsKey(optionalResourceId)) {
+                resources.put(optionalResourceId, new InternalResourceCache(id, optionalResourceId, InternalResourceCache.nonExistingResource(id, optionalResourceId)));
             }
         }
         into.add(new LanguageCache(id, name, implementationName, version, className, languageHome,
@@ -657,8 +660,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     private static void emitWarning(String message, Object... args) {
-        PrintStream out = System.err;
-        out.printf(message + "%n", args);
+        PolyglotEngineImpl.logFallback(String.format(message + "%n", args));
     }
 
     private static final class HostLanguageProvider extends TruffleLanguageProvider {

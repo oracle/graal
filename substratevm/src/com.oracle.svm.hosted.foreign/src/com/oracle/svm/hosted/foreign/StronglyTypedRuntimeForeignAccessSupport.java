@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.foreign;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
+import java.lang.invoke.MethodHandle;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
@@ -57,7 +58,12 @@ public interface StronglyTypedRuntimeForeignAccessSupport extends RuntimeForeign
         void apply(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options);
     }
 
-    static StronglyTypedRuntimeForeignAccessSupport make(Recorder forDowncalls, Recorder forUpcalls) {
+    @FunctionalInterface
+    interface DirectUpcallRecorder {
+        void apply(ConfigurationCondition condition, MethodHandle target, FunctionDescriptor desc, Linker.Option... options);
+    }
+
+    static StronglyTypedRuntimeForeignAccessSupport make(Recorder forDowncalls, Recorder forUpcalls, DirectUpcallRecorder forDirectUpcalls) {
         return new StronglyTypedRuntimeForeignAccessSupport() {
             @Override
             public void registerForDowncall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
@@ -67,6 +73,11 @@ public interface StronglyTypedRuntimeForeignAccessSupport extends RuntimeForeign
             @Override
             public void registerForUpcall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
                 forUpcalls.apply(condition, desc, options);
+            }
+
+            @Override
+            public void registerForDirectUpcall(ConfigurationCondition condition, MethodHandle target, FunctionDescriptor fd, Linker.Option... options) {
+                forDirectUpcalls.apply(condition, target, fd, options);
             }
         };
     }
@@ -84,4 +95,11 @@ public interface StronglyTypedRuntimeForeignAccessSupport extends RuntimeForeign
     }
 
     void registerForUpcall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options);
+
+    @Override
+    default void registerForDirectUpcall(ConfigurationCondition condition, MethodHandle target, Object desc, Object... options) {
+        registerForDirectUpcall(condition, target, castDesc(desc), castOptions(options));
+    }
+
+    void registerForDirectUpcall(ConfigurationCondition condition, MethodHandle target, FunctionDescriptor desc, Linker.Option... options);
 }

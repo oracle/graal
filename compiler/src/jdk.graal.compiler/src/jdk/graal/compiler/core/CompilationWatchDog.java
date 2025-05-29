@@ -32,6 +32,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.core.common.util.Util;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.options.Option;
@@ -40,9 +41,6 @@ import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.IsolateUtil;
-
-import jdk.vm.ci.common.NativeImageReinitialize;
-import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * A watch dog for {@linkplain #watch watching} and reporting on long running compilations.
@@ -101,7 +99,7 @@ public final class CompilationWatchDog implements Runnable, AutoCloseable {
          * @param watchDog the watch dog watching the compilation
          * @param watched the watched compiler thread
          * @param compilation the compilation
-         * @param elapsed milliseconds the compilation has been observed by the watch dog task which
+         * @param elapsed nanoseconds the compilation has been observed by the watch dog task which
          *            may be shorter that time since compilation started
          * @param stackTrace snapshot stack trace for {@code watched}
          */
@@ -109,7 +107,7 @@ public final class CompilationWatchDog implements Runnable, AutoCloseable {
                         long elapsed, StackTraceElement[] stackTrace) {
             TTY.printf("======================= WATCH DOG =======================%n" +
                             "%s: detected long running compilation %s [%.3f seconds]%n%s", CURRENT_THREAD_LABEL, compilation,
-                            secs(elapsed), Util.toString(stackTrace));
+                            seconds(elapsed), Util.toString(stackTrace));
         }
 
         /**
@@ -123,7 +121,7 @@ public final class CompilationWatchDog implements Runnable, AutoCloseable {
          * @param stuckTime seconds compilation appears to have been stuck for
          */
         default void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation,
-                        StackTraceElement[] stackTrace, int stuckTime) {
+                        StackTraceElement[] stackTrace, long stuckTime) {
             TTY.printf("======================= WATCH DOG =======================%n" +
                             "%s: observed identical stack traces for %d seconds, indicating a stuck compilation %s%n%s%n", CURRENT_THREAD_LABEL,
                             stuckTime, compilation, Util.toString(stackTrace));
@@ -170,7 +168,7 @@ public final class CompilationWatchDog implements Runnable, AutoCloseable {
     /**
      * @see Options#CompilationWatchDogVMExitDelay
      */
-    private final int vmExitDelay;
+    private final long vmExitDelayNS;
 
     /**
      * Object representing the compilation being watched. It is volatile as it is used to
@@ -182,19 +180,21 @@ public final class CompilationWatchDog implements Runnable, AutoCloseable {
 
     private final ScheduledExecutorService singleShotExecutor;
 
-    CompilationWatchDog(CompilationIdentifier compilation, Thread watchedThread, int delay, int vmExitDelay,
-                    boolean singleShotExecutor, EventHandler eventHandler) {
+    CompilationWatchDog(CompilationIdentifier compilation,
+                    Thread watchedThread, int delay, int vmExitDelay,
+                    boolean singleShotExecutor, EventHandler eventHandler,
+                    ThreadFactory factory) {
         this.compilation = compilation;
         this.watchedThread = watchedThread;
-        this.vmExitDelay = vmExitDelay;
+        this.vmExitDelayNS = TimeUnit.SECONDS.toNanos(vmExitDelay);
         this.eventHandler = eventHandler == null ? EventHandler.DEFAULT : eventHandler;
         trace("started compiling %s", compilation);
         if (singleShotExecutor) {
-            this.singleShotExecutor = createExecutor();
+            this.singleShotExecutor = createExecutor(factory);
             this.task = this.singleShotExecutor.schedule(this, delay, TimeUnit.SECONDS);
         } else {
             this.singleShotExecutor = null;
-            this.task = schedule(this, delay);
+            this.task = schedule(this, delay, factory);
         }
     }
 
@@ -242,8 +242,8 @@ public final class CompilationWatchDog implements Runnable, AutoCloseable {
         }
     }
 
-    private static double secs(long ms) {
-        return (double) ms / 1000;
+    private static double seconds(long ns) {
+        return (double) ns / TimeUnit.SECONDS.toNanos(1);
     }
 
     @Override
@@ -255,66 +255,63 @@ public final class CompilationWatchDog implements Runnable, AutoCloseable {
     public void run() {
         try {
             CompilationIdentifier comp = compilation;
-            long start = System.currentTimeMillis();
-            long elapsed = 0;
-            int reportDelay = 1000;
-            long nextReport = start;
-            long lastUniqueStackTrace = start;
+            long startNS = System.nanoTime();
+            long elapsedNS = 0;
+            long reportDelayNS = TimeUnit.SECONDS.toNanos(1);
+            long nextReportNS = startNS;
+            long lastUniqueStackTraceNS = startNS;
             while (compilation != null) {
-                long now = System.currentTimeMillis();
+                long currentNS = System.nanoTime();
                 comp = compilation;
-                trace("took a stack trace [%.3f seconds]", secs(elapsed));
+                trace("took a stack trace [%.3f seconds]", seconds(elapsedNS));
                 boolean uniqueStackTrace = recordStackTrace(watchedThread.getStackTrace());
                 if (uniqueStackTrace) {
-                    lastUniqueStackTrace = now;
+                    lastUniqueStackTraceNS = currentNS;
                 }
-                int stuckTime = (int) ((now - lastUniqueStackTrace) / 1000);
-                if (vmExitDelay != 0 && stuckTime >= vmExitDelay) {
-                    eventHandler.onStuckCompilation(this, watchedThread, comp, lastStackTrace, stuckTime);
+                long stuckTime = currentNS - lastUniqueStackTraceNS;
+                if (vmExitDelayNS != 0 && stuckTime >= vmExitDelayNS) {
+                    eventHandler.onStuckCompilation(this, watchedThread, comp, lastStackTrace, TimeUnit.NANOSECONDS.toSeconds(stuckTime));
                 } else if (uniqueStackTrace) {
-                    if (now >= nextReport) {
-                        eventHandler.onLongCompilation(this, watchedThread, comp, elapsed, lastStackTrace);
-                        nextReport = now + reportDelay;
-                        reportDelay <<= 1;
+                    if (currentNS >= nextReportNS) {
+                        eventHandler.onLongCompilation(this, watchedThread, comp, elapsedNS, lastStackTrace);
+                        nextReportNS = currentNS + reportDelayNS;
+                        reportDelayNS <<= 1;
                     }
                 }
                 try {
                     Thread.sleep(1000);
-                    elapsed = System.currentTimeMillis() - start;
+                    elapsedNS = System.nanoTime() - startNS;
                 } catch (InterruptedException e) {
-                    elapsed = System.currentTimeMillis() - start;
-                    trace("interrupted [%.3f seconds]", secs(elapsed));
+                    elapsedNS = System.nanoTime() - startNS;
+                    trace("interrupted [%.3f seconds]", seconds(elapsedNS));
                 }
             }
-            trace("stopped watching %s [%.3f seconds]", comp, secs(elapsed));
+            trace("stopped watching %s [%.3f seconds]", comp, seconds(elapsedNS));
         } catch (Throwable t) {
             eventHandler.onException(t);
         }
     }
 
-    @NativeImageReinitialize private static ScheduledExecutorService watchDogService;
+    private static ScheduledExecutorService watchDogService;
 
-    private static synchronized ScheduledFuture<?> schedule(CompilationWatchDog watchdog, int delay) {
+    private static synchronized ScheduledFuture<?> schedule(CompilationWatchDog watchdog, int delay, ThreadFactory factory) {
         if (watchDogService == null) {
-            watchDogService = createExecutor();
+            watchDogService = createExecutor(factory);
         }
         return watchDogService.schedule(watchdog, delay, TimeUnit.SECONDS);
     }
 
-    private static ScheduledExecutorService createExecutor() {
-        ThreadFactory threadFactory = new ThreadFactory() {
-            @Override
-            public Thread newThread(Runnable r) {
-                Thread thread = new GraalServiceThread(CompilationWatchDog.class.getSimpleName(), r);
-                thread.setName("WatchDog-" + GraalServices.getThreadId(thread));
-                thread.setPriority(Thread.MAX_PRIORITY);
-                thread.setDaemon(true);
-                return thread;
-            }
+    private static ScheduledExecutorService createExecutor(ThreadFactory factory) {
+        ThreadFactory watchDogThreadFactory = r -> {
+            Thread thread = factory == null ? new Thread(r) : factory.newThread(r);
+            thread.setName("WatchDog-" + GraalServices.getThreadId(thread));
+            thread.setPriority(Thread.MAX_PRIORITY);
+            thread.setDaemon(true);
+            return thread;
         };
 
         int poolSize = 1;
-        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(poolSize, threadFactory);
+        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(poolSize, watchDogThreadFactory);
         executor.setRemoveOnCancelPolicy(true);
         executor.allowCoreThreadTimeOut(true);
         return executor;
@@ -324,27 +321,29 @@ public final class CompilationWatchDog implements Runnable, AutoCloseable {
      * Opens a scope for watching a compilation.
      *
      * @param compilation identifies the compilation being watched
-     * @param singleShotExecutor if true, then a dedicated executor is created for this task and it
+     * @param singleShotExecutor if true, then a dedicated executor is created for this task, and it
      *            is shutdown once the compilation ends
-     * @param eventHandler notified of events like a compilation running long running or getting
-     *            stuck. If {@code null}, {@link EventHandler#DEFAULT} is used.
+     * @param eventHandler notified of events like a compilation running long or getting stuck. If
+     *            {@code null}, {@link EventHandler#DEFAULT} is used.
+     * @param factory factory to use for creating the watcher thread. If null, a default Thread
+     *            object is used.
      * @return {@code null} if the compilation watch dog is disabled otherwise a new
      *         {@link CompilationWatchDog} object. The returned value should be used in a
      *         {@code try}-with-resources statement whose scope is the whole compilation so that
      *         leaving the scope will cause {@link #close()} to be called.
      */
-    public static CompilationWatchDog watch(CompilationIdentifier compilation, OptionValues options, boolean singleShotExecutor, EventHandler eventHandler) {
+    public static CompilationWatchDog watch(CompilationIdentifier compilation, OptionValues options,
+                    boolean singleShotExecutor, EventHandler eventHandler, ThreadFactory factory) {
         int delay = Options.CompilationWatchDogStartDelay.getValue(options);
-        if (ImageInfo.inImageBuildtimeCode() && !Options.CompilationWatchDogStartDelay.hasBeenSet(options)) {
+        if (NativeImageSupport.inBuildtimeCode() && !Options.CompilationWatchDogStartDelay.hasBeenSet(options)) {
             // Disable watch dog by default when building a native image
             delay = 0;
         }
         if (delay > 0) {
             Thread watchedThread = Thread.currentThread();
             int vmExitDelay = Options.CompilationWatchDogVMExitDelay.getValue(options);
-            CompilationWatchDog watchDog = new CompilationWatchDog(compilation, watchedThread, delay,
-                            vmExitDelay, singleShotExecutor, eventHandler);
-            return watchDog;
+            return new CompilationWatchDog(compilation, watchedThread, delay,
+                            vmExitDelay, singleShotExecutor, eventHandler, factory);
         }
         return null;
     }

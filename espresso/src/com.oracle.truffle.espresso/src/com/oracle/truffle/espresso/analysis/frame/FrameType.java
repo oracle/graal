@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.analysis.frame;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 public abstract class FrameType {
     public static final FrameType INT = new PrimitiveFrameType(JavaKind.Int);
@@ -38,7 +38,7 @@ public abstract class FrameType {
     public static final FrameType ILLEGAL = new IllegalFrameType();
     public static final FrameType NULL = new NullFrameType();
 
-    public static final FrameType THROWABLE = new TypedFrameType(Type.java_lang_Throwable);
+    public static final FrameType THROWABLE = new TypedFrameType(Types.java_lang_Throwable);
 
     private final JavaKind kind;
 
@@ -62,8 +62,8 @@ public abstract class FrameType {
 
     public static FrameType forType(Symbol<Type> type) {
         assert type != null;
-        if (Types.isPrimitive(type)) {
-            return forPrimitive(Types.getJavaKind(type).getStackKind());
+        if (TypeSymbols.isPrimitive(type)) {
+            return forPrimitive(TypeSymbols.getJavaKind(type).getStackKind());
         }
         return forRefType(type);
     }
@@ -173,7 +173,7 @@ abstract class ReferenceFrameType extends FrameType {
 final class NullFrameType extends ReferenceFrameType {
     @Override
     public Symbol<Type> type() {
-        return Type.java_lang_Object;
+        return Types.java_lang_Object;
     }
 
     @Override

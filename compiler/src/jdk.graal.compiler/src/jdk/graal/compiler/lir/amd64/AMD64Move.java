@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,6 +65,8 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.VMConstant;
 import jdk.vm.ci.meta.Value;
 
 public class AMD64Move {
@@ -164,6 +166,16 @@ public class AMD64Move {
         @Override
         public AllocatableValue getResult() {
             return result;
+        }
+
+        @Override
+        public boolean canRematerializeToStack() {
+            if (input.getJavaKind() == JavaKind.Object) {
+                return input.isNull();
+            } else if (input instanceof VMConstant) {
+                return input.getJavaKind().getByteCount() < Long.BYTES;
+            }
+            return true;
         }
     }
 
@@ -407,13 +419,13 @@ public class AMD64Move {
             }
             switch (accessKind) {
                 case BYTE:
-                    masm.cmpxchgb(asRegister(newValue), address.toAddress(masm));
+                    masm.cmpxchgb(address.toAddress(masm), asRegister(newValue));
                     break;
                 case WORD:
-                    masm.cmpxchgw(asRegister(newValue), address.toAddress(masm));
+                    masm.cmpxchgw(address.toAddress(masm), asRegister(newValue));
                     break;
                 case DWORD:
-                    masm.cmpxchgl(asRegister(newValue), address.toAddress(masm));
+                    masm.cmpxchgl(address.toAddress(masm), asRegister(newValue));
                     break;
                 case QWORD:
                     masm.cmpxchgq(asRegister(newValue), address.toAddress(masm));
@@ -704,25 +716,34 @@ public class AMD64Move {
          * operations are then performed on the pointer).
          */
         assert !result.getRegisterCategory().equals(AMD64.MASK) : "no general const-to-mask moves supported";
+
+        boolean needsPatching = input instanceof VMConstant;
         switch (input.getJavaKind().getStackKind()) {
             case Int:
                 // Do not optimize with an XOR as this instruction may be between
                 // a CMP and a Jcc in which case the XOR will modify the condition
                 // flags and interfere with the Jcc.
-                masm.moveInt(result, input.asInt());
+                if (needsPatching) {
+                    crb.recordInlineDataInCode(input);
+                }
+                masm.moveInt(result, input.asInt(), needsPatching);
                 break;
             case Long:
                 // Do not optimize with an XOR as this instruction may be between
                 // a CMP and a Jcc in which case the XOR will modify the condition
                 // flags and interfere with the Jcc.
-                if (input.asLong() == (int) input.asLong()) {
-                    // Sign extended to long
-                    masm.moveIntSignExtend(result, (int) input.asLong());
-                } else if ((input.asLong() & 0xFFFFFFFFL) == input.asLong()) {
+                if (needsPatching) {
+                    crb.recordInlineDataInCode(input);
+                }
+                long val = input.asLong();
+                if (!needsPatching && NumUtil.isUInt(val)) {
                     // Zero extended to long
-                    masm.movl(result, (int) input.asLong());
+                    masm.movl(result, (int) val);
+                } else if (!needsPatching && NumUtil.isInt(val)) {
+                    // Sign extended to long
+                    masm.moveIntSignExtend(result, (int) val);
                 } else {
-                    masm.movq(result, input.asLong());
+                    masm.movq(result, val, needsPatching);
                 }
                 break;
             case Float:
@@ -830,23 +851,27 @@ public class AMD64Move {
                 throw GraalError.shouldNotReachHereUnexpectedValue(input.getJavaKind().getStackKind()); // ExcludeFromJacocoGeneratedReport
         }
 
+        boolean needsPatching = input instanceof VMConstant;
+        if (needsPatching) {
+            crb.recordInlineDataInCode(input);
+        }
         switch ((AMD64Kind) result.getPlatformKind()) {
             case BYTE:
                 assert NumUtil.isByte(imm) : "Is not in byte range: " + imm;
-                masm.emitAMD64MIOp(AMD64MIOp.MOVB, OperandSize.BYTE, dest, (int) imm, false);
+                masm.emitAMD64MIOp(AMD64MIOp.MOVB, OperandSize.BYTE, dest, (int) imm, needsPatching);
                 break;
             case WORD:
                 assert NumUtil.isShort(imm) : "Is not in short range: " + imm;
-                masm.emitAMD64MIOp(AMD64MIOp.MOV, OperandSize.WORD, dest, (int) imm, false);
+                masm.emitAMD64MIOp(AMD64MIOp.MOV, OperandSize.WORD, dest, (int) imm, needsPatching);
                 break;
             case DWORD:
             case SINGLE:
                 assert NumUtil.isInt(imm) : "Is not in int range: " + imm;
-                masm.moveInt(dest, (int) imm);
+                masm.moveInt(dest, (int) imm, needsPatching);
                 break;
             case QWORD:
             case DOUBLE:
-                masm.movlong(dest, imm);
+                masm.movlong(dest, imm, needsPatching);
                 break;
             default:
                 throw GraalError.shouldNotReachHere("Unknown result Kind: " + result.getPlatformKind()); // ExcludeFromJacocoGeneratedReport

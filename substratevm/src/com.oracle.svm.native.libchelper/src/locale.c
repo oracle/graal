@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "svm_locale.h"
 #include "locale_str.h"
 
 #ifdef _WIN64
@@ -37,6 +38,10 @@
 #define SNAMESIZE 86    // max number of chars for LOCALE_SNAME is 85
 #endif
 
+/* Process-wide state. */
+static svm_locale_props_t _svm_locale_sprops = {0};
+
+#ifndef _WIN64
 /* Take an array of string pairs (map of key->value) and a string (key).
  * Examine each pair in the map to see if the first string (key) matches the
  * string.  If so, store the second string of the pair (value) in the value and
@@ -54,36 +59,18 @@ static int mapLookup(char* map[], const char* key, char** value) {
     return 0;
 }
 
-static locale_props_t *allocateJavaProps() {
-    locale_props_t* sprops = malloc(sizeof(locale_props_t));
-    sprops->language = NULL;
-    sprops->country = NULL;
-    sprops->variant = NULL;
-    sprops->script = NULL;
-    sprops->extensions = NULL;
-    return sprops;
-}
-
 /*
  * Copied and adapted from java.base/unix/native/libjava/java_props_md.c. We are not calling
  * these functions via static linking of libjava, because we only need a small subset of the
  * functionalities that exist in the original method.
  */
-static int ParseLocale(locale_props_t * sprops, int cat) {
-    setlocale(LC_ALL, "");
-    char **std_language = &(sprops->language);
-    char **std_country = &(sprops->country);
-    char **std_variant = &(sprops->variant);
-    char **std_script = &(sprops->script);
-    char **std_extensions = &(sprops->extensions);
-
+static int ParseLocale(int cat, char ** std_language, char ** std_script,
+                       char ** std_country, char ** std_variant) {
     char *temp = NULL;
     char *language = NULL, *country = NULL, *variant = NULL,
             *encoding = NULL;
     char *p, *encoding_variant, *old_temp, *old_ev;
     char *lc;
-
-    /* Query the locale set for the category */
 
 #ifdef MACOSX
     lc = setupMacOSXLocale(cat); // malloc'd memory, need to free
@@ -93,7 +80,7 @@ static int ParseLocale(locale_props_t * sprops, int cat) {
 
 #ifndef __linux__
     if (lc == NULL) {
-        return 0;
+        return SVM_LOCALE_INITIALIZATION_USE_DEFAULT;
     }
 
     temp = malloc(strlen(lc) + 1);
@@ -101,8 +88,7 @@ static int ParseLocale(locale_props_t * sprops, int cat) {
 #ifdef MACOSX
         free(lc); // malloced memory
 #endif
-        // JNU_ThrowOutOfMemoryError(env, NULL);
-        return 0;
+        return SVM_LOCALE_INITIALIZATION_OUT_OF_MEMORY;
     }
 
     if (cat == LC_CTYPE) {
@@ -129,8 +115,7 @@ static int ParseLocale(locale_props_t * sprops, int cat) {
 
     temp = malloc(strlen(lc) + 1);
     if (temp == NULL) {
-        // JNU_ThrowOutOfMemoryError(env, NULL);
-        return 0;
+        return SVM_LOCALE_INITIALIZATION_OUT_OF_MEMORY;
     }
 
 #endif
@@ -162,8 +147,7 @@ static int ParseLocale(locale_props_t * sprops, int cat) {
     encoding_variant = malloc(strlen(temp)+1);
     if (encoding_variant == NULL) {
         free(temp);
-        // JNU_ThrowOutOfMemoryError(env, NULL);
-        return 0;
+        return SVM_LOCALE_INITIALIZATION_OUT_OF_MEMORY;
     }
 
     if ((p = strchr(temp, '.')) != NULL) {
@@ -182,8 +166,7 @@ static int ParseLocale(locale_props_t * sprops, int cat) {
         if (temp == NULL) {
             free(old_temp);
             free(encoding_variant);
-            // JNU_ThrowOutOfMemoryError(env, NULL);
-            return 0;
+            return SVM_LOCALE_INITIALIZATION_OUT_OF_MEMORY;
         }
         strcpy(temp, p);
         old_ev = encoding_variant;
@@ -191,8 +174,7 @@ static int ParseLocale(locale_props_t * sprops, int cat) {
         if (encoding_variant == NULL) {
             free(old_ev);
             free(temp);
-            // JNU_ThrowOutOfMemoryError(env, NULL);
-            return 0;
+            return SVM_LOCALE_INITIALIZATION_OUT_OF_MEMORY;
         }
         // check the "encoding_variant" again, if any.
         if ((p = strchr(temp, '.')) != NULL) {
@@ -225,8 +207,7 @@ static int ParseLocale(locale_props_t * sprops, int cat) {
             *std_language = malloc(strlen(language)+1);
             if (*std_language == NULL) {
                 free(encoding_variant);
-                // JNU_ThrowOutOfMemoryError(env, NULL);
-                return 0;
+                return SVM_LOCALE_INITIALIZATION_OUT_OF_MEMORY;
             }
             strcpy(*std_language, language);
         }
@@ -238,8 +219,7 @@ static int ParseLocale(locale_props_t * sprops, int cat) {
             *std_country = malloc(strlen(country)+1);
             if (*std_country == NULL) {
                 free(encoding_variant);
-                // JNU_ThrowOutOfMemoryError(env, NULL);
-                return 0;
+                return SVM_LOCALE_INITIALIZATION_OUT_OF_MEMORY;
             }
             strcpy(*std_country, country);
         }
@@ -261,16 +241,47 @@ static int ParseLocale(locale_props_t * sprops, int cat) {
     free(temp);
     free(encoding_variant);
 
-    return 1;
+    return SVM_LOCALE_INITIALIZATION_SUCCEEDED;
 }
 
-#ifdef _WIN64
+/*
+ * This method only returns an error code. If an error occurs in this method, we throw an
+ * exception at a later point during isolate initialization.
+ */
+int svm_initialize_locale() {
+    setlocale(LC_ALL, "");
+
+    int result = ParseLocale(LC_CTYPE,
+                             &(_svm_locale_sprops.format_language),
+                             &(_svm_locale_sprops.format_script),
+                             &(_svm_locale_sprops.format_country),
+                             &(_svm_locale_sprops.format_variant));
+
+    if (result == SVM_LOCALE_INITIALIZATION_SUCCEEDED) {
+        result = ParseLocale(LC_MESSAGES,
+                             &(_svm_locale_sprops.display_language),
+                             &(_svm_locale_sprops.display_script),
+                             &(_svm_locale_sprops.display_country),
+                             &(_svm_locale_sprops.display_variant));
+    }
+
+    if (result == SVM_LOCALE_INITIALIZATION_USE_DEFAULT) {
+        _svm_locale_sprops.display_language = "en";
+        return SVM_LOCALE_INITIALIZATION_SUCCEEDED;
+    }
+
+    return result;
+}
+
+#else // _WIN64
+
 /*
  * Copied and adapted from java.base/windows/native/libjava/java_props_md.c. We are not calling
  * these functions via static linking of libjava, because we only need a small subset of the
  * functionalities that exist in the original method.
  */
-static int SetupI18nProps(LCID lcid, char** language, char** script, char** country, char** variant) {
+static int SetupI18nProps(LCID lcid, char** language, char** script, char** country,
+                          char** variant) {
     /* script */
     char tmp[SNAMESIZE];
     *script = malloc(PROPSIZE);
@@ -330,7 +341,7 @@ static int SetupI18nProps(LCID lcid, char** language, char** script, char** coun
     return 1;
 }
 
-void PopulateJavaProperties(locale_props_t *sprops, int isFormatLocale) {
+int svm_initialize_locale() {
     /*
     * query the system for the current system default locale
     * (which is a Windows LCID value),
@@ -351,34 +362,23 @@ void PopulateJavaProperties(locale_props_t *sprops, int isFormatLocale) {
         userDefaultUILCID = userDefaultLCID;
     }
 
-    SetupI18nProps(isFormatLocale ? userDefaultLCID : userDefaultUILCID,
-                     &(sprops->language),
-                     &(sprops->script),
-                     &(sprops->country),
-                     &(sprops->variant));
+    SetupI18nProps(userDefaultLCID,
+                   &_svm_locale_sprops.format_language,
+                   &_svm_locale_sprops.format_script,
+                   &_svm_locale_sprops.format_country,
+                   &_svm_locale_sprops.format_variant);
+    SetupI18nProps(userDefaultUILCID,
+                   &_svm_locale_sprops.display_language,
+                   &_svm_locale_sprops.display_script,
+                   &_svm_locale_sprops.display_country,
+                   &_svm_locale_sprops.display_variant);
+
+    /* HotSpot ignores the return value of the methods above, so we do the same. */
+    return SVM_LOCALE_INITIALIZATION_SUCCEEDED;
 }
 #endif
 
-locale_props_t* parseDisplayLocale() {
-    locale_props_t *sprops = allocateJavaProps();
-#ifndef _WIN64
-    int result = ParseLocale(sprops, LC_MESSAGES);
-    if (!result) {
-        sprops->language = "en";
-    }
-#else
-    PopulateJavaProperties(sprops, 0);
-#endif
-    return sprops;
+svm_locale_props_t* svm_get_locale() {
+    return &_svm_locale_sprops;
 }
 
-locale_props_t* parseFormatLocale() {
-    locale_props_t *sprops = allocateJavaProps();
-#ifndef _WIN64
-    int result = ParseLocale(sprops, LC_CTYPE);
-#else
-    PopulateJavaProperties(sprops, 1);
-#endif
-
-    return sprops;
-}

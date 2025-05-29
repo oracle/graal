@@ -27,16 +27,15 @@ package com.oracle.svm.core.genscavenge;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.graal.compiler.core.common.NumUtil;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
-
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.word.Word;
 
 class ChunkedImageHeapAllocator {
     /** A pseudo-partition for filler objects, see {@link FillerObjectDummyPartition}. */
@@ -77,13 +76,20 @@ class ChunkedImageHeapAllocator {
     }
 
     static final class UnalignedChunk extends Chunk {
-        UnalignedChunk(long begin, long endOffset, boolean writable) {
+        private final long objectSize;
+
+        UnalignedChunk(long begin, long endOffset, boolean writable, long objectSize) {
             super(begin, endOffset, writable);
+            this.objectSize = objectSize;
         }
 
         @Override
         public long getTopOffset() {
             return getEndOffset();
+        }
+
+        public long getObjectSize() {
+            return objectSize;
         }
     }
 
@@ -161,7 +167,6 @@ class ChunkedImageHeapAllocator {
     private final int alignedChunkSize;
     private final int alignedChunkAlignment;
     private final int alignedChunkObjectsOffset;
-    private final int unalignedChunkObjectsOffset;
 
     private long position;
 
@@ -176,7 +181,6 @@ class ChunkedImageHeapAllocator {
         this.alignedChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
         this.alignedChunkAlignment = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkAlignment());
         this.alignedChunkObjectsOffset = UnsignedUtils.safeToInt(AlignedHeapChunk.getObjectsStartOffset());
-        this.unalignedChunkObjectsOffset = UnsignedUtils.safeToInt(UnalignedHeapChunk.getObjectStartOffset());
 
         this.position = position;
 
@@ -195,11 +199,11 @@ class ChunkedImageHeapAllocator {
 
     public long allocateUnalignedChunkForObject(ImageHeapObject obj, boolean writable) {
         assert currentAlignedChunk == null;
-        UnsignedWord objSize = WordFactory.unsigned(obj.getSize());
-        long chunkSize = UnalignedHeapChunk.getChunkSizeForObject(objSize).rawValue();
+        long objSize = obj.getSize();
+        long chunkSize = UnalignedHeapChunk.getChunkSizeForObject(Word.unsigned(objSize)).rawValue();
         long chunkBegin = allocateRaw(chunkSize);
-        unalignedChunks.add(new UnalignedChunk(chunkBegin, chunkSize, writable));
-        return chunkBegin + unalignedChunkObjectsOffset;
+        unalignedChunks.add(new UnalignedChunk(chunkBegin, chunkSize, writable, objSize));
+        return chunkBegin + UnsignedUtils.safeToInt(UnalignedHeapChunk.calculateObjectStartOffset(Word.unsigned(objSize)));
     }
 
     public void maybeStartAlignedChunk() {
@@ -287,5 +291,10 @@ final class FillerObjectDummyPartition implements ImageHeapPartition {
     @Override
     public long getSize() {
         throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public boolean isFiller() {
+        return true;
     }
 }

@@ -34,11 +34,12 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ClasspathEntry;
 import com.oracle.truffle.espresso.classfile.ClasspathFile;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.substitutions.JImageExtensions;
 
@@ -51,6 +52,7 @@ public final class Classpath {
      *
      * @param name a file system path denoting a classpath entry
      */
+    @TruffleBoundary
     public static ClasspathEntry createEntry(String name) {
         final File pathFile = new File(name);
         if (pathFile.isDirectory()) {
@@ -262,6 +264,19 @@ public final class Classpath {
         ArrayList<ClasspathEntry> newEntries = new ArrayList<>(this.entries.size());
         newEntries.add(entry);
         newEntries.addAll(this.entries);
+        return new Classpath(newEntries);
+    }
+
+    /**
+     * Gets a new classpath entry obtained by appending a given entry to this classpath.
+     *
+     * @param entry the entry to append to this classpath
+     * @return the result of appending {@code entry} to this classpath
+     */
+    public Classpath append(ClasspathEntry entry) {
+        ArrayList<ClasspathEntry> newEntries = new ArrayList<>(entries.size() + 1);
+        newEntries.addAll(this.entries);
+        newEntries.add(entry);
         return new Classpath(newEntries);
     }
 

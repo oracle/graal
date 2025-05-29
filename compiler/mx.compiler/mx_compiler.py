@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -168,8 +168,8 @@ class JVMCIVersionCheckVersion(object):
 _jdk_jvmci_version = None
 _jdk_min_jvmci_version = None
 
-if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and jdk.javaCompliance < '21':
-    mx.abort('Graal requires JDK21 or later, got ' + str(jdk) +
+if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and jdk.javaCompliance < '25':
+    mx.abort('Graal requires JDK 25 or later, got ' + str(jdk) +
              '. This check can be bypassed by setting env var JDK_VERSION_CHECK=ignore')
 
 def _check_jvmci_version(jdk):
@@ -249,13 +249,16 @@ def _is_jvmci_enabled(vmargs):
 
 def _ctw_jvmci_export_args(arg_prefix='--'):
     """
-    Gets the VM args needed to export JVMCI API required by CTW.
+    Gets the VM args needed to export JVMCI API and HotSpot internals required by CTW.
     """
-    args = ['add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
-            'add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED',
-            'add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
-            'add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
-            'add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED']
+    args = [
+        'add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
+        'add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED',
+        'add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
+        'add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
+        'add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED',
+        'add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot=ALL-UNNAMED',
+    ]
     return [arg_prefix + arg for arg in args]
 
 def _ctw_system_properties_suffix():
@@ -275,8 +278,13 @@ def ctw(args, extraVMarguments=None):
     parser.add_argument('--limitmods', action='store', help='limits the set of compiled classes to only those in the listed modules', metavar='<modulename>[,<modulename>...]')
 
     args, vmargs = parser.parse_known_args(args)
-
     vmargs.extend(_remove_empty_entries(extraVMarguments))
+
+    vmargs.append('-XX:+EnableJVMCI')
+
+    # Disable JVMCICompiler by default if not specified
+    if _get_XX_option_value(vmargs, 'UseJVMCICompiler', None) is None:
+        vmargs.append('-XX:-UseJVMCICompiler')
 
     if mx.get_os() == 'darwin':
         # suppress menubar and dock when running on Mac
@@ -284,8 +292,6 @@ def ctw(args, extraVMarguments=None):
 
     if args.cp:
         cp = os.path.abspath(args.cp)
-        if not _is_jvmci_enabled(vmargs):
-            mx.abort('Non-Graal CTW does not support specifying a specific class path or jar to compile')
     else:
         # Default to the CompileTheWorld.SUN_BOOT_CLASS_PATH token
         cp = None
@@ -300,24 +306,20 @@ def ctw(args, extraVMarguments=None):
             if _get_XX_option_value(vmargs, 'BootstrapJVMCI', False) is None:
                 vmargs.append('-XX:+BootstrapJVMCI')
 
-    mainClassAndArgs = []
-    if not _is_jvmci_enabled(vmargs):
-        vmargs.append('-XX:+CompileTheWorld')
-    else:
-        # To be able to load all classes in the JRT with Class.forName,
-        # all JDK modules need to be made root modules.
-        limitmods = frozenset(args.limitmods.split(',')) if args.limitmods else None
-        graaljdk = get_graaljdk()
-        nonBootJDKModules = [m.name for m in graaljdk.get_modules() if not m.boot and (limitmods is None or m.name in limitmods)]
-        if nonBootJDKModules:
-            vmargs.append('--add-modules=' + ','.join(nonBootJDKModules))
-        if args.limitmods:
-            vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
-        if cp is not None:
-            vmargs.append('-DCompileTheWorld.Classpath=' + cp)
-        cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=graaljdk))
-        vmargs.extend(_ctw_jvmci_export_args() + ['-cp', cp])
-        mainClassAndArgs = ['jdk.graal.compiler.hotspot.test.CompileTheWorld']
+    # To be able to load all classes in the JRT with Class.forName,
+    # all JDK modules need to be made root modules.
+    limitmods = frozenset(args.limitmods.split(',')) if args.limitmods else None
+    graaljdk = get_graaljdk()
+    nonBootJDKModules = [m.name for m in graaljdk.get_modules() if not m.boot and (limitmods is None or m.name in limitmods)]
+    if nonBootJDKModules:
+        vmargs.append('--add-modules=' + ','.join(nonBootJDKModules))
+    if args.limitmods:
+        vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
+    if cp is not None:
+        vmargs.append('-DCompileTheWorld.Classpath=' + cp)
+    cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=graaljdk))
+    vmargs.extend(_ctw_jvmci_export_args() + ['-cp', cp])
+    mainClassAndArgs = ['jdk.graal.compiler.hotspot.test.CompileTheWorld']
 
     run_vm(vmargs + mainClassAndArgs)
 
@@ -418,16 +420,31 @@ def _compiler_error_options(default_compilation_failure_action='ExitVM', vmargs=
             res.append(prefix + 'ShowDumpFiles=true')
     return res
 
-def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, threads=None):
+def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, threads=None, suite_version="9.12-MR1-git+2baec49"):
+    # by default, it uses a version of the DaCapo suite archive that is reasonably-sized for gating
     if iterations == -1:
         return
     vmargs = ['-XX:+UseSerialGC'] if force_serial_gc else []
     vmargs += ['-Xmx8g', '-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments, filter_gcs=force_serial_gc)
-    args = ['-n', str(iterations), '--preserve']
+    scratch_dir = os.path.abspath("./scratch")
+    args = ['-n', str(iterations), '--preserve', '--scratch-directory', scratch_dir]
+
+    # pmd validation fails on Windows, see official dacapobench issue #165
+    if name == 'pmd':
+        args += ['--no-validation']
+
     if threads is not None:
         args += ['-t', str(threads)]
-    return _run_benchmark('dacapo', name, args, vmargs)
 
+    # catch `*-report.txt` if the benchmark fails
+    try:
+        return _run_benchmark('dacapo', name, args, vmargs, suite_version=suite_version)
+    except BaseException as e:
+        file = os.path.join(scratch_dir, f"{name}-report.txt")
+        # not all benchmarks produce a report file
+        if os.path.isfile(file):
+            print("Report is located at: " + file)
+        raise e
 
 def jdk_includes_corba(jdk):
     # corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)
@@ -449,14 +466,16 @@ def _gate_renaissance(name, iterations, extraVMarguments=None):
     return _run_benchmark('renaissance', name, args, vmargs)
 
 
-def _run_benchmark(suite, name, args, vmargs):
+def _run_benchmark(suite, name, args, vmargs, suite_version=None):
     if not [vmarg for vmarg in vmargs if vmarg.startswith('-Xmx')]:
         vmargs += ['-Xmx8g']
     out = mx.TeeOutputCapture(mx.OutputCapture())
-    exit_code, suite, results = mx_benchmark.gate_mx_benchmark(["{}:{}".format(suite, name), "--tracker=none", "--"] + vmargs + ["--"] + args, out=out, err=out, nonZeroIsFatal=False)
+    suite_version_arg = ["--bench-suite-version", str(suite_version)] if suite_version else []
+    exit_code, suite, results = mx_benchmark.gate_mx_benchmark(["{}:{}".format(suite, name)] + suite_version_arg + [ "--tracker=none", "--"] + vmargs + ["--"] + args, out=out, err=out, nonZeroIsFatal=False)
     if exit_code != 0:
         mx.log(out)
-        mx.abort("Gate for {} benchmark '{}' failed!".format(suite, name))
+        suite_str = f"{suite} (version={suite_version})" if suite_version else suite
+        mx.abort("Gate for {} benchmark '{}' failed!".format(suite_str, name))
     return exit_code, suite, results
 
 def _check_forbidden_imports(projects, package_substrings, exceptions=None):
@@ -515,11 +534,14 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
 
     # Run ctw against rt.jar on hosted
     ctw_flags = [
-        '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM CompilationBailoutAsFailure=false', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
+        '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM CompilationBailoutAsFailure=false', '-ea', '-esa',
         '-DCompileTheWorld.MultiThreaded=true', '-Djdk.graal.InlineDuringParsing=false', '-Djdk.graal.TrackNodeSourcePosition=true',
         '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
     ]
-    ctw_phaseplan_fuzzing_flags = ['-DCompileTheWorld.FuzzPhasePlan=true', '-Djdk.graal.PrintGraphStateDiff=true']
+    ctw_phaseplan_fuzzing_flags = [
+        '-DCompileTheWorld.FuzzPhasePlan=true',
+        '-Djdk.graal.PrintGraphStateDiff=true',
+    ]
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw, report=True) as t:
         if t:
             ctw(ctw_flags, _remove_empty_entries(extraVMarguments))
@@ -734,9 +756,12 @@ graal_bootstrap_tests = [
     BootstrapTest('BootstrapWithSystemAssertionsRegisterPressure', _bootstrapFlags + _defaultFlags + _assertionFlags + _registerPressureFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
 ]
 
+_runs_on_github_actions = 'GITHUB_ACTION' in os.environ
+
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument, args.extra_unittest_argument)
-    compiler_gate_benchmark_runner(tasks, args.extra_vm_argument, task_report_component='compiler')
+    if not _runs_on_github_actions:
+        compiler_gate_benchmark_runner(tasks, args.extra_vm_argument, task_report_component='compiler')
 
 class ShellEscapedStringAction(argparse.Action):
     """Turns a shell-escaped string into a list of arguments.
@@ -828,6 +853,10 @@ class GraalUnittestConfig(mx_unittest.MxUnittestConfig):
 
         vmArgs.append('-Djdk.graal.TrackNodeSourcePosition=true')
         vmArgs.append('-esa')
+
+        if '-JUnitMaxTestTime' not in mainClassArgs:
+            # The max time (in seconds) for any compiler unit test
+            mainClassArgs.extend(['-JUnitMaxTestTime', '300'])
 
         # Always run unit tests without UseJVMCICompiler unless explicitly requested
         if _get_XX_option_value(vmArgs, 'UseJVMCICompiler', None) is None:
@@ -1111,7 +1140,7 @@ def collate_metrics(args):
         filename_index += 1
 
     if not results:
-        mx.log('No results to collate for ' + args.filenames[0])
+        mx.log(f"No results to collate for '{args.filenames[0]}'")
     elif args.filenames:
         collated_filename = args.filenames[0][:-len('.csv')] + '.collated.csv'
         with open(collated_filename, 'w') as fp:
@@ -1120,7 +1149,7 @@ def collate_metrics(args):
                 while len(series) < len(args.filenames):
                     series.append(0)
                 writer.writerow([n] + [str(v) for v in series] + [units[n]])
-        mx.log('Collated metrics into ' + collated_filename)
+        mx.log(f"Collated metrics into '{collated_filename}'")
 
 def run_java(args, out=None, err=None, addDefaultArgs=True, command_mapper_hooks=None, jdk=None, **kw_args):
     graaljdk = jdk or get_graaljdk()
@@ -1292,17 +1321,15 @@ class GraalArchiveParticipant:
             if self.isTest:
                 mx.warn('@Option defined in test code will be ignored: ' + arcname)
             else:
-                # Need to create service files for the providers of the
-                # jdk.internal.vm.ci.options.Options service created by
-                # jdk.internal.vm.ci.options.processor.OptionProcessor.
                 version_prefix = 'META-INF/versions/'
                 if arcname.startswith(version_prefix):
-                    # If OptionDescriptor is version-specific, get version
+                    # If OptionDescriptors is version-specific, get version
                     # from arcname and adjust arcname to non-version form
                     version, _, arcname = arcname[len(version_prefix):].partition('/')
                 else:
                     version = None
-                provider = arcname[:-len('.class'):].replace('/', '.')
+
+                provider = arcname[0:-len('.class')].replace("/", ".")
                 service = 'jdk.graal.compiler.options.OptionDescriptors'
                 add_serviceprovider(service, provider, version)
         return False
@@ -1480,6 +1507,7 @@ def _graal_config():
         __graal_config = GraalConfig()
     return __graal_config
 
+# The jars needed for jargraal.
 def _jvmci_jars():
     return [
         'compiler:GRAAL',

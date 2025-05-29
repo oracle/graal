@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
+import com.oracle.truffle.api.nodes.Node;
 
 final class BytecodeOSRRootNode extends BaseOSRRootNode {
     private final long target;
@@ -124,7 +125,7 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
 
     @Override
     public String toString() {
-        return loopNode.toString() + "<OSR@" + target + ">";
+        return ((Node) loopNode).getRootNode().toString() + "<OSR@" + target + ">";
     }
 
     // GR-38296

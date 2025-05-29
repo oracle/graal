@@ -24,15 +24,10 @@
  */
 package com.oracle.svm.hosted;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -50,6 +45,8 @@ import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.meta.HostedType;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -65,7 +62,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
     @Override
     public void beforeUniverseBuilding(BeforeUniverseBuildingAccess access) {
         if (ImageLayerBuildingSupport.buildingInitialLayer()) {
-            ImageSingletons.add(LayerTypeCheckInfo.class, new LayerTypeCheckInfo());
+            ImageSingletons.add(LayerTypeCheckInfo.class, new LayerTypeCheckInfo(0));
         }
     }
 
@@ -112,63 +109,64 @@ public class OpenTypeWorldFeature implements InternalFeature {
         }
     }
 
-    public static void persistTypeInfo(Collection<HostedType> types) {
-        if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            ImageSingletons.lookup(LayerTypeCheckInfo.class).persistTypeInfo(types);
+    @SuppressWarnings("unused")
+    public static boolean validateTypeInfo(Collection<HostedType> types) {
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
+            for (HostedType type : types) {
+                if (type.getWrapped().isInBaseLayer()) {
+                    var priorInfo = getTypecheckInfo(loader, type);
+                    if (!priorInfo.installed()) {
+                        // no need to validate this hub, as it was not installed
+                        continue;
+                    }
+                    int typeID = type.getTypeID();
+                    int numClassTypes = type.getNumClassTypes();
+                    int numInterfaceTypes = type.getNumInterfaceTypes();
+                    int[] typecheckSlots = type.getOpenTypeWorldTypeCheckSlots();
+                    boolean matches = typeID == priorInfo.typeID && numClassTypes == priorInfo.numClassTypes && numInterfaceTypes == priorInfo.numInterfaceTypes &&
+                                    Arrays.equals(typecheckSlots, priorInfo.typecheckSlots);
+                    if (!matches) {
+                        var typeInfo = new TypeCheckInfo(true, typeID, numClassTypes, numInterfaceTypes, typecheckSlots);
+                        assert false : Assertions.errorMessage("Mismatch for ", type, priorInfo, typeInfo, Arrays.toString(priorInfo.typecheckSlots),
+                                        Arrays.toString(typeInfo.typecheckSlots));
+
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    static TypeCheckInfo getTypecheckInfo(SVMImageLayerLoader loader, HostedType hType) {
+        if (hType.getWrapped().isInBaseLayer()) {
+            var hubInfo = loader.getDynamicHubInfo(hType.getWrapped());
+            var valuesReader = hubInfo.getTypecheckSlotValues();
+            int[] typecheckSlots = new int[valuesReader.size()];
+            for (int i = 0; i < typecheckSlots.length; i++) {
+                typecheckSlots[i] = valuesReader.get(i);
+            }
+            return new TypeCheckInfo(hubInfo.getInstalled(), hubInfo.getTypecheckId(), hubInfo.getNumClassTypes(), hubInfo.getNumInterfaceTypes(), typecheckSlots);
+        } else {
+            return null;
         }
     }
 
-    record TypeCheckInfo(int typeID, int numClassTypes, int numInterfaceTypes, int[] typecheckSlots) {
-        private List<Integer> toIntList() {
-            ArrayList<Integer> list = new ArrayList<>();
-            list.add(typeID);
-            list.add(numClassTypes);
-            list.add(numInterfaceTypes);
-            Arrays.stream(typecheckSlots).forEach(list::add);
-
-            return list;
-        }
-
-        private static TypeCheckInfo fromIntList(List<Integer> list) {
-            int typeID = list.get(0);
-            int numClassTypes = list.get(1);
-            int numInterfaceTypes = list.get(2);
-            int[] typecheckSlots = list.subList(3, list.size()).stream().mapToInt(i -> i).toArray();
-            return new TypeCheckInfo(typeID, numClassTypes, numInterfaceTypes, typecheckSlots);
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            TypeCheckInfo typeCheckInfo = (TypeCheckInfo) o;
-            return typeID == typeCheckInfo.typeID && numClassTypes == typeCheckInfo.numClassTypes && numInterfaceTypes == typeCheckInfo.numInterfaceTypes &&
-                            Arrays.equals(typecheckSlots, typeCheckInfo.typecheckSlots);
-        }
-
-        @Override
-        public int hashCode() {
-            int result = Objects.hash(typeID, numClassTypes, numInterfaceTypes);
-            result = 31 * result + Arrays.hashCode(typecheckSlots);
-            return result;
-        }
+    record TypeCheckInfo(boolean installed, int typeID, int numClassTypes, int numInterfaceTypes, int[] typecheckSlots) {
     }
 
-    private static class LayerTypeCheckInfo implements LayeredImageSingleton {
-        Map<Integer, TypeCheckInfo> identifierToTypeInfo = new HashMap<>();
-        int maxTypeID = 0;
+    private static final class LayerTypeCheckInfo implements LayeredImageSingleton {
+        final int maxTypeID;
+
+        LayerTypeCheckInfo(int maxTypeID) {
+            this.maxTypeID = maxTypeID;
+        }
 
         public int loadTypeID(Collection<HostedType> types) {
-            ArrayList<Integer> usedIDs = new ArrayList<>();
+            var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
             for (HostedType type : types) {
-                int identifierID = type.getWrapped().getId();
-                TypeCheckInfo info = identifierToTypeInfo.get(identifierID);
+                TypeCheckInfo info = getTypecheckInfo(loader, type);
                 if (info != null) {
-                    usedIDs.add(info.typeID);
                     type.loadTypeID(info.typeID);
                 }
             }
@@ -176,72 +174,21 @@ public class OpenTypeWorldFeature implements InternalFeature {
             return maxTypeID;
         }
 
-        public void persistTypeInfo(Collection<HostedType> types) {
-            for (HostedType type : types) {
-                /*
-                 * Currently we are calculating type id information for all types. However, for
-                 * types not tracked across layers, the type ID may not be the same in different
-                 * layers.
-                 */
-                assert type.getTypeID() != -1 : type;
-                if (type.getWrapped().isTrackedAcrossLayers()) {
-                    int identifierID = type.getWrapped().getId();
-                    int typeID = type.getTypeID();
-                    int numClassTypes = type.getNumClassTypes();
-                    int numInterfaceTypes = type.getNumInterfaceTypes();
-                    int[] typecheckSlots = type.getOpenTypeWorldTypeCheckSlots();
-                    var priorInfo = identifierToTypeInfo.get(identifierID);
-                    var newTypeInfo = new TypeCheckInfo(typeID, numClassTypes, numInterfaceTypes, typecheckSlots);
-                    if (priorInfo == null) {
-                        identifierToTypeInfo.put(identifierID, newTypeInfo);
-                    } else {
-                        assert newTypeInfo.equals(priorInfo) : Assertions.errorMessage("Mismatch for ", type, priorInfo, newTypeInfo, Arrays.toString(priorInfo.typecheckSlots),
-                                        Arrays.toString(newTypeInfo.typecheckSlots));
-                    }
-                }
-            }
-        }
-
         @Override
         public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
             return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
         }
 
-        private static String getTypeInfoKey(int id) {
-            return String.format("TypeInfo-%s", id);
-        }
-
         @Override
         public PersistFlags preparePersist(ImageSingletonWriter writer) {
-            /*
-             * Note all that is strictly needed to restore the typecheck information is the
-             * (identifierID -> typeID) mappings. In the future we can compact the amount of
-             * information we store.
-             */
-            var typeIdentifierIds = identifierToTypeInfo.keySet().stream().sorted().toList();
-            writer.writeIntList("typeIdentifierIds", typeIdentifierIds);
-            writer.writeInt("maxTypeID", DynamicHubSupport.singleton().getMaxTypeId());
-
-            for (int identifierID : typeIdentifierIds) {
-                var typeInfo = identifierToTypeInfo.get(identifierID);
-                assert typeInfo != null;
-                writer.writeIntList(getTypeInfoKey(identifierID), typeInfo.toIntList());
-            }
+            writer.writeInt("maxTypeID", DynamicHubSupport.currentLayer().getMaxTypeId());
 
             return PersistFlags.CREATE;
         }
 
         @SuppressWarnings("unused")
         public static Object createFromLoader(ImageSingletonLoader loader) {
-            var info = new LayerTypeCheckInfo();
-            info.maxTypeID = loader.readInt("maxTypeID");
-            List<Integer> typeIdentifierIds = loader.readIntList("typeIdentifierIds");
-            for (var identifierID : typeIdentifierIds) {
-                Object previous = info.identifierToTypeInfo.put(identifierID, TypeCheckInfo.fromIntList(loader.readIntList(getTypeInfoKey(identifierID))));
-                assert previous == null : previous;
-            }
-
-            return info;
+            return new LayerTypeCheckInfo(loader.readInt("maxTypeID"));
         }
     }
 }

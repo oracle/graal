@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.EnumSet;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -38,21 +39,24 @@ import org.graalvm.nativeimage.impl.CTypeConversionSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+
+import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredImageSingleton(CTypeConversionSupport.class)
-class CTypeConversionSupportImpl implements CTypeConversionSupport {
+class CTypeConversionSupportImpl implements CTypeConversionSupport, InitialLayerOnlyImageSingleton {
 
     static final CCharPointerHolder NULL_HOLDER = new CCharPointerHolder() {
         @Override
         public CCharPointer get() {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         @Override
@@ -64,7 +68,7 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport {
     static final CCharPointerPointerHolder NULL_POINTER_POINTER_HOLDER = new CCharPointerPointerHolder() {
         @Override
         public CCharPointerPointer get() {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         @Override
@@ -144,7 +148,7 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport {
             if (capacity != 0) {
                 throw new IllegalArgumentException("Non zero buffer size passed along with nullptr");
             }
-            return WordFactory.unsigned(baseString.length);
+            return Word.unsigned(baseString.length);
 
         } else if (capacity < baseString.length + 1) {
             throw new IllegalArgumentException("Provided buffer is too small to hold 0 terminated java string.");
@@ -157,7 +161,7 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport {
         // write null terminator at end
         buffer.write(baseString.length, (byte) 0);
 
-        return WordFactory.unsigned(baseString.length);
+        return Word.unsigned(baseString.length);
     }
 
     @Override
@@ -188,6 +192,16 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport {
     public ByteBuffer asByteBuffer(PointerBase address, int size) {
         ByteBuffer byteBuffer = DirectByteBufferUtil.allocate(address.rawValue(), size);
         return byteBuffer.order(ConfigurationValues.getTarget().arch.getByteOrder());
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
+    }
+
+    @Override
+    public boolean accessibleInFutureLayers() {
+        return true;
     }
 }
 
@@ -235,7 +249,7 @@ final class CCharPointerPointerHolderImpl extends CCharPointerPointerHolder {
             ccpArray[i] = ccpHolderArray[i].get();
         }
         /* Null-terminate the CCharPointer[]. */
-        ccpArray[csArray.length] = WordFactory.nullPointer();
+        ccpArray[csArray.length] = Word.nullPointer();
         /* Pin the CCharPointer[] so I can get the &ccpArray[0]. */
         refCCPArray = PrimitiveArrayView.createForReading(ccpArray);
     }

@@ -38,34 +38,16 @@ import jdk.vm.ci.code.BytecodePosition;
  * <code>op</code> and <code>y</code>, and the second filters <code>y</code> with respect to
  * <code>op</code> and <code>x</code>.
  */
-public class PrimitiveFilterTypeFlow extends TypeFlow<BytecodePosition> {
+public abstract class PrimitiveFilterTypeFlow extends TypeFlow<BytecodePosition> {
+    protected final TypeFlow<?> left;
+    protected final PrimitiveComparison comparison;
+    protected final boolean isUnsigned;
 
-    private final TypeFlow<?> left;
-    private final TypeFlow<?> right;
-    private final PrimitiveComparison comparison;
-
-    public PrimitiveFilterTypeFlow(BytecodePosition position, AnalysisType declaredType, TypeFlow<?> left, TypeFlow<?> right, PrimitiveComparison comparison) {
+    private PrimitiveFilterTypeFlow(BytecodePosition position, AnalysisType declaredType, TypeFlow<?> left, PrimitiveComparison comparison, boolean isUnsigned) {
         super(position, declaredType);
         this.left = left;
-        this.right = right;
         this.comparison = comparison;
-    }
-
-    private PrimitiveFilterTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, PrimitiveFilterTypeFlow original) {
-        super(original, methodFlows);
-        this.left = methodFlows.lookupCloneOf(bb, original.left);
-        this.right = methodFlows.lookupCloneOf(bb, original.right);
-        this.comparison = original.comparison;
-    }
-
-    @Override
-    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-        return new PrimitiveFilterTypeFlow(bb, methodFlows, this);
-    }
-
-    @Override
-    public boolean addState(PointsToAnalysis bb, TypeState add) {
-        return super.addState(bb, eval(bb));
+        this.isUnsigned = isUnsigned;
     }
 
     @Override
@@ -74,18 +56,21 @@ public class PrimitiveFilterTypeFlow extends TypeFlow<BytecodePosition> {
          * If an input saturated, it does not mean that the condition has to always saturate as
          * well, e.g. Any == 5 still returns 5.
          */
-        super.addState(bb, eval(bb));
+        addState(bb, TypeState.forEmpty());
     }
+
+    public abstract TypeState getRightState(PointsToAnalysis bb);
 
     /**
      * Filters the type state of left using condition and right.
      */
-    private TypeState eval(PointsToAnalysis bb) {
+    @Override
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState newState) {
         var leftState = left.getOutputState(bb);
-        var rightState = right.getOutputState(bb);
+        var rightState = getRightState(bb);
         assert leftState.isPrimitive() || leftState.isEmpty() : left;
-        assert rightState.isPrimitive() || rightState.isEmpty() : right;
-        return TypeState.filter(leftState, comparison, rightState);
+        assert rightState.isPrimitive() || rightState.isEmpty() : this;
+        return TypeState.filter(leftState, comparison, rightState, isUnsigned);
     }
 
     public PrimitiveComparison getComparison() {
@@ -94,5 +79,34 @@ public class PrimitiveFilterTypeFlow extends TypeFlow<BytecodePosition> {
 
     public TypeFlow<?> getLeft() {
         return left;
+    }
+
+    public static class ConstantFilter extends PrimitiveFilterTypeFlow {
+        private final TypeState rightState;
+
+        public ConstantFilter(BytecodePosition position, AnalysisType declaredType, TypeFlow<?> left, TypeState rightState, PrimitiveComparison comparison, boolean isUnsigned) {
+            super(position, declaredType, left, comparison, isUnsigned);
+            this.rightState = rightState;
+        }
+
+        @Override
+        public TypeState getRightState(PointsToAnalysis bb) {
+            return rightState;
+        }
+    }
+
+    public static class VariableFilter extends PrimitiveFilterTypeFlow {
+        private final TypeFlow<?> right;
+
+        public VariableFilter(BytecodePosition position, AnalysisType declaredType, TypeFlow<?> left, TypeFlow<?> right, PrimitiveComparison comparison, boolean isUnsigned) {
+            super(position, declaredType, left, comparison, isUnsigned);
+            this.right = right;
+        }
+
+        @Override
+        public TypeState getRightState(PointsToAnalysis bb) {
+            return right.getOutputState(bb);
+        }
+
     }
 }

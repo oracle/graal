@@ -48,6 +48,8 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.TrackDynamicAccessEnabled;
+import com.oracle.svm.hosted.DynamicAccessDetectionFeature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
@@ -56,9 +58,10 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
@@ -71,6 +74,7 @@ import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -120,6 +124,8 @@ public final class ReflectionPlugins {
     private final ParsingReason reason;
     private final FallbackFeature fallbackFeature;
     private final ClassInitializationSupport classInitializationSupport;
+    private final boolean trackDynamicAccess;
+    private final DynamicAccessDetectionFeature dynamicAccessDetectionFeature;
 
     private ReflectionPlugins(ImageClassLoader imageClassLoader, AnnotationSubstitutionProcessor annotationSubstitutions,
                     ClassInitializationPlugin classInitializationPlugin, AnalysisUniverse aUniverse, ParsingReason reason, FallbackFeature fallbackFeature) {
@@ -129,6 +135,9 @@ public final class ReflectionPlugins {
         this.aUniverse = aUniverse;
         this.reason = reason;
         this.fallbackFeature = fallbackFeature;
+
+        trackDynamicAccess = TrackDynamicAccessEnabled.isTrackDynamicAccessEnabled();
+        dynamicAccessDetectionFeature = trackDynamicAccess ? DynamicAccessDetectionFeature.instance() : null;
 
         this.classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
     }
@@ -312,25 +321,48 @@ public final class ReflectionPlugins {
         }
 
         Registration r = new Registration(plugins, Class.class);
-        r.register(new RequiredInvocationPlugin("forName", String.class) {
+        r.register(new RequiredInlineOnlyInvocationPlugin("forName", String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode nameNode) {
-                return processClassForName(b, targetMethod, nameNode, ConstantNode.forBoolean(true));
+                ClassLoader loader;
+                if (ClassForNameSupport.respectClassLoader()) {
+                    Class<?> callerClass = OriginalClassProvider.getJavaClass(b.getMethod().getDeclaringClass());
+                    loader = callerClass.getClassLoader();
+                } else {
+                    loader = imageClassLoader.getClassLoader();
+                }
+                return processClassForName(b, targetMethod, nameNode, ConstantNode.forBoolean(true), loader);
             }
         });
-        r.register(new RequiredInvocationPlugin("forName", String.class, boolean.class, ClassLoader.class) {
+        r.register(new RequiredInlineOnlyInvocationPlugin("forName", String.class, boolean.class, ClassLoader.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode nameNode, ValueNode initializeNode, ValueNode classLoaderNode) {
-                /*
-                 * For now, we ignore the ClassLoader parameter. We only intrinsify class names that
-                 * are found by the ImageClassLoader, i.e., the application class loader at run
-                 * time. We assume that every class loader used at run time delegates to the
-                 * application class loader.
-                 */
-                return processClassForName(b, targetMethod, nameNode, initializeNode);
+                ClassLoader loader;
+                if (ClassForNameSupport.respectClassLoader()) {
+                    if (!classLoaderNode.isJavaConstant()) {
+                        return false;
+                    }
+                    loader = (ClassLoader) unboxObjectConstant(b, classLoaderNode.asJavaConstant());
+                    if (loader == ClassLoader.getSystemClassLoader()) {
+                        /*
+                         * The run time's application class loader is the build time's image class
+                         * loader.
+                         */
+                        loader = imageClassLoader.getClassLoader();
+                    }
+                } else {
+                    /*
+                     * When we ignore the ClassLoader parameter, we only intrinsify class names that
+                     * are found by the ImageClassLoader, i.e., the application class loader at run
+                     * time. We assume that every class loader used at run time delegates to the
+                     * application class loader.
+                     */
+                    loader = imageClassLoader.getClassLoader();
+                }
+                return processClassForName(b, targetMethod, nameNode, initializeNode, loader);
             }
         });
-        r.register(new RequiredInvocationPlugin("getClassLoader", Receiver.class) {
+        r.register(new RequiredInlineOnlyInvocationPlugin("getClassLoader", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 return processClassGetClassLoader(b, targetMethod, receiver);
@@ -374,7 +406,7 @@ public final class ReflectionPlugins {
      * {@link ImageClassLoader} to look up the class name, not the class loader that loaded the
      * native image generator.
      */
-    private boolean processClassForName(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode nameNode, ValueNode initializeNode) {
+    private boolean processClassForName(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode nameNode, ValueNode initializeNode, ClassLoader loader) {
         Object classNameValue = unbox(b, nameNode, JavaKind.Object);
         Object initializeValue = unbox(b, initializeNode, JavaKind.Boolean);
 
@@ -385,8 +417,11 @@ public final class ReflectionPlugins {
         boolean initialize = (Boolean) initializeValue;
         Supplier<String> targetParameters = () -> className + ", " + initialize;
 
-        TypeResult<Class<?>> typeResult = imageClassLoader.findClass(className, false);
+        TypeResult<Class<?>> typeResult = ImageClassLoader.findClass(className, false, loader);
         if (!typeResult.isPresent()) {
+            if (RuntimeClassLoading.isSupported()) {
+                return false;
+            }
             Throwable e = typeResult.getException();
             return throwException(b, targetMethod, targetParameters, e.getClass(), e.getMessage());
         }
@@ -572,7 +607,12 @@ public final class ReflectionPlugins {
             return false;
         }
 
-        b.add(ReachabilityRegistrationNode.create(() -> registerForRuntimeReflection((T) receiverValue, registrationCallback), reason));
+        b.add(ReachabilityRegistrationNode.create(() -> {
+            registerForRuntimeReflection((T) receiverValue, registrationCallback);
+            if (trackDynamicAccess) {
+                dynamicAccessDetectionFeature.addFoldEntry(b.bci(), b.getMethod());
+            }
+        }, reason));
         return true;
     }
 

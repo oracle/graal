@@ -25,21 +25,24 @@
 package com.oracle.svm.core.heap;
 
 import java.lang.management.ManagementFactory;
+import java.util.EnumSet;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.container.OperatingSystem;
-import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 import com.sun.management.OperatingSystemMXBean;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * Contains static methods to get configuration of physical memory.
@@ -47,7 +50,7 @@ import com.sun.management.OperatingSystemMXBean;
 public class PhysicalMemory {
 
     /** Implemented by operating-system specific code. */
-    public interface PhysicalMemorySupport extends RuntimeOnlyImageSingleton {
+    public interface PhysicalMemorySupport extends InitialLayerOnlyImageSingleton {
         /** Get the size of physical memory from the OS. */
         UnsignedWord size();
 
@@ -61,6 +64,11 @@ public class PhysicalMemory {
          */
         default long usedSize() {
             return -1L;
+        }
+
+        @Override
+        default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+            return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
         }
     }
 
@@ -83,7 +91,7 @@ public class PhysicalMemory {
         assert !isInitialized() : "Physical memory already initialized.";
         long memoryLimit = IsolateArgumentParser.singleton().getLongOptionValue(IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.MaxRAM));
         if (memoryLimit > 0) {
-            cachedSize = WordFactory.unsigned(memoryLimit);
+            cachedSize = Word.unsigned(memoryLimit);
         } else if (Container.singleton().isContainerized()) {
             cachedSize = Container.singleton().getPhysicalMemory();
         } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,8 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -81,13 +83,13 @@ public class TypeBoxingTest {
 
         test.executeInt();
 
-        assertEquals(0, constantNode.executeInvoked);
-        assertEquals(1, constantNode.executeIntInvoked);
+        assertEquals(1, constantNode.executeInvoked);
+        assertEquals(0, constantNode.executeIntInvoked);
 
         test.executeInt();
 
-        assertEquals(0, constantNode.executeInvoked);
-        assertEquals(2, constantNode.executeIntInvoked);
+        assertEquals(1, constantNode.executeInvoked);
+        assertEquals(1, constantNode.executeIntInvoked);
     }
 
     @NodeChild
@@ -269,7 +271,11 @@ public class TypeBoxingTest {
 
     @TypeSystem
     static class TypeBoxingTypeSystem {
-
+        @ImplicitCast
+        @TruffleBoundary
+        public static int castInt(byte b) {
+            return b;
+        }
     }
 
 }

@@ -25,13 +25,13 @@
 package jdk.graal.compiler.replacements;
 
 import static java.util.FormattableFlags.ALTERNATE;
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 import static jdk.graal.compiler.debug.DebugContext.applyFormattingFlagsAndWidth;
 import static jdk.graal.compiler.debug.DebugOptions.DumpOnError;
 import static jdk.graal.compiler.graph.iterators.NodePredicates.isNotA;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.lang.reflect.Array;
@@ -189,6 +189,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import jdk.graal.compiler.replacements.nodes.ExplodeLoopNode;
 import jdk.graal.compiler.replacements.nodes.FallbackInvokeWithExceptionNode;
+import jdk.graal.compiler.replacements.nodes.LateLoweredNode;
 import jdk.graal.compiler.replacements.nodes.LoadSnippetVarargParameterNode;
 import jdk.graal.compiler.replacements.nodes.MacroWithExceptionNode;
 import jdk.graal.compiler.util.CollectionsUtil;
@@ -604,20 +605,20 @@ public class SnippetTemplate {
     }
 
     /**
-     * Values that are bound to the snippet method parameters. The methods {@link #add},
-     * {@link #addConst}, and {@link #addVarargs} must be called in the same order as in the
-     * signature of the snippet method. The parameter name is passed to the add methods for
-     * assertion checking, i.e., to enforce that the order matches. Which method needs to be called
-     * depends on the annotation of the snippet method parameter:
+     * Values that are bound to the snippet method parameters. The methods {@link #add} and
+     * {@link #addVarargs} must be called in the same order as in the signature of the snippet
+     * method. The parameter name is passed to the add methods for assertion checking, i.e., to
+     * enforce that the order matches. Which method needs to be called depends on the annotation of
+     * the snippet method parameter:
      * <ul>
-     * <li>Use {@link #add} for a parameter without an annotation. The value is bound when the
-     * {@link SnippetTemplate} is {@link SnippetTemplate#instantiate instantiated}.
-     * <li>Use {@link #addConst} for a parameter annotated with {@link ConstantParameter}. The value
-     * is bound when the {@link SnippetTemplate} is {@link SnippetTemplate#SnippetTemplate created}.
      * <li>Use {@link #addVarargs} for an array parameter annotated with {@link VarargsParameter}. A
      * separate {@link SnippetTemplate} is {@link SnippetTemplate#SnippetTemplate created} for every
      * distinct array length. The actual values are bound when the {@link SnippetTemplate} is
      * {@link SnippetTemplate#instantiate instantiated}
+     * <li>Use {@link #add} for all other parameters. Depending on whether the parameter is
+     * annotated with {@link ConstantParameter} or not, the value is bound when the
+     * {@link SnippetTemplate} is {@link SnippetTemplate#SnippetTemplate created} or
+     * {@link SnippetTemplate#instantiate instantiated} respectively.
      * </ul>
      */
     public static final class Arguments implements Formattable {
@@ -637,36 +638,26 @@ public class SnippetTemplate {
             this.constStamps = new Stamp[info.getParameterCount()];
             this.cacheable = true;
             if (info.hasReceiver()) {
-                addConst("this", info.getReceiver());
+                add("this", info.getReceiver());
             }
         }
 
         public Arguments add(String name, Object value) {
-            assert check(name, false, false);
-            values[nextParamIdx] = value;
-            nextParamIdx++;
-            return this;
-        }
-
-        public Arguments addConst(String name, Object value) {
-            assert value != null;
-            if (value instanceof CStringConstant) {
-                return addConst(name, value, StampFactory.pointer());
+            assert check(name, false);
+            if (info.isConstantParameter(nextParamIdx)) {
+                assert value != null;
+                cacheKey.setParam(nextParamIdx, value);
+                if (value instanceof CStringConstant) {
+                    constStamps[nextParamIdx] = StampFactory.pointer();
+                }
             }
-            return addConst(name, value, null);
-        }
-
-        public Arguments addConst(String name, Object value, Stamp stamp) {
-            assert check(name, true, false);
             values[nextParamIdx] = value;
-            constStamps[nextParamIdx] = stamp;
-            cacheKey.setParam(nextParamIdx, value);
             nextParamIdx++;
             return this;
         }
 
         public Arguments addVarargs(String name, Class<?> componentType, Stamp argStamp, Object value) {
-            assert check(name, false, true);
+            assert check(name, true);
             Varargs varargs = new Varargs(componentType, argStamp, value);
             values[nextParamIdx] = varargs;
             // A separate template is necessary for every distinct array length
@@ -679,11 +670,9 @@ public class SnippetTemplate {
             this.cacheable = cacheable;
         }
 
-        private boolean check(String name, boolean constParam, boolean varargsParam) {
+        private boolean check(String name, boolean varargsParam) {
             assert nextParamIdx < info.getParameterCount() : "too many parameters: " + name + "  " + this;
             assert info.getParameterName(nextParamIdx) == null || info.getParameterName(nextParamIdx).equals(name) : "wrong parameter name at " + nextParamIdx + " : " + name + "  " + this;
-            assert constParam == info.isConstantParameter(nextParamIdx) : "Parameter " + (constParam ? "not " : "") + "annotated with @" + ConstantParameter.class.getSimpleName() + ": " + name +
-                            "  " + this;
             assert varargsParam == info.isVarargsParameter(nextParamIdx) : "Parameter " + (varargsParam ? "not " : "") + "annotated with @" + VarargsParameter.class.getSimpleName() + ": " + name +
                             "  " + this;
             return true;
@@ -977,7 +966,7 @@ public class SnippetTemplate {
             }
             providers.getReplacements().registerSnippet(javaMethod, original, receiver, GraalOptions.TrackNodeSourcePosition.getValue(options), options);
             LocationIdentity[] privateLocations = GraalOptions.SnippetCounters.getValue(options) ? SnippetCounterNode.addSnippetCounters(initialPrivateLocations) : initialPrivateLocations;
-            if (inImageRuntimeCode() || GraalOptions.EagerSnippets.getValue(options)) {
+            if (inRuntimeCode() || GraalOptions.EagerSnippets.getValue(options)) {
                 SnippetParameterInfo snippetParameterInfo = providers.getReplacements().getSnippetParameterInfo(javaMethod);
                 return new EagerSnippetInfo(javaMethod, original, privateLocations, receiver, snippetParameterInfo, type);
             } else {
@@ -1543,7 +1532,7 @@ public class SnippetTemplate {
     }
 
     private static boolean verifyIntrinsicsProcessed(StructuredGraph snippetCopy) {
-        if (inImageRuntimeCode()) {
+        if (inRuntimeCode()) {
             return true;
         }
         for (MethodCallTargetNode target : snippetCopy.getNodes(MethodCallTargetNode.TYPE)) {
@@ -2198,6 +2187,7 @@ public class SnippetTemplate {
                 // snippet exception handler
                 UnwindNode snippetUnwindDuplicate = (UnwindNode) duplicates.get(unwindPath);
                 ValueNode snippetExceptionValue = snippetUnwindDuplicate.exception();
+                ValueNode snippetExceptionPrevBegin = AbstractBeginNode.prevBegin(snippetUnwindDuplicate);
                 FixedWithNextNode snippetUnwindPath = (FixedWithNextNode) snippetUnwindDuplicate.predecessor();
                 GraalError.guarantee(!(snippetExceptionValue instanceof ExceptionObjectNode) || snippetUnwindPath == snippetExceptionValue,
                                 "Snippet unwind predecessor must be the exception object %s: %s", snippetUnwindPath, snippetExceptionValue);
@@ -2217,6 +2207,7 @@ public class SnippetTemplate {
                                     "Must not have guards attached to exception object node %s", exceptionEdge);
                     replaceeWithExceptionNode.setExceptionEdge(null);
                     // replace the old exception object with the one
+                    exceptionEdge.replaceAtUsages(snippetExceptionPrevBegin, InputType.Anchor, InputType.Guard);
                     exceptionEdge.replaceAtUsages(snippetExceptionValue);
                     GraalError.guarantee(originalWithExceptionNextNode != null, "Need to have next node to link placeholder to: %s", replacee);
                     // replace exceptionEdge with snippetUnwindPath
@@ -2873,9 +2864,11 @@ public class SnippetTemplate {
                     } else if (stateAfter != null) {
                         deoptDupDuring.computeStateDuring(stateAfter);
                     } else if (stateBefore != null) {
-                        boolean guarantee = ((DeoptBefore) replaceeDeopt).canUseAsStateDuring() || !deoptDupDuring.hasSideEffect();
-                        GraalError.guarantee(guarantee, "Can't use stateBefore as stateDuring for state split %s",
-                                        deoptDupDuring);
+                        // late lowered nodes are before,during and after deopts to allow maximum
+                        // versatility, verification is disabled for them
+                        boolean guarantee = ((DeoptBefore) replaceeDeopt).canUseAsStateDuring() || !deoptDupDuring.hasSideEffect() || deoptDup instanceof LateLoweredNode;
+                        GraalError.guarantee(guarantee, "Can't use stateBefore as stateDuring for state split %s. Replacee is %s",
+                                        deoptDupDuring, replacee);
                         deoptDupDuring.setStateDuring(stateBefore);
                     } else {
                         throw GraalError.shouldNotReachHere("No stateDuring assigned."); // ExcludeFromJacocoGeneratedReport
@@ -2886,7 +2879,9 @@ public class SnippetTemplate {
                     if (stateAfter != null) {
                         deoptDupAfter.setStateAfter(stateAfter);
                     } else {
-                        boolean guarantee = stateBefore != null && !deoptDupAfter.hasSideEffect();
+                        // late lowered nodes are before,during and after deopts to allow maximum
+                        // versatility, verification is disabled for them
+                        boolean guarantee = stateBefore != null && !deoptDupAfter.hasSideEffect() || deoptDup instanceof LateLoweredNode;
                         GraalError.guarantee(guarantee, "Can't use stateBefore as stateAfter for state split %s", deoptDupAfter);
                         deoptDupAfter.setStateAfter(stateBefore);
                     }
@@ -2929,12 +2924,12 @@ public class SnippetTemplate {
         for (int i = offset; i < args.info.getParameterCount(); i++) {
             if (args.info.isConstantParameter(i)) {
                 JavaKind kind = signature.getParameterKind(i - offset);
-                assert inImageRuntimeCode() || checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
+                assert inRuntimeCode() || checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
 
             } else if (args.info.isVarargsParameter(i)) {
                 assert args.values[i] instanceof Varargs : Assertions.errorMessage(args.values[i], args, method);
                 Varargs varargs = (Varargs) args.values[i];
-                assert inImageRuntimeCode() || checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
+                assert inRuntimeCode() || checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
 
             } else if (args.info.isNonNullParameter(i)) {
                 assert checkNonNull(method, args.info.getParameterName(i), args.values[i]);

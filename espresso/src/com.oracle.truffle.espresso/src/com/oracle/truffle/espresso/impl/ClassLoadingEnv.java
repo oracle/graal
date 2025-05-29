@@ -22,26 +22,26 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
+import java.util.logging.Level;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.classfile.ParsingContext;
-import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Supplier;
-import java.util.logging.Level;
 
 public class ClassLoadingEnv implements LanguageAccess {
     private final AtomicLong klassIdProvider = new AtomicLong();
@@ -50,7 +50,6 @@ public class ClassLoadingEnv implements LanguageAccess {
     private final EspressoLanguage language;
     private final TruffleLogger logger;
     private final TimerCollection timers;
-    private final ParsingContext parsingContext;
 
     @CompilationFinal private Meta meta;
 
@@ -58,11 +57,6 @@ public class ClassLoadingEnv implements LanguageAccess {
         this.language = language;
         this.logger = logger;
         this.timers = timers;
-        this.parsingContext = createParsingContext(this);
-    }
-
-    public ParsingContext getParsingContext() {
-        return parsingContext;
     }
 
     @Override
@@ -126,11 +120,7 @@ public class ClassLoadingEnv implements LanguageAccess {
         return id;
     }
 
-    public boolean isStrictComplianceMode() {
-        return getLanguage().getSpecComplianceMode() == EspressoOptions.SpecComplianceMode.STRICT;
-    }
-
-    private static ParsingContext createParsingContext(ClassLoadingEnv env) {
+    public static ParsingContext createParsingContext(ClassLoadingEnv env, boolean ensureStrongReferences) {
         return new ParsingContext() {
 
             final Logger truffleEnvLogger = new Logger() {
@@ -177,22 +167,17 @@ public class ClassLoadingEnv implements LanguageAccess {
 
             @Override
             public Symbol<Name> getOrCreateName(ByteSequence byteSequence) {
-                return env.getNames().getOrCreate(byteSequence);
+                return env.getNames().getOrCreate(byteSequence, ensureStrongReferences);
             }
 
             @Override
             public Symbol<Type> getOrCreateTypeFromName(ByteSequence byteSequence) {
-                return env.getTypes().getOrCreate(Types.nameToType(byteSequence));
+                return env.getTypes().getOrCreateValidType(TypeSymbols.nameToType(byteSequence), ensureStrongReferences);
             }
 
             @Override
-            public Utf8Constant getOrCreateUtf8Constant(ByteSequence bytes) {
-                return env.getLanguage().getUtf8ConstantTable().getOrCreate(bytes);
-            }
-
-            @Override
-            public long getNewKlassId() {
-                return env.getNewKlassId();
+            public Symbol<? extends ModifiedUTF8> getOrCreateUtf8(ByteSequence byteSequence) {
+                return env.getLanguage().getUtf8Symbols().getOrCreateValidUtf8(byteSequence, ensureStrongReferences);
             }
         };
     }

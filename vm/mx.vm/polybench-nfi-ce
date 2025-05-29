@@ -1,4 +1,3 @@
 DYNAMIC_IMPORTS=/compiler,/graal-js,/regex,/sdk,/substratevm,/truffle
 COMPONENTS=cmp,icu4j,xz,js,jsl,jss,lg,nfi-libffi,ni,nil,pbm,pmh,pbi,rgx,sdk,sdkl,svm,svmt,svmnfi,svmsl,tfl,tfla,tflc,tflm
 NATIVE_IMAGES=lib:jvmcicompiler,polybench
-DISABLE_INSTALLABLES=False

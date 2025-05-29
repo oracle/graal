@@ -63,6 +63,7 @@ import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.GetSuperclassFunc
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.IsAssignableFromFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.IsInstanceOfFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.IsSameObjectFunctionPointer;
+import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.MonitorEnterExitFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.NewByteArrayFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.NewGlobalRefFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.NewObjectAFunctionPointer;
@@ -1372,16 +1373,16 @@ public interface JNINativeInterface extends PointerBase {
     void setUnregisterNatives(CFunctionPointer p);
 
     @CField
-    CFunctionPointer getMonitorEnter();
+    MonitorEnterExitFunctionPointer getMonitorEnter();
 
     @CField
-    void setMonitorEnter(CFunctionPointer p);
+    void setMonitorEnter(MonitorEnterExitFunctionPointer p);
 
     @CField
-    CFunctionPointer getMonitorExit();
+    MonitorEnterExitFunctionPointer getMonitorExit();
 
     @CField
-    void setMonitorExit(CFunctionPointer p);
+    void setMonitorExit(MonitorEnterExitFunctionPointer p);
 
     @CField
     CFunctionPointer getGetJavaVM();

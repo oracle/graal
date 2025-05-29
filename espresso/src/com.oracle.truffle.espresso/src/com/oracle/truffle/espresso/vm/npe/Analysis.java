@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.vm.npe;
 
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.AALOAD;
@@ -230,18 +229,18 @@ import static com.oracle.truffle.espresso.vm.npe.StackType.rtype;
 import java.util.ArrayList;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeSwitch;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.LanguageAccess;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 
 final class Analysis implements LanguageAccess {
 
@@ -290,7 +289,7 @@ final class Analysis implements LanguageAccess {
         // Initialize stack at bci 0
         registerStack(new SimulatedStack(maxStack), 0);
         // Initialize stack at exception handlers
-        for (ExceptionHandler handler : m.getExceptionHandlers()) {
+        for (ExceptionHandler handler : m.getSymbolicExceptionHandlers()) {
             int bci = handler.getHandlerBCI();
             registerStack(new SimulatedStack(maxStack).push(UNKNOWN_BCI, OBJECT), bci);
         }
@@ -624,11 +623,11 @@ final class Analysis implements LanguageAccess {
             case INVOKEINTERFACE:
             case INVOKEDYNAMIC: {
                 Symbol<Type>[] parsed = getInvokeSignature(bci, opcode);
-                stack.pop(Signatures.slotsForParameters(parsed));
+                stack.pop(SignatureSymbols.slotsForParameters(parsed));
                 if (!(opcode == INVOKESTATIC || opcode == INVOKEDYNAMIC)) {
                     stack.pop(); // receiver
                 }
-                stack.push(bci, StackType.forType(Signatures.returnType(parsed)));
+                stack.push(bci, StackType.forType(SignatureSymbols.returnType(parsed)));
                 break;
             }
 
@@ -647,21 +646,21 @@ final class Analysis implements LanguageAccess {
 
     Symbol<Name> getFieldName(int bci) {
         int cpi = bs.readCPI(bci);
-        return m.getConstantPool().fieldAt(cpi).getName(m.getConstantPool());
+        return m.getConstantPool().fieldName(cpi);
     }
 
     Symbol<Type> getFieldType(int bci) {
         int cpi = bs.readCPI(bci);
-        return m.getConstantPool().fieldAt(cpi).getType(m.getConstantPool());
+        return m.getConstantPool().fieldType(cpi);
     }
 
     Symbol<Name> getInvokeName(int bci, int opcode) {
         assert Bytecodes.isInvoke(opcode);
         int cpi = bs.readCPI(bci);
         if (opcode == INVOKEDYNAMIC) {
-            return m.getConstantPool().indyAt(cpi).getName(m.getConstantPool());
+            return m.getConstantPool().invokeDynamicName(cpi);
         } else {
-            return m.getConstantPool().methodAt(cpi).getName(m.getConstantPool());
+            return m.getConstantPool().methodName(cpi);
         }
     }
 
@@ -670,9 +669,9 @@ final class Analysis implements LanguageAccess {
         int cpi = bs.readCPI(bci);
         Symbol<Signature> sig;
         if (opcode == INVOKEDYNAMIC) {
-            sig = m.getConstantPool().indyAt(cpi).getSignature(m.getConstantPool());
+            sig = m.getConstantPool().invokeDynamicSignature(cpi);
         } else {
-            sig = m.getConstantPool().methodAt(cpi).getSignature(m.getConstantPool());
+            sig = m.getConstantPool().methodSignature(cpi);
         }
         return getSignatures().parsed(sig);
     }

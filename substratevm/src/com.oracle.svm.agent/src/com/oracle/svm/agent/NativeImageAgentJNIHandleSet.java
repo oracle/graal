@@ -75,6 +75,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     private JNIFieldId javaIOObjectStreamClassClassDataSlotDesc;
     private JNIFieldId javaIOObjectStreamClassClassDataSlotHasData;
 
+    private JNIMethodId javaUtilZipZipFileGetName;
     private JNIMethodId javaLangReflectConstructorDeclaringClassName;
 
     private JNIObjectHandle javaLangReflectProxy = WordFactory.nullPointer();
@@ -114,11 +115,8 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangClassLoader = newClassGlobalRef(env, "java/lang/ClassLoader");
         javaLangClassLoaderGetResource = getMethodId(env, javaLangClassLoader, "getResource", "(Ljava/lang/String;)Ljava/net/URL;", false);
 
-        JNIObjectHandle reflectLoader = findClassOptional(env, "jdk/internal/reflect/DelegatingClassLoader"); // JDK11+
-        if (reflectLoader.equal(nullHandle())) {
-            reflectLoader = findClass(env, "sun/reflect/DelegatingClassLoader"); // JDK 8
-        }
-        jdkInternalReflectDelegatingClassLoader = newTrackedGlobalRef(env, reflectLoader);
+        JNIObjectHandle reflectLoader = findClassOptional(env, "jdk/internal/reflect/DelegatingClassLoader"); // JDK11-23
+        jdkInternalReflectDelegatingClassLoader = reflectLoader.equal(nullHandle()) ? nullHandle() : newTrackedGlobalRef(env, reflectLoader);
 
         JNIObjectHandle javaLangObject = findClass(env, "java/lang/Object");
         javaLangObjectGetClass = getMethodId(env, javaLangObject, "getClass", "()Ljava/lang/Class;", false);
@@ -226,6 +224,14 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
             javaIOObjectStreamClassClassDataSlotHasData = getFieldId(env, getJavaIOObjectStreamClassClassDataSlot(env), "hasData", "Z", false);
         }
         return javaIOObjectStreamClassClassDataSlotHasData;
+    }
+
+    JNIMethodId getJavaUtilZipZipFileGetName(JNIEnvironment env) {
+        if (javaUtilZipZipFileGetName.equal(nullHandle())) {
+            JNIObjectHandle javaUtilZipZipFile = findClass(env, "java/util/zip/ZipFile");
+            javaUtilZipZipFileGetName = getMethodId(env, javaUtilZipZipFile, "getName", "()Ljava/lang/String;", false);
+        }
+        return javaUtilZipZipFileGetName;
     }
 
     JNIMethodId getJavaLangReflectConstructorDeclaringClassName(JNIEnvironment env, JNIObjectHandle customSerializationConstructorClass) {

@@ -43,7 +43,6 @@ import jdk.graal.compiler.core.match.MatchStatement;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.lir.CompositeValueClass;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.phases.LIRPhase;
 import jdk.graal.compiler.phases.BasePhase;
@@ -54,9 +53,8 @@ import jdk.graal.compiler.phases.BasePhase;
  */
 public class GraalCompilerSupport {
 
-    public final EconomicMap<Class<?>, NodeClass<?>> nodeClasses = ImageHeapMap.create();
-    public final EconomicMap<Class<?>, LIRInstructionClass<?>> instructionClasses = ImageHeapMap.create();
-    public final EconomicMap<Class<?>, CompositeValueClass<?>> compositeValueClasses = ImageHeapMap.create();
+    public final EconomicMap<Class<?>, NodeClass<?>> nodeClasses = ImageHeapMap.create("nodeClasses");
+    public final EconomicMap<Class<?>, LIRInstructionClass<?>> instructionClasses = ImageHeapMap.create("instructionClasses");
     public HashMap<Class<? extends NodeMatchRules>, EconomicMap<Class<? extends Node>, List<MatchStatement>>> matchRuleRegistry;
 
     protected EconomicMap<Class<?>, BasePhase.BasePhaseStatistics> basePhaseStatistics;
@@ -81,8 +79,8 @@ public class GraalCompilerSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void allocatePhaseStatisticsCache() {
-        GraalCompilerSupport.get().basePhaseStatistics = ImageHeapMap.create();
-        GraalCompilerSupport.get().lirPhaseStatistics = ImageHeapMap.create();
+        GraalCompilerSupport.get().basePhaseStatistics = ImageHeapMap.create("basePhaseStatistics");
+        GraalCompilerSupport.get().lirPhaseStatistics = ImageHeapMap.create("lirPhaseStatistics");
     }
 
     /* Invoked once for every class that is reachable in the native image. */

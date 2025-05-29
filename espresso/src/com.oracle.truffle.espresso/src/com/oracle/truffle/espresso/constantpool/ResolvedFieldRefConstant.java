@@ -22,18 +22,12 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.impl.Field;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
-
 import java.util.Objects;
 
-public final class ResolvedFieldRefConstant implements FieldRefConstant, Resolvable.ResolvedConstant {
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.impl.Field;
+
+public final class ResolvedFieldRefConstant implements ResolvedConstant {
     private final Field resolved;
 
     ResolvedFieldRefConstant(Field resolvedField) {
@@ -42,27 +36,12 @@ public final class ResolvedFieldRefConstant implements FieldRefConstant, Resolva
     }
 
     @Override
-    public Symbol<Type> getType(ConstantPool pool) {
-        return resolved.getType();
-    }
-
-    @Override
     public Field value() {
         return resolved;
     }
 
     @Override
-    public Symbol<Name> getHolderKlassName(ConstantPool pool) {
-        throw EspressoError.shouldNotReachHere("Field already resolved");
-    }
-
-    @Override
-    public Symbol<Name> getName(ConstantPool pool) {
-        return resolved.getName();
-    }
-
-    @Override
-    public Symbol<Type> getDescriptor(ConstantPool pool) {
-        return getType(pool);
+    public Tag tag() {
+        return Tag.FIELD_REF;
     }
 }

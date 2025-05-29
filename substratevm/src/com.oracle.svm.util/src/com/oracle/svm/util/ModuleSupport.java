@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.util;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -42,18 +44,36 @@ public final class ModuleSupport {
     public static final List<String> nonExplicitModules = List.of(MODULE_SET_ALL_DEFAULT, MODULE_SET_ALL_SYSTEM, MODULE_SET_ALL_MODULE_PATH);
 
     public static final String ENV_VAR_USE_MODULE_SYSTEM = "USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM";
-    public static final String PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES = "org.graalvm.nativeimage.module.addmods";
-    public static final String PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES = "org.graalvm.nativeimage.module.limitmods";
+    public static final String PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES = "svm.modulesupport.addedModules";
+    public static final String PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES = "svm.modulesupport.limitedModules";
     public static final boolean modulePathBuild = isModulePathBuild();
 
-    public static final Set<String> SYSTEM_MODULES = Set.of("org.graalvm.nativeimage.builder", "org.graalvm.nativeimage", "org.graalvm.nativeimage.base", "com.oracle.svm.svm_enterprise",
-                    "org.graalvm.word", "jdk.internal.vm.ci", "jdk.graal.compiler", "com.oracle.graal.graal_enterprise");
+    public static final Set<String> SYSTEM_MODULES = Set.of(
+                    "com.oracle.graal.graal_enterprise",
+                    "com.oracle.svm.svm_enterprise",
+                    "jdk.graal.compiler",
+                    "org.graalvm.nativeimage.libgraal",
+                    "jdk.internal.vm.ci",
+                    "org.graalvm.nativeimage",
+                    "org.graalvm.nativeimage.base",
+                    "org.graalvm.nativeimage.builder",
+                    "org.graalvm.truffle.compiler",
+                    "org.graalvm.word");
 
     private ModuleSupport() {
     }
 
     private static boolean isModulePathBuild() {
         return !"false".equalsIgnoreCase(System.getenv().get(ENV_VAR_USE_MODULE_SYSTEM));
+    }
+
+    public static Set<String> parseModuleSetModifierProperty(String prop) {
+        Set<String> specifiedModules = new HashSet<>();
+        String args = System.getProperty(prop, "");
+        if (!args.isEmpty()) {
+            specifiedModules.addAll(Arrays.asList(args.split(",")));
+        }
+        return specifiedModules;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

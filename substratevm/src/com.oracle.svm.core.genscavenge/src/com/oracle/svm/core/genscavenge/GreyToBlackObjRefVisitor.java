@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -31,10 +33,8 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
-import com.oracle.svm.core.heap.ObjectHeader;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.log.Log;
 
 import jdk.graal.compiler.word.Word;
@@ -48,7 +48,7 @@ import jdk.graal.compiler.word.Word;
  * Since this visitor is used during collection, one instance of it is constructed during native
  * image generation.
  */
-final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
+public final class GreyToBlackObjRefVisitor implements UninterruptibleObjectReferenceVisitor {
     private final Counters counters;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -61,72 +61,69 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
-        return visitObjectReferenceInline(objRef, 0, compressed, holderObject);
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
+        Pointer pos = firstObjRef;
+        Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
+        while (pos.belowThan(end)) {
+            visitObjectReference(pos, compressed, holderObject);
+            pos = pos.add(referenceSize);
+        }
     }
 
-    @Override
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
-        assert innerOffset >= 0;
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private void visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
         assert !objRef.isNull();
         counters.noteObjRef();
 
-        Pointer offsetP = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
-        assert offsetP.isNonNull() || innerOffset == 0;
-
-        Pointer p = offsetP.subtract(innerOffset);
+        Pointer p = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
         if (p.isNull()) {
             counters.noteNullReferent();
-            return true;
+            return;
         }
 
         if (HeapImpl.getHeapImpl().isInImageHeap(p)) {
             counters.noteNonHeapReferent();
-            return true;
+            return;
         }
 
         // This is the most expensive check as it accesses the heap fairly randomly, which results
         // in a lot of cache misses.
         ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
-        Word header = ObjectHeader.readHeaderFromPointer(p);
+        Word header = ohi.readHeaderFromPointer(p);
         if (GCImpl.getGCImpl().isCompleteCollection() || !RememberedSet.get().hasRememberedSet(header)) {
 
             if (ObjectHeaderImpl.isForwardedHeader(header)) {
                 counters.noteForwardedReferent();
                 // Update the reference to point to the forwarded Object.
                 Object obj = ohi.getForwardedObject(p, header);
-                Object offsetObj = (innerOffset == 0) ? obj : Word.objectToUntrackedPointer(obj).add(innerOffset).toObject();
-                ReferenceAccess.singleton().writeObjectAt(objRef, offsetObj, compressed);
-                RememberedSet.get().dirtyCardIfNecessary(holderObject, obj);
-                return true;
+                ReferenceAccess.singleton().writeObjectAt(objRef, obj, compressed);
+                RememberedSet.get().dirtyCardIfNecessary(holderObject, obj, objRef);
+                return;
             }
 
-            Object obj = p.toObject();
+            Object obj = p.toObjectNonNull();
             if (SerialGCOptions.useCompactingOldGen() && ObjectHeaderImpl.isMarkedHeader(header)) {
-                RememberedSet.get().dirtyCardIfNecessary(holderObject, obj);
-                return true;
+                RememberedSet.get().dirtyCardIfNecessary(holderObject, obj, objRef);
+                return;
             }
 
             // Promote the Object if necessary, making it at least grey, and ...
-            assert innerOffset < LayoutEncoding.getSizeFromObjectInGC(obj).rawValue();
             Object copy = GCImpl.getGCImpl().promoteObject(obj, header);
             if (copy != obj) {
                 // ... update the reference to point to the copy, making the reference black.
                 counters.noteCopiedReferent();
-                Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
-                ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
+                ReferenceAccess.singleton().writeObjectAt(objRef, copy, compressed);
             } else {
                 counters.noteUnmodifiedReference();
             }
 
             // The reference will not be updated if a whole chunk is promoted. However, we still
             // might have to dirty the card.
-            RememberedSet.get().dirtyCardIfNecessary(holderObject, copy);
+            RememberedSet.get().dirtyCardIfNecessary(holderObject, copy, objRef);
         }
-        return true;
     }
 
     public Counters openCounters() {

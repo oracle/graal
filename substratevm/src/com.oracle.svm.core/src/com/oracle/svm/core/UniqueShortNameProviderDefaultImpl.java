@@ -42,7 +42,7 @@ import jdk.vm.ci.meta.Signature;
 public class UniqueShortNameProviderDefaultImpl implements UniqueShortNameProvider {
     @Override
     public String uniqueShortName(ClassLoader loader, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
-        return SubstrateUtil.defaultUniqueShortName(SubstrateUtil.classLoaderNameAndId(loader), declaringClass, methodName, methodSignature, isConstructor);
+        return SubstrateUtil.defaultUniqueShortName(SubstrateUtil.runtimeClassLoaderNameAndId(loader), declaringClass, methodName, methodSignature, isConstructor);
     }
 
     @Override
@@ -52,7 +52,7 @@ public class UniqueShortNameProviderDefaultImpl implements UniqueShortNameProvid
 
     @Override
     public String uniqueShortLoaderName(ClassLoader classLoader) {
-        return SubstrateUtil.classLoaderNameAndId(classLoader);
+        return SubstrateUtil.runtimeClassLoaderNameAndId(classLoader);
     }
 
     public static class UseDefault implements BooleanSupplier {

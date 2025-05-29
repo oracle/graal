@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.CompileOnly;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.FirstTierCompilationThreshold;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.FirstTierMinInvokeThreshold;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.LastTierCompilationThreshold;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.MaximumCompilations;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.MinInvokeThreshold;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.Mode;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.MultiTier;
@@ -68,6 +69,7 @@ import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.SplittingGrowth
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.SplittingMaxCalleeSize;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.SplittingMaxPropagationDepth;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.SplittingTraceEvents;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.StoppedCompilationRetryDelay;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraceCompilation;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraceCompilationDetails;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraceDeoptimizeFrame;
@@ -76,6 +78,8 @@ import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraceSplittingS
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraceTransferToInterpreter;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueFirstTierBonus;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueFirstTierPriority;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueInvalidatedBonus;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueOSRBonus;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueWeightingBothTiers;
 import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.getRuntime;
 
@@ -85,6 +89,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.logging.Level;
 
@@ -148,14 +153,18 @@ public final class EngineData {
     @CompilationFinal public boolean traceDeoptimizeFrame;
     @CompilationFinal public boolean compileAOTOnCreate;
     @CompilationFinal public boolean firstTierOnly;
+    @CompilationFinal public long stoppedCompilationRetryDelay;
 
     // compilation queue options
     @CompilationFinal public boolean priorityQueue;
     @CompilationFinal public boolean weightingBothTiers;
     @CompilationFinal public boolean traversingFirstTierPriority;
     @CompilationFinal public double traversingFirstTierBonus;
+    @CompilationFinal public double traversingInvalidatedBonus;
+    @CompilationFinal public double traversingOSRBonus;
     @CompilationFinal public boolean propagateCallAndLoopCount;
     @CompilationFinal public int propagateCallAndLoopCountMaxDepth;
+    @CompilationFinal public int maximumCompilations;
 
     // computed fields.
     @CompilationFinal public int callThresholdInInterpreter;
@@ -305,6 +314,7 @@ public final class EngineData {
         this.firstTierOnly = options.get(Mode) == EngineModeEnum.LATENCY;
         this.propagateCallAndLoopCount = options.get(PropagateLoopCountToLexicalSingleCaller);
         this.propagateCallAndLoopCountMaxDepth = options.get(PropagateLoopCountToLexicalSingleCallerMaxDepth);
+        this.stoppedCompilationRetryDelay = options.get(StoppedCompilationRetryDelay);
 
         // compilation queue options
         priorityQueue = options.get(PriorityQueue);
@@ -312,6 +322,9 @@ public final class EngineData {
         traversingFirstTierPriority = options.get(TraversingQueueFirstTierPriority);
         // See usage of traversingFirstTierBonus for explanation of this formula.
         traversingFirstTierBonus = options.get(TraversingQueueFirstTierBonus) * options.get(LastTierCompilationThreshold) / options.get(FirstTierCompilationThreshold);
+        maximumCompilations = options.get(MaximumCompilations);
+        traversingInvalidatedBonus = options.get(TraversingQueueInvalidatedBonus);
+        traversingOSRBonus = options.get(TraversingQueueOSRBonus);
 
         this.returnTypeSpeculation = options.get(ReturnTypeSpeculation);
         this.argumentTypeSpeculation = options.get(ArgumentTypeSpeculation);
@@ -490,6 +503,16 @@ public final class EngineData {
 
     public TruffleLogger getLogger(String loggerId) {
         return polyglotEngine != null ? loggerFactory.apply(loggerId) : null;
+    }
+
+    private final AtomicBoolean logShutdownCompilations = new AtomicBoolean(true);
+
+    /**
+     * Only log compilation shutdowns (see {@code OptimizedCallTarget.isCompilationStopped()}) once
+     * per engine.
+     */
+    public AtomicBoolean logShutdownCompilations() {
+        return logShutdownCompilations;
     }
 
     @SuppressWarnings("static-method")

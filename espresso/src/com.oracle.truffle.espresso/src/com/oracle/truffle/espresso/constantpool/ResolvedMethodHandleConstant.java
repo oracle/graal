@@ -22,15 +22,13 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool;
+import java.lang.invoke.MethodHandle;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
-import java.lang.invoke.MethodHandle;
-
-public final class ResolvedMethodHandleConstant implements Resolvable.ResolvedConstant {
+public final class ResolvedMethodHandleConstant implements ResolvedConstant {
     private final @JavaType(MethodHandle.class) StaticObject payload;
 
     ResolvedMethodHandleConstant(StaticObject payload) {
@@ -42,12 +40,8 @@ public final class ResolvedMethodHandleConstant implements Resolvable.ResolvedCo
         return payload;
     }
 
+    @Override
     public Tag tag() {
         return Tag.METHODHANDLE;
-    }
-
-    @Override
-    public String toString(ConstantPool pool) {
-        return payload.toString();
     }
 }

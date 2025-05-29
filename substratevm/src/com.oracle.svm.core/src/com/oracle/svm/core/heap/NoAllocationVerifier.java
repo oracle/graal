@@ -43,7 +43,7 @@ public class NoAllocationVerifier implements AutoCloseable {
     public static final String ERROR_MSG = "Attempt to allocate while allocation was explicitly disabled using a NoAllocationVerifier";
 
     /** A guard to place before an allocation, giving the call site and the allocation type. */
-    public static void exit(final String callSite, final String typeName) {
+    public static RuntimeException exit(final String callSite, final String typeName) {
         Log.log().string("[NoAllocationVerifier detected disallowed allocation: ").string(callSite).string(": ").string(typeName).newline();
         if (openVerifiers.get() != null) {
             Log.log().string("[NoAllocationVerifier stack: ");

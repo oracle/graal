@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,7 @@ import static jdk.vm.ci.amd64.AMD64.rcx;
 import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsi;
+import static jdk.vm.ci.amd64.AMD64.valueRegistersAVX512;
 import static jdk.vm.ci.amd64.AMD64.valueRegistersSSE;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.amd64.AMD64.xmm1;
@@ -67,6 +68,7 @@ import static jdk.vm.ci.amd64.AMD64.xmm9;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.graalvm.nativeimage.Platform;
@@ -88,7 +90,6 @@ import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
@@ -105,16 +106,16 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
     private final TargetDescription target;
     private final int nativeParamsStackOffset;
-    private final RegisterArray javaGeneralParameterRegs;
-    private final RegisterArray nativeGeneralParameterRegs;
-    private final RegisterArray xmmParameterRegs;
-    private final RegisterArray allocatableRegs;
-    private final RegisterArray calleeSaveRegisters;
-    private final RegisterAttributes[] attributesMap;
+    private final List<Register> javaGeneralParameterRegs;
+    private final List<Register> nativeGeneralParameterRegs;
+    private final List<Register> xmmParameterRegs;
+    private final List<Register> allocatableRegs;
+    private final List<Register> calleeSaveRegisters;
+    private final List<RegisterAttributes> attributesMap;
     private final MetaAccessProvider metaAccess;
     private final boolean useBasePointer;
 
-    private static final RegisterArray MASK_REGISTERS = new RegisterArray(k1, k2, k3, k4, k5, k6, k7);
+    private static final List<Register> MASK_REGISTERS = List.of(k1, k2, k3, k4, k5, k6, k7);
 
     @SuppressWarnings("this-escape")
     public SubstrateAMD64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean useBasePointer) {
@@ -130,14 +131,16 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
              * and EVEX encoded instructions, and the VEX variants cannot address the extended
              * AVX-512 registers (XMM16-31). For now, limit ourselves to XMM0-15.
              */
-            regs = new ArrayList<>(valueRegistersSSE.asList());
-            regs.addAll(MASK_REGISTERS.asList());
+            regs = new ArrayList<>();
+            regs.addAll(valueRegistersAVX512);
+            regs.addAll(MASK_REGISTERS);
         } else {
-            regs = new ArrayList<>(valueRegistersSSE.asList());
+            regs = new ArrayList<>();
+            regs.addAll(valueRegistersSSE);
             if (SubstrateUtil.HOSTED && RuntimeCompilation.isEnabled()) {
                 // The stub calling convention must be able to generate runtime checked code for
                 // saving and restoring mask registers.
-                regs.addAll(MASK_REGISTERS.asList());
+                regs.addAll(MASK_REGISTERS);
             }
         }
 
@@ -145,10 +148,10 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             // This is the Windows 64-bit ABI for parameters.
             // Note that float parameters also "consume" a general register and vice versa in the
             // native ABI.
-            nativeGeneralParameterRegs = new RegisterArray(rcx, rdx, r8, r9);
+            nativeGeneralParameterRegs = List.of(rcx, rdx, r8, r9);
 
-            javaGeneralParameterRegs = new RegisterArray(rdx, r8, r9, rdi, rsi, rcx);
-            xmmParameterRegs = new RegisterArray(xmm0, xmm1, xmm2, xmm3);
+            javaGeneralParameterRegs = List.of(rdx, r8, r9, rdi, rsi, rcx);
+            xmmParameterRegs = List.of(xmm0, xmm1, xmm2, xmm3);
 
             // Windows reserves space on the stack for first 4 native parameters
             // even though they are passed in registers.
@@ -160,12 +163,13 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             }
             regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
             regs.remove(ReservedRegisters.singleton().getThreadRegister());
-            allocatableRegs = new RegisterArray(regs);
+            regs.remove(ReservedRegisters.singleton().getCodeBaseRegister());
+            allocatableRegs = List.copyOf(regs);
         } else {
             // This is the Linux 64-bit ABI for parameters.
-            javaGeneralParameterRegs = new RegisterArray(rdi, rsi, rdx, rcx, r8, r9);
+            javaGeneralParameterRegs = List.of(rdi, rsi, rdx, rcx, r8, r9);
             nativeGeneralParameterRegs = javaGeneralParameterRegs;
-            xmmParameterRegs = new RegisterArray(xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
+            xmmParameterRegs = List.of(xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
 
             nativeParamsStackOffset = 0;
 
@@ -175,12 +179,13 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             }
             regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
             regs.remove(ReservedRegisters.singleton().getThreadRegister());
-            allocatableRegs = new RegisterArray(regs);
+            regs.remove(ReservedRegisters.singleton().getCodeBaseRegister());
+            allocatableRegs = List.copyOf(regs);
         }
 
         switch (config) {
             case NORMAL:
-                calleeSaveRegisters = new RegisterArray();
+                calleeSaveRegisters = List.of();
                 break;
 
             case NATIVE_TO_JAVA:
@@ -189,10 +194,10 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                  * return address.
                  */
                 if (Platform.includedIn(Platform.WINDOWS.class)) {
-                    calleeSaveRegisters = new RegisterArray(rbx, rdi, rsi, r12, r13, r14, r15, rbp,
+                    calleeSaveRegisters = List.of(rbx, rdi, rsi, r12, r13, r14, r15, rbp,
                                     xmm6, xmm7, xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15);
                 } else {
-                    calleeSaveRegisters = new RegisterArray(rbx, r12, r13, r14, r15, rbp);
+                    calleeSaveRegisters = List.of(rbx, r12, r13, r14, r15, rbp);
                 }
                 break;
 
@@ -225,17 +230,17 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
     }
 
     @Override
-    public RegisterArray getAllocatableRegisters() {
+    public List<Register> getAllocatableRegisters() {
         return allocatableRegs;
     }
 
     @Override
-    public RegisterArray getCalleeSaveRegisters() {
+    public List<Register> getCalleeSaveRegisters() {
         return calleeSaveRegisters;
     }
 
     @Override
-    public RegisterArray getCallerSaveRegisters() {
+    public List<Register> getCallerSaveRegisters() {
         return getAllocatableRegisters();
     }
 
@@ -245,12 +250,12 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
     }
 
     @Override
-    public RegisterAttributes[] getAttributesMap() {
+    public List<RegisterAttributes> getAttributesMap() {
         return attributesMap;
     }
 
     @Override
-    public RegisterArray getCallingConventionRegisters(Type t, JavaKind kind) {
+    public List<Register> getCallingConventionRegisters(Type t, JavaKind kind) {
         throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
@@ -264,8 +269,9 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
         boolean isEntryPoint = type.nativeABI() && !type.outgoing;
 
         /*
-         * We have to reserve a slot between return address and outgoing parameters for the deopt
-         * frame handle. Exception: calls to native methods.
+         * We have to reserve a slot between return address and outgoing parameters for the
+         * deoptimized frame (eager deoptimization), or the original return address (lazy
+         * deoptimization). Exception: calls to native methods.
          */
         int currentStackOffset = type.nativeABI() ? nativeParamsStackOffset : target.wordSize;
 
@@ -323,7 +329,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                         case Int:
                         case Long:
                         case Object:
-                            RegisterArray registers = type.nativeABI() ? nativeGeneralParameterRegs : javaGeneralParameterRegs;
+                            List<Register> registers = type.nativeABI() ? nativeGeneralParameterRegs : javaGeneralParameterRegs;
                             if (currentGeneral < registers.size()) {
                                 register = registers.get(currentGeneral++);
                             }
@@ -421,7 +427,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
     }
 
     @Override
-    public RegisterArray filterAllocatableRegisters(PlatformKind kind, RegisterArray registers) {
+    public List<Register> filterAllocatableRegisters(PlatformKind kind, List<Register> registers) {
         ArrayList<Register> list = new ArrayList<>();
         for (Register reg : registers) {
             if (target.arch.canStoreValue(reg.getRegisterCategory(), kind)) {
@@ -429,14 +435,14 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             }
         }
 
-        return new RegisterArray(list);
+        return List.copyOf(list);
     }
 
-    public RegisterArray getJavaGeneralParameterRegs() {
+    public List<Register> getJavaGeneralParameterRegs() {
         return javaGeneralParameterRegs;
     }
 
-    public RegisterArray getFloatingPointParameterRegs() {
+    public List<Register> getFloatingPointParameterRegs() {
         return xmmParameterRegs;
     }
 }

@@ -40,7 +40,11 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -99,8 +103,8 @@ public class PolyglotTypeMappings {
             EconomicMap<String, TypeConverter> temp = EconomicMap.create(converters.size());
             StaticObject bindingsLoader = context.getBindingsLoader();
 
-            Symbol<Symbol.Name> name = Symbol.Name.toGuest;
-            Symbol<Symbol.Signature> desc = Symbol.Signature.Object_Object;
+            Symbol<Name> name = Names.toGuest;
+            Symbol<Signature> desc = Signatures.Object_Object;
 
             // load the GuestTypeConversion interface for type checking
             Klass conversionInterface = context.getMeta().loadKlassOrNull(context.getTypes().fromClassGetName(GUEST_TYPE_CONVERSION_INTERFACE), bindingsLoader, StaticObject.NULL);
@@ -429,7 +433,7 @@ public class PolyglotTypeMappings {
 
         public BuiltinExceptionTypeConverter(ObjectKlass klass) {
             this.exceptionKlass = klass;
-            this.messageConstructor = klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_String, Klass.LookupMode.INSTANCE_ONLY);
+            this.messageConstructor = klass.lookupDeclaredMethod(Names._init_, Signatures._void_String, Klass.LookupMode.INSTANCE_ONLY);
         }
 
         @Override

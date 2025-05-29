@@ -352,6 +352,7 @@ typedef uint64_t julong;
     V(JVM_GetNextThreadIdOffset) \
     V(JVM_RegisterContinuationMethods) \
     V(JVM_IsPreviewEnabled) \
+    V(JVM_IsFinalizationEnabled) \
     /* V(JVM_DumpClassListToFile) */ \
     /* V(JVM_DumpDynamicArchive) */ \
     /* V(JVM_VirtualThreadMountBegin) */ \

@@ -28,7 +28,6 @@ import java.util.EnumSet;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.Uninterruptible;
@@ -210,7 +209,7 @@ public final class ImageHeapInfo implements MultiLayeredImageSingleton, UnsavedS
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer getObjectEnd(Object obj) {
         if (obj == null) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         return LayoutEncoding.getImageHeapObjectEnd(obj);
     }
@@ -219,9 +218,9 @@ public final class ImageHeapInfo implements MultiLayeredImageSingleton, UnsavedS
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static <T extends HeapChunk.Header<T>> T asImageHeapChunk(long offsetInImageHeap) {
         if (offsetInImageHeap < 0) {
-            return (T) WordFactory.nullPointer();
+            return (T) Word.nullPointer();
         }
-        UnsignedWord offset = WordFactory.unsigned(offsetInImageHeap);
+        UnsignedWord offset = Word.unsigned(offsetInImageHeap);
         return (T) KnownIntrinsics.heapBase().add(offset);
     }
 

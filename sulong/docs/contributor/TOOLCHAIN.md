@@ -159,13 +159,13 @@ On the implementation side, _the toolchain_ consists of multiple ingredients:
   The goal is to produce a GraalVM LLVM runtime executable result by simply pointing any build system to those wrappers,
   for example via `CC`/`CXX` environment variables or by setting `PATH`.
 
-## Using a Prebuilt GraalVM as a Bootstrapping Toolchain
+## Using a Prebuilt standalone as a Bootstrapping Toolchain
 
-To speed up toolchain compilation during development, the `SULONG_BOOTSTRAP_GRAALVM` environment variable can be set
-to a _prebuilt_ GraalVM. Sulong comes with a configuration file that makes building a bootstrapping GraalVM easy:
+To speed up toolchain compilation during development, the `SULONG_BOOTSTRAP_STANDALONE` environment variable can be set
+to a _prebuilt_ standalone.
 
 ```bash
-$ mx --env toolchain-only build
-$ export SULONG_BOOTSTRAP_GRAALVM=`mx --env toolchain-only graalvm-home`
+$ mx --env ce-llvm-standalones build --dependencies SULONG_JVM_STANDALONE
+$ export SULONG_BOOTSTRAP_STANDALONE=`mx --env ce-llvm-standalones path --output SULONG_JVM_STANDALONE`
 ```
 > **WARNING**: *The bootstrapping GraalVM will not be rebuilt automatically. You are responsible for keeping it up-to-date.*

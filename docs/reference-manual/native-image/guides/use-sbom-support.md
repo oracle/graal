@@ -88,5 +88,5 @@ Native Image can embed an SBOM into a native executable or shared library at bui
 
 ### Related Documentation
 
-* [Security Considerations in Native Image](../../../security/security-guide.md)
-* [Using GraalVM Native Image SBOM Support for Vulnerability Scanning](https://medium.com/graalvm/using-graalvm-native-image-sbom-support-for-vulnerability-scanning-4211c747376)
+* [Software Bill of Materials (SBOM) in Native Image](../../../security/SBOM.md)
+* [Security Considerations in Native Image](../../../security/native-image.md)

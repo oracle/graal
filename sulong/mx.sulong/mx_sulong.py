@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2025, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -47,6 +47,7 @@ import mx_sulong_gen #pylint: disable=unused-import
 import mx_sulong_gate
 import mx_sulong_unittest #pylint: disable=unused-import
 import mx_sulong_llvm_config
+import mx_truffle
 
 # re-export custom mx project classes so they can be used from suite.py
 from mx_cmake import CMakeNinjaProject #pylint: disable=unused-import
@@ -58,6 +59,7 @@ from mx_sulong_suite_constituents import AbstractSulongNativeProject #pylint: di
 from mx_sulong_suite_constituents import DocumentationProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import HeaderProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import CopiedNativeProject #pylint: disable=unused-import
+from mx_sdk_vm_ng import StandaloneLicenses, ThinLauncherProject, NativeImageLibraryProject, NativeImageExecutableProject, LanguageLibraryProject, DynamicPOMDistribution, DeliverableStandaloneArchive, ToolchainToolDistribution  # pylint: disable=unused-import
 
 if sys.version_info[0] < 3:
     def _decode(x):
@@ -94,6 +96,43 @@ def _lib_versioned(arg):
 
 mx_subst.results_substitutions.register_with_arg('libv', _lib_versioned)
 
+def sulong_prefix_path(name):
+    # name is a CMakeNinjaProject with `symlinkSource: True`
+    # return the path to the build directory, that also includes the sources
+    p = mx.project(name)
+    return p.out_dir
+
+mx_subst.results_substitutions.register_with_arg('sulong_prefix', sulong_prefix_path)
+
+# Functions called from suite.py
+
+def has_suite(name):
+    return mx.suite(name, fatalIfMissing=False)
+
+def is_ee():
+    return has_suite('sulong-managed')
+
+def sulong_standalone_deps():
+    deps = mx_truffle.resolve_truffle_dist_names()
+    if is_ee():
+        # SULONG_ENTERPRISE and SULONG_MANAGED do not belong in the EE standalone of SULONG_NATIVE, but we want a single definition of libllvmvm.
+        # So we compromise here by including them. We do not use or distribute the EE standalone of SULONG_NATIVE so it does not matter.
+        # See also the comments in suite.py, in SULONG_*_STANDALONE_RELEASE_ARCHIVE.
+        deps += [
+            'sulong-managed:SULONG_ENTERPRISE',
+            'sulong-managed:SULONG_MANAGED',
+            'sulong-managed:SULONG_ENTERPRISE_NATIVE',
+        ]
+    return deps
+
+def libllvmvm_build_args():
+    if is_ee() and not mx.is_windows():
+        return [
+            '-H:+AuxiliaryEngineCache',
+            '-H:ReservedAuxiliaryImageBytes=2145482548',
+        ]
+    else:
+        return []
 
 def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=None, unittestArgs=None):
     mx_sulong_gate.testLLVMImage(image, imageArgs, testFilter, libPath, test, unittestArgs)
@@ -274,7 +313,11 @@ def get_lli_path(fatalIfMissing=True):
             useJvm = False
         else:
             mx.abort(f"Unknown standalone type {standaloneMode}.")
-        path = mx_sdk_vm_impl.standalone_home("llvm", useJvm)
+        if is_ee():
+            dist = "SULONG_MANAGED_JVM_STANDALONE" if useJvm else "SULONG_MANAGED_NATIVE_STANDALONE"
+        else:
+            dist = "SULONG_JVM_STANDALONE" if useJvm else "SULONG_NATIVE_STANDALONE"
+        path = mx.distribution(dist).output
         return os.path.join(path, 'bin', mx_subst.path_substitutions.substitute('<exe:lli>'))
 
 
@@ -380,13 +423,9 @@ mx_subst.path_substitutions.register_with_arg('toolchainGetIdentifier',
 
 def create_toolchain_root_provider(name, dist):
     def provider():
-        bootstrap_graalvm = mx.get_env('SULONG_BOOTSTRAP_GRAALVM')
-        if bootstrap_graalvm:
-            ret = os.path.join(bootstrap_graalvm, 'jre', 'languages', 'llvm', name)
-            if os.path.exists(ret): # jdk8 based graalvm
-                return ret
-            else: # jdk11+ based graalvm
-                return os.path.join(bootstrap_graalvm, 'languages', 'llvm', name)
+        bootstrap_standalone = mx.get_env('SULONG_BOOTSTRAP_STANDALONE')
+        if bootstrap_standalone:
+            return os.path.join(bootstrap_standalone, 'lib', 'sulong', name)
         return mx.distribution(dist).get_output()
     return provider
 
@@ -401,7 +440,8 @@ def _lib_sub(program):
     return mx_subst.path_substitutions.substitute("<lib:{}>".format(program))
 
 class ToolchainConfig(object):
-    # Please keep this list in sync with Toolchain.java (method documentation) and ToolchainImpl.java (lookup switch block).
+    # Please keep this list in sync with Toolchain.java (method documentation) and ToolchainImpl.java (lookup switch block)
+    # and NativeToolchainWrapper.
     _llvm_tool_map = ["ar", "nm", "objcopy", "objdump", "ranlib", "readelf", "readobj", "strip"]
     _tool_map = {
         "CC": ["graalvm-{name}-clang", "graalvm-clang", "clang", "cc", "gcc"],

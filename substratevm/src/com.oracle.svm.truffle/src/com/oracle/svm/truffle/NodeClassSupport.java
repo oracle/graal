@@ -31,7 +31,7 @@ import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.truffle.api.nodes.NodeClass;
 
 class NodeClassSupport {
-    final EconomicMap<Class<?>, NodeClass> nodeClasses = ImageHeapMap.create();
+    final EconomicMap<Class<?>, NodeClass> nodeClasses = ImageHeapMap.create("nodeClasses");
 
     static NodeClassSupport singleton() {
         return ImageSingletons.lookup(NodeClassSupport.class);

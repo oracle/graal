@@ -26,6 +26,9 @@ package jdk.graal.compiler.nodes;
 
 import static jdk.graal.compiler.graph.iterators.NodePredicates.isNotA;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.debug.Assertions;
@@ -64,8 +67,10 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     protected LoopType loopType;
     protected int unrollFactor;
     protected boolean osrLoop;
-    protected boolean stripMinedOuter;
-    protected boolean stripMinedInner;
+    protected boolean nonCountedStripMinedOuter;
+    protected boolean nonCountedStripMinedInner;
+    protected boolean countedStripMinedOuter;
+    protected boolean countedStripMinedInner;
     protected boolean rotated;
     protected int stripMinedLimit = -1;
 
@@ -130,6 +135,10 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
 
     /**
      * State of the safepoint properties of this loop.
+     *
+     * For the various points in a loop (e.g. loop ends, loop exits, guest loop ends) for which a
+     * safepoint may be emitted, a SafepointState value specifies if the emission is (or should be)
+     * suppressed and if so, why.
      */
     public enum SafepointState {
         /**
@@ -153,19 +162,19 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
             this.canSafepoint = canSafepoint;
         }
 
-        private boolean canSafepoint() {
+        public boolean canSafepoint() {
             return canSafepoint;
         }
 
     }
 
-    /** See {@link LoopEndNode#canSafepoint} for more information. */
+    /** See {@link LoopEndNode#safepointState} for more information. */
     SafepointState loopEndsSafepointState;
 
     /** Same as {@link #loopEndsSafepointState} but for {@link LoopExitNode}. */
     SafepointState loopExitsSafepointState;
 
-    /** See {@link LoopEndNode#canGuestSafepoint} for more information. */
+    /** See {@link LoopEndNode#guestSafepointState} for more information. */
     SafepointState guestLoopEndsSafepointState;
 
     /**
@@ -201,7 +210,6 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         super(TYPE);
         loopOrigFrequency = 1;
         unswitches = 0;
-        splits = 0;
         loopEndsSafepointState = SafepointState.ENABLED;
         loopExitsSafepointState = SafepointState.ENABLED;
         guestLoopEndsSafepointState = SafepointState.ENABLED;
@@ -262,20 +270,48 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         return loopExitsSafepointState.canSafepoint();
     }
 
-    public void setStripMinedInner(boolean stripMinedInner) {
-        this.stripMinedInner = stripMinedInner;
+    public SafepointState getLoopExitsSafepointState() {
+        return loopExitsSafepointState;
     }
 
-    public void setStripMinedOuter(boolean stripMinedOuter) {
-        this.stripMinedOuter = stripMinedOuter;
+    public void markNonCountedStripMinedInner() {
+        this.nonCountedStripMinedInner = true;
     }
 
-    public boolean isStripMinedInner() {
-        return stripMinedInner;
+    public boolean isNonCountedStripMinedInner() {
+        return nonCountedStripMinedInner;
     }
 
-    public boolean isStripMinedOuter() {
-        return stripMinedOuter;
+    public void markNonCountedStripMinedOuter() {
+        this.nonCountedStripMinedOuter = true;
+    }
+
+    public boolean isNonCountedStripMinedOuter() {
+        return nonCountedStripMinedOuter;
+    }
+
+    public void markCountedStripMinedInner() {
+        this.countedStripMinedInner = true;
+    }
+
+    public boolean isCountedStripMinedInner() {
+        return countedStripMinedInner;
+    }
+
+    public void markCountedStripMinedOuter() {
+        this.countedStripMinedOuter = true;
+    }
+
+    public boolean isCountedStripMinedOuter() {
+        return countedStripMinedOuter;
+    }
+
+    public boolean isAnyStripMinedOuter() {
+        return isCountedStripMinedOuter() || isNonCountedStripMinedOuter();
+    }
+
+    public boolean isAnyStripMinedInner() {
+        return isCountedStripMinedInner() || isNonCountedStripMinedInner();
     }
 
     public boolean canNeverOverflow() {
@@ -342,30 +378,40 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         unrollFactor = currentUnrollFactor;
     }
 
-    /** Disables safepoint for the whole loop, i.e., for all {@link LoopEndNode loop ends}. */
-    public void disableSafepoint(SafepointState newState) {
-        GraalError.guarantee(!newState.canSafepoint(), "New state must not safepoint %s", newState);
+    public void setLoopEndSafepoint(SafepointState newState) {
+        GraalError.guarantee(loopEndsSafepointState.canSafepoint() || !newState.canSafepoint(), "New state must not allow safepoints if old did not, old=%s, new=%s", loopEndsSafepointState, newState);
+        if (loopEndsSafepointState == SafepointState.MUST_NEVER_SAFEPOINT) {
+            GraalError.guarantee(!newState.canSafepoint(), "Safepoints have been disabled for this loop, cannot re-enable them old=%s, new=%s", loopExitsSafepointState, newState);
+        }
         /* Store flag locally in case new loop ends are created later on. */
         this.loopEndsSafepointState = newState;
         /* Propagate flag to all existing loop ends. */
         for (LoopEndNode loopEnd : loopEnds()) {
-            loopEnd.disableSafepoint();
+            loopEnd.setSafepointState(newState);
         }
     }
 
-    /** Disables safepoint for the whole loop, i.e., for all {@link LoopEndNode loop ends}. */
-    public void disableLoopExitSafepoint(SafepointState newState) {
-        GraalError.guarantee(!newState.canSafepoint(), "New state must not safepoint %s", newState);
+    public void setLoopExitSafepoint(SafepointState newState) {
+        /*
+         * The safepoint state for the loop exits can change over the course of compilation. It
+         * depends on what is inside the body of a loop, how many ends, which calls etc. So it can
+         * be that this becomes weaker and stronger over time as long as we do not force safepoint
+         * on one that was explicitly disabled.
+         */
+        if (loopExitsSafepointState == SafepointState.MUST_NEVER_SAFEPOINT) {
+            GraalError.guarantee(!newState.canSafepoint(), "Safepoints have been disabled for this loop, cannot re-enable them old=%s, new=%s", loopExitsSafepointState, newState);
+        }
         this.loopExitsSafepointState = newState;
     }
 
-    public void disableGuestSafepoint(SafepointState newState) {
-        GraalError.guarantee(!newState.canSafepoint(), "New state must not safepoint %s", newState);
+    public void setGuestSafepoint(SafepointState newState) {
+        GraalError.guarantee(guestLoopEndsSafepointState.canSafepoint() || !newState.canSafepoint(), "New state must not allow safepoints if old did not, old=%s, new=%s", guestLoopEndsSafepointState,
+                        newState);
         /* Store flag locally in case new loop ends are created later on. */
         this.guestLoopEndsSafepointState = newState;
         /* Propagate flag to all existing loop ends. */
         for (LoopEndNode loopEnd : loopEnds()) {
-            loopEnd.disableGuestSafepoint();
+            loopEnd.setGuestSafepointState(newState);
         }
     }
 
@@ -393,8 +439,12 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         return usages().filter(LoopExitNode.class);
     }
 
-    public NodeIterable<SafepointNode> loopSafepoints() {
-        return usages().filter(SafepointNode.class);
+    public List<SafepointNode> loopSafepoints() {
+        ArrayList<SafepointNode> safePoints = new ArrayList<>();
+        for (LoopExitNode lex : loopExits()) {
+            safePoints.addAll(lex.usages().filter(SafepointNode.class).snapshot());
+        }
+        return safePoints;
     }
 
     @Override
@@ -430,10 +480,6 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     public EndNode forwardEnd() {
         assert forwardEndCount() == 1 : forwardEnds();
         return forwardEndAt(0);
-    }
-
-    public void incrementSplits() {
-        splits++;
     }
 
     public int peelings() {
@@ -683,7 +729,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
 
     public void removeSafepoints() {
         this.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, this.graph(), "Before removing safepoints at %s", this);
-        for (SafepointNode loopSafepoint : loopSafepoints().snapshot()) {
+        for (SafepointNode loopSafepoint : loopSafepoints()) {
             if (loopSafepoint.isAlive()) {
                 if (loopSafepoint.predecessor() != null && loopSafepoint.next() != null) {
                     this.graph().removeFixed(loopSafepoint);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,8 @@ public final class WasmFunction {
     @CompilationFinal private int typeEquivalenceClass;
     @CompilationFinal private String debugName;
     @CompilationFinal private CallTarget callTarget;
+    /** Interop call adapter for argument and return value validation and conversion. */
+    @CompilationFinal private volatile CallTarget interopCallAdapter;
 
     /**
      * Represents a WebAssembly function.
@@ -128,6 +130,14 @@ public final class WasmFunction {
         return isImported() ? importDescriptor.memberName() : null;
     }
 
+    public String exportedFunctionName() {
+        return symbolTable.exportedFunctionName(index);
+    }
+
+    public boolean isExported() {
+        return exportedFunctionName() != null;
+    }
+
     public int typeIndex() {
         return typeIndex;
     }
@@ -157,5 +167,20 @@ public final class WasmFunction {
     void setImportedFunctionCallTarget(CallTarget callTarget) {
         assert isImported() : this;
         this.callTarget = callTarget;
+    }
+
+    public CallTarget getInteropCallAdapter() {
+        return interopCallAdapter;
+    }
+
+    @TruffleBoundary
+    public CallTarget getOrCreateInteropCallAdapter(WasmLanguage language) {
+        CallTarget callAdapter = this.interopCallAdapter;
+        if (callAdapter == null) {
+            // Benign initialization race: The call target will be the same each time.
+            callAdapter = language.interopCallAdapterFor(type());
+            this.interopCallAdapter = callAdapter;
+        }
+        return callAdapter;
     }
 }

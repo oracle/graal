@@ -118,6 +118,45 @@ public final class CacheExpression extends MessageContainer {
         return copy;
     }
 
+    public boolean isSameCache(Object obj) {
+        if (obj instanceof CacheExpression e) {
+            if (!ElementUtils.typeEquals(sourceAnnotationMirror.getAnnotationType(), sourceAnnotationMirror.getAnnotationType())) {
+                return false;
+            } else if (!Objects.equals(getParameter().getType(), e.getParameter().getType())) {
+                return false;
+            } else if (this.dimensions != e.dimensions) {
+                return false;
+            } else if (this.alwaysInitialized != e.alwaysInitialized) {
+                return false;
+            } else if (this.eagerInitialize != e.eagerInitialize) {
+                return false;
+            } else if (this.requiresBoundary != e.requiresBoundary) {
+                return false;
+            } else if (this.mergedLibrary != e.mergedLibrary) {
+                return false;
+            } else if (this.isWeakReferenceGet != e.isWeakReferenceGet) {
+                return false;
+            } else if (this.isWeakReference != e.isWeakReference) {
+                return false;
+            } else if (this.adopt != e.adopt) {
+                return false;
+            } else if (this.usedInGuard != e.usedInGuard) {
+                return false;
+            } else if (this.neverDefault != e.neverDefault) {
+                return false;
+            } else if (this.neverDefaultGuaranteed != e.neverDefaultGuaranteed) {
+                return false;
+            } else if (!Objects.equals(defaultExpression, e.defaultExpression)) {
+                return false;
+            } else if (!Objects.equals(uncachedExpression, e.uncachedExpression)) {
+                return false;
+            } else {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void setIsUsedInGuard(boolean b) {
         this.usedInGuard = b;
     }
@@ -195,7 +234,7 @@ public final class CacheExpression extends MessageContainer {
         this.uncachedExpression = getUncachedExpression;
     }
 
-    public Message getUncachedExpresionError() {
+    public Message getUncachedExpressionError() {
         return uncachedExpressionError;
     }
 

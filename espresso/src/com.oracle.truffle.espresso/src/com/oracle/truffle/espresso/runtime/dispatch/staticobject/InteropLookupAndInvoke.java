@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import com.oracle.truffle.api.dsl.Cached;
@@ -35,6 +34,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.CandidateMethodWithArgs;
+import com.oracle.truffle.espresso.nodes.interop.InteropUnwrapNode;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethod;
 import com.oracle.truffle.espresso.nodes.interop.LookupVirtualMethodNode;
@@ -122,19 +122,21 @@ public abstract class InteropLookupAndInvoke extends EspressoNode {
 
         @Specialization(guards = {"isSingleNonVarargs(candidates)"})
         Object doSingleNonVarargs(StaticObject receiver, Object[] args, Method[] candidates,
-                        @Cached @Exclusive InvokeEspressoNode invoke)
+                        @Cached @Exclusive InvokeEspressoNode invoke,
+                        @Cached InteropUnwrapNode unwrapNode)
                         throws ArityException, UnsupportedTypeException {
             assert candidates.length == 1;
             Method m = candidates[0];
             assert m.getParameterCount() == args.length;
             assert m.isPublic();
-            return invoke.execute(m, receiver, args);
+            return invoke.execute(m, receiver, args, unwrapNode);
         }
 
         @Specialization(guards = {"isSingleVarargs(candidates)"})
         Object doSingleVarargs(StaticObject receiver, Object[] args, Method[] candidates,
                         @Cached @Exclusive InvokeEspressoNode invoke,
                         @Cached ToEspressoNode.DynamicToEspresso toEspresso,
+                        @Cached InteropUnwrapNode unwrapNode,
                         @Cached InlinedBranchProfile error)
                         throws ArityException, UnsupportedTypeException {
             assert candidates.length == 1;
@@ -144,7 +146,7 @@ public abstract class InteropLookupAndInvoke extends EspressoNode {
             if (matched != null) {
                 matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched);
                 assert matched != null;
-                return invoke.execute(matched.getMethod(), receiver, matched.getConvertedArgs(), true);
+                return invoke.execute(matched.getMethod(), receiver, matched.getConvertedArgs(), true, unwrapNode);
             }
             error.enter(this);
             throw UnsupportedTypeException.create(args);
@@ -154,12 +156,13 @@ public abstract class InteropLookupAndInvoke extends EspressoNode {
         Object doMulti(StaticObject receiver, Object[] args, Method[] candidates,
                         @Cached OverLoadedMethodSelectorNode selector,
                         @Cached @Exclusive InvokeEspressoNode invoke,
+                        @Cached InteropUnwrapNode unwrapNode,
                         @Cached InlinedBranchProfile error)
                         throws ArityException, UnsupportedTypeException {
             CandidateMethodWithArgs typeMatched = selector.execute(candidates, args);
             if (typeMatched != null) {
                 // single match found!
-                return invoke.execute(typeMatched.getMethod(), receiver, typeMatched.getConvertedArgs(), true);
+                return invoke.execute(typeMatched.getMethod(), receiver, typeMatched.getConvertedArgs(), true, unwrapNode);
             } else {
                 // unable to select exactly one best candidate for the input args!
                 error.enter(this);

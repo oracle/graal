@@ -38,8 +38,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -128,43 +126,9 @@ public final class CoverageEventNode extends ExecutionEventNode {
      */
     private static MaterializedFrame copyFrame(MaterializedFrame frame) {
         FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
-        FrameDescriptor descriptorCopy = frameDescriptor.copy();
         Object[] arguments = frame.getArguments();
-        MaterializedFrame frameCopy = Truffle.getRuntime().createMaterializedFrame(Arrays.copyOf(arguments, arguments.length), descriptorCopy);
-
-        for (int slot = 0; slot < frameDescriptor.getNumberOfSlots(); slot++) {
-            FrameSlotKind slotKind = frameDescriptor.getSlotKind(slot);
-
-            try {
-                switch (slotKind) {
-                    case Illegal:
-                        break;
-                    case Object:
-                        frameCopy.setObject(slot, frame.getObject(slot));
-                        break;
-                    case Boolean:
-                        frameCopy.setBoolean(slot, frame.getBoolean(slot));
-                        break;
-                    case Int:
-                        frameCopy.setInt(slot, frame.getInt(slot));
-                        break;
-                    case Byte:
-                        frameCopy.setByte(slot, frame.getByte(slot));
-                        break;
-                    case Long:
-                        frameCopy.setLong(slot, frame.getLong(slot));
-                        break;
-                    case Double:
-                        frameCopy.setDouble(slot, frame.getDouble(slot));
-                        break;
-                    case Float:
-                        frameCopy.setFloat(slot, frame.getFloat(slot));
-                        break;
-                }
-            } catch (FrameSlotTypeException e) {
-                // ignore
-            }
-        }
+        MaterializedFrame frameCopy = Truffle.getRuntime().createMaterializedFrame(Arrays.copyOf(arguments, arguments.length), frameDescriptor);
+        frame.copyTo(0, frameCopy, 0, frameDescriptor.getNumberOfSlots());
         return frameCopy;
     }
 

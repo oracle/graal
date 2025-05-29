@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
  * @see DynamicObject
  * @since 0.8 or earlier
  */
-public abstract class Location {
+public abstract sealed class Location permits LocationImpl {
     /**
      * Constructor for subclasses.
      *

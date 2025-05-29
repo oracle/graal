@@ -77,7 +77,7 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
     }
 
     protected ParameterSpec createReturnParameterSpec() {
-        ParameterSpec returnValue = new ParameterSpec("returnValue", getPossibleReturnTypes());
+        ParameterSpec returnValue = new ParameterSpec("returnValue#", getPossibleReturnTypes());
         returnValue.setExecution(getNode().getThisExecution());
         return returnValue;
     }

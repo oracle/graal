@@ -24,12 +24,22 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
-import java.util.function.Function;
-
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.VMError;
 
 public interface MultiLayeredImageSingleton extends LayeredImageSingleton {
+
+    int LAYER_NUM_UNINSTALLED = -3;
+    /**
+     * Marker indicating this field is an instance field, not a static field.
+     */
+    int NONSTATIC_FIELD_LAYER_NUMBER = -2;
+    /**
+     * Marker used when a having a layer number is not applicable (such as when not building layered
+     * images).
+     */
+    int UNUSED_LAYER_NUMBER = -1;
+    int UNKNOWN_LAYER_NUMBER = 0;
+    int INITIAL_LAYER_NUMBER = 0;
 
     /**
      * Returns an array containing the image singletons installed for {@code key} within all layers.
@@ -40,17 +50,13 @@ public interface MultiLayeredImageSingleton extends LayeredImageSingleton {
         throw VMError.shouldNotReachHere("This can only be called during runtime");
     }
 
-    default <T extends MultiLayeredImageSingleton, U> U getSingletonData(T singleton, T[] singletons, Function<T, U> getSingletonDataFunction) {
-        if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            for (var layerSingleton : singletons) {
-                U result = getSingletonDataFunction.apply(layerSingleton);
-                if (result != null) {
-                    return result;
-                }
-            }
-            return null;
-        } else {
-            return getSingletonDataFunction.apply(singleton);
-        }
+    /**
+     * Retrieve a specific layer's singleton from a MultiLayeredImageSingleton. The index represents
+     * which layer number's singleton to retrieve. If a singleton was not installed in that layer
+     * (and this is allowed), then null is returned.
+     */
+    @SuppressWarnings("unused")
+    static <T extends MultiLayeredImageSingleton> T getForLayer(Class<T> key, int index) {
+        throw VMError.shouldNotReachHere("This can only be called during runtime");
     }
 }

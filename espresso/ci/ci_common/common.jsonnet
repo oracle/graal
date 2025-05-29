@@ -34,8 +34,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   linux_amd64: self.common + self.linux + graal_common.linux_amd64,
   linux_aarch64: self.common + self.linux + graal_common.linux_aarch64,
 
-  e3: {
-    capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'e3'],
+  x52: {
+    capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
   },
 
   darwin_amd64: self.common + graal_common.darwin_amd64 + {
@@ -55,22 +55,35 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   windows: self.common + graal_common.windows_amd64,
 
-  predicates(with_compiler, with_native_image, with_vm): {
+  espresso_jdk_21: {
+    downloads+: {
+      "ESPRESSO_JAVA_HOME": graal_common.labsjdk21.downloads["JAVA_HOME"],
+    },
+  },
+  espresso_jdk_21_llvm: {
+    downloads+: {
+      "ESPRESSO_LLVM_JAVA_HOME": graal_common.labsjdk21LLVM.downloads["LLVM_JAVA_HOME"],
+    },
+  },
+
+  predicates(with_compiler, with_native_image, with_vm, with_espresso=true): {
     assert !with_native_image || with_compiler,
     guard+: {
       includes: [
         "<graal>/.git/**",  # This ensure the .git directory is preserved in apply-predicates
-        "<graal>/sdk/**",
-        "<graal>/truffle/**",
-        "<graal>/espresso/**",
-        "<graal>/tools/**",
-        "<graal>/regex/**",
-        "<graal>/sulong/**",
         "<graal>/pyproject.toml",
         "<graal>/common.json",
         "<graal>/ci.jsonnet",
         "<graal>/ci/**",
-      ] + base.basic_guard_includes + (if with_compiler then [
+        "<graal>/sdk/**",
+        "<graal>/truffle/**",
+        "<graal>/espresso-shared/**",
+      ] + base.basic_guard_includes + (if with_espresso then [
+        "<graal>/espresso/**",
+        "<graal>/tools/**",
+        "<graal>/regex/**",
+        "<graal>/sulong/**",
+      ] else []) + (if with_compiler then [
         "<graal>/compiler/**",
       ] + base.compiler_guard_includes else []) + (if with_native_image then [
         "<graal>/substratevm/**",
@@ -98,19 +111,25 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   onDemand:        {targets+: ['on-demand']},
   onDemandBench:   {targets+: ['bench', 'on-demand']},
 
-  linux_amd64_21:    graal_common.labsjdk21 + graal_common.labsjdk21LLVM + self.linux_amd64,
-  darwin_amd64_21:   graal_common.labsjdk21 + graal_common.labsjdk21LLVM + self.darwin_amd64,
-  linux_aarch64_21:  graal_common.labsjdk21                              + self.linux_aarch64,
-  darwin_aarch64_21: graal_common.labsjdk21                              + self.darwin_aarch64,
-  windows_21:        graal_common.labsjdk21                              + self.windows + devkits["windows-jdk21"],
+  linux_amd64_21:    self.espresso_jdk_21 + graal_common.labsjdkLatest + self.espresso_jdk_21_llvm + self.linux_amd64,
+  darwin_amd64_21:   self.espresso_jdk_21 + graal_common.labsjdkLatest + self.espresso_jdk_21_llvm + self.darwin_amd64,
+  linux_aarch64_21:  self.espresso_jdk_21 + graal_common.labsjdkLatest                             + self.linux_aarch64,
+  darwin_aarch64_21: self.espresso_jdk_21 + graal_common.labsjdkLatest                             + self.darwin_aarch64,
+  windows_21:        self.espresso_jdk_21 + graal_common.labsjdkLatest                             + self.windows + devkits["windows-jdk-latest"],
+
+  linux_amd64_latest: graal_common.labsjdkLatest + self.linux_amd64,
+
+
+  linux_amd64_graalvm21: self.espresso_jdk_21 + graal_common.graalvmee21 + self.espresso_jdk_21_llvm + self.linux_amd64,
 
   // precise targets and capabilities
+  jdkLatest_gate_linux_amd64    : self.gate          + self.linux_amd64_latest,
   jdk21_gate_linux_amd64        : self.gate          + self.linux_amd64_21,
   jdk21_gate_linux_aarch64      : self.gate          + self.linux_aarch64_21,
   jdk21_gate_darwin_amd64       : self.gate          + self.darwin_amd64_21,
   jdk21_gate_darwin_aarch64     : self.gate          + self.darwin_aarch64_21,
   jdk21_gate_windows_amd64      : self.gate          + self.windows_21,
-  jdk21_bench_linux             : self.bench         + self.linux_amd64_21 + self.e3,
+  jdk21_bench_linux             : self.bench         + self.linux_amd64_21 + self.x52,
   jdk21_bench_darwin            : self.bench         + self.darwin_amd64_21,
   jdk21_bench_windows           : self.bench         + self.windows_21,
   jdk21_daily_linux_amd64       : self.daily         + self.linux_amd64_21,
@@ -118,7 +137,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk21_daily_darwin_amd64      : self.daily         + self.darwin_amd64_21,
   jdk21_daily_darwin_aarch64    : self.daily         + self.darwin_aarch64_21,
   jdk21_daily_windows_amd64     : self.daily         + self.windows_21,
-  jdk21_daily_bench_linux       : self.dailyBench    + self.linux_amd64_21 + self.e3,
+  jdk21_daily_bench_linux       : self.dailyBench    + self.linux_amd64_21 + self.x52,
+  graalvm21_daily_bench_linux   : self.dailyBench    + self.linux_amd64_graalvm21 + self.x52,
   jdk21_daily_bench_darwin      : self.dailyBench    + self.darwin_amd64_21,
   jdk21_daily_bench_windows     : self.dailyBench    + self.windows_21,
   jdk21_weekly_linux_amd64      : self.weekly        + self.linux_amd64_21,
@@ -131,14 +151,16 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk21_monthly_darwin_amd64    : self.monthly       + self.darwin_amd64_21,
   jdk21_monthly_darwin_aarch64  : self.monthly       + self.darwin_aarch64_21,
   jdk21_monthly_windows_amd64   : self.monthly       + self.windows_21,
-  jdk21_weekly_bench_linux      : self.weeklyBench   + self.linux_amd64_21 + self.e3,
+  jdk21_weekly_bench_linux      : self.weeklyBench   + self.linux_amd64_21 + self.x52,
+  graalvm21_weekly_bench_linux  : self.weeklyBench    + self.linux_amd64_graalvm21 + self.x52,
   jdk21_weekly_bench_darwin     : self.weeklyBench   + self.darwin_amd64_21,
   jdk21_weekly_bench_windows    : self.weeklyBench   + self.windows_21,
-  jdk21_monthly_bench_linux     : self.monthlyBench  + self.linux_amd64_21 + self.e3,
+  jdk21_monthly_bench_linux     : self.monthlyBench  + self.linux_amd64_21 + self.x52,
+  graalvm21_monthly_bench_linux : self.monthlyBench    + self.linux_amd64_graalvm21 + self.x52,
   jdk21_on_demand_linux         : self.onDemand      + self.linux_amd64_21,
   jdk21_on_demand_darwin        : self.onDemand      + self.darwin_amd64_21,
   jdk21_on_demand_windows       : self.onDemand      + self.windows_21,
-  jdk21_on_demand_bench_linux   : self.onDemandBench + self.linux_amd64_21 + self.e3,
+  jdk21_on_demand_bench_linux   : self.onDemandBench + self.linux_amd64_21 + self.x52,
   jdk21_on_demand_bench_darwin  : self.onDemandBench + self.darwin_amd64_21,
   jdk21_on_demand_bench_windows : self.onDemandBench + self.windows_21,
 
@@ -160,10 +182,15 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   // shared functions
   _mx(env, args): ['mx', '--env', env] + args,
 
-  build_espresso(env, debug=false, extra_mx_args=[]): {
+  build_espresso(env, debug=false, extra_mx_args=[], default_env_traget=true, extra_targets=[], extra_dynamic_imports=[]): {
+    local standalone = if std.startsWith(env, 'jvm') then 'ESPRESSO_JVM_STANDALONE' else 'ESPRESSO_NATIVE_STANDALONE',
+    local targets = (if default_env_traget then [standalone] else []) + extra_targets,
+    local targets_args = if std.length(targets) > 0 then ['--targets=' + std.join(',', targets)] else [],
+    local extra_dynamic_imports_args = if std.length(extra_dynamic_imports) > 0 then ['--dynamicimports', std.join(',', extra_dynamic_imports)] else [],
     run+: [
-      ['mx', 'sversions'],
-      that._mx(env, (if debug then ['--debug-images'] else []) + extra_mx_args + ['build']),
+      ['mx'] + extra_dynamic_imports_args + ['sversions'],
+      that._mx(env, (if debug then ['--debug-images'] else []) + extra_mx_args + extra_dynamic_imports_args + ['build'] + targets_args),
+      ['set-export', 'ESPRESSO_HOME', that._mx(env, ['--quiet', '--no-warning'] + extra_mx_args + extra_dynamic_imports_args + ['path', '--output', standalone])],
     ],
   },
 
@@ -189,24 +216,32 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     teardown+: [
       ['mx', 'sversions', '--print-repositories', '--json', '|', 'coverage-uploader.py', '--associated-repos', '-'],
     ],
-  } else {}),
+  } else {})
+  + graal_common.deps.spotbugs,
 
-  host_jvm(env, java_version): 'graalvm-espresso-' + _base_env(env),
-  host_jvm_config(env): if std.startsWith(env, 'jvm') then 'jvm' else 'native',
+  host_jvm(env, java_version): if std.startsWith(env, 'jvm') && utils.contains(env, '-unchained-') then 'java-home'
+    else if utils.contains(env, '-ee-') then 'graalvm-ee' else 'graalvm-ce',
+  host_jvm_config(env): if std.startsWith(env, 'jvm') then (if utils.contains(env, '-unchained-') then 'default' else 'jvm') else 'native',
+  bench_vm_selection_args(env, host_jvm=null, host_jvm_config=null, guest_jvm='espresso', espresso_jvm_config='default'): if std.startsWith(env, 'jvm') then [
+    '--jvm=' + if host_jvm == null then that.host_jvm(env, self.jdk_version) else host_jvm,
+    '--jvm-config=' + if host_jvm_config == null then that.host_jvm_config(env) else host_jvm_config,
+    '--guest',
+    '--jvm=' + guest_jvm,
+    '--jvm-config=' + espresso_jvm_config,
+  ] else [
+    '--jvm=espresso-native-standalone',
+    '--jvm-config=' + espresso_jvm_config,
+  ],
 
   espresso_benchmark(env, suite, host_jvm=null, host_jvm_config=null, guest_jvm='espresso', guest_jvm_config='default', fork_file=null, extra_args=[], timelimit='3:00:00'):
-    self.build_espresso(env) +
+    self.build_espresso(env, default_env_traget=false) +
     {
       run+: that.maybe_set_ld_debug_flag(env) + [
         that._mx(env, ['benchmark', '--results-file', 'bench-results.json'] +
           (if (fork_file != null) then ['--fork-count-file', fork_file] else []) + [
             suite,
             '--',
-            '--jvm=' + if host_jvm == null then that.host_jvm(env, self.jdk_version) else host_jvm,
-            '--jvm-config=' + if host_jvm_config == null then that.host_jvm_config(env) else host_jvm_config,
-            '--guest',
-            '--jvm=' + guest_jvm,
-            '--jvm-config=' + guest_jvm_config,
+          ] + that.bench_vm_selection_args(env, host_jvm=host_jvm, host_jvm_config=host_jvm_config, guest_jvm=guest_jvm, espresso_jvm_config=guest_jvm_config) + [
             '--vm.Xss32m'
           ] + extra_args
         ),
@@ -220,15 +255,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   espresso_interpreter_benchmark(env, suite, host_jvm=null):
     self.espresso_benchmark(env, suite, host_jvm=host_jvm, guest_jvm_config='interpreter', extra_args=['--', '--iterations', '10']),
-
-  scala_dacapo_warmup_benchmark(env, guest_jvm_config='default', extra_args=[]):
-    self.espresso_benchmark(
-      env,
-      self.scala_dacapo_jvm_warmup,
-      guest_jvm_config=guest_jvm_config,
-      extra_args=extra_args,
-      timelimit='5:00:00'
-    ),
 
   scala_dacapo_benchmark(env, guest_jvm_config, extra_args=[]):
     self.espresso_benchmark(
@@ -250,7 +276,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
 
   graal_benchmark(env, suite, host_jvm='server', host_jvm_config=_graal_host_jvm_config(env), extra_args=[]):
-    self.build_espresso(env) +
+    self.build_espresso(env, default_env_traget=false) +
     {
       run+: [
         that._mx(env, [
@@ -266,10 +292,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     }
     + self.bench_upload,
 
-  # Scala DaCapo benchmarks that run in both JVM and native modes,
-  # Excluding factorie (too slow). kiama and scalariform have transient issues with compilation enabled.
-  scala_dacapo_jvm_warmup: 'scala-dacapo-warmup:*[scalap,scalac,scaladoc,scalaxb]',
-
   dacapo_stable(env): 'dacapo:*[fop,lusearch,luindex,sunflow,xalan]',
 
   # exclude scalatest, which goes into deopt loop and becomes slower on every subsequent operation
@@ -277,7 +299,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   local _builds = [
     // Gates
-    that.jdk21_gate_linux_amd64 + that.eclipse + that.jdt + that.predicates(false, false, false) + that.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='gate-espresso-style-jdk21-linux-amd64'),
+    that.jdk21_gate_linux_amd64 + that.eclipse + that.jdt + that.predicates(false, false, false) + that.espresso_gate(allow_warnings=false, tags='style,fullbuild,imports', timelimit='35:00', name='gate-espresso-style-jdk21onLatest-linux-amd64'),
   ],
 
   builds: utils.add_defined_in(_builds, std.thisFile),

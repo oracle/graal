@@ -32,15 +32,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.core.CompilationWatchDog;
 import jdk.graal.compiler.core.CompilationWatchDog.EventHandler;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
-import org.junit.Assert;
-import org.junit.Test;
-
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -130,14 +130,14 @@ public class CompilationWatchDogTest extends GraalCompilerTest {
             }
 
             @Override
-            public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier stuckCompilation, StackTraceElement[] stackTrace, int stackTraceCount) {
+            public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier stuckCompilation, StackTraceElement[] stackTrace, long stackTraceCount) {
                 event("onStuckCompilation");
                 stuckCompilations.add(stuckCompilation);
             }
 
         };
 
-        CompilationWatchDog watch = CompilationWatchDog.watch(compilation, options, false, longCompilationHandler);
+        CompilationWatchDog watch = CompilationWatchDog.watch(compilation, options, false, longCompilationHandler, null);
         try (CompilationWatchDog watchScope = watch) {
             event("start compiling");
             try (TTY.Filter f = new TTY.Filter()) {

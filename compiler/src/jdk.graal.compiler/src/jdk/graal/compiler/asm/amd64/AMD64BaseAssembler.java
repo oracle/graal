@@ -351,7 +351,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
     /**
      * Constants for X86 prefix bytes.
      */
-    private static class Prefix {
+    private static final class Prefix {
         private static final int REX = 0x40;
         private static final int REXB = 0x41;
         private static final int REXX = 0x42;
@@ -584,7 +584,9 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
      * There is an SIB byte: In that case, X extends SIB.index and B extends SIB.base.
      */
     protected static int getRXB(Register reg, AMD64Address rm) {
-        assert !isInvalidEncoding(reg);
+        GraalError.guarantee(!isInvalidEncoding(reg), "invalid encoding %s", reg);
+        GraalError.guarantee(rm.getBase() == null || rm.getBase().encoding < 16, "APX register used in %s not yet supported", rm);
+        GraalError.guarantee(rm.getIndex() == null || rm.getIndex().encoding < 16, "APX register used in %s not yet supported", rm);
         int rxb = (reg == null ? 0 : reg.encoding & 0x08) >> 1;
         if (!isInvalidEncoding(rm.getIndex())) {
             rxb |= (rm.getIndex().encoding & 0x08) >> 2;
@@ -635,6 +637,10 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
     protected final void emitOperandHelper(Register reg, AMD64Address addr, int additionalInstructionSize) {
         assert !isInvalidEncoding(reg);
         emitOperandHelper(encode(reg), addr, false, additionalInstructionSize, DEFAULT_DISP8_SCALE);
+    }
+
+    protected final void emitOperandHelper(int reg, AMD64Address addr, int additionalInstructionSize, int evexDisp8Scale) {
+        emitOperandHelper(reg, addr, false, additionalInstructionSize, evexDisp8Scale);
     }
 
     protected final void emitOperandHelper(Register reg, AMD64Address addr, int additionalInstructionSize, int evexDisp8Scale) {
@@ -824,7 +830,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
 
     }
 
-    private class SSEEncoderImpl implements SIMDEncoder {
+    private final class SSEEncoderImpl implements SIMDEncoder {
 
         @Override
         public void simdPrefix(Register xreg, Register nds, AMD64Address adr, int sizePrefix, int opcodeEscapePrefix, boolean isRexW) {
@@ -886,7 +892,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
         }
     }
 
-    private class VEXEncoderImpl implements SIMDEncoder {
+    private final class VEXEncoderImpl implements SIMDEncoder {
 
         private int sizePrefixToPP(int sizePrefix) {
             switch (sizePrefix) {

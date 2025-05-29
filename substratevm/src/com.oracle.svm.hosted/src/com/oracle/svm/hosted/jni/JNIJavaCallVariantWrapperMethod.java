@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.jni;
 
+import java.lang.reflect.Executable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -82,9 +83,10 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
     private final Signature callWrapperSignature;
     private final CallVariant callVariant;
     private final boolean nonVirtual;
+    private final Executable member;
 
-    public JNIJavaCallVariantWrapperMethod(ResolvedSignature<ResolvedJavaType> callWrapperSignature, CallVariant callVariant, boolean nonVirtual, MetaAccessProvider originalMetaAccess,
-                    WordTypes wordTypes) {
+    public JNIJavaCallVariantWrapperMethod(Executable member, ResolvedSignature<ResolvedJavaType> callWrapperSignature, CallVariant callVariant, boolean nonVirtual,
+                    MetaAccessProvider originalMetaAccess, WordTypes wordTypes) {
         super(createName(callWrapperSignature, callVariant, nonVirtual),
                         originalMetaAccess.lookupJavaType(JNIJavaCallVariantWrapperHolder.class),
                         createSignature(callWrapperSignature, callVariant, nonVirtual, originalMetaAccess, wordTypes),
@@ -92,6 +94,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         this.callWrapperSignature = callWrapperSignature;
         this.callVariant = callVariant;
         this.nonVirtual = nonVirtual;
+        this.member = member;
     }
 
     private static String createName(ResolvedSignature<ResolvedJavaType> targetSignature, CallVariant callVariant, boolean nonVirtual) {
@@ -281,5 +284,9 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
             throw VMError.unsupportedFeature("Call variant: " + callVariant);
         }
         return args;
+    }
+
+    public Executable getMember() {
+        return member;
     }
 }

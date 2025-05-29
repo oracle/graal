@@ -26,15 +26,18 @@ package com.oracle.svm.truffle.tck;
 
 import static com.oracle.graal.pointsto.reports.ReportUtils.report;
 
-import java.io.FileDescriptor;
 import java.io.IOException;
+import java.lang.invoke.MethodHandle;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.math.BigInteger;
-import java.net.InetAddress;
+import java.net.URI;
+import java.net.URL;
+import java.net.URLStreamHandler;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.Permission;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -44,13 +47,22 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.SynchronousQueue;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.spi.LocaleServiceProvider;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.code.FactoryMethod;
+import com.oracle.svm.util.LogUtils;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
+import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.polyglot.io.FileSystem;
@@ -60,15 +72,13 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.util.ClassUtil;
@@ -87,7 +97,6 @@ import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ModifiersProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -101,12 +110,17 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * To execute the {@code PermissionsFeature} you need to enable it using
  * {@code --features=com.oracle.svm.truffle.tck.PermissionsFeature} native-image option, specify
  * report file using {@code -H:TruffleTCKPermissionsReportFile} option and specify the language
- * packages by {@code -H:TruffleTCKPermissionsLanguagePackages} option. You also need to disable
- * folding of {@code System.getSecurityManager} using {@code -H:-FoldSecurityManagerGetter} option.
+ * packages by {@code -H:TruffleTCKPermissionsLanguagePackages} option.
  */
 public class PermissionsFeature implements Feature {
 
     private static final String CONFIG = "truffle-language-permissions-config.json";
+
+    public enum ActionKind {
+        Ignore,
+        Warn,
+        Throw
+    }
 
     public static class Options {
         @Option(help = "Path to file where to store report of Truffle language privilege access.")//
@@ -122,6 +136,14 @@ public class PermissionsFeature implements Feature {
 
         @Option(help = "Maximum number of erroneous privileged accesses reported.", type = OptionType.Expert)//
         public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxErrors = new HostedOptionKey<>(100);
+
+        @Option(help = """
+                        Specifies how unused methods in the language allow list should be handled.
+                        Available options are:
+                          "Ignore": Do not report unused methods in the allow list.
+                          "Warn": Log a warning message to stderr.
+                          "Throw" (default): Throw an exception and abort the native-image build process.""", type = OptionType.Expert)//
+        public static final HostedOptionKey<ActionKind> TruffleTCKUnusedAllowListEntriesAction = new HostedOptionKey<>(ActionKind.Throw);
     }
 
     /**
@@ -140,7 +162,9 @@ public class PermissionsFeature implements Feature {
     private static final Set<String> safePackages;
     static {
         safePackages = new HashSet<>();
-        safePackages.add("org.graalvm.");
+        safePackages.add("org.graalvm.polyglot.");
+        safePackages.add("org.graalvm.home.");
+        safePackages.add("jdk.graal.compiler.");
         safePackages.add("com.oracle.graalvm.");
         safePackages.add("com.oracle.svm.core.");
         safePackages.add("com.oracle.truffle.api.");
@@ -158,6 +182,7 @@ public class PermissionsFeature implements Feature {
         safePackages.add("com.oracle.truffle.sandbox.enterprise.");
         safePackages.add("com.oracle.truffle.polyglot.enterprise.");
         safePackages.add("com.oracle.truffle.object.enterprise.");
+        safePackages.add("com.oracle.svm.truffle.api.");
         safePackages.add("com.oracle.svm.truffle.isolated.");
         safePackages.add("com.oracle.svm.enterprise.truffle.");
     }
@@ -173,7 +198,7 @@ public class PermissionsFeature implements Feature {
     /**
      * Methods which should not be found.
      */
-    private Set<BaseMethodNode> deniedMethods = new HashSet<>();
+    private final Set<BaseMethodNode> deniedMethods = new HashSet<>();
 
     /**
      * Path to store report into.
@@ -181,9 +206,14 @@ public class PermissionsFeature implements Feature {
     private Path reportFilePath;
 
     /**
-     * Methods which are allowed to do privileged calls without being reported.
+     * JDK methods which are allowed to do privileged calls without being reported.
      */
-    private Set<? extends BaseMethodNode> whiteList;
+    private Set<? extends BaseMethodNode> platformAllowList;
+
+    /**
+     * Language methods which are allowed to do privileged calls without being reported.
+     */
+    private Map<BaseMethodNode, Boolean> languageAllowList;
 
     private Set<CallGraphFilter> contextFilters;
 
@@ -202,9 +232,6 @@ public class PermissionsFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
-            UserError.abort("%s requires -H:-FoldSecurityManagerGetter option.", ClassUtil.getUnqualifiedName(getClass()));
-        }
         String reportFile = Options.TruffleTCKPermissionsReportFile.getValue();
         if (reportFile == null) {
             UserError.abort("Path to report file must be given by -H:TruffleTCKPermissionsReportFile option.");
@@ -221,15 +248,18 @@ public class PermissionsFeature implements Feature {
         BigBang bb = accessImpl.getBigBang();
         contextFilters = new HashSet<>();
         Collections.addAll(contextFilters, new SafeInterruptRecognizer(bb), new SafePrivilegedRecognizer(bb),
-                        new SafeServiceLoaderRecognizer(bb, accessImpl.getImageClassLoader()), new SafeSetThreadNameRecognizer(bb));
+                        new SafeReflectionRecognizer(bb), new SafeSetThreadNameRecognizer(bb),
+                        new SafeLocaleServiceProvider(bb), new SafeSystemGetProperty(bb),
+                        new SafeURLOf(bb));
 
         /*
-         * Ensure methods which are either deniedMethods or on the whiteList are never inlined into
+         * Ensure methods which are either deniedMethods or on the allow list are never inlined into
          * methods. These methods are important for identifying violations.
          */
         Set<AnalysisMethod> preventInlineBeforeAnalysis = new HashSet<>();
         deniedMethods.stream().map(BaseMethodNode::getMethod).forEach(preventInlineBeforeAnalysis::add);
-        whiteList.stream().map(BaseMethodNode::getMethod).forEach(preventInlineBeforeAnalysis::add);
+        platformAllowList.stream().map(BaseMethodNode::getMethod).forEach(preventInlineBeforeAnalysis::add);
+        languageAllowList.keySet().stream().map(BaseMethodNode::getMethod).forEach(preventInlineBeforeAnalysis::add);
         contextFilters.stream().map(CallGraphFilter::getInspectedMethods).forEach(preventInlineBeforeAnalysis::addAll);
 
         accessImpl.getHostVM().registerNeverInlineTrivialHandler((caller, callee) -> {
@@ -252,15 +282,27 @@ public class PermissionsFeature implements Feature {
         if (sunMiscUnsafe != null) {
             inlinedUnsafeCall = new InlinedUnsafeMethodNode(bb.getMetaAccess().lookupJavaType(sunMiscUnsafe));
         }
-        WhiteListParser parser = new WhiteListParser(accessImpl.getImageClassLoader(), bb);
-        ConfigurationParserUtils.parseAndRegisterConfigurations(parser,
-                        accessImpl.getImageClassLoader(),
-                        ClassUtil.getUnqualifiedName(getClass()),
-                        Options.TruffleTCKPermissionsExcludeFiles,
-                        new ResourceAsOptionDecorator(getClass().getPackage().getName().replace('.', '/') + "/resources/jre.json"),
-                        CONFIG);
-        whiteList = parser.getLoadedWhiteList();
-        deniedMethods.addAll(findMethods(bb, SecurityManager.class, (m) -> m.getName().startsWith("check")));
+        String featureName = ClassUtil.getUnqualifiedName(getClass());
+        AllowListParser allowListparser = new AllowListParser(accessImpl.getImageClassLoader(), bb);
+        ConfigurationParserUtils.parseAndRegisterConfigurations(allowListparser, accessImpl.getImageClassLoader(), featureName,
+                        CONFIG,
+                        List.of(),
+                        List.of(getClass().getPackage().getName().replace('.', '/') + "/resources/jdk_allowed_methods.json"));
+        platformAllowList = allowListparser.getMethods();
+        allowListparser = new AllowListParser(accessImpl.getImageClassLoader(), bb);
+        ConfigurationParserUtils.parseAndRegisterConfigurations(allowListparser, accessImpl.getImageClassLoader(), featureName,
+                        CONFIG,
+                        Options.TruffleTCKPermissionsExcludeFiles.getValue().values(),
+                        List.of());
+        languageAllowList = allowListparser.getMethods().stream().collect(Collectors.toMap(Function.identity(), key -> false));
+
+        PrivilegedListParser privilegedListParser = new PrivilegedListParser(accessImpl.getImageClassLoader(), bb, ModuleLayer.boot().modules());
+        ConfigurationParserUtils.parseAndRegisterConfigurations(privilegedListParser, accessImpl.getImageClassLoader(), "featureName",
+                        CONFIG,
+                        List.of(),
+                        List.of(getClass().getPackage().getName().replace('.', '/') + "/resources/jdk_privileged_methods.json"));
+        deniedMethods.addAll(privilegedListParser.getMethods());
+
         if (sunMiscUnsafe != null) {
             deniedMethods.addAll(findMethods(bb, sunMiscUnsafe, ModifiersProvider::isPublic));
         }
@@ -270,8 +312,16 @@ public class PermissionsFeature implements Feature {
         // can be directly used by a language. We need to include it into deniedMethods.
         deniedMethods.addAll(findMethods(bb, FileSystem.newDefaultFileSystem().getClass(), ModifiersProvider::isPublic));
         // JDK 19 introduced BigInteger.parallelMultiply that uses the ForkJoinPool.
-        // We deny this method but explicitly allow non-parallel multiply (cf. jre.json).
+        // We deny this method but explicitly allow non-parallel multiply (cf.
+        // jdk_allowed_methods.json).
         deniedMethods.addAll(findMethods(bb, BigInteger.class, (m) -> m.getName().startsWith("parallel")));
+        // We deny SynchronousQueue as it creates ForkJoinWorkerThread.
+        deniedMethods.addAll(findConstructors(bb, SynchronousQueue.class, (m) -> "<init>".equals(m.getName())));
+        // Reflective calls
+        deniedMethods.addAll(findMethods(bb, Method.class, (m) -> m.getName().equals("invoke") && m.isPublic() && m.getParameters().length == 2));
+        deniedMethods.addAll(findMethods(bb, Constructor.class, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().length == 1));
+        deniedMethods.addAll(findMethods(bb, MethodHandle.class, (m) -> m.getName().startsWith("invoke") && m.isPublic()));
+        deniedMethods.addAll(findMethods(bb, Class.class, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().length == 0));
         if (inlinedUnsafeCall != null) {
             deniedMethods.add(inlinedUnsafeCall);
         }
@@ -309,21 +359,28 @@ public class PermissionsFeature implements Feature {
                                     StringBuilder builder = new StringBuilder();
                                     for (List<BaseMethodNode> callPath : report) {
                                         for (BaseMethodNode call : callPath) {
-                                            builder.append(call.asStackTraceElement()).append('\n');
+                                            builder.append(call.asStackTraceElement()).append(System.lineSeparator());
                                         }
-                                        builder.append('\n');
+                                        builder.append(System.lineSeparator());
                                     }
                                     pw.print(builder);
                                 });
             }
-        }
-    }
-
-    private static Class<?> loadClassOrFail(String className) {
-        try {
-            return Class.forName(className);
-        } catch (ClassNotFoundException e) {
-            throw JVMCIError.shouldNotReachHere(e);
+            List<BaseMethodNode> unusedLanguageAllowListEntries = languageAllowList.entrySet().stream().filter((e) -> !e.getValue()).map(Map.Entry::getKey).toList();
+            if (!unusedLanguageAllowListEntries.isEmpty()) {
+                StringBuilder errorMessageBuilder = new StringBuilder(
+                                "The following methods in the language allow list were not statically reachable during points-to analysis. " + "Please review and remove them from the allow list:\n");
+                for (BaseMethodNode unused : unusedLanguageAllowListEntries) {
+                    errorMessageBuilder.append(" - ").append(unused.getMethod().format("%H.%n(%p)")).append("\n");
+                }
+                switch (Options.TruffleTCKUnusedAllowListEntriesAction.getValue()) {
+                    case Ignore -> {
+                    }
+                    case Warn -> LogUtils.warning("[%s] %s", ClassUtil.getUnqualifiedName(getClass()), errorMessageBuilder);
+                    case Throw -> throw UserError.abort(errorMessageBuilder.toString());
+                    default -> throw new AssertionError(Options.TruffleTCKUnusedAllowListEntriesAction.getValue());
+                }
+            }
         }
     }
 
@@ -414,7 +471,7 @@ public class PermissionsFeature implements Feature {
             for (InvokeInfo invoke : m.getInvokes()) {
                 for (AnalysisMethod callee : invoke.getOriginalCallees()) {
                     AnalysisMethodNode calleeNode = new AnalysisMethodNode(callee);
-                    if (callee.isInvoked() || !isSystemOrSafeClass(calleeNode)) {
+                    if (callee.isImplementationInvoked()) {
                         Set<BaseMethodNode> parents = visited.get(calleeNode);
                         String calleeName = getMethodName(callee);
                         debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Callee: %s, new: %b.", calleeName, parents == null);
@@ -523,15 +580,8 @@ public class PermissionsFeature implements Feature {
         if (numReports >= maxReports) {
             return numReports;
         }
-        if (depth > 1) {
-            // The denied method can be a method from a "safe" class
-            if (isSafeClass(mNode)) {
-                return numReports;
-            }
-            // The denied method can be excluded by a white list
-            if (isExcludedClass(mNode)) {
-                return numReports;
-            }
+        if (isSafeClass(mNode) || isExcludedClass(mNode)) {
+            return numReports;
         }
         if (!visited.contains(mNode)) {
             visited.add(mNode);
@@ -613,12 +663,15 @@ public class PermissionsFeature implements Feature {
     }
 
     /**
-     * Tests if the given {@link BaseMethodNode} is excluded by white list.
+     * Tests if the given {@link BaseMethodNode} is excluded by allow list.
      *
      * @param methodNode the {@link BaseMethodNode} to check
      */
     private boolean isExcludedClass(BaseMethodNode methodNode) {
-        return whiteList.contains(methodNode);
+        if (platformAllowList.contains(methodNode)) {
+            return true;
+        }
+        return languageAllowList.computeIfPresent(methodNode, (n, v) -> true) != null;
     }
 
     /**
@@ -648,6 +701,23 @@ public class PermissionsFeature implements Feature {
      */
     static Set<AnalysisMethodNode> findMethods(BigBang bb, AnalysisType owner, Predicate<ResolvedJavaMethod> filter) {
         return findImpl(bb, owner.getWrapped().getDeclaredMethods(false), filter);
+    }
+
+    /**
+     * Finds constructors declared in {@code owner} class using {@code filter} predicate.
+     *
+     * @param bb the {@link BigBang}
+     * @param owner the class which constructor should be listed
+     * @param filter the predicate filtering constructors declared in {@code owner}
+     * @return the constructors accepted by {@code filter}
+     * @throws IllegalStateException if owner cannot be resolved
+     */
+    private static Set<AnalysisMethodNode> findConstructors(BigBang bb, Class<?> owner, Predicate<ResolvedJavaMethod> filter) {
+        AnalysisType clazz = bb.getMetaAccess().lookupJavaType(owner);
+        if (clazz == null) {
+            throw new IllegalStateException("Cannot resolve " + owner.getName() + ".");
+        }
+        return findConstructors(bb, clazz, filter);
     }
 
     /**
@@ -728,10 +798,10 @@ public class PermissionsFeature implements Feature {
                     if (threadInterrupt.getMethod().equals(invoke.callTarget().targetMethod())) {
                         boolean vote = false;
                         ValueNode node = invoke.getReceiver();
-                        if (node instanceof PiNode) {
-                            node = ((PiNode) node).getOriginalNode();
-                            if (node instanceof Invoke) {
-                                boolean isCurrentThread = threadCurrentThread.equals(((Invoke) node).callTarget().targetMethod());
+                        if (node instanceof PiNode piNode) {
+                            node = piNode.getOriginalNode();
+                            if (node instanceof Invoke invokeNode) {
+                                boolean isCurrentThread = threadCurrentThread.equals(invokeNode.callTarget().targetMethod());
                                 vote = res == null ? isCurrentThread : (res && isCurrentThread);
                             }
                         }
@@ -778,13 +848,24 @@ public class PermissionsFeature implements Feature {
                     if (args.isEmpty()) {
                         return false;
                     }
-                    ValueNode arg0 = args.get(0);
-                    if (!(arg0 instanceof NewInstanceNode)) {
+                    ValueNode arg0 = args.getFirst();
+                    ResolvedJavaType newType = null;
+                    if (arg0 instanceof NewInstanceNode newInstanceNode) {
+                        newType = newInstanceNode.instanceClass();
+                    } else if (arg0 instanceof Invoke invokeNode) {
+                        // Constructor replaced by SVM FactoryMethod
+                        AnalysisMethod targetMethod = (AnalysisMethod) invokeNode.getTargetMethod();
+                        if (targetMethod.wrapped instanceof FactoryMethod factoryMethod) {
+                            newType = method.getUniverse().lookup(factoryMethod.getTargetConstructor().getDeclaringClass());
+                        }
+                    } else if (arg0 instanceof AllocatedObjectNode allocatedObjectNode) {
+                        newType = allocatedObjectNode.getVirtualObject().type();
+                    }
+                    if (newType == null) {
                         return false;
                     }
-                    ResolvedJavaType newType = ((NewInstanceNode) arg0).instanceClass();
                     ResolvedJavaMethod methodCalledByAccessController = findPrivilegedEntryPoint(method, trace);
-                    if (newType == null || methodCalledByAccessController == null) {
+                    if (methodCalledByAccessController == null) {
                         return false;
                     }
                     if (newType.equals(methodCalledByAccessController.getDeclaringClass())) {
@@ -796,16 +877,24 @@ public class PermissionsFeature implements Feature {
         }
 
         /**
-         * Finds an entry point to {@code PrivilegedAction} called by {@code doPrivilegedMethod}.
+         * Identifies the entry point to a {@code PrivilegedAction} invoked by
+         * {@code doPrivilegedMethod}. Iterates through the inverted call stack, starting from the
+         * current frame, up to the privileged call. Returns the first method that is not part of
+         * {@code AccessController}.
          */
         private static ResolvedJavaMethod findPrivilegedEntryPoint(ResolvedJavaMethod doPrivilegedMethod, List<BaseMethodNode> trace) {
-            ResolvedJavaMethod ep = null;
-            for (BaseMethodNode mNode : trace) {
-                AnalysisMethod m = mNode.getMethod();
-                if (doPrivilegedMethod.equals(m)) {
-                    return ep;
+            ResolvedJavaType accessController = doPrivilegedMethod.getDeclaringClass();
+            ListIterator<BaseMethodNode> it = trace.listIterator(trace.size());
+            assert doPrivilegedMethod.equals(it.previous().getMethod()) : String.format("%s must be current stack frame.", trace);
+            while (it.hasPrevious()) {
+                BaseMethodNode mNode = it.previous();
+                ResolvedJavaMethod method = mNode.getMethod();
+                /*
+                 * Ignore AccessController internal methods.
+                 */
+                if (!method.getDeclaringClass().equals(accessController)) {
+                    return method;
                 }
-                ep = m;
             }
             return null;
         }
@@ -816,67 +905,55 @@ public class PermissionsFeature implements Feature {
         }
     }
 
-    private static final class SafeServiceLoaderRecognizer implements CallGraphFilter {
+    /**
+     * Filters out reflection done by JRE or by code in safe packages.
+     */
+    private static final class SafeReflectionRecognizer implements CallGraphFilter {
 
-        private final AnalysisMethodNode providerImplGet;
-        private final ImageClassLoader imageClassLoader;
+        private final Set<AnalysisMethodNode> inspectedMethods;
 
-        SafeServiceLoaderRecognizer(BigBang bb, ImageClassLoader imageClassLoader) {
-            AnalysisType serviceLoaderIterator = bb.getMetaAccess().lookupJavaType(loadClassOrFail("java.util.ServiceLoader$ProviderImpl"));
-            Set<AnalysisMethodNode> methods = findMethods(bb, serviceLoaderIterator, (m) -> m.getName().equals("get"));
+        SafeReflectionRecognizer(BigBang bb) {
+            inspectedMethods = new HashSet<>();
+            AnalysisType method = bb.getMetaAccess().lookupJavaType(Method.class);
+            Set<AnalysisMethodNode> methods = findMethods(bb, method, (m) -> m.getName().equals("invoke") && m.isPublic() && m.getParameters().length == 2);
             if (methods.size() != 1) {
-                throw new IllegalStateException("Failed to lookup ServiceLoader$ProviderImpl.get().");
+                throw new IllegalStateException("Failed to lookup Method.invoke(Object,Object...).");
             }
-            this.providerImplGet = methods.iterator().next();
-            this.imageClassLoader = imageClassLoader;
+            inspectedMethods.addAll(methods);
+
+            AnalysisType constructor = bb.getMetaAccess().lookupJavaType(Constructor.class);
+            methods = findMethods(bb, constructor, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().length == 1);
+            if (methods.size() != 1) {
+                throw new IllegalStateException("Failed to lookup Constructor.newInstance(Object...).");
+            }
+            inspectedMethods.addAll(methods);
+
+            AnalysisType clazz = bb.getMetaAccess().lookupJavaType(Class.class);
+            methods = findMethods(bb, clazz, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().length == 0);
+            if (methods.size() != 1) {
+                throw new IllegalStateException("Failed to lookup Class.newInstance().");
+            }
+            inspectedMethods.addAll(methods);
+
+            AnalysisType methodHandle = bb.getMetaAccess().lookupJavaType(MethodHandle.class);
+            methods = findMethods(bb, methodHandle, (m) -> m.getName().startsWith("invoke") && m.isPublic());
+            if (methods.isEmpty()) {
+                throw new IllegalStateException("Failed to lookup MethodHandle.invoke methods.");
+            }
+            inspectedMethods.addAll(methods);
         }
 
         @Override
         public boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, List<BaseMethodNode> trace) {
-            if (providerImplGet.equals(methodNode)) {
-                ResolvedJavaType instantiatedType = findInstantiatedType(trace);
-                return instantiatedType != null && !isRegisteredInServiceLoader(instantiatedType);
-            }
-            return false;
-        }
-
-        /**
-         * Finds last constructor invocation.
-         */
-        private static ResolvedJavaType findInstantiatedType(List<BaseMethodNode> trace) {
-            ResolvedJavaType res = null;
-            for (BaseMethodNode mNode : trace) {
-                AnalysisMethod m = mNode.getMethod();
-                if (m != null && "<init>".equals(m.getName())) {
-                    res = m.getDeclaringClass();
-                }
-            }
-            return res;
-        }
-
-        /**
-         * Finds if the given type may be instantiated by ServiceLoader.
-         */
-        private boolean isRegisteredInServiceLoader(ResolvedJavaType type) {
-            String resource = String.format("META-INF/services/%s", type.toClassName());
-            if (imageClassLoader.getClassLoader().getResource(resource) != null) {
-                return true;
-            }
-            for (ResolvedJavaType ifc : type.getInterfaces()) {
-                if (isRegisteredInServiceLoader(ifc)) {
-                    return true;
-                }
-            }
-            ResolvedJavaType superClz = type.getSuperclass();
-            if (superClz != null) {
-                return isRegisteredInServiceLoader(superClz);
+            if (inspectedMethods.contains(methodNode)) {
+                return isSystemOrSafeClass(callerNode);
             }
             return false;
         }
 
         @Override
         public Collection<AnalysisMethod> getInspectedMethods() {
-            return Set.of(providerImplGet.getMethod());
+            return inspectedMethods.stream().map(AnalysisMethodNode::getMethod).toList();
         }
     }
 
@@ -916,12 +993,12 @@ public class PermissionsFeature implements Feature {
             for (Invoke invoke : graph.getInvokes()) {
                 if (method.equals(invoke.callTarget().targetMethod())) {
                     NodeInputList<ValueNode> args = invoke.callTarget().arguments();
-                    ValueNode arg0 = args.get(0);
+                    ValueNode arg0 = args.getFirst();
                     boolean isTruffleThread = false;
-                    if (arg0 instanceof PiNode) {
-                        arg0 = ((PiNode) arg0).getOriginalNode();
-                        if (arg0 instanceof Invoke) {
-                            ResolvedJavaMethod target = ((Invoke) arg0).callTarget().targetMethod();
+                    if (arg0 instanceof PiNode piNode) {
+                        arg0 = piNode.getOriginalNode();
+                        if (arg0 instanceof Invoke invokeNode) {
+                            ResolvedJavaMethod target = invokeNode.callTarget().targetMethod();
                             isTruffleThread = envCreateThread.contains(target) || envCreateSystemThread.contains(target);
                         }
                     }
@@ -941,12 +1018,115 @@ public class PermissionsFeature implements Feature {
     }
 
     /**
-     * Options facade for a resource containing the JRE white list.
+     * All JDK subclasses of LocaleServiceProvider are allowed.
      */
-    private static final class ResourceAsOptionDecorator extends HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> {
+    private static final class SafeLocaleServiceProvider implements CallGraphFilter {
 
-        ResourceAsOptionDecorator(String defaultValue) {
-            super(AccumulatingLocatableMultiOptionValue.Strings.buildWithDefaults(defaultValue));
+        private final AnalysisMethodNode localeServiceProviderInit;
+
+        SafeLocaleServiceProvider(BigBang bb) {
+            Set<AnalysisMethodNode> constructors = findConstructors(bb, LocaleServiceProvider.class, (m) -> m.getParameters().length == 0);
+            if (constructors.size() != 1) {
+                throw new IllegalStateException("Failed to lookup LocaleServiceProvider.<init>().");
+            }
+            localeServiceProviderInit = constructors.iterator().next();
+        }
+
+        @Override
+        public boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, List<BaseMethodNode> trace) {
+            if (localeServiceProviderInit.equals(methodNode)) {
+                return isSystemOrSafeClass(callerNode);
+            }
+            return false;
+        }
+
+        @Override
+        public Collection<AnalysisMethod> getInspectedMethods() {
+            return Set.of(localeServiceProviderInit.getMethod());
+        }
+    }
+
+    /**
+     * JDK classes are allowed to read System properties.
+     */
+    private static final class SafeSystemGetProperty implements CallGraphFilter {
+
+        private final Set<AnalysisMethodNode> getProperty;
+
+        SafeSystemGetProperty(BigBang bb) {
+            Set<AnalysisMethodNode> methods = findMethods(bb, System.class, (m) -> "getProperty".equals(m.getName()));
+            if (methods.size() != 2) {
+                throw new IllegalStateException("Failed to lookup System.getProperty.");
+            }
+            getProperty = methods;
+        }
+
+        @Override
+        public boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, List<BaseMethodNode> trace) {
+            if (getProperty.contains(methodNode)) {
+                return isSystemOrSafeClass(callerNode);
+            }
+            return false;
+        }
+
+        @Override
+        public Collection<AnalysisMethod> getInspectedMethods() {
+            return getProperty.stream().map(AnalysisMethodNode::getMethod).collect(Collectors.toSet());
+        }
+    }
+
+    /**
+     * A call to {@code URL.of(URI, URLStreamHandler)} is only considered safe when the specified
+     * {@link URLStreamHandler} is {@code null}.
+     */
+    private static final class SafeURLOf implements CallGraphFilter {
+
+        private final SVMHost hostVM;
+        private final AnalysisMethodNode of;
+
+        SafeURLOf(BigBang bigBang) {
+            this.hostVM = (SVMHost) bigBang.getHostVM();
+            Set<AnalysisMethodNode> methods = findMethods(bigBang, URL.class, (m) -> {
+                if (!"of".equals(m.getName())) {
+                    return false;
+                }
+                ResolvedJavaMethod.Parameter[] parameters = m.getParameters();
+                if (parameters.length != 2) {
+                    return false;
+                }
+                if (!bigBang.getMetaAccess().lookupJavaType(URI.class).getWrapped().equals(parameters[0].getType())) {
+                    return false;
+                }
+                return bigBang.getMetaAccess().lookupJavaType(URLStreamHandler.class).getWrapped().equals(parameters[1].getType());
+            });
+            if (methods.size() != 1) {
+                throw new IllegalStateException("Failed to lookup URL.of(URI, URLStreamHandler).");
+            }
+            this.of = methods.iterator().next();
+        }
+
+        @Override
+        public boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, List<BaseMethodNode> trace) {
+            if (!of.equals(methodNode)) {
+                return false;
+            }
+            AnalysisMethod method = methodNode.getMethod();
+            AnalysisMethod caller = callerNode.getMethod();
+            StructuredGraph graph = hostVM.getAnalysisGraph(caller);
+            Boolean res = null;
+            for (Invoke invoke : graph.getInvokes()) {
+                if (method.equals(invoke.callTarget().targetMethod())) {
+                    NodeInputList<ValueNode> args = invoke.callTarget().arguments();
+                    ValueNode arg1 = args.get(1);
+                    res = arg1 instanceof ConstantNode constantNode && constantNode.getValue() == JavaConstant.NULL_POINTER;
+                }
+            }
+            return res != null && res;
+        }
+
+        @Override
+        public Collection<AnalysisMethod> getInspectedMethods() {
+            return List.of(of.getMethod());
         }
     }
 
@@ -1048,149 +1228,6 @@ public class PermissionsFeature implements Feature {
         public String toString() {
             return String.format("%s[method=%s]", ClassUtil.getUnqualifiedName(getClass()), method);
         }
-    }
-}
-
-@TargetClass(value = java.lang.SecurityManager.class, onlyWith = PermissionsFeature.IsEnabled.class)
-final class Target_java_lang_SecurityManager {
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkSecurityAccess(String target) {
-    }
-
-    @Substitute
-    private void checkSetFactory() {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkPackageDefinition(String pkg) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkPackageAccess(String pkg) {
-    }
-
-    @Substitute
-    private void checkPrintJobAccess() {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkPropertyAccess(String key) {
-    }
-
-    @Substitute
-    private void checkPropertiesAccess() {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkMulticast(InetAddress maddr) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkAccept(String host, int port) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkListen(int port) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkConnect(String host, int port, Object context) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkConnect(String host, int port) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkDelete(String file) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkWrite(String file) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkWrite(FileDescriptor fd) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkRead(String file, Object context) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkRead(String file) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkRead(FileDescriptor fd) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkLink(String lib) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkExec(String cmd) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkExit(int status) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkAccess(ThreadGroup g) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkAccess(Thread t) {
-    }
-
-    @Substitute
-    private void checkCreateClassLoader() {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkPermission(Permission perm, Object context) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkPermission(Permission perm) {
-    }
-}
-
-final class SecurityManagerHolder {
-    @SuppressWarnings("deprecation") // SecurityManager deprecated since 17.
-    static final SecurityManager SECURITY_MANAGER = new SecurityManager();
-}
-
-@TargetClass(value = java.lang.System.class, onlyWith = PermissionsFeature.IsEnabled.class)
-final class Target_java_lang_System {
-    @Substitute
-    private static SecurityManager getSecurityManager() {
-        return SecurityManagerHolder.SECURITY_MANAGER;
     }
 }
 

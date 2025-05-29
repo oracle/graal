@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,10 +27,10 @@ package jdk.graal.compiler.hotspot;
 import java.util.BitSet;
 import java.util.List;
 
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
@@ -54,7 +54,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.meta.InvokeTarget;
 
 /**
@@ -290,7 +289,7 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
      * @param killedRegisters see {@link Stub#getDestroyedCallerRegisters()}
      */
     record CodeInfo(long start, EconomicSet<Register> killedRegisters) {
-        public static CodeInfo fromMemory(long memory, RegisterArray allRegisters) {
+        public static CodeInfo fromMemory(long memory, List<Register> allRegisters) {
             Unsafe unsafe = Unsafe.getUnsafe();
             // @formatter:off
             int offset = 0;
@@ -348,31 +347,33 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
          */
         private static final EconomicMap<ForeignCallSignature, GlobalAtomicLong> STUBS = EconomicMap.create();
 
+        /**
+         * Racy between isolates but as stated in {@link #STUBS} javadoc, it's not a problem in
+         * practice.
+         */
         static HotSpotForeignCallLinkageImpl.CodeInfo getCodeInfo(Stub stub, Backend backend) {
             ForeignCallSignature sig = stub.getLinkage().getDescriptor().getSignature();
             GlobalAtomicLong data = getStubData(sig);
             long codeInfoInMemory = data.get();
             if (codeInfoInMemory == 0L) {
-                // Racy between isolates but as stated in STUBS javadoc, it's not
-                // a problem in practice.
                 HotSpotForeignCallLinkageImpl.CodeInfo codeInfo = new HotSpotForeignCallLinkageImpl.CodeInfo(stub.getCode(backend).getStart(), stub.getDestroyedCallerRegisters());
                 data.set(codeInfo.toMemory());
                 return codeInfo;
             }
-            RegisterArray allRegisters = backend.getCodeCache().getTarget().arch.getRegisters();
+            List<Register> allRegisters = backend.getCodeCache().getTarget().arch.getRegisters();
             return HotSpotForeignCallLinkageImpl.CodeInfo.fromMemory(codeInfoInMemory, allRegisters);
         }
 
         private static GlobalAtomicLong getStubData(ForeignCallSignature sig) {
             GlobalAtomicLong data;
-            if (ImageInfo.inImageRuntimeCode()) {
+            if (LibGraalSupport.inLibGraalRuntime()) {
                 data = STUBS.get(sig);
                 GraalError.guarantee(data != null, "missing global data for %s", sig);
             } else {
                 synchronized (STUBS) {
                     data = STUBS.get(sig);
                     if (data == null) {
-                        data = new GlobalAtomicLong(0L);
+                        data = new GlobalAtomicLong("STUB_" + sig.getName(), 0L);
                         STUBS.put(sig, data);
                     }
                 }
@@ -388,23 +389,8 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
         public static void initStubs(List<ForeignCallSignature> sigs) {
             GraalError.guarantee(STUBS.isEmpty(), "cannot re-initialize STUBS: %s", STUBS);
             for (ForeignCallSignature sig : sigs) {
-                initStub(sig);
+                STUBS.put(sig, new GlobalAtomicLong("STUB_" + sig.getName(), 0L));
             }
-        }
-
-        /**
-         * Creates an entry in the map for avoiding duplicate {@code RuntimeStub}s for {@code sig}
-         * if no entry currently exists.
-         *
-         * @return {@code true} if an entry was added by this call, {@code false} if an entry
-         *         already existed
-         */
-        public static boolean initStub(ForeignCallSignature sig) {
-            if (!STUBS.containsKey(sig)) {
-                STUBS.put(sig, new GlobalAtomicLong(0L));
-                return true;
-            }
-            return false;
         }
     }
 }

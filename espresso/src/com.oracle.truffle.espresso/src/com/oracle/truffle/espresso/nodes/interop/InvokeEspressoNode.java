@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,8 +33,8 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -49,7 +49,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 public abstract class InvokeEspressoNode extends EspressoNode {
     static final int LIMIT = 4;
 
-    public final Object execute(Method method, Object receiver, Object[] arguments, boolean argsConverted) throws ArityException, UnsupportedTypeException {
+    public final Object execute(Method method, Object receiver, Object[] arguments, boolean argsConverted, InteropUnwrapNode unwrapNode) throws ArityException, UnsupportedTypeException {
         Method.MethodVersion resolutionSeed = method.getMethodVersion();
         if (!resolutionSeed.getRedefineAssumption().isValid()) {
             // OK, we know it's a removed method then
@@ -67,7 +67,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
              * Invariant: Foreign objects are always wrapped when coming into Espresso and unwrapped
              * when going out.
              */
-            return InteropUtils.unwrap(language, result, meta);
+            return unwrapNode.execute(result);
         } catch (EspressoException e) {
             /*
              * Invariant: Foreign exceptions are always unwrapped when going out of Espresso.
@@ -78,8 +78,8 @@ public abstract class InvokeEspressoNode extends EspressoNode {
         }
     }
 
-    public final Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException {
-        return execute(method, receiver, arguments, false);
+    public final Object execute(Method method, Object receiver, Object[] arguments, InteropUnwrapNode unwrapNode) throws ArityException, UnsupportedTypeException {
+        return execute(method, receiver, arguments, false, unwrapNode);
     }
 
     static DirectCallNode createDirectCallNode(CallTarget callTarget) {

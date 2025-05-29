@@ -7,7 +7,7 @@ permalink: /reference-manual/native-image/guides/build-native-shared-library/
 
 # Build a Native Shared Library
 
-To build a native shared library, pass the command-line argument `--shared` to the `native-image` tool, as follows:
+To build a native shared library, pass the command-line option `--shared` to the `native-image` tool, as follows:
 ```shell
 native-image <class name> --shared
 ```
@@ -26,9 +26,10 @@ native-image --shared -jar <jarfile> -o <libraryname>
 ```
 
 GraalVM makes it easy to use C to call into a native shared library. 
-There are two primary mechanisms for calling a method (function) embedded in a native shared library: the [Native Image C API](../C-API.md) and the [JNI Invocation API](https://docs.oracle.com/en/java/javase/22/docs/specs/jni/invocation.html).
+There are two primary mechanisms for calling a method (function) embedded in a native shared library: the [Native Image C API](../C-API.md) and the [JNI Invocation API](https://docs.oracle.com/en/java/javase/23/docs/specs/jni/invocation.html).
 
-This guide describes how to use the **Native Image C API**. It consists of the following steps:
+This guide describes how to use the **Native Image C API**.
+It consists of the following steps:
 1. Create and compile a Java class library containing at least one entrypoint method.
 2. Use the `native-image` tool to create a shared library from the Java class library.
 3. Create and compile a C application that calls that entrypoint method in the shared library.
@@ -66,7 +67,7 @@ A native shared library can have an unlimited number of entrypoints, for example
 ### Run a Demo
 
 In the following example, you create a small Java class library (containing one class), use `native-image` to create a shared library from the class library, and then create a small C application that uses that shared library.
-The C application takes a String as its argument, passes it to the shared library, and prints environment variables that contain the argument.
+The C application takes a String as an argument, passes it to the shared library, and prints environment variables that contain the argument.
 
 ### Prerequisite 
 Make sure you have installed a GraalVM JDK.
@@ -74,7 +75,6 @@ The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
 For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
 1. Save the following Java code to a file named _LibEnvMap.java_:
-
     ```java
     import java.util.Map;
     import org.graalvm.nativeimage.IsolateThread;
@@ -113,14 +113,12 @@ For other installation options, visit the [Downloads section](https://www.graalv
 
     It produces the following artifacts:
     ```
-    --------------------------------------------------
     Produced artifacts:
     /demo/graal_isolate.h (header)
     /demo/graal_isolate_dynamic.h (header)
     /demo/libenvmap.dylib (shared_lib)
     /demo/libenvmap.h (header)
     /demo/libenvmap_dynamic.h (header)
-    ==================================================
     ```
 
     If you work with C or C++, use these header files directly. For other languages, such as Java, use the function declarations in the headers to set up your foreign call bindings. 
@@ -156,9 +154,9 @@ For other installation options, visit the [Downloads section](https://www.graalv
 
 4. Compile _main.c_ using the `clang` compiler available on your system:
     ```shell
-    clang -I ./ -L ./ -l envmap -Wl,-rpath ./ -o main main.c 
+    clang -I ./ -L ./ -l envmap -Wl,-rpath ./ -o main main.c
     ```
-    It creates an executable file _main_.
+    It creates an executable file `main`.
 
 5. Run the C application by passing a string as an argument. For example:
     ```shell

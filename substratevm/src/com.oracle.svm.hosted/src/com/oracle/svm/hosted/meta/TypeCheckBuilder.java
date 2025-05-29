@@ -165,7 +165,8 @@ public final class TypeCheckBuilder {
             int startingTypeID = OpenTypeWorldFeature.loadTypeInfo(builder.heightOrderedTypes);
             builder.buildTypeInformation(hUniverse, startingTypeID);
             builder.calculateOpenTypeWorldTypeMetadata();
-            OpenTypeWorldFeature.persistTypeInfo(builder.heightOrderedTypes);
+            // GR-64324 re-enable once type duplicates get assigned the same typecheckID
+            // assert OpenTypeWorldFeature.validateTypeInfo(builder.heightOrderedTypes);
             return UNINITIALIZED_TYPECHECK_SLOTS;
         }
     }
@@ -465,7 +466,7 @@ public final class TypeCheckBuilder {
             type.subTypes = subtypeMap.get(type).toArray(HostedType.EMPTY_ARRAY);
         }
 
-        DynamicHubSupport.singleton().setMaxTypeId(nextTypeID);
+        DynamicHubSupport.currentLayer().setMaxTypeId(nextTypeID);
 
         /*
          * Search through list in reverse order so that all of a type's subtypes are traversed
@@ -1869,7 +1870,7 @@ public final class TypeCheckBuilder {
         }
     }
 
-    private static class OpenTypeWorldTypeInfo {
+    private static final class OpenTypeWorldTypeInfo {
 
         /**
          * Within {@link com.oracle.svm.core.hub.DynamicHub} typecheck metadata the ids of the

@@ -43,7 +43,6 @@ import java.security.KeyFactory;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.MessageDigest;
-import java.security.Policy;
 import java.security.Provider;
 import java.security.Provider.Service;
 import java.security.SecureRandom;
@@ -90,7 +89,6 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
@@ -104,13 +102,15 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import sun.security.jca.ProviderList;
 import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
@@ -166,7 +166,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                         CertPathBuilder.class, CertPathValidator.class, CertStore.class, CertificateFactory.class,
                         Cipher.class, Configuration.class, KeyAgreement.class, KeyFactory.class,
                         KeyGenerator.class, KeyManagerFactory.class, KeyPairGenerator.class,
-                        KeyStore.class, Mac.class, MessageDigest.class, Policy.class, SSLContext.class,
+                        KeyStore.class, Mac.class, MessageDigest.class, SSLContext.class,
                         SecretKeyFactory.class, SecureRandom.class, Signature.class, TrustManagerFactory.class));
 
         if (ModuleLayer.boot().findModule("java.security.sasl").isPresent()) {
@@ -212,6 +212,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private ProviderList cachedProviders;
 
     private Class<?> jceSecurityClass;
+
+    private AnnotationSubstitutionProcessor substitutionProcessor;
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
@@ -331,6 +333,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
         }
 
+        substitutionProcessor = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
+
         access.registerFieldValueTransformer(providerListField, new FieldValueTransformerWithAvailability() {
             /*
              * We must wait until all providers have been registered before filtering the list.
@@ -421,6 +425,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
         if (usedProviders.contains(p)) {
             return false;
+        }
+        if (substitutionProcessor.isDeleted(p.getClass())) {
+            return true;
         }
         return !manuallyMarkedUsedProviderClassNames.contains(p.getClass().getName());
     }
@@ -634,6 +641,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private void doRegisterServices(DuringAnalysisAccess access, Object trigger, String serviceType) {
         try (TracingAutoCloseable ignored = trace(access, trigger, serviceType)) {
             Set<Service> services = availableServices.get(serviceType);
+            VMError.guarantee(services != null);
             for (Service service : services) {
                 registerService(access, service);
             }
@@ -679,7 +687,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static Function<String, Class<?>> getConstructorParameterClassAccessor(ImageClassLoader loader) {
         Map<String, /* EngineDescription */ Object> knownEngines = ReflectionUtil.readStaticField(Provider.class, "knownEngines");
         Class<?> clazz = loader.findClassOrFail("java.security.Provider$EngineDescription");
-        Field consParamClassField = ReflectionUtil.lookupField(clazz, JavaVersionUtil.JAVA_SPEC >= 23 ? "constructorParameterClass" : "constructorParameterClassName");
+        Field consParamClassField = ReflectionUtil.lookupField(clazz, "constructorParameterClass");
 
         /*
          * The returned lambda captures the value of the Provider.knownEngines map retrieved above
@@ -704,13 +712,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                 if (engineDescription == null) {
                     return null;
                 }
-                if (JavaVersionUtil.JAVA_SPEC >= 23) {
-                    return (Class<?>) consParamClassField.get(engineDescription);
-                }
-                String constrParamClassName = (String) consParamClassField.get(engineDescription);
-                if (constrParamClassName != null) {
-                    return loader.findClass(constrParamClassName).get();
-                }
+                return (Class<?>) consParamClassField.get(engineDescription);
             } catch (IllegalAccessException e) {
                 VMError.shouldNotReachHere(e);
             }

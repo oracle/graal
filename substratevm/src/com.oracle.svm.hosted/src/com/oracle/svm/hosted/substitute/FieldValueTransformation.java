@@ -37,7 +37,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.imagelayer.ObjectToConstantFieldValueTransformer;
+import com.oracle.svm.core.fieldvaluetransformer.ObjectToConstantFieldValueTransformer;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -104,7 +104,7 @@ public class FieldValueTransformation {
 
         JavaConstant result;
         if (fieldValueTransformer instanceof ObjectToConstantFieldValueTransformer objectToConstantFieldValueTransformer) {
-            result = objectToConstantFieldValueTransformer.transformToConstant(receiverValue, originalValue, constantConverter);
+            result = objectToConstantFieldValueTransformer.transformToConstant(field, receiverValue, originalValue, constantConverter);
         } else {
             Object newValue = fieldValueTransformer.transform(receiverValue, originalValue);
             result = constantConverter.apply(newValue);

@@ -93,6 +93,7 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.java.StableMethodNameFormatter;
+import jdk.graal.compiler.util.Digest;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.BytecodeFrame;
@@ -248,6 +249,11 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
             }
         }
 
+        @Override
+        public long typeSignature(String prefix) {
+            return Digest.digestAsUUID(prefix + typeName()).getLeastSignificantBits();
+        }
+
         public String toJavaName(@SuppressWarnings("hiding") HostedType hostedType) {
             return getDeclaringClass(hostedType, true).toJavaName();
         }
@@ -301,11 +307,13 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
     private class NativeImageHeaderTypeInfo implements DebugHeaderTypeInfo {
         String typeName;
         int size;
+        DebugFieldInfo hubField;
         List<DebugFieldInfo> fieldInfos;
 
-        NativeImageHeaderTypeInfo(String typeName, int size) {
+        NativeImageHeaderTypeInfo(String typeName, int size, DebugFieldInfo hubField) {
             this.typeName = typeName;
             this.size = size;
+            this.hubField = hubField;
             this.fieldInfos = new LinkedList<>();
         }
 
@@ -336,6 +344,11 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         }
 
         @Override
+        public long typeSignature(String prefix) {
+            return Digest.digestAsUUID(typeName).getLeastSignificantBits();
+        }
+
+        @Override
         public DebugTypeKind typeKind() {
             return DebugTypeKind.HEADER;
         }
@@ -363,6 +376,11 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         @Override
         public Stream<DebugFieldInfo> fieldInfoProvider() {
             return fieldInfos.stream();
+        }
+
+        @Override
+        public DebugFieldInfo hubField() {
+            return hubField;
         }
     }
 
@@ -431,11 +449,12 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         List<DebugTypeInfo> infos = new LinkedList<>();
         int hubOffset = ol.getHubOffset();
 
-        NativeImageHeaderTypeInfo objHeader = new NativeImageHeaderTypeInfo("_objhdr", ol.getFirstFieldOffset());
-        objHeader.addField("hub", hubType, hubOffset, referenceSize);
-        if (ol.isIdentityHashFieldInObjectHeader()) {
-            int idHashSize = ol.sizeInBytes(JavaKind.Int);
-            objHeader.addField("idHash", javaKindToHostedType.get(JavaKind.Int), ol.getObjectHeaderIdentityHashOffset(), idHashSize);
+        NativeImageDebugHeaderFieldInfo hubField = new NativeImageDebugHeaderFieldInfo("hub", hubType, hubOffset, ol.getHubSize());
+        NativeImageHeaderTypeInfo objHeader = new NativeImageHeaderTypeInfo("_objhdr", ol.getFirstFieldOffset(), hubField);
+        if (hubOffset > 0) {
+            assert hubOffset == Integer.BYTES || hubOffset == Long.BYTES;
+            JavaKind kind = hubOffset == Integer.BYTES ? JavaKind.Int : JavaKind.Long;
+            objHeader.addField("reserved", javaKindToHostedType.get(kind), 0, hubOffset);
         }
         infos.add(objHeader);
 
@@ -460,13 +479,17 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         }
 
         @Override
+        public long typeSignature(String prefix) {
+            return super.typeSignature(prefix + loaderName());
+        }
+
+        @Override
         public DebugTypeKind typeKind() {
             return DebugTypeKind.INSTANCE;
         }
 
         @Override
         public String loaderName() {
-
             return UniqueShortNameProvider.singleton().uniqueShortLoaderName(hostedType.getJavaClass().getClassLoader());
         }
 
@@ -815,6 +838,19 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         }
 
         @Override
+        public long typeSignature(String prefix) {
+            HostedType elementType = hostedType.getComponentType();
+            while (elementType.isArray()) {
+                elementType = elementType.getComponentType();
+            }
+            String loaderId = "";
+            if (elementType.isInstanceClass() || elementType.isInterface() || elementType.isEnum()) {
+                loaderId = UniqueShortNameProvider.singleton().uniqueShortLoaderName(elementType.getJavaClass().getClassLoader());
+            }
+            return super.typeSignature(prefix + loaderId);
+        }
+
+        @Override
         public DebugTypeKind typeKind() {
             return DebugTypeKind.ARRAY;
         }
@@ -847,6 +883,15 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         NativeImageDebugPrimitiveTypeInfo(HostedPrimitiveType primitiveType) {
             super(primitiveType);
             this.primitiveType = primitiveType;
+        }
+
+        @Override
+        public long typeSignature(String prefix) {
+            /*
+             * primitive types never need an indirection so use the same signature for places where
+             * we might want a special type
+             */
+            return super.typeSignature("");
         }
 
         @Override
@@ -917,9 +962,7 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
 
     private void logForeignTypeInfo(HostedType hostedType) {
         if (!isForeignPointerType(hostedType)) {
-            // non pointer type must be an interface because an instance needs to be pointed to
-            assert hostedType.isInterface();
-            // foreign word types never have element info
+            // foreign non-pointer word types never have element info
             debugContext.log(DebugContext.VERBOSE_LEVEL, "Foreign word type %s", hostedType.toJavaName());
         } else {
             ElementInfo elementInfo = nativeLibs.findElementInfo(hostedType);
@@ -2208,9 +2251,7 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
 
     public class NativeImageDebugLocalInfo implements DebugLocalInfo {
         protected final String name;
-        protected final ResolvedJavaType type;
-        protected final ResolvedJavaType valueType;
-        protected final String typeName;
+        protected ResolvedJavaType type;
         protected final JavaKind kind;
         protected int slot;
         protected int line;
@@ -2223,14 +2264,14 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
             // if we don't have a type default it for the JavaKind
             // it may still end up null when kind is Undefined.
             this.type = (resolvedType != null ? resolvedType : hostedTypeForKind(kind));
-
-            this.valueType = (type != null && type instanceof HostedType) ? getOriginal((HostedType) type) : type;
-            this.typeName = valueType == null ? "" : valueType().toJavaName();
         }
 
         @Override
         public ResolvedJavaType valueType() {
-            return valueType;
+            if (type != null && type instanceof HostedType) {
+                return getOriginal((HostedType) type);
+            }
+            return type;
         }
 
         @Override
@@ -2240,7 +2281,8 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
 
         @Override
         public String typeName() {
-            return typeName;
+            ResolvedJavaType valueType = valueType();
+            return (valueType == null ? "" : valueType().toJavaName());
         }
 
         @Override
@@ -2618,7 +2660,7 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
 
     private boolean acceptObjectInfo(ObjectInfo objectInfo) {
         /* This condition rejects filler partition objects. */
-        return (objectInfo.getPartition().getStartOffset() > 0);
+        return !objectInfo.getPartition().isFiller();
     }
 
     private DebugDataInfo createDebugDataInfo(ObjectInfo objectInfo) {

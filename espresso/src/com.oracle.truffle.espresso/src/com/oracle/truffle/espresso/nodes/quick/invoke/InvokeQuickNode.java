@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,11 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
@@ -45,7 +44,7 @@ public abstract class InvokeQuickNode extends QuickNode {
     public InvokeQuickNode(Method m, int top, int callerBCI) {
         super(top, callerBCI);
         this.method = m.getMethodVersion();
-        this.resultAt = top - (Signatures.slotsForParameters(m.getParsedSignature()) + (m.hasReceiver() ? 1 : 0));
+        this.resultAt = top - (SignatureSymbols.slotsForParameters(m.getParsedSignature()) + (m.hasReceiver() ? 1 : 0));
         this.stackEffect = (resultAt - top) + m.getReturnKind().getSlotCount();
         this.returnsPrimitive = m.getReturnKind().isPrimitive();
     }
@@ -54,7 +53,7 @@ public abstract class InvokeQuickNode extends QuickNode {
         super(top, callerBCI);
         this.method = version;
         Method m = version.getMethod();
-        this.resultAt = top - (Signatures.slotsForParameters(m.getParsedSignature()) + (m.hasReceiver() ? 1 : 0));
+        this.resultAt = top - (SignatureSymbols.slotsForParameters(m.getParsedSignature()) + (m.hasReceiver() ? 1 : 0));
         this.stackEffect = (resultAt - top) + m.getReturnKind().getSlotCount();
         this.returnsPrimitive = m.getReturnKind().isPrimitive();
     }
@@ -125,6 +124,6 @@ public abstract class InvokeQuickNode extends QuickNode {
 
     @Override
     public final String toString() {
-        return "INVOKE: " + method.getDeclaringKlass().getExternalName() + "." + method.getNameAsString() + ":" + method.getRawSignature();
+        return "INVOKE: " + method.getDeclaringKlass().getExternalName() + "." + method.getName() + ":" + method.getRawSignature();
     }
 }

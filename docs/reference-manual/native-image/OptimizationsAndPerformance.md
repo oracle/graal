@@ -24,9 +24,9 @@ The following table provides an overview of the different optimization levels an
 | `-O2` | Advanced | **Default:** Aims for good performance at a reasonable file size. |
 | `-O3` | All | Aims for the best performance at the cost of longer build times. Used automatically by Oracle GraalVM for [PGO builds](guides/optimize-native-executable-with-pgo.md) (`--pgo` option). `-O3` and `-O2` are identical in GraalVM Community Edition. |
 
-### Profile-Guided Optimizations for Improved Throughput
+### Profile-Guided Optimization for Improved Throughput
 
-Consider using Profile-Guided Optimizations to optimize your application for improved throughput.
+Consider using Profile-Guided Optimization (PGO) to optimize your application for improved throughput.
 These optimizations allow the Graal compiler to leverage profiling information, similar to when it is running as a JIT compiler, when AOT-compiling your application.
 For this, perform the following steps:
 
@@ -34,7 +34,27 @@ For this, perform the following steps:
 2. Run your instrumented application with a representative workload to generate profiling information. Profiles collected from this run are stored by default in the _default.iprof_ file.
 3. Rebuild your application with the `--pgo` option. You can pass a custom _.iprof_ file with `--pgo=<your>.iprof`, otherwise _default.iprof_ is used. This will rebuild your image and generate an optimized version of your application.
 
-Find more information on this topic in [Basic Usage of Profile-Guided Optimization](../PGO-Basic-Usage.md).
+> Note: Not available in GraalVM Community Edition.
+
+Find more information on this topic in [Basic Usage of Profile-Guided Optimization](PGO-Basic-Usage.md).
+
+### ML-Powered Profile Inference for Enhanced Performance
+
+Native Image supports machine learning-driven static profiling, as a built-in capability.
+By default, GraalVM runs at the `-O2` optimization level, which uses the simple and fast **Graal Static Profiler (GraalSP)** for profile inference.
+This model is optimized for a wide range of applications.
+
+As of GraalVM for JDK 24, the new **Graal Neural Network (GraalNN)** static profiler can be used for ML-powered profile inference, offering even better performance.
+Enable it by passing the `-O3` option to Native Image.
+
+> Note: Not available in GraalVM Community Edition.
+
+Note that if the user provides a [PGO profile](#profile-guided-optimization-for-improved-throughput) using the `--pgo` option, additional ML inference is unnecessary and therefore disabled automatically.
+
+Key Points:
+
+* **GraalSP** (simple model) is used with `-O2` by default.
+* **GraalNN** (advanced model) is used with `-O3` by default.
 
 ### Optimizing for Specific Machines
 
@@ -50,5 +70,6 @@ This reduces the set of instructions used by the compiler to a minimum and thus 
 
 Native Image provides additional features to further optimize a generated binary:
 - Choosing an appropriate Garbage Collector and tailoring the garbage collection policy can reduce GC times. See [Memory Management](MemoryManagement.md).
+- Using compressed references can lead to better memory efficiency. See [Object Header Size in Native Image](ObjectHeaderSize.md).
 - Loading application configuration during the image build can speed up application startup. See [Class Initialization at Image Build Time](ClassInitialization.md).
 - The build output may provide some other recommendations that help you get the best out of Native Image. See [Build Output: Recommendations](BuildOutput.md#recommendations).

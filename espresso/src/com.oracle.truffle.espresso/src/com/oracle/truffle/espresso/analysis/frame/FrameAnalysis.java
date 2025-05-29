@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.analysis.frame;
 
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.AALOAD;
@@ -233,34 +232,35 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor.Builder;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
-import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.classfile.bytecode.BytecodeSwitch;
-import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.ExceptionHandler;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
-import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeSwitch;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.ExceptionHandler;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
-import com.oracle.truffle.espresso.verifier.StackMapFrameParser;
-import com.oracle.truffle.espresso.verifier.VerificationTypeInfo;
+import com.oracle.truffle.espresso.shared.verifier.StackMapFrameParser;
+import com.oracle.truffle.espresso.shared.verifier.VerificationException;
+import com.oracle.truffle.espresso.shared.verifier.VerificationTypeInfo;
 
 /**
  * Statically analyses bytecodes to produce a {@link EspressoFrameDescriptor frame description} for
  * the given BCI.
  */
-public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Builder> {
+public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Builder, FrameAnalysis> {
     private final EspressoLanguage lang;
     private final Method.MethodVersion m;
     private final Function<Symbol<Type>, Klass> klassResolver;
@@ -281,9 +281,9 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
     boolean withStackMaps;
 
     @TruffleBoundary
-    public static EspressoFrameDescriptor apply(Method.MethodVersion m, int bci) {
+    public static EspressoFrameDescriptor apply(Method.MethodVersion m, int bci, LivenessAnalysis la) {
         try {
-            return new FrameAnalysis(bci, m).apply();
+            return new FrameAnalysis(bci, m, la).apply();
         } catch (Exception e) {
             throw EspressoError.shouldNotReachHere(String.format("Failed suspension during frame analysis of method '%s'", m), e);
         }
@@ -301,9 +301,9 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
         return bs;
     }
 
-    private FrameAnalysis(int targetBci, Method.MethodVersion m) {
+    private FrameAnalysis(int targetBci, Method.MethodVersion m, LivenessAnalysis la) {
         this.lang = m.getMethod().getLanguage();
-        this.la = m.getLivenessAnalysis();
+        this.la = la;
         this.bs = new BytecodeStream(m.getOriginalCode());
         this.targetBci = targetBci;
         this.states = new Builder[bs.endBCI()];
@@ -316,8 +316,8 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
     }
 
     private static void popSignature(Symbol<Type>[] sig, boolean isStatic, Builder frame) {
-        for (Symbol<Type> t : Signatures.iterable(sig, true, false)) {
-            JavaKind k = Types.getJavaKind(t).getStackKind();
+        for (Symbol<Type> t : SignatureSymbols.iterable(sig, true, false)) {
+            JavaKind k = TypeSymbols.getJavaKind(t).getStackKind();
             frame.pop(k);
         }
         if (!isStatic) {
@@ -387,8 +387,8 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
             receiverShift = 1;
         }
         int localPos = 0;
-        for (int sigPos = 0; sigPos < Signatures.parameterCount(sig); sigPos++) {
-            Symbol<Type> type = Signatures.parameterType(sig, sigPos);
+        for (int sigPos = 0; sigPos < SignatureSymbols.parameterCount(sig); sigPos++) {
+            Symbol<Type> type = SignatureSymbols.parameterType(sig, sigPos);
             FrameType ft;
             ft = FrameType.forType(type);
             frame.putLocal(receiverShift + localPos, ft);
@@ -403,7 +403,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
         assert frame.isRecord();
         states[0] = frame;
         StackMapTableAttribute stackMapFrame = m.getCodeAttribute().getStackMapFrame();
-        if (m.getCodeAttribute().getMajorVersion() == ClassfileParser.JAVA_6_VERSION ||
+        if (m.getPool().getMajorVersion() == ClassfileParser.JAVA_6_VERSION ||
                         stackMapFrame == null || stackMapFrame == StackMapTableAttribute.EMPTY) {
             // No stack maps: older class files, or classes that skips verification
             // Note, we do not trust classfile ver == 50, as they can have wrong maps, but pass
@@ -413,7 +413,11 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
         withStackMaps = true;
         // localPos overshoots by 1
         int lastLocal = receiverShift + localPos - 1;
-        StackMapFrameParser.parse(this, stackMapFrame, frame, lastLocal);
+        try {
+            StackMapFrameParser.parse(this, stackMapFrame, frame, lastLocal);
+        } catch (VerificationException e) {
+            throw EspressoError.shouldNotReachHere("Class should have been verified!");
+        }
     }
 
     private void buildStates(int startBci) {
@@ -737,7 +741,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
                 }
                 case PUTSTATIC, PUTFIELD: {
                     Symbol<Type> type = queryPoolType(bs.readCPI(bci), ConstantPool.Tag.FIELD_REF);
-                    if (Types.getJavaKind(type).needsTwoSlots()) {
+                    if (TypeSymbols.getJavaKind(type).needsTwoSlots()) {
                         frame.pop2();
                     } else {
                         frame.pop();
@@ -800,21 +804,21 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
     private static FrameType newPrimitiveArray(byte b) {
         switch (b) {
             case Constants.JVM_ArrayType_Boolean:
-                return FrameType.forType(Type._boolean_array);
+                return FrameType.forType(Types._boolean_array);
             case Constants.JVM_ArrayType_Char:
-                return FrameType.forType(Type._char_array);
+                return FrameType.forType(Types._char_array);
             case Constants.JVM_ArrayType_Float:
-                return FrameType.forType(Type._float_array);
+                return FrameType.forType(Types._float_array);
             case Constants.JVM_ArrayType_Double:
-                return FrameType.forType(Type._double_array);
+                return FrameType.forType(Types._double_array);
             case Constants.JVM_ArrayType_Byte:
-                return FrameType.forType(Type._byte_array);
+                return FrameType.forType(Types._byte_array);
             case Constants.JVM_ArrayType_Short:
-                return FrameType.forType(Type._short_array);
+                return FrameType.forType(Types._short_array);
             case Constants.JVM_ArrayType_Int:
-                return FrameType.forType(Type._int_array);
+                return FrameType.forType(Types._int_array);
             case Constants.JVM_ArrayType_Long:
-                return FrameType.forType(Type._long_array);
+                return FrameType.forType(Types._long_array);
             default:
                 throw EspressoError.shouldNotReachHere();
         }
@@ -823,8 +827,8 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
     private void handleInvoke(Builder frame, int bci, int opcode, boolean pushResult, ConstantPool.Tag tag) {
         Symbol<Type>[] sig = queryPoolSignature(bs.readCPI(bci), tag);
         popSignature(sig, opcode == INVOKESTATIC || opcode == INVOKEDYNAMIC, frame);
-        if (pushResult && Signatures.returnKind(sig) != JavaKind.Void) {
-            frame.push(FrameType.forType(Signatures.returnType(sig)));
+        if (pushResult && SignatureSymbols.returnKind(sig) != JavaKind.Void) {
+            frame.push(FrameType.forType(SignatureSymbols.returnType(sig)));
         }
     }
 
@@ -860,19 +864,19 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
                 frame.push(FrameType.DOUBLE);
                 break;
             case CLASS:
-                frame.push(FrameType.forType(Type.java_lang_Class));
+                frame.push(FrameType.forType(Types.java_lang_Class));
                 break;
             case STRING:
-                frame.push(FrameType.forType(Type.java_lang_String));
+                frame.push(FrameType.forType(Types.java_lang_String));
                 break;
             case METHODHANDLE:
-                frame.push(FrameType.forType(Type.java_lang_invoke_MethodHandle));
+                frame.push(FrameType.forType(Types.java_lang_invoke_MethodHandle));
                 break;
             case METHODTYPE:
-                frame.push(FrameType.forType(Type.java_lang_invoke_MethodType));
+                frame.push(FrameType.forType(Types.java_lang_invoke_MethodType));
                 break;
             case DYNAMIC: {
-                Symbol<Type> t = ((DynamicConstant) pool.at(cpi)).getTypeSymbol(pool);
+                Symbol<Type> t = pool.dynamicType(cpi);
                 frame.push(FrameType.forType(t));
                 break;
             }
@@ -940,7 +944,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
     }
 
     @Override
-    public StackMapFrameParser.FrameAndLocalEffect newFullFrame(VerificationTypeInfo[] stack, VerificationTypeInfo[] locals, int lastLocal) {
+    public StackMapFrameParser.FrameAndLocalEffect<Builder, FrameAnalysis> newFullFrame(VerificationTypeInfo[] stack, VerificationTypeInfo[] locals, int lastLocal) {
         Builder fullFrame = new Builder(m.getMaxLocals(), m.getMaxStackSize());
         for (VerificationTypeInfo vti : stack) {
             FrameType k = EspressoFrameDescriptor.fromTypeInfo(vti, this);
@@ -956,7 +960,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
             }
             pos++;
         }
-        return new StackMapFrameParser.FrameAndLocalEffect(fullFrame,
+        return new StackMapFrameParser.FrameAndLocalEffect<>(fullFrame,
                         // pos overshoots the actual last local position by one.
                         (pos - 1) - lastLocal);
     }
@@ -970,16 +974,18 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
 
     private Symbol<Type> queryPoolType(int cpi, ConstantPool.Tag tag) {
         switch (tag) {
-            case CLASS:
+            case CLASS: {
                 if (pool.isResolutionSuccessAt(cpi)) {
                     return pool.resolvedKlassAt(m.getDeclaringKlass(), cpi).getType();
                 }
-                return lang.getTypes().fromName(pool.classAt(cpi).getName(pool));
-            case FIELD_REF:
+                return lang.getTypes().fromClassNameEntry(pool.className(cpi));
+            }
+            case FIELD_REF: {
                 if (pool.isResolutionSuccessAt(cpi)) {
                     return pool.resolvedFieldAt(m.getDeclaringKlass(), cpi).getType();
                 }
-                return pool.fieldAt(cpi).getType(pool);
+                return pool.fieldType(cpi);
+            }
             default:
                 throw EspressoError.shouldNotReachHere();
         }
@@ -987,16 +993,18 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
 
     private Symbol<Type>[] queryPoolSignature(int cpi, ConstantPool.Tag tag) {
         switch (tag) {
-            case METHOD_REF:
+            case METHOD_REF: {
                 if (pool.isResolutionSuccessAt(cpi)) {
                     return pool.resolvedMethodAt(m.getDeclaringKlass(), cpi).getParsedSignature();
                 }
-                return lang.getSignatures().parsed(pool.methodAt(cpi).getSignature(pool));
-            case INVOKEDYNAMIC:
+                return lang.getSignatures().parsed(pool.methodSignature(cpi));
+            }
+            case INVOKEDYNAMIC: {
                 if (pool.isResolutionSuccessAt(cpi)) {
                     return pool.peekResolvedInvokeDynamic(cpi).getParsedSignature();
                 }
-                return lang.getSignatures().parsed(pool.indyAt(cpi).getSignature(pool));
+                return lang.getSignatures().parsed(pool.invokeDynamicSignature(cpi));
+            }
             default:
                 throw EspressoError.shouldNotReachHere();
         }

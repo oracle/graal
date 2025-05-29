@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ package org.graalvm.wasm.predefined.wasi.types;
 
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 /** Subscription to an event. */
 public final class Subscription {
@@ -62,26 +63,26 @@ public final class Subscription {
      * Reads user-provided value that is attached to the subscription in the implementation and
      * returned through {@code event::userdata}.
      */
-    public static long readUserdata(Node node, WasmMemory memory, int address) {
-        return memory.load_i64(node, address + 0);
+    public static long readUserdata(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return memoryLib.load_i64(memory, node, address + 0);
     }
 
     /**
      * Writes user-provided value that is attached to the subscription in the implementation and
      * returned through {@code event::userdata}.
      */
-    public static void writeUserdata(Node node, WasmMemory memory, int address, long value) {
-        memory.store_i64(node, address + 0, value);
+    public static void writeUserdata(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, long value) {
+        memoryLib.store_i64(memory, node, address + 0, value);
     }
 
     /** Reads the type of the event to which to subscribe, and its contents. */
-    public static int readU(Node node, WasmMemory memory, int address) {
-        return memory.load_i32(node, address + 8);
+    public static int readU(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return memoryLib.load_i32(memory, node, address + 8);
     }
 
     /** Writes the type of the event to which to subscribe, and its contents. */
-    public static void writeU(Node node, WasmMemory memory, int address, int value) {
-        memory.store_i32(node, address + 8, value);
+    public static void writeU(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, int value) {
+        memoryLib.store_i32(memory, node, address + 8, value);
     }
 
 }

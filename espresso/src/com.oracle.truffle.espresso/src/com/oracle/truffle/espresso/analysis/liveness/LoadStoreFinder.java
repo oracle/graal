@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.analysis.liveness;
 
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ALOAD_0;
@@ -83,11 +82,13 @@ public final class LoadStoreFinder {
     private final Graph<? extends LinkedBlock> graph;
     private final History[] blockHistory;
     private final BytecodeStream bs;
+    private final boolean doNotClearThis;
 
-    public LoadStoreFinder(Graph<? extends LinkedBlock> graph, Method method) {
+    public LoadStoreFinder(Graph<? extends LinkedBlock> graph, Method method, boolean doNotClearThis) {
         this.graph = graph;
         this.blockHistory = new History[graph.totalBlocks()];
         this.bs = new BytecodeStream(method.getOriginalCode());
+        this.doNotClearThis = doNotClearThis;
     }
 
     public void analyze() {
@@ -111,6 +112,9 @@ public final class LoadStoreFinder {
             } else if (isStore(opcode)) {
                 record = new Record(bci, findLocalIndex(bs, bci, opcode), TYPE.STORE);
                 needsTwoLocals = Bytecodes.stackEffectOf(opcode) == -2;
+            } else if (doNotClearThis && (Bytecodes.isControlSink(opcode))) {
+                // Ensures 'this' is alive across the entire method.
+                record = new Record(bci, 0, TYPE.LOAD);
             }
             if (record != null) {
                 history.add(record);

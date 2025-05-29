@@ -31,6 +31,8 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 
 @TargetClass(className = "jdk.internal.misc.Unsafe")
@@ -52,10 +54,11 @@ public final class Target_jdk_internal_misc_Unsafe_Reflection {
         if (field == null) {
             throw new NullPointerException();
         }
+        int layerNumber = ImageLayerBuildingSupport.buildingImageLayer() ? field.installedLayerNumber : MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
         if (SubstrateUtil.cast(field, Field.class).getType().isPrimitive()) {
-            return StaticFieldsSupport.getStaticPrimitiveFields();
+            return StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(layerNumber);
         } else {
-            return StaticFieldsSupport.getStaticObjectFields();
+            return StaticFieldsSupport.getStaticObjectFieldsAtRuntime(layerNumber);
         }
     }
 

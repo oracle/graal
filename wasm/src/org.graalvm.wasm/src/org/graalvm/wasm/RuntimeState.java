@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,12 +41,12 @@
 package org.graalvm.wasm;
 
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
-import org.graalvm.wasm.memory.NativeDataInstanceUtil;
 import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Represents the state of a WebAssembly module.
@@ -57,7 +57,7 @@ public abstract class RuntimeState {
     private static final int INITIAL_TABLES_SIZE = 1;
     private static final int INITIAL_MEMORIES_SIZE = 1;
 
-    private final WasmContext context;
+    private final WasmStore store;
     private final WasmModule module;
 
     /**
@@ -108,7 +108,7 @@ public abstract class RuntimeState {
      */
     private final int droppedDataInstanceOffset;
 
-    @CompilationFinal private Linker.LinkState linkState;
+    @CompilationFinal private volatile Linker.LinkState linkState;
 
     @CompilationFinal private int startFunctionIndex;
 
@@ -136,8 +136,8 @@ public abstract class RuntimeState {
         }
     }
 
-    public RuntimeState(WasmContext context, WasmModule module, int numberOfFunctions, int droppedDataInstanceOffset) {
-        this.context = context;
+    public RuntimeState(WasmStore store, WasmModule module, int numberOfFunctions, int droppedDataInstanceOffset) {
+        this.store = store;
         this.module = module;
         this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
         this.tableAddresses = new int[INITIAL_TABLES_SIZE];
@@ -179,8 +179,16 @@ public abstract class RuntimeState {
         this.linkState = Linker.LinkState.failed;
     }
 
+    public WasmStore store() {
+        return store;
+    }
+
     public WasmContext context() {
-        return context;
+        return store().context();
+    }
+
+    public Linker.LinkState linkState() {
+        return linkState;
     }
 
     public boolean isNonLinked() {
@@ -257,9 +265,15 @@ public abstract class RuntimeState {
         int functionIndex = function.index();
         WasmFunctionInstance functionInstance = functionInstances[functionIndex];
         if (functionInstance == null) {
-            functionInstance = new WasmFunctionInstance(instance(), function, target(functionIndex));
-            functionInstances[functionIndex] = functionInstance;
+            functionInstance = allocateFunctionInstance(function, functionIndex);
         }
+        return functionInstance;
+    }
+
+    @TruffleBoundary
+    private WasmFunctionInstance allocateFunctionInstance(WasmFunction function, int functionIndex) {
+        WasmFunctionInstance functionInstance = new WasmFunctionInstance(instance(), function, target(functionIndex));
+        functionInstances[functionIndex] = functionInstance;
         return functionInstance;
     }
 
@@ -296,21 +310,22 @@ public abstract class RuntimeState {
         dataInstances[index] = droppedDataInstanceOffset;
     }
 
-    public void dropUnsafeDataInstance(int index) {
-        final long address = dataInstanceAddress(index);
-        if (address != 0) {
-            NativeDataInstanceUtil.freeNativeInstance(address);
-        }
-        dataInstances[index] = droppedDataInstanceOffset;
-    }
-
     public int dataInstanceOffset(int index) {
         if (dataInstances == null || dataInstances[index] == droppedDataInstanceOffset) {
             return 0;
         }
         final int bytecodeOffset = dataInstances[index];
         final byte[] bytecode = module().bytecode();
-        return bytecodeOffset + (bytecode[bytecodeOffset] & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK) + 1;
+        final int encoding = bytecode[bytecodeOffset];
+        final int lengthEncoding = encoding & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK;
+        final int lengthLength = switch (lengthEncoding) {
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE -> 0;
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U8 -> 1;
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U16 -> 2;
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_I32 -> 4;
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return bytecodeOffset + 1 + lengthLength;
     }
 
     public int dataInstanceLength(int index) {
@@ -339,28 +354,6 @@ public abstract class RuntimeState {
                 throw CompilerDirectives.shouldNotReachHere();
         }
         return length;
-    }
-
-    public long dataInstanceAddress(int index) {
-        if (dataInstances == null || dataInstances[index] == droppedDataInstanceOffset) {
-            return 0;
-        }
-        final int bytecodeOffset = dataInstances[index];
-        final byte[] bytecode = module().bytecode();
-        final byte encoding = bytecode[bytecodeOffset];
-        final int lengthEncoding = encoding & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK;
-        switch (lengthEncoding) {
-            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE:
-                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 1);
-            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U8:
-                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 2);
-            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U16:
-                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 3);
-            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_I32:
-                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 5);
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
-        }
     }
 
     public int droppedDataInstanceOffset() {

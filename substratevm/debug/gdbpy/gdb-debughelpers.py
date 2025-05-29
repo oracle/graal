@@ -28,7 +28,6 @@ from typing import Iterable
 import sys
 import os
 import re
-import pdb
 
 import gdb
 import gdb.types
@@ -103,11 +102,13 @@ class SVMUtil:
     compression_shift = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_compression_shift')), 0, gdb.error)
     reserved_bits_mask = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_reserved_bits_mask')), 0, gdb.error)
     object_alignment = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_object_alignment')), 0, gdb.error)
+    heap_base_regnum = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_heap_base_regnum')), 0, gdb.error)
 
     string_type = gdb.lookup_type("java.lang.String")
     enum_type = gdb.lookup_type("java.lang.Enum")
     object_type = gdb.lookup_type("java.lang.Object")
-    hub_type = gdb.lookup_type("java.lang.Class")
+    object_header_type = gdb.lookup_type("_objhdr")
+    hub_type = gdb.lookup_type("Encoded$Dynamic$Hub")
     null = gdb.Value(0).cast(object_type.pointer())
     classloader_type = gdb.lookup_type("java.lang.ClassLoader")
     wrapper_types = [gdb.lookup_type(f'java.lang.{x}') for x in
@@ -124,38 +125,12 @@ class SVMUtil:
     deopt_stub_adr = 0
 
     @classmethod
-    def get_architecture(cls) -> str:
+    def get_heap_base(cls) -> gdb.Value:
         try:
-            arch_name = gdb.selected_frame().architecture().name()
+            return gdb.selected_frame().read_register(cls.heap_base_regnum)
         except gdb.error:
             # no frame available
-            arch_name = ""
-
-        if "x86-64" in arch_name:
-            return "amd64"
-        elif "aarch64" in arch_name:
-            return "arm64"
-        else:
-            return arch_name
-
-    @classmethod
-    def get_isolate_thread(cls) -> gdb.Value:
-        arch = cls.get_architecture()
-        if arch == "amd64":
-            return gdb.selected_frame().read_register('r15')
-        elif arch == "arm64":
-            return gdb.selected_frame().read_register('r28')
-        else:
             return cls.null
-
-    @classmethod
-    def get_heap_base(cls) -> gdb.Value:
-        arch = cls.get_architecture()
-        if arch == "amd64":
-            return gdb.selected_frame().read_register('r14')
-        elif arch == "arm64":
-            return gdb.selected_frame().read_register('r29')
-        return cls.null
 
     @classmethod
     def is_null(cls, obj: gdb.Value) -> bool:
@@ -166,7 +141,7 @@ class SVMUtil:
         # compressed types only exist for java type which are either struct or union
         if t.code != gdb.TYPE_CODE_STRUCT and t.code != gdb.TYPE_CODE_UNION:
             return t
-        result = cls.get_base_class(t) if cls.is_compressed(t) else t
+        result = cls.get_base_class(t) if (cls.is_compressed(t) and t != cls.hub_type) else t
         trace(f'<SVMUtil> - get_uncompressed_type({t}) = {result}')
         return result
 
@@ -202,7 +177,7 @@ class SVMUtil:
         # recreate compressed oop from the object address
         # this reverses the uncompress expression from
         # com.oracle.objectfile.elf.dwarf.DwarfInfoSectionImpl#writeIndirectOopConversionExpression
-        is_hub = cls.get_rtt(obj) == cls.hub_type
+        is_hub = cls.get_basic_type(obj.type) == cls.hub_type
         compression_shift = cls.compression_shift
         num_reserved_bits = int.bit_count(cls.reserved_bits_mask)
         num_alignment_bits = int.bit_count(cls.object_alignment - 1)
@@ -211,7 +186,7 @@ class SVMUtil:
             compressed_oop -= int(SVMUtil.get_heap_base())
             assert compression_shift >= 0
             compressed_oop = compressed_oop >> compression_shift
-        if is_hub:
+        if is_hub and num_reserved_bits != 0:
             assert compression_shift >= 0
             compressed_oop = compressed_oop << compression_shift
             assert num_alignment_bits >= 0
@@ -230,6 +205,11 @@ class SVMUtil:
 
     @classmethod
     def is_compressed(cls, t: gdb.Type) -> bool:
+        # for the hub type we always want handle it as compressed as there is no clear distinction in debug info for
+        # the hub field, and it may always have an expression in the type's data_location attribute
+        if cls.get_basic_type(t) == cls.hub_type:
+            return True
+
         type_name = cls.get_basic_type(t).name
         if type_name is None:
             # fallback to the GDB type printer for t
@@ -387,6 +367,9 @@ class SVMUtil:
     @classmethod
     def get_rtt(cls, obj: gdb.Value) -> gdb.Type:
         static_type = cls.get_basic_type(obj.type)
+
+        if static_type == cls.hub_type:
+            return cls.hub_type
 
         # check for interfaces and cast them to Object to make the hub accessible
         if cls.get_uncompressed_type(cls.get_basic_type(obj.type)).code == gdb.TYPE_CODE_UNION:
@@ -687,7 +670,8 @@ class SVMPPClass:
         trace('<SVMPPClass> - children (class field iterator)')
         if self.__skip_children:
             return
-        fields = [str(f.name) for f in SVMUtil.get_all_fields(self.__obj.type, svm_print_static_fields.value) if f.name != SVMUtil.hub_field_name]
+        # hide fields from the object header
+        fields = [str(f.name) for f in SVMUtil.get_all_fields(self.__obj.type, svm_print_static_fields.value) if f.parent_type != SVMUtil.object_header_type]
         for index, f in enumerate(fields):
             trace(f'<SVMPPClass> - children: field "{f}"')
             # apply custom limit only for java objects
@@ -1201,6 +1185,7 @@ class SVMCommandDebugPrettyPrinting(gdb.Command):
     def invoke(self, arg: str, from_tty: bool) -> None:
         trace(f'<SVMCommandDebugPrettyPrinting> - invoke({arg})')
         command = "gdb.execute('print {}')".format(arg.replace("'", "\\'"))
+        import pdb
         pdb.run(command)
 
 

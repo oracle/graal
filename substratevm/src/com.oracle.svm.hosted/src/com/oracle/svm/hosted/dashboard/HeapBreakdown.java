@@ -51,7 +51,7 @@ class HeapBreakdown {
         return sizes.entrySet().stream().collect(Collectors.toMap(Entry::getKey, (Entry<String, Statistics> e) -> new Long[]{e.getValue().size, e.getValue().count}));
     }
 
-    private static class Statistics {
+    private static final class Statistics {
         long size = 0;
         long count = 0;
     }

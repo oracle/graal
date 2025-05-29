@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,20 +35,34 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.StrideUtil;
+import jdk.graal.compiler.core.common.calc.CanonicalCondition;
+import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool.ArrayIndexOfVariant;
 import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
+import jdk.graal.compiler.nodes.ConditionAnchorNode;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.LogicConstantNode;
+import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.OptionalInlineOnlyInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.OptionalLazySymbol;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.replacements.InvocationPluginHelper;
 import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
@@ -58,12 +72,18 @@ import jdk.graal.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesMacroNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
+import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexMacroNode;
+import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
+import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins.Options;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Provides {@link InvocationPlugin}s for Truffle classes. These plugins are applied for host and
@@ -76,6 +96,107 @@ public class TruffleInvocationPlugins {
             registerTStringPlugins(plugins, replacements, architecture);
             registerArrayUtilsPlugins(plugins, replacements);
         }
+        registerFramePlugins(plugins, replacements);
+        registerBytecodePlugins(plugins, replacements);
+    }
+
+    private static void registerFramePlugins(InvocationPlugins plugins, Replacements replacements) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/impl/FrameWithoutBoxing;"));
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.impl.FrameWithoutBoxing", replacements);
+        r.register(new OptionalInlineOnlyInvocationPlugin("unsafeCast", Object.class, Class.class, boolean.class, boolean.class, boolean.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull,
+                            ValueNode isExactType) {
+                if (!clazz.isConstant() || !nonNull.isConstant() || !isExactType.isConstant()) {
+                    b.push(JavaKind.Object, object);
+                    return true;
+                }
+                if (!Options.TruffleTrustedTypeCast.getValue(b.getOptions())) {
+                    b.push(JavaKind.Object, object);
+                    return true;
+                }
+                ConstantReflectionProvider constantReflection = b.getConstantReflection();
+                ResolvedJavaType javaType = constantReflection.asJavaType(clazz.asConstant());
+                if (javaType == null) {
+                    b.push(JavaKind.Object, object);
+                    return true;
+                }
+
+                TypeReference type;
+                if (isExactType.asJavaConstant().asInt() != 0) {
+                    assert javaType.isConcrete() || javaType.isArray() : "exact type is not a concrete class: " + javaType;
+                    type = TypeReference.createExactTrusted(javaType);
+                } else {
+                    type = TypeReference.createTrusted(b.getAssumptions(), javaType);
+                }
+
+                boolean trustedNonNull = nonNull.asJavaConstant().asInt() != 0 && Options.TruffleTrustedNonNullCast.getValue(b.getOptions());
+                Stamp piStamp = StampFactory.object(type, trustedNonNull);
+
+                ConditionAnchorNode valueAnchorNode = null;
+                if (condition.isConstant() && condition.asJavaConstant().asInt() == 1) {
+                    // Nothing to do.
+                } else {
+                    boolean skipAnchor = false;
+                    LogicNode compareNode = CompareNode.createCompareNode(object.graph(), CanonicalCondition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection,
+                                    NodeView.DEFAULT);
+                    if (compareNode instanceof LogicConstantNode) {
+                        LogicConstantNode logicConstantNode = (LogicConstantNode) compareNode;
+                        if (logicConstantNode.getValue()) {
+                            skipAnchor = true;
+                        }
+                    }
+                    if (!skipAnchor) {
+                        valueAnchorNode = b.add(new ConditionAnchorNode(compareNode));
+                    }
+                }
+
+                b.addPush(JavaKind.Object, PiNode.create(castTrustedFinalFrameField(b, object), piStamp, valueAnchorNode));
+                return true;
+            }
+        });
+    }
+
+    /**
+     * Try to inject into the {@link LoadFieldNode} the property that it is a load from a trusted
+     * final field.
+     *
+     * @see ConstantFieldProvider#isTrustedFinal(CanonicalizerTool, ResolvedJavaField)
+     */
+    private static ValueNode castTrustedFinalFrameField(GraphBuilderContext b, ValueNode object) {
+        ValueNode result = object;
+        if (Options.TruffleTrustedFinalFrameFields.getValue(b.getOptions()) &&
+                        object instanceof LoadFieldNode loadField && loadField.field().isFinal()) {
+            result = b.add(loadField.withTrustInjected());
+        }
+        return result;
+    }
+
+    private static void registerBytecodePlugins(InvocationPlugins plugins, Replacements replacements) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/bytecode/BytecodeDSLUncheckedAccess;"));
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.bytecode.BytecodeDSLUncheckedAccess", replacements);
+        r.register(new OptionalInlineOnlyInvocationPlugin("uncheckedCast", Receiver.class, Object.class, Class.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                            ValueNode object, ValueNode clazz) {
+                if (!clazz.isConstant()) {
+                    b.push(JavaKind.Object, object);
+                    return true;
+                }
+                ConstantReflectionProvider constantReflection = b.getConstantReflection();
+                ResolvedJavaType javaType = constantReflection.asJavaType(clazz.asConstant());
+                if (javaType == null) {
+                    b.push(JavaKind.Object, object);
+                    return true;
+                }
+
+                TypeReference type = TypeReference.createTrustedWithoutAssumptions(javaType);
+                Stamp piStamp = StampFactory.object(type, true);
+                b.addPush(JavaKind.Object, PiNode.create(castTrustedFinalFrameField(b, object), piStamp, null));
+
+                return true;
+            }
+        });
     }
 
     private static void registerArrayUtilsPlugins(InvocationPlugins plugins, Replacements replacements) {
@@ -488,6 +609,27 @@ public class TruffleInvocationPlugins {
                 }
             }
         });
+
+        if (arch instanceof AMD64) {
+            r.register(new InlineOnlyInvocationPlugin("runCodePointIndexToByteIndexUTF8Valid", nodeType, byte[].class, long.class, int.class, int.class, boolean.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                                ValueNode array, ValueNode offset, ValueNode length, ValueNode index, ValueNode isNative) {
+                    MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, index, isNative);
+                    b.addPush(JavaKind.Int, new StringCodepointIndexToByteIndexMacroNode(params, StringCodepointIndexToByteIndexNode.InputEncoding.UTF_8, inferLocationIdentity(isNative)));
+                    return true;
+                }
+            });
+            r.register(new InlineOnlyInvocationPlugin("runCodePointIndexToByteIndexUTF16Valid", nodeType, byte[].class, long.class, int.class, int.class, boolean.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                                ValueNode array, ValueNode offset, ValueNode length, ValueNode index, ValueNode isNative) {
+                    MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, index, isNative);
+                    b.addPush(JavaKind.Int, new StringCodepointIndexToByteIndexMacroNode(params, StringCodepointIndexToByteIndexNode.InputEncoding.UTF_16, inferLocationIdentity(isNative)));
+                    return true;
+                }
+            });
+        }
     }
 
     private static boolean applyArrayCopy(GraphBuilderContext b, ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides) {

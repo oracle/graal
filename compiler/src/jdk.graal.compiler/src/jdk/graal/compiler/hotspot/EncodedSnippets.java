@@ -26,14 +26,13 @@ package jdk.graal.compiler.hotspot;
 
 import static jdk.graal.compiler.hotspot.HotSpotReplacementsImpl.isGraalClass;
 import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.nodes.NodeClassMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -44,7 +43,6 @@ import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.SymbolicJVMCIReference;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EncodedGraph;
@@ -72,9 +70,25 @@ import jdk.vm.ci.meta.UnresolvedJavaMethod;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public class EncodedSnippets {
+    /**
+     * Metadata about a graph encoded in {@link EncodedSnippets#snippetEncoding}.
+     */
     abstract static class GraphData {
+        /**
+         * The offset of the graph encoding in {@link EncodedSnippets#snippetEncoding}.
+         */
         int startOffset;
+
+        /**
+         * The key of the original method if the graph is for a substitute method.
+         *
+         * @see EncodedSnippets#methodKey(ResolvedJavaMethod)
+         */
         String originalMethod;
+
+        /**
+         * Info about a snippet's parameters derived from annotations and class file attributes.
+         */
         SnippetParameterInfo info;
 
         GraphData(int startOffset, String originalMethod, SnippetParameterInfo info) {
@@ -84,8 +98,8 @@ public class EncodedSnippets {
         }
 
         /**
-         * Record the data for an encoded graph. Most graphs are from static methods and can only
-         * have a single instantiation but snippets might come for a non-static method and rely on
+         * Records the data for an encoded graph. Most graphs are from static methods and can only
+         * have a single instantiation but snippets might come from a non-static method and rely on
          * the type of the receiver to devirtualize invokes. In that case each pair of method and
          * receiver represents a potentially different instantiation and these are linked into a
          * chain of {@link VirtualGraphData VirtualGraphDatas}.
@@ -93,7 +107,7 @@ public class EncodedSnippets {
          * @param startOffset offset of the encoded graph
          * @param originalMethod method parsed for the graph
          * @param snippetParameterInfo parameter information for snippets
-         * @param receiverClass static type of the receiver for non-virtual methods
+         * @param receiverClass type of the receiver for non-static methods
          * @param existingGraph a previous encoding of this same graph
          */
         public static GraphData create(int startOffset, String originalMethod, SnippetParameterInfo snippetParameterInfo, Class<?> receiverClass, GraphData existingGraph) {
@@ -156,12 +170,12 @@ public class EncodedSnippets {
 
     private final byte[] snippetEncoding;
     private final Object[] snippetObjects;
-    private final NodeClass<?>[] snippetNodeClasses;
+    private final NodeClassMap snippetNodeClasses;
     private final UnmodifiableEconomicMap<String, GraphData> graphDatas;
-    private final Map<Class<?>, SnippetResolvedJavaType> snippetTypes;
+    private final UnmodifiableEconomicMap<Class<?>, SnippetResolvedJavaType> snippetTypes;
 
-    EncodedSnippets(byte[] snippetEncoding, Object[] snippetObjects, NodeClass<?>[] snippetNodeClasses, UnmodifiableEconomicMap<String, GraphData> graphDatas,
-                    Map<Class<?>, SnippetResolvedJavaType> snippetTypes) {
+    EncodedSnippets(byte[] snippetEncoding, Object[] snippetObjects, NodeClassMap snippetNodeClasses, UnmodifiableEconomicMap<String, GraphData> graphDatas,
+                    UnmodifiableEconomicMap<Class<?>, SnippetResolvedJavaType> snippetTypes) {
         this.snippetEncoding = snippetEncoding;
         this.snippetObjects = snippetObjects;
         this.snippetNodeClasses = snippetNodeClasses;
@@ -169,7 +183,7 @@ public class EncodedSnippets {
         this.snippetTypes = snippetTypes;
     }
 
-    public NodeClass<?>[] getSnippetNodeClasses() {
+    public NodeClassMap getSnippetNodeClasses() {
         return snippetNodeClasses;
     }
 
@@ -183,18 +197,12 @@ public class EncodedSnippets {
         return type;
     }
 
-    public void visitImmutable(Consumer<Object> visitor) {
-        visitor.accept(snippetEncoding);
-        visitor.accept(snippetNodeClasses);
-        visitor.accept(graphDatas);
-    }
-
     /**
-     * Generate a String name for a method including all type information. Used as a symbolic key
-     * for lookup.
+     * Gets the signature of a method including all parameter and return type information that can
+     * be used as a symbolic key for lookup.
      */
     public static String methodKey(ResolvedJavaMethod method) {
-        return method.format("%H.%n(%P)");
+        return method.format("%H.%n(%P)%R");
     }
 
     StructuredGraph getEncodedSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, HotSpotReplacementsImpl replacements, Object[] args, StructuredGraph.AllowAssumptions allowAssumptions,
@@ -204,7 +212,7 @@ public class EncodedSnippets {
             data = graphDatas.get(methodKey(method));
         }
         if (data == null) {
-            if (inImageRuntimeCode()) {
+            if (LibGraalSupport.inLibGraalRuntime()) {
                 throw GraalError.shouldNotReachHere("snippet not found: " + method.format("%H.%n(%p)")); // ExcludeFromJacocoGeneratedReport
             } else {
                 return null;
@@ -222,7 +230,7 @@ public class EncodedSnippets {
             declaringClass = replacements.getProviders().getMetaAccess().lookupJavaType(Object.class);
         }
         SymbolicEncodedGraph encodedGraph = new SymbolicEncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, data.originalMethod, declaringClass);
-        return decodeSnippetGraph(encodedGraph, method, original, replacements, args, allowAssumptions, options, inImageRuntimeCode());
+        return decodeSnippetGraph(encodedGraph, method, original, replacements, args, allowAssumptions, options, LibGraalSupport.inLibGraalRuntime());
     }
 
     public SnippetParameterInfo getSnippetParameterInfo(ResolvedJavaMethod method) {
@@ -298,7 +306,7 @@ public class EncodedSnippets {
         if (args != null) {
             MetaAccessProvider meta = HotSpotReplacementsImpl.noticeTypes(providers.getMetaAccess());
             SnippetReflectionProvider snippetReflection = replacements.getProviders().getSnippetReflection();
-            if (inImageRuntimeCode()) {
+            if (LibGraalSupport.inLibGraalRuntime()) {
                 snippetReflection = new LibGraalSnippetReflectionProvider(snippetReflection);
             }
             parameterPlugin = new ConstantBindingParameterPlugin(args, meta, snippetReflection);
@@ -390,8 +398,8 @@ public class EncodedSnippets {
         private final ResolvedJavaType[] accessingClasses;
         private final String originalMethod;
 
-        SymbolicEncodedGraph(byte[] encoding, int startOffset, Object[] objects, NodeClass<?>[] types, String originalMethod, ResolvedJavaType... accessingClasses) {
-            super(encoding, startOffset, objects, types, null, null, false, false);
+        SymbolicEncodedGraph(byte[] encoding, int startOffset, Object[] objects, NodeClassMap nodeClasses, String originalMethod, ResolvedJavaType... accessingClasses) {
+            super(encoding, startOffset, objects, nodeClasses, null, null, false, false);
             this.accessingClasses = accessingClasses;
             this.originalMethod = originalMethod;
         }

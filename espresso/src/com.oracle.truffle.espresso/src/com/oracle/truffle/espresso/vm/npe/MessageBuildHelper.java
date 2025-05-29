@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.vm.npe;
 
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.AALOAD;
@@ -71,18 +70,17 @@ import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.SALOAD;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.SASTORE;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.SIPUSH;
 
-import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
-import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.MetaUtil;
@@ -267,10 +265,9 @@ final class MessageBuildHelper {
 
     private static void appendStaticField(Analysis analysis, StringBuilder sb, int bci) {
         ConstantPool pool = analysis.m.getConstantPool();
-        FieldRefConstant ref = pool.fieldAt(analysis.bs.readCPI(bci));
-        Symbol<Name> klassName = ref.getHolderKlassName(pool);
-        Symbol<Name> fieldName = ref.getName(pool);
-
+        int fieldIndex = analysis.bs.readCPI(bci);
+        Symbol<Name> klassName = pool.memberClassName(fieldIndex);
+        Symbol<Name> fieldName = pool.fieldName(fieldIndex);
         appendClassName(sb, klassName);
         sb.append(".").append(fieldName);
 
@@ -278,10 +275,11 @@ final class MessageBuildHelper {
 
     private static void appendMethodCall(Analysis analysis, StringBuilder sb, int bci) {
         ConstantPool pool = analysis.m.getConstantPool();
-        MethodRefConstant ref = pool.methodAt(analysis.bs.readCPI(bci));
-        Symbol<Name> klassName = ref.getHolderKlassName(pool);
-        Symbol<Name> methodName = ref.getName(pool);
-        Symbol<Signature> signature = ref.getSignature(pool);
+
+        int methodIndex = analysis.bs.readCPI(bci);
+        Symbol<Name> klassName = pool.memberClassName(methodIndex);
+        Symbol<Name> methodName = pool.methodName(methodIndex);
+        Symbol<Signature> signature = pool.methodSignature(methodIndex);
 
         appendClassName(sb, klassName);
         sb.append(".").append(methodName).append("(");
@@ -309,10 +307,10 @@ final class MessageBuildHelper {
         sb.append(n);
     }
 
-    private static void appendSignature(Signatures signatures, StringBuilder sb, Symbol<Signature> signature) {
-        Symbol<Type>[] sig = signatures.parsed(signature);
+    private static void appendSignature(SignatureSymbols signatureSymbols, StringBuilder sb, Symbol<Signature> signature) {
+        Symbol<Type>[] sig = signatureSymbols.parsed(signature);
         boolean first = true;
-        for (int i = 0; i < Signatures.parameterCount(sig); i++) {
+        for (int i = 0; i < SignatureSymbols.parameterCount(sig); i++) {
             Symbol<Type> type = sig[i];
             if (!first) {
                 sb.append(", ");
@@ -350,9 +348,9 @@ final class MessageBuildHelper {
         int currentSlot = m.isStatic() ? 0 : 1;
         int paramIndex = 1;
         Symbol<Type>[] sig = m.getParsedSignature();
-        for (int i = 0; i < Signatures.parameterCount(sig); i++) {
-            Symbol<Type> type = Signatures.parameterType(sig, i);
-            int slots = Types.slotCount(type);
+        for (int i = 0; i < SignatureSymbols.parameterCount(sig); i++) {
+            Symbol<Type> type = SignatureSymbols.parameterType(sig, i);
+            int slots = TypeSymbols.slotCount(type);
             if ((slot >= currentSlot) && (slot < currentSlot + slots)) {
                 sb.append("<parameter").append(paramIndex).append(">");
                 return;
@@ -395,7 +393,7 @@ final class MessageBuildHelper {
             case DASTORE:
                 return 3;
             case PUTFIELD:
-                return Types.slotCount(analysis.getFieldType(bci));
+                return TypeSymbols.slotCount(analysis.getFieldType(bci));
             case INVOKEVIRTUAL:
             case INVOKESPECIAL:
             case INVOKEINTERFACE:
@@ -403,10 +401,10 @@ final class MessageBuildHelper {
                 // Assume the call of a constructor can never cause a NullPointerException
                 // (which is true in Java). This is mainly used to avoid generating wrong
                 // messages for NullPointerExceptions created explicitly by new in Java code.
-                if (name == Name._init_) {
+                if (name == Names._init_) {
                     return EXPLICIT_NPE;
                 } else {
-                    return Signatures.slotsForParameters(analysis.getInvokeSignature(bci, opcode));
+                    return SignatureSymbols.slotsForParameters(analysis.getInvokeSignature(bci, opcode));
                 }
         }
         return INVALID_BYTECODE;

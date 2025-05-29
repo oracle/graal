@@ -27,6 +27,9 @@ package com.oracle.svm.core.layeredimagesingleton;
 import java.util.List;
 
 public interface ImageSingletonLoader {
+
+    List<Boolean> readBoolList(String keyName);
+
     int readInt(String keyName);
 
     List<Integer> readIntList(String keyName);
@@ -36,6 +39,4 @@ public interface ImageSingletonLoader {
     String readString(String keyName);
 
     List<String> readStringList(String keyName);
-
-    Class<?> lookupClass(String className);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,8 +50,10 @@ import java.util.Random;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.regex.AbstractConstantKeysObject;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.runtime.nodes.ToLongNode;
@@ -65,9 +67,69 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TruffleNull;
+import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 public final class InputStringGenerator {
+
+    public static final class InputString extends AbstractConstantKeysObject {
+
+        private static final String PROP_INPUT = "input";
+        private static final String PROP_FROM_INDEX = "fromIndex";
+        private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_INPUT, PROP_FROM_INDEX);
+
+        private final TruffleString input;
+        private final int fromIndex;
+        private final int matchStart;
+
+        public InputString(TruffleString input, int fromIndex, int matchStart) {
+            this.input = input;
+            this.fromIndex = fromIndex;
+            this.matchStart = matchStart;
+        }
+
+        public TruffleString input() {
+            return input;
+        }
+
+        public int fromIndex() {
+            return fromIndex;
+        }
+
+        public int matchStart() {
+            return matchStart;
+        }
+
+        @Override
+        public TruffleReadOnlyKeysArray getKeys() {
+            return KEYS;
+        }
+
+        @Override
+        public boolean isMemberReadableImpl(String symbol) {
+            switch (symbol) {
+                case PROP_INPUT:
+                case PROP_FROM_INDEX:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        @Override
+        public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
+            switch (symbol) {
+                case PROP_INPUT:
+                    return input;
+                case PROP_FROM_INDEX:
+                    return fromIndex;
+                default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw UnknownIdentifierException.create(symbol);
+            }
+        }
+    }
 
     private static final CodePointSet ALLOWED_CHARACTERS = CodePointSet.createNoDedup(0x1, 0x10ffff);
 
@@ -100,61 +162,128 @@ public final class InputStringGenerator {
         }
     }
 
-    private static final class Input {
+    private static final class InputStringBuilder {
         private final ArrayList<InputElement> elements = new ArrayList<>();
         private int nPrepended = 0;
 
-        public void append(InputElement e, boolean forward) {
+        private void append(InputElement e, boolean forward) {
             if (forward) {
                 elements.add(e);
             } else {
-                elements.addFirst(e);
+                elements.add(0, e);
                 nPrepended++;
             }
         }
 
-        public InputElement get(int index, boolean forward) {
+        private InputElement get(int index, boolean forward) {
             return elements.get(index + nPrepended - (forward ? 0 : 1));
         }
 
-        public void removeLast(boolean forward) {
+        private void removeLast(boolean forward) {
             if (forward) {
-                elements.removeLast();
+                elements.remove(elements.size() - 1);
             } else {
                 nPrepended--;
-                elements.removeFirst();
+                elements.remove(0);
             }
         }
 
-        public void replace(int index, boolean forward, InputElement element) {
+        private void replace(int index, boolean forward, InputElement element) {
             elements.set(index + nPrepended - (forward ? 0 : 1), element);
         }
 
-        public boolean hasNext(int index, boolean forward) {
+        private boolean hasNext(int index, boolean forward) {
             return forward ? index + nPrepended < elements.size() : index + nPrepended > 0;
         }
 
-        public TruffleString toTString(Random rng, TruffleString.Encoding encoding) {
-            int[] codepoints = new int[elements.size()];
+        private InputString toTString(Random rng, Encodings.Encoding encoding) {
+            CodePointSet anyChar = ALLOWED_CHARACTERS.createIntersectionSingleRange(encoding.getFullSet());
+            int prefixLength = (int) (clampedGauss(rng) * 20);
+            int suffixLength = (int) (clampedGauss(rng) * 20);
+            int[] codepoints = new int[elements.size() + prefixLength + suffixLength];
             for (int i = 0; i < elements.size(); i++) {
                 InputElement e = elements.get(i);
                 if (e instanceof CCElement) {
                     CodePointSet codePointSet = elements.get(i).getCodePointSet(this);
-                    int iRange = rng.nextInt(codePointSet.size());
-                    codepoints[i] = rng.nextInt(codePointSet.getLo(iRange), codePointSet.getHi(iRange) + 1);
+                    codepoints[prefixLength + i] = randChar(rng, codePointSet);
                 } else if (e instanceof BackRefElement backRef) {
-                    codepoints[i] = codepoints[backRef.ref];
+                    codepoints[prefixLength + i] = codepoints[prefixLength + backRef.ref + nPrepended];
                 }
             }
-            return TruffleString.fromIntArrayUTF32Uncached(codepoints).switchEncodingUncached(encoding);
+            // random characters before and after match
+            for (int i = 0; i < prefixLength; i++) {
+                codepoints[i] = randPrefixSuffixChar(rng, codepoints, prefixLength, anyChar);
+            }
+            for (int i = prefixLength + elements.size(); i < codepoints.length; i++) {
+                codepoints[i] = randPrefixSuffixChar(rng, codepoints, prefixLength, anyChar);
+            }
+            if (nPrepended < 0) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+            int matchStart = prefixLength + nPrepended;
+            // high chance to begin somewhere closely before the match start, and a small chance to
+            // begin after the match start
+            int iBeforeMatch = matchStart - (int) (clampedGauss(rng) * matchStart);
+            int iAfterMatch = (int) (clampedGauss(rng, 0.05) * Math.min(10, Math.max(0, elements.size() - nPrepended)));
+            int fromIndex = iBeforeMatch + iAfterMatch;
+            if (encoding == Encodings.UTF_16_RAW) {
+                char[] chars = new char[codepoints.length];
+                for (int i = 0; i < codepoints.length; i++) {
+                    chars[i] = (char) codepoints[i];
+                }
+                TruffleString string = TruffleString.fromCharArrayUTF16Uncached(chars);
+                return new InputString(string, fromIndex, matchStart);
+            }
+            TruffleString string = TruffleString.fromIntArrayUTF32Uncached(codepoints).switchEncodingUncached(encoding.getTStringEncoding());
+            return new InputString(string, translateIndex(string, encoding, fromIndex), translateIndex(string, encoding, matchStart));
+        }
+
+        private static int translateIndex(TruffleString string, Encodings.Encoding encoding, int index) {
+            TruffleString.Encoding tsEncoding = encoding.getTStringEncoding();
+            if (encoding == Encodings.UTF_32) {
+                return index;
+            } else {
+                int indexEnc = index == string.codePointLengthUncached(tsEncoding) ? string.byteLength(tsEncoding) : string.codePointIndexToByteIndexUncached(0, index, tsEncoding);
+                if (encoding == Encodings.UTF_16) {
+                    return indexEnc >> 1;
+                }
+                return indexEnc;
+            }
+        }
+
+        /**
+         * Absolute value of gauss distribution of values between -1.0 and 1.0, so effectively
+         * values from 0.0 to 1.0, with high bias towards 0.0.
+         */
+        private static double clampedGauss(Random rng) {
+            return clampedGauss(rng, 0.33);
+        }
+
+        private static double clampedGauss(Random rng, double stddev) {
+            return Math.min(1.0, Math.max(Math.abs(rng.nextGaussian(0, stddev)), 0.0));
+        }
+
+        private static int randChar(Random rng, CodePointSet codePointSet) {
+            int iRange = rng.nextInt(codePointSet.size());
+            return rng.nextInt(codePointSet.getLo(iRange), codePointSet.getHi(iRange) + 1);
+        }
+
+        private int randPrefixSuffixChar(Random rng, int[] codepoints, int prefixLength, CodePointSet anyChar) {
+            if (!elements.isEmpty() && rng.nextInt(10) < 8) {
+                // 80% chance to repeat a random character of the matching part
+                return codepoints[prefixLength + rng.nextInt(elements.size())];
+            } else {
+                // 20% chance for a completely random character
+                return randChar(rng, anyChar);
+            }
         }
     }
 
     private abstract static class InputElement {
 
-        abstract CodePointSet getCodePointSet(Input input);
+        abstract CodePointSet getCodePointSet(InputStringBuilder builder);
 
-        abstract CodePointSet setCodePointSet(CodePointSet cps, Input input);
+        abstract CodePointSet setCodePointSet(CodePointSet cps, InputStringBuilder builder);
     }
 
     private static final class CCElement extends InputElement {
@@ -165,12 +294,12 @@ public final class InputStringGenerator {
         }
 
         @Override
-        CodePointSet getCodePointSet(Input input) {
+        CodePointSet getCodePointSet(InputStringBuilder builder) {
             return cps;
         }
 
         @Override
-        CodePointSet setCodePointSet(CodePointSet cps, Input input) {
+        CodePointSet setCodePointSet(CodePointSet cps, InputStringBuilder builder) {
             return this.cps = cps;
         }
     }
@@ -183,13 +312,13 @@ public final class InputStringGenerator {
         }
 
         @Override
-        CodePointSet getCodePointSet(Input input) {
-            return input.get(ref, true).getCodePointSet(input);
+        CodePointSet getCodePointSet(InputStringBuilder builder) {
+            return builder.get(ref, true).getCodePointSet(builder);
         }
 
         @Override
-        CodePointSet setCodePointSet(CodePointSet cps, Input input) {
-            return input.get(ref, true).setCodePointSet(cps, input);
+        CodePointSet setCodePointSet(CodePointSet cps, InputStringBuilder builder) {
+            return builder.get(ref, true).setCodePointSet(cps, builder);
         }
     }
 
@@ -310,7 +439,7 @@ public final class InputStringGenerator {
 
         @Override
         void apply(InputStringGenerator gen) {
-            gen.input.removeLast(gen.forward);
+            gen.builder.removeLast(gen.forward);
             gen.decIndex();
         }
     }
@@ -327,7 +456,7 @@ public final class InputStringGenerator {
 
         @Override
         void apply(InputStringGenerator gen) {
-            gen.input.get(index, true).setCodePointSet(oldCPS, gen.input);
+            gen.builder.get(index, true).setCodePointSet(oldCPS, gen.builder);
             gen.decIndex();
         }
     }
@@ -344,7 +473,7 @@ public final class InputStringGenerator {
 
         @Override
         void apply(InputStringGenerator gen) {
-            gen.input.replace(index, true, oldElement);
+            gen.builder.replace(index, true, oldElement);
             gen.decIndex();
         }
     }
@@ -368,7 +497,7 @@ public final class InputStringGenerator {
     private final RegexAST ast;
     private final Random rng;
     private final int[] groupBoundaries;
-    private Input input = new Input();
+    private InputStringBuilder builder = new InputStringBuilder();
     private int index = 0;
     private boolean forward = true;
     private Term next;
@@ -481,11 +610,11 @@ public final class InputStringGenerator {
     }
 
     @TruffleBoundary
-    public static TruffleString generate(RegexAST ast, long rngSeed) {
+    public static InputString generate(RegexAST ast, long rngSeed) {
         return new InputStringGenerator(ast, rngSeed).generate();
     }
 
-    private TruffleString generate() {
+    private InputString generate() {
         next = ast.getRoot();
         while (true) {
             switch (state) {
@@ -494,13 +623,13 @@ public final class InputStringGenerator {
                 }
                 case backtrack -> {
                     if (backtrackStack.isEmpty()) {
-                        return input.toTString(rng, ast.getEncoding().getTStringEncoding());
+                        return builder.toTString(rng, ast.getEncoding());
                     } else {
                         backtrackStack.pop().apply(this);
                     }
                 }
                 case done -> {
-                    return input.toTString(rng, ast.getEncoding().getTStringEncoding());
+                    return builder.toTString(rng, ast.getEncoding());
                 }
             }
         }
@@ -602,17 +731,17 @@ public final class InputStringGenerator {
                 state = State.backtrack;
                 return;
             }
-            if (input.hasNext(index, forward)) {
-                CodePointSet old = input.get(index, forward).getCodePointSet(input);
-                CodePointSet intersection = cps.createIntersection(input.get(index, forward).getCodePointSet(input), scratch);
+            if (builder.hasNext(index, forward)) {
+                CodePointSet old = builder.get(index, forward).getCodePointSet(builder);
+                CodePointSet intersection = cps.createIntersection(builder.get(index, forward).getCodePointSet(builder), scratch);
                 if (intersection.isEmpty()) {
                     state = State.backtrack;
                     return;
                 }
-                input.get(index, forward).setCodePointSet(intersection, input);
+                builder.get(index, forward).setCodePointSet(intersection, builder);
                 backtrackStack.push(new SetCCElement(index - (forward ? 0 : 1), old));
             } else {
-                input.append(new CCElement(cps), forward);
+                builder.append(new CCElement(cps), forward);
                 backtrackStack.push(new AppendElement());
             }
             incIndex();
@@ -627,22 +756,22 @@ public final class InputStringGenerator {
                 return;
             }
             for (int i = start; i < end; i++) {
-                if (input.hasNext(index, forward)) {
-                    InputElement old = input.get(index, forward);
+                if (builder.hasNext(index, forward)) {
+                    InputElement old = builder.get(index, forward);
                     int indexDirect = index - (forward ? 0 : 1);
                     if (i != indexDirect) {
-                        input.replace(index, forward, new BackRefElement(i));
+                        builder.replace(index, forward, new BackRefElement(i));
                         backtrackStack.push(new ReplaceElement(indexDirect, old));
                     }
                 } else {
-                    input.append(new BackRefElement(i), forward);
+                    builder.append(new BackRefElement(i), forward);
                     backtrackStack.push(new AppendElement());
                 }
                 incIndex();
             }
             afterTerm(term);
         } else if (term.isSubexpressionCall()) {
-            processGroup(ast.getGroup(term.asSubexpressionCall().getGroupNr()));
+            processGroup(ast.getGroup(term.asSubexpressionCall().getGroupNr()).get(0));
         } else {
             throw CompilerDirectives.shouldNotReachHere();
         }

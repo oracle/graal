@@ -25,13 +25,15 @@
 
 package com.oracle.svm.core.jfr.traceid;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
 import com.oracle.svm.core.thread.VMOperation;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Class holding the current JFR epoch. JFR uses an epoch system to safely separate constant pool
@@ -42,7 +44,12 @@ public class JfrTraceIdEpoch {
     private static final long EPOCH_0_BIT = 0b01;
     private static final long EPOCH_1_BIT = 0b10;
 
-    private boolean epoch;
+    /**
+     * Start the epoch id at 1, so that we can inject fields into JDK classes that store the epoch
+     * id (see for example {@link Target_java_lang_VirtualThread#jfrEpochId}). This avoids problems
+     * with uninitialized injected fields that have the value 0 by default.
+     */
+    private long epochId = 1;
 
     @Fold
     public static JfrTraceIdEpoch getInstance() {
@@ -56,26 +63,36 @@ public class JfrTraceIdEpoch {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void changeEpoch() {
         assert VMOperation.isInProgressAtSafepoint();
-        epoch = !epoch;
+        epochId++;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     long thisEpochBit() {
-        return epoch ? EPOCH_1_BIT : EPOCH_0_BIT;
+        return getEpoch() ? EPOCH_1_BIT : EPOCH_0_BIT;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     long previousEpochBit() {
-        return epoch ? EPOCH_0_BIT : EPOCH_1_BIT;
+        return getEpoch() ? EPOCH_0_BIT : EPOCH_1_BIT;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean currentEpoch() {
-        return epoch;
+        return getEpoch();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean previousEpoch() {
-        return !epoch;
+        return !getEpoch();
+    }
+
+    @Uninterruptible(reason = "Prevent epoch from changing.", callerMustBe = true)
+    public long currentEpochId() {
+        return epochId;
+    }
+
+    @Uninterruptible(reason = "Prevent epoch from changing.", callerMustBe = true)
+    private boolean getEpoch() {
+        return (epochId & 1) == 0;
     }
 }

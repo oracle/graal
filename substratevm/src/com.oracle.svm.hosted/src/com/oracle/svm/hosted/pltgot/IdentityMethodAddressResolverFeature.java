@@ -133,7 +133,7 @@ public class IdentityMethodAddressResolverFeature implements InternalFeature {
 
             ObjectFile.RelocationKind relocationKind = ObjectFile.RelocationKind.getDirect(wordSize);
             for (int gotEntryNo = 0; gotEntryNo < got.length; ++gotEntryNo) {
-                offsetsSectionBuffer.addRelocationWithoutAddend(gotEntryNo * wordSize, relocationKind, new MethodPointer(got[gotEntryNo], true));
+                offsetsSectionBuffer.addRelocationWithoutAddend(gotEntryNo * wordSize, relocationKind, new MethodPointer(got[gotEntryNo], false));
             }
 
             imageObjectFile.createDefinedSymbol(offsetsSection.getName(), offsetsSection, 0, 0, false, false);

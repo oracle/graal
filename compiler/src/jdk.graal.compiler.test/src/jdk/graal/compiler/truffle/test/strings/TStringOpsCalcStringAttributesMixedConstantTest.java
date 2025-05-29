@@ -40,10 +40,10 @@ public class TStringOpsCalcStringAttributesMixedConstantTest extends TStringOpsC
 
     static {
         try {
-            Method methodLatin1 = T_STRING_OPS_CLASS.getDeclaredMethod("calcStringAttributesLatin1", com.oracle.truffle.api.nodes.Node.class, Object.class, int.class, int.class);
+            Method methodLatin1 = T_STRING_OPS_CLASS.getDeclaredMethod("calcStringAttributesLatin1", com.oracle.truffle.api.nodes.Node.class, byte[].class, long.class, int.class);
             methodLatin1.setAccessible(true);
             calcLatin1 = MethodHandles.lookup().unreflect(methodLatin1);
-            Method methodUTF16 = T_STRING_OPS_CLASS.getDeclaredMethod("calcStringAttributesUTF16", com.oracle.truffle.api.nodes.Node.class, Object.class, int.class, int.class, boolean.class);
+            Method methodUTF16 = T_STRING_OPS_CLASS.getDeclaredMethod("calcStringAttributesUTF16", com.oracle.truffle.api.nodes.Node.class, byte[].class, long.class, int.class, boolean.class);
             methodUTF16.setAccessible(true);
             calcUTF16 = MethodHandles.lookup().unreflect(methodUTF16);
         } catch (NoSuchMethodException | IllegalAccessException e) {
@@ -63,7 +63,7 @@ public class TStringOpsCalcStringAttributesMixedConstantTest extends TStringOpsC
         test("runTestMethod", arrayA, offsetA, lengthA, false);
     }
 
-    public static long runTestMethod(Object array, int offset, int length, boolean condition) throws Throwable {
+    public static long runTestMethod(byte[] array, long offset, int length, boolean condition) throws Throwable {
         if (condition) {
             return (long) calcUTF16.invokeExact(DUMMY_LOCATION, array, offset, length, false);
         } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package org.graalvm.wasm.predefined.wasi;
 
 import org.graalvm.wasm.WasmArguments;
-import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -65,7 +64,7 @@ public final class WasiClockResGetNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+    public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         final Object[] args = frame.getArguments();
         assert WasmArguments.getArgumentCount(args) == 3;
 
@@ -78,7 +77,7 @@ public final class WasiClockResGetNode extends WasmBuiltinRootNode {
         switch (clockId) {
             case Realtime:
             case Monotonic:
-                memory.store_i64(this, resultAddress, CLOCK_RESOLUTION_NANOS);
+                memoryLib.store_i64(memory, this, resultAddress, CLOCK_RESOLUTION_NANOS);
                 break;
             case ProcessCputimeId:
             case ThreadCputimeId:

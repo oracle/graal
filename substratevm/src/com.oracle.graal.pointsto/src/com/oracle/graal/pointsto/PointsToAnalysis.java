@@ -45,6 +45,7 @@ import java.util.stream.StreamSupport;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
+import com.oracle.graal.pointsto.flow.AlwaysEnabledPredicateFlow;
 import com.oracle.graal.pointsto.flow.AnyPrimitiveSourceTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
@@ -53,8 +54,8 @@ import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
-import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AbstractUnsafeLoadTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTypeFlow;
+import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.UnsafeLoadTypeFlow;
+import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.UnsafeStoreTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -103,15 +104,15 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
      */
     private final boolean trackPrimitiveValues;
     private final AnalysisType longType;
-    private final AnalysisType voidType;
     private final boolean usePredicates;
     private AnyPrimitiveSourceTypeFlow anyPrimitiveSourceTypeFlow;
+    private AlwaysEnabledPredicateFlow alwaysEnabledPredicateFlow;
 
     protected final boolean trackTypeFlowInputs;
     protected final boolean reportAnalysisStatistics;
 
-    private ConcurrentMap<AbstractUnsafeLoadTypeFlow, Boolean> unsafeLoads;
-    private ConcurrentMap<AbstractUnsafeStoreTypeFlow, Boolean> unsafeStores;
+    private ConcurrentMap<UnsafeLoadTypeFlow, Boolean> unsafeLoads;
+    private ConcurrentMap<UnsafeStoreTypeFlow, Boolean> unsafeStores;
 
     public final AtomicLong numParsedGraphs = new AtomicLong();
     private final CompletionExecutor.Timing timing;
@@ -127,12 +128,13 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
         this.objectType = metaAccess.lookupJavaType(Object.class);
         this.longType = metaAccess.lookupJavaType(long.class);
-        this.voidType = metaAccess.lookupJavaType(void.class);
 
         this.trackPrimitiveValues = PointstoOptions.TrackPrimitiveValues.getValue(options);
         this.usePredicates = PointstoOptions.UsePredicates.getValue(options);
         this.anyPrimitiveSourceTypeFlow = new AnyPrimitiveSourceTypeFlow(null, longType);
         this.anyPrimitiveSourceTypeFlow.enableFlow(null);
+        this.alwaysEnabledPredicateFlow = new AlwaysEnabledPredicateFlow();
+
         /*
          * Make sure the all-instantiated type flow is created early. We do not have any
          * instantiated types yet, so the state is empty at first.
@@ -145,8 +147,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             PointsToStats.init(this);
         }
 
-        unsafeLoads = new ConcurrentHashMap<>();
-        unsafeStores = new ConcurrentHashMap<>();
+        unsafeLoads = analysisPolicy.useConservativeUnsafeAccess() ? null : new ConcurrentHashMap<>();
+        unsafeStores = analysisPolicy.useConservativeUnsafeAccess() ? null : new ConcurrentHashMap<>();
 
         timing = PointstoOptions.ProfileAnalysisOperations.getValue(options) ? new AnalysisTiming() : null;
         executor.init(timing);
@@ -200,11 +202,11 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         return new MethodTypeFlowBuilder(bb, method, flowsGraph, graphKind);
     }
 
-    public void registerUnsafeLoad(AbstractUnsafeLoadTypeFlow unsafeLoad) {
+    public void registerUnsafeLoad(UnsafeLoadTypeFlow unsafeLoad) {
         unsafeLoads.putIfAbsent(unsafeLoad, true);
     }
 
-    public void registerUnsafeStore(AbstractUnsafeStoreTypeFlow unsafeStore) {
+    public void registerUnsafeStore(UnsafeStoreTypeFlow unsafeStore) {
         unsafeStores.putIfAbsent(unsafeStore, true);
     }
 
@@ -216,13 +218,16 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
      *            unsafe access flows that need to be updated.
      */
     public void forceUnsafeUpdate(AnalysisField field) {
+        if (analysisPolicy.useConservativeUnsafeAccess()) {
+            return;
+        }
         /*
          * It is cheaper to post the flows of all loads and stores even if they are not related to
          * the provided field.
          */
 
         // force update of the unsafe loads
-        for (AbstractUnsafeLoadTypeFlow unsafeLoad : unsafeLoads.keySet()) {
+        for (UnsafeLoadTypeFlow unsafeLoad : unsafeLoads.keySet()) {
             /* Force update for unsafe accessed static fields. */
             unsafeLoad.forceUpdate(this);
 
@@ -237,7 +242,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         }
 
         // force update of the unsafe stores
-        for (AbstractUnsafeStoreTypeFlow unsafeStore : unsafeStores.keySet()) {
+        for (UnsafeStoreTypeFlow unsafeStore : unsafeStores.keySet()) {
             /* Force update for unsafe accessed static fields. */
             unsafeStore.forceUpdate(this);
 
@@ -289,6 +294,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     public void cleanupAfterAnalysis() {
         super.cleanupAfterAnalysis();
         anyPrimitiveSourceTypeFlow = null;
+        alwaysEnabledPredicateFlow = null;
         unsafeLoads = null;
         unsafeStores = null;
 
@@ -307,10 +313,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         return longType;
     }
 
-    public AnalysisType getVoidType() {
-        return voidType;
-    }
-
     public AnalysisType getObjectArrayType() {
         return metaAccess.lookupJavaType(Object[].class);
     }
@@ -326,6 +328,10 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     public AnyPrimitiveSourceTypeFlow getAnyPrimitiveSourceTypeFlow() {
         return anyPrimitiveSourceTypeFlow;
+    }
+
+    public AlwaysEnabledPredicateFlow getAlwaysEnabledPredicateFlow() {
+        return alwaysEnabledPredicateFlow;
     }
 
     @Override
@@ -353,10 +359,17 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         return addRootMethod(analysisMethod, invokeSpecial, reason, otherRoots);
     }
 
+    protected void validateRootMethodRegistration(AnalysisMethod aMethod, boolean invokeSpecial) {
+        if (invokeSpecial && aMethod.isAbstract()) {
+            throw AnalysisError.userError("Abstract methods cannot be registered as special invoke entry points.");
+        }
+    }
+
     @Override
     @SuppressWarnings("try")
     public AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
         assert !universe.sealed() : "Cannot register root methods after analysis universe is sealed.";
+        validateRootMethodRegistration(aMethod, invokeSpecial);
         AnalysisError.guarantee(aMethod.isOriginalMethod());
         boolean isStatic = aMethod.isStatic();
         int paramCount = aMethod.getSignature().getParameterCount(!isStatic);
@@ -369,8 +382,12 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              * initialized with the corresponding parameter declared type.
              */
             Consumer<PointsToAnalysisMethod> triggerStaticMethodFlow = (pointsToMethod) -> {
+                /*
+                 * Make sure that the method is registered as root immediately, so that a potential
+                 * subsequent registration as native entrypoint does not fail.
+                 */
+                pointsToMethod.registerAsDirectRootMethod(reason);
                 postTask(() -> {
-                    pointsToMethod.registerAsDirectRootMethod(reason);
                     pointsToMethod.registerAsImplementationInvoked(reason.toString());
                     MethodFlowsGraphInfo flowInfo = analysisPolicy.staticRootMethodGraph(this, pointsToMethod);
                     for (int idx = 0; idx < paramCount; idx++) {
@@ -387,9 +404,10 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                 triggerStaticMethodFlow.accept(ptaMethod);
             }
         } else {
-            if (invokeSpecial && originalPTAMethod.isAbstract()) {
-                throw AnalysisError.userError("Abstract methods cannot be registered as special invoke entry point.");
-            }
+            /*
+             * Always treat constructors as invokeSpecial.
+             */
+            boolean overrideInvokeSpecial = invokeSpecial || originalPTAMethod.isConstructor();
             /*
              * For special invoked methods trigger method resolution by using the
              * context-insensitive special invoke type flow. This will resolve the method in its
@@ -412,12 +430,12 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              * will be done during callee resolution.
              */
             postTask(() -> {
-                if (invokeSpecial) {
+                if (overrideInvokeSpecial) {
                     originalPTAMethod.registerAsDirectRootMethod(reason);
                 } else {
                     originalPTAMethod.registerAsVirtualRootMethod(reason);
                 }
-                InvokeTypeFlow invoke = originalPTAMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, invokeSpecial, MultiMethod.ORIGINAL_METHOD);
+                InvokeTypeFlow invoke = originalPTAMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, overrideInvokeSpecial, MultiMethod.ORIGINAL_METHOD);
                 /*
                  * Initialize the type flow of the invoke's actual parameters with the corresponding
                  * parameter declared type. Thus, when the invoke links callees it will propagate
@@ -501,12 +519,15 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     @Override
     public AnalysisType addRootField(Field field) {
-        AnalysisField analysisField = getMetaAccess().lookupJavaField(field);
-        if (analysisField.isStatic()) {
-            return addRootStaticField(analysisField);
+        return addRootField(getMetaAccess().lookupJavaField(field));
+    }
+
+    @Override
+    public AnalysisType addRootField(AnalysisField field) {
+        if (field.isStatic()) {
+            return addRootStaticField(field);
         } else {
-            AnalysisType analysisType = getMetaAccess().lookupJavaType(field.getDeclaringClass());
-            return addRootField(analysisType, analysisField);
+            return addRootField(field.getDeclaringClass(), field);
         }
     }
 
@@ -632,6 +653,27 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         }
     }
 
+    @Override
+    public void afterAnalysis() {
+        /*
+         * Only verify in the context-insensitive analysis because context-sensitive analysis is not
+         * compatible with predicates.
+         */
+        assert analysisPolicy().isContextSensitiveAnalysis() || validateFixedPointState();
+    }
+
+    /**
+     * This method checks that the typeflow graph is in a valid state when a fixed point is reached.
+     * The goal of this check is to detect cases where the analysis did not propagate all updates
+     * correctly (e.g. due to a concurrency bug) and provide concrete localized counter-examples to
+     * ease the debugging of such issues.
+     * <p/>
+     * As these checks can be expensive, this method should be executed only if asserts are enabled.
+     */
+    public boolean validateFixedPointState() {
+        return universe.getMethods().parallelStream().allMatch(m -> m.validateFixedPointState(this));
+    }
+
     @SuppressWarnings("try")
     public boolean doTypeflow() throws InterruptedException {
         boolean didSomeWork;
@@ -651,7 +693,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         /* Register the type as instantiated with all its super types. */
 
         assert type.isInstantiated() : type;
-        AnalysisError.guarantee(type.isArray() || (type.isInstanceClass() && !type.isAbstract()));
+        AnalysisError.guarantee(type.isArray() || (type.isInstanceClass() && !type.isAbstract()), "Type %s must be either an array, or a non abstract instance class", type.getName());
 
         TypeState typeState = TypeState.forExactType(this, type, true);
         TypeState typeStateNonNull = TypeState.forExactType(this, type, false);

@@ -36,7 +36,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
@@ -76,7 +76,7 @@ public final class ReferenceHandlerThread implements Runnable {
 
     @Override
     public void run() {
-        ThreadingSupportImpl.pauseRecurringCallback("An exception in a recurring callback must not interrupt pending reference processing because it could result in a memory leak.");
+        RecurringCallbackSupport.suspendCallbackTimer("An exception in a recurring callback must not interrupt pending reference processing because it could result in a memory leak.");
 
         this.isolateThread = CurrentIsolate.getCurrentThread();
         try {
@@ -91,7 +91,7 @@ public final class ReferenceHandlerThread implements Runnable {
             if (t instanceof OutOfMemoryError && VMThreads.isTearingDown()) {
                 // Likely failed to allocate the InterruptedException, ignore either way.
             } else {
-                VMError.shouldNotReachHere("Reference processing and cleaners must handle all potential exceptions", t);
+                throw VMError.shouldNotReachHere("Reference processing and cleaners must handle all potential exceptions", t);
             }
         }
     }

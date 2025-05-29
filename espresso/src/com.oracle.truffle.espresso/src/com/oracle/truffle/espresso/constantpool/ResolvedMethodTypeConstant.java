@@ -22,18 +22,13 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.constantpool.MethodTypeConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
+import java.lang.invoke.MethodType;
+
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
-import java.lang.invoke.MethodType;
-
-public final class ResolvedMethodTypeConstant implements MethodTypeConstant, Resolvable.ResolvedConstant {
+public final class ResolvedMethodTypeConstant implements ResolvedConstant {
     private final @JavaType(MethodType.class) StaticObject resolved;
 
     ResolvedMethodTypeConstant(@JavaType(MethodType.class) StaticObject resolved) {
@@ -41,13 +36,12 @@ public final class ResolvedMethodTypeConstant implements MethodTypeConstant, Res
     }
 
     @Override
-    public Symbol<Signature> getSignature(ConstantPool pool) {
-        // TODO(peterssen): Assert valid signature.
-        throw EspressoError.shouldNotReachHere("Method type already resolved !");
+    public @JavaType(MethodType.class) StaticObject value() {
+        return resolved;
     }
 
     @Override
-    public @JavaType(MethodType.class) StaticObject value() {
-        return resolved;
+    public Tag tag() {
+        return Tag.METHODTYPE;
     }
 }

@@ -57,9 +57,9 @@ local graal_suite_root = root_ci.graal_suite_root;
     }
   },
 
-  ocamlbuild:: {
+  ocaml_dune:: {
     downloads+: {
-      OCAML_DIR: {name: 'ocamlbuild', version: '0.14.0', platformspecific: true},
+      OCAML_DIR: {name: 'ocaml-dune', version: '3.16.1', platformspecific: true},
     },
     environment+: {
       PATH: "$OCAML_DIR/bin:$PATH",
@@ -126,7 +126,7 @@ local graal_suite_root = root_ci.graal_suite_root;
     timelimit: '45:00',
   },
 
-  gate_graalwasm_ocaml_full:: self.gate_graalwasm_emsdk_full + self.ocamlbuild,
+  gate_graalwasm_ocaml_full:: self.gate_graalwasm_emsdk_full + self.ocaml_dune,
 
   gate_graalwasm_coverage:: self.wabt_emsdk + self.setup_emsdk + {
     environment+: {
@@ -158,12 +158,12 @@ local graal_suite_root = root_ci.graal_suite_root;
       ]
     ],
     logs: ['bench-results.json'],
-    capabilities+: ['e3'],
+    capabilities+: ['x52'],
     timelimit: '1:00:00',
   },
 
   eclipse_jdt              :: common.deps.pylint + common.deps.eclipse + common.deps.jdt,
   wabt_emsdk               :: common.deps.wasm + self.emsdk,
-  wabt_emsdk_ocamlbuild    :: common.deps.wasm + self.emsdk + self.ocamlbuild,
+  wabt_emsdk_ocamlbuild    :: common.deps.wasm + self.emsdk + self.ocaml_dune,
 
 }

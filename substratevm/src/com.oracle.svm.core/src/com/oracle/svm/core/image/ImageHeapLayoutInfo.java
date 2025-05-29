@@ -56,8 +56,6 @@ public class ImageHeapLayoutInfo {
 
         assert readOnlyRelocatableOffset + readOnlyRelocatableSize <= writablePatchedOffset : Assertions.errorMessage("the writable patched section is placed after the relocations",
                         readOnlyRelocatableOffset, readOnlyRelocatableSize, writablePatchedOffset);
-        assert writablePatchedOffset >= writableOffset && ((writablePatchedOffset + writablePatchedSize) <= (writableOffset + writableSize)) : Assertions
-                        .errorMessage("writable patched section must be fully contained in the writable section", writablePatchedOffset, writablePatchedSize, writableOffset, writableSize);
     }
 
     public long getStartOffset() {

@@ -42,25 +42,19 @@ public final class DebuggerConnection implements Commands {
         this.context = controller.getContext();
     }
 
-    static void establishDebuggerConnection(DebuggerController controller, DebuggerController.SetupState setupState, boolean isReconnect, CountDownLatch latch) {
-        Thread jdwpReceiver = new Thread(new JDWPReceiver(controller, setupState, isReconnect, latch), "jdwp-receiver");
-        controller.addDebuggerThread(jdwpReceiver);
+    static void establishDebuggerConnection(DebuggerController controller, DebuggerController.SetupState setupState, boolean isReconnect, CountDownLatch startupLatch) {
+        Thread jdwpReceiver = new Thread(new JDWPReceiver(controller, setupState, isReconnect, startupLatch), "jdwp-receiver");
+        controller.addDebuggerReceiverThread(jdwpReceiver);
         jdwpReceiver.setDaemon(true);
         jdwpReceiver.start();
     }
 
-    static void reconnectDebuggerConnection(DebuggerController controller, DebuggerController.SetupState setupState) {
-        // On reconnect, we just pass a placeholder CountDownLatch object which we don't ever wait
-        // for. This avoids tedious null checks in the connection method.
-        establishDebuggerConnection(controller, setupState, true, new CountDownLatch(1));
+    public void dispose() {
+        connection.dispose();
     }
 
-    public void close() {
-        try {
-            connection.close(controller);
-        } catch (IOException e) {
-            throw new RuntimeException("Closing socket connection failed", e);
-        }
+    public void closeSocket() {
+        connection.closeSocket();
     }
 
     @Override
@@ -115,9 +109,7 @@ public final class DebuggerConnection implements Commands {
 
         @Override
         public void run() {
-            while (!Thread.currentThread().isInterrupted()) {
-                socketConnection.awaitSendPacket();
-            }
+            socketConnection.sendPackets();
         }
     }
 
@@ -154,27 +146,50 @@ public final class DebuggerConnection implements Commands {
                 if (!HandshakeController.handshake(connectionSocket)) {
                     throw new IOException("Unable to handshake with debugger");
                 }
-                SocketConnection socketConnection = new SocketConnection(connectionSocket);
-                debuggerConnection = new DebuggerConnection(socketConnection, controller);
-                controller.setDebuggerConnection(debuggerConnection);
-                controller.getEventListener().setConnection(socketConnection);
-                if (!controller.isSuspend()) {
-                    // Fire the vm started event for the suspend=n case.
-                    // For suspend=y we have to synchronize the sending of VM started event with
-                    // the thread suspension count. Therefore, in that case we postpone the sending
-                    // until we can also suspend the main thread which is done in
-                    // DebuggerController#onLanguageContextInitialized.
-                    controller.getEventListener().vmStarted(false);
-                }
+                try {
+                    if (controller.isClosing()) {
+                        return;
+                    }
+                    // The following block has to be synchronized with resetting, so that
+                    // we can abandon further work in case we're told to tear down
+                    controller.getResettingLock().lockInterruptibly();
+                    // re-check to return immediately if closing
+                    if (controller.isClosing()) {
+                        return;
+                    }
+                    SocketConnection socketConnection = new SocketConnection(connectionSocket);
+                    debuggerConnection = new DebuggerConnection(socketConnection, controller);
+                    controller.setDebuggerConnection(debuggerConnection);
+                    controller.getEventListener().setConnection(socketConnection);
+                    if (!controller.isSuspend()) {
+                        // Fire the vm started event for the suspend=n case.
+                        // For suspend=y we have to synchronize the sending of VM started event with
+                        // the thread suspension count. Therefore, in that case we postpone the
+                        // sending until we can also suspend the main thread which is done in
+                        // DebuggerController#onLanguageContextInitialized.
+                        controller.getEventListener().vmStarted(false);
+                    }
 
-                // OK, we're ready to fire up the JDWP transmitter thread too
-                Thread jdwpSender = new Thread(new JDWPSender(socketConnection), "jdwp-transmitter");
-                controller.addDebuggerThread(jdwpSender);
-                jdwpSender.setDaemon(true);
-                jdwpSender.start();
+                    // OK, we're ready to fire up the JDWP transmitter thread too
+                    Thread jdwpSender = new Thread(new JDWPSender(socketConnection), "jdwp-transmitter");
+                    controller.addDebuggerSenderThread(jdwpSender);
+                    jdwpSender.setDaemon(true);
+                    jdwpSender.start();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                } finally {
+                    controller.getResettingLock().unlock();
+                }
             } catch (IOException ex) {
                 if (isReconnect) {
-                    System.err.println("ERROR: Debuggers will not be able to connect to this context again!");
+                    // could be because we're closing down the context, so we should check that and
+                    // silently abort the re-connecting attempt
+                    if (controller.isClosing()) {
+                        return;
+                    } else {
+                        System.err.println("ERROR: Debuggers will not be able to connect to this context again!");
+                    }
                 } else {
                     // on startup any connection error is treated as fatal
                     controller.markLateStartupError(ex);
@@ -186,15 +201,19 @@ public final class DebuggerConnection implements Commands {
             }
             // Now, begin processing packets when they start to flow from the debugger
             try {
-                while (!Thread.currentThread().isInterrupted()) {
+                while (!Thread.currentThread().isInterrupted() && !controller.isClosing()) {
                     try {
                         processPacket(Packet.fromByteArray(debuggerConnection.connection.readPacket()));
                     } catch (IOException e) {
+                        if (!debuggerConnection.isOpen()) {
+                            // when the socket is closed, we're done
+                            break;
+                        }
                         if (!Thread.currentThread().isInterrupted()) {
                             controller.warning(() -> "Failed to process jdwp packet with message: " + e.getMessage());
                         }
                     } catch (ConnectionClosedException e) {
-                        // we closed the session, so let the thread run dry
+                        break;
                     }
                 }
             } finally {
@@ -223,7 +242,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.VirtualMachine.CLASSES_BY_SIGNATURE.createReply(packet, controller, context);
                                     break;
                                 case JDWP.VirtualMachine.ALL_CLASSES.ID:
-                                    result = JDWP.VirtualMachine.ALL_CLASSES.createReply(packet, context);
+                                    result = JDWP.VirtualMachine.ALL_CLASSES.createReply(packet, context, controller);
                                     break;
                                 case JDWP.VirtualMachine.ALL_THREADS.ID:
                                     result = JDWP.VirtualMachine.ALL_THREADS.createReply(packet, context, controller);
@@ -244,7 +263,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.VirtualMachine.RESUME.createReply(packet, controller);
                                     break;
                                 case JDWP.VirtualMachine.EXIT.ID:
-                                    result = JDWP.VirtualMachine.EXIT.createReply(packet, context);
+                                    result = JDWP.VirtualMachine.EXIT.createReply(packet, context, controller);
                                     break;
                                 case JDWP.VirtualMachine.CREATE_STRING.ID:
                                     result = JDWP.VirtualMachine.CREATE_STRING.createReply(packet, context);

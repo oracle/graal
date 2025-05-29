@@ -26,10 +26,14 @@ package com.oracle.svm.core.jfr;
 
 import java.util.function.BooleanSupplier;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Returns {@code true} if the Native Image is built with JFR support. This does not necessarily
@@ -43,6 +47,7 @@ public class HasJfrSupport implements BooleanSupplier {
 
     @Fold
     public static boolean get() {
+        VMError.guarantee(BuildPhaseProvider.isFeatureRegistrationFinished(), "HasJfrSupport.get() must not be called before the feature registration is finished.");
         return ImageSingletons.contains(JfrManager.class);
     }
 }
@@ -55,6 +60,7 @@ public class HasJfrSupport implements BooleanSupplier {
 class JfrHostedEnabled implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
+        VMError.guarantee(BuildPhaseProvider.isFeatureRegistrationFinished(), "JfrHostedEnabled.get() must not be called before the feature registration is finished.");
         return ImageSingletons.contains(JfrManager.class) && ImageSingletons.lookup(JfrManager.class).hostedEnabled;
     }
 }

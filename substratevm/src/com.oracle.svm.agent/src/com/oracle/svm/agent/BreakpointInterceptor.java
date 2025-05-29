@@ -101,7 +101,6 @@ import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventMode;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiLocationFormat;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -666,6 +665,36 @@ final class BreakpointInterceptor {
         return handleResourceRegistration(jni, nullHandle(), callerClass, bp.specification.methodName, state.getFullStackTraceOrNull(), fromJniString(jni, name), null);
     }
 
+    private static boolean getZipEntry(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        String name = fromJniString(jni, getObjectArgument(thread, 1));
+        if (name == null) {
+            return true;
+        }
+
+        if (name.startsWith("META-INF") || name.endsWith(".class")) {
+            /*
+             * Ignore classfiles and META-INF entries that get queried during regular class loading.
+             * This is a heuristic; we might miss genuine program accesses here. It may be possible
+             * (though potentially expensive) to walk the call stack to determine whether this
+             * access comes from a class loader.
+             */
+            return true;
+        }
+        JNIObjectHandle zipFileReceiver = getReceiver(thread);
+        String zipFileName = fromJniString(jni, Support.callObjectMethod(jni, zipFileReceiver, agent.handles().getJavaUtilZipZipFileGetName(jni)));
+        if (!agent.classPathEntries.contains(zipFileName)) {
+            return true;
+        }
+
+        JNIObjectHandle selfClazz = jniFunctions().getGetObjectClass().invoke(jni, zipFileReceiver);
+        if (clearException(jni)) {
+            selfClazz = nullHandle();
+        }
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+
+        return handleResourceRegistration(jni, selfClazz, callerClass, bp.specification.methodName, state.getFullStackTraceOrNull(), name, null);
+    }
+
     private static boolean newProxyInstance(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
         JNIObjectHandle classLoader = getObjectArgument(thread, 0);
@@ -1102,7 +1131,7 @@ final class BreakpointInterceptor {
             name = nullHandle();
         }
         var className = fromJniString(jni, name);
-        traceSerializeBreakpoint(jni, "ObjectInputStream.readClassDescriptor", true, state.getFullStackTraceOrNull(), className, null);
+        traceSerializeBreakpoint(jni, "ObjectInputStream.readClassDescriptor", true, state.getFullStackTraceOrNull(), className);
         return true;
     }
 
@@ -1158,7 +1187,7 @@ final class BreakpointInterceptor {
                     Object interfaceNames = getClassArrayNames(jni, interfaces);
                     traceSerializeBreakpoint(jni, "ProxyClassSerialization", validObjectStreamClassInstance, state.getFullStackTraceOrNull(), interfaceNames);
                 } else {
-                    traceSerializeBreakpoint(jni, "ObjectStreamClass.<init>", validObjectStreamClassInstance, state.getFullStackTraceOrNull(), className, null);
+                    traceSerializeBreakpoint(jni, "ObjectStreamClass.<init>", validObjectStreamClassInstance, state.getFullStackTraceOrNull(), className);
                 }
             }
         }
@@ -1177,13 +1206,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle serializeTargetClass = getObjectArgument(thread, 1);
         if (Support.isSerializable(jni, serializeTargetClass)) {
             String serializeTargetClassName = getClassNameOrNull(jni, serializeTargetClass);
-
-            JNIObjectHandle customConstructorObj = getObjectArgument(thread, 2);
-            JNIObjectHandle customConstructorClass = jniFunctions().getGetObjectClass().invoke(jni, customConstructorObj);
-            JNIMethodId getDeclaringClassNameMethodID = agent.handles().getJavaLangReflectConstructorDeclaringClassName(jni, customConstructorClass);
-            JNIObjectHandle declaredClassNameObj = Support.callObjectMethod(jni, customConstructorObj, getDeclaringClassNameMethodID);
-            String customConstructorClassName = fromJniString(jni, declaredClassNameObj);
-            traceSerializeBreakpoint(jni, "ObjectStreamClass.<init>", true, state.getFullStackTraceOrNull(), serializeTargetClassName, customConstructorClassName);
+            traceSerializeBreakpoint(jni, "ObjectStreamClass.<init>", true, state.getFullStackTraceOrNull(), serializeTargetClassName);
         }
         return true;
     }
@@ -1196,14 +1219,9 @@ final class BreakpointInterceptor {
         }
         recursive.set(true);
         try {
-            JNIObjectHandle rectifiedThread = rectifyCurrentThread(thread);
-            if (rectifiedThread.equal(nullHandle())) {
-                return;
-            }
-
             Breakpoint bp = installedBreakpoints.get(method.rawValue());
             InterceptedState state = interceptedStateSupplier.get();
-            if (bp.specification.handler.dispatch(jni, rectifiedThread, bp, state)) {
+            if (bp.specification.handler.dispatch(jni, thread, bp, state)) {
                 guarantee(!testException(jni));
             }
         } catch (Throwable t) {
@@ -1211,28 +1229,6 @@ final class BreakpointInterceptor {
         } finally {
             recursive.set(false);
         }
-    }
-
-    /**
-     * The JVMTI implementation of JDK 19 can pass the platform thread as current thread for events
-     * in a virtual thread that happen while temporarily switching to the carrier thread (such as
-     * scheduling an unpark). It also ignores the frames of a virtual thread when passing
-     * {@code NULL} to {@code GetLocal*} to refer to the current thread (JDK-8292657). This method
-     * calls {@code GetCurrentThread}, which seems to always return the virtual thread and can be
-     * used to properly read the locals in the breakpoint.
-     */
-    private static JNIObjectHandle rectifyCurrentThread(JNIObjectHandle thread) {
-        if (Support.jvmtiVersion() != JvmtiInterface.JVMTI_VERSION_19) {
-            return thread;
-        }
-
-        WordPointer threadPtr = StackValue.get(WordPointer.class);
-        JvmtiError error = jvmtiFunctions().GetCurrentThread().invoke(jvmtiEnv(), threadPtr);
-        if (error == JvmtiError.JVMTI_ERROR_WRONG_PHASE) {
-            return nullHandle();
-        }
-        check(error);
-        return threadPtr.read();
     }
 
     @CEntryPoint
@@ -1300,7 +1296,8 @@ final class BreakpointInterceptor {
                 return;
             }
         }
-        if (jniFunctions().getIsInstanceOf().invoke(jni, loader, agent.handles().jdkInternalReflectDelegatingClassLoader)) {
+        JNIObjectHandle jdkInternalReflectDelegatingClassLoader = agent.handles().jdkInternalReflectDelegatingClassLoader;
+        if (!jdkInternalReflectDelegatingClassLoader.equal(nullHandle()) && jniFunctions().getIsInstanceOf().invoke(jni, loader, jdkInternalReflectDelegatingClassLoader)) {
             return;
         }
         byte[] data = new byte[classDataLen];
@@ -1626,6 +1623,7 @@ final class BreakpointInterceptor {
                      * NOTE: get(System)ResourceAsStream() generallys call get(System)Resource(), no
                      * additional breakpoints necessary
                      */
+                    brk("java/util/zip/ZipFile", "getEntry", "(Ljava/lang/String;)Ljava/util/zip/ZipEntry;", BreakpointInterceptor::getZipEntry),
 
                     brk("java/lang/reflect/Proxy", "getProxyClass", "(Ljava/lang/ClassLoader;[Ljava/lang/Class;)Ljava/lang/Class;", BreakpointInterceptor::getProxyClass),
                     brk("java/lang/reflect/Proxy", "newProxyInstance",

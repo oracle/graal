@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.impl;
 
 import java.util.ArrayList;
@@ -32,20 +31,22 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.espresso.constantpool.Resolution;
-import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
-import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.NameSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
 import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -123,7 +124,6 @@ public abstract class ClassRegistry {
         public final boolean isHidden;
         public final boolean isStrongHidden;
         public final boolean forceAllowVMAnnotations;
-        public long klassID = -1;
 
         public boolean addedToRegistry() {
             return !isAnonymousClass() && !isHidden();
@@ -249,6 +249,33 @@ public abstract class ClassRegistry {
     protected final ConcurrentHashMap<Symbol<Type>, ClassRegistries.RegistryEntry> classes = new ConcurrentHashMap<>();
 
     /**
+     * The map from class name symbol hashcode to the up-to-date bytes that represent the input to a
+     * retranformation as defined per
+     * java.lang.instrument.Instrumentation#retransformClasses(Class[]). This map is only
+     * initialized/used when java agents are present.
+     */
+    private volatile ConcurrentHashMap<Klass, byte[]> retransformBytes;
+
+    @TruffleBoundary
+    public void registerRetransformBytes(Klass klass, byte[] bytes) {
+        if (retransformBytes == null) {
+            synchronized (this) {
+                // double-checked locking
+                if (retransformBytes == null) {
+                    retransformBytes = new ConcurrentHashMap<>();
+                }
+            }
+        }
+        retransformBytes.put(klass, bytes);
+    }
+
+    @TruffleBoundary
+    public byte[] getRetransformBytes(Klass klass) {
+        assert retransformBytes != null;
+        return retransformBytes.get(klass);
+    }
+
+    /**
      * Strong hidden classes must be referenced by the class loader data to prevent them from being
      * reclaimed, while not appearing in the actual registry. This field simply keeps those hidden
      * classes strongly reachable from the class registry.
@@ -276,7 +303,7 @@ public abstract class ClassRegistry {
     }
 
     public void initUnnamedModule(StaticObject unnamedModule) {
-        this.unnamed = ModuleEntry.createUnnamedModuleEntry(unnamedModule, this);
+        this.unnamed = modules.createUnnamedModuleEntry(unnamedModule);
     }
 
     /**
@@ -290,12 +317,12 @@ public abstract class ClassRegistry {
     @SuppressWarnings("try")
     Klass loadKlass(EspressoContext context, Symbol<Type> type, StaticObject protectionDomain) throws EspressoClassLoadingException {
         ClassLoadingEnv env = context.getClassLoadingEnv();
-        if (Types.isArray(type)) {
+        if (TypeSymbols.isArray(type)) {
             Klass elemental = loadKlass(context, env.getTypes().getElementalType(type), protectionDomain);
             if (elemental == null) {
                 return null;
             }
-            return elemental.getArrayClass(Types.getArrayDimensions(type));
+            return elemental.getArrayClass(TypeSymbols.getArrayDimensions(type));
         }
 
         loadKlassCountInc();
@@ -335,6 +362,7 @@ public abstract class ClassRegistry {
 
     public abstract @JavaType(ClassLoader.class) StaticObject getClassLoader();
 
+    @TruffleBoundary
     public List<Klass> getLoadedKlasses() {
         ArrayList<Klass> klasses = new ArrayList<>(classes.size());
         for (ClassRegistries.RegistryEntry entry : classes.values()) {
@@ -344,13 +372,13 @@ public abstract class ClassRegistry {
     }
 
     public Klass findLoadedKlass(ClassLoadingEnv env, Symbol<Type> type) {
-        if (Types.isArray(type)) {
+        if (TypeSymbols.isArray(type)) {
             Symbol<Type> elemental = env.getTypes().getElementalType(type);
             Klass elementalKlass = findLoadedKlass(env, elemental);
             if (elementalKlass == null) {
                 return null;
             }
-            return elementalKlass.getArrayClass(Types.getArrayDimensions(type));
+            return elementalKlass.getArrayClass(TypeSymbols.getArrayDimensions(type));
         }
         ClassRegistries.RegistryEntry entry = classes.get(type);
         if (entry == null) {
@@ -364,8 +392,33 @@ public abstract class ClassRegistry {
     }
 
     @SuppressWarnings("try")
-    public ObjectKlass defineKlass(EspressoContext context, Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) throws EspressoClassLoadingException {
+    public ObjectKlass defineKlass(EspressoContext context, Symbol<Type> typeOrNull, final byte[] initialBytes, ClassDefinitionInfo info) throws EspressoClassLoadingException {
         ClassLoadingEnv env = context.getClassLoadingEnv();
+        byte[] bytes = initialBytes;
+        // When agents are present we need to retain the bytes we must use for a future
+        // retransformation. Those are the bytes resulting from applying all retransform incapable
+        // transformers.
+        byte[] beforeRetransformBytes = null;
+        if (context.getJavaAgents() != null && !info.isHidden() && !info.isAnonymousClass()) {
+            // we must not apply a transformation on a class that was loaded in response
+            // to an ongoing transformation, so we check our ThreadLocal state
+            EspressoThreadLocalState tls = context.getLanguage().getThreadLocalState();
+            if (!tls.isInTransformer()) {
+                try (EspressoThreadLocalState.TransformerScope transformerScope = tls.transformerScope()) {
+                    ModuleEntry module = getGuestModuleInstance(typeOrNull, context);
+                    StaticObject protectionDomain = info.protectionDomain == null ? StaticObject.NULL : info.protectionDomain;
+                    beforeRetransformBytes = context.getJavaAgents().applyTransformers(StaticObject.NULL, module.module(), getClassLoader(), typeOrNull, protectionDomain, initialBytes);
+                    bytes = context.getJavaAgents().applyRetransformers(StaticObject.NULL, module.module(), getClassLoader(), typeOrNull, protectionDomain, beforeRetransformBytes);
+                    if (bytes != initialBytes) {
+                        // When bytes are modified, we need to grant module read access
+                        // to potentially injected helper classes in the unnamed module
+                        // of the bootstrap and system class loader.
+                        context.getJavaAgents().grantReadAccessToUnnamedModules(module);
+                    }
+                }
+            }
+        }
+
         ParserKlass parserKlass;
         try (DebugCloseable parse = KLASS_PARSE.scope(env.getTimers())) {
             parserKlass = parseKlass(env, bytes, typeOrNull, info);
@@ -386,28 +439,69 @@ public abstract class ClassRegistry {
         if (info.isAnonymousClass() && info.patches != null) {
             patchAnonymousClass(klass.getConstantPool(), info.patches);
         }
+        if (ConstantPoolPatcher.shouldPatchPool(type, context)) {
+            ConstantPoolPatcher.patchConstantPool(context, type, klass.getConstantPool());
+        }
 
         if (info.addedToRegistry()) {
-            registerKlass(klass, type);
+            registerKlass(klass, type, beforeRetransformBytes);
         } else if (info.isStrongHidden()) {
             registerStrongHiddenClass(klass);
         }
         return klass;
     }
 
+    private ModuleEntry getGuestModuleInstance(Symbol<Type> typeOrNull, EspressoContext context) {
+        // we need the package symbol first
+        Symbol<Name> pkgSymbol = typeOrNull == null ? context.getNames().getOrCreate(ByteSequence.EMPTY) : context.getNames().getOrCreate(TypeSymbols.getRuntimePackage(typeOrNull));
+        // then obtain the package entry
+        PackageTable.PackageEntry pkgEntry = getPackageEntry(context, pkgSymbol);
+        // from the package entry we can now get the module
+        return getModuleEntry(pkgEntry);
+    }
+
+    public PackageTable.PackageEntry getPackageEntry(EspressoContext context, Symbol<Name> pkgSymbol) {
+        PackageTable.PackageEntry pkgEntry = null;
+        if (!NameSymbols.isUnnamedPackage(pkgSymbol)) {
+            pkgEntry = packages().lookup(pkgSymbol);
+            // If the package name is not found in the entry table, it is an indication that the
+            // package has not been defined. Consider it defined within the unnamed module.
+            if (pkgEntry == null) {
+                if (!context.getRegistries().javaBaseDefined()) {
+                    // Before java.base is defined during bootstrapping, define all packages in
+                    // the java.base module.
+                    pkgEntry = packages().lookupOrCreate(pkgSymbol, context.getRegistries().getJavaBaseModule());
+                } else {
+                    pkgEntry = packages().lookupOrCreate(pkgSymbol, getUnnamedModule());
+                }
+            }
+        }
+        return pkgEntry;
+    }
+
+    private ModuleEntry getModuleEntry(PackageTable.PackageEntry pkgEntry) {
+        ModuleEntry moduleEntry;
+        if (pkgEntry != null) {
+            moduleEntry = pkgEntry.module();
+        } else {
+            // unnamed package, thus unnamed module in loader
+            moduleEntry = getUnnamedModule();
+        }
+        return moduleEntry;
+    }
+
     private static void patchAnonymousClass(RuntimeConstantPool constantPool, StaticObject[] patches) {
         int maxCPIndex = Math.min(patches.length, constantPool.length());
         for (int i = 1; i < maxCPIndex; i++) {
             if (patches[i] != null && StaticObject.notNull(patches[i])) {
-                PoolConstant poolConstant = constantPool.at(i);
-                ConstantPool.Tag tag = poolConstant.tag();
+                ConstantPool.Tag tag = constantPool.tagAt(i);
                 if (Objects.requireNonNull(tag) == ConstantPool.Tag.STRING) {
                     /*
                      * The runtime CP entry tag may be different from the actual constant that is
                      * pre-resolved. Pre-resolved/patched entries may contain arbitrary guest
                      * objects, like classes.
                      */
-                    constantPool.patchAt(i, Resolution.preResolvedConstant(patches[i], tag));
+                    constantPool.patchAt(i, RuntimeConstantPool.preResolvedConstant(patches[i], tag));
                 } else {
                     throw EspressoError.unimplemented("Patching anonymous class CP entry with: " + tag);
                 }
@@ -441,7 +535,7 @@ public abstract class ClassRegistry {
                 if (chain.contains(superKlassType)) {
                     throw EspressoClassLoadingException.classCircularityError();
                 }
-                superKlass = loadKlassRecursively(context, superKlassType, true);
+                superKlass = loadKlassRecursively(context, superKlassType, true, type);
             }
 
             final Symbol<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
@@ -458,7 +552,7 @@ public abstract class ClassRegistry {
                 if (chain.contains(superInterfacesTypes[i])) {
                     throw EspressoClassLoadingException.classCircularityError();
                 }
-                ObjectKlass interf = loadKlassRecursively(context, superInterfacesTypes[i], false);
+                ObjectKlass interf = loadKlassRecursively(context, superInterfacesTypes[i], false, type);
                 superInterfaces[i] = interf;
                 linkedInterfaces[i] = interf.getLinkedKlass();
             }
@@ -476,9 +570,8 @@ public abstract class ClassRegistry {
 
         try (DebugCloseable define = KLASS_DEFINE.scope(env.getTimers())) {
             // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
-            ContextDescription description = new ContextDescription(env.getLanguage(), env.getJavaVersion());
             LinkedKlass linkedSuperKlass = superKlass == null ? null : superKlass.getLinkedKlass();
-            LinkedKlass linkedKlass = env.getLanguage().getLanguageCache().getOrCreateLinkedKlass(env, description, getClassLoader(), parserKlass, linkedSuperKlass, linkedInterfaces, info);
+            LinkedKlass linkedKlass = env.getLanguage().getLanguageCache().getOrCreateLinkedKlass(env, env.getLanguage(), getClassLoader(), parserKlass, linkedSuperKlass, linkedInterfaces, info);
             klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
         }
 
@@ -555,9 +648,12 @@ public abstract class ClassRegistry {
         }
     }
 
-    private void registerKlass(ObjectKlass klass, Symbol<Type> type) {
+    private void registerKlass(ObjectKlass klass, Symbol<Type> type, byte[] bytes) {
         ClassRegistries.RegistryEntry entry = new ClassRegistries.RegistryEntry(klass);
         ClassRegistries.RegistryEntry previous = classes.putIfAbsent(type, entry);
+        if (bytes != null) {
+            registerRetransformBytes(klass, bytes);
+        }
 
         EspressoError.guarantee(previous == null, "Class already defined", type);
 
@@ -568,14 +664,14 @@ public abstract class ClassRegistry {
         }
     }
 
-    private ObjectKlass loadKlassRecursively(EspressoContext context, Symbol<Type> type, boolean notInterface) throws EspressoClassLoadingException {
-        ClassLoadingEnv env = context.getClassLoadingEnv();
+    private ObjectKlass loadKlassRecursively(EspressoContext context, Symbol<Type> type, boolean notInterface, Symbol<Type> root) throws EspressoClassLoadingException {
         Klass klass;
         try {
             klass = loadKlass(context, type, StaticObject.NULL);
         } catch (EspressoException e) {
-            throw EspressoClassLoadingException.wrapClassNotFoundGuestException(env, e);
+            throw EspressoClassLoadingException.wrapClassNotFoundGuestException(context.getMeta(), e, root);
         }
+        assert klass != null;
         if (notInterface == klass.isInterface()) {
             throw EspressoClassLoadingException.incompatibleClassChangeError("Super interface of " + type + " is in fact not an interface.");
         }
@@ -606,7 +702,7 @@ public abstract class ClassRegistry {
         renamedKlass.getRegistries().recordConstraint(renamedKlass.getType(), renamedKlass, renamedKlass.getDefiningClassLoader());
     }
 
-    public void onInnerClassRemoved(Symbol<Symbol.Type> type) {
+    public void onInnerClassRemoved(Symbol<Type> type) {
         // "unload" the class by removing from classes
         ClassRegistries.RegistryEntry removed = classes.remove(type);
         // purge class loader constraint for this type
@@ -619,7 +715,7 @@ public abstract class ClassRegistry {
         return dynamicModuleWrapper;
     }
 
-    public final class DynamicModuleWrapper {
+    public static final class DynamicModuleWrapper {
         private ModuleEntry dynamicProxyModule;
 
         public ModuleEntry getDynamicProxyModule() {

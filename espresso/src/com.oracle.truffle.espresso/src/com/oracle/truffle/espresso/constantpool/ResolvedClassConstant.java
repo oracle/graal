@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,11 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 
-import java.util.Objects;
-
-public final class ResolvedClassConstant implements ClassConstant, Resolvable.ResolvedConstant {
-    private final Klass resolved;
-
-    public ResolvedClassConstant(Klass resolved) {
-        this.resolved = Objects.requireNonNull(resolved);
-    }
-
+public interface ResolvedClassConstant extends ResolvedConstant {
     @Override
-    public Symbol<Name> getName(ConstantPool pool) {
-        return resolved.getName();
-    }
-
-    @Override
-    public Klass value() {
-        return resolved;
+    default Tag tag() {
+        return Tag.CLASS;
     }
 }

@@ -2,32 +2,56 @@
 
 ## Building
 
-Set your (JVMCI-enabled) JDK via `mx` argument  e.g. `mx --java-home /path/to/java/home ...` or via `export JAVA_HOME=/path/to/java/home`. Or (easiest) run `mx fetch-jdk` to download one.
+### Using a pre-built GraalVM
 
-`mx build`-ing Espresso creates a GraalVM with Espresso included. You can find out where it is by running `mx graalvm-home`.
+The simplest way to build espresso is to use a pre-built GraalVM.
 
-To build the default configuration (interpreter-only), on the `espresso` repository:
+Download and unpack the latest GraalVM [release](https://www.graalvm.org/downloads/) or [ea build](https://github.com/graalvm/oracle-graalvm-ea-builds/releases).
+
+Set the `JAVA_HOME` environment variable to the extracted result. This will be used during the build and as a host JDK.
+
+Espresso is only a JVM and it needs a JDK to use as a guest. Set the `ESPRESSO_JAVA_HOME` to a JDK to be used for the guest.
+
+To build, run:
 
 ```bash
 $ mx build
 ```
 
-Other configurations are provided:
+### Using native-image from the graal repository
 
+It is also possible to build using native-image built from sources from the current graal repository.
+
+Set your (JVMCI-enabled) JDK via `mx` argument  e.g. `mx --java-home /path/to/java/home ...` or via `export JAVA_HOME=/path/to/java/home`. Or (easiest) run `mx fetch-jdk` to download one.
+
+Set the `ESPRESSO_JAVA_HOME` to a JDK to be used for the guest.
+
+Build using one of the provided configuration:
 ```bash
 $ mx --env jvm build       # GraalVM CE + Espresso jars (interpreter only)
 $ mx --env jvm-ce build    # GraalVM CE + Espresso jars (JIT)
 $ mx --env native-ce build # GraalVM CE + Espresso native (JIT)
-
-# Use the same --env argument used to build.
-$ export ESPRESSO=`mx --env native-ce graalvm-home`/bin/espresso
 ```
 
-Configuration files: `mx.espresso/{jvm,jvm-ce,native-ce}` and `mx.espresso/native-image.properties`
+`mx build`-ing Espresso creates "espresso standalones" which are JDK-like directories.
+
+If you are only trying to build a specific one it's possible to specify it while building:
+```bash
+$ mx --env native-ce build --targets=ESPRESSO_NATIVE_STANDALONE
+```
+
+Configuration files: `mx.espresso/{jvm,jvm-ce,native-ce}`
 
 ## Running Espresso
 
-`mx espresso` runs Espresso (from jars or native) from within a GraalVM. It mimics the `java` (8|11) command. Bare `mx espresso` runs Espresso on interpreter-only mode.
+You can find out where the espresso standalones are by running `mx path --output ...`:
+```bash
+$ mx path --output ESPRESSO_NATIVE_STANDALONE
+$ mx path --output ESPRESSO_JVM_STANDALONE
+```
+> Note: If you used options like `--env ...` or `--dynamicimports ...` while building, you should also use them with `mx path`: e.g., `mx --env native-ce path ...`.
+
+`mx espresso` runs Espresso from a standalone (jvm or native). It mimics the `java` command.
 
 ```bash
 $ mx --env jvm-ce build # Always build first
@@ -45,7 +69,7 @@ The `mx espresso` launcher adds some overhead, to execute Espresso native image 
 
 ```bash
 $ mx --env native-ce build # Always build first
-$ export ESPRESSO=`mx --env native-ce graalvm-home`/bin/espresso
+$ export ESPRESSO=`mx --quiet --no-warning --env native-ce path --output ESPRESSO_NATIVE_STANDALONE`/bin/java
 $ time $ESPRESSO -cp my.jar HelloWorld
 ```
 
@@ -60,28 +84,21 @@ $ mx --dy /espresso,/sulong maven-deploy --tags=public --all-suites --all-distri
 
 You can now depend on the jars using a version like `24.2.0-SNAPSHOT`.
 
-## `mx espresso-standalone ...`
+## `mx espresso-embedded ...`
 
-To run Espresso on a vanilla JDK (8|11) and/or not within a GraalVM use `mx espresso-standalone ...`, it mimics the `java` (8|11) command. The launcher adds all jars and properties required to run Espresso on any vanilla JDK (8|11).
+To run Espresso on a vanilla JDK and/or not within a standalone use `mx espresso-embedded ...`, it mimics the `java` command. The launcher adds all jars and properties required to run Espresso on any vanilla JDK.
 
 To debug Espresso:
 
 ```bash
 $ mx build
-$ mx -d espresso-standalone -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
-```
-
-It can also run on a GraalVM with JIT compilation:
-
-```bash
-$ mx build
-$ mx --dy /compiler espresso-standalone -cp my.jar HelloWorld
+$ mx -d espresso-embedded -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
 ```
 
 ## Dumping IGV graphs
 
 ```bash
-$ mx -v --dy /compiler -J"-Djdk.graal.Dump=:4 -Djdk.graal.TraceTruffleCompilation=true -Djdk.graal.TruffleBackgroundCompilation=false" espresso-standalone -cp  mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.TestMain
+$ mx --env jvm-ce espresso --vm.Djdk.graal.Dump=Truffle:2 --vm.Dpolyglot.engine.TraceCompilation=true -cp  mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.TestMain
 ```
 
 ## Running Espresso cross-versions

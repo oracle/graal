@@ -164,7 +164,7 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
     }
 
     // Copied from AbstractList
-    private class Itr implements Iterator<T> {
+    private final class Itr implements Iterator<T> {
         /**
          * Index of element to be returned by subsequent call to next.
          */

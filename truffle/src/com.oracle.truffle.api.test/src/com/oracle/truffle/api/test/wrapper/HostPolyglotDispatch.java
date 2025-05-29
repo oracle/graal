@@ -44,6 +44,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Map;
 
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -60,7 +61,7 @@ public class HostPolyglotDispatch extends AbstractPolyglotImpl {
     }
 
     @Override
-    public Object buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> options,
+    public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage,
                     boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService) {
         String option = options.get("engine.SpawnRemote");
@@ -76,7 +77,11 @@ public class HostPolyglotDispatch extends AbstractPolyglotImpl {
                             onlyHostLanguage, false, polyglotHostService);
             long remoteEngine = getHostToGuest().remoteCreateEngine(sandboxPolicy);
             HostEngine engine = new HostEngine(remoteEngine, localEngine);
-            return getAPIAccess().newEngine(new HostEngineDispatch(this), engine, registerInActiveEngines);
+            Engine engineApi = getAPIAccess().newEngine(new HostEngineDispatch(this), engine, registerInActiveEngines);
+            if (registerInActiveEngines) {
+                getAPIAccess().processReferenceQueue();
+            }
+            return engineApi;
         } else {
             return getNext().buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, allowExperimentalOptions, boundEngine, messageInterceptor, logHandler,
                             hostLanguage,

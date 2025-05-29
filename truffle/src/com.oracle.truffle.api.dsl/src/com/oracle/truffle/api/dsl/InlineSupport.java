@@ -1252,7 +1252,7 @@ public final class InlineSupport {
             CompilerAsserts.neverPartOfCompilation();
             throw new ClassCastException(String.format("Invalid inline context node passed to an inlined field. A receiver of type '%s' was expected but is '%s'. " + //
                             "Did you pass the wrong node to an execute method of an inlined cached node?",
-                            getEnclosingSimpleName(receiverClass), getEnclosingSimpleName(((Node) inlineTarget).getClass())));
+                            getEnclosingSimpleName(receiverClass), getEnclosingSimpleName(inlineTarget.getClass())));
         }
 
         final boolean getBoolean(Object node) {

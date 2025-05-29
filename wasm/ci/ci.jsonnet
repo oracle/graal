@@ -7,9 +7,9 @@ local jdks = {
   jdkLatest:: graal_common.labsjdkLatest,
 };
 
-local extra_java_homes = {
+local tools_java_home = {
   downloads+: {
-    EXTRA_JAVA_HOMES: graal_common.jdks_data['oraclejdk21'],
+    TOOLS_JAVA_HOME: graal_common.jdks_data['oraclejdk21'],
   },
 };
 
@@ -21,10 +21,7 @@ jdks + wasm_common +
 
   local _builds = [
     # Gates.
-    $.jdk21     + $.linux_amd64     + $.gate         + $.gate_graalwasm_style                                                                      + {name: 'gate-graalwasm-style-fullbuild' + self.name_suffix},
-    $.jdkLatest + $.linux_amd64     + $.gate         + $.gate_graalwasm_style       + extra_java_homes                                             + {name: 'gate-graalwasm-style-fullbuild' + self.name_suffix},
-
-    $.jdk21     + $.linux_amd64     + $.gate         + $.gate_graalwasm_full        + {environment+: {GATE_TAGS: 'build,wasmtest'}}                + {name: 'gate-graalwasm-unittest' + self.name_suffix},
+    $.jdkLatest + $.linux_amd64     + $.gate         + $.gate_graalwasm_style       + tools_java_home                                              + {name: 'gate-graalwasm-style-fullbuild' + self.name_suffix},
   ] + [
     $.jdkLatest + platform          + $.gate         + $.gate_graalwasm_full        + {environment+: {GATE_TAGS: 'build,wasmtest'}}                + {name: 'gate-graalwasm-unittest' + self.name_suffix}
     for platform in [$.linux_amd64, $.linux_aarch64, $.windows_amd64, $.darwin_aarch64]
@@ -32,10 +29,10 @@ jdks + wasm_common +
     $.jdkLatest + $.linux_amd64     + $.gate         + $.gate_graalwasm_emsdk_full  + {environment+: {GATE_TAGS: 'buildall,wasmextratest'}}        + {name: 'gate-graalwasm-extra-unittest' + self.name_suffix},
     $.jdkLatest + $.linux_amd64     + $.gate         + $.gate_graalwasm_emsdk_full  + {environment+: {GATE_TAGS: 'buildall,wasmbenchtest'}}        + {name: 'gate-graalwasm-benchtest' + self.name_suffix},
 
-    $.jdk21     + $.linux_amd64     + $.weekly       + $.gate_graalwasm_coverage                                                                   + {name: 'weekly-graalwasm-coverage' + self.name_suffix},
+    $.jdkLatest + $.linux_amd64     + $.weekly       + $.gate_graalwasm_coverage    + tools_java_home                                              + {name: 'weekly-graalwasm-coverage' + self.name_suffix},
 
     # Benchmark jobs.
-    $.jdk21     + $.linux_amd64     + $.bench_daily  + $.bench_graalwasm_emsdk_full + {
+    $.jdkLatest + $.linux_amd64     + $.bench_daily  + $.bench_graalwasm_emsdk_full + {
       name: 'bench-graalwasm-c-micro' + self.name_suffix,
       environment+: {
         BENCH_RUNNER: 'run-c-micro-benchmarks',

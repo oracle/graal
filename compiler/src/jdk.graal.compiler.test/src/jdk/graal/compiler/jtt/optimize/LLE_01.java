@@ -34,7 +34,7 @@ import org.junit.Test;
  */
 public class LLE_01 extends JTTTest {
 
-    private static class TestClass {
+    private static final class TestClass {
         int field1;
     }
 

@@ -267,7 +267,9 @@ typedef union {
                serialize : 1,
                          : 5,
                  cet_ibt : 1,
-                         : 11;
+                         : 2,
+            avx512_fp16  : 1,
+                         : 8;
   } bits;
 } SefCpuid7Edx;
 
@@ -284,11 +286,32 @@ typedef union {
 typedef union {
   uint32_t value;
   struct {
-    uint32_t             : 21,
+    uint32_t             : 19,
+                avx10    : 1,
+                         : 1,
                 apx_f    : 1,
                          : 10;
   } bits;
 } SefCpuid7SubLeaf1Edx;
+
+typedef union {
+  uint32_t value;
+  struct {
+    uint32_t sub_leaves_cnt : 31;
+  } bits;
+} StdCpuid24MainLeafEax;
+
+typedef union StdCpuid24MainLeafEbx {
+  uint32_t value;
+  struct {
+    uint32_t avx10_converged_isa_version : 8,
+                                         : 8,
+                                         : 2,
+             avx10_vlen_512              : 1,
+                                         : 13;
+  } bits;
+} StdCpuid24MainLeafEbx;
+
 
 typedef union {
   uint32_t value;
@@ -351,6 +374,11 @@ typedef struct {
   // eax = 7, ecx = 1
   SefCpuid7SubLeaf1Eax sefsl1_cpuid7_eax;
   SefCpuid7SubLeaf1Edx sefsl1_cpuid7_edx;
+
+  // cpuid function 24 converged vector ISA main leaf
+  // eax = 24, ecx = 0
+  StdCpuid24MainLeafEax std_cpuid24_eax;
+  StdCpuid24MainLeafEbx std_cpuid24_ebx;
 
   // cpuid function 0xB (processor topology)
   // ecx = 0

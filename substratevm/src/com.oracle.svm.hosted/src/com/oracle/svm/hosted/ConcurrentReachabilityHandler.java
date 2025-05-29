@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,8 +31,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.graal.pointsto.meta.AnalysisElement;
 import com.oracle.graal.pointsto.meta.AnalysisElement.ElementNotification;
 import com.oracle.graal.pointsto.meta.AnalysisElement.MethodOverrideReachableNotification;
@@ -40,25 +38,13 @@ import com.oracle.graal.pointsto.meta.AnalysisElement.SubtypeReachableNotificati
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
-@AutomaticallyRegisteredFeature
 public class ConcurrentReachabilityHandler extends ReachabilityHandler implements InternalFeature {
 
     private final Map<Consumer<DuringAnalysisAccess>, ElementNotification> reachabilityNotifications = new ConcurrentHashMap<>();
-
-    public static ConcurrentReachabilityHandler singleton() {
-        return ImageSingletons.lookup(ConcurrentReachabilityHandler.class);
-    }
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.RunReachabilityHandlersConcurrently.getValue();
-    }
 
     @Override
     public void registerMethodOverrideReachabilityHandler(BeforeAnalysisAccessImpl access, BiConsumer<DuringAnalysisAccess, Executable> callback, Executable baseMethod) {

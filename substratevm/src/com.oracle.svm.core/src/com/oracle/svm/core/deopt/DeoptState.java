@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,31 +24,35 @@
  */
 package com.oracle.svm.core.deopt;
 
-import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.code.FrameInfoQueryResult;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import jdk.internal.misc.Unsafe;
-import jdk.graal.compiler.core.common.util.TypeConversion;
-import jdk.graal.compiler.word.Word;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
+import static com.oracle.svm.core.deopt.Deoptimizer.fatalDeoptimizationError;
+
+import java.lang.reflect.Array;
+
 import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
+import org.graalvm.word.WordBase;
 
-import java.lang.reflect.Array;
+import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 
-import static com.oracle.svm.core.deopt.Deoptimizer.fatalDeoptimizationError;
+import jdk.graal.compiler.core.common.util.TypeConversion;
+import jdk.graal.compiler.word.Word;
+import jdk.internal.misc.Unsafe;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PrimitiveConstant;
 
 public class DeoptState {
 
@@ -96,12 +100,19 @@ public class DeoptState {
                 return valueInfo.getValue();
             case StackSlot:
             case Register:
-                return readConstant(sourceSp, WordFactory.signed(valueInfo.getData()), valueInfo.getKind(), valueInfo.isCompressedReference(), sourceFrame);
+                return readConstant(sourceSp, Word.signed(valueInfo.getData()), valueInfo.getKind(), valueInfo.isCompressedReference(), sourceFrame);
             case ReservedRegister:
-                if (ReservedRegisters.singleton().getThreadRegister() != null && ReservedRegisters.singleton().getThreadRegister().number == valueInfo.getData()) {
-                    return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), targetThread.rawValue());
-                } else if (ReservedRegisters.singleton().getHeapBaseRegister() != null && ReservedRegisters.singleton().getHeapBaseRegister().number == valueInfo.getData()) {
-                    return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), CurrentIsolate.getIsolate().rawValue());
+                ReservedRegisters regs = ReservedRegisters.singleton();
+
+                if (refersToRegister(valueInfo, regs.getThreadRegister())) {
+                    return createWordConstant(targetThread);
+
+                } else if (refersToRegister(valueInfo, regs.getHeapBaseRegister())) {
+                    return createWordConstant(CurrentIsolate.getIsolate());
+
+                } else if (refersToRegister(valueInfo, regs.getCodeBaseRegister())) {
+                    return createWordConstant(KnownIntrinsics.codeBase());
+
                 } else {
                     throw fatalDeoptimizationError("Unexpected reserved register: " + valueInfo.getData(), sourceFrame);
                 }
@@ -114,6 +125,14 @@ public class DeoptState {
             default:
                 throw fatalDeoptimizationError("Unexpected type: " + valueInfo.getType(), sourceFrame);
         }
+    }
+
+    private static boolean refersToRegister(FrameInfoQueryResult.ValueInfo valueInfo, Register register) {
+        return register != null && valueInfo.getData() == register.number;
+    }
+
+    private static PrimitiveConstant createWordConstant(WordBase word) {
+        return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), word.rawValue());
     }
 
     /**
@@ -158,13 +177,21 @@ public class DeoptState {
             } catch (InstantiationException ex) {
                 throw fatalDeoptimizationError("Instantiation exception: " + ex, sourceFrame);
             }
-            curOffset = WordFactory.unsigned(objectLayout.getFirstFieldOffset());
+            curOffset = Word.unsigned(objectLayout.getFirstFieldOffset());
             curIdx = 1;
         }
 
         materializedObjects[virtualObjectId] = obj;
-        if (Deoptimizer.testGCinDeoptimizer) {
-            Heap.getHeap().getGC().collect(GCCause.TestGCInDeoptimizer);
+        Deoptimizer.maybeTestGC();
+
+        if (ImageSingletons.contains(VectorAPIDeoptimizationSupport.class)) {
+            VectorAPIDeoptimizationSupport deoptSupport = ImageSingletons.lookup(VectorAPIDeoptimizationSupport.class);
+            Object payloadArray = deoptSupport.materializePayload(this, hub, encodings[curIdx], sourceFrame);
+            if (payloadArray != null) {
+                JavaConstant arrayConstant = SubstrateObjectConstant.forObject(payloadArray, ReferenceAccess.singleton().haveCompressedReferences());
+                Deoptimizer.writeValueInMaterializedObj(obj, curOffset, arrayConstant, sourceFrame);
+                return obj;
+            }
         }
 
         while (curIdx < encodings.length) {

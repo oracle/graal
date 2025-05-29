@@ -29,13 +29,13 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
@@ -333,7 +333,7 @@ public final class EspressoFrame {
 
     public static StaticObject peekReceiver(VirtualFrame frame, int top, Method m) {
         assert !m.isStatic();
-        int skipSlots = Signatures.slotsForParameters(m.getParsedSignature());
+        int skipSlots = SignatureSymbols.slotsForParameters(m.getParsedSignature());
         int slot = top - skipSlots - 1;
         assert slot >= 0;
         StaticObject result = peekObject(frame, slot);
@@ -343,7 +343,7 @@ public final class EspressoFrame {
 
     @ExplodeLoop
     public static Object[] popArguments(VirtualFrame frame, int top, boolean hasReceiver, final Symbol<Type>[] signature) {
-        int argCount = Signatures.parameterCount(signature);
+        int argCount = SignatureSymbols.parameterCount(signature);
 
         int extraParam = hasReceiver ? 1 : 0;
         final Object[] args = new Object[argCount + extraParam];
@@ -354,7 +354,7 @@ public final class EspressoFrame {
 
         int argAt = top - 1;
         for (int i = argCount - 1; i >= 0; --i) {
-            Symbol<Type> argType = Signatures.parameterType(signature, i);
+            Symbol<Type> argType = SignatureSymbols.parameterType(signature, i);
             // @formatter:off
             switch (argType.byteAt(0)) {
                 case 'Z' : args[i + extraParam] = (popInt(frame, argAt) != 0);  break;
@@ -385,12 +385,12 @@ public final class EspressoFrame {
     @ExplodeLoop
     public static Object[] popBasicArgumentsWithArray(VirtualFrame frame, int top, final Symbol<Type>[] signature, boolean hasReceiver, Object[] args) {
         // Use basic types
-        CompilerAsserts.partialEvaluationConstant(Signatures.parameterCount(signature));
+        CompilerAsserts.partialEvaluationConstant(SignatureSymbols.parameterCount(signature));
         CompilerAsserts.partialEvaluationConstant(signature);
         int extraParam = hasReceiver ? 1 : 0;
         int argAt = top - 1;
-        for (int i = Signatures.parameterCount(signature) - 1; i >= 0; --i) {
-            Symbol<Type> argType = Signatures.parameterType(signature, i);
+        for (int i = SignatureSymbols.parameterCount(signature) - 1; i >= 0; --i) {
+            Symbol<Type> argType = SignatureSymbols.parameterType(signature, i);
             // @formatter:off
             switch (argType.byteAt(0)) {
                 case 'Z' : // fall through
@@ -504,7 +504,7 @@ public final class EspressoFrame {
                 throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
-        return Types.slotCount(type);
+        return TypeSymbols.slotCount(type);
     }
 
     /**

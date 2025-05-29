@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,13 +65,13 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import jdk.graal.compiler.options.OptionsContainer;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraal;
@@ -88,8 +88,8 @@ import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.MetricKey;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.hotspot.CompilationTask;
-import jdk.graal.compiler.hotspot.CompileTheWorldFuzzedSuitesCompilationTask;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
+import jdk.graal.compiler.hotspot.HotSpotBytecodeParser;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -102,6 +102,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
@@ -145,7 +146,7 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
             for (String optionSetting : options.split("\\s+|#")) {
                 OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
             }
-            ServiceLoader<OptionDescriptors> loader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
+            Iterable<OptionDescriptors> loader = OptionsContainer.getDiscoverableOptions(OptionDescriptors.class.getClassLoader());
             OptionsParser.parseOptions(optionSettings, values, loader);
         }
         if (!values.containsKey(HighTier.Options.Inline)) {
@@ -935,6 +936,34 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
                 }
             }
             TTY.println("---------------------------------------------");
+        }
+    }
+
+    /**
+     * Determine if the message describes a failure we should ignore in the context of CTW. Since in
+     * CTW we try to compile all methods as compilation roots indiscriminately, we may hit upon a
+     * helper method that expects to only be inlined into a snippet. Such compilations may fail with
+     * a well-known message complaining about node intrinsics used outside a snippet. We can ignore
+     * these failures.
+     */
+    public static boolean shouldIgnoreFailure(String failureMessage) {
+        return failureMessage.startsWith(HotSpotBytecodeParser.BAD_NODE_INTRINSIC_PLUGIN_CONTEXT);
+    }
+
+    @Override
+    protected void handleFailure(HotSpotCompilationRequestResult result) {
+        if (!shouldIgnoreFailure(result.getFailureMessage())) {
+
+            if (Options.FuzzPhasePlan.getValue(harnessOptions)) {
+                HotSpotJVMCIRuntime jvmciRuntime = HotSpotJVMCIRuntime.runtime();
+                HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) jvmciRuntime.getCompiler();
+                HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
+
+                HotSpotFuzzedSuitesProvider hp = (HotSpotFuzzedSuitesProvider) graalRuntime.getHostBackend().getProviders().getSuites();
+                TTY.printf("Fuzzing seed was %s%n", hp.getLastSeed().get());
+            }
+
+            super.handleFailure(result);
         }
     }
 

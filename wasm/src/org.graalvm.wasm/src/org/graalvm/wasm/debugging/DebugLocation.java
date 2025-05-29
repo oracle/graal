@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,13 +41,14 @@
 
 package org.graalvm.wasm.debugging;
 
-import com.oracle.truffle.api.frame.MaterializedFrame;
+import java.util.Objects;
+
 import org.graalvm.wasm.debugging.data.DebugAddressSize;
 import org.graalvm.wasm.debugging.data.DebugConstants;
 import org.graalvm.wasm.debugging.parser.DebugParser;
 import org.graalvm.wasm.nodes.WasmDataAccess;
 
-import java.util.Objects;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 
 /**
  * Represents a location descriptor. The value consist of a type (local variable, global variable,
@@ -354,6 +355,31 @@ public final class DebugLocation {
     }
 
     /**
+     * Stores an uninterpreted byte at this location. Does not support storing values split into
+     * multiple locations.
+     * 
+     * @see #isValidLocation(int)
+     */
+    public void store8(int bitSize, byte value) {
+        if (!isValidLocation(1) || bitSize >= 0) {
+            return;
+        }
+        final int index = (int) address;
+        if (isStack()) {
+            dataAccess.storeI32IntoStack(frame, index, value);
+        }
+        if (isLocal()) {
+            dataAccess.storeI32IntoLocals(frame, index, value);
+        }
+        if (isGlobal()) {
+            dataAccess.storeI32IntoGlobals(frame, index, value);
+        }
+        if (isMemory()) {
+            dataAccess.storeI8IntoMemory(frame, address, value);
+        }
+    }
+
+    /**
      * Loads the signed short value at this location.
      * 
      * @return the loaded short or {@link DebugConstants#DEFAULT_I16}, if the location is invalid.
@@ -419,6 +445,31 @@ public final class DebugLocation {
             return (upperValue | lowerValue) & 0xffff;
         } else {
             return shiftUnsignedInt(value, bitSize, bitOffset + 16) & 0xffff;
+        }
+    }
+
+    /**
+     * Stores an uninterpreted short at this location. Does not support storing values split into
+     * multiple locations.
+     *
+     * @see #isValidLocation(int)
+     */
+    public void store16(int bitSize, short value) {
+        if (!isValidLocation(1) || bitSize >= 0) {
+            return;
+        }
+        final int index = (int) address;
+        if (isStack()) {
+            dataAccess.storeI32IntoStack(frame, index, value);
+        }
+        if (isLocal()) {
+            dataAccess.storeI32IntoLocals(frame, index, value);
+        }
+        if (isGlobal()) {
+            dataAccess.storeI32IntoGlobals(frame, index, value);
+        }
+        if (isMemory()) {
+            dataAccess.storeI16IntoMemory(frame, address, value);
         }
     }
 
@@ -505,6 +556,31 @@ public final class DebugLocation {
     }
 
     /**
+     * Stores an uninterpreted integer at this location. Does not support storing values split into
+     * multiple locations.
+     *
+     * @see #isValidLocation(int)
+     */
+    public void store32(int bitSize, int value) {
+        if (!isValidLocation(1) || bitSize >= 0) {
+            return;
+        }
+        final int index = (int) address;
+        if (isStack()) {
+            dataAccess.storeI32IntoStack(frame, index, value);
+        }
+        if (isLocal()) {
+            dataAccess.storeI32IntoLocals(frame, index, value);
+        }
+        if (isGlobal()) {
+            dataAccess.storeI32IntoGlobals(frame, index, value);
+        }
+        if (isMemory()) {
+            dataAccess.storeI32IntoMemory(frame, address, value);
+        }
+    }
+
+    /**
      * Loads the signed long at this location.
      *
      * @return the loaded long or {@link DebugConstants#DEFAULT_I64}, if the location is invalid.
@@ -575,6 +651,31 @@ public final class DebugLocation {
     }
 
     /**
+     * Stores an uninterpreted long at this location. Does not support storing values split into
+     * multiple locations.
+     *
+     * @see #isValidLocation(int)
+     */
+    public void store64(int bitSize, long value) {
+        if (!isValidLocation(1) || bitSize >= 0) {
+            return;
+        }
+        final int index = (int) address;
+        if (isStack()) {
+            dataAccess.storeI64IntoStack(frame, index, value);
+        }
+        if (isLocal()) {
+            dataAccess.storeI64IntoLocals(frame, index, value);
+        }
+        if (isGlobal()) {
+            dataAccess.storeI64IntoGlobals(frame, index, value);
+        }
+        if (isMemory()) {
+            dataAccess.storeI64IntoMemory(frame, address, value);
+        }
+    }
+
+    /**
      * Loads the float at this location.
      *
      * @return the loaded float or {@link DebugConstants#DEFAULT_F32}, if the location is invalid.
@@ -601,6 +702,30 @@ public final class DebugLocation {
     }
 
     /**
+     * Stores the float at this location.
+     *
+     * @see #isValidLocation(int)
+     */
+    public void storeF32(float value) {
+        if (!isValidLocation(4)) {
+            return;
+        }
+        final int index = (int) address;
+        if (isStack()) {
+            dataAccess.storeF32IntoStack(frame, index, value);
+        }
+        if (isLocal()) {
+            dataAccess.storeF32IntoLocals(frame, index, value);
+        }
+        if (isGlobal()) {
+            dataAccess.storeF32IntoGlobals(frame, index, value);
+        }
+        if (isMemory()) {
+            dataAccess.storeF32IntoMemory(frame, address, value);
+        }
+    }
+
+    /**
      * Loads the double at this location.
      *
      * @return the loaded double or {@link DebugConstants#DEFAULT_F64}, if the location is invalid.
@@ -624,6 +749,30 @@ public final class DebugLocation {
             return dataAccess.loadF64FromMemory(frame, address);
         }
         return DebugConstants.DEFAULT_F64;
+    }
+
+    /**
+     * Stores the double at this location.
+     *
+     * @see #isValidLocation(int)
+     */
+    public void storeF64(double value) {
+        if (!isValidLocation(8)) {
+            return;
+        }
+        final int index = (int) address;
+        if (isStack()) {
+            dataAccess.storeF64IntoStack(frame, index, value);
+        }
+        if (isLocal()) {
+            dataAccess.storeF64IntoLocals(frame, index, value);
+        }
+        if (isGlobal()) {
+            dataAccess.storeF64IntoGlobals(frame, index, value);
+        }
+        if (isMemory()) {
+            dataAccess.storeF64IntoMemory(frame, address, value);
+        }
     }
 
     /**

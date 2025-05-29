@@ -51,6 +51,8 @@ namespace svm_container {
 extern "C" {
 #endif
 
+#define JNICALL
+
 /*
  * JNI Types
  */

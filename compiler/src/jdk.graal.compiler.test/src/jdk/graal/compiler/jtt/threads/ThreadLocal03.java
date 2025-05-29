@@ -49,7 +49,7 @@ public class ThreadLocal03 extends JTTTest {
         return sum;
     }
 
-    private static class TThread extends Thread {
+    private static final class TThread extends Thread {
 
         int input;
         int output;

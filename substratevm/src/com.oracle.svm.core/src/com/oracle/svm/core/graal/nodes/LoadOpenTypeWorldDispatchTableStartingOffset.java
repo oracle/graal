@@ -58,7 +58,7 @@ public class LoadOpenTypeWorldDispatchTableStartingOffset extends FixedWithNextN
         this.interfaceTypeID = null;
     }
 
-    protected LoadOpenTypeWorldDispatchTableStartingOffset(ValueNode hub, ValueNode interfaceTypeID) {
+    public LoadOpenTypeWorldDispatchTableStartingOffset(ValueNode hub, ValueNode interfaceTypeID) {
         super(TYPE, StampFactory.forInteger(64));
         this.hub = hub;
         this.target = null;
@@ -76,7 +76,4 @@ public class LoadOpenTypeWorldDispatchTableStartingOffset extends FixedWithNextN
     public SharedMethod getTarget() {
         return target;
     }
-
-    @NodeIntrinsic
-    public static native long createOpenTypeWorldLoadDispatchTableStartingOffset(Object hub, int interfaceTypeID);
 }

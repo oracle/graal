@@ -299,10 +299,9 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                 final PartialEvaluator partialEvaluator = compiler.getPartialEvaluator();
                 try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(
                                 compiler.getConfig().runtime(), compiler.getOrCreateCompilerOptions(compilable))) {
-                    final TruffleTierContext context = new TruffleTierContext(partialEvaluator,
+                    final TruffleTierContext context = TruffleTierContext.createInitialContext(partialEvaluator,
                                     compiler.getOrCreateCompilerOptions(compilable),
                                     debug, compilable,
-                                    partialEvaluator.rootForCallTarget(compilable),
                                     compilation.getCompilationId(), speculationLog,
                                     task,
                                     handler);

@@ -52,7 +52,7 @@ public interface DebugInfoProvider {
     /**
      * Mask selecting low order bits used for tagging oops.
      */
-    int reservedBitsMask();
+    int reservedHubBitsMask();
 
     /**
      * Number of bytes used to store an oop reference.
@@ -128,6 +128,11 @@ public interface DebugInfoProvider {
          * @return the fully qualified name of the debug type.
          */
         String typeName();
+
+        /**
+         * @return a 64bit type signature to uniquely identify the type
+         */
+        long typeSignature(String prefix);
 
         DebugTypeKind typeKind();
 
@@ -214,6 +219,8 @@ public interface DebugInfoProvider {
     interface DebugHeaderTypeInfo extends DebugTypeInfo {
 
         Stream<DebugFieldInfo> fieldInfoProvider();
+
+        DebugFieldInfo hubField();
     }
 
     interface DebugMemberInfo extends DebugFileInfo {

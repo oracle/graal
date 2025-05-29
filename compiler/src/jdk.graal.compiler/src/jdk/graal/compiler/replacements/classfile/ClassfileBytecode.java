@@ -30,6 +30,7 @@ import java.io.IOException;
 
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
 
 import jdk.vm.ci.meta.ConstantPool;
@@ -44,6 +45,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * The bytecode properties of a method as parsed directly from a class file without any
  * instrumentation or other rewriting performed on the bytecode.
  */
+@LibGraalSupport.HostedOnly
 public class ClassfileBytecode implements Bytecode {
 
     private static final int EXCEPTION_HANDLER_TABLE_SIZE_IN_BYTES = 8;

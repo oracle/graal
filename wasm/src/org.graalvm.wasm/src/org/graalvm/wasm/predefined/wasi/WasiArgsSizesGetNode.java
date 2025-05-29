@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,14 +59,16 @@ public final class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+    public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return argsSizesGet(memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
+        return argsSizesGet(getContext(), memory(frame),
+                        (int) WasmArguments.getArgument(args, 0),
+                        (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    private int argsSizesGet(WasmMemory memory, int argcAddress, int argvBufSizeAddress) {
-        final String[] arguments = getContext().environment().getApplicationArguments();
+    private int argsSizesGet(WasmContext context, WasmMemory memory, int argcAddress, int argvBufSizeAddress) {
+        final String[] arguments = context.environment().getApplicationArguments();
         final int argc = arguments.length;
         int argvBufSize = 0;
         for (final String argument : arguments) {
@@ -74,8 +76,8 @@ public final class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
             argvBufSize += 1; // extra byte needed for the trailing null character
         }
 
-        memory.store_i32(this, argcAddress, argc);
-        memory.store_i32(this, argvBufSizeAddress, argvBufSize);
+        memoryLib.store_i32(memory, this, argcAddress, argc);
+        memoryLib.store_i32(memory, this, argvBufSizeAddress, argvBufSize);
         return Errno.Success.ordinal();
     }
 

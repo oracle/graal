@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,59 +42,56 @@
 package org.graalvm.wasm.debugging.parser;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 
 /**
  * Source loader for loading the source files of the debug information.
  */
 public class DebugSourceLoader {
-    private final Map<Path, Source> cache = new HashMap<>();
-
     /**
      * Loads the source at the given path.
      * 
      * @param path the path of the source
      * @param language the source language
-     * @param testMode if true, load the source as a resource instead of from the file system.
      */
     @TruffleBoundary
-    public Source load(Path path, String language, boolean testMode) {
+    public static Source create(Path path, String language, TruffleLanguage.Env env) {
         if (path == null || language == null) {
             return null;
         }
-        Path fileName = path.getFileName();
-        if (fileName == null) {
-            return null;
-        }
-        if (cache.containsKey(path)) {
-            return cache.get(path);
-        }
-        Source s;
+        Source source = null;
         try {
-            Reader reader;
-            if (testMode) {
-                InputStream stream = DebugSourceLoader.class.getResourceAsStream(path.toString());
-                if (stream == null) {
-                    return null;
-                }
-                reader = new InputStreamReader(stream);
-            } else {
-                reader = Files.newBufferedReader(path);
+            // we create a pseudo source that does not read the content of the actual file, since we
+            // are not allowed to perform any IO at this point.
+            // Source.CONTENT_NONE enforces this behavior.
+            source = Source.newBuilder(language, "", path.toString()).content(Source.CONTENT_NONE).build();
+        } catch (SecurityException e) {
+            // source not available or not accessible
+            if (env != null) {
+                env.getLogger("").warning("Debug source file could not be loaded or accessed: " + path);
             }
-            s = Source.newBuilder(language, reader, fileName.toString()).build();
-        } catch (IOException | SecurityException e) {
+        }
+        return source;
+    }
+
+    @TruffleBoundary
+    public static Source load(Path path, String language, TruffleLanguage.Env env) {
+        if (path == null || language == null) {
             return null;
         }
-        cache.put(path, s);
-        return s;
+        Source source = null;
+        try {
+            final TruffleFile file = env.getInternalTruffleFile(path.toString());
+            source = Source.newBuilder(language, file).build();
+        } catch (IOException | SecurityException e) {
+            // source not available or not accessible
+            env.getLogger("").warning("Debug source file could not be loaded or accessed: " + path);
+        }
+        return source;
     }
 }

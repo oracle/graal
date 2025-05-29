@@ -232,9 +232,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
 
         universe.getHeapScanner().cleanupAfterAnalysis();
         universe.getHeapVerifier().cleanupAfterAnalysis();
-        if (universe.getImageLayerLoader() != null) {
-            universe.getImageLayerLoader().cleanupAfterAnalysis();
-        }
     }
 
     @Override

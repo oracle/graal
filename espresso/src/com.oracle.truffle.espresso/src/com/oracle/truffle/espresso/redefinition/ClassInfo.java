@@ -22,28 +22,27 @@
  */
 package com.oracle.truffle.espresso.redefinition;
 
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.regex.Matcher;
+
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ParserField;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
+import com.oracle.truffle.espresso.classfile.ParserMethod;
+import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.ParserField;
-import com.oracle.truffle.espresso.classfile.ParserKlass;
-import com.oracle.truffle.espresso.classfile.ParserMethod;
-import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
-import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.preinit.ParserKlassProvider;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-
-import java.util.ArrayList;
-import java.util.Set;
-import java.util.regex.Matcher;
 
 public abstract class ClassInfo {
 
@@ -98,8 +97,8 @@ public abstract class ClassInfo {
 
                 ObjectKlass objectKlass = (ObjectKlass) klass;
                 ConstantPool pool = klass.getConstantPool();
-                NameAndTypeConstant nmt = pool.nameAndTypeAt(objectKlass.getEnclosingMethod().getMethodIndex());
-                enclosing.append(nmt.getName(pool)).append(";").append(nmt.getDescriptor(pool));
+                int nameAndTypeIndex = objectKlass.getEnclosingMethod().getNameAndTypeIndex();
+                enclosing.append(pool.nameAndTypeName(nameAndTypeIndex)).append(";").append(pool.nameAndTypeDescriptor(nameAndTypeIndex));
             }
         }
         // find all currently loaded direct inner classes and create class infos
@@ -126,7 +125,7 @@ public abstract class ClassInfo {
     }
 
     public static HotSwapClassInfo create(ObjectKlass klass, Symbol<Name> name, byte[] bytes, StaticObject definingLoader, EspressoContext context, boolean isNewInnerTestKlass) {
-        Symbol<Type> type = context.getTypes().fromName(name);
+        Symbol<Type> type = context.getTypes().fromClassNameEntry(name);
         ParserKlass parserKlass = ParserKlassProvider.parseKlass(ClassRegistry.ClassDefinitionInfo.EMPTY, context.getClassLoadingEnv(), definingLoader, type, bytes);
 
         StringBuilder hierarchy = new StringBuilder();
@@ -162,8 +161,8 @@ public abstract class ClassInfo {
 
                 ConstantPool pool = parserKlass.getConstantPool();
                 EnclosingMethodAttribute attr = (EnclosingMethodAttribute) parserKlass.getAttribute(EnclosingMethodAttribute.NAME);
-                NameAndTypeConstant nmt = pool.nameAndTypeAt(attr.getMethodIndex());
-                enclosing.append(nmt.getName(pool)).append(";").append(nmt.getDescriptor(pool));
+                int nameAndTypeIndex = attr.getNameAndTypeIndex();
+                enclosing.append(pool.nameAndTypeName(nameAndTypeIndex)).append(";").append(pool.nameAndTypeDescriptor(nameAndTypeIndex));
             }
         }
 

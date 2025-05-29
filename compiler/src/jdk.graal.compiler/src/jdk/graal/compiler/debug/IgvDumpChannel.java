@@ -39,24 +39,23 @@ import java.nio.channels.WritableByteChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.function.Supplier;
 
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.debug.DebugOptions.PrintGraphTarget;
 import jdk.graal.compiler.options.OptionValues;
-
+import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.vm.ci.common.NativeImageReinitialize;
-import org.graalvm.nativeimage.ImageInfo;
 
 final class IgvDumpChannel implements WritableByteChannel {
 
     private static final String ENABLE_NETWORK_DUMPING_PROP = "debug.jdk.graal.enableNetworkDumping";
 
     /**
-     * Support for IGV dumping to a network port is excluded by default from libgraal to reduce the
-     * libgraal image size. It also reduces security concerns related to opening random network
-     * connections.
+     * Support for IGV dumping to a network port is excluded by default from native images
+     * (including libgraal) to reduce the image size. It also reduces security concerns related to
+     * opening random network connections.
      *
-     * To enable IGV dumping to the network during libgraal based development, set the
-     * {@value #ENABLE_NETWORK_DUMPING_PROP} system property to true when building libgraal.
+     * To enable IGV dumping to the network during development, set the
+     * {@value #ENABLE_NETWORK_DUMPING_PROP} system property to true when building native images.
      */
     private static final boolean ENABLE_NETWORK_DUMPING = Boolean.parseBoolean(GraalServices.getSavedProperty(ENABLE_NETWORK_DUMPING_PROP));
 
@@ -93,7 +92,10 @@ final class IgvDumpChannel implements WritableByteChannel {
         }
     }
 
-    @NativeImageReinitialize private static boolean networkDumpingUnsupportedWarned;
+    /**
+     * Guard for issuing warning about unsupported network dumping at most once per process.
+     */
+    private static final GlobalAtomicLong NETWORK_DUMPING_UNSUPPORTED_WARNED = new GlobalAtomicLong("NETWORK_DUMPING_UNSUPPORTED_WARNED", 0L);
 
     WritableByteChannel channel() throws IOException {
         if (closed) {
@@ -104,11 +106,11 @@ final class IgvDumpChannel implements WritableByteChannel {
             if (target == PrintGraphTarget.File) {
                 sharedChannel = createFileChannel(pathProvider, null);
             } else if (target == PrintGraphTarget.Network) {
-                if (ImageInfo.inImageRuntimeCode() && !ENABLE_NETWORK_DUMPING) {
-                    if (!networkDumpingUnsupportedWarned) {
+                if (NativeImageSupport.inRuntimeCode() && !ENABLE_NETWORK_DUMPING) {
+                    if (NETWORK_DUMPING_UNSUPPORTED_WARNED.get() == 0) {
                         // Ignore races or multiple isolates - an extra warning is ok
-                        networkDumpingUnsupportedWarned = true;
-                        TTY.printf("WARNING: Graph dumping to network not supported as the %s system property was false when building libgraal - dumping to file instead.%n",
+                        NETWORK_DUMPING_UNSUPPORTED_WARNED.compareAndSet(0, 1);
+                        TTY.printf("WARNING: Graph dumping to network not supported as the %s system property was false when building - dumping to file instead.%n",
                                         ENABLE_NETWORK_DUMPING_PROP);
                     }
                     sharedChannel = createFileChannel(pathProvider, null);
@@ -147,7 +149,7 @@ final class IgvDumpChannel implements WritableByteChannel {
         }
     }
 
-    @NativeImageReinitialize private static String lastTargetAnnouncement;
+    private static String lastTargetAnnouncement;
 
     private static void maybeAnnounceTarget(String targetAnnouncement) {
         if (!targetAnnouncement.equals(lastTargetAnnouncement)) {

@@ -3,57 +3,92 @@
 Substrate VM is an internal project name for the technology behind [GraalVM Native Image](../README.md).
 This guide shows how to set up a development environment for the project.
 
-To get started, install [mx](https://github.com/graalvm/mx).
-Then point the `JAVA_HOME` variable to a JDK that supports a compatible version
-of the JVM Compiler Interface (JVMCI). JVMCI is a privileged, low-level interface
-to the JVM that can read metadata from the VM, such as method bytecode, and
-install machine code into the VM. Obtain JVMCI-enabled:
-* JDK 8 from [GitHub](https://github.com/graalvm/openjdk8-jvmci-builder/releases)
-* JDK 11 from [GitHub](https://github.com/graalvm/labs-openjdk-11/releases)
+## Quick Start Guide
 
-#### Prerequisites
-For compilation, `native-image` depends on the local toolchain. Install
-`glibc-devel`, `zlib-devel` (header files for the C library and `zlib`) and
-`gcc`, using a package manager available on your OS. Some Linux distributions
-may additionally require `libstdc++-static`.
+This quick start guide walks you through building Native Image on a Linux computer.
+For other operating systems, some commands need to be adjusted.
 
-On Windows, Native Image requires Visual Studio 2022 version 17.1.0 or later.
+### Prerequisites
+For compilation, `native-image` depends on the local toolchain.
+Install `glibc-devel`, `zlib-devel` (header files for the C library and `zlib`) and `gcc`, using a package manager available on your OS.
+Some Linux distributions may additionally require `libstdc++-static`.
+
+On Windows, Native Image requires Visual Studio 2022 version 17.6.0 or later.
+
+For our build system `mx` you will need an installation of Python, version 3.8 or later.
+
+### Clone the Required Repositories
+
+First, clone [mx](https://github.com/graalvm/mx), which is GraalVM's build system.
+Add the `mx` directory to the `PATH` environment variable.
+
+Then clone or download the [graal](https://github.com/oracle/graal) repository.
+
+It is good practice to have `mx` and `graal` as sibling directories.
+If you later add additional GraalVM projects, like Truffle-based languages, they need to be in sibling directories of `graal`.
+
+```
+workspace
+  |- mx
+  |- graal
+  |- graal-js      (optional)
+  |- graalpython   (optional)
+  |- ...
+```
+
+### Install a Compatible JDK
+
+GraalVM Native Image is bleeding-edge technology that relies on the latest Java version.
+Therefore, you must also use the latest JVM.
+The easiest way to download a compatible version is to use `mx`:
 
 ```shell
+mx fetch-jdk
+export JAVA_HOME=... (path to the JDK downloaded by fetch-jdk)
+```
+
+Note that you might have to repeat this step if you pull a newer version of the `graal` repository.
+The JDK updates typically happen in a weekly cadence.
+
+### Build and Test Native Image
+
+Once you have all the requirements in place, you can build `substratevm`:
+
+```shell
+cd /path/to/graal
 cd substratevm
 mx build
+```
 
+The build should terminate without any error.
+On a built `substratevm`, you can try your first Hello World example:
+
+```shell
 echo "public class HelloWorld { public static void main(String[] args) { System.out.println(\"Hello World\"); } }" > HelloWorld.java
 $JAVA_HOME/bin/javac HelloWorld.java
 mx native-image HelloWorld
 ./helloworld
 ```
 
-To build polyglot images, refer to the documentation in the [VM suite](../../../../vm/README.md).
+### Use an IDE for Development
 
-## Build Native Image
+Common IDEs like IntelliJ IDEA can be used for development.
+To initialize the required project files, use the `ideinit` command:
 
-Using Native Image in a development environment requires the `mx` tool to be installed first, so that it is on your `PATH`.
-Visit the [MX Homepage](https://github.com/graalvm/mx) for more details.
+```shell
+cd substratevm
+mx ideinit
+```
 
-In the main directory, invoke `mx help` to see the list of commands.
-Most of the commands are inherited from the [Graal](https://github.com/oracle/graal) and [Truffle](https://github.com/oracle/graal/tree/master/truffle) code bases.
-More information on a specific command is available by running `mx help <command>`.
-The most important commands are:
-
-* `build`: compile all Java and native code
-* `clean`: remove all compilation artifacts
-* `ideinit`: create project files for Eclipse and other common IDEs
 See the [documentation on IDE integration](../../../../compiler/docs/IDEs.md) for details.
 
-## Build Native Executables
+## Debug the Native Image Build Process
 
-After running `mx build` you can use `mx native-image` to build a native executable.
-You can specify the main entry point, that is, the application for wish you want to create the executable. For more information run `mx native-image --help`.
-
-A native image generation is performed by a Java program, a Native Image builder, that runs on a JVMCI-enabled JDK. You can debug it with a regular Java debugger.
+A native image generation is performed by a Java program, the Native Image builder.
+You can debug it with a regular Java debugger.
 Use `mx native-image --debug-attach` to start native image generation so that it waits for a Java debugger to attach first (by default, at port 8000).
-In Eclipse, use the debugging configuration _substratevm-localhost-8000_ to attach to it. This debugging configuration is automatically generated by `mx ideinit`.
+In IDEA, use the debugging configuration _substratevm-localhost-8000_ to attach to it.
+This debugging configuration is automatically generated by `mx ideinit`.
 
 If you have to debug the compiler graphs that are built as part of an image, proceed to the [debugging](../../../../compiler/docs/Debugging.md) page.
 You can use the [Ideal Graph Visualizer (IGV)](https://www.graalvm.org/latest/tools/igv/) tool to view individual compilation steps:
@@ -62,37 +97,65 @@ mx igv &>/dev/null &
 mx native-image HelloWorld -H:Dump= -H:MethodFilter=HelloWorld.*
 ```
 
+## Debug an Image
+
+For information how to debug a built image, see [Debug Information](../DebugInfo.md).
+A broader overview of the topic is shown in [Debugging and Diagnostics](../DebuggingAndDiagnostics.md).
+
 ## Options
+
+The build process can be configured by **Hosted options**.
+These options use the prefix `-H:` and influence, for example, what is included in the native binary and how it is built.
+
+In contrast, **Runtime options** are consumed later, at image runtime.
+Their initial value(s) can be set at image build time, using the prefix `-R:`.
+At runtime, the default prefix for such options is `-XX:` (this is application-specific and not mandated by Native Image).
 
 More information about options and the important distinction between hosted and runtime options is available [here](../docs/reference-manual/native-image/BuildOptions.md).
 
-## Project Structure
+## Build System: mx
 
-The list of projects is defined in a custom format in the file `mx.substratevm/suite.py`. It is never necessary to create new projects in the IDE.
-Instead, a new project is created by adding it in `suite.py` and running `mx ideinit` to generate a corresponding IDE project.
+`mx` is GraalVM's own build system.
+Invoke `mx help` to see the list of commands.
+Most of the commands are inherited from the [Graal](https://github.com/oracle/graal) and [Truffle](https://github.com/oracle/graal/tree/master/truffle) code bases.
+More information on a specific command is available by running `mx help <command>`.
+The most important commands are:
 
-## Code Formatting
+* `build`: compile all Java and native code
+* `clean`: remove all compilation artifacts
+* `ideinit`: create project files for IDEA, Eclipse, or other common IDEs
 
-Style rules and procedures for checking adherence are described in the [style guide](CodeStyle.md).
+### Suites
+Applications based on `mx` are structured in so-called "suites", implemented in subdirectories.
+For `graal`, the most prominent ones are `compiler` and `substratevm`.
+Many of the `mx` commands only work when executed from inside a suite (i.e. you need to `cd` into the directory first).
 
-## Troubleshooting Eclipse
+### Projects
+The list of projects is defined in a custom format in the file _mx.substratevm/suite.py_.
+A new project is created by adding it in _suite.py_ and running `mx ideinit` to generate a corresponding IDE project.
+Do not manually create them in the IDE, such projects would be deleted by `mx ideinit`.
 
-Sometimes, Eclipse gives strange error messages, especially after pulling a
-bigger changeset. Also, projects are frequently added or removed, leading to
-error messages about missing projects if you do not import new projects. The
-following should reset everything:
+## Troubleshoot IDEs
 
-* Delete all projects in Eclipse
+Sometimes, IDEs give strange error messages, especially after pulling a bigger changeset.
+Also, projects are frequently added or removed, leading to error messages about missing projects if you do not import new projects.
+The following should reset everything:
+
+* Delete all projects the IDE
 * `mx clean`
 * `mx ideclean`
 * `mx fsckprojects`
 * `mx build`
 * `mx ideinit`
-* Import all projects into Eclipse again
+* Import all projects into IDE again
 
 ## Usage Documentation
 
 The documentation on how to use Native Image is available [here](../README.md) or [on the website](https://www.graalvm.org/reference-manual/native-image/).
+
+## Code Formatting
+
+Style rules and procedures for checking adherence are described in the [style guide](CodeStyle.md).
 
 ## License
 

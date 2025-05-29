@@ -1,25 +1,33 @@
-# Espresso Continuations
+---
+layout: docs
+toc_group: espresso
+link_title: Continuation API
+permalink: /reference-manual/espresso/continuations/
+---
 
-The continuations feature of the Espresso VM allows you to control the program stack. When a continuation is _suspended_
-the stack is unwound and copied onto the heap as ordinary Java objects. When a continuation is _resumed_ those objects
-are put back onto the stack, along with all the needed metadata to resume execution at the pause point. The heap objects
-can be serialized to resume execution in a different JVM running the same code (e.g. after a restart).
+# Continuation API
+
+The [Continuation API](https://central.sonatype.com/artifact/org.graalvm.espresso/continuations){:target="_blank"} enables you to control the program stack.
+When a continuation is _suspended_, the stack is unwound and copied onto the heap as ordinary Java objects.
+When a continuation is _resumed_, those objects are put back onto the stack, along with all the needed metadata to resume execution at the pause point.
+The heap objects can be serialized to resume execution in a different JVM running the same code (for example, after a restart).
 
 ## Usage
 
-See the JavaDoc of the `org.graalvm.continuations` package, and make sure to add the `continuations.jar` in the Espresso
-distribution to your classpath when compiling (but not at runtime).
+Add `org.graalvm.espresso:continuations:24.2.0` to your classpath at compilation time (it will be automatically provided at runtime).
+The continuation feature is experimental and needs to be explicitly enabled by using these options: `--experimental-options --java.Continuum=true`.
 
-Currently, only the Espresso VM supports the continuations feature. Since it is still experimental, the option needs to
-be enabled by using the flags `--experimental-options --java.Continuum=true`.
+See an [example usage](serialization.md) of the Continuation API with serialization.
 
-### High level
+### High Level
 
 If you can model your use case as code that emits (or _yields_) a stream of objects, you can use the `Generator<T>`
-class. This provides something similar to Python's generators with a convenient API. Just subclass it,
-implement `generate` and call `emit` from inside it.
+class. This provides something similar to Python's generators with a convenient API:
+subclass it, implement `generate`, and call `emit` from inside it.
 
-### Low level
+[See an example of using the Generator API](generators.md).
+
+### Low Level
 
 You create a new `Continuation` by passing the constructor an object that implements the functional
 interface `ContinuationEntryPoint` (which can be a lambda). That object's `start` method receives
@@ -29,15 +37,15 @@ unwound and stored inside the `Continuation` object. You can then call `resume()
 time or to restart from the last suspend point.
 
 Continuations are single-threaded constructs. There are no second threads involved, and the `resume()` method blocks
-until the continuation either finishes successfully, throws an exception or calls suspend. `isResumable()` can be called
-to determine if the continuation can be resumed (if the continuation has been freshly created or it has been previously
-suspended), and `isCompleted()` can be called to determine if the continuation has completed (either by returning
-normally, or if an exception escaped).
+until the continuation either finishes successfully, throws an exception or calls suspend.
+You can use `isResumable()` to check if the continuation can be resumed (for example, if the continuation has been
+freshly created or it has been previously suspended), and `isCompleted()` to verify whether the continuation has completed
+(either by returning normally, or if an exception escaped).
 
 `Continuation` implements `Serializable` and can serialize to a backwards compatible format. Because frames can point to
 anything in their parameters and local variables, the class `ContinuationSerializable` provides static
 methods `readObjectExternal` and `writeObjectExternal` which may be used to coordinate serialization of
-continuation-related objects with a non-jdk serialization engine. Note that when the `--java.Continuum` flag is specified, 
+continuation-related objects with a non-jdk serialization engine. Note that when the `--java.Continuum` flag is specified,
 all lambdas are serializable but deserialization will require special support from your serializer engine.
 
 ## Security
@@ -57,7 +65,7 @@ prevent a VM crash. Examples of these checks are:
 Deserializing a continuation supplied by an attacker will allow complete takeover of the JVM. Only resume continuations
 you persisted yourself!
 
-## Use cases
+## Use Cases
 
 Serializing a continuation makes it _multi-shot_, meaning you can restart a continuation more than once and thus redo
 the same computation with different inputs. This ability to explore "parallel worlds" opens up many interesting use
@@ -84,7 +92,7 @@ cases.
   to migrate units of work.
 - **Parsing**: Implementing non-deterministic parsers or interpreters where multiple potential parsing paths are
   explored simultaneously.
-- **Custom Control Structures**: Creating new control structures (like loops, exception handling) that are not natively
+- **Custom Control Structures**: Creating new control structures (for example, loops, exception handling) that are not natively
   supported in the programming language.
 - **Time-travel Debugging**: Capturing continuations at various points in a program to enable "stepping back" in time
   during debugging sessions.
@@ -95,22 +103,23 @@ cases.
 
 CPUs attempt to guess the direction of a branch when the data it depends on hasn't arrived yet. This is helpful because
 memory is slow. The same trick can be done at much higher levels using continuations when reading data from slow data
-sources like a far away server. If you have a computation where CPU intensive work is interleaved with long blocking
+sources such as a far away server. If you have a computation where CPU intensive work is interleaved with long blocking
 periods, this can speed things up.
 
-When a continuation performs a slow operation that yields a value (e.g. an RPC), we can suspend, serialize, dispatch the
-request and then instead of waiting for the result and scheduling other work - as would be standard in a
-continuation-based async threads implementation like Loom - we can instead pick one or more values that we think the RPC
-_might_ return. Then we deserialize the continuation again for each value we want to try and resume it. This forks
-execution into multiple parallel universes. The new paths can then fork again, forming a tree of possibilities. If the
-continuation tries to do something that isn't controlled by the surrounding framework and can't be undone (a side
-effect), it suspends at that point and doesn't continue (this is as far as we can speculate).
+When a continuation performs a slow operation that yields a value (for example, an RPC), you can suspend, serialize, dispatch the request.
+Instead of waiting for the result and scheduling other work—as would be standard in continuation-based async threads implementations such as [Project Loom](https://wiki.openjdk.org/display/loom/Main)—you
+can instead pick one or more values that we think the RPC _might_ return.
+Then the continuation is deserialized for each value, resuming execution separately for each possibility.
+This approach forks the execution into multiple parallel paths. The new paths can then fork again, forming a tree of possibilities.
 
-As results arrive from the remote server we can steadily resolve our way down the tree discarding all the serialized
-continuations that exist in worlds that weren't taken. Eventually the final result is received and the continuation can
-finish, or continue past a side effecting point.
+If the continuation encounters an operation that is not controlled by the surrounding framework and cannot be undone (for example, a side
+effect), it suspends at that point and doesn't continue speculatively.
 
-If the server protocol allows results to be chained together (e.g.
+When results arrive from the remote server, the speculative tree of serialized continuations can be resolved incrementally.
+Serialized continuations corresponding to paths that are no longer valid are discarded.
+Once the final result is received, the continuation either completes execution or proceeds beyond a point where side effects occur.
+
+If the server protocol allows results to be chained together (for example,
 as [Cap'n'Proto RPC does](https://capnproto.org/rpc.html#time-travel-promise-pipelining),
 or [FoundationDB](https://github.com/apple/foundationdb/wiki/Everything-about-GetMappedRange)), back-to-back speculative
 calls can be transmitted to the server for local processing, avoiding roundtrips.
@@ -127,11 +136,11 @@ There are special situations in which a call to `suspend` may fail with `Illegal
 
 Furthermore, there is currently no support for continuation-in-continuation.
 
-## Internal implementation notes
+## Internal Implementation Notes
 
 *This section is only relevant for people working on Espresso itself.*
 
-Continuations interact with the VM via private intrinsics registered on the `Continuation` and `ContinuationImpl` class.
+Continuations interact with the VM through private intrinsics registered for the `Continuation` and `ContinuationImpl` classes.
 
 A continuation starts by calling into the VM. Execution resurfaces in the guest world at the private `run` method of
 `ContinuationImpl`, which then invokes the user's given entry point.
@@ -145,8 +154,8 @@ On resuming a `Continuation`, the entire call stack needs to be re-winded. This 
 than for regular calls, and there is one such call target per encountered resume `bci`.
 
 These call targets take a single argument: the `HostFrameRecord` that was stored into the `Continuation`. Using this
-record, we restore the frame for the current method, we unlink the current record from the rest (for GC purposes), and
-we pass the rest of the records to the next method. This is all done in a special invoke node, `InvokeContinuableNode`.
+record, the frame is restored for the current method, the current record is unlinked from the rest (for GC purposes), and
+the rest of the records is passed to the next method. This is all done in a special invoke node, `InvokeContinuableNode`.
 
 The separation of the call targets has two advantages:
 
@@ -155,3 +164,7 @@ The separation of the call targets has two advantages:
 
 Serialization is done entirely in guest-side code, by having the `Continuation` class implement `Serializable`. The
 format is designed to enable backwards-compatible evolution of the format.
+
+### Further Reading
+* [Serialization of Continuations](serialization.md)
+* [Generator API](generators.md)

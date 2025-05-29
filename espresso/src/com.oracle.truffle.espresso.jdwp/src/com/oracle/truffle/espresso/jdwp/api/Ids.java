@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
+import com.oracle.truffle.api.TruffleLogger;
 
 /**
  * Class that keeps an ID representation of all entities when communicating with a debugger through
@@ -57,11 +57,10 @@ public final class Ids<T> {
 
     private HashMap<String, Long> innerClassIDMap = new HashMap<>(16);
 
-    private DebuggerController controller;
-
     private List<Object> pinnedObjects = new ArrayList<>();
 
     private volatile boolean pinningState = false;
+    private TruffleLogger logger;
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Ids(T nullObject) {
@@ -173,43 +172,12 @@ public final class Ids<T> {
         return id;
     }
 
-    public void replaceObject(T original, T replacement) {
-        int id = (int) getIdAsLong(original);
-        objects[id] = new WeakReference<>(replacement);
-        log(() -> "Replaced ID: " + id);
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public void updateId(KlassRef klass) {
-        // remove existing ID
-        removeId(klass);
-        Long theId = innerClassIDMap.get(klass.getNameAsString());
-        if (theId != null) {
-            // then inject klass under the new ID
-            objects[(int) (long) theId] = new WeakReference(klass);
-        }
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private void removeId(KlassRef klass) {
-        int id = (int) getId(klass);
-        if (id > 0) {
-            objects[id] = new WeakReference<>(null);
-        }
-    }
-
     public boolean checkRemoved(long refTypeId) {
         return innerClassIDMap.containsValue(refTypeId);
     }
 
-    public void injectController(DebuggerController control) {
-        this.controller = control;
-    }
-
     private void log(Supplier<String> supplier) {
-        if (controller != null) {
-            controller.finest(supplier);
-        }
+        logger.finest(supplier);
     }
 
     public synchronized void pinAll() {
@@ -225,5 +193,9 @@ public final class Ids<T> {
     public synchronized void unpinAll() {
         pinningState = false;
         pinnedObjects.clear();
+    }
+
+    public void injectLogger(TruffleLogger truffleLogger) {
+        this.logger = truffleLogger;
     }
 }

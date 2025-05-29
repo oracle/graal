@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,13 +44,13 @@ import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.api.HostVM;
+import com.oracle.graal.pointsto.api.ImageLayerLoader;
+import com.oracle.graal.pointsto.api.ImageLayerWriter;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
-import com.oracle.graal.pointsto.heap.ImageLayerLoader;
-import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -93,7 +93,7 @@ public class AnalysisUniverse implements Universe {
     private final ConcurrentMap<ResolvedSignature<AnalysisType>, ResolvedSignature<AnalysisType>> uniqueSignatures = new ConcurrentHashMap<>();
     private final ConcurrentMap<ConstantPool, WrappedConstantPool> constantPools = new ConcurrentHashMap<>(ESTIMATED_NUMBER_OF_TYPES);
     private final ConcurrentHashMap<Constant, Object> embeddedRoots = new ConcurrentHashMap<>(ESTIMATED_EMBEDDED_ROOTS);
-    private final ConcurrentMap<AnalysisField, Boolean> unsafeAccessedStaticFields = new ConcurrentHashMap<>();
+    private final ConcurrentMap<AnalysisField, Boolean> unsafeAccessedStaticFields;
 
     private boolean sealed;
 
@@ -149,6 +149,7 @@ public class AnalysisUniverse implements Universe {
         objectToConstantReplacers = (Function<Object, ImageHeapConstant>[]) new Function<?, ?>[0];
         featureSubstitutions = new SubstitutionProcessor[0];
         featureNativeSubstitutions = new SubstitutionProcessor[0];
+        unsafeAccessedStaticFields = analysisPolicy.useConservativeUnsafeAccess() ? null : new ConcurrentHashMap<>();
     }
 
     @Override
@@ -438,10 +439,6 @@ public class AnalysisUniverse implements Universe {
         });
 
         if (result.equals(newValue)) {
-            if (newValue.isInBaseLayer()) {
-                getImageLayerLoader().initializeBaseLayerMethod(newValue);
-            }
-
             prepareMethodImplementations(newValue);
         }
 
@@ -456,6 +453,9 @@ public class AnalysisUniverse implements Universe {
                 AnalysisMethod override = subtype.resolveConcreteMethod(method, null);
                 if (override != null && !override.equals(method)) {
                     ConcurrentLightHashSet.addElement(method, AnalysisMethod.allImplementationsUpdater, override);
+                    if (method.reachableInCurrentLayer()) {
+                        override.setReachableInCurrentLayer();
+                    }
                 }
             }
         }
@@ -471,7 +471,7 @@ public class AnalysisUniverse implements Universe {
                 }
             }
         }
-        return result.toArray(new AnalysisMethod[result.size()]);
+        return result.toArray(AnalysisMethod.EMPTY_ARRAY);
     }
 
     @Override
@@ -599,10 +599,13 @@ public class AnalysisUniverse implements Universe {
     }
 
     public void registerUnsafeAccessedStaticField(AnalysisField field) {
+        AnalysisError.guarantee(!analysisPolicy.useConservativeUnsafeAccess(), "With conservative unsafe access we don't track unsafe accessed fields.");
+        AnalysisError.guarantee(!field.getType().isWordType(), "static Word fields cannot be unsafe accessed %s", this);
         unsafeAccessedStaticFields.put(field, true);
     }
 
     public Set<AnalysisField> getUnsafeAccessedStaticFields() {
+        AnalysisError.guarantee(!analysisPolicy.useConservativeUnsafeAccess(), "With conservative unsafe access we don't track unsafe accessed fields.");
         return unsafeAccessedStaticFields.keySet();
     }
 
@@ -784,6 +787,9 @@ public class AnalysisUniverse implements Universe {
     }
 
     public DuringAnalysisAccess getConcurrentAnalysisAccess() {
+        AnalysisError.guarantee(concurrentAnalysisAccess != null, "The requested DuringAnalysisAccess object is not available. " +
+                        "This means that an analysis task is executed too eagerly, before analysis. " +
+                        "Make sure that all analysis tasks are posted to the analysis execution engine.");
         return concurrentAnalysisAccess;
     }
 

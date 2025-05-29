@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import java.util.function.IntUnaryOperator;
 
 import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawFieldAddress;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
 import org.graalvm.word.ComparableWord;
@@ -35,7 +36,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
@@ -167,6 +167,12 @@ public final class HeapChunk {
 
         @RawField
         void setIdentityHashSalt(UnsignedWord value, LocationIdentity identity);
+
+        @RawField
+        int getPinnedObjectCount();
+
+        @RawFieldAddress
+        Pointer addressOfPinnedObjectCount();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -174,8 +180,8 @@ public final class HeapChunk {
         HeapChunk.setEndOffset(chunk, endOffset);
         HeapChunk.setTopPointer(chunk, objectsStart);
         HeapChunk.setSpace(chunk, null);
-        HeapChunk.setNext(chunk, WordFactory.nullPointer());
-        HeapChunk.setPrevious(chunk, WordFactory.nullPointer());
+        HeapChunk.setNext(chunk, Word.nullPointer());
+        HeapChunk.setPrevious(chunk, Word.nullPointer());
 
         /*
          * The epoch is obviously not random, but cheap to use, and we cannot use a random number
@@ -272,8 +278,8 @@ public final class HeapChunk {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @SuppressWarnings("unchecked")
     private static <T extends PointerBase> T pointerFromOffset(Header<?> that, ComparableWord offset) {
-        T pointer = WordFactory.nullPointer();
-        if (offset.notEqual(WordFactory.zero())) {
+        T pointer = Word.nullPointer();
+        if (offset.notEqual(Word.zero())) {
             pointer = (T) ((SignedWord) that).add((SignedWord) offset);
         }
         return pointer;
@@ -286,7 +292,7 @@ public final class HeapChunk {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static SignedWord offsetFromPointer(Header<?> that, PointerBase pointer) {
-        SignedWord offset = WordFactory.zero();
+        SignedWord offset = Word.zero();
         if (pointer.isNonNull()) {
             offset = ((SignedWord) pointer).subtract((SignedWord) that);
         }
@@ -295,28 +301,25 @@ public final class HeapChunk {
 
     @NeverInline("Not performance critical")
     @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
-    public static boolean walkObjectsFrom(Header<?> that, Pointer start, ObjectVisitor visitor) {
-        return walkObjectsFromInline(that, start, visitor);
+    public static void walkObjectsFrom(Header<?> that, Pointer start, ObjectVisitor visitor) {
+        walkObjectsFromInline(that, start, visitor);
     }
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
-    public static boolean walkObjectsFromInline(Header<?> that, Pointer start, ObjectVisitor visitor) {
+    public static void walkObjectsFromInline(Header<?> that, Pointer start, ObjectVisitor visitor) {
         Pointer p = start;
         while (p.belowThan(getTopPointer(that))) { // crucial: top can move, so always re-read
-            Object obj = p.toObject();
-            if (!callVisitor(visitor, obj)) {
-                return false;
-            }
+            Object obj = p.toObjectNonNull();
+            callVisitor(visitor, obj);
             p = p.add(LayoutEncoding.getSizeFromObjectInlineInGC(obj));
         }
-        return true;
     }
 
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
-    private static boolean callVisitor(ObjectVisitor visitor, Object obj) {
-        return visitor.visitObjectInline(obj);
+    private static void callVisitor(ObjectVisitor visitor, Object obj) {
+        visitor.visitObject(obj);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

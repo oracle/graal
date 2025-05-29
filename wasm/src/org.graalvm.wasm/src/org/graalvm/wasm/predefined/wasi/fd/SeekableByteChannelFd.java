@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package org.graalvm.wasm.predefined.wasi.fd;
 
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 import org.graalvm.wasm.predefined.wasi.types.Fdflags;
 import org.graalvm.wasm.predefined.wasi.types.Filetype;
@@ -153,7 +154,7 @@ abstract class SeekableByteChannelFd extends Fd {
                 return Errno.Inval;
             }
             channel.position(newOffset);
-            memory.store_i64(node, newOffsetAddress, channel.position());
+            WasmMemoryLibrary.getUncached().store_i64(memory, node, newOffsetAddress, channel.position());
         } catch (IOException e) {
             return Errno.Io;
         }
@@ -166,7 +167,7 @@ abstract class SeekableByteChannelFd extends Fd {
             return Errno.Notcapable;
         }
         try {
-            memory.store_i64(node, offsetAddress, channel.position());
+            WasmMemoryLibrary.getUncached().store_i64(memory, node, offsetAddress, channel.position());
         } catch (IOException e) {
             return Errno.Io;
         }

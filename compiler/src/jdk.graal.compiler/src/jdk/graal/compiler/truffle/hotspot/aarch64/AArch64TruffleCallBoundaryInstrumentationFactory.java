@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.truffle.hotspot.aarch64;
 
-import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.X_FIELD_BARRIER;
 import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.Z_LOAD_BARRIER;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.meta.JavaKind.Object;
@@ -39,7 +38,6 @@ import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.hotspot.aarch64.AArch64HotSpotBackend;
 import jdk.graal.compiler.hotspot.aarch64.AArch64HotSpotMove;
-import jdk.graal.compiler.hotspot.aarch64.x.AArch64HotSpotXBarrierSetLIRGenerator;
 import jdk.graal.compiler.hotspot.aarch64.z.AArch64HotSpotZBarrierSetLIRGenerator;
 import jdk.graal.compiler.hotspot.meta.HotSpotRegistersProvider;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
@@ -58,7 +56,7 @@ public class AArch64TruffleCallBoundaryInstrumentationFactory extends TruffleCal
         return new TruffleEntryPointDecorator(compilerConfig, config, registers) {
             @Override
             public void emitEntryPoint(CompilationResultBuilder crb, boolean beforeFrameSetup) {
-                if (beforeFrameSetup == (config.gc == HotSpotGraalRuntime.HotSpotGC.Z || config.gc == HotSpotGraalRuntime.HotSpotGC.X)) {
+                if (beforeFrameSetup == (config.gc == HotSpotGraalRuntime.HotSpotGC.Z)) {
                     // The Z load barrier must be performed after the nmethod entry barrier which is
                     // part of the frame setup. The other GCs don't have a read barrier so it's
                     // safe to do this dispatch before the frame is set up.
@@ -80,10 +78,6 @@ public class AArch64TruffleCallBoundaryInstrumentationFactory extends TruffleCal
                     } else {
                         AArch64Address address = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, thisRegister, installedCodeOffset);
                         masm.ldr(64, spillRegister, address);
-                        if (config.gc == HotSpotGraalRuntime.HotSpotGC.X) {
-                            ForeignCallLinkage callTarget = crb.getForeignCalls().lookupForeignCall(X_FIELD_BARRIER);
-                            AArch64HotSpotXBarrierSetLIRGenerator.emitBarrier(crb, masm, null, spillRegister, config, callTarget, address, null);
-                        }
                         if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
                             ForeignCallLinkage callTarget = crb.getForeignCalls().lookupForeignCall(Z_LOAD_BARRIER);
                             AArch64HotSpotZBarrierSetLIRGenerator.emitLoadBarrier(crb, masm, config, spillRegister, callTarget, address, null, false, false);

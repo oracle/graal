@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.vm.continuation;
 
 import static com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor.guarantee;
@@ -31,20 +30,20 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.ErrorType;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
@@ -134,16 +133,19 @@ public final class HostFrameRecord {
             if (next != null) {
                 // Ensures the next method is a valid invoke
                 ConstantPool pool = methodVersion.getPool();
-                MethodRefConstant ref = pool.methodAt(bs.readCPI(bci()));
-                Symbol<Name> name = ref.getName(pool);
-                Symbol<Signature> signature = ref.getSignature(pool);
+                int methodIndex = bs.readCPI(bci());
+                Symbol<Name> name = pool.methodName(methodIndex);
+                Symbol<Signature> signature = pool.methodSignature(methodIndex);
                 // Compatible method reference
                 guarantee(next.methodVersion.getName() == name && next.methodVersion.getRawSignature() == signature, "Wrong method on the recorded frames", meta);
                 // Loading constraints are respected
-                Symbol<Type> returnType = Signatures.returnType(next.methodVersion.getMethod().getParsedSignature());
-                meta.getContext().getRegistries().checkLoadingConstraint(returnType,
+                Symbol<Type> returnType = SignatureSymbols.returnType(next.methodVersion.getMethod().getParsedSignature());
+                EspressoContext context = meta.getContext();
+                context.getRegistries().checkLoadingConstraint(returnType,
                                 methodVersion.getDeclaringKlass().getDefiningClassLoader(),
-                                next.methodVersion.getDeclaringKlass().getDefiningClassLoader());
+                                next.methodVersion.getDeclaringKlass().getDefiningClassLoader(), m -> {
+                                    throw context.throwError(ErrorType.LinkageError, m);
+                                });
             } else {
                 // Last method on the stack must be the call to suspend.
                 guarantee(methodVersion.getMethod() == meta.continuum.org_graalvm_continuations_ContinuationImpl_suspend, "Last method on the record is not 'Continuation.suspend'", meta);

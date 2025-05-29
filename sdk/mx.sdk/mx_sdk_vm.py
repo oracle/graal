@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -263,7 +263,8 @@ class GraalVmComponent(object):
                  extra_installable_qualifiers=None,
                  has_relative_home=True,
                  jvm_configs=None,
-                 extra_native_targets=None):
+                 extra_native_targets=None,
+                 final_stage_only=False):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -281,6 +282,7 @@ class GraalVmComponent(object):
                 'priority': -1,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
             }
         :param extra_native_targets: list of str, enables extra targets in multi-target projects.
+        :param final_stage_only: bool, this component should be only included in the final GraalVM, not in stage1
         :type license_files: list[str]
         :type third_party_license_files: list[str]
         :type polyglot_lib_build_args: list[str]
@@ -305,6 +307,7 @@ class GraalVmComponent(object):
         :type extra_installable_qualifiers: list[str] | None
         :type has_relative_home: bool
         :type jvm_configs: list[dict] or None
+        :type final_stage_only: bool
         """
         if dependencies is None:
             mx.logv('Component {} does not specify dependencies'.format(name))
@@ -331,18 +334,15 @@ class GraalVmComponent(object):
         self.priority = priority or 0
         self.launcher_configs = launcher_configs or []
         self.library_configs = library_configs or []
-        if installable is None:
-            installable = isinstance(self, GraalVmLanguage)
-        self.installable = installable
-        if standalone is None:
-            standalone = installable
-        self.standalone = standalone
-        self.post_install_msg = post_install_msg
-        self.installable_id = installable_id or self.dir_name
+        self.installable = None
+        self.standalone = None
+        self.post_install_msg = None
+        self.installable_id = None
         self.extra_installable_qualifiers = extra_installable_qualifiers or []
         self.has_relative_home = has_relative_home
         self.jvm_configs = jvm_configs or []
         self.extra_native_targets = extra_native_targets
+        self.final_stage_only = final_stage_only
 
         if supported is not None or early_adopter:
             if stability is not None:
@@ -832,6 +832,9 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
             if default_to_jvmci or 'jdk.graal.compiler' in non_synthetic_modules:
                 threads = get_JVMCIThreadsPerNativeLibraryRuntime(jdk)
                 vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct'])
+                # -XX:+EnableJVMCI must be explicitly specified to the java launcher to add
+                # jdk.internal.vm.ci to the root set (JDK-8345826)
+                vm_options.append('-XX:+EnableJVMCI')
                 if threads is not None and threads != 1:
                     vm_options.append('-XX:JVMCIThreadsPerNativeLibraryRuntime=1')
                 if default_to_jvmci == 'lib':
@@ -841,11 +844,19 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
                 if 'jdk.graal.compiler' in non_synthetic_modules and mx_sdk_vm_impl._get_libgraal_component() is None:
                     # If libgraal is absent, jargraal is used by default.
                     # Use of jargraal requires exporting jdk.internal.misc to
-                    # Graal as it uses jdk.internal.misc.Unsafe.
+                    # Graal as it uses jdk.internal.misc.Unsafe. To avoid warnings
+                    # about unknown modules (e.g. in `-Xint` mode), the export target
+                    # modules must be explicitly added to the root set with `--add-modules`.
                     if 'com.oracle.graal.graal_enterprise' in non_synthetic_modules:
-                        vm_options.extend(['--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler,com.oracle.graal.graal_enterprise'])
+                        vm_options.extend([
+                            '--add-modules=jdk.graal.compiler,com.oracle.graal.graal_enterprise',
+                            '--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler,com.oracle.graal.graal_enterprise'
+                        ])
                     else:
-                        vm_options.extend(['--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler'])
+                        vm_options.extend([
+                            '--add-modules=jdk.graal.compiler',
+                            '--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler'
+                        ])
             else:
                 # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
                 # This avoids unexpected issues with using the out-of-date Graal compiler in
@@ -1026,21 +1037,23 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                 module_names = frozenset((m.name for m in modules))
                 all_module_names = frozenset(list(jdk_modules.keys())) | module_names
 
-        # Edit lib/security/default.policy in java.base
-        patched_java_base = _patch_default_security_policy(build_dir, jmods_dir, dst_jdk_dir)
-
         # Now build the new JDK image with jlink
         jlink = [jdk.javac.replace('javac', 'jlink')]
         jlink_persist = []
 
         if jdk_enables_jvmci_by_default(jdk):
-            # On JDK 9+, +EnableJVMCI forces jdk.internal.vm.ci to be in the root set
+            # +EnableJVMCI forces jdk.internal.vm.ci to be in the root set
             jlink += ['-J-XX:-EnableJVMCI', '-J-XX:-UseJVMCICompiler']
 
         jlink.append('--add-modules=' + ','.join(_get_image_root_modules(root_module_names, module_names, jdk_modules.keys(), use_upgrade_module_path)))
         jlink_persist.append('--add-modules=jdk.internal.vm.ci')
 
-        module_path = patched_java_base + os.pathsep + jmods_dir
+        # Edit lib/security/default.policy in java.base if prior to JDK 24.
+        # GR-59085 deprecated the security manager in JDK 24 so no policy exists.
+        module_path = jmods_dir
+        if jdk.javaCompliance < '24':
+            patched_java_base = _patch_default_security_policy(build_dir, jmods_dir, dst_jdk_dir)
+            module_path = patched_java_base + os.pathsep + jmods_dir
 
         class TempJmods:
             """

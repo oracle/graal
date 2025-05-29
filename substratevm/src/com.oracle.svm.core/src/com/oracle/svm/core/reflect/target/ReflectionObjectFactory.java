@@ -52,7 +52,7 @@ public final class ReflectionObjectFactory {
 
     public static Method newMethod(RuntimeConditionSet conditions, Class<?> declaringClass, String name, Class<?>[] parameterTypes, Class<?> returnType, Class<?>[] exceptionTypes, int modifiers,
                     String signature, byte[] annotations, byte[] parameterAnnotations, byte[] annotationDefault, Object accessor, byte[] rawParameters,
-                    byte[] typeAnnotations) {
+                    byte[] typeAnnotations, int layerId) {
         Target_java_lang_reflect_Method method = new Target_java_lang_reflect_Method();
         method.constructor(declaringClass, name, parameterTypes, returnType, exceptionTypes, modifiers, -1, signature, annotations, parameterAnnotations, annotationDefault);
         method.methodAccessorFromMetadata = (Target_jdk_internal_reflect_MethodAccessor) accessor;
@@ -60,6 +60,7 @@ public final class ReflectionObjectFactory {
         Target_java_lang_reflect_AccessibleObject accessibleObject = SubstrateUtil.cast(method, Target_java_lang_reflect_AccessibleObject.class);
         accessibleObject.typeAnnotations = typeAnnotations;
         accessibleObject.conditions = conditions;
+        method.layerId = layerId;
         return SubstrateUtil.cast(method, Method.class);
     }
 
