@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2024, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -230,11 +230,8 @@ final class CVSymbolSubsectionBuilder {
                     short cvreg = CVRegisterUtil.getCVRegister(value.regIndex(), typeEntry);
                     /*
                      * It could be that Graal has allocated a register that we don't know how to
-                     * represent in CodeView.
-                     */
-                    /*
-                     * In that case, getCVRegister() will return a negative number and no local
-                     * variable record is issued.
+                     * represent in CodeView. In that case, getCVRegister() will return a negative
+                     * number and no local variable record is issued.
                      */
                     if (cvreg >= 0) {
                         currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, procName, subrange.getLo() - range.getLo(), (short) (subrange.getHi() - subrange.getLo()),
