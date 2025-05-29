@@ -24,29 +24,6 @@
  */
 package jdk.graal.compiler.libgraal.truffle;
 
-import com.oracle.truffle.compiler.TruffleCompilable;
-import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.hotspot.HotSpotGraalServices;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.SpeculationLog;
-import org.graalvm.jniutils.HSObject;
-import org.graalvm.jniutils.JNI;
-import org.graalvm.jniutils.JNI.JByteArray;
-import org.graalvm.jniutils.JNI.JNIEnv;
-import org.graalvm.jniutils.JNI.JObject;
-import org.graalvm.jniutils.JNICalls;
-import org.graalvm.jniutils.JNICalls.JNIMethod;
-import org.graalvm.jniutils.JNIMethodScope;
-import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.WordFactory;
-
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.function.Supplier;
-
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.AsJavaConstant;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CancelCompilation;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CompilableToString;
@@ -66,9 +43,35 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.I
 import static org.graalvm.jniutils.JNIMethodScope.env;
 import static org.graalvm.jniutils.JNIUtil.createString;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.function.Supplier;
+
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI;
+import org.graalvm.jniutils.JNI.JByteArray;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.JNICalls;
+import org.graalvm.jniutils.JNICalls.JNIMethod;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.jniutils.JNIUtil;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.WordFactory;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
+
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.hotspot.HotSpotGraalServices;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.SpeculationLog;
+
 final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
 
     private static volatile JNIMethod prepareForCompilationNewMethod;
+    private static volatile JNIMethod getSuccessfulCompilationCountMethod;
     private static volatile JNIMethod onCompilationSuccessMethod;
 
     private final TruffleFromLibGraalCalls calls;
@@ -145,6 +148,31 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
         args.addressOf(2).setInt(p2);
         args.addressOf(3).setBoolean(p3);
         return calls.getJNICalls().callStaticBoolean(env, calls.getPeer(), method, args);
+    }
+
+    @Override
+    public int getSuccessfulCompilationCount() {
+        JNIEnv env = JNIMethodScope.env();
+        JNIMethod method = findGetSuccessfulCompilationCountMethod(env);
+        if (method != null) {
+            return callGetSuccessfulCompilationCountMethod(method, env, getHandle());
+        }
+        return 0;
+    }
+
+    private JNIMethod findGetSuccessfulCompilationCountMethod(JNIEnv env) {
+        JNIMethod res = getSuccessfulCompilationCountMethod;
+        if (res == null) {
+            res = calls.findJNIMethod(env, "getSuccessfulCompilationCount", int.class, Object.class);
+            getSuccessfulCompilationCountMethod = res;
+        }
+        return res.getJMethodID().isNonNull() ? res : null;
+    }
+
+    private int callGetSuccessfulCompilationCountMethod(JNIMethod method, JNIEnv env, JObject p0) {
+        JNI.JValue args = StackValue.get(1, JNI.JValue.class);
+        args.addressOf(0).setJObject(p0);
+        return calls.getJNICalls().callStaticInt(env, calls.getPeer(), method, args);
     }
 
     @TruffleFromLibGraal(IsTrivial)

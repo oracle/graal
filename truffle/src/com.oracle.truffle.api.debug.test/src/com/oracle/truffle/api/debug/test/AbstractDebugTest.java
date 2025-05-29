@@ -77,7 +77,6 @@ import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
  * Framework for testing the Truffle {@linkplain Debugger Debugging API}.
@@ -142,8 +141,7 @@ public abstract class AbstractDebugTest {
         if (tester != null) {
             sessionStack.push(tester);
         }
-        Context.Builder builder = Context.newBuilder().allowCreateThread(true).allowPolyglotAccess(PolyglotAccess.ALL).allowIO(IOAccess.ALL);
-        tester = new DebuggerTester(TruffleTestAssumptions.isOptimizingRuntime() ? builder.option("engine.MaximumCompilations", "-1") : builder);
+        tester = new DebuggerTester(Context.newBuilder().allowCreateThread(true).allowPolyglotAccess(PolyglotAccess.ALL).allowIO(IOAccess.ALL));
     }
 
     protected final void popContext() {

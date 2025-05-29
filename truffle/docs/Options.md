@@ -173,6 +173,8 @@ These are internal options for debugging language implementations and tools.
 - `--engine.TraversingQueueInvalidatedBonus=[0.0, inf)` : Controls how much of a priority should be given to compilations after invalidations (default: 1.0, no bonus).
 - `--engine.TraversingQueueOSRBonus=[0.0, inf)` : Controls how much of a priority should be given to OSR compilations (default: 1.0, no bonus).
 - `--engine.TraversingQueueWeightingBothTiers=true|false` : Traversing queue uses rate as priority for both tier. (default: true)
+- `--compiler.DeoptCycleDetectionAllowedRepeats` : Maximum allowed repeats of the same compiled code for the same compilable. Works only if the detection of repeated compilation is enabled after DeoptCycleDetectionThreshold has been reached for the compilable. (negative integer means 0, default: 0)
+- `--compiler.DeoptCycleDetectionThreshold` : Threshold for enabling deopt cycle detection for a call target. When the number of successful compilation of the call target reaches the threshold, deopt cycle detection is enabled for the call target. (negative integer means the detection is never enabled, default: 15)
 - `--compiler.DiagnoseFailure` : Forces diagnostics for compilation failures (default: false).
 - `--compiler.ExcludeAssertions` : Exclude assertion code from Truffle compilations (default: true)
 - `--compiler.FirstTierInliningPolicy` : Explicitly pick a first tier inlining policy by name (None, TrivialOnly). If empty (default) the lowest priority policy (TrivialOnly) is chosen.
@@ -228,7 +230,6 @@ These are internal options for debugging language implementations and tools.
 - `--compiler.TracePerformanceWarnings` : Print potential performance problems, Performance warnings are: call, instanceof, store, frame_merge, trivial. (syntax: none|all|<perfWarning>,<perfWarning>,...)
 - `--compiler.TraceStackTraceLimit` : Number of stack trace elements printed by TraceTruffleTransferToInterpreter, TraceTruffleAssumptions and TraceDeoptimizeFrame (default: 20). Syntax: [1, inf).
 - `--compiler.TreatPerformanceWarningsAsErrors` : Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value. Performance warnings are: call, instanceof, store, frame_merge, trivial. (syntax: none|all|<perfWarning>,<perfWarning>,...)
-- `--engine.DiagnoseFailure` : Forces diagnostics for compilation failures (default: false).
 - `--engine.ExcludeAssertions` : Exclude assertion code from Truffle compilations (default: true)
 - `--engine.FirstTierInliningPolicy` : Explicitly pick a first tier inlining policy by name (None, TrivialOnly). If empty (default) the lowest priority policy (TrivialOnly) is chosen.
 - `--engine.InlineAcrossTruffleBoundary` : Enable inlining across Truffle boundary
@@ -242,7 +243,6 @@ These are internal options for debugging language implementations and tools.
 - `--engine.InstrumentFilter` : Method filter for host methods in which to add instrumentation (syntax: <method>,<method>,....)
 - `--engine.InstrumentationTableSize` : Maximum number of instrumentation counters available (default: 10000, syntax: [1, inf))
 - `--engine.IterativePartialEscape` : Run the partial escape analysis iteratively in Truffle compilation.
-- `--engine.LogInlinedTargets` : Logs inlined targets for statistical purposes (default: false).
 - `--engine.MaximumGraalGraphSize` : Stop partial evaluation when the graph exceeded this size (default: 150000, syntax: [1, inf))
 - `--engine.MethodExpansionStatistics` : Print statistics on expanded Java methods during partial evaluation at the end of a run.(syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)
   Accepted values are:

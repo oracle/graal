@@ -36,8 +36,8 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
 
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
@@ -194,8 +194,13 @@ public class SubstrateType implements SharedType {
     @Override
     public boolean isInstance(JavaConstant obj) {
         if (obj.getJavaKind() == JavaKind.Object && !obj.isNull()) {
-            DynamicHub objHub = KnownIntrinsics.readHub(SubstrateObjectConstant.asObject(obj));
-            return DynamicHub.toClass(hub).isAssignableFrom(DynamicHub.toClass(objHub));
+            Class<?> objClass;
+            if (obj instanceof IsolatedObjectConstant ioc) {
+                objClass = ioc.getObjectClass();
+            } else {
+                objClass = SubstrateObjectConstant.asObject(obj).getClass();
+            }
+            return DynamicHub.toClass(hub).isAssignableFrom(objClass);
         }
         return false;
     }

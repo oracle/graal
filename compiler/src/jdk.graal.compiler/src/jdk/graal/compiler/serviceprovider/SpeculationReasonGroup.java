@@ -85,6 +85,7 @@ public final class SpeculationReasonGroup {
                     long.class,
                     float.class,
                     double.class,
+                    byte[].class,
                     BytecodePosition.class));
 
     private static boolean isOfSupportedType(Class<?> c) {

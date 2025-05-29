@@ -28,13 +28,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.phases.tiers.Suites;
-
-import com.oracle.truffle.compiler.TruffleCompilerRuntime;
-
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment.TruffleRuntimeScope;
 import jdk.vm.ci.code.Architecture;
 

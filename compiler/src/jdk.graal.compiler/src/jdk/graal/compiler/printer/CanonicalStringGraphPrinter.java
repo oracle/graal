@@ -59,11 +59,11 @@ import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.ProxyNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.OptionValues;
-
+import jdk.graal.compiler.phases.util.GraphSignature;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class CanonicalStringGraphPrinter implements GraphPrinter {
@@ -272,23 +272,43 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
         return currentDirectory;
     }
 
+    private String getSignaturePath(DebugContext debug, StructuredGraph graph) {
+        if (graph == currentGraph) {
+            return currentDirectory;
+        }
+        currentDirectory = debug.getDumpPath(".signatures", false);
+        currentGraph = graph;
+        return currentDirectory;
+    }
+
     @Override
     public void print(DebugContext debug, Graph graph, Map<Object, Object> properties, int id, String format, Object... args) throws IOException {
         if (graph instanceof StructuredGraph) {
             OptionValues options = graph.getOptions();
             StructuredGraph structuredGraph = (StructuredGraph) graph;
-            String outDirectory = getDirectory(debug, structuredGraph);
             String title = String.format("%03d-%s.txt", id, String.format(format, simplifyClassArgs(args)));
-            String filePath = PathUtilities.getPath(outDirectory, PathUtilities.sanitizeFileName(title));
-            try (PrintWriter writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(PathUtilities.openOutputStream(filePath))))) {
-                switch (PrintCanonicalGraphStringFlavor.getValue(options)) {
-                    case 1:
-                        writeCanonicalExpressionCFGString(structuredGraph, CanonicalGraphStringsCheckConstants.getValue(options), CanonicalGraphStringsRemoveIdentities.getValue(options), writer);
-                        break;
-                    case 0:
-                    default:
-                        writeCanonicalGraphString(structuredGraph, CanonicalGraphStringsExcludeVirtuals.getValue(options), CanonicalGraphStringsCheckConstants.getValue(options), writer);
-                        break;
+            if (PrintCanonicalGraphStringFlavor.getValue(options) == 2) {
+                String filePath = getSignaturePath(debug, structuredGraph);
+                try (PrintWriter writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(PathUtilities.openOutputStream(filePath, true))))) {
+                    GraphSignature signature = new GraphSignature(structuredGraph);
+                    writer.print(signature.getSignatureString());
+                    writer.print(" ");
+                    writer.println(PathUtilities.sanitizeFileName(title));
+                    writer.flush();
+                }
+            } else {
+                String outDirectory = getDirectory(debug, structuredGraph);
+                String filePath = PathUtilities.getPath(outDirectory, PathUtilities.sanitizeFileName(title));
+                try (PrintWriter writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(PathUtilities.openOutputStream(filePath))))) {
+                    switch (PrintCanonicalGraphStringFlavor.getValue(options)) {
+                        case 1:
+                            writeCanonicalExpressionCFGString(structuredGraph, CanonicalGraphStringsCheckConstants.getValue(options), CanonicalGraphStringsRemoveIdentities.getValue(options), writer);
+                            break;
+                        case 0:
+                        default:
+                            writeCanonicalGraphString(structuredGraph, CanonicalGraphStringsExcludeVirtuals.getValue(options), CanonicalGraphStringsCheckConstants.getValue(options), writer);
+                            break;
+                    }
                 }
             }
         }
