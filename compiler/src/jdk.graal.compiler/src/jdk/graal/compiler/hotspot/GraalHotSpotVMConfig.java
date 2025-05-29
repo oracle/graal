@@ -548,6 +548,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long stubKyber12To16 = getFieldValue("StubRoutines::_kyber12To16", Long.class, "address");
     public final long stubKyberBarrettReduce = getFieldValue("StubRoutines::_kyberBarrettReduce", Long.class, "address");
 
+    public final long stubArraySort = getFieldValue("StubRoutines::_array_sort", Long.class, "address");
+    public final long stubArrayPartition = getFieldValue("StubRoutines::_array_partition", Long.class, "address");
+
     // Allocation stubs that return null when allocation fails
     public final long newInstanceOrNullAddress = getAddress("JVMCIRuntime::new_instance_or_null");
     public final long newArrayOrNullAddress = getAddress("JVMCIRuntime::new_array_or_null");
@@ -702,6 +705,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
                     getConstant("Deoptimization::_support_large_access_byte_array_virtualization", Boolean.class);
 
     public final int l1LineSize = getFieldValue("CompilerToVM::Data::L1_line_size", Integer.class, "int", 0, "amd64".equals(osArch));
+    public final boolean supportsAvx512SimdSort = getFieldValue("CompilerToVM::Data::supports_avx512_simd_sort", Boolean.class, "bool", false, "amd64".equals(osArch));
 
     // Checkstyle: stop
     public final int VMINTRINSIC_FIRST_MH_SIG_POLY = getConstant("vmIntrinsics::FIRST_MH_SIG_POLY", Integer.class);

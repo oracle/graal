@@ -28,6 +28,8 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.core.target.Backend.ARITHMETIC_DREM;
 import static jdk.graal.compiler.core.target.Backend.ARITHMETIC_FREM;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_PARTITION;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_SORT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.BASE64_DECODE_BLOCK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.BIGINTEGER_LEFT_SHIFT_WORKER;
@@ -680,6 +682,12 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
         if (c.stubKyberBarrettReduce != 0L) {
             registerForeignCall(KYBER_BARRETT_REDUCE, c.stubKyberBarrettReduce, NativeCall);
+        }
+        if (c.stubArrayPartition != 0L) {
+            registerForeignCall(ARRAY_PARTITION, c.stubArrayPartition, NativeCall);
+        }
+        if (c.stubArraySort != 0L) {
+            registerForeignCall(ARRAY_SORT, c.stubArraySort, NativeCall);
         }
 
         registerSnippetStubs(providers, options);
