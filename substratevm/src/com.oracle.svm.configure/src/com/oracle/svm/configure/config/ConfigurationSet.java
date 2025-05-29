@@ -51,25 +51,27 @@ public class ConfigurationSet {
     private final ProxyConfiguration proxyConfiguration;
     private final SerializationConfiguration serializationConfiguration;
     private final PredefinedClassesConfiguration predefinedClassesConfiguration;
+    private final ForeignConfiguration foreignConfiguration;
 
     public ConfigurationSet(TypeConfiguration reflectionConfiguration, ResourceConfiguration resourceConfiguration, ProxyConfiguration proxyConfiguration,
-                    SerializationConfiguration serializationConfiguration, PredefinedClassesConfiguration predefinedClassesConfiguration) {
+                    SerializationConfiguration serializationConfiguration, PredefinedClassesConfiguration predefinedClassesConfiguration, ForeignConfiguration foreignConfiguration) {
         this.reflectionConfiguration = reflectionConfiguration;
         this.resourceConfiguration = resourceConfiguration;
         this.proxyConfiguration = proxyConfiguration;
         this.serializationConfiguration = serializationConfiguration;
         this.predefinedClassesConfiguration = predefinedClassesConfiguration;
+        this.foreignConfiguration = foreignConfiguration;
     }
 
     public ConfigurationSet(ConfigurationSet other) {
         this(other.reflectionConfiguration.copy(), other.resourceConfiguration.copy(), other.proxyConfiguration.copy(), other.serializationConfiguration.copy(),
-                        other.predefinedClassesConfiguration.copy());
+                        other.predefinedClassesConfiguration.copy(), other.foreignConfiguration.copy());
     }
 
     @SuppressWarnings("unchecked")
     public ConfigurationSet() {
         this(new TypeConfiguration(), new ResourceConfiguration(), new ProxyConfiguration(), new SerializationConfiguration(),
-                        new PredefinedClassesConfiguration(Collections.emptyList(), hash -> false));
+                        new PredefinedClassesConfiguration(Collections.emptyList(), hash -> false), new ForeignConfiguration());
     }
 
     private ConfigurationSet mutate(ConfigurationSet other, Mutator mutator) {
@@ -78,7 +80,8 @@ public class ConfigurationSet {
         ProxyConfiguration proxyConfig = mutator.apply(this.proxyConfiguration, other.proxyConfiguration);
         SerializationConfiguration serializationConfig = mutator.apply(this.serializationConfiguration, other.serializationConfiguration);
         PredefinedClassesConfiguration predefinedClassesConfig = mutator.apply(this.predefinedClassesConfiguration, other.predefinedClassesConfiguration);
-        return new ConfigurationSet(reflectionConfig, resourceConfig, proxyConfig, serializationConfig, predefinedClassesConfig);
+        ForeignConfiguration foreignConfig = mutator.apply(this.foreignConfiguration, other.foreignConfiguration);
+        return new ConfigurationSet(reflectionConfig, resourceConfig, proxyConfig, serializationConfig, predefinedClassesConfig, foreignConfig);
     }
 
     public ConfigurationSet copyAndMerge(ConfigurationSet other) {
@@ -99,7 +102,8 @@ public class ConfigurationSet {
         ProxyConfiguration proxyConfig = this.proxyConfiguration.copyAndFilter(filter);
         SerializationConfiguration serializationConfig = this.serializationConfiguration.copyAndFilter(filter);
         PredefinedClassesConfiguration predefinedClassesConfig = this.predefinedClassesConfiguration.copyAndFilter(filter);
-        return new ConfigurationSet(reflectionConfig, resourceConfig, proxyConfig, serializationConfig, predefinedClassesConfig);
+        ForeignConfiguration foreignConfig = this.foreignConfiguration.copyAndFilter(filter);
+        return new ConfigurationSet(reflectionConfig, resourceConfig, proxyConfig, serializationConfig, predefinedClassesConfig, foreignConfig);
     }
 
     public TypeConfiguration getReflectionConfiguration() {
@@ -122,6 +126,10 @@ public class ConfigurationSet {
         return predefinedClassesConfiguration;
     }
 
+    public ForeignConfiguration getForeignConfiguration() {
+        return foreignConfiguration;
+    }
+
     @SuppressWarnings("unchecked")
     public <T extends ConfigurationBase<T, ?>> T getConfiguration(ConfigurationFile configurationFile) {
         switch (configurationFile) {
@@ -136,6 +144,8 @@ public class ConfigurationSet {
                 return (T) serializationConfiguration;
             case PREDEFINED_CLASSES_NAME:
                 return (T) predefinedClassesConfiguration;
+            case FOREIGN:
+                return (T) foreignConfiguration;
             default:
                 throw new IllegalArgumentException("Unsupported configuration in configuration container: " + configurationFile);
         }
