@@ -69,9 +69,12 @@ public final class AArch64FarReturnOp extends AArch64BlockEndOp {
         assert sp.getPlatformKind().getSizeInBytes() == FrameAccess.wordSize() && FrameAccess.wordSize() == Long.BYTES : Assertions.errorMessage(sp.getPlatformKind().getSizeInBytes(),
                         FrameAccess.wordSize());
         /*
-         * In case of deoptimization, we farReturn into an entry point (deopt stub) which will do a regular enter
-         * and thus save lr. This keeps the stack walkable as the frame is properly recognized as deoptimized due to
-         * the return address matching the deopt stub entry point.
+         * Set lr to the new instruction pointer like a regular return does.
+         *
+         * For dispatching an exception into a frame pending deoptimization, we farReturn into a
+         * deopt stub which will do a regular enter and thus push lr. This keeps the stack walkable
+         * and the frame can be recognized as pending deoptimization due to the return address from
+         * lr matching the deopt stub entry point.
          */
         masm.mov(64, lr, asRegister(ip));
 
