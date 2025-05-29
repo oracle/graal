@@ -53,6 +53,7 @@ import com.sun.management.HotSpotDiagnosticMXBean;
 import com.sun.management.internal.PlatformMBeanProviderImpl;
 
 import jdk.jfr.Configuration;
+import jdk.jfr.internal.JVMSupport;
 import jdk.jfr.internal.jfc.JFC;
 
 /**
@@ -161,7 +162,7 @@ public class JfrFeature implements InternalFeature {
 
         // Initialize some parts of JFR/JFC at image build time.
         List<Configuration> knownConfigurations = JFC.getConfigurations();
-        JfrJdkCompatibility.createNativeJFR();
+        JVMSupport.createJFR();
 
         ImageSingletons.add(JfrManager.class, new JfrManager(HOSTED_ENABLED));
         ImageSingletons.add(SubstrateJVM.class, new SubstrateJVM(knownConfigurations, true));
