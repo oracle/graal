@@ -28,6 +28,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 
+import jdk.graal.compiler.core.aarch64.AArch64NodeMatchRules;
+import jdk.graal.compiler.core.amd64.AMD64NodeMatchRules;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -134,20 +136,28 @@ public class GraalConfiguration {
         return COMPILER_CONFIGURATION_NAME;
     }
 
+    protected void populateMatchRuleRegistry(HashMap<Class<? extends NodeMatchRules>, EconomicMap<Class<? extends Node>, List<MatchStatement>>> matchRuleRegistry, Class<? extends NodeMatchRules> c) {
+        matchRuleRegistry.put(c, MatchRuleRegistry.createRules(c));
+    }
+
     public void populateMatchRuleRegistry(HashMap<Class<? extends NodeMatchRules>, EconomicMap<Class<? extends Node>, List<MatchStatement>>> matchRuleRegistry) {
-        Class<? extends NodeMatchRules> matchRuleClass;
+        /*
+         * We create both types of match rules so the target machine could use vectorization for
+         * run-time compilation even if the image does not support vectorization. This allows
+         * Truffle to produce optimal code on a target machine.
+         */
         final Architecture hostedArchitecture = ConfigurationValues.getTarget().arch;
         if (hostedArchitecture instanceof AMD64) {
-            matchRuleClass = AMD64VectorNodeMatchRules.class;
+            populateMatchRuleRegistry(matchRuleRegistry, AMD64NodeMatchRules.class);
+            populateMatchRuleRegistry(matchRuleRegistry, AMD64VectorNodeMatchRules.class);
         } else if (hostedArchitecture instanceof AArch64) {
-            matchRuleClass = AArch64VectorNodeMatchRules.class;
+            populateMatchRuleRegistry(matchRuleRegistry, AArch64NodeMatchRules.class);
+            populateMatchRuleRegistry(matchRuleRegistry, AArch64VectorNodeMatchRules.class);
         } else if (hostedArchitecture instanceof RISCV64) {
-            matchRuleClass = RISCV64NodeMatchRules.class;
+            populateMatchRuleRegistry(matchRuleRegistry, RISCV64NodeMatchRules.class);
         } else {
             throw VMError.shouldNotReachHere("Can not instantiate NodeMatchRules for architecture " + hostedArchitecture.getName());
         }
-
-        matchRuleRegistry.put(matchRuleClass, MatchRuleRegistry.createRules(matchRuleClass));
     }
 
     public SubstrateBackend createBackend(Providers newProviders) {
