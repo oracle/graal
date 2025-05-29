@@ -26,8 +26,8 @@ package com.oracle.svm.core.windows;
 
 import static com.oracle.svm.core.RegisterDumper.dumpReg;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.Uninterruptible;
@@ -42,7 +42,7 @@ import jdk.vm.ci.amd64.AMD64;
 @AutomaticallyRegisteredImageSingleton(RegisterDumper.class)
 class WindowsRegisterDumper implements RegisterDumper {
     WindowsRegisterDumper() {
-        VMError.guarantee(AMD64.r14.equals(AMD64ReservedRegisters.HEAP_BASE_REGISTER_CANDIDATE));
+        VMError.guarantee(AMD64.r14.equals(AMD64ReservedRegisters.HEAP_BASE_REGISTER));
         VMError.guarantee(AMD64.r15.equals(AMD64ReservedRegisters.THREAD_REGISTER));
     }
 
@@ -75,24 +75,24 @@ class WindowsRegisterDumper implements RegisterDumper {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getHeapBase(Context context) {
-        return WordFactory.pointer(((CONTEXT) context).R14());
+        return Word.pointer(((CONTEXT) context).R14());
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getThreadPointer(Context context) {
-        return WordFactory.pointer(((CONTEXT) context).R15());
+        return Word.pointer(((CONTEXT) context).R15());
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getSP(Context context) {
-        return WordFactory.pointer(((CONTEXT) context).Rsp());
+        return Word.pointer(((CONTEXT) context).Rsp());
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getIP(Context context) {
-        return WordFactory.pointer(((CONTEXT) context).Rip());
+        return Word.pointer(((CONTEXT) context).Rip());
     }
 }

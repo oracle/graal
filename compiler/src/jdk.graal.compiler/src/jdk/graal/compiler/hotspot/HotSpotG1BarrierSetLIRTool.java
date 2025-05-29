@@ -66,6 +66,11 @@ public abstract class HotSpotG1BarrierSetLIRTool implements G1BarrierSetLIRTool 
     }
 
     @Override
+    public byte cleanCardValue() {
+        return HotSpotReplacementsUtil.cleanCardValue(config);
+    }
+
+    @Override
     public int cardQueueBufferOffset() {
         return HotSpotReplacementsUtil.g1CardQueueBufferOffset(config);
     }
@@ -78,6 +83,16 @@ public abstract class HotSpotG1BarrierSetLIRTool implements G1BarrierSetLIRTool 
     @Override
     public byte dirtyCardValue() {
         return config.dirtyCardValue;
+    }
+
+    @Override
+    public boolean supportsLowLatencyBarriers() {
+        return HotSpotReplacementsUtil.supportsG1LowLatencyBarriers(config);
+    }
+
+    @Override
+    public boolean useConditionalCardMarking() {
+        return HotSpotReplacementsUtil.useCondCardMark(config);
     }
 
     @Override

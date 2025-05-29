@@ -70,9 +70,12 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
         initializeAtRunTime(a, "sun.nio.ch.Net", "sun.nio.ch.SocketOptionRegistry$LazyInitialization");
         initializeAtRunTime(a, "sun.nio.ch.AsynchronousSocketChannelImpl$DefaultOptionsHolder", "sun.nio.ch.AsynchronousServerSocketChannelImpl$DefaultOptionsHolder",
                         "sun.nio.ch.DatagramChannelImpl$DefaultOptionsHolder", "sun.nio.ch.ServerSocketChannelImpl$DefaultOptionsHolder", "sun.nio.ch.SocketChannelImpl$DefaultOptionsHolder");
+        initializeAtRunTime(a, "sun.nio.ch.NioSocketImpl");
         /* Ensure that the interrupt signal handler is initialized at runtime. */
         initializeAtRunTime(a, "sun.nio.ch.NativeThread");
         initializeAtRunTime(a, "sun.nio.ch.FileDispatcherImpl", "sun.nio.ch.FileChannelImpl$Unmapper");
+        /* Native methods registers in static initializer since JDK-8339285. */
+        initializeAtRunTime(a, "java.nio.MappedMemoryUtils");
 
         if (isPosix()) {
             initializeAtRunTime(a, "sun.nio.ch.InheritedChannel");
@@ -101,7 +104,6 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
 
         // JDK-8220738
         a.registerReachabilityHandler(JNIRegistrationJavaNio::registerNetInitIDs, method(a, "sun.nio.ch.Net", "initIDs"));
-        a.registerReachabilityHandler(JNIRegistrationJavaNio::registerFileKeyInitIDs, method(a, "sun.nio.ch.FileKey", "initIDs"));
 
         if (isPosix()) {
             a.registerReachabilityHandler(JNIRegistrationJavaNio::registerUnixNativeDispatcherInit, method(a, "sun.nio.fs.UnixNativeDispatcher", "init"));
@@ -128,14 +130,6 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
         RuntimeJNIAccess.register(constructor(a, "java.net.InetSocketAddress", InetAddress.class, int.class));
     }
 
-    private static void registerFileKeyInitIDs(DuringAnalysisAccess a) {
-        if (isPosix()) {
-            RuntimeJNIAccess.register(fields(a, "sun.nio.ch.FileKey", "st_dev", "st_ino"));
-        } else if (isWindows()) {
-            RuntimeJNIAccess.register(fields(a, "sun.nio.ch.FileKey", "dwVolumeSerialNumber", "nFileIndexHigh", "nFileIndexLow"));
-        }
-    }
-
     private static void registerUnixNativeDispatcherInit(DuringAnalysisAccess a) {
         RuntimeJNIAccess.register(clazz(a, "sun.nio.fs.UnixFileAttributes"));
         RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes",
@@ -143,6 +137,7 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
                         "st_atime_sec", "st_atime_nsec", "st_mtime_sec", "st_mtime_nsec", "st_ctime_sec", "st_ctime_nsec"));
         if (isDarwin() || isLinux()) {
             RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "st_birthtime_sec"));
+            RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "birthtime_available"));
         }
         if (isLinux()) {
             RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "st_birthtime_nsec"));

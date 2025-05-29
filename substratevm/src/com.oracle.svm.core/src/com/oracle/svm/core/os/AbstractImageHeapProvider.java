@@ -31,7 +31,6 @@ import static com.oracle.svm.core.util.PointerUtils.roundUp;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
@@ -50,13 +49,14 @@ public abstract class AbstractImageHeapProvider implements ImageHeapProvider {
         return size;
     }
 
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected UnsignedWord getImageHeapAddressSpaceSize() {
+    public UnsignedWord getImageHeapAddressSpaceSize() {
         UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
         int imageHeapOffset = Heap.getHeap().getImageHeapOffsetInAddressSpace();
         assert imageHeapOffset >= 0;
-        UnsignedWord size = WordFactory.unsigned(imageHeapOffset);
-        size = size.add(getImageHeapSizeInFile(IMAGE_HEAP_BEGIN.get(), IMAGE_HEAP_END.get()));
+        UnsignedWord size = Word.unsigned(imageHeapOffset);
+        size = size.add(getImageHeapSizeInFile());
         size = UnsignedUtils.roundUp(size, pageSize);
         return size;
     }
@@ -68,7 +68,7 @@ public abstract class AbstractImageHeapProvider implements ImageHeapProvider {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static UnsignedWord getImageHeapSizeInFile() {
+    public static UnsignedWord getImageHeapSizeInFile() {
         return getImageHeapSizeInFile(IMAGE_HEAP_BEGIN.get(), IMAGE_HEAP_END.get());
     }
 
@@ -81,7 +81,7 @@ public abstract class AbstractImageHeapProvider implements ImageHeapProvider {
     protected static UnsignedWord getPreHeapAlignedSizeForDynamicMethodAddressResolver() {
         UnsignedWord requiredPreHeapMemoryInBytes = DynamicMethodAddressResolutionHeapSupport.get().getRequiredPreHeapMemoryInBytes();
         /* Ensure there is enough space to properly align the heap */
-        UnsignedWord heapAlignment = WordFactory.unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
+        UnsignedWord heapAlignment = Word.unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
         return roundUp((PointerBase) requiredPreHeapMemoryInBytes, heapAlignment);
     }
 }

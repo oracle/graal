@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.jfr;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.RandomAccessFile;
-import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.List;
 
@@ -36,19 +35,22 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.JfrJavaEvents;
-import com.oracle.svm.core.jfr.JfrJdkCompatibility;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.event.Event;
 import jdk.jfr.internal.JVM;
@@ -88,13 +90,31 @@ public class JfrEventFeature implements InternalFeature {
         for (Class<?> eventSubClass : config.findSubclasses(Event.class)) {
             RuntimeClassInitialization.initializeAtBuildTime(eventSubClass.getName());
         }
-        config.registerSubstitutionProcessor(new JfrEventSubstitution(metaAccess));
+        config.registerSubstitutionProcessor(new JfrEventSubstitution(metaAccess, config.getUniverse().getHeapScanner()));
+
+        /*
+         * The value of this field is set later in the beforeCompilation method after analysis
+         * finishes, but only in case jfr is enabled, so we do not add @UnknownObjectField
+         * annotation to it, because it will be null if jfr is disabled.
+         */
+        var configField = ReflectionUtil.lookupField(DynamicHubCompanion.class, "jfrEventConfiguration");
+        FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(configField, new FieldValueTransformerWithAvailability() {
+            @Override
+            public boolean isAvailable() {
+                return BuildPhaseProvider.isHostedUniverseBuilt();
+            }
+
+            @Override
+            public Object transform(Object receiver, Object originalValue) {
+                return originalValue;
+            }
+        });
     }
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess a) {
         // Reserve slot 0 for error-catcher.
-        int mapSize = DynamicHubSupport.singleton().getMaxTypeId() + 1;
+        int mapSize = DynamicHubSupport.currentLayer().getMaxTypeId() + 1;
 
         // Create trace-ID map with fixed size.
         ImageSingletons.lookup(JfrTraceIdMap.class).initialize(mapSize);
@@ -109,16 +129,11 @@ public class JfrEventFeature implements InternalFeature {
         }
 
         /* Store the event configuration in the dynamic hub companion. */
-        try {
-            FeatureImpl.CompilationAccessImpl accessImpl = ((FeatureImpl.CompilationAccessImpl) a);
-            Method getConfiguration = JVM.class.getDeclaredMethod("getConfiguration", Class.class);
-            for (var newEventClass : JfrJavaEvents.getAllEventClasses()) {
-                Object ec = getConfiguration.invoke(JfrJdkCompatibility.getJVMOrNull(), newEventClass);
-                DynamicHub dynamicHub = accessImpl.getMetaAccess().lookupJavaType(newEventClass).getHub();
-                dynamicHub.setJrfEventConfiguration(ec);
-            }
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
+        FeatureImpl.CompilationAccessImpl accessImpl = ((FeatureImpl.CompilationAccessImpl) a);
+        for (var newEventClass : JfrJavaEvents.getAllEventClasses()) {
+            Object ec = JVM.getConfiguration(newEventClass);
+            DynamicHub dynamicHub = accessImpl.getMetaAccess().lookupJavaType(newEventClass).getHub();
+            dynamicHub.setJrfEventConfiguration(ec);
         }
     }
 }

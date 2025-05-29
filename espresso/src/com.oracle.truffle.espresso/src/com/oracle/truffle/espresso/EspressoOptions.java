@@ -41,8 +41,8 @@ import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 
 import com.oracle.truffle.api.Option;
+import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
-import com.oracle.truffle.espresso.runtime.JavaVersion;
 
 @Option.Group(EspressoLanguage.ID)
 public final class EspressoOptions {
@@ -219,6 +219,12 @@ public final class EspressoOptions {
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "java.PolyglotTypeConverters.java.lang.Optional=my.type.conversion.Implementation") //
     public static final OptionKey<OptionMap<String>> PolyglotTypeConverters = OptionKey.mapOf(String.class);
+
+    @Option(help = "Option to enable target type conversions for foreign objects using type hints from generics signatures.", //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.STABLE, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> EnableGenericTypeHints = new OptionKey<>(true);
 
     @Option(help = "Enable assertions.", //
                     category = OptionCategory.USER, //
@@ -590,10 +596,10 @@ public final class EspressoOptions {
     @Option(help = "Load a Java programming language agent for the given jar file. \\n" +
                     "Keys represent the jar path, values are the corresponding agent options.\\n" +
                     "Agents are not fully implemented yet.", //
-                    category = OptionCategory.INTERNAL, //
+                    category = OptionCategory.USER, //
                     stability = OptionStability.EXPERIMENTAL, //
-                    usageSyntax = "<agent>") //
-    public static final OptionKey<String> JavaAgent = new OptionKey<>("");
+                    usageSyntax = "<agent>=<agentOptions>") //
+    public static final OptionKey<OptionMap<String>> JavaAgent = OptionKey.mapOf(String.class);
 
     @Option(help = "Used internally to keep track of the command line arguments given to the vm in order to support VM.getRuntimeArguments().\\n" +
                     "Setting this option is the responsibility of the context creator if such support is required.\\n" +
@@ -611,6 +617,13 @@ public final class EspressoOptions {
                     usageSyntax = "<nativeBackend>") //
     public static final OptionKey<String> NativeBackend = new OptionKey<>("");
 
+    @Option(help = "Enable use of a custom Espresso implementation of boot libraries, which allows for not entering native code.\\n" +
+                    "For example, this will replace the usual 'libjava'. Missing implementations will thus fail with 'UnsatifiedLinkError'.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> UseEspressoLibs = new OptionKey<>(false);
+
     @Option(help = "Enables the signal API (sun.misc.Signal or jdk.internal.misc.Signal).", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //
@@ -621,7 +634,7 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") //
-    public static final OptionKey<Boolean> EnableAgents = new OptionKey<>(false);
+    public static final OptionKey<Boolean> EnableNativeAgents = new OptionKey<>(false);
 
     @Option(help = "Maximum bytecode size (in bytes) for a method to be considered trivial.", //
                     category = OptionCategory.EXPERT, //
@@ -668,6 +681,12 @@ public final class EspressoOptions {
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> WhiteBoxAPI = new OptionKey<>(false);
 
+    @Option(help = "Enables the JVMCI API inside the context.", //
+                    category = OptionCategory.INTERNAL, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> EnableJVMCI = new OptionKey<>(false);
+
     public enum GuestFieldOffsetStrategyEnum {
         safety,
         compact,
@@ -697,9 +716,12 @@ public final class EspressoOptions {
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") public static final OptionKey<Boolean> EagerFrameAnalysis = new OptionKey<>(false);
 
-    // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
-    public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);
-    public static final boolean DumpDebugCounters = booleanProperty("espresso.DumpDebugCounters", true);
+    /**
+     * Property used to force liveness analysis to also be applied by the interpreter. For testing
+     * purpose only. Use a host property rather than an option. An option would slow interpreter
+     * considerably.
+     */
+    public static final boolean LivenessAnalysisInInterpreter = booleanProperty("espresso.liveness.interpreter", false);
 
     // Properties for FinalizationSupport e.g. --vm.Despresso.finalization.UnsafeOverride=false .
     public static final boolean UnsafeOverride = booleanProperty("espresso.finalization.UnsafeOverride", true);

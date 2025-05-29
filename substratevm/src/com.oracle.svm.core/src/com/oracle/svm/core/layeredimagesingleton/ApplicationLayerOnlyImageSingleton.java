@@ -24,9 +24,36 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.option.HostedOptionValues;
+
 /**
  * Identifies a singleton for which all lookups refer to a single singleton which will be created in
  * the application layer. See {@link LayeredImageSingleton} for full explanation.
  */
 public interface ApplicationLayerOnlyImageSingleton extends LayeredImageSingleton {
+
+    static boolean isSingletonInstanceOf(Object singleton) {
+        if (singleton instanceof ApplicationLayerOnlyImageSingleton) {
+            return true;
+        }
+        if (ImageSingletons.contains(HostedOptionValues.class)) {
+            return SubstrateOptions.ApplicationLayerOnlySingletons.getValue().contains(singleton.getClass().getName());
+        }
+
+        return false;
+    }
+
+    static boolean isAssignableFrom(Class<?> klass) {
+        if (ApplicationLayerOnlyImageSingleton.class.isAssignableFrom(klass)) {
+            return true;
+        }
+        if (ImageSingletons.contains(HostedOptionValues.class)) {
+            return SubstrateOptions.ApplicationLayerOnlySingletons.getValue().contains(klass.getName());
+        }
+
+        return false;
+    }
 }

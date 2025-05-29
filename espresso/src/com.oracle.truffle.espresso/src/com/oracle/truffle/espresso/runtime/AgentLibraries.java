@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.runtime;
 
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
@@ -42,7 +41,6 @@ import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
-import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.RawBuffer;
 import com.oracle.truffle.espresso.jvmti.JvmtiPhase;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -59,11 +57,11 @@ final class AgentLibraries extends ContextAccessImpl {
         super(context);
     }
 
-    TruffleObject bind(Method method, String mangledName) {
+    TruffleObject lookupSymbol(String mangledName) {
         for (AgentLibrary agent : agents) {
-            TruffleObject bound = method.lookupAndBind(agent.lib, mangledName);
-            if (bound != null) {
-                return bound;
+            TruffleObject symbol = getNativeAccess().lookupSymbol(agent.lib, mangledName);
+            if (symbol != null) {
+                return symbol;
             }
         }
         return null;
@@ -128,8 +126,7 @@ final class AgentLibraries extends ContextAccessImpl {
         }
         agent.lib = library;
 
-        TruffleObject onLoad = getNativeAccess().lookupAndBindSymbol(library, AGENT_ONLOAD, ONLOAD_SIGNATURE);
-        return onLoad;
+        return getNativeAccess().lookupAndBindSymbol(library, AGENT_ONLOAD, ONLOAD_SIGNATURE, true, true);
     }
 
     private static class AgentLibrary {

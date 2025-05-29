@@ -64,6 +64,7 @@ import java.net.URL;
 import java.nio.CharBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.jar.JarOutputStream;
@@ -1113,4 +1114,17 @@ public class SourceAPITest {
         assertTrue(text.contentEquals(src.getCharacters()));
         assertEquals("text/plain", Source.findMimeType(url));
     }
+
+    @Test
+    public void testSourceOptions() {
+        assertNotNull(Source.newBuilder("", "", "").option("", "").buildLiteral());
+        assertNotNull(Source.newBuilder("", "", "").option("1", "").option("2", "").buildLiteral());
+        assertNotNull(Source.newBuilder("", "", "").option("1", "").options(Map.of("", "")).buildLiteral());
+        var b = Source.newBuilder("", "", "");
+        Assert.assertThrows(NullPointerException.class, () -> b.option(null, ""));
+        Assert.assertThrows(NullPointerException.class, () -> b.option("", null));
+        Assert.assertThrows(NullPointerException.class, () -> b.options(null));
+
+    }
+
 }

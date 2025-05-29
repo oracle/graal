@@ -34,7 +34,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
@@ -120,7 +119,7 @@ public class RealLog extends Log {
         } else if ((offset < 0) || (offset > value.length) || (length < 0) || ((offset + length) > value.length) || ((offset + length) < 0)) {
             rawString("OUT OF BOUNDS");
         } else if (Heap.getHeap().isInImageHeap(value)) {
-            rawBytes(NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(value), offset), WordFactory.unsigned(length));
+            rawBytes(NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(value), offset), Word.unsigned(length));
         } else {
             rawBytes(value, offset, length);
         }
@@ -165,7 +164,7 @@ public class RealLog extends Log {
                 }
                 bytes.write(i, b);
             }
-            rawBytes(bytes, WordFactory.unsigned(chunkLength));
+            rawBytes(bytes, Word.unsigned(chunkLength));
 
             chunkOffset += chunkLength;
             inputLength -= chunkLength;
@@ -181,7 +180,7 @@ public class RealLog extends Log {
     @NeverInline("Logging is always slow-path code")
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log string(CCharPointer value) {
-        if (value.notEqual(WordFactory.nullPointer())) {
+        if (value.notEqual(Word.nullPointer())) {
             rawBytes(value, SubstrateUtil.strlen(value));
         } else {
             rawString("null");
@@ -195,7 +194,7 @@ public class RealLog extends Log {
         if (length == 0) {
             return this;
         }
-        return rawBytes(bytes, WordFactory.unsigned(length));
+        return rawBytes(bytes, Word.unsigned(length));
     }
 
     @Override
@@ -204,7 +203,7 @@ public class RealLog extends Log {
     public Log character(char value) {
         CCharPointer bytes = UnsafeStackValue.get(CCharPointer.class);
         bytes.write((byte) value);
-        rawBytes(bytes, WordFactory.unsigned(1));
+        rawBytes(bytes, Word.unsigned(1));
         return this;
     }
 
@@ -284,7 +283,7 @@ public class RealLog extends Log {
             spaces(spaces);
         }
 
-        rawBytes(bytes.addressOf(charPos), WordFactory.unsigned(length));
+        rawBytes(bytes.addressOf(charPos), Word.unsigned(length));
 
         if (align == LEFT_ALIGN) {
             int spaces = fill - length;
@@ -611,7 +610,7 @@ public class RealLog extends Log {
     @NeverInline("Logging is always slow-path code")
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log hexdump(PointerBase from, int wordSize, int numWords, int bytesPerLine) {
-        Pointer base = WordFactory.pointer(from.rawValue());
+        Pointer base = Word.pointer(from.rawValue());
         int sanitizedWordsize = wordSize > 0 ? Integer.highestOneBit(Math.min(wordSize, 8)) : 2;
         for (int offset = 0; offset < sanitizedWordsize * numWords; offset += sanitizedWordsize) {
             if (offset % bytesPerLine == 0) {
@@ -734,9 +733,9 @@ public class RealLog extends Log {
         }
     }
 
-    private class BacktracePrinter extends BacktraceDecoder {
+    private final class BacktracePrinter extends BacktraceDecoder {
 
-        protected final int printBacktrace(long[] backtrace, int maxFramesProcessed) {
+        protected int printBacktrace(long[] backtrace, int maxFramesProcessed) {
             return visitBacktrace(backtrace, maxFramesProcessed, SubstrateOptions.maxJavaStackTraceDepth());
         }
 

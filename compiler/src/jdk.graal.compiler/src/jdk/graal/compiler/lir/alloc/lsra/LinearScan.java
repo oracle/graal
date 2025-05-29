@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.List;
 
 import org.graalvm.collections.Pair;
 
@@ -61,7 +62,6 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.TargetDescription;
@@ -125,8 +125,8 @@ public class LinearScan {
 
     private final LIR ir;
     private final FrameMapBuilder frameMapBuilder;
-    private final RegisterAttributes[] registerAttributes;
-    private final RegisterArray registers;
+    private final List<RegisterAttributes> registerAttributes;
+    private final List<Register> registers;
     private final RegisterAllocationConfig regAllocConfig;
     private final MoveFactory moveFactory;
 
@@ -328,7 +328,7 @@ public class LinearScan {
      * configuration.
      */
     public RegisterAttributes attributes(Register reg) {
-        return registerAttributes[reg.number];
+        return registerAttributes.get(reg.number);
     }
 
     void assignSpillSlot(Interval interval) {
@@ -906,7 +906,7 @@ public class LinearScan {
         return sortedBlocks;
     }
 
-    public RegisterArray getRegisters() {
+    public List<Register> getRegisters() {
         return registers;
     }
 

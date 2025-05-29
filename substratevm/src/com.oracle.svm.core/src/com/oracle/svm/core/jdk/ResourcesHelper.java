@@ -27,84 +27,23 @@ package com.oracle.svm.core.jdk;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 
-import com.oracle.svm.core.util.VMError;
-
-import jdk.internal.loader.Resource;
 import org.graalvm.nativeimage.ImageInfo;
+
+import com.oracle.svm.core.util.VMError;
 
 public class ResourcesHelper {
 
-    private static Resource urlToResource(String resourceName, URL url) {
-        try {
-            if (url == null) {
-                return null;
-            }
-            URLConnection urlConnection = url.openConnection();
-            return buildResource(resourceName, url, urlConnection);
-        } catch (IOException e) {
-            return null;
-        } catch (ClassCastException classCastException) {
-            throw VMError.shouldNotReachHere(classCastException);
-        }
-    }
-
-    private static Resource buildResource(String name, URL url, URLConnection urlConnection) {
-        return new Resource() {
-
-            @Override
-            public String getName() {
-                return name;
-            }
-
-            @Override
-            public URL getURL() {
-                return url;
-            }
-
-            @Override
-            public URL getCodeSourceURL() {
-                // We are deleting resource URL class path during native image build,
-                // so in runtime we don't have this information.
-                return null;
-            }
-
-            @Override
-            public InputStream getInputStream() throws IOException {
-                return urlConnection.getInputStream();
-            }
-
-            @Override
-            public int getContentLength() throws IOException {
-                return urlConnection.getContentLength();
-            }
-        };
-    }
-
-    public static Resource nameToResource(String resourceName) {
-        return urlToResource(resourceName, nameToResourceURL(resourceName));
-    }
-
-    public static Enumeration<Resource> nameToResources(String resourceName) {
-        Enumeration<URL> urls = Resources.singleton().createURLs(resourceName);
-        List<Resource> resourceURLs = new ArrayList<>();
-        while (urls.hasMoreElements()) {
-            resourceURLs.add(urlToResource(resourceName, urls.nextElement()));
-        }
-        return Collections.enumeration(resourceURLs);
-    }
-
     public static URL nameToResourceURL(String resourceName) {
-        return Resources.singleton().createURL(resourceName);
+        return Resources.createURL(resourceName);
     }
 
     public static URL nameToResourceURL(Module module, String resourceName) {
-        return Resources.singleton().createURL(module, resourceName);
+        return Resources.createURL(module, resourceName);
     }
 
     public static InputStream nameToResourceInputStream(String mn, String resourceName) throws IOException {
@@ -115,7 +54,7 @@ public class ResourcesHelper {
     }
 
     public static List<URL> nameToResourceListURLs(String resourcesName) {
-        Enumeration<URL> urls = Resources.singleton().createURLs(resourcesName);
+        Enumeration<URL> urls = Resources.createURLs(resourcesName);
         List<URL> resourceURLs = new ArrayList<>();
         while (urls.hasMoreElements()) {
             resourceURLs.add(urls.nextElement());

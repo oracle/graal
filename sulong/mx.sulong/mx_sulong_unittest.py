@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2024, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -93,6 +93,15 @@ class SulongUnittestConfigBase(mx_unittest.MxUnittestConfig):
         vmArgs += [f'-Dsulongtest.path.{d.name}={d.get_output()}' for d in _get_test_distributions(cfg.nativeTestDistFrom)]
         vmArgs += [f'-Dsulongtest.configRoot={cfg.configRoot}']
         vmArgs += [f'-Dsulongtest.config={cfg.name}']
+        if '-p' in vmArgs or '--module-path' in vmArgs:
+            # ALL-UNNAMED for native methods in
+            # com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput
+            native_access_target_module = 'org.graalvm.truffle,ALL-UNNAMED'
+        else:
+            native_access_target_module = 'ALL-UNNAMED'
+        vmArgs += [f'--enable-native-access={native_access_target_module}']
+        # GR-59703: Migrate sun.misc.* usages.
+        mx_truffle.enable_sun_misc_unsafe(vmArgs)
         if mx.get_opts().use_llvm_standalone is not None:
             vmArgs += [f'-Dsulongtest.testAOTImage={mx_sulong.get_lli_path()}']
         else:

@@ -50,6 +50,7 @@ import jdk.vm.ci.meta.Value;
  */
 // @formatter:off
 @SyncPort(from = "https://github.com/openjdk/jdk/blob/5860a48c71e324f77a7ecc613c063cbb81580011/src/hotspot/cpu/aarch64/gc/g1/g1BarrierSetAssembler_aarch64.cpp#L98-L183",
+          ignore = "GR-58685",
           sha1 = "9b21f261fba89d49673568e85193159286db3ef5")
 // @formatter:on
 public class AArch64G1PreWriteBarrierOp extends AArch64LIRInstruction {

@@ -40,20 +40,26 @@
  */
 package com.oracle.truffle.nfi;
 
-import org.graalvm.collections.EconomicMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
 
+@Bind.DefaultExpression("get($node)")
 final class NFIContext {
 
     Env env;
-    final EconomicMap<String, API> apiCache = EconomicMap.create();
+    final ReentrantLock apiCacheLock = new ReentrantLock();
+    final Map<String, API> apiCache = new ConcurrentHashMap<>();
 
     NFIContext(Env env) {
         this.env = env;
@@ -64,18 +70,16 @@ final class NFIContext {
         this.apiCache.clear();
     }
 
-    NFIBackend getBackend(String id) {
-        return getAPI(id).backend;
-    }
-
     @TruffleBoundary
-    API getAPI(String backendId) {
+    API getAPI(String backendId, Node node) {
         API ret = apiCache.get(backendId);
         if (ret != null) {
             return ret;
         }
 
-        synchronized (apiCache) {
+        TruffleSafepoint.setBlockedThreadInterruptible(node, ReentrantLock::lockInterruptibly, apiCacheLock);
+
+        try {
             ret = apiCache.get(backendId);
             if (ret != null) {
                 return ret;
@@ -92,11 +96,15 @@ final class NFIContext {
                     env.initializeLanguage(language);
 
                     NFIBackend backend = backendFactory.createBackend(NFILanguage.get(null).nfiState);
-                    API api = new API(backendId, backend);
-                    apiCache.put(backendFactory.getBackendId(), api);
-                    return api;
+                    if (backend != null) {
+                        API api = new API(backendId, backend);
+                        apiCache.put(backendFactory.getBackendId(), api);
+                        return api;
+                    }
                 }
             }
+        } finally {
+            apiCacheLock.unlock();
         }
 
         throw new NFIParserException(String.format("Unknown NFI backend '%s'.", backendId), false);

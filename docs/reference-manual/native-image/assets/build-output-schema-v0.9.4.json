@@ -1,0 +1,451 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.4.json",
+  "type": "object",
+  "default": {},
+  "title": "Schema for the JSON build output of GraalVM Native Image",
+  "required": [
+    "general_info",
+    "analysis_results",
+    "image_details",
+    "resource_usage"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "general_info": {
+      "type": "object",
+      "default": {},
+      "title": "General information about the build process",
+      "required": [
+        "name",
+        "graalvm_version",
+        "java_version",
+        "vendor_version",
+        "graal_compiler",
+        "c_compiler",
+        "garbage_collector"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "default": "",
+          "title": "The file name of the native executable (including file extension if any)"
+        },
+        "graalvm_version": {
+          "type": "string",
+          "default": "",
+          "title": "The GraalVM Native Image version. Deprecated: Please use vendor_version or java_version instead."
+        },
+        "java_version": {
+          "type": "string",
+          "default": null,
+          "title": "The Java version of the Native Image build process. This value is also used for the 'java.vm.version' property within the generated image"
+        },
+        "vendor_version": {
+          "type": "string",
+          "default": null,
+          "title": "The vendor version of the VM of the generated image. This value is also used for the 'java.vendor.version' property within the generated image"
+        },
+        "graal_compiler": {
+          "type": "object",
+          "default": {},
+          "required": ["optimization_level", "march"],
+          "additionalProperties": false,
+          "properties": {
+            "optimization_level": {
+              "type": "string",
+              "default": "",
+              "title": "The optimization level used by Graal"
+            },
+            "march": {
+              "type": "string",
+              "default": "",
+              "title": "The machine type targeted by Graal"
+            },
+            "pgo": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "default": "",
+                "enum": ["instrument", "user-provided", "ML-inferred"],
+                "title": "The name of the enabled PGO mode"
+              },
+              "default": null,
+              "title": "The names of the enabled PGO modes (or null if PGO is not used) (Oracle GraalVM only)"
+            }
+          },
+          "title": "Information about the Graal compiler"
+        },
+        "c_compiler": {
+          "type": ["string", "null"],
+          "default": null,
+          "title": "The C compiler used by the Native Image build process (or null if not available)"
+        },
+        "garbage_collector": {
+          "type": "string",
+          "default": "",
+          "title": "The garbage collector used within the generated image"
+        }
+      }
+    },
+    "analysis_results": {
+      "type": "object",
+      "default": {},
+      "title": "Information from the analysis",
+      "required": [
+        "types",
+        "fields",
+        "methods"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "types": {
+          "type": "object",
+          "default": {},
+          "title": "Type information from the analysis",
+          "required": [
+            "total",
+            "reachable",
+            "reflection",
+            "jni"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "total": {
+              "type": "integer",
+              "default": 0,
+              "title": "The total number of types. Deprecated without replacement."
+            },
+            "reachable": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of reachable types"
+            },
+            "reflection": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of types registered for reflection"
+            },
+            "jni": {
+              "type": "integer",
+              "default": -1,
+              "title": "The number of types registered for JNI access (or -1 if unset)"
+            }
+          }
+        },
+        "fields": {
+          "type": "object",
+          "default": {},
+          "title": "Field information from the analysis",
+          "required": [
+            "total",
+            "reachable",
+            "reflection",
+            "jni"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "total": {
+              "type": "integer",
+              "default": 0,
+              "title": "The total number of fields loaded. Deprecated without replacement."
+            },
+            "reachable": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of reachable fields"
+            },
+            "reflection": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of fields registered for reflection"
+            },
+            "jni": {
+              "type": "integer",
+              "default": -1,
+              "title": "The number of fields registered for JNI access (or -1 if unset)"
+            }
+          }
+        },
+        "methods": {
+          "type": "object",
+          "default": {},
+          "title": "Method information from the analysis",
+          "required": [
+            "total",
+            "reachable",
+            "reflection",
+            "jni",
+            "foreign_downcalls",
+            "foreign_upcalls"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "total": {
+              "type": "integer",
+              "default": 0,
+              "title": "The total number of methods. Deprecated without replacement."
+            },
+            "reachable": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of reachable methods"
+            },
+            "reflection": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of methods registered for reflection"
+            },
+            "jni": {
+              "type": "integer",
+              "default": -1,
+              "title": "The number of methods registered for JNI access (or -1 if unset)"
+            },
+            "foreign_downcalls": {
+              "type": "integer",
+              "default": -1,
+              "title": "The number of registered FFM API downcalls (or -1 if unset)"
+            },
+            "foreign_upcalls": {
+              "type": "integer",
+              "default": -1,
+              "title": "The number of registered FFM API upcalls (or -1 if unset)"
+            }
+          }
+        }
+      }
+    },
+    "image_details": {
+      "type": "object",
+      "default": {},
+      "title": "Statistics about the generated native image",
+      "required": [
+        "total_bytes",
+        "code_area",
+        "image_heap"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "total_bytes": {
+          "type": "integer",
+          "default": 0,
+          "title": "The total number of bytes of the image"
+        },
+        "code_area": {
+          "type": "object",
+          "default": {},
+          "title": "Code area statistics",
+          "required": [
+            "bytes",
+            "compilation_units"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "bytes": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of bytes used for the code area"
+            },
+            "compilation_units": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of compilation units in the image"
+            }
+          }
+        },
+        "image_heap": {
+          "type": "object",
+          "default": {},
+          "title": "Image heap statistics",
+          "required": [
+            "bytes",
+            "objects",
+            "resources"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "bytes": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of bytes used for image heap"
+            },
+            "objects": {
+              "type": "object",
+              "default": {},
+              "title": "Object statistics",
+              "required": [
+                "count"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "count": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "Number of objects in the image heap"
+                }
+              }
+            },
+            "resources": {
+              "type": "object",
+              "default": {},
+              "title": "Resource statistics",
+              "required": [
+                "count",
+                "bytes"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "count": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "Number of resources embedded in the image"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The number of bytes used for resource data"
+                }
+              }
+            }
+          }
+        },
+        "debug_info": {
+          "type": "object",
+          "default": {},
+          "title": "Debug info statistics",
+          "required": [
+            "bytes"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "bytes": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of bytes used for debug info"
+            }
+          }
+        },
+        "runtime_compiled_methods": {
+          "type": "object",
+          "default": {},
+          "title": "Statistics on runtime compiled methods (optional)",
+          "required": [
+            "count",
+            "graph_encoding_bytes"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "count": {
+              "type": "integer",
+              "default": 0,
+              "title": "Number of runtime compiled methods"
+            },
+            "graph_encoding_bytes": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of bytes used for graph encodings bytes"
+            }
+          }
+        }
+      }
+    },
+    "resource_usage": {
+      "type": "object",
+      "default": {},
+      "title": "Resource usage statistics",
+      "required": [
+        "cpu",
+        "garbage_collection",
+        "memory",
+        "total_secs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "cpu": {
+          "type": "object",
+          "default": {},
+          "title": "CPU usage statistics",
+          "required": [
+            "load",
+            "parallelism",
+            "total_cores"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "load": {
+              "type": "number",
+              "default": -1,
+              "title": "The CPU load of the build process before terminating (or -1 if unavailable)"
+            },
+            "parallelism": {
+              "type": "integer",
+              "default": 0,
+              "title": "The total number of threads the build process is allowed to use"
+            },
+            "total_cores": {
+              "type": "integer",
+              "default": 0,
+              "title": "The total number of cores of the build machine"
+            }
+          }
+        },
+        "garbage_collection": {
+          "type": "object",
+          "default": {},
+          "title": "Garbage collection usage statistics",
+          "required": [
+            "count",
+            "max_heap",
+            "total_secs"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "count": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of GC cycles performed during image generation"
+            },
+            "max_heap": {
+              "type": "number",
+              "default": 0.0,
+              "title": "The Java heap memory limit of the image builder process in bytes"
+            },
+            "total_secs": {
+              "type": "number",
+              "default": 0.0,
+              "title": "The total number of seconds spent in GC"
+            }
+          }
+        },
+        "memory": {
+          "type": "object",
+          "default": {},
+          "title": "Memory usage statistics",
+          "required": [
+            "system_total",
+            "peak_rss_bytes"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "system_total": {
+              "type": "integer",
+              "default": 0,
+              "title": "The total number of bytes of available system memory"
+            },
+            "peak_rss_bytes": {
+              "type": "integer",
+              "default": -1,
+              "title": "Peak RSS value of the image builder process in bytes (or -1 if unavailable)"
+            }
+          }
+        },
+        "total_secs": {
+          "type": "number",
+          "default": 0.0,
+          "title": "The total number of seconds image generation took"
+        }
+      }
+    }
+  }
+}

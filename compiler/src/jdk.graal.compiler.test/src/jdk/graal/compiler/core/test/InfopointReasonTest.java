@@ -27,6 +27,8 @@ package jdk.graal.compiler.core.test;
 import static jdk.graal.compiler.core.common.GraalOptions.OptAssumptions;
 import static org.junit.Assert.assertNotNull;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.GraalCompiler;
 import jdk.graal.compiler.core.target.Backend;
@@ -41,12 +43,10 @@ import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.vm.ci.meta.ProfilingInfo;
-import org.junit.Test;
-
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
+import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**

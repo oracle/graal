@@ -35,13 +35,13 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import com.oracle.svm.core.code.FrameSourceInfo;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -150,7 +150,7 @@ final class Target_java_lang_StackWalker {
             /* Walk the stack of the current thread. */
             IsolateThread isolateThread = CurrentIsolate.getCurrentThread();
             Pointer sp = KnownIntrinsics.readCallerStackPointer();
-            Pointer endSP = WordFactory.nullPointer();
+            Pointer endSP = Word.nullPointer();
             if (ContinuationSupport.isSupported() && (contScope != null || JavaThreads.isCurrentThreadVirtual())) {
                 var scope = (contScope != null) ? contScope : Target_java_lang_VirtualThread.continuationScope();
                 var top = Target_jdk_internal_vm_Continuation.getCurrentContinuation(scope);
@@ -316,7 +316,7 @@ final class Target_java_lang_StackWalker {
             JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
             VMError.guarantee(!JavaFrames.isEntryPoint(frame), "Entry point frames are not supported");
             VMError.guarantee(!JavaFrames.isUnknownFrame(frame), "Stack walk must not encounter unknown frame");
-            VMError.guarantee(Deoptimizer.checkDeoptimized(frame) == null, "Deoptimized frames are not supported");
+            VMError.guarantee(!Deoptimizer.checkIsDeoptimized(frame), "Deoptimized frames are not supported");
 
             UntetheredCodeInfo untetheredInfo = frame.getIPCodeInfo();
             VMError.guarantee(UntetheredCodeInfoAccess.isAOTImageCode(untetheredInfo));
@@ -335,7 +335,7 @@ final class Target_java_lang_StackWalker {
 
         @Override
         protected void invalidate() {
-            walk = WordFactory.nullPointer();
+            walk = Word.nullPointer();
             continuation = null;
             stored = null;
         }
@@ -366,7 +366,7 @@ final class Target_java_lang_StackWalker {
 
         @Override
         protected void invalidate() {
-            walk = WordFactory.nullPointer();
+            walk = Word.nullPointer();
         }
 
         @Override
@@ -393,7 +393,7 @@ final class Target_java_lang_StackWalker {
             JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
             VMError.guarantee(!JavaFrames.isUnknownFrame(frame), "Stack walk must not encounter unknown frame");
 
-            DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(frame);
+            DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkEagerDeoptimized(frame);
             if (deoptimizedFrame != null) {
                 this.deoptimizedVFrame = deoptimizedFrame.getTopFrame();
             } else {

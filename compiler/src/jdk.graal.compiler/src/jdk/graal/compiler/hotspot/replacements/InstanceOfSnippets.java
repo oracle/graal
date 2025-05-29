@@ -24,12 +24,13 @@
  */
 package jdk.graal.compiler.hotspot.replacements;
 
+import static jdk.graal.compiler.core.common.GraalOptions.TypeCheckMaxHints;
+import static jdk.graal.compiler.core.common.GraalOptions.TypeCheckMinProfileHitProbability;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OPTIMIZING_PRIMARY_SUPERS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadHubIntrinsic;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadHubOrNullIntrinsic;
-import static jdk.graal.compiler.hotspot.replacements.HotspotSnippetsOptions.TypeCheckMaxHints;
-import static jdk.graal.compiler.hotspot.replacements.HotspotSnippetsOptions.TypeCheckMinProfileHitProbability;
 import static jdk.graal.compiler.hotspot.replacements.TypeCheckSnippetUtils.checkSecondarySubType;
 import static jdk.graal.compiler.hotspot.replacements.TypeCheckSnippetUtils.checkUnknownSubType;
 import static jdk.graal.compiler.hotspot.replacements.TypeCheckSnippetUtils.createHints;
@@ -74,7 +75,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.ExplodeLoopNode;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -85,11 +85,11 @@ import jdk.vm.ci.meta.TriState;
 /**
  * Snippets used for implementing the type test of an instanceof instruction. Since instanceof is a
  * floating node, it is lowered separately for each of its usages.
- *
+ * <p>
  * The type tests implemented are described in the paper
  * <a href="http://dl.acm.org/citation.cfm?id=583821"> Fast subtype checking in the HotSpot JVM</a>
  * by Cliff Click and John Rose, with the adaption on the secondary supers hashed lookup algorithm
- * described in JDK-8180450 (see comments in {@link TypeCheckSnippetUtils#checkSelfAndSupers}).
+ * described in JDK-8180450 (see comments in {@link TypeCheckSnippetUtils#checkSecondarySubType}).
  */
 public class InstanceOfSnippets implements Snippets {
 
@@ -167,8 +167,8 @@ public class InstanceOfSnippets implements Snippets {
      * A test against a restricted secondary type.
      */
     @Snippet(allowMissingProbabilities = true)
-    public static Object instanceofSecondary(KlassPointer hub, Object object, @VarargsParameter KlassPointer[] hints, @VarargsParameter boolean[] hintIsPositive, Object trueValue, Object falseValue,
-                    @ConstantParameter Counters counters) {
+    public static Object instanceofSecondary(KlassPointer hub, Object object, @VarargsParameter KlassPointer[] hints, @VarargsParameter boolean[] hintIsPositive,
+                    @ConstantParameter boolean isHubAbstract, Object trueValue, Object falseValue, @ConstantParameter Counters counters) {
         if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             counters.isNull.inc();
             return falseValue;
@@ -186,7 +186,7 @@ public class InstanceOfSnippets implements Snippets {
             }
         }
         counters.hintsMiss.inc();
-        if (!checkSecondarySubType(hub, objectHub, counters)) {
+        if (!checkSecondarySubType(hub, objectHub, isHubAbstract, counters)) {
             return falseValue;
         }
         return trueValue;
@@ -267,15 +267,9 @@ public class InstanceOfSnippets implements Snippets {
             this.instanceofWithProfile = snippet(providers, InstanceOfSnippets.class, "instanceofWithProfile");
             this.instanceofExact = snippet(providers, InstanceOfSnippets.class, "instanceofExact");
             this.instanceofPrimary = snippet(providers, InstanceOfSnippets.class, "instanceofPrimary", PRIMARY_SUPERS_LOCATION);
-            if (JavaVersionUtil.JAVA_SPEC == 21) {
-                this.instanceofSecondary = snippet(providers, InstanceOfSnippets.class, "instanceofSecondary", SECONDARY_SUPER_CACHE_LOCATION);
-                this.instanceofDynamic = snippet(providers, InstanceOfSnippets.class, "instanceofDynamic", PRIMARY_SUPERS_LOCATION, SECONDARY_SUPER_CACHE_LOCATION);
-                this.isAssignableFrom = snippet(providers, InstanceOfSnippets.class, "isAssignableFrom", PRIMARY_SUPERS_LOCATION, SECONDARY_SUPER_CACHE_LOCATION);
-            } else {
-                this.instanceofSecondary = snippet(providers, InstanceOfSnippets.class, "instanceofSecondary");
-                this.instanceofDynamic = snippet(providers, InstanceOfSnippets.class, "instanceofDynamic", PRIMARY_SUPERS_LOCATION);
-                this.isAssignableFrom = snippet(providers, InstanceOfSnippets.class, "isAssignableFrom", PRIMARY_SUPERS_LOCATION);
-            }
+            this.instanceofSecondary = snippet(providers, InstanceOfSnippets.class, "instanceofSecondary", SECONDARY_SUPER_CACHE_LOCATION);
+            this.instanceofDynamic = snippet(providers, InstanceOfSnippets.class, "instanceofDynamic", OPTIMIZING_PRIMARY_SUPERS_LOCATION, SECONDARY_SUPER_CACHE_LOCATION);
+            this.isAssignableFrom = snippet(providers, InstanceOfSnippets.class, "isAssignableFrom", OPTIMIZING_PRIMARY_SUPERS_LOCATION, SECONDARY_SUPER_CACHE_LOCATION);
 
             this.counters = new Counters(factory);
         }
@@ -311,7 +305,7 @@ public class InstanceOfSnippets implements Snippets {
                     args = new Arguments(instanceofPrimary, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("hub", hub);
                     args.add("object", object);
-                    args.addConst("superCheckOffset", type.superCheckOffset());
+                    args.add("superCheckOffset", type.superCheckOffset());
                 } else {
                     Hints hints = createHints(hintInfo, tool.getMetaAccess(), false, graph);
                     args = new Arguments(instanceofSecondary, graph.getGuardsStage(), tool.getLoweringStage());
@@ -319,13 +313,14 @@ public class InstanceOfSnippets implements Snippets {
                     args.add("object", object);
                     args.addVarargs("hints", KlassPointer.class, KlassPointerStamp.klassNonNull(), hints.hubs);
                     args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(JavaKind.Boolean), hints.isPositive);
+                    args.add("isHubAbstract", !type.isArray() && (type.isAbstract() || type.isInterface()));
                 }
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
                 if (hintInfo.hintHitProbability >= 1.0 && hintInfo.exact == null) {
-                    args.addConst("nullSeen", hintInfo.profile.getNullSeen() != TriState.FALSE);
+                    args.add("nullSeen", hintInfo.profile.getNullSeen() != TriState.FALSE);
                 }
-                args.addConst("counters", counters);
+                args.add("counters", counters);
                 return args;
             } else if (replacer.instanceOf instanceof InstanceOfDynamicNode) {
                 InstanceOfDynamicNode instanceOf = (InstanceOfDynamicNode) replacer.instanceOf;
@@ -336,9 +331,9 @@ public class InstanceOfSnippets implements Snippets {
                 args.add("object", object);
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
-                args.addConst("allowNull", instanceOf.allowsNull());
-                args.addConst("exact", instanceOf.isExact());
-                args.addConst("counters", counters);
+                args.add("allowNull", instanceOf.allowsNull());
+                args.add("exact", instanceOf.isExact());
+                args.add("counters", counters);
                 return args;
             } else if (replacer.instanceOf instanceof ClassIsAssignableFromNode) {
                 ClassIsAssignableFromNode isAssignable = (ClassIsAssignableFromNode) replacer.instanceOf;
@@ -349,7 +344,7 @@ public class InstanceOfSnippets implements Snippets {
                 args.add("otherClassNonNull", isAssignable.getOtherClass());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
-                args.addConst("counters", counters);
+                args.add("counters", counters);
                 return args;
             } else {
                 throw GraalError.shouldNotReachHereUnexpectedValue(replacer); // ExcludeFromJacocoGeneratedReport

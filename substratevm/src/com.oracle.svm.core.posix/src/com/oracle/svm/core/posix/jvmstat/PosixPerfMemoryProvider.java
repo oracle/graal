@@ -40,23 +40,23 @@ import static com.oracle.svm.core.posix.headers.Fcntl.O_RDWR;
 
 import java.nio.ByteBuffer;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
+import com.oracle.svm.core.jdk.management.Target_jdk_internal_vm_VMSupport;
 import com.oracle.svm.core.jvmstat.PerfManager;
 import com.oracle.svm.core.jvmstat.PerfMemoryPrologue;
 import com.oracle.svm.core.jvmstat.PerfMemoryProvider;
@@ -71,8 +71,10 @@ import com.oracle.svm.core.posix.headers.Dirent.dirent;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Mman;
+import com.oracle.svm.core.posix.headers.PosixFile;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.graal.compiler.core.common.NumUtil;
 
@@ -80,8 +82,6 @@ import jdk.graal.compiler.core.common.NumUtil;
  * This class uses high-level JDK features at the moment. In the future, we will need to rewrite
  * this code so that it can be executed during the isolate startup (i.e., in uninterruptible code),
  * see GR-40601.
- * <p>
- * Based on JDK 19 (git commit hash: 967a28c3d85fdde6d5eb48aa0edd8f7597772469, JDK tag: jdk-19+36.
  */
 class PosixPerfMemoryProvider implements PerfMemoryProvider {
     private static final String PERFDATA_NAME = "hsperfdata";
@@ -97,6 +97,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
      * null on failure. A return value of null will ultimately disable the shared memory feature.
      */
     @Override
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+3/src/hotspot/os/posix/perfMemory_posix.cpp#L1015-L1082")
     public ByteBuffer create() {
         assert backingFilePath == null;
 
@@ -116,10 +117,10 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
 
         int fd;
         try (CTypeConversion.CCharPointerHolder d = CTypeConversion.toCString(dirName)) {
-            cleanupSharedMemResources(d.get(), vmId);
+            cleanupSharedMemFiles(d.get(), vmId);
 
             try (CTypeConversion.CCharPointerHolder f = CTypeConversion.toCString(fileName)) {
-                fd = createSharedMemResources(d.get(), f.get(), size);
+                fd = createSharedMemFile(d.get(), f.get(), size);
             }
         }
 
@@ -127,7 +128,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
             return null;
         }
 
-        Pointer mapAddress = Mman.mmap(WordFactory.nullPointer(), WordFactory.unsigned(size), Mman.PROT_READ() | Mman.PROT_WRITE(), Mman.MAP_SHARED(), fd, 0);
+        Pointer mapAddress = Mman.mmap(Word.nullPointer(), Word.unsigned(size), Mman.PROT_READ() | Mman.PROT_WRITE(), Mman.MAP_SHARED(), fd, 0);
 
         int result = Unistd.NoTransitions.close(fd);
         assert result != -1;
@@ -141,13 +142,14 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         backingFilePath = filePath;
 
         /* Clear the shared memory region. */
-        LibC.memset(mapAddress, WordFactory.signed(0), WordFactory.unsigned(size));
+        LibC.memset(mapAddress, Word.signed(0), Word.unsigned(size));
         return DirectByteBufferUtil.allocate(mapAddress.rawValue(), size);
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L134-L157")
     private static String getUserTmpDir(String user, int vmId, int nsPid) {
         String tmpDir = Target_jdk_internal_vm_VMSupport.getVMTemporaryDirectory();
-        if (Platform.includedIn(Platform.LINUX.class)) {
+        if (Platform.includedIn(LINUX.class)) {
             if (nsPid != -1) {
                 /* Use different directory if we have a containerized process on Linux. */
                 tmpDir = "/proc/" + vmId + "/root" + tmpDir;
@@ -156,9 +158,10 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         return tmpDir + "/" + PERFDATA_NAME + "_" + user;
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L657-L668")
     private static String getSharedMemFileName(int vmId, int nspid) {
         int pid = vmId;
-        if (Platform.includedIn(Platform.LINUX.class) && nspid != -1) {
+        if (Platform.includedIn(LINUX.class) && nspid != -1) {
             pid = nspid;
         }
         return Integer.toString(pid);
@@ -170,7 +173,8 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
      * extracted from the file name and a test is run to determine if the process is alive. If the
      * process is not alive, any stale file resources are removed.
      */
-    private static void cleanupSharedMemResources(CCharPointer directoryPath, int selfPid) {
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L703-L807")
+    private static void cleanupSharedMemFiles(CCharPointer directoryPath, int selfPid) {
         try (SecureDirectory s = openDirectorySecure(directoryPath)) {
             if (s == null) {
                 return;
@@ -188,6 +192,24 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
                     continue;
                 }
 
+                int fileFd = -1;
+                if (Platform.includedIn(LINUX.class)) {
+                    /*
+                     * On Linux, different containerized processes may have the same pid and share
+                     * the /tmp directory. So, use file locking to claim ownership of the file.
+                     */
+                    fileFd = restartableOpenat(s.fd, entry.d_name(), O_RDONLY(), 0);
+                    if (fileFd == -1) {
+                        continue;
+                    }
+
+                    int n = PosixFile.restartableFlock(fileFd, PosixFile.LOCK_EX() | PosixFile.LOCK_NB());
+                    if (n != 0) {
+                        Unistd.NoTransitions.close(fileFd);
+                        continue;
+                    }
+                }
+
                 /*
                  * We now have a file name that converts to a valid integer that could represent a
                  * process id. If this process id matches the current process id or the process is
@@ -196,11 +218,17 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
                 if (pid == selfPid || canFileBeDeleted(pid)) {
                     Fcntl.NoTransitions.unlinkat(s.fd, entry.d_name(), 0);
                 }
+
+                if (Platform.includedIn(LINUX.class)) {
+                    /* Close the file and release the lock. */
+                    Unistd.NoTransitions.close(fileFd);
+                }
             }
         }
     }
 
-    private static int createSharedMemResources(CCharPointer directoryPath, CCharPointer filename, int size) {
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L853-L967")
+    private static int createSharedMemFile(CCharPointer directoryPath, CCharPointer filename, int size) {
         if (!makeUserTmpDir(directoryPath)) {
             return -1;
         }
@@ -213,6 +241,19 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         if (!isFileSecure(fd)) {
             Unistd.NoTransitions.close(fd);
             return -1;
+        }
+
+        if (Platform.includedIn(LINUX.class)) {
+            /*
+             * On Linux, different containerized processes may have the same pid and share the /tmp
+             * directory. So, try to claim exclusive ownership of the file before manipulating the
+             * file.
+             */
+            int n = PosixFile.restartableFlock(fd, PosixFile.LOCK_EX() | PosixFile.LOCK_NB());
+            if (n != 0) {
+                Unistd.NoTransitions.close(fd);
+                return -1;
+            }
         }
 
         /* Truncate the file to get rid of any existing data. */
@@ -234,7 +275,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
          * memory accesses if we don't.
          */
         RawFileOperationSupport fs = RawFileOperationSupport.nativeByteOrder();
-        RawFileDescriptor rawFd = WordFactory.signed(fd);
+        RawFileDescriptor rawFd = Word.signed(fd);
         int pageSize = NumUtil.safeToInt(VirtualMemoryProvider.get().getGranularity().rawValue());
 
         boolean success = true;
@@ -275,6 +316,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
      * Convert the given file name into a process id. If the file does not meet the file naming
      * constraints, return 0.
      */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L162-L191")
     private static int filenameToPid(String filename) {
         try {
             return Integer.parseInt(filename);
@@ -284,6 +326,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
     }
 
     @Uninterruptible(reason = "LibC.errno() must not be overwritten accidentally.")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L814-L845")
     private static boolean makeUserTmpDir(CCharPointer directory) {
         /*
          * Create the directory with 0755 permissions. note that the directory will be owned by
@@ -304,6 +347,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         return true;
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L291-L341")
     private static SecureDirectory openDirectorySecure(CCharPointer directory) {
         int fd = restartableOpen(directory, O_RDONLY() | O_NOFOLLOW(), 0);
         if (fd == -1) {
@@ -329,10 +373,11 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
      * true if the directory is considered a secure location. Returns false if the dir is a symbolic
      * link or if an error occurred.
      */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L230-L241")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isDirectorySecure(CCharPointer directory) {
         PosixStat.stat buf = StackValue.get(PosixStat.sizeOfStatStruct());
-        int result = restartableLstat(directory, buf);
+        int result = PosixStat.restartableLstat(directory, buf);
         if (result == -1) {
             return false;
         }
@@ -344,18 +389,20 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
      * store files. Returns true if the directory exists and is considered a secure location.
      * Returns false if the path is a symbolic link or if an error occurred.
      */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L249-L260")
     private static boolean isDirFdSecure(int dirFd) {
         PosixStat.stat buf = StackValue.get(PosixStat.sizeOfStatStruct());
-        int result = restartableFstat(dirFd, buf);
+        int result = PosixStat.restartableFstat(dirFd, buf);
         if (result == -1) {
             return false;
         }
         return isStatBufSecure(buf);
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L408-L429")
     private static boolean isFileSecure(int fd) {
         PosixStat.stat buf = StackValue.get(PosixStat.sizeOfStatStruct());
-        int result = restartableFstat(fd, buf);
+        int result = PosixStat.restartableFstat(fd, buf);
         if (result == -1) {
             return false;
         }
@@ -371,6 +418,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
      * is a symbolic link or if an error occurred.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L199-L222")
     private static boolean isStatBufSecure(PosixStat.stat statp) {
         if (PosixStat.S_ISLNK(statp) || !PosixStat.S_ISDIR(statp)) {
             /*
@@ -437,6 +485,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         return result;
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L675-L691")
     private static int restartableUnlink(String pathname) {
         try (CTypeConversion.CCharPointerHolder f = CTypeConversion.toCString(pathname)) {
             return restartableUnlink(f.get());
@@ -457,33 +506,14 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
     private static int restartableFtruncate(int fd, int size) {
         int result;
         do {
-            result = Unistd.NoTransitions.ftruncate(fd, WordFactory.signed(size));
-        } while (result == -1 && LibC.errno() == Errno.EINTR());
-
-        return result;
-    }
-
-    @Uninterruptible(reason = "LibC.errno() must not be overwritten accidentally.")
-    private static int restartableFstat(int fd, PosixStat.stat buf) {
-        int result;
-        do {
-            result = PosixStat.NoTransitions.fstat(fd, buf);
-        } while (result == -1 && LibC.errno() == Errno.EINTR());
-
-        return result;
-    }
-
-    @Uninterruptible(reason = "LibC.errno() must not be overwritten accidentally.")
-    private static int restartableLstat(CCharPointer directory, PosixStat.stat buf) {
-        int result;
-        do {
-            result = PosixStat.NoTransitions.lstat(directory, buf);
+            result = Unistd.NoTransitions.ftruncate(fd, Word.signed(size));
         } while (result == -1 && LibC.errno() == Errno.EINTR());
 
         return result;
     }
 
     @Override
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L1112-L1128")
     public void teardown() {
         if (backingFilePath != null) {
             restartableUnlink(backingFilePath);
@@ -509,7 +539,6 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
 }
 
 @AutomaticallyRegisteredFeature
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class PosixPerfMemoryFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -520,11 +549,4 @@ class PosixPerfMemoryFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(PerfMemoryProvider.class, new PosixPerfMemoryProvider());
     }
-}
-
-@TargetClass(className = "jdk.internal.vm.VMSupport")
-final class Target_jdk_internal_vm_VMSupport {
-
-    @Alias
-    public static native String getVMTemporaryDirectory();
 }

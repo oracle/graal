@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.headers;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
 
 import org.graalvm.nativeimage.Platform;
@@ -46,7 +47,9 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateSegfaultHandler;
-import com.oracle.svm.core.posix.PosixUtils;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.posix.PosixSignalHandlerSupport;
 
 // Checkstyle: stop
 
@@ -71,17 +74,13 @@ public class Signal {
     @CConstant
     public static native int SIGEV_SIGNAL();
 
-    @CFunction
-    public static native int sigprocmask(int how, sigset_tPointer set, sigset_tPointer oldset);
-
     @CPointerTo(nameOfCType = "sigset_t")
     public interface sigset_tPointer extends PointerBase {
     }
 
     /**
-     * Warning: use {@link PosixUtils#installSignalHandler}. Do NOT introduce calls to
-     * {@code signal} or {@code sigset}, which are not portable, and when running in HotSpot, signal
-     * chaining (libjsig) will print warnings.
+     * WARNING: do NOT introduce direct calls to {@code signal} or {@code sigset} as they are not
+     * portable. Besides that, signal chaining (libjsig) in HotSpot would print warnings.
      */
     public interface SignalDispatcher extends CFunctionPointer {
         @InvokeCFunctionPointer
@@ -191,12 +190,9 @@ public class Signal {
         void sigev_signo(int value);
     }
 
-    /** Don't call this function directly, see {@link PosixUtils#sigaction}. */
-    @CFunction
+    /** Don't call this function directly, use {@link PosixSignalHandlerSupport} instead. */
+    @CFunction(transition = NO_TRANSITION)
     public static native int sigaction(int signum, sigaction act, sigaction oldact);
-
-    @CConstant
-    public static native int SIGPROF();
 
     @CEnum
     @CContext(PosixDirectives.class)
@@ -232,8 +228,16 @@ public class Signal {
         SIGXCPU,
         SIGXFSZ;
 
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public int getCValue() {
+            if (SubstrateUtil.HOSTED) {
+                return CConstant.ValueAccess.get(this, "getCValue0");
+            }
+            return getCValue0();
+        }
+
         @CEnumValue
-        public native int getCValue();
+        private native int getCValue0();
     }
 
     @Platforms(Platform.LINUX.class)
@@ -243,8 +247,16 @@ public class Signal {
         SIGPOLL,
         SIGPWR;
 
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public int getCValue() {
+            if (SubstrateUtil.HOSTED) {
+                return CConstant.ValueAccess.get(this, "getCValue0");
+            }
+            return getCValue0();
+        }
+
         @CEnumValue
-        public native int getCValue();
+        private native int getCValue0();
     }
 
     @Platforms(Platform.DARWIN.class)
@@ -254,8 +266,16 @@ public class Signal {
         SIGINFO,
         SIGEMT;
 
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public int getCValue() {
+            if (SubstrateUtil.HOSTED) {
+                return CConstant.ValueAccess.get(this, "getCValue0");
+            }
+            return getCValue0();
+        }
+
         @CEnumValue
-        public native int getCValue();
+        private native int getCValue0();
     }
 
     /**
@@ -466,5 +486,15 @@ public class Signal {
     public static class NoTransitions {
         @CFunction(transition = NO_TRANSITION)
         public static native int kill(int pid, int sig);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native int sigprocmask(int how, sigset_tPointer set, sigset_tPointer oldset);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native int sigemptyset(sigset_tPointer set);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native int sigaddset(sigset_tPointer set, int signum);
+
     }
 }

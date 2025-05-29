@@ -110,7 +110,7 @@ public class SpecializationUnrollingTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "cachedV0 == v0", limit = "2", unroll = 0)
         static long doInt(long v0,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) InnerNode test,
                         @Cached("v0") long cachedV0) {
             return test.execute(node, cachedV0);
@@ -134,7 +134,7 @@ public class SpecializationUnrollingTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "cachedV0 == v0", limit = "limit", unroll = 2)
         static long doInt(long v0,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) InnerNode test,
                         @Cached("v0") long cachedV0) {
             return test.execute(node, cachedV0);
@@ -158,7 +158,7 @@ public class SpecializationUnrollingTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "cachedV0 == v0", limit = "2", unroll = 2)
         static long doInt(long v0,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) InnerNode abs,
                         @Cached("v0") long cachedV0) {
             return abs.execute(node, cachedV0);
@@ -181,7 +181,7 @@ public class SpecializationUnrollingTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "cachedV0 == v0", limit = "limit", unroll = 3)
         static long doInt(long v0,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) InnerNode test,
                         @Cached("v0") long cachedV0) {
             return test.execute(node, cachedV0);
@@ -279,7 +279,7 @@ public class SpecializationUnrollingTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "cachedV0 == v0", limit = "limit", unroll = 1)
         static String doInt(long v0,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) InnerNode test,
                         @Cached("v0") long cachedV0) {
             return "cached";
@@ -308,7 +308,7 @@ public class SpecializationUnrollingTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "cachedV0 == v0", limit = "2", unroll = 2)
         static String doInt(long v0,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) InnerNode test,
                         @Cached("v0") long cachedV0) {
             return "cached";

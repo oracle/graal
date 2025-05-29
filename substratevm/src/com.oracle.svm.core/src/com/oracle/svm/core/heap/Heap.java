@@ -58,6 +58,10 @@ public abstract class Heap {
     protected Heap() {
     }
 
+    /** Verifies that the image heap was mapped correctly. */
+    @Uninterruptible(reason = "Called during startup.")
+    public abstract boolean verifyImageHeapMapping();
+
     /**
      * Notifies the heap that a new thread was attached to the VM. This allows to initialize
      * heap-specific datastructures, e.g., the TLAB.
@@ -88,19 +92,19 @@ public abstract class Heap {
      * Walk all the objects in the heap. Must only be executed as part of a VM operation that causes
      * a safepoint.
      */
-    public abstract boolean walkObjects(ObjectVisitor visitor);
+    public abstract void walkObjects(ObjectVisitor visitor);
 
     /**
      * Walk all native image heap objects. Must only be executed as part of a VM operation that
      * causes a safepoint.
      */
-    public abstract boolean walkImageHeapObjects(ObjectVisitor visitor);
+    public abstract void walkImageHeapObjects(ObjectVisitor visitor);
 
     /**
      * Walk all heap objects except the native image heap objects. Must only be executed as part of
      * a VM operation that causes a safepoint.
      */
-    public abstract boolean walkCollectedHeapObjects(ObjectVisitor visitor);
+    public abstract void walkCollectedHeapObjects(ObjectVisitor visitor);
 
     /** Returns the number of classes in the heap (initialized as well as uninitialized). */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -230,6 +234,10 @@ public abstract class Heap {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract UnsignedWord getUsedMemoryAfterLastGC();
+
+    public abstract UnsignedWord getImageHeapReservedBytes();
+
+    public abstract UnsignedWord getImageHeapCommittedBytes();
 
     /** Consider all references in the given object as needing remembered set entries. */
     @Uninterruptible(reason = "Ensure that no GC can occur between modification of the object and this call.", callerMustBe = true)

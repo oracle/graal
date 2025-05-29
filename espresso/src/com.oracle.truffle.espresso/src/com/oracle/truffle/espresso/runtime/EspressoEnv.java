@@ -36,11 +36,11 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.DefaultClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
+import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListenerImpl;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.interop.EspressoForeignProxyGenerator;
 import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
-import com.oracle.truffle.espresso.perf.TimerCollection;
 import com.oracle.truffle.espresso.ref.FinalizationSupport;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 
@@ -92,19 +92,19 @@ public final class EspressoEnv {
     public final boolean SoftExit;
     public final boolean AllowHostExit;
     public final boolean Polyglot;
-    public final boolean Continuum;
     public final boolean BuiltInPolyglotCollections;
     public final boolean HotSwapAPI;
     public final boolean UseBindingsLoader;
     public final boolean EnableSignals;
     private final String multiThreadingDisabled;
     public final boolean NativeAccessAllowed;
-    public final boolean EnableAgents;
+    public final boolean EnableNativeAgents;
     public final int TrivialMethodSize;
     public final boolean UseHostFinalReference;
     public final boolean RegexSubstitutions;
     public final EspressoOptions.JImageMode JImageMode;
     private final PolyglotTypeMappings polyglotTypeMappings;
+    private final boolean enableGenericTypeHints;
     private final HashMap<String, EspressoForeignProxyGenerator.GeneratedProxyBytes> proxyCache;
 
     // Debug option
@@ -133,7 +133,7 @@ public final class EspressoEnv {
         this.SplitMethodHandles = JDWPOptions == null && env.getOptions().get(EspressoOptions.SplitMethodHandles);
         this.EnableSignals = env.getOptions().get(EspressoOptions.EnableSignals);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
-        this.EnableAgents = env.getOptions().get(EspressoOptions.EnableAgents);
+        this.EnableNativeAgents = env.getOptions().get(EspressoOptions.EnableNativeAgents);
         this.TrivialMethodSize = env.getOptions().get(EspressoOptions.TrivialMethodSize);
         boolean regexSubstitutions = env.getOptions().get(EspressoOptions.UseTRegex);
         if (regexSubstitutions && !env.getInternalLanguages().containsKey("regex")) {
@@ -168,11 +168,11 @@ public final class EspressoEnv {
         this.multiThreadingDisabled = multiThreadingDisabledReason;
         this.NativeAccessAllowed = env.isNativeAccessAllowed();
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
-        this.Continuum = env.getOptions().get(EspressoOptions.Continuum);
         this.HotSwapAPI = env.getOptions().get(EspressoOptions.HotSwapAPI);
         this.BuiltInPolyglotCollections = env.getOptions().get(EspressoOptions.BuiltInPolyglotCollections);
         this.polyglotTypeMappings = new PolyglotTypeMappings(env.getOptions().get(EspressoOptions.PolyglotInterfaceMappings), env.getOptions().get(EspressoOptions.PolyglotTypeConverters),
                         BuiltInPolyglotCollections);
+        this.enableGenericTypeHints = env.getOptions().get(EspressoOptions.EnableGenericTypeHints);
         this.proxyCache = polyglotTypeMappings.hasMappings() ? new HashMap<>() : null;
         this.UseBindingsLoader = env.getOptions().get(EspressoOptions.UseBindingsLoader);
 
@@ -233,6 +233,10 @@ public final class EspressoEnv {
 
     public PolyglotTypeMappings getPolyglotTypeMappings() {
         return polyglotTypeMappings;
+    }
+
+    public boolean isGenericTypeHintsEnabled() {
+        return enableGenericTypeHints;
     }
 
     public HashMap<String, EspressoForeignProxyGenerator.GeneratedProxyBytes> getProxyCache() {

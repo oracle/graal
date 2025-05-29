@@ -20,13 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.substitutions;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 public abstract class CallableFromNative extends SubstitutionProfiler {
@@ -39,19 +42,20 @@ public abstract class CallableFromNative extends SubstitutionProfiler {
         return (factory.parameterCount() == methodVersion.getMethod().getParameterCount() + 1);
     }
 
-    public abstract static class Factory {
-        public abstract CallableFromNative create();
+    public static final class Factory {
 
         private final String methodName;
         private final NativeSignature nativeSignature;
         private final int parameterCount;
         private final boolean prependEnv;
+        private final Constructor<? extends CallableFromNative> constructor;
 
-        protected Factory(String methodName, NativeSignature nativeSignature, int parameterCount, boolean prependEnv) {
+        public Factory(String methodName, NativeSignature nativeSignature, int parameterCount, boolean prependEnv, Constructor<? extends CallableFromNative> constructor) {
             this.methodName = methodName;
             this.nativeSignature = nativeSignature;
             this.parameterCount = parameterCount;
             this.prependEnv = prependEnv;
+            this.constructor = constructor;
         }
 
         public String methodName() {
@@ -73,6 +77,27 @@ public abstract class CallableFromNative extends SubstitutionProfiler {
         public boolean prependEnv() {
             return prependEnv;
         }
+
+        public CallableFromNative create() {
+            try {
+                return constructor.newInstance();
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere("Failed to create new native callable", e);
+            }
+        }
+    }
+
+    public static Constructor<? extends CallableFromNative> lookupConstructor(Class<? extends CallableFromNative> cls) {
+        try {
+            return cls.getConstructor();
+        } catch (NoSuchMethodException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Failed to obtain constructor for native callable", e);
+        }
+    }
+
+    public CallableFromNative(@SuppressWarnings("unused") Factory factory) {
     }
 
     /**
@@ -90,7 +115,7 @@ public abstract class CallableFromNative extends SubstitutionProfiler {
      *            formed as follows: {@code env} is passed first, then java objects arguments are
      *            passed as JNI handles.
      */
-    public abstract Object invoke(Object env, Object[] args);
+    public abstract Object invoke(NativeEnv env, Object[] args);
 
     /**
      * The method to invoke when coming from java code.

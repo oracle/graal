@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,7 +60,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class SLJavaInteropTest {
+public class SLJavaInteropTest extends AbstractSLTest {
 
     private Context context;
     private ByteArrayOutputStream os;
@@ -68,7 +68,7 @@ public class SLJavaInteropTest {
     @Before
     public void create() {
         os = new ByteArrayOutputStream();
-        context = Context.newBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup((s) -> true).out(os).build();
+        context = newContextBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup((s) -> true).out(os).build();
     }
 
     @After

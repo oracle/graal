@@ -80,6 +80,7 @@ import com.oracle.truffle.api.dsl.InlineSupport.StateField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -254,13 +255,13 @@ abstract class HostToTypeNode extends Node {
             return false;
         }
 
-        HostLanguage language = HostLanguage.get(interop);
+        HostLanguage language = hostContext != null ? HostLanguage.get(interop) : null;
         if (interop.isNull(value)) {
             if (targetType.isPrimitive()) {
                 return false;
             }
             return true;
-        } else if (targetType == language.valueClass && hostContext != null) {
+        } else if (language != null && targetType == language.valueClass && hostContext != null) {
             return true;
         } else if (isPrimitiveOrBigIntegerTarget(hostContext, targetType)) {
             Object convertedValue = HostUtil.convertLossLess(value, targetType, interop);
@@ -298,7 +299,7 @@ abstract class HostToTypeNode extends Node {
             return interop.isTimeZone(value);
         } else if (targetType == Duration.class) {
             return interop.isDuration(value);
-        } else if (targetType == language.polyglotExceptionClass) {
+        } else if (language != null && targetType == language.polyglotExceptionClass) {
             return interop.isException(value);
         }
 
@@ -488,7 +489,7 @@ abstract class HostToTypeNode extends Node {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must be executable or instantiable.");
             }
         } else if (targetType.isArray()) {
-            if (interop.hasArrayElements(value)) {
+            if (interop.hasArrayElements(value) || (targetType == byte[].class && interop.hasBufferElements(value))) {
                 obj = truffleObjectToArray(hostContext, interop, value, targetType, genericType);
             } else {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have array elements.");
@@ -496,10 +497,10 @@ abstract class HostToTypeNode extends Node {
         } else if (targetType == hostContext.language.byteSequenceClass) {
             if (interop.hasBufferElements(value)) {
                 try {
-                    if (interop.getBufferSize(value) <= MAX_ARRAY_SIZE) {
+                    if (interop.getBufferSize(value) <= Integer.MAX_VALUE) {
                         obj = hostContext.language.access.toByteSequence(hostContext.internalContext, value);
                     } else {
-                        throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have buffer elements with maximum total size " + MAX_ARRAY_SIZE + " bytes.");
+                        throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have buffer elements with maximum total size " + Integer.MAX_VALUE + " bytes.");
                     }
                 } catch (UnsupportedMessageException e) {
                     throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have buffer elements with known total size.");
@@ -803,6 +804,22 @@ abstract class HostToTypeNode extends Node {
     }
 
     private static Object truffleObjectToArray(HostContext hostContext, InteropLibrary interop, Object receiver, Class<?> arrayType, Type genericArrayType) {
+        if (arrayType == byte[].class && interop.hasBufferElements(receiver)) {
+            try {
+                long size = interop.getBufferSize(receiver);
+                if (size <= MAX_ARRAY_SIZE) {
+                    byte[] array = new byte[(int) size];
+                    interop.readBuffer(receiver, 0, array, 0, (int) size);
+                    return array;
+                } else {
+                    throw HostInteropErrors.cannotConvert(hostContext, receiver, arrayType, "Value has buffer elements but total size exceeds " + MAX_ARRAY_SIZE + " bytes.");
+                }
+            } catch (UnsupportedMessageException e) {
+                throw HostInteropErrors.cannotConvert(hostContext, receiver, arrayType, "Value has buffer elements but buffer read is unsupported.");
+            } catch (InvalidBufferOffsetException e) {
+                throw HostInteropErrors.cannotConvert(hostContext, receiver, arrayType, "Value has buffer elements but " + e.getMessage());
+            }
+        }
         Class<?> componentType = arrayType.getComponentType();
         long size;
         try {

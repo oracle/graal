@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
@@ -52,9 +53,10 @@ import jdk.vm.ci.meta.VMConstant;
 @Platforms(Platform.HOSTED_ONLY.class)
 public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, CompressibleConstant, VMConstant {
 
-    private static final AtomicInteger currentId = new AtomicInteger(0);
+    private static final AtomicInteger currentId = new AtomicInteger(1);
 
     public static final VarHandle isReachableHandle = ReflectionUtil.unreflectField(ConstantData.class, "isReachable", MethodHandles.lookup());
+    public static final VarHandle originHandle = ReflectionUtil.unreflectField(ConstantData.class, "origin", MethodHandles.lookup());
 
     abstract static class ConstantData {
         /**
@@ -95,8 +97,17 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
          * constant created in the current layer.
          */
         private boolean isInBaseLayer;
+        /**
+         * A boolean telling if the constant was written in the image heap of the base layer.
+         */
+        private boolean writtenInPreviousLayer;
+        /**
+         * An object representing a way to retrieve the value of the constant in the hosted
+         * universe.
+         */
+        @SuppressWarnings("unused") private volatile AnalysisField origin;
 
-        ConstantData(AnalysisType type, JavaConstant hostedObject, int identityHashCode) {
+        ConstantData(AnalysisType type, JavaConstant hostedObject, int identityHashCode, int id) {
             Objects.requireNonNull(type);
             this.type = type;
             this.hostedObject = CompressibleConstant.uncompress(hostedObject);
@@ -117,7 +128,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
                 /* This value must never be used later on. */
                 this.identityHashCode = -1;
             }
-            this.id = currentId.getAndIncrement();
+            this.id = id == -1 ? currentId.getAndIncrement() : id;
         }
 
         @Override
@@ -167,6 +178,14 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         return isReachableHandle.get(constantData) != null;
     }
 
+    public boolean setOrigin(AnalysisField origin) {
+        return originHandle.compareAndSet(constantData, null, origin);
+    }
+
+    public AnalysisField getOrigin() {
+        return constantData.origin;
+    }
+
     public boolean allowConstantFolding() {
         /*
          * An object whose type is initialized at run time does not have hosted field values. Only
@@ -197,6 +216,15 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         return constantData.isInBaseLayer;
     }
 
+    public void markWrittenInPreviousLayer() {
+        AnalysisError.guarantee(isInBaseLayer(), "Constant must be in base layer to be marked as written in the base layer.");
+        constantData.writtenInPreviousLayer = true;
+    }
+
+    public boolean isWrittenInPreviousLayer() {
+        return constantData.writtenInPreviousLayer;
+    }
+
     public JavaConstant getHostedObject() {
         AnalysisError.guarantee(!CompressibleConstant.isCompressed(constantData.hostedObject), "References to hosted objects should never be compressed.");
         return constantData.hostedObject;
@@ -204,6 +232,14 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
 
     public boolean isBackedByHostedObject() {
         return constantData.hostedObject != null;
+    }
+
+    public static int getCurrentId() {
+        return currentId.get();
+    }
+
+    public static void setCurrentId(int id) {
+        currentId.set(id);
     }
 
     public static int getConstantID(ImageHeapConstant constant) {
@@ -304,6 +340,6 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
     @Override
     public String toString() {
         return "ImageHeapConstant<" + constantData.type.toJavaName() + ", reachable: " + isReachable() + ", reader installed: " + isReaderInstalled() +
-                        ", compressed: " + compressed + ", backed: " + isBackedByHostedObject() + ">";
+                        ", compressed: " + compressed + ", backed: " + isBackedByHostedObject() + ", id: " + constantData.id + ">";
     }
 }

@@ -72,7 +72,7 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
         }
     }
 
-    private static long determineITableStartingOffset(
+    public static long determineITableStartingOffset(
                     DynamicHub checkedHub,
                     int interfaceID) {
 
@@ -120,7 +120,7 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
         @Override
         public void lower(LoadOpenTypeWorldDispatchTableStartingOffset node, LoweringTool tool) {
             SharedMethod target = node.getTarget();
-            int vtableStartingOffset = KnownOffsets.singleton().getVTableOffset(0, true);
+            int vtableStartingOffset = KnownOffsets.singleton().getVTableBaseOffset();
             if (target != null) {
                 /*
                  * If the target is known, then we know whether to use the class dispatch table or
@@ -144,7 +144,7 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
                 SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(loadDispatchTableStartingOffset, node.graph().getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", node.getHub());
                 args.add("interfaceTypeID", node.getInterfaceTypeID());
-                args.addConst("vtableStartingOffset", vtableStartingOffset);
+                args.add("vtableStartingOffset", vtableStartingOffset);
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }

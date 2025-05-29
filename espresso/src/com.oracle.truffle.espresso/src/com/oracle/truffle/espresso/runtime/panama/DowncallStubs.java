@@ -227,6 +227,7 @@ public final class DowncallStubs {
         private final int captureIndex;
         private final int captureMask;
         @CompilationFinal private Object callableSignature;
+        @CompilationFinal private Object fallbackCallableSignature;
 
         public DowncallStub(int targetIndex, int[] shuffle, NativeSignature signature, int captureIndex, EnumSet<CapturableState> capturedStates) {
             this.targetIndex = targetIndex;
@@ -264,14 +265,32 @@ public final class DowncallStubs {
             return resolveTarget(targetHandle, context);
         }
 
+        private Object getCallableSignature(NativeAccess access, boolean forFallbackSymbol) {
+            if (forFallbackSymbol) {
+                return getFallbackCallableSignature(access);
+            } else {
+                return getCallableSignature(access);
+            }
+        }
+
         private Object getCallableSignature(NativeAccess access) {
             if (callableSignature == null) {
                 if (CompilerDirectives.isPartialEvaluationConstant(this)) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                 }
-                callableSignature = access.getCallableSignature(signature, true);
+                callableSignature = access.getCallableSignature(signature, false);
             }
             return callableSignature;
+        }
+
+        private Object getFallbackCallableSignature(NativeAccess access) {
+            if (fallbackCallableSignature == null) {
+                if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                }
+                fallbackCallableSignature = access.getCallableSignature(signature, true);
+            }
+            return fallbackCallableSignature;
         }
 
         public void captureState(Object[] args, InteropLibrary interop, EspressoContext context) {
@@ -291,7 +310,7 @@ public final class DowncallStubs {
             TruffleObject target = getTarget(args, context);
             NativeAccess access = context.getNativeAccess();
             try {
-                Object result = access.callSignature(getCallableSignature(access), target, processArgs(args));
+                Object result = access.callSignature(getCallableSignature(access, access.isFallbackSymbol(target)), target, processArgs(args));
                 if (hasCapture()) {
                     captureState(args, InteropLibrary.getUncached(), context);
                 }

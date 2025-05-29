@@ -6,48 +6,22 @@ The structure is described in the following schema:
 
 Example:
 
-    [
-      {
+    {
+      "serialization": [
+        {
         "condition" : {
           "typeReachable" : "app.DataSerializer"
         },
         "name" : "java.util.ArrayList"
       }
-    ]
-
-For deserializing lambda classes, the capturing class of the lambda needs to be specified in a separate section of the configuration file, for example:
-
-    [
-      "types" : [
-        {
-          "name" : "java.lang.Object"
-        }
-      ],
-      "lambdaCapturingTypes" : [
-        {
-          "name" : "java.util.Comparator"
-        }
       ]
-    ]
+    }
 
-This JSON file format is also used for the serialization deny list.
 
 In rare cases an application might explicitly make calls to
 
     ReflectionFactory.newConstructorForSerialization(Class<?> cl, Constructor<?> constructorToCall)
 
-where the passed `constructorToCall` differs from what would automatically be used if regular serialization of `cl`
-would happen. To also support such serialization usecases it is possible to register serialization for a class with a
-custom constructorToCall. For example, to allow serialization of `org.apache.spark.SparkContext$$anonfun$hadoopFile$1`
-using the DeclaredConstructor of java.lang.Object as custom targetConstructor the following can be used in
-serialization-config.json:
-
-    [
-      {
-        "condition" : {
-          "typeReachable" : "org.apache.spark.SparkContext"
-        },
-        "name" : "org.apache.spark.SparkContext$$anonfun$hadoopFile$1",
-        "customTargetConstructorClass" : "java.lang.Object"
-      }
-    ]
+The specified `constructorToCall` differs from the one that would be automatically used during regular serialization of `cl`.
+When a class is registered for run-time serialization, all potential custom constructors are automatically registered.
+As a result, this use case does not require any additional metadata.

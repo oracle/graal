@@ -54,6 +54,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.junit.Test;
@@ -184,7 +185,7 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             context.initialize(NOT_EXISTING_LANGUAGE);
             fail();
         } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage(), e.getMessage().startsWith("A language with id '" + NOT_EXISTING_LANGUAGE + "' is not installed."));
+            assertTrue(e.getMessage(), e.getMessage().startsWith("A language with id '" + NOT_EXISTING_LANGUAGE + "' is not available."));
         }
 
         evalTestLanguage(context, NotExistingEmbedderTestLanguage.class, "");
@@ -1058,6 +1059,87 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
         context.initialize(LANGUAGE2);
 
         evalTestLanguage(context, ParsePublic3TestLanguage.class, "");
+    }
+
+    @TruffleLanguage.Registration
+    public static final class TestHostLanguageGetScopeInternalHostLookupAllowed extends AbstractExecutableTestLanguage {
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            assertTrue(env.isHostLookupAllowed());
+            boolean isolateEncapsulation = (boolean) contextArguments[0];
+            Object hostLanguageScope = env.getScopeInternal(env.getHostLanguage());
+            /*
+             * Polyglot isolate GuestHostLanguage does not support top scope. Should it delegate top
+             * scope to host?
+             */
+            if (!isolateEncapsulation) {
+                assertTrue(interop.isScope(hostLanguageScope));
+                assertTrue(interop.hasMembers(hostLanguageScope));
+            }
+            return null;
+        }
+    }
+
+    @Test
+    public void testHostLanguageGetScopeInternalHostLookupAllowed() {
+        setupEnv(Context.newBuilder().allowHostClassLookup((fqn) -> true).build());
+        AbstractExecutableTestLanguage.execute(context, TestHostLanguageGetScopeInternalHostLookupAllowed.class, TruffleTestAssumptions.isIsolateEncapsulation());
+    }
+
+    @TruffleLanguage.Registration
+    public static final class TestHostLanguageGetScopeInternalHostLookupDenied extends AbstractExecutableTestLanguage {
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            assertFalse(env.isHostLookupAllowed());
+            AbstractPolyglotTest.assertFails(() -> env.getScopeInternal(env.getHostLanguage()), SecurityException.class);
+            return null;
+        }
+    }
+
+    @Test
+    public void testHostLanguageGetScopeInternalHostLookupDenied() {
+        setupEnv(Context.newBuilder().build());
+        AbstractExecutableTestLanguage.execute(context, TestHostLanguageGetScopeInternalHostLookupDenied.class);
+    }
+
+    @TruffleLanguage.Registration
+    public static final class TestHostLanguageGetScopePublicHostLookupAllowed extends AbstractExecutableTestLanguage {
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            assertTrue(env.isHostLookupAllowed());
+            AbstractPolyglotTest.assertFails(() -> env.getScopePublic(env.getHostLanguage()), SecurityException.class);
+            return null;
+        }
+    }
+
+    @Test
+    public void testHostLanguageGetScopePublicHostLookupAllowed() {
+        setupEnv(Context.newBuilder().allowHostClassLookup((fqn) -> true).build());
+        AbstractExecutableTestLanguage.execute(context, TestHostLanguageGetScopePublicHostLookupAllowed.class);
+    }
+
+    @TruffleLanguage.Registration
+    public static final class TestHostLanguageGetScopePublicHostLookupDenied extends AbstractExecutableTestLanguage {
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            assertFalse(env.isHostLookupAllowed());
+            AbstractPolyglotTest.assertFails(() -> env.getScopePublic(env.getHostLanguage()), SecurityException.class);
+            return null;
+        }
+    }
+
+    @Test
+    public void testHostLanguageGetScopePublicHostLookupDenied() {
+        setupEnv(Context.newBuilder().build());
+        AbstractExecutableTestLanguage.execute(context, TestHostLanguageGetScopePublicHostLookupDenied.class);
     }
 
     private static void assertBindingsDenied(Env env) {

@@ -84,6 +84,8 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.util.LocaleUtil;
+import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -91,7 +93,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.access.SharedSecrets;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -149,11 +150,6 @@ public class LocalizationFeature implements InternalFeature {
     protected final boolean trace = Options.TraceLocalizationFeature.getValue();
 
     private final ForkJoinPool compressionPool = Options.LocalizationCompressInParallel.getValue() ? ForkJoinPool.commonPool() : null;
-
-    /**
-     * The Locale that the native image is built for.
-     */
-    protected Locale defaultLocale = Locale.getDefault();
 
     private Charset defaultCharset;
 
@@ -264,8 +260,9 @@ public class LocalizationFeature implements InternalFeature {
         findClassByName = access::findClassByName;
         allLocales = processLocalesOption();
         if (Options.DefaultLocale.hasBeenSet()) {
-            defaultLocale = LocalizationSupport.parseLocaleFromTag(Options.DefaultLocale.getValue());
-            UserError.guarantee(defaultLocale != null, "Invalid default locale %s", Options.DefaultLocale.getValue());
+            LogUtils.warning("Option %s is deprecated and has no effect. The program's default locale is determined at run-time. " +
+                            "Use %s and %s to manage the locales included in the image.%n",
+                            Options.DefaultLocale.getName(), Options.IncludeLocales.getName(), Options.IncludeAllLocales.getName());
         }
         String defaultCharsetOptionValue = Options.DefaultCharset.getValue();
         try {
@@ -274,7 +271,6 @@ public class LocalizationFeature implements InternalFeature {
         } catch (IllegalCharsetNameException | UnsupportedCharsetException ex) {
             throw UserError.abort(ex, "Invalid default charset %s", defaultCharsetOptionValue);
         }
-        allLocales.add(defaultLocale);
         support = selectLocalizationSupport();
         ImageSingletons.add(LocalizationSupport.class, support);
 
@@ -295,16 +291,9 @@ public class LocalizationFeature implements InternalFeature {
         }
         langAliasesCacheField = access.findField(CLDRLocaleProviderAdapter.class, "langAliasesCache");
         parentLocalesMapField = access.findField(CLDRLocaleProviderAdapter.class, "parentLocalesMap");
-
-        if (JavaVersionUtil.JAVA_SPEC >= 23) {
-            baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale", "CACHE");
-            localeCacheField = access.findField("java.util.Locale", "LOCALE_CACHE");
-            localeObjectCacheMapField = null;
-        } else {
-            baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale$Cache", "CACHE");
-            localeCacheField = access.findField("java.util.Locale$Cache", "LOCALECACHE");
-            localeObjectCacheMapField = access.findField("sun.util.locale.LocaleObjectCache", "map");
-        }
+        baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale$1InterningCache", "CACHE");
+        localeCacheField = access.findField("java.util.Locale$LocaleCache", "LOCALE_CACHE");
+        localeObjectCacheMapField = null;
         candidatesCacheField = access.findField("java.util.ResourceBundle$Control", "CANDIDATES_CACHE");
 
         String reason = "All ResourceBundleControlProvider that are registered as services end up as objects in the image heap, and are therefore registered to be initialized at image build time";
@@ -341,12 +330,12 @@ public class LocalizationFeature implements InternalFeature {
     @Platforms(Platform.HOSTED_ONLY.class)
     private LocalizationSupport selectLocalizationSupport() {
         if (optimizedMode) {
-            return new OptimizedLocalizationSupport(defaultLocale, allLocales, defaultCharset);
+            return new OptimizedLocalizationSupport(allLocales, defaultCharset);
         } else if (substituteLoadLookup) {
             List<String> requestedPatterns = Options.LocalizationCompressBundles.getValue().values();
-            return new BundleContentSubstitutedLocalizationSupport(defaultLocale, allLocales, defaultCharset, requestedPatterns, compressionPool);
+            return new BundleContentSubstitutedLocalizationSupport(allLocales, defaultCharset, requestedPatterns, compressionPool);
         }
-        return new LocalizationSupport(defaultLocale, allLocales, defaultCharset);
+        return new LocalizationSupport(allLocales, defaultCharset);
     }
 
     @Override
@@ -383,13 +372,13 @@ public class LocalizationFeature implements InternalFeature {
         Set<Locale> locales = new HashSet<>();
         if (Options.IncludeAllLocales.getValue()) {
             Collections.addAll(locales, Locale.getAvailableLocales());
-            /*- Fallthrough to also allow adding custom locales */
+            /* Fallthrough to also allow adding custom locales */
         } else {
             Collections.addAll(locales, MINIMAL_LOCALES);
         }
         List<String> invalid = new ArrayList<>();
         for (String tag : Options.IncludeLocales.getValue().values()) {
-            Locale locale = LocalizationSupport.parseLocaleFromTag(tag);
+            Locale locale = LocaleUtil.parseLocaleFromTag(tag);
             if (locale != null) {
                 locales.add(locale);
             } else {
@@ -462,7 +451,7 @@ public class LocalizationFeature implements InternalFeature {
     private void addProviders() {
         OptimizedLocalizationSupport optimizedLocalizationSupport = support.asOptimizedSupport();
         for (Class<? extends LocaleServiceProvider> providerClass : spiClasses) {
-            LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, defaultLocale));
+            LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, Locale.ROOT));
             LocaleServiceProvider provider = Objects.requireNonNull(adapter.getLocaleServiceProvider(providerClass));
             optimizedLocalizationSupport.providerPools.put(providerClass, new Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode(provider));
         }
@@ -551,23 +540,27 @@ public class LocalizationFeature implements InternalFeature {
     private void processRequestedBundle(String input) {
         int splitIndex = input.indexOf('_');
         boolean specificLocaleRequested = splitIndex != -1;
-        if (!specificLocaleRequested) {
-            prepareBundle(ConfigurationCondition.alwaysTrue(), input, allLocales);
-            return;
+        if (specificLocaleRequested) {
+            Locale locale = splitIndex + 1 < input.length() ? LocaleUtil.parseLocaleFromTag(input.substring(splitIndex + 1)) : Locale.ROOT;
+            if (locale != null) {
+                /* Get rid of locale specific suffix. */
+                String baseName = input.substring(0, splitIndex);
+                prepareBundle(ConfigurationCondition.alwaysTrue(), baseName, Collections.singletonList(locale));
+                return;
+            } else {
+                trace("Cannot parse wanted locale " + input.substring(splitIndex + 1) + ", default will be used instead.");
+            }
         }
-        Locale locale = splitIndex + 1 < input.length() ? LocalizationSupport.parseLocaleFromTag(input.substring(splitIndex + 1)) : Locale.ROOT;
-        if (locale == null) {
-            trace("Cannot parse wanted locale " + input.substring(splitIndex + 1) + ", default will be used instead.");
-            locale = defaultLocale;
-        }
-        /*- Get rid of locale specific suffix. */
-        String baseName = input.substring(0, splitIndex);
-        prepareBundle(ConfigurationCondition.alwaysTrue(), baseName, Collections.singletonList(locale));
+        prepareBundle(ConfigurationCondition.alwaysTrue(), input, allLocales);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareClassResourceBundle(String basename, String className) {
         Class<?> bundleClass = findClassByName.apply(className);
+        if (bundleClass == null) {
+            /* Unknown classes are ignored */
+            return;
+        }
         UserError.guarantee(ResourceBundle.class.isAssignableFrom(bundleClass), "%s is not a subclass of ResourceBundle", bundleClass.getName());
         trace("Adding class based resource bundle: " + className + " " + bundleClass);
         support.registerRequiredReflectionAndResourcesForBundle(basename, Set.of(), false);

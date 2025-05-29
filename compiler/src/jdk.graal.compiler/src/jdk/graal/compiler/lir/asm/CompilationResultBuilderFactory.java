@@ -34,6 +34,7 @@ import java.util.ServiceLoader;
 
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIR;
@@ -45,7 +46,6 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.services.Services;
 
 /**
  * Factory class for creating {@link CompilationResultBuilder}s.
@@ -76,7 +76,7 @@ public interface CompilationResultBuilderFactory {
      */
     CompilationResultBuilderFactory Default = new CompilationResultBuilderFactory() {
 
-        private List<LIRInstructionVerifier> lirInstructionVerifiers = new ArrayList<>();
+        private final List<LIRInstructionVerifier> lirInstructionVerifiers = new ArrayList<>();
         private volatile boolean isVerifierInitialized = false;
 
         private void initializeLIRVerifiers(String lirInstructionVerifierPath) {
@@ -104,13 +104,16 @@ public interface CompilationResultBuilderFactory {
                         CompilationResult compilationResult,
                         Register uncompressedNullRegister,
                         LIR lir) {
-            if (Services.IS_IN_NATIVE_IMAGE) {
-                // LIR instruction verifier uses URLClassLoader which is excluded from
-                // libgraal due to the image size increase it causes.
+            String lirInstructionVerifierPath = Options.LIRInstructionVerifierPath.getValue(options);
+            if (NativeImageSupport.inRuntimeCode()) {
+                if (lirInstructionVerifierPath != null) {
+                    // LIR instruction verifier uses URLClassLoader which is excluded from
+                    // native images due to the image size increase it causes.
+                    throw new IllegalArgumentException(Options.LIRInstructionVerifierPath.getName() + " is not supported in native image");
+                }
             } else if (!isVerifierInitialized) {
                 synchronized (lirInstructionVerifiers) {
                     if (!isVerifierInitialized) {
-                        String lirInstructionVerifierPath = Options.LIRInstructionVerifierPath.getValue(options);
                         if (lirInstructionVerifierPath != null && !lirInstructionVerifierPath.isEmpty()) {
                             initializeLIRVerifiers(lirInstructionVerifierPath);
                         }

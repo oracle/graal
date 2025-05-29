@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,15 @@
  */
 package org.graalvm.wasm.debugging.parser;
 
+import java.nio.file.Path;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.debugging.DebugLineMap;
-import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugFunction;
-
-import com.oracle.truffle.api.source.Source;
+import org.graalvm.wasm.debugging.data.DebugObject;
+import org.graalvm.wasm.debugging.data.DebugObjectFactory;
 
 /**
  * Context during debug information parsing.
@@ -60,9 +60,12 @@ public class DebugParserContext {
     private final EconomicMap<Integer, DebugFunction> functions;
     private final DebugParserScope globalScope;
     private final DebugLineMap[] fileLineMaps;
-    private final Source[] fileSources;
+    private final Path[] filePaths;
+    private final String language;
+    private final DebugObjectFactory objectFactory;
 
-    public DebugParserContext(byte[] data, int debugInfoOffset, EconomicMap<Integer, DebugData> entryData, DebugLineMap[] fileLineMaps, Source[] fileSources) {
+    public DebugParserContext(byte[] data, int debugInfoOffset, EconomicMap<Integer, DebugData> entryData, DebugLineMap[] fileLineMaps, Path[] filePaths, String language,
+                    DebugObjectFactory objectFactory) {
         assert data != null : "the reference to the array containing the debug information (data) must not be null";
         assert entryData != null : "the mapping of locations in the bytecode to debug entries (entryData) must not be null";
         this.data = data;
@@ -71,7 +74,9 @@ public class DebugParserContext {
         this.functions = EconomicMap.create();
         this.globalScope = DebugParserScope.createGlobalScope();
         this.fileLineMaps = fileLineMaps;
-        this.fileSources = fileSources;
+        this.filePaths = filePaths;
+        this.language = language;
+        this.objectFactory = objectFactory;
     }
 
     /**
@@ -90,12 +95,12 @@ public class DebugParserContext {
     }
 
     /**
-     * Tries to get the source location based on the given data.
+     * Tries to get the source offset based on the given data.
      * 
      * @param fileIndex the file index
      * @param lineNumber the line number in the file
      */
-    public int sourceLocationOrDefault(int fileIndex, int lineNumber, int defaultValue) {
+    public int sourceOffsetOrDefault(int fileIndex, int lineNumber, int defaultValue) {
         if (fileLineMaps == null) {
             return defaultValue;
         }
@@ -103,11 +108,14 @@ public class DebugParserContext {
             return defaultValue;
         }
         final DebugLineMap lineMap = fileLineMaps[fileIndex];
-        final int pc = lineMap.getSourceLocation(lineNumber);
-        if (pc == -1) {
+        if (lineMap == null) {
             return defaultValue;
         }
-        return pc;
+        final int offset = lineMap.getSourceOffset(lineNumber);
+        if (offset == -1) {
+            return defaultValue;
+        }
+        return offset;
     }
 
     /**
@@ -126,18 +134,18 @@ public class DebugParserContext {
     }
 
     /**
-     * Ties to get the source for the given file index.
+     * Ties to get the file path for the given file index.
      * 
      * @param fileIndex the file index
      */
-    public Source sourceOrNull(int fileIndex) {
-        if (fileSources == null) {
+    public Path pathOrNull(int fileIndex) {
+        if (filePaths == null) {
             return null;
         }
-        if (fileIndex >= fileSources.length || fileIndex < 0) {
+        if (fileIndex >= filePaths.length || fileIndex < 0) {
             return null;
         }
-        return fileSources[fileIndex];
+        return filePaths[fileIndex];
     }
 
     /**
@@ -197,5 +205,19 @@ public class DebugParserContext {
      */
     public DebugParserScope globalScope() {
         return globalScope;
+    }
+
+    /**
+     * @return The object factory of the current context.
+     */
+    public DebugObjectFactory objectFactory() {
+        return objectFactory;
+    }
+
+    /**
+     * @return The source language of the current context.
+     */
+    public String language() {
+        return language;
     }
 }

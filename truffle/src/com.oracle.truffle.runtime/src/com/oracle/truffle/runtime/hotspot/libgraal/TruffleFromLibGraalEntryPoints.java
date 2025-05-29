@@ -85,7 +85,6 @@ import static java.lang.String.format;
 import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.joining;
 
-import java.io.PrintStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URI;
@@ -100,6 +99,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.compiler.ConstantFieldInfo;
@@ -128,10 +128,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Entry points in HotSpot for {@link TruffleFromLibGraal calls} from libgraal.
  */
 final class TruffleFromLibGraalEntryPoints {
-
-    static {
-        assert checkHotSpotCalls();
-    }
 
     @TruffleFromLibGraal(Id.OnIsolateShutdown)
     static void onIsolateShutdown(long isolateId) {
@@ -235,9 +231,19 @@ final class TruffleFromLibGraalEntryPoints {
         return output.getArray();
     }
 
+    @SuppressWarnings("deprecation")
     @TruffleFromLibGraal(Id.PrepareForCompilation)
     static void prepareForCompilation(Object compilable) {
         ((TruffleCompilable) compilable).prepareForCompilation();
+    }
+
+    // new method for new target reflectively resolved
+    static boolean prepareForCompilation(Object compilable, boolean rootCompilation, int tier, boolean lastTier) {
+        return ((TruffleCompilable) compilable).prepareForCompilation(rootCompilation, tier, lastTier);
+    }
+
+    static int getSuccessfulCompilationCount(Object compilable) {
+        return ((TruffleCompilable) compilable).getSuccessfulCompilationCount();
     }
 
     @TruffleFromLibGraal(GetURI)
@@ -292,7 +298,7 @@ final class TruffleFromLibGraalEntryPoints {
 
     @TruffleFromLibGraal(CompilableToString)
     static String compilableToString(Object compilable) {
-        return ((TruffleCompilable) compilable).toString();
+        return compilable.toString();
     }
 
     @TruffleFromLibGraal(GetCompilableName)
@@ -338,6 +344,10 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(OnCompilationFailed)
     static void onCompilationFailed(Object compilable, Supplier<String> serializedException, boolean silent, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
         ((TruffleCompilable) compilable).onCompilationFailed(serializedException, silent, bailout, permanentBailout, graphTooBig);
+    }
+
+    static void onCompilationSuccess(Object compilable, int compilationTier, boolean lastTier) {
+        ((TruffleCompilable) compilable).onCompilationSuccess(compilationTier, lastTier);
     }
 
     @TruffleFromLibGraal(OnSuccess)
@@ -452,7 +462,11 @@ final class TruffleFromLibGraalEntryPoints {
         return out.getArray();
     }
 
-    @TruffleFromLibGraal(Id.GetHostMethodInfo)
+    /**
+     * This method is no longer used by the JDK 24 `libgraal` compiler but must be retained for
+     * backward compatibility with LTS JDK 21.
+     */
+    @Deprecated
     static Object getHostMethodInfo(Object truffleRuntime, long methodHandle) {
         ResolvedJavaMethod method = LibGraal.unhand(ResolvedJavaMethod.class, methodHandle);
         HostMethodInfo info = ((TruffleCompilerRuntime) truffleRuntime).getHostMethodInfo(method);
@@ -469,15 +483,37 @@ final class TruffleFromLibGraalEntryPoints {
     /**
      * Checks that all {@link TruffleFromLibGraal}s are implemented and that their signatures match
      * the {@linkplain Id#getSignature() ID signatures}.
+     *
+     * <p>
+     * Ensures compatibility with Long-Term Support (LTS) releases by supporting two types of
+     * compatible changes:
+     * <ol>
+     * <li>**Modification of method parameters**: When method parameters are changed, the original
+     * method must be retained to ensure backward compatibility with the LTS release. Both the old
+     * and new methods should be annotated with the {@link TruffleFromLibGraal} annotation.
+     * Additionally, the old method must be marked with the {@link Deprecated} annotation.</li>
+     *
+     * <li>**Method removal**: If a method is removed, it must still be retained for compatibility
+     * with the LTS release. The {@link Id} for the removed method should be eliminated, and the old
+     * method should not be annotated with the {@link TruffleFromLibGraal} annotation. The method
+     * must be marked with the {@link Deprecated} annotation.</li>
+     * </ol>
+     * </p>
      */
-    private static boolean checkHotSpotCalls() {
+    static boolean checkHotSpotCalls() {
         Set<Id> unimplemented = EnumSet.allOf(Id.class);
+        Map<String, Id> entryPointMethodNames = unimplemented.stream().collect(Collectors.toMap(Id::getMethodName, (id) -> id));
         Map<Id, List<Method>> idToMethod = new LinkedHashMap<>();
         for (Method method : TruffleFromLibGraalEntryPoints.class.getDeclaredMethods()) {
             if (Modifier.isStatic(method.getModifiers())) {
                 TruffleFromLibGraal a = method.getAnnotation(TruffleFromLibGraal.class);
+                Id id;
                 if (a != null) {
-                    Id id = a.value();
+                    id = a.value();
+                    List<Method> methods = idToMethod.computeIfAbsent(id, (k) -> new ArrayList<>());
+                    methods.add(method);
+                } else if (method.getAnnotation(Deprecated.class) != null && (id = entryPointMethodNames.get(method.getName())) != null) {
+                    // LTS compatibility method for a removed Id
                     List<Method> methods = idToMethod.computeIfAbsent(id, (k) -> new ArrayList<>());
                     methods.add(method);
                 }
@@ -489,7 +525,7 @@ final class TruffleFromLibGraalEntryPoints {
             int legacyMethodCount = 0;
             for (Method method : methods) {
                 check(id, id.getMethodName().equals(method.getName()), "Expected name \"%s\", got \"%s\"", id.getMethodName(), method.getName());
-                if (method.getAnnotation(Deprecated.class) != null) {
+                if (method.getAnnotation(Deprecated.class) != null && method.getAnnotation(TruffleFromLibGraal.class) != null) {
                     legacyMethodCount++;
                 }
                 if (Arrays.equals(id.getParameterTypes(), method.getParameterTypes())) {
@@ -522,13 +558,8 @@ final class TruffleFromLibGraalEntryPoints {
     private static void check(Id id, boolean condition, String format, Object... args) {
         if (!condition) {
             String msg = format(format, args);
-            PrintStream err = System.err;
-            if (id != null) {
-                err.printf("ERROR: %s.%s: %s%n", TruffleFromLibGraalEntryPoints.class.getName(), id, msg);
-            } else {
-                err.printf("ERROR: %s: %s%n", TruffleFromLibGraalEntryPoints.class.getName(), msg);
-            }
-            System.exit(99);
+            String target = id != null ? format("%s.%s", TruffleFromLibGraalEntryPoints.class.getName(), id) : TruffleFromLibGraalEntryPoints.class.getName();
+            throw new AssertionError(format("Incompatible Truffle runtime change: %s: %s", target, msg));
         }
     }
 }

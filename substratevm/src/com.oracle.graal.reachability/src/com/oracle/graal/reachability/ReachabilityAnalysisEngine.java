@@ -143,8 +143,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
             AnalysisField field = (AnalysisField) javaField;
             if (field.getName().equals(fieldName)) {
-                field.registerAsAccessed("root field");
-                return field.getType();
+                return addRootField(field);
             }
         }
         throw AnalysisError.userError("Field not found: " + fieldName);
@@ -153,6 +152,11 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     @Override
     public AnalysisType addRootField(Field field) {
         AnalysisField analysisField = getMetaAccess().lookupJavaField(field);
+        return addRootField(analysisField);
+    }
+
+    @Override
+    public AnalysisType addRootField(AnalysisField analysisField) {
         analysisField.registerAsAccessed("root field");
         return analysisField.getType();
     }
@@ -323,23 +327,10 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         Set<ReachabilityAnalysisMethod> seen = new HashSet<>();
         Deque<ReachabilityAnalysisMethod> queue = new ArrayDeque<>();
 
-        for (AnalysisMethod m : universe.getMethods()) {
-            ReachabilityAnalysisMethod method = ((ReachabilityAnalysisMethod) m);
-            if (method.isDirectRootMethod() || method.isEntryPoint()) {
-                if (seen.add(method)) {
-                    queue.add(method);
-                }
-            }
-            if (method.isVirtualRootMethod()) {
-                for (ReachabilityAnalysisType subtype : method.getDeclaringClass().getInstantiatedSubtypes()) {
-                    ReachabilityAnalysisMethod resolved = subtype.resolveConcreteMethod(method, subtype);
-                    if (resolved != null) {
-                        if (seen.add(resolved)) {
-                            queue.add(resolved);
-                        }
-                    }
-                }
-            }
+        for (AnalysisMethod m : AnalysisUniverse.getCallTreeRoots(getUniverse())) {
+            ReachabilityAnalysisMethod method = (ReachabilityAnalysisMethod) m;
+            queue.add(method);
+            seen.add(method);
         }
 
         while (!queue.isEmpty()) {

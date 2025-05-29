@@ -163,16 +163,17 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
 
     private void storeVMThreadLocal(TypeFlowsOfNodes state, ValueNode storeNode, ValueNode value) {
         Stamp stamp = value.stamp(NodeView.DEFAULT);
-        if (stamp instanceof ObjectStamp) {
+        if (stamp instanceof ObjectStamp valueStamp) {
             /* Add the value object to the state of its declared type. */
             TypeFlowBuilder<?> valueBuilder = state.lookup(value);
-            ObjectStamp valueStamp = (ObjectStamp) stamp;
             AnalysisType valueType = (AnalysisType) (valueStamp.type() == null ? bb.getObjectType() : valueStamp.type());
 
-            TypeFlowBuilder<?> storeBuilder = TypeFlowBuilder.create(bb, storeNode, TypeFlow.class, () -> {
-                TypeFlow<?> proxy = bb.analysisPolicy().proxy(AbstractAnalysisEngine.sourcePosition(storeNode), valueType.getTypeFlow(bb, false));
+            TypeFlowBuilder<?> predicate = state.getPredicate();
+            TypeFlowBuilder<?> storeBuilder = TypeFlowBuilder.create(bb, method, predicate, storeNode, TypeFlow.class, () -> {
+                BytecodePosition position = AbstractAnalysisEngine.sourcePosition(storeNode);
+                TypeFlow<?> proxy = bb.analysisPolicy().proxy(position, valueType.getTypeFlow(bb, false));
                 flowsGraph.addMiscEntryFlow(proxy);
-                return proxy;
+                return maybePatchAllInstantiated(proxy, position, valueType, predicate);
             });
             storeBuilder.addUseDependency(valueBuilder);
             typeFlowGraphBuilder.registerSinkBuilder(storeBuilder);
@@ -195,7 +196,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
          * AllTypesInstantiated flow for the returned type.
          */
         AnalysisType singletonType = (AnalysisType) ((ObjectStamp) node.stamp(NodeView.DEFAULT)).type();
-        var singletonTypeFlow = TypeFlowBuilder.create(bb, node, AllInstantiatedTypeFlow.class, () -> {
+        var singletonTypeFlow = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, AllInstantiatedTypeFlow.class, () -> {
             singletonType.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
             return ((AllInstantiatedTypeFlow) singletonType.getTypeFlow(bb, false));
         });

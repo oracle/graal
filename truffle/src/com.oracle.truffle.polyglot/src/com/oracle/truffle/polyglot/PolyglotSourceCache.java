@@ -47,22 +47,28 @@ import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.SandboxPolicy;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 
 final class PolyglotSourceCache {
 
-    private final Cache strongCache;
-    private final Cache weakCache;
+    private final StrongCache strongCache;
+    private final WeakCache weakCache;
     private SourceCacheListener sourceCacheListener;
 
-    PolyglotSourceCache(SourceCacheListener sourceCacheListener) {
+    PolyglotSourceCache(ReferenceQueue<Source> deadSourcesQueue, TracingSourceCacheListener sourceCacheListener) {
         this.sourceCacheListener = sourceCacheListener;
-        this.weakCache = new WeakCache();
+        this.weakCache = new WeakCache(deadSourcesQueue);
         this.strongCache = new StrongCache();
     }
 
@@ -70,13 +76,13 @@ final class PolyglotSourceCache {
         this.sourceCacheListener = listener;
     }
 
-    CallTarget parseCached(PolyglotLanguageContext context, Source source, String[] argumentNames) {
+    CallTarget parseCached(ParseOrigin origin, PolyglotLanguageContext context, Source source, String[] argumentNames) {
         CallTarget target;
         if (source.isCached()) {
             Cache strong = this.strongCache;
             boolean useStrong = context.getEngine().storeEngine;
             if (useStrong || !strong.isEmpty()) {
-                target = strong.lookup(context, source, argumentNames, useStrong);
+                target = strong.lookup(origin, context, source, argumentNames, useStrong);
                 if (target != null) {
                     // target found in strong cache
                     return target;
@@ -84,13 +90,13 @@ final class PolyglotSourceCache {
                     // fallback to weak cache.
                 }
             }
-            target = weakCache.lookup(context, source, argumentNames, true);
+            target = weakCache.lookup(origin, context, source, argumentNames, true);
         } else {
             long parseStart = 0;
             if (sourceCacheListener != null) {
                 parseStart = System.currentTimeMillis();
             }
-            target = parseImpl(context, argumentNames, source);
+            target = parseImpl(origin, context, argumentNames, source);
             if (sourceCacheListener != null) {
                 sourceCacheListener.onCacheMiss(source, target, SourceCacheListener.CacheType.UNCACHED, parseStart);
             }
@@ -103,9 +109,13 @@ final class PolyglotSourceCache {
         weakCache.listSources(polyglot, source);
     }
 
-    private static CallTarget parseImpl(PolyglotLanguageContext context, String[] argumentNames, Source source) {
+    void cleanupStaleEntries() {
+        WeakCache.cleanupStaleEntries(weakCache.deadSources, sourceCacheListener);
+    }
+
+    private static CallTarget parseImpl(ParseOrigin origin, PolyglotLanguageContext context, String[] argumentNames, Source source) {
         validateSource(context, source);
-        CallTarget parsedTarget = LANGUAGE.parse(context.requireEnv(), source, null, argumentNames);
+        CallTarget parsedTarget = LANGUAGE.parse(context.requireEnv(), source, context.getLanguageInstance().parseSourceOptions(origin, source, null), null, argumentNames);
         if (parsedTarget == null) {
             throw new IllegalStateException(String.format("Parsing resulted in a null CallTarget for %s.", source));
         }
@@ -178,11 +188,87 @@ final class PolyglotSourceCache {
         }
     }
 
+    static Map<String, OptionValuesImpl> parseSourceOptions(PolyglotEngineImpl engine, Map<String, String> options, String groupOnly, SandboxPolicy policy, boolean allowExperimentalOptions) {
+        if (options.isEmpty()) {
+            // fast-path
+            return Map.of();
+        }
+        Map<String, OptionValuesImpl> optionsById = new LinkedHashMap<>();
+        for (String optionKey : options.keySet()) {
+            String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
+            if (groupOnly != null && !groupOnly.equals(group)) {
+                continue;
+            }
+            String optionValue = options.get(optionKey);
+            try {
+                VMObject object = findComponentForSourceOption(engine, optionKey, group);
+                String id;
+                OptionDescriptors descriptors;
+                if (object instanceof PolyglotLanguage) {
+                    PolyglotLanguage language = (PolyglotLanguage) object;
+                    id = language.getId();
+                    descriptors = language.getSourceOptionsInternal();
+                } else if (object instanceof PolyglotInstrument) {
+                    PolyglotInstrument instrument = (PolyglotInstrument) object;
+                    id = instrument.getId();
+                    descriptors = instrument.getSourceOptionsInternal();
+                } else {
+                    throw new AssertionError("invalid vm object");
+                }
+
+                OptionValuesImpl targetOptions = optionsById.get(id);
+                if (targetOptions == null) {
+                    targetOptions = new OptionValuesImpl(descriptors, policy, false, true);
+                    optionsById.put(id, targetOptions);
+                }
+
+                targetOptions.put(optionKey, optionValue, allowExperimentalOptions, engine::getAllSourceOptions);
+            } catch (PolyglotEngineException e) {
+                throw PolyglotEngineException.illegalArgument(String.format("Failed to parse source option '%s=%s': %s",
+                                optionKey, optionValue, e.e.getMessage()), e.e);
+            }
+        }
+        return optionsById;
+    }
+
+    private static VMObject findComponentForSourceOption(PolyglotEngineImpl engine, final String optionKey, String group) {
+        PolyglotLanguage language = engine.idToLanguage.get(group);
+        if (language == null) {
+            PolyglotInstrument instrument = engine.idToInstrument.get(group);
+            if (instrument != null) {
+                return instrument;
+            }
+            throw OptionValuesImpl.failNotFound(engine.getAllSourceOptions(), optionKey);
+        }
+        return language;
+    }
+
+    enum ParseOrigin {
+
+        /**
+         * The parsing request originates from an internal language parse request. E.g.
+         * TruffleLanguage.Env#parseInternal.
+         */
+        LANGUAGE,
+
+        /**
+         * The parsing request originates from an internal instrument parse request. E.g.
+         * TruffleInstrument.Env#parseInternal.
+         */
+        INSTRUMENT,
+
+        /**
+         * The parsing request originates from the embedder, like with Context.eval.
+         */
+        EMBEDDING
+
+    }
+
     private abstract static class Cache {
 
         abstract boolean isEmpty();
 
-        abstract CallTarget lookup(PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse);
+        abstract CallTarget lookup(ParseOrigin origin, PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse);
 
         abstract void listSources(PolyglotImpl polyglot, Collection<Object> source);
     }
@@ -203,7 +289,7 @@ final class PolyglotSourceCache {
         private final ConcurrentHashMap<SourceKey, StrongCacheValue> sourceCache = new ConcurrentHashMap<>();
 
         @Override
-        CallTarget lookup(PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse) {
+        CallTarget lookup(ParseOrigin origin, PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse) {
             SourceKey key = new SourceKey(source, argumentNames);
             StrongCacheValue value = sourceCache.get(key);
             if (value == null) {
@@ -213,7 +299,7 @@ final class PolyglotSourceCache {
                         parseStart = System.currentTimeMillis();
                     }
                     try {
-                        value = new StrongCacheValue(parseImpl(context, argumentNames, source));
+                        value = new StrongCacheValue(parseImpl(origin, context, argumentNames, source));
                         StrongCacheValue prevValue = sourceCache.putIfAbsent(key, value);
                         if (prevValue != null) {
                             value = prevValue;
@@ -256,14 +342,20 @@ final class PolyglotSourceCache {
     private final class WeakCache extends Cache {
 
         private final ConcurrentHashMap<WeakSourceKey, WeakCacheValue> sourceCache = new ConcurrentHashMap<>();
-        private final ReferenceQueue<Source> deadSources = new ReferenceQueue<>();
+        private final ReferenceQueue<Source> deadSources;
+        private final WeakReference<WeakCache> cacheRef;
+
+        WeakCache(ReferenceQueue<Source> deadSources) {
+            this.deadSources = deadSources;
+            this.cacheRef = new WeakReference<>(this);
+        }
 
         @Override
-        CallTarget lookup(PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse) {
-            cleanupStaleEntries();
+        CallTarget lookup(ParseOrigin origin, PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse) {
+            cleanupStaleEntries(deadSources, sourceCacheListener);
             Object sourceId = EngineAccessor.SOURCE.getSourceIdentifier(source);
             Source sourceValue = EngineAccessor.SOURCE.copySource(source);
-            WeakSourceKey ref = new WeakSourceKey(new SourceKey(sourceId, argumentNames), source, deadSources);
+            WeakSourceKey ref = new WeakSourceKey(new SourceKey(sourceId, argumentNames), source, cacheRef, deadSources);
             WeakCacheValue value = sourceCache.get(ref);
             if (value == null) {
                 if (parse) {
@@ -272,7 +364,7 @@ final class PolyglotSourceCache {
                         parseStart = System.currentTimeMillis();
                     }
                     try {
-                        value = new WeakCacheValue(parseImpl(context, argumentNames, sourceValue), sourceValue);
+                        value = new WeakCacheValue(parseImpl(origin, context, argumentNames, sourceValue), sourceValue);
                         WeakCacheValue prev = sourceCache.putIfAbsent(ref, value);
                         if (prev != null) {
                             /*
@@ -308,18 +400,25 @@ final class PolyglotSourceCache {
 
         @Override
         void listSources(PolyglotImpl polyglot, Collection<Object> sources) {
-            cleanupStaleEntries();
+            cleanupStaleEntries(deadSources, sourceCacheListener);
             for (WeakCacheValue value : sourceCache.values()) {
                 sources.add(PolyglotImpl.getOrCreatePolyglotSource(polyglot, value.source));
             }
         }
 
-        private void cleanupStaleEntries() {
+        /**
+         * This is deliberately a static method, because the dead sources queue is
+         * {@link PolyglotEngineImpl#getDeadSourcesQueue() shared} among all weak caches on a
+         * particular polyglot engine, and so the elements of {@link WeakCache#deadSources the
+         * queue} may {@link WeakSourceKey#cacheRef refer} to different weak caches.
+         */
+        private static void cleanupStaleEntries(ReferenceQueue<Source> deadSourcesQueue, SourceCacheListener cacheListener) {
             WeakSourceKey sourceRef;
-            while ((sourceRef = (WeakSourceKey) deadSources.poll()) != null) {
-                WeakCacheValue value = sourceCache.remove(sourceRef);
-                if (value != null && sourceCacheListener != null) {
-                    sourceCacheListener.onCacheEvict(value.source, value.target, SourceCacheListener.CacheType.WEAK, value.hits.get());
+            while ((sourceRef = (WeakSourceKey) deadSourcesQueue.poll()) != null) {
+                WeakCache cache = sourceRef.cacheRef.get();
+                WeakCacheValue value = cache != null ? cache.sourceCache.remove(sourceRef) : null;
+                if (value != null && cacheListener != null) {
+                    cacheListener.onCacheEvict(value.source, value.target, SourceCacheListener.CacheType.WEAK, value.hits.get());
                 }
             }
         }
@@ -373,9 +472,11 @@ final class PolyglotSourceCache {
     private static final class WeakSourceKey extends WeakReference<Source> {
 
         final SourceKey key;
+        final WeakReference<WeakCache> cacheRef;
 
-        WeakSourceKey(SourceKey key, Source value, ReferenceQueue<? super Source> q) {
+        WeakSourceKey(SourceKey key, Source value, WeakReference<WeakCache> cacheRef, ReferenceQueue<? super Source> q) {
             super(value, q);
+            this.cacheRef = cacheRef;
             this.key = key;
         }
 

@@ -31,15 +31,14 @@ import jdk.graal.compiler.api.replacements.SnippetTemplateCache;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginInjectionProvider;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -70,7 +69,7 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
     /**
      * Gets the snippet graph derived from a given method.
      *
-     * @param recursiveEntry XXX always null now?.
+     * @param recursiveEntry original method for which {@code method} is a substitute
      * @param args arguments to the snippet if available, otherwise {@code null}
      * @param nonNullParameters
      * @param trackNodeSourcePosition
@@ -106,19 +105,20 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
      * Gets a graph that is a substitution for a given method.
      *
      * @param invokeBci the call site BCI for the substitution
-     * @param inlineControl
+     * @param isInOOMETry true if the call site is covered by an try/catch of OutOfMemoryError
+     * @param inlineControl controls whether intrinsics inlining is permitted
      * @param trackNodeSourcePosition
      * @param replaceePosition
      * @param allowAssumptions
      * @param options
      * @return the graph, if any, that is a substitution for {@code method}
      */
-    StructuredGraph getInlineSubstitution(ResolvedJavaMethod method, int invokeBci, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
-                    AllowAssumptions allowAssumptions, OptionValues options);
+    StructuredGraph getInlineSubstitution(ResolvedJavaMethod method, int invokeBci, boolean isInOOMETry, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition,
+                    NodeSourcePosition replaceePosition, AllowAssumptions allowAssumptions, OptionValues options);
 
     /**
      * Determines if there may be a
-     * {@linkplain #getInlineSubstitution(ResolvedJavaMethod, int, Invoke.InlineControl, boolean, NodeSourcePosition, AllowAssumptions, OptionValues)
+     * {@linkplain #getInlineSubstitution(ResolvedJavaMethod, int, boolean, Invoke.InlineControl, boolean, NodeSourcePosition, AllowAssumptions, OptionValues)
      * substitution graph} for a given method.
      *
      * A call to {@link #getInlineSubstitution} may still return {@code null} for {@code method} and

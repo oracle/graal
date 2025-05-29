@@ -30,17 +30,20 @@ import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.PinnedObjectSupport;
 
 import com.oracle.svm.core.GCRelatedMXBeans;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.genscavenge.AddressRangeCommittedMemoryProvider;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapLayouter;
 import com.oracle.svm.core.genscavenge.GenScavengeMemoryPoolMXBeans;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapVerifier;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
+import com.oracle.svm.core.genscavenge.PinnedObjectSupportImpl;
 import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.jvmstat.EpsilonGCPerfData;
 import com.oracle.svm.core.genscavenge.jvmstat.SerialGCPerfData;
@@ -56,10 +59,15 @@ import com.oracle.svm.core.heap.AllocationFeature;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupportFeature;
+import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jvmstat.PerfDataFeature;
 import com.oracle.svm.core.jvmstat.PerfDataHolder;
 import com.oracle.svm.core.jvmstat.PerfManager;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.os.OSCommittedMemoryProvider;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.options.OptionValues;
@@ -93,6 +101,9 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(Heap.class, new HeapImpl());
         ImageSingletons.add(ImageHeapInfo.class, new ImageHeapInfo());
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            ImageSingletons.add(PinnedObjectSupport.class, new PinnedObjectSupportImpl());
+        }
 
         if (ImageSingletons.contains(PerfManager.class)) {
             ImageSingletons.lookup(PerfManager.class).register(createPerfData());
@@ -121,44 +132,58 @@ class GenScavengeGCFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (!ImageSingletons.contains(CommittedMemoryProvider.class)) {
+            ImageSingletons.add(CommittedMemoryProvider.class, createCommittedMemoryProvider());
+        }
+
+        // If building libgraal, set system property showing gc algorithm
+        SystemPropertiesSupport.singleton().setLibGraalRuntimeProperty("gc", Heap.getHeap().getGC().getName());
+
         // Needed for the barrier set.
         access.registerAsUsed(Object[].class);
     }
 
-    private static ImageHeapInfo getImageHeapInfo() {
-        return ImageSingletons.lookup(ImageHeapInfo.class);
+    private static ImageHeapInfo getCurrentLayerImageHeapInfo() {
+        return LayeredImageSingletonSupport.singleton().lookup(ImageHeapInfo.class, false, true);
     }
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        ImageHeapLayouter heapLayouter = new ChunkedImageHeapLayouter(getImageHeapInfo(), Heap.getHeap().getImageHeapOffsetInAddressSpace());
+        ImageHeapLayouter heapLayouter = new ChunkedImageHeapLayouter(getCurrentLayerImageHeapInfo(), Heap.getHeap().getImageHeapOffsetInAddressSpace());
         ImageSingletons.add(ImageHeapLayouter.class, heapLayouter);
     }
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        access.registerAsImmutable(getImageHeapInfo());
+        access.registerAsImmutable(getCurrentLayerImageHeapInfo());
     }
 
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        BarrierSnippets.registerForeignCalls(foreignCalls);
         GenScavengeAllocationSupport.registerForeignCalls(foreignCalls);
     }
 
     private static RememberedSet createRememberedSet() {
         if (SerialGCOptions.useRememberedSet()) {
             return new CardTableBasedRememberedSet();
-        } else {
-            return new NoRememberedSet();
         }
+        return new NoRememberedSet();
     }
 
     private static PerfDataHolder createPerfData() {
         if (SubstrateOptions.useSerialGC()) {
             return new SerialGCPerfData();
-        } else {
-            assert SubstrateOptions.useEpsilonGC();
-            return new EpsilonGCPerfData();
         }
+
+        assert SubstrateOptions.useEpsilonGC();
+        return new EpsilonGCPerfData();
+    }
+
+    private static CommittedMemoryProvider createCommittedMemoryProvider() {
+        if (SubstrateOptions.SpawnIsolates.getValue()) {
+            return new AddressRangeCommittedMemoryProvider();
+        }
+        return new OSCommittedMemoryProvider();
     }
 }

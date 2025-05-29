@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,12 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
-import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
+import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 
-import jdk.graal.compiler.core.common.type.ObjectStamp;
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.GraalError;
@@ -47,8 +48,6 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -187,10 +186,6 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         return arguments;
     }
 
-    public ValueNode[] toArgumentArray() {
-        return arguments.toArray(ValueNode.EMPTY_ARRAY);
-    }
-
     @Override
     public int bci() {
         return bci;
@@ -300,22 +295,5 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         originalReturnStamp = methodHandle.originalReturnStamp;
         originalTargetMethod = methodHandle.originalTargetMethod;
         originalArguments.addAll(methodHandle.originalArguments);
-    }
-
-    /**
-     * Build a new copy of the {@link MacroParams} stored in this node.
-     */
-    public MacroParams copyParams() {
-        return new MacroParams(invokeKind, callerMethod, targetMethod, bci, returnStamp, toArgumentArray());
-    }
-
-    /**
-     * Builds a new copy of this node's macro parameters, but with the return stamp replaced by the
-     * trusted {@code newStamp}.
-     */
-    protected MacroParams copyParamsWithImprovedStamp(ObjectStamp newStamp) {
-        GraalError.guarantee(newStamp.join(returnStamp.getTrustedStamp()).equals(newStamp), "stamp should improve from %s to %s", returnStamp, newStamp);
-        StampPair improvedReturnStamp = StampPair.createSingle(newStamp);
-        return new MacroParams(invokeKind, callerMethod, targetMethod, bci, improvedReturnStamp, toArgumentArray());
     }
 }

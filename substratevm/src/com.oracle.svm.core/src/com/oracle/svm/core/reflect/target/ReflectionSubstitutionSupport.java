@@ -40,8 +40,12 @@ public interface ReflectionSubstitutionSupport {
 
     SubstrateAccessor getOrCreateAccessor(Executable member);
 
+    SubstrateAccessor getOrCreateConstructorAccessor(Class<?> targetClass, Executable member);
+
     /** Offset of the field or -1 if the field was not registered for unsafe access. */
     int getFieldOffset(Field field, boolean checkUnsafeAccessed);
+
+    int getInstalledLayerNumber(Field field);
 
     /**
      * Returns the {@link Delete#value reason} why a field was deleted, or null if the field is not

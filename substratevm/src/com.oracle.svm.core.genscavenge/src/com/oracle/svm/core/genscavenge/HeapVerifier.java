@@ -30,12 +30,12 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
@@ -157,7 +157,7 @@ public class HeapVerifier {
     private static boolean verifyChunkList(Space space, String kind, HeapChunk.Header<?> firstChunk, HeapChunk.Header<?> lastChunk) {
         boolean result = true;
         HeapChunk.Header<?> current = firstChunk;
-        HeapChunk.Header<?> previous = WordFactory.nullPointer();
+        HeapChunk.Header<?> previous = Word.nullPointer();
         while (current.isNonNull()) {
             HeapChunk.Header<?> previousOfCurrent = HeapChunk.getPrevious(current);
             if (previousOfCurrent.notEqual(previous)) {
@@ -193,7 +193,7 @@ public class HeapVerifier {
                 success = false;
             }
 
-            OBJECT_VERIFIER.initialize(aChunk, WordFactory.nullPointer());
+            OBJECT_VERIFIER.initialize(aChunk, Word.nullPointer());
             AlignedHeapChunk.walkObjects(aChunk, OBJECT_VERIFIER);
             aChunk = HeapChunk.getNext(aChunk);
             success &= OBJECT_VERIFIER.result;
@@ -202,7 +202,7 @@ public class HeapVerifier {
     }
 
     private static boolean verifyUnalignedChunks(Space space, UnalignedHeader firstUnalignedHeapChunk) {
-        return verifyUnalignedChunks(space, firstUnalignedHeapChunk, WordFactory.nullPointer());
+        return verifyUnalignedChunks(space, firstUnalignedHeapChunk, Word.nullPointer());
     }
 
     private static boolean verifyUnalignedChunks(Space space, UnalignedHeader firstUnalignedHeapChunk, UnalignedHeader lastUnalignedHeapChunk) {
@@ -216,7 +216,7 @@ public class HeapVerifier {
                 success = false;
             }
 
-            OBJECT_VERIFIER.initialize(WordFactory.nullPointer(), uChunk);
+            OBJECT_VERIFIER.initialize(Word.nullPointer(), uChunk);
             UnalignedHeapChunk.walkObjects(uChunk, OBJECT_VERIFIER);
             success &= OBJECT_VERIFIER.result;
 
@@ -242,7 +242,8 @@ public class HeapVerifier {
             return false;
         }
 
-        Word header = ObjectHeader.readHeaderFromPointer(ptr);
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        Word header = oh.readHeaderFromPointer(ptr);
         if (ObjectHeaderImpl.isProducedHeapChunkZapped(header) || ObjectHeaderImpl.isConsumedHeapChunkZapped(header)) {
             Log.log().string("Object ").zhex(ptr).string(" has a zapped header: ").zhex(header).newline();
             return false;
@@ -353,7 +354,8 @@ public class HeapVerifier {
             return false;
         }
 
-        Word header = ObjectHeader.readHeaderFromPointer(referencedObject);
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        Word header = oh.readHeaderFromPointer(referencedObject);
         if (!ObjectHeaderImpl.getObjectHeaderImpl().isEncodedObjectHeader(header)) {
             Log.log().string("Object reference at ").zhex(reference).string(" does not point to a Java object or the object header of the Java object is invalid: ").zhex(referencedObject)
                             .string(". ");
@@ -406,9 +408,8 @@ public class HeapVerifier {
         }
 
         @Override
-        public boolean visitObject(Object object) {
+        public void visitObject(Object object) {
             result &= verifyObject(object, aChunk, uChunk);
-            return true;
         }
     }
 
@@ -424,9 +425,17 @@ public class HeapVerifier {
         }
 
         @Override
-        public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
+        public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
+            Pointer pos = firstObjRef;
+            Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
+            while (pos.belowThan(end)) {
+                visitObjectReference(pos, compressed, holderObject);
+                pos = pos.add(referenceSize);
+            }
+        }
+
+        private void visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
             result &= verifyReference(holderObject, objRef, compressed);
-            return true;
         }
     }
 

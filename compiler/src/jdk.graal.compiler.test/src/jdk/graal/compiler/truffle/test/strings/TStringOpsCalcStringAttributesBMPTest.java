@@ -87,18 +87,18 @@ public class TStringOpsCalcStringAttributesBMPTest extends TStringOpsTest<CalcSt
     }
 
     final byte[] array;
-    final int offset;
+    final long offset;
     final int length;
 
     public TStringOpsCalcStringAttributesBMPTest(byte[] array, int offset, int length) {
         super(CalcStringAttributesNode.class);
         this.array = array;
-        this.offset = offset;
+        this.offset = offset + byteArrayBaseOffset();
         this.length = length;
     }
 
     @Test
     public void testBMP() {
-        testWithNative(getTStringOpsMethod("calcStringAttributesBMP", Object.class, int.class, int.class), null, DUMMY_LOCATION, array, offset, length);
+        testWithNative(getTStringOpsMethod("calcStringAttributesBMP", byte[].class, long.class, int.class), null, DUMMY_LOCATION, array, offset, length);
     }
 }

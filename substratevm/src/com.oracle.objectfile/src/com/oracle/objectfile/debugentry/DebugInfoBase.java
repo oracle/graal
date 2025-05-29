@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -46,7 +46,6 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFileInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocationInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -136,6 +135,10 @@ public abstract class DebugInfoBase {
      */
     private ClassEntry objectClass;
     /**
+     * The type entry for java.lang.Class.
+     */
+    private ClassEntry classClass;
+    /**
      * List of all top level compiled methods found in debug info. These ought to arrive via the
      * debug info API in ascending address range order.
      */
@@ -167,15 +170,19 @@ public abstract class DebugInfoBase {
     /**
      * Number of bits oops are left shifted by when using compressed oops.
      */
-    private int oopCompressShift;
+    private int compressionShift;
+    /**
+     * Bit mask used for tagging oops.
+     */
+    private int reservedHubBitsMask;
     /**
      * Number of low order bits used for tagging oops.
      */
-    private int oopTagsCount;
+    private int numReservedHubBits;
     /**
      * Number of bytes used to store an oop reference.
      */
-    private int oopReferenceSize;
+    private int referenceSize;
     /**
      * Number of bytes used to store a raw pointer.
      */
@@ -183,11 +190,11 @@ public abstract class DebugInfoBase {
     /**
      * Alignment of object memory area (and, therefore, of any oop) in bytes.
      */
-    private int oopAlignment;
+    private int objectAlignment;
     /**
      * Number of bits in oop which are guaranteed 0 by virtue of alignment.
      */
-    private int oopAlignShift;
+    private int numAlignmentBits;
     /**
      * The compilation directory in which to look for source files as a {@link String}.
      */
@@ -198,22 +205,17 @@ public abstract class DebugInfoBase {
      */
     private int compiledCodeMax;
 
-    /**
-     * The type entry for java.lang.Class.
-     */
-    private ClassEntry hubClassEntry;
-
     @SuppressWarnings("this-escape")
     public DebugInfoBase(ByteOrder byteOrder) {
         this.byteOrder = byteOrder;
         this.useHeapBase = true;
-        this.oopTagsCount = 0;
-        this.oopCompressShift = 0;
-        this.oopReferenceSize = 0;
+        this.reservedHubBitsMask = 0;
+        this.numReservedHubBits = 0;
+        this.compressionShift = 0;
+        this.referenceSize = 0;
         this.pointerSize = 0;
-        this.oopAlignment = 0;
-        this.oopAlignShift = 0;
-        this.hubClassEntry = null;
+        this.objectAlignment = 0;
+        this.numAlignmentBits = 0;
         this.compiledCodeMax = 0;
         // create and index an empty dir with index 0.
         ensureDirEntry(EMPTY_PATH);
@@ -245,35 +247,33 @@ public abstract class DebugInfoBase {
         /*
          * Save count of low order tag bits that may appear in references.
          */
-        int oopTagsMask = debugInfoProvider.oopTagsMask();
+        reservedHubBitsMask = debugInfoProvider.reservedHubBitsMask();
 
-        /* Tag bits must be between 0 and 32 for us to emit as DW_OP_lit<n>. */
-        assert oopTagsMask >= 0 && oopTagsMask < 32;
         /* Mask must be contiguous from bit 0. */
-        assert ((oopTagsMask + 1) & oopTagsMask) == 0;
+        assert ((reservedHubBitsMask + 1) & reservedHubBitsMask) == 0;
 
-        oopTagsCount = Integer.bitCount(oopTagsMask);
+        numReservedHubBits = Integer.bitCount(reservedHubBitsMask);
 
         /* Save amount we need to shift references by when loading from an object field. */
-        oopCompressShift = debugInfoProvider.oopCompressShift();
+        compressionShift = debugInfoProvider.compressionShift();
 
         /* shift bit count must be either 0 or 3 */
-        assert (oopCompressShift == 0 || oopCompressShift == 3);
+        assert (compressionShift == 0 || compressionShift == 3);
 
         /* Save number of bytes in a reference field. */
-        oopReferenceSize = debugInfoProvider.oopReferenceSize();
+        referenceSize = debugInfoProvider.referenceSize();
 
         /* Save pointer size of current target. */
         pointerSize = debugInfoProvider.pointerSize();
 
         /* Save alignment of a reference. */
-        oopAlignment = debugInfoProvider.oopAlignment();
+        objectAlignment = debugInfoProvider.objectAlignment();
 
         /* Save alignment of a reference. */
-        oopAlignShift = Integer.bitCount(oopAlignment - 1);
+        numAlignmentBits = Integer.bitCount(objectAlignment - 1);
 
         /* Reference alignment must be 8 bytes. */
-        assert oopAlignment == 8;
+        assert objectAlignment == 8;
 
         /* retrieve limit for Java code address range */
         compiledCodeMax = debugInfoProvider.compiledCodeMax();
@@ -369,9 +369,6 @@ public abstract class DebugInfoBase {
             case INSTANCE: {
                 FileEntry fileEntry = addFileEntry(fileName, filePath);
                 typeEntry = new ClassEntry(typeName, fileEntry, size);
-                if (typeEntry.getTypeName().equals(DwarfDebugInfo.HUB_TYPE_NAME)) {
-                    hubClassEntry = (ClassEntry) typeEntry;
-                }
                 break;
             }
             case INTERFACE: {
@@ -419,6 +416,9 @@ public abstract class DebugInfoBase {
             // track object type and header struct
             if (idType == null) {
                 headerType = (HeaderTypeEntry) typeEntry;
+            }
+            if (typeName.equals("java.lang.Class")) {
+                classClass = (ClassEntry) typeEntry;
             }
             if (typeName.equals("java.lang.Object")) {
                 objectClass = (ClassEntry) typeEntry;
@@ -474,6 +474,12 @@ public abstract class DebugInfoBase {
         // this should only be looked up after all types have been notified
         assert objectClass != null;
         return objectClass;
+    }
+
+    public ClassEntry lookupClassClass() {
+        // this should only be looked up after all types have been notified
+        assert classClass != null;
+        return classClass;
     }
 
     private void addPrimaryRange(PrimaryRange primaryRange, DebugCodeInfo debugCodeInfo, ClassEntry classEntry) {
@@ -702,44 +708,36 @@ public abstract class DebugInfoBase {
         return useHeapBase;
     }
 
-    public byte oopTagsMask() {
-        return (byte) ((1 << oopTagsCount) - 1);
+    public int reservedHubBitsMask() {
+        return reservedHubBitsMask;
     }
 
-    public byte oopTagsShift() {
-        return (byte) oopTagsCount;
+    public int numReservedHubBits() {
+        return numReservedHubBits;
     }
 
-    public int oopCompressShift() {
-        return oopCompressShift;
+    public int compressionShift() {
+        return compressionShift;
     }
 
-    public int oopReferenceSize() {
-        return oopReferenceSize;
+    public int referenceSize() {
+        return referenceSize;
     }
 
     public int pointerSize() {
         return pointerSize;
     }
 
-    public int oopAlignment() {
-        return oopAlignment;
+    public int objectAlignment() {
+        return objectAlignment;
     }
 
-    public int oopAlignShift() {
-        return oopAlignShift;
+    public int numAlignmentBits() {
+        return numAlignmentBits;
     }
 
     public String getCachePath() {
         return cachePath;
-    }
-
-    public boolean isHubClassEntry(ClassEntry classEntry) {
-        return classEntry.getTypeName().equals(DwarfDebugInfo.HUB_TYPE_NAME);
-    }
-
-    public ClassEntry getHubClassEntry() {
-        return hubClassEntry;
     }
 
     private static void collectFilesAndDirs(ClassEntry classEntry) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -531,12 +531,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         debugInfo.add(new InitAggreateLocalVariable(0, variable));
     }
 
-    private void handleDebugIntrinsic(SymbolImpl value, SourceVariable variable, MDExpression expression, long index, boolean isDeclaration) {
-        if (index != 0) {
-            // this is unsupported, it doesn't appear in LLVM 3.8+
-            return;
-        }
-
+    private void handleDebugIntrinsic(SymbolImpl value, SourceVariable variable, MDExpression expression, boolean isDeclaration) {
         int valueFrameSlot = -1;
         Object valueObject = null;
 
@@ -607,13 +602,13 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     @Override
     public void visit(DbgDeclareInstruction inst) {
-        handleDebugIntrinsic(inst.getValue(), inst.getVariable(), inst.getExpression(), 0L, true);
+        handleDebugIntrinsic(inst.getValue(), inst.getVariable(), inst.getExpression(), true);
         handleNullerInfo();
     }
 
     @Override
     public void visit(DbgValueInstruction inst) {
-        handleDebugIntrinsic(inst.getValue(), inst.getVariable(), inst.getExpression(), inst.getIndex(), false);
+        handleDebugIntrinsic(inst.getValue(), inst.getVariable(), inst.getExpression(), false);
         handleNullerInfo();
     }
 

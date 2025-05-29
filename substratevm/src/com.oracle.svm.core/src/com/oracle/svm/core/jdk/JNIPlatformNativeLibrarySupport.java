@@ -39,6 +39,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 public abstract class JNIPlatformNativeLibrarySupport extends PlatformNativeLibrarySupport {
 
+    @SuppressWarnings("restricted")
     @Platforms(InternalPlatform.PLATFORM_JNI.class)
     protected void loadJavaLibrary() {
         System.loadLibrary("java");

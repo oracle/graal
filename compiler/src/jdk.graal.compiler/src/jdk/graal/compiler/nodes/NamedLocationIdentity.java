@@ -128,7 +128,7 @@ public class NamedLocationIdentity extends LocationIdentity implements FormatWit
 
     private static final EnumMap<JavaKind, LocationIdentity> ARRAY_LOCATIONS = new EnumMap<>(JavaKind.class);
 
-    // These exist so that GuestGraal construction can read these values from static fields.
+    // These exist so that libgraal construction can read these values from static fields.
     public static final LocationIdentity BOOLEAN_ARRAY_LOCATION = initArrayLocation(JavaKind.Boolean);
     public static final LocationIdentity BYTE_ARRAY_LOCATION = initArrayLocation(JavaKind.Byte);
     public static final LocationIdentity CHAR_ARRAY_LOCATION = initArrayLocation(JavaKind.Char);

@@ -63,6 +63,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLUndefinedFunctionRootNode;
 
 /**
@@ -164,7 +165,7 @@ public final class SLFunction implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     SourceSection getSourceLocation() {
-        return getCallTarget().getRootNode().getSourceSection();
+        return ((SLRootNode) getCallTarget().getRootNode()).ensureSourceSection();
     }
 
     @SuppressWarnings("static-method")

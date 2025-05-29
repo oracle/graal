@@ -35,12 +35,9 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo
@@ -49,17 +46,7 @@ public final class DynamicNewInstanceNode extends AbstractNewObjectNode implemen
 
     @Input ValueNode clazz;
 
-    public static void createAndPush(GraphBuilderContext b, ValueNode clazz, boolean validateClass) {
-        ResolvedJavaType constantType = tryConvertToNonDynamic(clazz, b);
-        if (constantType != null) {
-            b.addPush(JavaKind.Object, new NewInstanceNode(constantType, true));
-        } else {
-            ValueNode clazzLegal = validateClass ? b.add(new ValidateNewInstanceClassNode(clazz)) : clazz;
-            b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzLegal, true));
-        }
-    }
-
-    protected DynamicNewInstanceNode(ValueNode clazz, boolean fillContents) {
+    public DynamicNewInstanceNode(ValueNode clazz, boolean fillContents) {
         super(TYPE, StampFactory.objectNonNull(), fillContents, null);
         this.clazz = clazz;
         assert ((ObjectStamp) clazz.stamp(NodeView.DEFAULT)).nonNull();
@@ -72,7 +59,7 @@ public final class DynamicNewInstanceNode extends AbstractNewObjectNode implemen
     static ResolvedJavaType tryConvertToNonDynamic(ValueNode clazz, CoreProviders tool) {
         if (clazz.isConstant()) {
             ResolvedJavaType type = tool.getConstantReflection().asJavaType(clazz.asConstant());
-            if (type != null && !throwsInstantiationException(type, tool.getMetaAccess()) && tool.getMetaAccessExtensionProvider().canConstantFoldDynamicAllocation(type)) {
+            if (type != null && !throwsInstantiationException(type) && tool.getMetaAccessExtensionProvider().canConstantFoldDynamicAllocation(type)) {
                 return type;
             }
         }
@@ -100,7 +87,7 @@ public final class DynamicNewInstanceNode extends AbstractNewObjectNode implemen
                         probability(probability, type == classClass);
     }
 
-    public static boolean throwsInstantiationException(ResolvedJavaType type, MetaAccessProvider metaAccess) {
-        return type.isPrimitive() || type.isArray() || type.isInterface() || Modifier.isAbstract(type.getModifiers()) || type.equals(metaAccess.lookupJavaType(Class.class));
+    public static boolean throwsInstantiationException(ResolvedJavaType type) {
+        return type.isPrimitive() || type.isArray() || type.isInterface() || Modifier.isAbstract(type.getModifiers()) || type.getName().equals("Ljava/lang/Class;");
     }
 }

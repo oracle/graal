@@ -48,6 +48,7 @@ import java.security.ProtectionDomain;
 import java.util.Map;
 
 import org.graalvm.polyglot.Engine;
+import org.graalvm.word.WordFactory;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
@@ -66,11 +67,20 @@ public class SLSeparatedClassLoadersTest {
 
     @Test
     public void sdkAndTruffleLanguageAPIAndSLInSeparateClassLoaders() throws Exception {
-        final ProtectionDomain sdkDomain = Engine.class.getProtectionDomain();
-        Assume.assumeNotNull(sdkDomain);
-        Assume.assumeNotNull(sdkDomain.getCodeSource());
-        URL sdkURL = sdkDomain.getCodeSource().getLocation();
-        Assume.assumeNotNull(sdkURL);
+        final ProtectionDomain polyglotDomain = Engine.class.getProtectionDomain();
+        Assume.assumeNotNull(polyglotDomain);
+        Assume.assumeNotNull(polyglotDomain.getCodeSource());
+        URL polyglotURL = polyglotDomain.getCodeSource().getLocation();
+        Assume.assumeNotNull(polyglotURL);
+
+        URL collectionsURL = Class.forName("org.graalvm.collections.EconomicMap").getProtectionDomain().getCodeSource().getLocation();
+        Assume.assumeNotNull(collectionsURL);
+
+        URL wordURL = WordFactory.class.getProtectionDomain().getCodeSource().getLocation();
+        Assume.assumeNotNull(wordURL);
+
+        URL nativeURL = Class.forName("org.graalvm.nativeimage.ImageInfo").getProtectionDomain().getCodeSource().getLocation();
+        Assume.assumeNotNull(nativeURL);
 
         URL truffleURL = Truffle.class.getProtectionDomain().getCodeSource().getLocation();
         Assume.assumeNotNull(truffleURL);
@@ -80,7 +90,7 @@ public class SLSeparatedClassLoadersTest {
 
         ClassLoader parent = Engine.class.getClassLoader().getParent();
 
-        URLClassLoader sdkLoader = new URLClassLoader(new URL[]{sdkURL}, parent);
+        URLClassLoader sdkLoader = new URLClassLoader(new URL[]{collectionsURL, wordURL, nativeURL, polyglotURL}, parent);
         boolean sdkLoaderLoadsTruffleLanguage;
         try {
             Class.forName("com.oracle.truffle.api.TruffleLanguage", false, sdkLoader);

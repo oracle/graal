@@ -42,6 +42,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import jdk.graal.compiler.nodes.NodeClassMap;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -62,7 +63,6 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
-import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.GraphEncoder;
@@ -148,7 +148,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
     private InvocationPlugins snippetInvocationPlugins;
     private byte[] snippetEncoding;
     private Object[] snippetObjects;
-    private NodeClass<?>[] snippetNodeClasses;
+    private NodeClassMap snippetNodeClasses;
     private Map<ResolvedJavaMethod, Integer> snippetStartOffsets;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -185,7 +185,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public NodeClass<?>[] getSnippetNodeClasses() {
+    public NodeClassMap getSnippetNodeClasses() {
         return snippetNodeClasses;
     }
 
@@ -346,7 +346,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
         snippetInvocationPlugins = makeInvocationPlugins(getGraphBuilderPlugins(), copyFrom.builder, objectReplacer);
 
         snippetEncoding = Arrays.copyOf(copyFrom.snippetEncoding, copyFrom.snippetEncoding.length);
-        snippetNodeClasses = Arrays.copyOf(copyFrom.snippetNodeClasses, copyFrom.snippetNodeClasses.length);
+        snippetNodeClasses = copyFrom.snippetNodeClasses;
         snippetObjects = new Object[copyFrom.snippetObjects.length];
         for (int i = 0; i < snippetObjects.length; i++) {
             snippetObjects[i] = objectReplacer.apply(copyFrom.snippetObjects[i]);
@@ -364,9 +364,8 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Override
-    public StructuredGraph getInlineSubstitution(ResolvedJavaMethod original, int invokeBci, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosiion,
-                    AllowAssumptions allowAssumptions,
-                    OptionValues options) {
+    public StructuredGraph getInlineSubstitution(ResolvedJavaMethod original, int invokeBci, boolean isInOOMETry, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition,
+                    NodeSourcePosition replaceePosiion, AllowAssumptions allowAssumptions, OptionValues options) {
         // This override keeps graphBuilderPlugins from being reached during image generation.
         return null;
     }
@@ -394,14 +393,14 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Override
-    public Stamp getInjectedStamp(Class<?> type, boolean nonNull) {
+    public Stamp getInjectedStamp(Class<?> type) {
         JavaKind kind = JavaKind.fromJavaClass(type);
         if (kind == JavaKind.Object) {
             ResolvedJavaType returnType = providers.getMetaAccess().lookupJavaType(type);
             if (providers.getWordTypes().isWord(returnType)) {
                 return providers.getWordTypes().getWordStamp(returnType);
             } else {
-                return StampFactory.object(TypeReference.createWithoutAssumptions(returnType), nonNull);
+                return StampFactory.object(TypeReference.createWithoutAssumptions(returnType));
             }
         } else {
             return StampFactory.forKind(kind);

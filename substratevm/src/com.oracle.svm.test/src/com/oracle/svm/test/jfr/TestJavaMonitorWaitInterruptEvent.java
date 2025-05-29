@@ -129,6 +129,7 @@ public class TestJavaMonitorWaitInterruptEvent extends JfrRecordingTest {
             if (!event.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
                 continue;
             }
+
             assertTrue("Event is wrong duration." + event.getDuration().toMillis(), event.getDuration().toMillis() >= MILLIS);
             assertFalse("Should not have timed out.", event.<Boolean> getValue("timedOut").booleanValue());
 
@@ -139,12 +140,14 @@ public class TestJavaMonitorWaitInterruptEvent extends JfrRecordingTest {
                 assertEquals("Notifier of simple wait is incorrect: " + notifThread + " " + simpleNotifyThread.getName(), notifThread, simpleNotifyThread.getName());
                 simpleWaitFound = true;
             }
+
+            checkTopStackFrame(event, "await");
         }
         assertTrue("Couldn't find expected wait events. SimpleWaiter: " + simpleWaitFound + " interrupted: " + interruptedFound,
                         simpleWaitFound && interruptedFound);
     }
 
-    private class Helper {
+    private final class Helper {
         public synchronized void interrupt() throws InterruptedException {
             if (Thread.currentThread().equals(interruptedThread)) {
                 // Ensure T1 enters critical section first

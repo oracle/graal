@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, 2023, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2025, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -37,8 +37,9 @@ if(NOT TRUFFLE_NFI_NATIVE_INCLUDE)
 endif()
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR})
-add_compile_options(-fdebug-prefix-map=${CMAKE_SOURCE_DIR}=${CMAKE_PROJECT_NAME})
-add_compile_options(-fdebug-prefix-map=${CMAKE_BINARY_DIR}=${CMAKE_PROJECT_NAME})
+add_compile_options(-ffile-prefix-map=${CMAKE_SOURCE_DIR}=${CMAKE_PROJECT_NAME})
+add_compile_options(-ffile-prefix-map=${CMAKE_BINARY_DIR}=${CMAKE_PROJECT_NAME})
+add_compile_options(-ffile-prefix-map=${TRUFFLE_NFI_NATIVE_INCLUDE}=TRUFFLE_NFI_NATIVE/include)
 
 add_library(sulong-native SHARED
     src/misc.c

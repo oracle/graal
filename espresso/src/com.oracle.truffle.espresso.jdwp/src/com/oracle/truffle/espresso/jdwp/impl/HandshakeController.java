@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,31 +28,32 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
-import java.util.Collection;
+import java.nio.charset.StandardCharsets;
 
-public final class HandshakeController {
+final class HandshakeController {
 
     private static final String JDWP_HANDSHAKE = "JDWP-Handshake";
     private ServerSocket currentServerSocket;
 
     /**
      * Initializes a Socket connection which serves as a transport for jdwp communication.
-     * 
-     * @param port the listening port that the debugger should attach to
+     *
      * @throws IOException
      */
-    public SocketConnection createSocketConnection(boolean server, String host, int port, Collection<Thread> activeThreads) throws IOException {
-        String connectionHost = host;
-        if (connectionHost == null) {
-            // only allow local host if nothing specified
-            connectionHost = "localhost";
-        }
-        Socket connectionSocket;
-        if (server) {
+    void setupInitialConnection(DebuggerController controller) throws IOException {
+        DebuggerController.SetupState result;
+        String connectionHost = controller.getHost();
+        int port = controller.getListeningPort();
+        if (controller.isServer()) {
             ServerSocket serverSocket = new ServerSocket();
             serverSocket.setSoTimeout(0); // no timeout
-            serverSocket.setReuseAddress(true);
-            if ("*".equals(host)) {
+            if (port != 0) {
+                serverSocket.setReuseAddress(true);
+            }
+            if (connectionHost == null) {
+                // localhost only
+                serverSocket.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), port));
+            } else if ("*".equals(connectionHost)) {
                 // allow any host to bind
                 serverSocket.bind(new InetSocketAddress((InetAddress) null, port));
             } else {
@@ -60,31 +61,33 @@ public final class HandshakeController {
                 serverSocket.bind(new InetSocketAddress(connectionHost, port));
             }
             // print to console that we're listening
-            String address = host != null ? host + ":" + port : "" + port;
+            String address = controller.getHost() != null ? controller.getHost() + ":" + serverSocket.getLocalPort() : "" + serverSocket.getLocalPort();
             System.out.println("Listening for transport dt_socket at address: " + address);
 
             synchronized (this) {
                 assert currentServerSocket == null;
                 currentServerSocket = serverSocket;
             }
-            // block until a debugger has accepted the socket
-            connectionSocket = serverSocket.accept();
+            result = new DebuggerController.SetupState(null, serverSocket, false);
         } else {
-            connectionSocket = new Socket(connectionHost, port);
+            try {
+                controller.getResettingLock().lockInterruptibly();
+                if (!controller.isClosing()) {
+                    result = new DebuggerController.SetupState(new Socket(connectionHost, port), null, false);
+                } else {
+                    // if we're already closing down, simply mark as fatal connection error
+                    result = new DebuggerController.SetupState(null, null, true);
+                }
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } finally {
+                controller.getResettingLock().unlock();
+            }
         }
-
-        if (!handshake(connectionSocket)) {
-            throw new IOException("Unable to handshake with debubgger");
-        }
-        SocketConnection connection = new SocketConnection(connectionSocket);
-        Thread jdwpSender = new Thread(connection, "jdwp-transmitter");
-        jdwpSender.setDaemon(true);
-        jdwpSender.start();
-        activeThreads.add(jdwpSender);
-        return connection;
+        controller.setSetupState(result);
     }
 
-    public synchronized void close() {
+    synchronized void close() {
         if (currentServerSocket != null) {
             if (!currentServerSocket.isClosed()) {
                 try {
@@ -100,9 +103,9 @@ public final class HandshakeController {
     /**
      * Handshake with the debugger.
      */
-    private static boolean handshake(Socket s) throws IOException {
+    static boolean handshake(Socket s) throws IOException {
 
-        byte[] hello = JDWP_HANDSHAKE.getBytes("UTF-8");
+        byte[] hello = JDWP_HANDSHAKE.getBytes(StandardCharsets.UTF_8);
 
         byte[] b = new byte[hello.length];
         int received = 0;
@@ -115,7 +118,7 @@ public final class HandshakeController {
             }
             if (n < 0) {
                 s.close();
-                throw new IOException("handshake failed - connection prematurally closed");
+                throw new IOException("handshake failed - connection prematurely closed");
             }
             received += n;
         }

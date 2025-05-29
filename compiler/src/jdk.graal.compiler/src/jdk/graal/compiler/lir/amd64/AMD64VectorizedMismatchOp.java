@@ -24,15 +24,15 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
+import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.DWORD;
+import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.QWORD;
+import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.XMM;
+import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 import static jdk.vm.ci.amd64.AMD64.rcx;
 import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.DWORD;
-import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.QWORD;
-import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.XMM;
-import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 
 import java.util.EnumSet;
 
@@ -48,7 +48,6 @@ import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -61,7 +60,7 @@ import jdk.vm.ci.meta.Value;
  * instructions where possible.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/fbe4cc96e223882a18c7ff666fe6f68b3fa2cfe4/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L7151-L7369",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a8cd01f6e2075bef89fcd82893cf417c9e1fa877/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L6620-L6838",
           sha1 = "72f9b7a60b75ecabf09fc10cb01a9504be97957a")
 // @formatter:on
 @Opcode("VECTORIZED_MISMATCH")
@@ -208,7 +207,8 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
             asm.movdqu(vectorSize, vector2, new AMD64Address(arrayB, result, stride));
             asm.pcmpeq(vectorSize, stride, vector1, vector2);
             asm.pmovmsk(vectorSize, tmp, vector1);
-            asm.xorlAndJcc(tmp, vectorSize == XMM ? ONES_16 : ONES_32, ConditionFlag.NotZero, diffFound, true);
+            asm.xorl(tmp, vectorSize == XMM ? ONES_16 : ONES_32);
+            asm.jccb(ConditionFlag.NotZero, diffFound);
             // regions are equal, continue the loop
             asm.addq(result, bytesPerVector);
             asm.subqAndJcc(length, bytesPerVector, ConditionFlag.NotZero, vectorLoop, true);
@@ -221,7 +221,8 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
             asm.movdqu(vectorSize, vector2, new AMD64Address(arrayB, result, stride));
             asm.pcmpeq(vectorSize, stride, vector1, vector2);
             asm.pmovmsk(vectorSize, tmp, vector1);
-            asm.xorlAndJcc(tmp, vectorSize == XMM ? ONES_16 : ONES_32, ConditionFlag.Zero, returnEqualLabel, false);
+            asm.xorl(tmp, vectorSize == XMM ? ONES_16 : ONES_32);
+            asm.jcc(ConditionFlag.Zero, returnEqualLabel);
 
             asm.align(preferredBranchTargetAlignment(crb));
             asm.bind(diffFound);
@@ -249,7 +250,8 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
             // combine results into one YMM vector, by copying vector2 to the upper half of vector1
             AMD64Assembler.VexRVMIOp.VPERM2I128.emit(asm, YMM, vector1, vector2, vector1, 0x02);
             asm.pmovmsk(YMM, result, vector1);
-            asm.xorlAndJcc(result, ONES_32, ConditionFlag.Zero, returnEqualLabel, false);
+            asm.xorl(result, ONES_32);
+            asm.jcc(ConditionFlag.Zero, returnEqualLabel);
             bsfq(asm, result, result);
             // if the resulting index is greater than XMM bytes, we have to adjust it to be based on
             // the end of the array
@@ -266,7 +268,8 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
         // region is guaranteed to be between 8 and 15 bytes at this point
         // check first 8 bytes
         asm.movq(result, new AMD64Address(arrayA));
-        asm.xorqAndJcc(result, new AMD64Address(arrayB), ConditionFlag.Zero, qwordTail2, true);
+        asm.xorq(result, new AMD64Address(arrayB));
+        asm.jccb(ConditionFlag.Zero, qwordTail2);
         bsfq(asm, result, result);
         asm.shrq(result, 3);
         asm.jmp(returnLabel);
@@ -274,7 +277,8 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
         // check last 8 bytes
         asm.bind(qwordTail2);
         asm.movq(result, new AMD64Address(arrayA, tailLength, stride, -QWORD.getBytes()));
-        asm.xorqAndJcc(result, new AMD64Address(arrayB, tailLength, stride, -QWORD.getBytes()), ConditionFlag.Zero, returnEqualLabel, true);
+        asm.xorq(result, new AMD64Address(arrayB, tailLength, stride, -QWORD.getBytes()));
+        asm.jccb(ConditionFlag.Zero, returnEqualLabel);
         bsfq(asm, result, result);
         asm.shrl(result, 3);
         asm.leaq(result, new AMD64Address(result, tailLength, Stride.S1, -QWORD.getBytes()));
@@ -287,7 +291,8 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
         // region is guaranteed to be between 4 and 7 bytes at this point
         // check first 4 bytes
         asm.movl(result, new AMD64Address(arrayA));
-        asm.xorlAndJcc(result, new AMD64Address(arrayB), ConditionFlag.Zero, dwordTail2, true);
+        asm.xorl(result, new AMD64Address(arrayB));
+        asm.jccb(ConditionFlag.Zero, dwordTail2);
         bsfq(asm, result, result);
         asm.shrl(result, 3);
         asm.jmpb(returnLabel);
@@ -295,7 +300,8 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
         // check last 4 bytes
         asm.bind(dwordTail2);
         asm.movl(result, new AMD64Address(arrayA, tailLength, stride, -DWORD.getBytes()));
-        asm.xorlAndJcc(result, new AMD64Address(arrayB, tailLength, stride, -DWORD.getBytes()), ConditionFlag.Zero, returnEqualLabel, true);
+        asm.xorl(result, new AMD64Address(arrayB, tailLength, stride, -DWORD.getBytes()));
+        asm.jccb(ConditionFlag.Zero, returnEqualLabel);
         bsfq(asm, result, result);
         asm.shrl(result, 3);
         asm.leaq(result, new AMD64Address(result, tailLength, Stride.S1, -DWORD.getBytes()));

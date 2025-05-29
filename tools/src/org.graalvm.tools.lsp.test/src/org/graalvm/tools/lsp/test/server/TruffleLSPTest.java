@@ -33,6 +33,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.List;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
@@ -47,8 +48,20 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+@RunWith(Parameterized.class)
 public abstract class TruffleLSPTest {
+
+    @Parameters(name = "useBytecode={0}")
+    public static List<Boolean> getParameters() {
+        return List.of(false, true);
+    }
+
+    @Parameter(0) public Boolean useBytecode;
 
     protected static final String PROG_OBJ = "" +
                     "function main() {\n" + // 0
@@ -95,6 +108,7 @@ public abstract class TruffleLSPTest {
         contextBuilder.allowAllAccess(true);
         contextBuilder.allowIO(IOAccess.newBuilder().fileSystem(LSPFileSystem.newReadOnlyFileSystem(truffleAdapter)).build());
         contextBuilder.engine(engine);
+        contextBuilder.option("sl.UseBytecode", useBytecode.toString());
         context = contextBuilder.build();
         context.enter();
 

@@ -26,8 +26,10 @@ package com.oracle.svm.hosted.meta;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
+import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class HostedInstanceClass extends HostedClass {
 
@@ -37,8 +39,8 @@ public class HostedInstanceClass extends HostedClass {
     protected int afterFieldsOffset;
     protected int instanceSize;
     protected boolean monitorFieldNeeded = false;
-    protected int monitorFieldOffset = 0;
-    protected int identityHashOffset = 0;
+    protected int monitorFieldOffset = -1;
+    protected int identityHashOffset = -1;
 
     public HostedInstanceClass(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind, HostedClass superClass, HostedInterface[] interfaces) {
         super(universe, wrapped, kind, storageKind, superClass, interfaces);
@@ -124,9 +126,10 @@ public class HostedInstanceClass extends HostedClass {
         return monitorFieldOffset;
     }
 
-    public void setMonitorFieldOffset(int monitorFieldOffset) {
-        assert this.monitorFieldOffset == 0 : "setting monitor field offset twice";
-        this.monitorFieldOffset = monitorFieldOffset;
+    public void setMonitorFieldOffset(int offset) {
+        assert this.monitorFieldOffset == -1 : "setting monitor field offset twice";
+        assert offset >= 0;
+        this.monitorFieldOffset = offset;
     }
 
     public int getIdentityHashOffset() {
@@ -134,8 +137,20 @@ public class HostedInstanceClass extends HostedClass {
     }
 
     public void setIdentityHashOffset(int offset) {
-        assert this.identityHashOffset == 0 : "setting identity hashcode field offset more than once";
-        assert offset > 0;
+        assert this.identityHashOffset == -1 : "setting identity hashcode field offset more than once";
+        assert offset >= 0;
         this.identityHashOffset = offset;
+    }
+
+    @Override
+    public AssumptionResult<ResolvedJavaMethod> findUniqueConcreteMethod(ResolvedJavaMethod m) {
+        if (m.canBeStaticallyBound() || universe.hostVM().isClosedTypeWorld()) {
+            return super.findUniqueConcreteMethod(m);
+        }
+        /*
+         * With an open type world analysis we cannot make assumptions for methods that cannot be
+         * trivially statically bound.
+         */
+        return null;
     }
 }

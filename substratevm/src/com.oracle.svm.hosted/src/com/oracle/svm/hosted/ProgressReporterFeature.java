@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.util.function.Supplier;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.BuildArtifacts;
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -46,31 +47,21 @@ import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
 import com.oracle.svm.hosted.util.CPUTypeRISCV64;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
 public class ProgressReporterFeature implements InternalFeature {
     protected final ProgressReporter reporter = ProgressReporter.singleton();
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
+    public void duringSetup(DuringSetupAccess access) {
         if (SubstrateOptions.BuildOutputBreakdowns.getValue()) {
-            ImageSingletons.add(HeapBreakdownProvider.class, new HeapBreakdownProvider());
+            ImageSingletons.add(HeapBreakdownProvider.class, HostedConfiguration.instance().createHeapBreakdownProvider());
         }
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         reporter.reportStageProgress();
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        var vectorSpeciesClass = ReflectionUtil.lookupClass(true, "jdk.incubator.vector.VectorSpecies");
-        if (vectorSpeciesClass != null && access.isReachable(vectorSpeciesClass)) {
-            LogUtils.warning(
-                            "This application uses a preview of the Vector API, which is functional but slow on Native Image because it is not yet optimized by the Graal compiler. Please keep this in mind when evaluating performance.");
-        }
     }
 
     @Override
@@ -102,9 +93,15 @@ public class ProgressReporterFeature implements InternalFeature {
 
     protected List<UserRecommendation> getRecommendations() {
         return List.of(// in order of appearance:
+                        new UserRecommendation("FUTR", "Use '--future-defaults=all' to prepare for future releases.", ProgressReporterFeature::recommendFutureDefaults),
                         new UserRecommendation("AWT", "Use the tracing agent to collect metadata for AWT.", ProgressReporterFeature::recommendTraceAgentForAWT),
+                        new UserRecommendation("HOME", "To avoid errors, provide java.home to the app with '-Djava.home=<path>'.", AnalyzeJavaHomeAccessFeature.instance()::getJavaHomeUsed),
                         new UserRecommendation("HEAP", "Set max heap for improved and more predictable memory usage.", () -> SubstrateGCOptions.MaxHeapSize.getValue() == 0),
                         new UserRecommendation("CPU", "Enable more CPU features with '-march=native' for improved performance.", ProgressReporterFeature::recommendMArchNative));
+    }
+
+    private static boolean recommendFutureDefaults() {
+        return !FutureDefaultsOptions.allFutureDefaults();
     }
 
     private static boolean recommendMArchNative() {
@@ -127,7 +124,7 @@ public class ProgressReporterFeature implements InternalFeature {
             return false; // AWT not used
         }
         // check if any class located in java.awt or sun.awt is registered for JNI access
-        for (JNIAccessibleClass clazz : JNIReflectionDictionary.singleton().getClasses()) {
+        for (JNIAccessibleClass clazz : JNIReflectionDictionary.currentLayer().getClasses()) {
             String className = clazz.getClassObject().getName();
             if (className.startsWith("java.awt") || className.startsWith("sun.awt")) {
                 return false;

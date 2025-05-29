@@ -38,12 +38,10 @@ import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.LogicNegationNode;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.PhiNode;
-import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.ShortCircuitOrNode;
 import jdk.graal.compiler.nodes.UnwindNode;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.ValueProxyNode;
 import jdk.graal.compiler.nodes.calc.AbsNode;
 import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
@@ -66,7 +64,6 @@ import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.debug.BlackholeNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
-import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.graal.compiler.nodes.extended.ForeignCall;
 import jdk.graal.compiler.nodes.extended.GetClassNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
@@ -99,6 +96,8 @@ import jdk.graal.compiler.nodes.java.ReachabilityFenceNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
+import jdk.graal.compiler.nodes.spi.ValueProxy;
+import jdk.graal.compiler.replacements.nodes.ArrayFillNode;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsNode;
 import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
@@ -194,8 +193,6 @@ public abstract class NodeLowerer {
             lower((IsNullNode) node);
         } else if (node instanceof ExceptionObjectNode) {
             lower((ExceptionObjectNode) node);
-        } else if (node instanceof ValueProxyNode) {
-            lowerValue(((ValueProxyNode) node).value());
         } else if (node instanceof ConstantNode) {
             lower((ConstantNode) node);
         } else if (node instanceof LoadIndexedNode) {
@@ -259,6 +256,8 @@ public abstract class NodeLowerer {
             lower((InstanceOfNode) node);
         } else if (node instanceof InstanceOfDynamicNode) {
             lower((InstanceOfDynamicNode) node);
+        } else if (node instanceof ArrayFillNode) {
+            lower((ArrayFillNode) node);
         } else if (node instanceof ArrayEqualsNode) {
             lower((ArrayEqualsNode) node);
         } else if (node instanceof NewMultiArrayNode) {
@@ -301,8 +300,6 @@ public abstract class NodeLowerer {
             lower((BinaryArithmeticNode<?>) node);
         } else if (node instanceof GetClassNode) {
             lower((GetClassNode) node);
-        } else if (node instanceof PiNode) {
-            lowerValue(((PiNode) node).getOriginalNode());
         } else if (node instanceof UnaryMathIntrinsicNode) {
             lower((UnaryMathIntrinsicNode) node);
         } else if (node instanceof BinaryMathIntrinsicNode) {
@@ -327,8 +324,8 @@ public abstract class NodeLowerer {
             lower((ClassIsAssignableFromNode) node);
         } else if (node instanceof DynamicNewInstanceNode n) {
             lower(n);
-        } else if (node instanceof FixedValueAnchorNode n) {
-            lowerValue(n.getOriginalNode());
+        } else if (node instanceof ValueProxy proxy) {
+            lowerValue(proxy.getOriginalNode());
         } else {
             if (!isIgnored(node)) {
                 handleUnknownNodeType(node);
@@ -412,6 +409,8 @@ public abstract class NodeLowerer {
     protected abstract void lower(NewMultiArrayNode node);
 
     protected abstract void lower(ArrayEqualsNode node);
+
+    protected abstract void lower(ArrayFillNode node);
 
     protected abstract void lower(InstanceOfDynamicNode node);
 

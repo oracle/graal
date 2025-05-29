@@ -118,16 +118,18 @@ final class ClassAssembler {
         AnnotationVisitor annotationVisitor0;
 
         classWriter.visit(V1_8, ACC_FINAL | ACC_SUPER, "com/oracle/truffle/espresso/ref/EspressoFinalReference",
-                        "Ljava/lang/ref/PublicFinalReference<Lcom/oracle/truffle/espresso/runtime/StaticObject;>;Lcom/oracle/truffle/espresso/ref/EspressoReference;",
+                        "Ljava/lang/ref/PublicFinalReference<Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;>;Lcom/oracle/truffle/espresso/ref/EspressoReference;",
                         "java/lang/ref/PublicFinalReference", new String[]{"com/oracle/truffle/espresso/ref/EspressoReference"});
 
-        fieldVisitor = classWriter.visitField(ACC_PRIVATE | ACC_FINAL, "guestReference", "Lcom/oracle/truffle/espresso/runtime/StaticObject;", null, null);
+        fieldVisitor = classWriter.visitField(ACC_PRIVATE | ACC_FINAL, "guestReference", "Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;", null, null);
         fieldVisitor.visitEnd();
 
+        // @formatter:off
         methodVisitor = classWriter.visitMethod(0, "<init>",
-                        "(Lcom/oracle/truffle/espresso/runtime/StaticObject;Lcom/oracle/truffle/espresso/runtime/StaticObject;Ljava/lang/ref/ReferenceQueue;)V",
-                        "(Lcom/oracle/truffle/espresso/runtime/StaticObject;Lcom/oracle/truffle/espresso/runtime/StaticObject;Ljava/lang/ref/ReferenceQueue<Lcom/oracle/truffle/espresso/runtime/StaticObject;>;)V",
+                        "(Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;Ljava/lang/ref/ReferenceQueue;)V",
+                        "(Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;Ljava/lang/ref/ReferenceQueue<Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;>;)V",
                         null);
+        // @formatter:on
 
         annotationVisitor0 = methodVisitor.visitTypeAnnotation(369098752, null, "Lcom/oracle/truffle/espresso/substitutions/JavaType;", false);
         annotationVisitor0.visit("internalName", "Ljava/lang/ref/FinalReference;");
@@ -144,24 +146,24 @@ final class ClassAssembler {
         methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/lang/ref/PublicFinalReference", "<init>", "(Ljava/lang/Object;Ljava/lang/ref/ReferenceQueue;)V", false);
         methodVisitor.visitVarInsn(ALOAD, 0);
         methodVisitor.visitVarInsn(ALOAD, 1);
-        methodVisitor.visitFieldInsn(PUTFIELD, "com/oracle/truffle/espresso/ref/EspressoFinalReference", "guestReference", "Lcom/oracle/truffle/espresso/runtime/StaticObject;");
+        methodVisitor.visitFieldInsn(PUTFIELD, "com/oracle/truffle/espresso/ref/EspressoFinalReference", "guestReference", "Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;");
         methodVisitor.visitInsn(RETURN);
         methodVisitor.visitMaxs(3, 4);
         methodVisitor.visitEnd();
 
-        methodVisitor = classWriter.visitMethod(ACC_PUBLIC, "getGuestReference", "()Lcom/oracle/truffle/espresso/runtime/StaticObject;", null, null);
+        methodVisitor = classWriter.visitMethod(ACC_PUBLIC, "getGuestReference", "()Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;", null, null);
         methodVisitor.visitCode();
         methodVisitor.visitVarInsn(ALOAD, 0);
-        methodVisitor.visitFieldInsn(GETFIELD, "com/oracle/truffle/espresso/ref/EspressoFinalReference", "guestReference", "Lcom/oracle/truffle/espresso/runtime/StaticObject;");
+        methodVisitor.visitFieldInsn(GETFIELD, "com/oracle/truffle/espresso/ref/EspressoFinalReference", "guestReference", "Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;");
         methodVisitor.visitInsn(ARETURN);
         methodVisitor.visitMaxs(1, 1);
         methodVisitor.visitEnd();
 
-        methodVisitor = classWriter.visitMethod(ACC_PUBLIC | ACC_BRIDGE | ACC_SYNTHETIC, "get", "()Lcom/oracle/truffle/espresso/runtime/StaticObject;", null, null);
+        methodVisitor = classWriter.visitMethod(ACC_PUBLIC | ACC_BRIDGE | ACC_SYNTHETIC, "get", "()Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;", null, null);
         methodVisitor.visitCode();
         methodVisitor.visitVarInsn(ALOAD, 0);
         methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/lang/ref/PublicFinalReference", "get", "()Ljava/lang/Object;", false);
-        methodVisitor.visitTypeInsn(CHECKCAST, "com/oracle/truffle/espresso/runtime/StaticObject");
+        methodVisitor.visitTypeInsn(CHECKCAST, "com/oracle/truffle/espresso/runtime/staticobject/StaticObject");
         methodVisitor.visitInsn(ARETURN);
         methodVisitor.visitMaxs(1, 1);
         methodVisitor.visitEnd();

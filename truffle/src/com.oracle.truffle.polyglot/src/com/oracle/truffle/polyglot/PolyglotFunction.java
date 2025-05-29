@@ -48,17 +48,24 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import org.graalvm.polyglot.Context;
 
 final class PolyglotFunction<T, R> implements Function<T, R>, PolyglotWrapper {
 
     final Object guestObject;
     final PolyglotLanguageContext languageContext;
     final CallTarget apply;
+    /**
+     * Strong reference to the creator {@link Context} to prevent it from being garbage collected
+     * and closed while this function is still reachable.
+     */
+    final Context contextAnchor;
 
     PolyglotFunction(PolyglotLanguageContext languageContext, Object function, Class<?> returnClass, Type returnType, Class<?> paramClass, Type paramType) {
         this.guestObject = function;
         this.languageContext = languageContext;
         this.apply = Apply.lookup(languageContext, function.getClass(), returnClass, returnType, paramClass, paramType);
+        this.contextAnchor = languageContext.context.getContextAPI();
     }
 
     @SuppressWarnings("unchecked")

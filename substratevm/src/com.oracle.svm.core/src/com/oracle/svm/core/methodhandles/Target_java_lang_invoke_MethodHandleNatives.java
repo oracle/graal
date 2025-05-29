@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package com.oracle.svm.core.methodhandles;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.core.util.VMError.unimplemented;
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
 import java.lang.invoke.CallSite;
@@ -38,7 +37,6 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
-import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -51,11 +49,14 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.debug.GraalError;
 import sun.invoke.util.VerifyAccess;
 
 /**
@@ -167,7 +168,18 @@ final class Target_java_lang_invoke_MethodHandleNatives {
         if (!self.isField() || !self.isStatic()) {
             throw new InternalError("Static field required");
         }
-        return ((Field) self.reflectAccess).getType().isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields();
+        Field field = (Field) self.reflectAccess;
+        int layerNumber;
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            layerNumber = SubstrateUtil.cast(field, Target_java_lang_reflect_Field.class).installedLayerNumber;
+        } else {
+            layerNumber = MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
+        }
+        if (field.getType().isPrimitive()) {
+            return StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(layerNumber);
+        } else {
+            return StaticFieldsSupport.getStaticObjectFieldsAtRuntime(layerNumber);
+        }
     }
 
     @Substitute
@@ -189,11 +201,6 @@ final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Delete
     private static native void copyOutBootstrapArguments(Class<?> caller, int[] indexInfo, int start, int end, Object[] buf, int pos, boolean resolve, Object ifNotAvailable);
-
-    @Substitute
-    private static void clearCallSiteContext(Target_java_lang_invoke_MethodHandleNatives_CallSiteContext context) {
-        throw unimplemented("CallSiteContext not supported");
-    }
 
     @AnnotateOriginal
     static native boolean refKindIsMethod(byte refKind);
@@ -403,8 +410,4 @@ final class Target_java_lang_invoke_MethodHandleNatives_Constants {
     @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static byte REF_invokeInterface;
     @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static byte REF_LIMIT;
     // Checkstyle: resume
-}
-
-@TargetClass(className = "java.lang.invoke.MethodHandleNatives", innerClass = "CallSiteContext")
-final class Target_java_lang_invoke_MethodHandleNatives_CallSiteContext {
 }

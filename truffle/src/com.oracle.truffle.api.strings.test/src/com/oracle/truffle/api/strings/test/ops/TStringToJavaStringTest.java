@@ -75,7 +75,7 @@ public class TStringToJavaStringTest extends TStringTestBase {
                 int i = 0;
                 while (it.hasNext()) {
                     int expected = s.codePointAt(i);
-                    Assert.assertEquals(expected, it.nextUncached());
+                    Assert.assertEquals(expected, it.nextUncached(encoding));
                     i += expected > 0xffff ? 2 : 1;
                 }
             }

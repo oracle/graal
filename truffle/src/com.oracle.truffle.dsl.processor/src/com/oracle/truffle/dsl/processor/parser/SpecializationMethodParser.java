@@ -130,6 +130,7 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
         SpecializationData specialization = new SpecializationData(getNode(), method, SpecializationKind.SPECIALIZED, exceptionData, unexpectedResultRewrite, reportPolymorphism, reportMegamorphism);
 
         if (method.getMethod() != null) {
+
             String insertBeforeName = ElementUtils.getAnnotationValue(String.class, method.getMarkerAnnotation(), "insertBefore");
             if (!insertBeforeName.equals("")) {
                 specialization.setInsertBeforeName(insertBeforeName);

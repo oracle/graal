@@ -30,12 +30,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.ParserField;
+import com.oracle.truffle.espresso.classfile.ParserMethod;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.impl.ParserField;
-import com.oracle.truffle.espresso.impl.ParserMethod;
 
 public final class DetectedChange {
     private final List<ParserField> addedStaticFields = new ArrayList<>();
@@ -91,7 +91,7 @@ public final class DetectedChange {
 
     void addMethodBodyChange(Method oldMethod, ParserMethod newMethod) {
         changedMethodBodies.put(oldMethod, newMethod);
-        if (oldMethod.getName() == Symbol.Name._clinit_) {
+        if (oldMethod.getName() == Names._clinit_) {
             classInitializerChanged = true;
         }
     }

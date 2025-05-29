@@ -1,0 +1,326 @@
+[
+  {
+    "group_id": "org.apache.groovy",
+    "artifact_id": "groovy",
+    "version": "4.0.22",
+    "reason": "Library too large to be built in a GitHub action. Finishes generating on better systems locally"
+  },
+  {
+    "group_id": "org.scalatest",
+    "artifact_id": "scalatest_3",
+    "version": "3.2.19",
+    "reason": "[Maven ERROR] Unknown packaging: bundle"
+  },
+  {
+    "group_id": "com.alibaba.fastjson2",
+    "artifact_id": "fastjson2",
+    "version": "2.0.52",
+    "reason": "GR-57711, also requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "org.scala-js",
+    "artifact_id": "scalajs-test-bridge_2.13",
+    "version": "1.16.0",
+    "reason": "[Maven ERROR] Missing dependencies"
+  },
+  {
+    "group_id": "org.awaitility",
+    "artifact_id": "awaitility",
+    "version": "4.2.2",
+    "reason": "[Maven ERROR] Missing dependencies"
+  },
+  {
+    "group_id": "com.github.bumptech.glide",
+    "artifact_id": "glide",
+    "version": "4.16.0",
+    "reason": "[Maven ERROR] Missing dependencies. Android library, not interested"
+  },
+  {
+    "group_id": "io.netty",
+    "artifact_id": "netty-all",
+    "version": "4.1.113.Final",
+    "reason": "Finishes generating, but requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "com.zaxxer",
+    "artifact_id": "HikariCP",
+    "version": "5.1.0",
+    "reason": "[Maven ERROR] Could not find or load main class"
+  },
+  {
+    "group_id": "org.eclipse.jetty.ee10",
+    "artifact_id": "jetty-ee10-servlet",
+    "version": "12.0.13",
+    "reason": "[Maven ERROR] Missing dependencies"
+  },
+  {
+    "group_id": "org.playframework",
+    "artifact_id": "play-test_3",
+    "version": "3.0.5",
+    "reason": "GR-57711, also requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "nl.jqno.equalsverifier",
+    "artifact_id": "equalsverifier",
+    "version": "3.16.2",
+    "reason": "[Maven ERROR] Could not resolve dependencies"
+  },
+  {
+    "group_id": "org.robolectric",
+    "artifact_id": "robolectric",
+    "version": "4.13",
+    "reason": "[Maven ERROR] Missing dependencies. Android library, not interested"
+  },
+  {
+    "group_id": "io.vertx",
+    "artifact_id": "vertx-unit",
+    "version": "4.5.10",
+    "reason": "Finishes generating, but requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "org.xmlunit",
+    "artifact_id": "xmlunit-core",
+    "version": "2.10.0",
+    "reason": "Finishes generating, but requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "com.jakewharton",
+    "artifact_id": "butterknife",
+    "version": "7.0.1",
+    "reason": "[Maven ERROR] Missing dependencies. Android library, not interested"
+  },
+  {
+    "group_id": "com.fasterxml.jackson.module",
+    "artifact_id": "jackson-module-scala_3",
+    "version": "2.17.2",
+    "reason": "[Maven ERROR] Unknown packaging: bundle"
+  },
+  {
+    "group_id": "com.sun.jersey",
+    "artifact_id": "jersey-json",
+    "version": "1.19.4",
+    "reason": "Finishes generating, but requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "org.jmock",
+    "artifact_id": "jmock",
+    "version": "2.13.1",
+    "reason": "[Maven ERROR] Could not find or load main class"
+  },
+  {
+    "group_id": "org.asynchttpclient",
+    "artifact_id": "async-http-client",
+    "version": "3.0.0",
+    "reason": "Finishes generating, but requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "org.scala-lang.modules",
+    "artifact_id": "scala-xml_3",
+    "version": "2.3.0",
+    "reason": "[Maven ERROR] Unknown packaging: bundle"
+  },
+  {
+    "group_id": "io.vertx",
+    "artifact_id": "vertx-core",
+    "version": "4.5.10",
+    "reason": "GR-57711, also requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "org.mariadb.jdbc",
+    "artifact_id": "mariadb-java-client",
+    "version": "3.4.1",
+    "reason": "Finishes generating, but requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "com.fasterxml.jackson.dataformat",
+    "artifact_id": "jackson-dataformat-cbor",
+    "version": "2.17.2",
+    "reason": "GR-57738"
+  },
+  {
+    "group_id": "io.undertow",
+    "artifact_id": "undertow-core",
+    "version": "2.3.17.Final",
+    "reason": "Dependency incompatible with native-image. Fixed in native-build-tools by replacing the dependency with a newer version"
+  },
+  {
+    "group_id": "com.chuusai",
+    "artifact_id": "shapeless_2.13",
+    "version": "2.3.12",
+    "reason": "[Maven ERROR] Unknown packaging: bundle"
+  },
+  {
+    "group_id": "org.xerial.snappy",
+    "artifact_id": "snappy-java",
+    "version": "1.1.10.7",
+    "reason": "[ERROR] Unknown packaging: bundle"
+  },
+  {
+    "group_id": "org.jetbrains.kotlin",
+    "artifact_id": "kotlin-gradle-plugin",
+    "version": "2.0.20",
+    "reason": "GR-58213"
+  },
+  {
+    "group_id": "org.ehcache",
+    "artifact_id": "ehcache",
+    "version": "3.10.8",
+    "reason": "[Maven ERROR] Could not resolve dependencies"
+  },
+  {
+    "group_id": "org.apache.spark",
+    "artifact_id": "spark-streaming_2.13",
+    "version": "3.5.2",
+    "reason": "GR-57816"
+  },
+  {
+    "group_id": "org.eclipse.paho",
+    "artifact_id": "org.eclipse.paho.client.mqttv3",
+    "version": "1.2.5",
+    "reason": "[Maven ERROR] Exception pasring OSGi MANIFEST"
+  },
+  {
+    "group_id": "org.scoverage",
+    "artifact_id": "scalac-scoverage-plugin_2.13.14",
+    "version": "2.2.0",
+    "reason": "[Maven ERROR] Missing dependencies"
+  },
+  {
+    "group_id": "org.scala-lang.modules",
+    "artifact_id": "scala-parser-combinators_3",
+    "version": "2.4.0",
+    "reason": "[Maven ERROR] Unknown packaging: bundle"
+  },
+  {
+    "group_id": "org.redisson",
+    "artifact_id": "redisson",
+    "version": "3.36.0",
+    "reason": "Finishes generating, but requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "org.apache.spark",
+    "artifact_id": "spark-sql_2.13",
+    "version": "3.5.2",
+    "reason": "GR-57816"
+  },
+  {
+    "group_id": "com.amazonaws",
+    "artifact_id": "aws-java-sdk",
+    "version": "1.12.772",
+    "reason": "Finishes generating, but requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "org.apache.spark",
+    "artifact_id": "spark-core_2.13",
+    "version": "3.5.2",
+    "reason": "GR-57816"
+  },
+  {
+    "group_id": "org.apache.hadoop",
+    "artifact_id": "hadoop-client",
+    "version": "3.4.0",
+    "reason": "Finishes generating, but requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "org.eclipse.core",
+    "artifact_id": "runtime",
+    "version": "3.10.0-v20140318-2214",
+    "reason": "[Maven ERROR] Missing dependencies"
+  },
+  {
+    "group_id": "org.eclipse.core",
+    "artifact_id": "org.eclipse.core.runtime",
+    "version": "3.7.0",
+    "reason": "[Maven ERROR] Could not resolve dependencies"
+  },
+  {
+    "group_id": "io.netty",
+    "artifact_id": "netty-codec-http",
+    "version": "4.1.113.Final",
+    "reason": "Finishes generating, but requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "org.jline",
+    "artifact_id": "jline",
+    "version": "3.26.3",
+    "reason": "GR-57711, also requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "org.flywaydb",
+    "artifact_id": "flyway-core",
+    "version": "10.17.3",
+    "reason": "GR-57711, also requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "org.springmodules",
+    "artifact_id": "spring-modules-cache",
+    "version": "0.8",
+    "reason": "[Maven ERROR] Missing dependencies"
+  },
+  {
+    "group_id": "org.apache.hive",
+    "artifact_id": "hive-exec",
+    "version": "4.0.0",
+    "reason": "GR-57816"
+  },
+  {
+    "group_id": "org.apache.spark",
+    "artifact_id": "spark-hive_2.13",
+    "version": "3.5.2",
+    "reason": "GR-57816"
+  },
+  {
+    "group_id": "org.apache.hadoop",
+    "artifact_id": "hadoop-hdfs",
+    "version": "3.4.0",
+    "reason": "GR-57738"
+  },
+  {
+    "group_id": "org.apache.felix",
+    "artifact_id": "org.apache.felix.framework",
+    "version": "7.0.5",
+    "reason": "Finishes generating, but requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "org.apache.spark",
+    "artifact_id": "spark-mllib_2.13",
+    "version": "3.5.2",
+    "reason": "GR-57816"
+  },
+  {
+    "group_id": "org.apache.hbase",
+    "artifact_id": "hbase-client",
+    "version": "2.6.0",
+    "reason": "GR-57711, also requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "io.circe",
+    "artifact_id": "circe-generic_3",
+    "version": "0.14.10",
+    "reason": "[Maven ERROR] Missing dependencies"
+  },
+  {
+    "group_id": "org.typelevel",
+    "artifact_id": "cats-effect_3",
+    "version": "3.6-0142603",
+    "reason": "GR-59420"
+  },
+  {
+    "group_id": "org.apache.cassandra",
+    "artifact_id": "java-driver-core",
+    "version": "4.18.1",
+    "reason": "GR-57711, also requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "com.microsoft.sqlserver",
+    "artifact_id": "mssql-jdbc",
+    "version": "12.8.1.jre11",
+    "reason": "GR-57711, also requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
+  },
+  {
+    "group_id": "io.quarkus",
+    "artifact_id": "quarkus-junit5",
+    "version": "3.14.3",
+    "reason": "GR-57711"
+  }
+]

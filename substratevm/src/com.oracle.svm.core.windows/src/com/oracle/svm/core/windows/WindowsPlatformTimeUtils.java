@@ -24,15 +24,18 @@
  */
 package com.oracle.svm.core.windows;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.windows.headers.SysinfoAPI.GetSystemTimeAsFileTime;
 
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.PlatformTimeUtils;
 import com.oracle.svm.core.windows.headers.WinBase.FILETIME;
+
+import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredImageSingleton(PlatformTimeUtils.class)
 public final class WindowsPlatformTimeUtils extends PlatformTimeUtils {
@@ -41,27 +44,28 @@ public final class WindowsPlatformTimeUtils extends PlatformTimeUtils {
     private static final long OFFSET = 116444736000000000L;
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/os/windows/os_windows.cpp#L1153-L1155")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long offset() {
         return OFFSET;
     }
 
     /* Returns time ticks in (10th of micro seconds) */
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/os/windows/os_windows.cpp#L1158-L1161")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long windowsToTimeTicks(FILETIME wt) {
-        long a = WordFactory.unsigned(wt.dwHighDateTime()).shiftLeft(32).or(WordFactory.unsigned(wt.dwLowDateTime())).rawValue();
+        long a = Word.unsigned(wt.dwHighDateTime()).shiftLeft(32).or(Word.unsigned(wt.dwLowDateTime())).rawValue();
         return (a - offset());
     }
 
     @Override
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/os/windows/os_windows.cpp#L1198-L1205")
-    protected SecondsNanos javaTimeSystemUTC() {
+    @Uninterruptible(reason = "Must not migrate platform threads when executing on a virtual thread.")
+    public SecondsNanos javaTimeSystemUTC() {
         FILETIME wt = StackValue.get(FILETIME.class);
         GetSystemTimeAsFileTime(wt);
         long ticks = windowsToTimeTicks(wt); // 10th of micros
         long secs = ticks / 10000000L; // 10000 * 1000
-        long seconds = secs;
         long nanos = (ticks - (secs * 10000000L)) * 100L;
-        return new SecondsNanos(seconds, nanos);
+        return allocateSecondsNanosInterruptibly(secs, nanos);
     }
-
 }

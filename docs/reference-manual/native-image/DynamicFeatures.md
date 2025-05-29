@@ -15,10 +15,9 @@ Thus, some dynamic Java features may require special "treatment" such as a comma
 
 The reference information here explains how Native Image handles some dynamic features of Java:
 
-- [Accessing Resources](Resources.md)
+- [Accessing Resources](ReachabilityMetadata.md#resources)
 - [Certificate Management](CertificateManagement.md)
-- [Dynamic Proxy](DynamicProxy.md)
-- [Java Native Interface (JNI)](JNI.md)
+- [Java Native Interface (JNI)](ReachabilityMetadata.md#java-native-interface)
 - [JCA Security Services](JCASecurityServices.md)
-- [Reflection](Reflection.md)
+- [Reflection](ReachabilityMetadata.md#reflection)
 - [URL Protocols](URLProtocols.md)

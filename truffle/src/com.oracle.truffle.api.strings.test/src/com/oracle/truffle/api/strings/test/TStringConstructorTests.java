@@ -134,7 +134,7 @@ public class TStringConstructorTests extends TStringTestBase {
                         Assert.assertEquals(i, s.codePointAtByteIndexUncached(byteIndex(i, encoding), encoding, TruffleString.ErrorHandling.BEST_EFFORT));
                         Assert.assertEquals(i, s.codePointAtIndexUncached(i, encoding, TruffleString.ErrorHandling.BEST_EFFORT));
                         Assert.assertTrue(it.hasNext());
-                        Assert.assertEquals(i, it.nextUncached());
+                        Assert.assertEquals(i, it.nextUncached(encoding));
                         Assert.assertEquals(i, s.indexOfCodePointUncached(i, 0, 128, encoding));
                         Assert.assertEquals(i, s.indexOfStringUncached(fromCodePointUncached(i, encoding), 0, 128, encoding));
                     }
@@ -253,7 +253,7 @@ public class TStringConstructorTests extends TStringTestBase {
                             Assert.assertTrue(s.regionEqualByteIndexUncached(byteIndices[i], substring, 0, substring.byteLength(encoding), encoding));
                         }
                         Assert.assertTrue(it.hasNext());
-                        Assert.assertEquals(codepoints[i], it.nextUncached());
+                        Assert.assertEquals(codepoints[i], it.nextUncached(encoding));
                     }
                 }
             }

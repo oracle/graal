@@ -47,7 +47,7 @@ public class UnsafeAccess01 extends JTTTest {
         offset = UNSAFE.objectFieldOffset(field);
     }
 
-    private static class TestClass {
+    private static final class TestClass {
         private int field = 42;
     }
 

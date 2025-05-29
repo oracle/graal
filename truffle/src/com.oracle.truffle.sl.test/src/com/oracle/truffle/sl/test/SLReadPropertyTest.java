@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,14 +49,14 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class SLReadPropertyTest {
+public class SLReadPropertyTest extends AbstractSLTest {
 
     private Context ctx;
     private Value slObject;
 
     @Before
     public void setUp() {
-        this.ctx = Context.create("sl");
+        this.ctx = newContextBuilder("sl").build();
         this.slObject = ctx.eval("sl", "function createObject() {\n" +
                         "obj1 = new();\n" +
                         "obj1.number = 42;\n" +

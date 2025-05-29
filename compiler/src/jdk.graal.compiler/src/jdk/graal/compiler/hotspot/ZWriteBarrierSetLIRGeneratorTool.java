@@ -111,6 +111,9 @@ public interface ZWriteBarrierSetLIRGeneratorTool extends WriteBarrierSetLIRGene
                     callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.Z_STORE_BARRIER_WITHOUT_HEALING);
                 }
                 break;
+            case AS_NO_KEEPALIVE_WRITE:
+                callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.Z_REFERENCE_CLEAR_BARRIER);
+                break;
             default:
                 throw GraalError.shouldNotReachHere("Unexpected barrier type: " + barrierType);
         }

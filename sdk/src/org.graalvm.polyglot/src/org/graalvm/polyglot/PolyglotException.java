@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,15 +90,49 @@ public final class PolyglotException extends RuntimeException {
 
     final AbstractExceptionDispatch dispatch;
     final Object impl;
+    /**
+     * Holds a polyglot object that threw a {@code PolyglotException}, ensuring that the garbage
+     * collector does not collect the polyglot object while the {@code PolyglotException} is still
+     * reachable.
+     * <ul>
+     * <li>If the exception is thrown by a {@link Context}, this field holds the creator
+     * {@link Context}.</li>
+     * <li>If the exception is thrown by an {@link Engine}, this field holds the
+     * {@link Engine}.</li>
+     * <li>If the exception is thrown by a polyglot, this field is {@code null}.</li>
+     * </ul>
+     */
+    final Object anchor;
 
-    PolyglotException(String message, AbstractExceptionDispatch dispatch, Object receiver) {
+    PolyglotException(String message, AbstractExceptionDispatch dispatch, Object receiver, Object anchor) {
         super(message);
         this.dispatch = dispatch;
         this.impl = receiver;
+        this.anchor = anchor;
         dispatch.onCreate(receiver, this);
         // we need to materialize the stack if this exception is printed as cause of another error.
         // unfortunately we cannot detect this easily
         super.setStackTrace(getStackTrace());
+    }
+
+    /**
+     * Returns a short description of this exception. The result is the concatenation of:
+     * <ul>
+     * <li>the qualified name of the metaobject of the guest exception, if this object represents
+     * one, and it has a metaobject. Otherwise, the {@linkplain Class#getName() name} of the
+     * {@link PolyglotException} class.
+     * <li>": " (a colon and a space)
+     * <li>the result of invoking this object's {@link #getMessage} method
+     * </ul>
+     * If {@code getMessage} returns {@code null}, then just the class name is returned.
+     *
+     * @return a string representation of this exception.
+     *
+     * @since 25.0
+     */
+    @Override
+    public String toString() {
+        return dispatch.toString(impl);
     }
 
     /**
@@ -159,7 +193,7 @@ public final class PolyglotException extends RuntimeException {
     /**
      * Gets a user readable message for the polyglot exception. In case the exception is
      * {@link #isInternalError() internal} then the original java class name is included in the
-     * message. The message never returns <code>null</code>.
+     * message. The message may return <code>null</code> if no message is available.
      *
      * @since 19.0
      */

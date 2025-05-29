@@ -26,16 +26,22 @@ package jdk.graal.compiler.nodes.graphbuilderconf;
 
 import jdk.graal.compiler.core.common.type.Stamp;
 
+/**
+ * A provider for {@link jdk.graal.compiler.api.replacements.Fold.InjectedParameter injected
+ * parameters} of a method.
+ */
 public interface GeneratedPluginInjectionProvider {
 
+    /**
+     * Gets an injected value of type {@code type}. There will be at most one parameter of this type
+     * in the annotated method.
+     */
     <T> T getInjectedArgument(Class<T> type);
 
     /**
      * Gets a stamp denoting a given type and non-nullness property.
      *
      * @param type the type the returned stamp represents
-     * @param nonNull specifies if the returned stamp denotes a value that is guaranteed to be
-     *            non-null
      */
-    Stamp getInjectedStamp(Class<?> type, boolean nonNull);
+    Stamp getInjectedStamp(Class<?> type);
 }

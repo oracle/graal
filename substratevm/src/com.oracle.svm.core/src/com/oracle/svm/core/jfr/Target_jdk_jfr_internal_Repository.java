@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +24,42 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.SubstrateUtil;
+import java.io.IOException;
+import java.nio.file.Path;
+
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-import jdk.jfr.internal.SecuritySupport.SafePath;
+import jdk.jfr.internal.Repository;
 
-@TargetClass(value = jdk.jfr.internal.Repository.class, onlyWith = HasJfrSupport.class)
+@TargetClass(value = Repository.class, onlyWith = HasJfrSupport.class)
+@SuppressWarnings("unused")
 public final class Target_jdk_jfr_internal_Repository {
-    @Alias private SafePath baseLocation;
+
+    // Checkstyle: stop
+    @Delete //
+    private static Path JAVA_IO_TMPDIR;
+    // Checkstyle: resume
+
+    @Alias //
+    private Path baseLocation;
+
+    @Alias //
+    public native void setBasePath(Path baseLocation) throws IOException;
 
     @Substitute
     synchronized void ensureRepository() throws Exception {
         if (baseLocation == null) {
-            SafePath path = Target_jdk_jfr_internal_SecuritySupport.getPathInProperty("java.io.tmpdir", null);
-            SubstrateUtil.cast(this, jdk.jfr.internal.Repository.class).setBasePath(path);
+            Path path = Target_jdk_jfr_internal_util_Utils.getPathInProperty("java.io.tmpdir", null);
+            setBasePath(path);
         }
     }
+}
+
+@TargetClass(className = "jdk.jfr.internal.util.Utils", onlyWith = HasJfrSupport.class)
+final class Target_jdk_jfr_internal_util_Utils {
+    @Alias
+    public static native Path getPathInProperty(String prop, String subPath);
 }

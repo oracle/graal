@@ -1,6 +1,6 @@
-# mx --dynamicimports=/vm,/substratevm --components="Espresso Launcher,LibGraal,SubstrateVM,Java on Truffle LLVM Java libraries,suite:tools" --native-images=lib:jvmcicompiler --disable-installables=true graalvm-show
-
-DYNAMIC_IMPORTS=/vm,/substratevm,/regex
-COMPONENTS=Espresso Launcher,LibGraal,SubstrateVM,Java on Truffle LLVM Java libraries,suite:tools,tflm,rgx
+# /vm,/substratevm,/tools,/regex,/sulong with CE components, with libgraal, doesn't build native standalone
+DYNAMIC_IMPORTS=/vm,/substratevm,/tools,/regex,/sulong
+COMPONENTS=cmp,gvm,lg,ni,nic,nil,sdkni,svm,svmjdwp,svmt,svmsl,tflc,tflsm
 NATIVE_IMAGES=lib:jvmcicompiler
-DISABLE_INSTALLABLES=true
+NON_REBUILDABLE_IMAGES=lib:jvmcicompiler
+JVM_STANDALONE_WITH_LLVM=true

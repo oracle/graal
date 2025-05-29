@@ -35,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.nodes.NodeClassMap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.word.LocationIdentity;
 
@@ -360,7 +361,7 @@ public class RuntimeCompiledMethodSupport {
              * We cannot fold simulated values during initial before-analysis graph creation;
              * however, this runs after analysis has completed.
              */
-            return readValue((AnalysisField) field, receiver, true);
+            return readValue((AnalysisField) field, receiver, true, false);
         }
     }
 
@@ -377,6 +378,7 @@ public class RuntimeCompiledMethodSupport {
      */
     @SuppressWarnings("javadoc")
     public static class RuntimeCompilationGraphEncoder extends GraphEncoder {
+        public static final NodeClassMap RUNTIME_NODE_CLASS_MAP = new NodeClassMap();
 
         private final ImageHeapScanner heapScanner;
         /**
@@ -386,19 +388,9 @@ public class RuntimeCompiledMethodSupport {
         private final Map<ImageHeapConstant, LocationIdentity> locationIdentityCache;
 
         public RuntimeCompilationGraphEncoder(Architecture architecture, ImageHeapScanner heapScanner) {
-            super(architecture);
+            super(architecture, null, RUNTIME_NODE_CLASS_MAP);
             this.heapScanner = heapScanner;
             this.locationIdentityCache = new ConcurrentHashMap<>();
-        }
-
-        @Override
-        protected void addObject(Object object) {
-            super.addObject(hostedToRuntime(object));
-        }
-
-        @Override
-        protected void writeObjectId(Object object) {
-            super.writeObjectId(hostedToRuntime(object));
         }
 
         @Override
@@ -406,7 +398,8 @@ public class RuntimeCompiledMethodSupport {
             return new RuntimeCompilationGraphDecoder(architecture, decodedGraph, heapScanner);
         }
 
-        private Object hostedToRuntime(Object object) {
+        @Override
+        protected Object replaceObjectForEncoding(Object object) {
             if (object instanceof ImageHeapConstant heapConstant) {
                 return SubstrateGraalUtils.hostedToRuntime(heapConstant, heapScanner.getConstantReflection());
             } else if (object instanceof ObjectLocationIdentity oli && oli.getObject() instanceof ImageHeapConstant heapConstant) {
@@ -508,7 +501,7 @@ public class RuntimeCompiledMethodSupport {
      * Removes {@link DeoptEntryNode}s, {@link DeoptProxyAnchorNode}s, and {@link DeoptProxyNode}s
      * which are determined to be unnecessary after the runtime compilation methods are optimized.
      */
-    private static class RemoveUnneededDeoptSupport extends Phase {
+    private static final class RemoveUnneededDeoptSupport extends Phase {
         enum RemovalDecision {
             KEEP,
             PROXIFY,
@@ -554,7 +547,7 @@ public class RuntimeCompiledMethodSupport {
             }
         }
 
-        RemovalDecision getDecision(StateSplit node, EconomicMap<StateSplit, RemovalDecision> decisionCache) {
+        static RemovalDecision getDecision(StateSplit node, EconomicMap<StateSplit, RemovalDecision> decisionCache) {
             RemovalDecision cached = decisionCache.get(node);
             if (cached != null) {
                 return cached;

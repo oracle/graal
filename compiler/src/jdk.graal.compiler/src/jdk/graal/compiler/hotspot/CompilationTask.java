@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +28,13 @@ import static jdk.graal.compiler.core.CompilationWrapper.ExceptionAction.Diagnos
 import static jdk.graal.compiler.core.CompilationWrapper.ExceptionAction.ExitVM;
 import static jdk.graal.compiler.core.GraalCompilerOptions.CompilationBailoutAsFailure;
 import static jdk.graal.compiler.core.GraalCompilerOptions.CompilationFailureAction;
+import static jdk.graal.compiler.core.GraalCompilerOptions.PrintCompilation;
 import static jdk.graal.compiler.core.phases.HighTier.Options.Inline;
+import static jdk.graal.compiler.hotspot.CompilationTask.Options.MethodRecompilationLimit;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.io.PrintStream;
+import java.util.ListIterator;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -42,6 +44,7 @@ import jdk.graal.compiler.core.CompilationPrinter;
 import jdk.graal.compiler.core.CompilationWatchDog;
 import jdk.graal.compiler.core.CompilationWrapper;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -51,6 +54,7 @@ import jdk.graal.compiler.debug.DebugContext.Description;
 import jdk.graal.compiler.debug.DebugDumpScope;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -61,8 +65,14 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.common.DeoptimizationGroupingPhase;
+import jdk.graal.compiler.phases.common.ForceDeoptSpeculationPhase;
+import jdk.graal.compiler.phases.schedule.SchedulePhase;
+import jdk.graal.compiler.phases.tiers.LowTierContext;
+import jdk.graal.compiler.phases.tiers.MidTierContext;
+import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -72,19 +82,35 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotNmethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
 public class CompilationTask implements CompilationWatchDog.EventHandler {
 
-    static class Options {
-        @Option(help = "Perform a full GC of the libgraal heap after every compile to reduce idle heap and reclaim " +
-                        "references to the HotSpot heap.  This flag has no effect in the context of jargraal.", type = OptionType.Debug)//
-        public static final OptionKey<Boolean> FullGCAfterCompile = new OptionKey<>(false);
+    public static class Options {
+        @Option(help = """
+                        Options which are enabled based on the method being compiled.
+                        The basic syntax is a MethodFilter option specification followed by a list of options to be set for that compilation.
+                        "MethodFilter:" is used to distinguish this from normal usage of MethodFilter as option.
+                        This can be repeated multiple times with each MethodFilter option separating the groups.
+                        For example:
+                        "    -D""" + HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX + """
+                        PerMethodOptions=MethodFilter:String.indexOf SpeculativeGuardMovement=false MethodFilter:Integer.* SpeculativeGuardMovement=false
+                        disables SpeculativeGuardMovement for compiles of String.indexOf and all methods in Integer.
+                        If the value starts with a non-letter character, that
+                        character is used as the separator between options instead of a space.""")//
+        public static final OptionKey<String> PerMethodOptions = new OptionKey<>(null);
+        @Option(help = "Hard limit on the number of recompilations to avoid deopt loops. Exceeding the limit results in a permanent bailout. " + //
+                        "Negative value means the limit is disabled. The default is -1 (disabled).", type = OptionType.Debug)//
+        public static final OptionKey<Integer> MethodRecompilationLimit = new OptionKey<>(-1);
+        @Option(help = "When the number of recompilations exceeds the limit, enable the detection of repeated identical deopts and report the source of the deopt loop when detected. " + // +
+                        "Negative value means the limit is disabled. The default is -1 (disabled).", type = OptionType.Debug)//
+        public static final OptionKey<Integer> DetectRecompilationLimit = new OptionKey<>(-1);
     }
 
     @Override
-    public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation, StackTraceElement[] stackTrace, int stuckTime) {
+    public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation, StackTraceElement[] stackTrace, long stuckTime) {
         CompilationWatchDog.EventHandler.super.onStuckCompilation(watchDog, watched, compilation, stackTrace, stuckTime);
         TTY.println("Compilation %s on %s appears stuck - exiting VM", compilation, watched);
         HotSpotGraalServices.exit(STUCK_COMPILATION_EXIT_CODE, jvmciRuntime);
@@ -93,7 +119,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
     private final HotSpotJVMCIRuntime jvmciRuntime;
 
     protected final HotSpotGraalCompiler compiler;
-    private final HotSpotCompilationIdentifier compilationId;
+    protected final HotSpotCompilationIdentifier compilationId;
 
     private HotSpotInstalledCode installedCode;
 
@@ -110,6 +136,10 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
 
     private final boolean eagerResolving;
 
+    protected boolean checkRecompileCycle;
+
+    protected final int decompileCount;
+
     /**
      * Filter describing which types in {@link JavaTypeProfile} should be considered for profile
      * writing. This allows programmatically changing which types are saved.
@@ -117,8 +147,8 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
     private TypeFilter profileSaveFilter;
 
     protected class HotSpotCompilationWrapper extends CompilationWrapper<HotSpotCompilationRequestResult> {
-        CompilationResult result;
-        StructuredGraph graph;
+        protected CompilationResult result;
+        protected StructuredGraph graph;
 
         protected HotSpotCompilationWrapper() {
             super(compiler.getGraalRuntime().getOutputDirectory(), compiler.getGraalRuntime().getCompilationProblemsPerAction());
@@ -149,8 +179,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
 
         @Override
         protected HotSpotCompilationRequestResult handleException(Throwable t) {
-            if (t instanceof BailoutException) {
-                BailoutException bailout = (BailoutException) t;
+            if (t instanceof BailoutException bailout) {
                 /*
                  * Handling of permanent bailouts: Permanent bailouts that can happen for example
                  * due to unsupported unstructured control flow in the bytecodes of a method must
@@ -159,11 +188,15 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                  */
                 return HotSpotCompilationRequestResult.failure(bailout.getMessage(), !bailout.isPermanent());
             }
+            if (t instanceof ForceDeoptSpeculationPhase.TooManyDeoptimizationsError) {
+                // Handle this as a permanent bailout
+                return HotSpotCompilationRequestResult.failure(t.getMessage(), false);
+            }
 
             /*
              * Treat random exceptions from the compiler as indicating a problem compiling this
              * method. Report the result of toString instead of getMessage to ensure that the
-             * exception type is included in the output in case there's no detail mesage.
+             * exception type is included in the output in case there's no detail message.
              */
             return HotSpotCompilationRequestResult.failure(t.toString(), false);
         }
@@ -182,8 +215,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
 
         @Override
         protected ExceptionAction lookupAction(OptionValues values, Throwable cause) {
-            if (cause instanceof BailoutException) {
-                BailoutException bailout = (BailoutException) cause;
+            if (cause instanceof BailoutException bailout) {
                 if (bailout.isPermanent()) {
                     // Respect current action if it has been explicitly set.
                     if (!CompilationBailoutAsFailure.hasBeenSet(values)) {
@@ -220,7 +252,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
          */
         private static boolean shouldExitVM(Throwable throwable) {
             // If not in libgraal, don't exit
-            if (!IS_IN_NATIVE_IMAGE) {
+            if (LibGraalSupport.INSTANCE == null) {
                 return false;
             }
             // If assertions are not enabled, don't exit.
@@ -265,7 +297,27 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
 
             try (DebugContext.Scope s = debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
                 graph = compiler.createGraph(method, entryBCI, profileProvider, compilationId, debug.getOptions(), debug);
-                result = compiler.compile(graph, shouldRetainLocalVariables, shouldUsePreciseUnresolvedDeopts, eagerResolving, compilationId, debug);
+                Suites suites = compiler.getSuites(compiler.getGraalRuntime().getHostProviders(), debug.getOptions());
+                if (checkRecompileCycle && (MethodRecompilationLimit.getValue(debug.getOptions()) < 0 || decompileCount < MethodRecompilationLimit.getValue(debug.getOptions()))) {
+                    /*
+                     * Disable DeoptimizationGroupingPhase to simplify the creation of the
+                     * speculations for each deopt.
+                     */
+                    ListIterator<BasePhase<? super MidTierContext>> phase = suites.getMidTier().findPhase(DeoptimizationGroupingPhase.class);
+                    if (phase != null) {
+                        phase.remove();
+                    }
+                    ListIterator<BasePhase<? super LowTierContext>> lowTierPhasesIterator = suites.getLowTier().findPhase(SchedulePhase.FinalSchedulePhase.class);
+                    if (lowTierPhasesIterator != null) {
+                        lowTierPhasesIterator.previous();
+                        lowTierPhasesIterator.add(new ForceDeoptSpeculationPhase(decompileCount, null));
+                    }
+                }
+                result = compiler.compile(graph, shouldRetainLocalVariables, shouldUsePreciseUnresolvedDeopts, eagerResolving, compilationId, debug, suites);
+                if (checkRecompileCycle && (MethodRecompilationLimit.getValue(debug.getOptions()) >= 0 && decompileCount >= MethodRecompilationLimit.getValue(debug.getOptions()))) {
+                    ProfilingInfo info = profileProvider.getProfilingInfo(method);
+                    throw new ForceDeoptSpeculationPhase.TooManyDeoptimizationsError("too many decompiles: " + decompileCount + " " + ForceDeoptSpeculationPhase.getDeoptSummary(info));
+                }
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -278,6 +330,10 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
 
             stats.finish(method, installedCode);
 
+            return buildCompilationRequestResult(method);
+        }
+
+        protected HotSpotCompilationRequestResult buildCompilationRequestResult(HotSpotResolvedJavaMethod method) {
             // For compilation of substitutions the method in the compilation request might be
             // different than the actual method parsed. The root of the compilation will always
             // be the first method in the methods list, so use that instead.
@@ -323,31 +379,76 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         this.shouldUsePreciseUnresolvedDeopts = shouldUsePreciseUnresolvedDeopts;
         this.eagerResolving = eagerResolving;
         this.installAsDefault = installAsDefault;
+        this.decompileCount = HotSpotGraalServices.getDecompileCount(request.getMethod());
     }
 
     public void setTypeFilter(TypeFilter typeFilter) {
         this.profileSaveFilter = typeFilter;
     }
 
-    public OptionValues filterOptions(OptionValues options) {
+    public OptionValues filterOptions(OptionValues originalOptions) {
+        HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
+        GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
+        OptionValues newOptions = originalOptions;
+
+        // Set any options for this compile.
+        String perMethodOptions = Options.PerMethodOptions.getValue(originalOptions);
+        if (perMethodOptions != null) {
+            EconomicMap<OptionKey<?>, Object> values = null;
+            try {
+                EconomicMap<String, String> optionSettings = null;
+                for (String option : OptionsParser.splitOptions(perMethodOptions)) {
+                    String prefix = "MethodFilter:";
+                    if (option.startsWith(prefix)) {
+                        MethodFilter filter = MethodFilter.parse(option.substring(prefix.length()));
+                        if (filter.matches(getMethod())) {
+                            // Begin accumulating options
+                            optionSettings = EconomicMap.create();
+                        } else if (optionSettings != null) {
+                            // This is a new MethodFilter: so stop collecting options
+                            break;
+                        }
+                    } else if (optionSettings != null) {
+                        OptionsParser.parseOptionSettingTo(option, optionSettings);
+                    }
+                }
+                if (optionSettings != null) {
+                    if (optionSettings.isEmpty()) {
+                        throw new IllegalArgumentException("No options specified for MethodFilter:");
+                    }
+                    values = EconomicMap.create();
+                    OptionsParser.parseOptions(optionSettings, values, OptionsParser.getOptionsLoader());
+                }
+            } catch (Exception e) {
+                values = null;
+                TTY.println(e.toString());
+                TTY.println("Errors encountered during " + Options.PerMethodOptions.getName() + " parsing.  Exiting...");
+                HotSpotGraalServices.exit(-1, jvmciRuntime);
+            }
+
+            if (values != null) {
+                newOptions = new OptionValues(newOptions, values);
+                if (PrintCompilation.getValue(newOptions)) {
+                    TTY.println("Compiling " + getMethod() + " with extra options: " + new OptionValues(values));
+                }
+            }
+        }
         /*
          * Disable inlining if HotSpot has it disabled unless it's been explicitly set in Graal.
          */
-        HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
-        GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
-        OptionValues newOptions = options;
         if (!config.inline) {
             EconomicMap<OptionKey<?>, Object> m = OptionValues.newOptionMap();
-            if (Inline.getValue(options) && !Inline.hasBeenSet(options)) {
+            if (Inline.getValue(newOptions) && !Inline.hasBeenSet(newOptions)) {
                 m.put(Inline, false);
             }
-            if (InlineDuringParsing.getValue(options) && !InlineDuringParsing.hasBeenSet(options)) {
+            if (InlineDuringParsing.getValue(newOptions) && !InlineDuringParsing.hasBeenSet(newOptions)) {
                 m.put(InlineDuringParsing, false);
             }
             if (!m.isEmpty()) {
-                newOptions = new OptionValues(options, m);
+                newOptions = new OptionValues(newOptions, m);
             }
         }
+
         return newOptions;
     }
 
@@ -370,6 +471,10 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
 
     public int getEntryBCI() {
         return getRequest().getEntryBCI();
+    }
+
+    public StableProfileProvider getProfileProvider() {
+        return profileProvider;
     }
 
     /**
@@ -427,15 +532,20 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         }
     }
 
-    @SuppressWarnings({"try", "unchecked"})
+    @SuppressWarnings({"try"})
     public HotSpotCompilationRequestResult runCompilation(DebugContext debug) {
         try (DebugCloseable a = CompilationTime.start(debug)) {
             HotSpotCompilationRequestResult result = runCompilation(debug, new HotSpotCompilationWrapper());
-
-            // Notify the runtime that most objects allocated in the current compilation
-            // are dead and can be reclaimed.
-            try (DebugCloseable timer = HintedFullGC.start(debug)) {
-                GraalServices.notifyLowMemoryPoint(Options.FullGCAfterCompile.getValue(debug.getOptions()));
+            LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+            if (libgraal != null) {
+                /*
+                 * Notify the libgraal runtime that most objects allocated in the current
+                 * compilation are dead and can be reclaimed.
+                 */
+                try (DebugCloseable timer = HintedFullGC.start(debug)) {
+                    libgraal.notifyLowMemoryPoint(true);
+                    libgraal.processReferences();
+                }
             }
             return result;
         }
@@ -488,7 +598,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
     }
 
     @SuppressWarnings("try")
-    private void installMethod(DebugContext debug, StructuredGraph graph, final CompilationResult compResult) {
+    protected void installMethod(DebugContext debug, StructuredGraph graph, final CompilationResult compResult) {
         final CodeCacheProvider codeCache = jvmciRuntime.getHostJVMCIBackend().getCodeCache();
         HotSpotBackend backend = compiler.getGraalRuntime().getHostBackend();
         installedCode = null;

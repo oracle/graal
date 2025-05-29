@@ -8,10 +8,6 @@ intf java.lang.annotation.Annotation
 meth public abstract !hasdefault java.lang.String limit()
 meth public abstract !hasdefault java.lang.String value()
 
-CLSS public abstract interface com.oracle.truffle.api.library.DefaultExportProvider
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="23.1")
-intf com.oracle.truffle.api.library.provider.DefaultExportProvider
-
 CLSS public abstract com.oracle.truffle.api.library.DynamicDispatchLibrary
 cons protected init()
 meth public abstract java.lang.Object cast(java.lang.Object)
@@ -19,10 +15,6 @@ meth public java.lang.Class<?> dispatch(java.lang.Object)
 meth public static com.oracle.truffle.api.library.LibraryFactory<com.oracle.truffle.api.library.DynamicDispatchLibrary> getFactory()
 supr com.oracle.truffle.api.library.Library
 hfds FACTORY
-
-CLSS public abstract interface com.oracle.truffle.api.library.EagerExportProvider
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="23.1")
-intf com.oracle.truffle.api.library.provider.EagerExportProvider
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.library.ExportLibrary
  anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.library.ExportLibrary$Repeat)
@@ -210,6 +202,7 @@ intf com.oracle.truffle.api.nodes.NodeInterface
 intf java.lang.Cloneable
 meth protected final java.util.concurrent.locks.Lock getLock()
 meth protected final void notifyInserted(com.oracle.truffle.api.nodes.Node)
+meth protected final void reportReplace(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node,java.lang.CharSequence)
 meth protected void onReplace(com.oracle.truffle.api.nodes.Node,java.lang.CharSequence)
 meth public boolean isAdoptable()
 meth public com.oracle.truffle.api.nodes.Node copy()
@@ -240,14 +233,6 @@ hfds GIL_LOCK,PARENT_LIMIT,SAME_LANGUAGE_CHECK_VISITOR,parent
 CLSS public abstract interface com.oracle.truffle.api.nodes.NodeInterface
 
 CLSS public abstract interface java.lang.Cloneable
-
-CLSS public abstract interface !annotation java.lang.Deprecated
- anno 0 java.lang.annotation.Documented()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, MODULE, PARAMETER, TYPE])
-intf java.lang.annotation.Annotation
-meth public abstract !hasdefault boolean forRemoval()
-meth public abstract !hasdefault java.lang.String since()
 
 CLSS public java.lang.Object
 cons public init()

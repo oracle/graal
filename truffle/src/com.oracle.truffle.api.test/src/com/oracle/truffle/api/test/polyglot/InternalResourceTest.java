@@ -668,6 +668,130 @@ public class InternalResourceTest {
     }
 
     @Test
+    public void testMissingResourceConfiguredByResourcePath() throws Exception {
+        TruffleTestAssumptions.assumeNotAOT();
+        // Prepare standalone resources
+        Path cacheRoot = Files.createTempDirectory(null);
+        Engine.copyResources(cacheRoot, TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class));
+        // Reset cached resource root
+        TemporaryResourceCacheRoot.setTestCacheRoot(null, false);
+        try {
+            Path libPath = cacheRoot.resolve(TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)).resolve(LibraryResource.ID).toRealPath();
+            Path srcPath = cacheRoot.resolve(TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)).resolve(SourcesResource.ID).toRealPath();
+
+            // Set explicit resource cache root
+            System.setProperty(String.format("polyglot.engine.resourcePath.%s.%s", TestUtils.getDefaultLanguageId(TestConfiguredMissingResource.class), LibraryResource.ID), libPath.toString());
+            System.setProperty(String.format("polyglot.engine.resourcePath.%s.%s", TestUtils.getDefaultLanguageId(TestConfiguredMissingResource.class), SourcesResource.ID), srcPath.toString());
+            try (Context context = Context.create()) {
+                AbstractExecutableTestLanguage.execute(context, TestConfiguredMissingResource.class, libPath.toString(), srcPath.toString());
+            } finally {
+                // Reset cached resource root
+                TemporaryResourceCacheRoot.setTestCacheRoot(null, false);
+            }
+        } finally {
+            // Clean explicit resource root
+            System.getProperties().remove(String.format("polyglot.engine.resourcePath.%s.%s", TestUtils.getDefaultLanguageId(TestConfiguredMissingResource.class), LibraryResource.ID));
+            System.getProperties().remove(String.format("polyglot.engine.resourcePath.%s.%s", TestUtils.getDefaultLanguageId(TestConfiguredMissingResource.class), SourcesResource.ID));
+            delete(cacheRoot);
+        }
+    }
+
+    @Test
+    public void testMissingResourceConfiguredByComponentPath() throws Exception {
+        TruffleTestAssumptions.assumeNotAOT();
+        // Prepare standalone resources
+        Path cacheRoot = Files.createTempDirectory(null);
+        Engine.copyResources(cacheRoot, TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class));
+        // Reset cached resource root
+        TemporaryResourceCacheRoot.setTestCacheRoot(null, false);
+        try {
+            Path componentPath = cacheRoot.resolve(TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)).toRealPath();
+            Path libPath = componentPath.resolve(LibraryResource.ID).toRealPath();
+            Path srcPath = componentPath.resolve(SourcesResource.ID).toRealPath();
+
+            // Set explicit component resource cache root
+            System.setProperty(String.format("polyglot.engine.resourcePath.%s", TestUtils.getDefaultLanguageId(TestConfiguredMissingResource.class)), componentPath.toString());
+            try (Context context = Context.create()) {
+                AbstractExecutableTestLanguage.execute(context, TestConfiguredMissingResource.class, libPath.toString(), srcPath.toString());
+            } finally {
+                // Reset cached resource root
+                TemporaryResourceCacheRoot.setTestCacheRoot(null, false);
+            }
+        } finally {
+            // Clean explicit resource root
+            System.getProperties().remove(String.format("polyglot.engine.resourcePath.%s", TestUtils.getDefaultLanguageId(TestConfiguredMissingResource.class)));
+            delete(cacheRoot);
+        }
+    }
+
+    @Registration(optionalResources = {LibraryResource.ID, SourcesResource.ID})
+    public static class TestConfiguredMissingResource extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        @SuppressWarnings("try")
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            try (TemporaryResourceCacheRoot cache = new TemporaryResourceCacheRoot()) {
+                TruffleFile libRoot = env.getInternalResource(LibraryResource.ID);
+                verifyResources(libRoot, LibraryResource.RESOURCES);
+                TruffleFile srcRoot = env.getInternalResource(SourcesResource.ID);
+                verifyResources(srcRoot, SourcesResource.RESOURCES);
+                return "";
+            }
+        }
+    }
+
+    @Test
+    public void testMissingResourceUnConfigured() throws Exception {
+        TruffleTestAssumptions.assumeNotAOT();
+        // Prepare standalone resources
+        Path cacheRoot = Files.createTempDirectory(null);
+        Engine.copyResources(cacheRoot, TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class));
+        // Reset cached resource root
+        TemporaryResourceCacheRoot.setTestCacheRoot(null, false);
+        try {
+            Path componentPath = cacheRoot.resolve(TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)).toRealPath();
+            Path libPath = componentPath.resolve(LibraryResource.ID).toRealPath();
+            Path srcPath = componentPath.resolve(SourcesResource.ID).toRealPath();
+
+            // Set explicit component resource cache root
+            try (Context context = Context.create()) {
+                AbstractExecutableTestLanguage.execute(context, TestUnConfiguredMissingResource.class, libPath.toString(), srcPath.toString());
+            } finally {
+                // Reset cached resource root
+                TemporaryResourceCacheRoot.setTestCacheRoot(null, false);
+            }
+        } finally {
+            delete(cacheRoot);
+        }
+    }
+
+    @Registration(optionalResources = {LibraryResource.ID, SourcesResource.ID})
+    public static class TestUnConfiguredMissingResource extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        @SuppressWarnings("try")
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            try (TemporaryResourceCacheRoot cache = new TemporaryResourceCacheRoot()) {
+                AbstractPolyglotTest.assertFails(() -> {
+                    env.getInternalResource(LibraryResource.ID);
+                    return null;
+                }, IllegalStateException.class, (e) -> {
+                    assertTrue(e.getMessage().contains("-Dpolyglot.engine.resourcePath"));
+                });
+                AbstractPolyglotTest.assertFails(() -> {
+                    env.getInternalResource(SourcesResource.ID);
+                    return null;
+                }, IllegalStateException.class, (e) -> {
+                    assertTrue(e.getMessage().contains("-Dpolyglot.engine.resourcePath"));
+                });
+                return "";
+            }
+        }
+    }
+
+    @Test
     public void testLanguageResourcesLookedUpById() {
         TruffleTestAssumptions.assumeNotAOT();
         try (Context context = Context.create()) {

@@ -9,8 +9,8 @@ permalink: /reference-manual/native-image/guides/build-java-modules-into-native-
 
 GraalVM Native Image supports the [Java Platform Module System](https://www.oracle.com/uk/corporate/features/understanding-java-9-modules.html), introduced in Java 9, which means you can convert a modularized Java application into a native executable. 
 
-The `native-image` tool accepts the module-related arguments such as `--module` (`-m`), `--module-path` (`-p`), `--add-opens`, `--add-exports` (same as for the `java` launcher). 
-When such a module-related argument is used, the `native-image` tool itself is used as a module too.
+The `native-image` tool accepts the module-related options such as `--module` (`-m`), `--module-path` (`-p`), `--add-opens`, `--add-exports` (same as for the `java` launcher). 
+When such a module-related option is used, the `native-image` tool itself is used as a module too.
  
 In addition to supporting `--add-reads` and `--add-modules`, all module related options are considered prior to scanning the module path. 
 This helps prevent class loading errors and allow for better module introspection at runtime.
@@ -48,17 +48,17 @@ Make sure you have installed a GraalVM JDK.
 The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
 For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
-1. Download or clone the demos repository and navigate to the directory _native-hello-module/_:
+1. Download or clone the demos repository and navigate to the directory _native-image/build-java-modules/_:
     ```bash
     git clone https://github.com/graalvm/graalvm-demos
     ```
     ```bash
-    cd graalvm-demos/native-hello-module
+    cd graalvm-demos/native-image/build-java-modules
     ```
 
 2. Compile and package the project with Maven:
     ```bash
-    mvn package
+    mvn clean package
     ```
 
 3. Test running it on the GraalVM JDK:
@@ -78,4 +78,4 @@ For other installation options, visit the [Downloads section](https://www.graalv
 
 ### Related Documentation
 
-- Learn more how you can [access resources for a Java module at runtime](../Resources.md#resources-in-java-modules).
+- Learn more how you can [access resources for a Java module at runtime](../ReachabilityMetadata.md#resources-in-java-modules).

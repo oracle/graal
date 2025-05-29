@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import com.oracle.truffle.api.dsl.Bind;
@@ -36,9 +35,9 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
+import com.oracle.truffle.espresso.nodes.interop.InteropUnwrapNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNode;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -66,12 +65,13 @@ public final class ListInterop extends IterableInterop {
                     @Cached ListGet listGet,
                     @Bind("getMeta().java_util_List_size") Method listSizeMethod,
                     @Cached.Shared("size") @Cached LookupAndInvokeKnownMethodNode size,
+                    @Cached InteropUnwrapNode unwrapNode,
                     @Cached @Shared("error") BranchProfile error) throws InvalidArrayIndexException {
         if (!boundsCheck(receiver, index, listSizeMethod, size)) {
             error.enter();
             throw InvalidArrayIndexException.create(index);
         }
-        return listGet.listGet(receiver, index, error);
+        return listGet.listGet(receiver, index, error, unwrapNode);
     }
 
     @ExportMessage
@@ -152,9 +152,9 @@ public final class ListInterop extends IterableInterop {
     @GenerateUncached
     abstract static class ListGet extends EspressoNode {
 
-        public Object listGet(StaticObject receiver, long index, BranchProfile error) throws InvalidArrayIndexException {
+        public Object listGet(StaticObject receiver, long index, BranchProfile error, InteropUnwrapNode unwrapNode) throws InvalidArrayIndexException {
             try {
-                return InteropUtils.unwrap(getLanguage(), execute(receiver, (int) index), getMeta());
+                return unwrapNode.execute(execute(receiver, (int) index));
             } catch (EspressoException e) {
                 error.enter();
                 if (InterpreterToVM.instanceOf(e.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
@@ -177,13 +177,16 @@ public final class ListInterop extends IterableInterop {
     @GenerateUncached
     abstract static class ListSet extends EspressoNode {
 
-        public void listSet(StaticObject receiver, long index, Object value, BranchProfile error) throws InvalidArrayIndexException {
+        public void listSet(StaticObject receiver, long index, Object value, BranchProfile error) throws InvalidArrayIndexException, UnsupportedMessageException {
             try {
                 execute(receiver, (int) index, value);
             } catch (EspressoException e) {
                 error.enter();
                 if (InterpreterToVM.instanceOf(e.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
                     throw InvalidArrayIndexException.create(index);
+                }
+                if (InterpreterToVM.instanceOf(e.getGuestException(), receiver.getKlass().getMeta().java_lang_UnsupportedOperationException)) {
+                    throw UnsupportedMessageException.create(e);
                 }
                 throw e; // unexpected exception
             }

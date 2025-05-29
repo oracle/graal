@@ -86,7 +86,7 @@ public class NodeUtilTest {
         });
     }
 
-    private static class NotAdoptableNode extends Node {
+    private static final class NotAdoptableNode extends Node {
         @Override
         public boolean isAdoptable() {
             return false;

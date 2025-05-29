@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.nodes.quick.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -50,7 +49,7 @@ public final class ForeignArrayUtils {
             throw EspressoError.shouldNotReachHere("readArrayElement on a non-array foreign object", e);
         } catch (InvalidArrayIndexException e) {
             exceptionProfile.enter();
-            throw meta.throwExceptionWithMessage(meta.getMeta().java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 

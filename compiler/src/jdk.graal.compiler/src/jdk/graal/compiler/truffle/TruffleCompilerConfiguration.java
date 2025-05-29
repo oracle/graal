@@ -26,14 +26,15 @@ package jdk.graal.compiler.truffle;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Supplier;
+
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.phases.tiers.Suites;
-
-import com.oracle.truffle.compiler.TruffleCompilerRuntime;
-
+import jdk.graal.compiler.truffle.host.TruffleHostEnvironment.TruffleRuntimeScope;
 import jdk.vm.ci.code.Architecture;
 
 public final class TruffleCompilerConfiguration {
@@ -44,6 +45,7 @@ public final class TruffleCompilerConfiguration {
     private final TruffleTierConfiguration lastTier;
     private final KnownTruffleTypes types;
     private final Suites hostSuite;
+    private final Supplier<TruffleRuntimeScope> openCanCallTruffleRuntimeScope;
 
     public TruffleCompilerConfiguration(
                     TruffleCompilerRuntime runtime,
@@ -52,7 +54,8 @@ public final class TruffleCompilerConfiguration {
                     TruffleTierConfiguration firstTier,
                     TruffleTierConfiguration lastTier,
                     KnownTruffleTypes knownTruffleTypes,
-                    Suites hostSuite) {
+                    Suites hostSuite,
+                    Supplier<TruffleRuntimeScope> openCanCallTruffleRuntimeScope) {
         this.runtime = runtime;
         this.plugins = plugins;
         this.provider = provider;
@@ -60,6 +63,7 @@ public final class TruffleCompilerConfiguration {
         this.lastTier = lastTier;
         this.types = knownTruffleTypes;
         this.hostSuite = hostSuite;
+        this.openCanCallTruffleRuntimeScope = openCanCallTruffleRuntimeScope;
     }
 
     public TruffleCompilerRuntime runtime() {
@@ -91,7 +95,7 @@ public final class TruffleCompilerConfiguration {
     }
 
     public TruffleCompilerConfiguration withFirstTier(TruffleTierConfiguration tier) {
-        return new TruffleCompilerConfiguration(runtime, plugins, provider, tier, lastTier, types, hostSuite);
+        return new TruffleCompilerConfiguration(runtime, plugins, provider, tier, lastTier, types, hostSuite, openCanCallTruffleRuntimeScope);
     }
 
     public List<Backend> backends() {
@@ -106,5 +110,9 @@ public final class TruffleCompilerConfiguration {
         Architecture arch = lastTier().backend().getTarget().arch;
         assert arch.equals(firstTier().backend().getTarget().arch) : "target architecture must be the same for first and last tier.";
         return arch;
+    }
+
+    TruffleRuntimeScope openCanCallTruffleRuntimeScope() {
+        return openCanCallTruffleRuntimeScope != null ? openCanCallTruffleRuntimeScope.get() : null;
     }
 }

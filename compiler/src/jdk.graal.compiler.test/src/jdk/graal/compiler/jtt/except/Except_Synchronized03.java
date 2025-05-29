@@ -32,7 +32,7 @@ import jdk.graal.compiler.jtt.JTTTest;
  */
 public class Except_Synchronized03 extends JTTTest {
 
-    private static class TestClass {
+    private static final class TestClass {
         int x = 1;
 
         @SuppressWarnings("all")

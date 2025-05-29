@@ -56,7 +56,7 @@ public class ContextInsensitiveFieldTypeFlow extends FieldTypeFlow {
 
     @Override
     public String toString() {
-        return "ContextInsensitiveFieldTypeFlow<" + source.format("%h.%n") + System.lineSeparator() + getState() + ">";
+        return "ContextInsensitiveFieldTypeFlow<" + source.format("%h.%n") + System.lineSeparator() + getStateDescription() + ">";
     }
 
 }

@@ -28,6 +28,7 @@ import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
 
 import java.io.FileDescriptor;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
@@ -37,7 +38,6 @@ import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -61,7 +61,7 @@ public class WindowsUtils {
 
     public static int getpid(java.lang.Process process) {
         Target_java_lang_ProcessImpl processImpl = SubstrateUtil.cast(process, Target_java_lang_ProcessImpl.class);
-        return com.oracle.svm.core.windows.headers.Process.NoTransitions.GetProcessId(WordFactory.pointer(processImpl.handle));
+        return com.oracle.svm.core.windows.headers.Process.NoTransitions.GetProcessId(Word.pointer(processImpl.handle));
     }
 
     @TargetClass(java.io.FileDescriptor.class)
@@ -102,7 +102,7 @@ public class WindowsUtils {
 
             CIntPointer bytesWritten = UnsafeStackValue.get(CIntPointer.class);
 
-            int ret = FileAPI.WriteFile(handle, curBuf, curLen, bytesWritten, WordFactory.nullPointer());
+            int ret = FileAPI.WriteFile(handle, curBuf, curLen, bytesWritten, Word.nullPointer());
 
             if (ret == 0) {
                 return false;
@@ -150,7 +150,7 @@ public class WindowsUtils {
     }
 
     /** Sentinel value denoting the uninitialized kernel handle. */
-    public static final PointerBase UNINITIALIZED_HANDLE = WordFactory.pointer(1);
+    public static final PointerBase UNINITIALIZED_HANDLE = Word.pointer(1);
 
     @CPointerTo(nameOfCType = "void*")
     interface CFunctionPointerPointer<T extends CFunctionPointer> extends PointerBase {
@@ -160,7 +160,7 @@ public class WindowsUtils {
     }
 
     /** Sentinel value denoting the uninitialized pointer. */
-    static final PointerBase UNINITIALIZED_POINTER = WordFactory.pointer(0xBAD);
+    static final PointerBase UNINITIALIZED_POINTER = Word.pointer(0xBAD);
 
     /**
      * Retrieves and caches the address of an exported function from an already loaded DLL if the

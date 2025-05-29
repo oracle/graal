@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +65,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private final List<NodeData> enclosingNodes = new ArrayList<>();
     private NodeData declaringNode;
 
-    private final TypeSystemData typeSystem;
+    private TypeSystemData typeSystem;
     private final List<NodeChildData> children;
     private final List<NodeExecutionData> childExecutions;
     private final List<NodeFieldData> fields;
@@ -560,6 +561,10 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return typeSystem;
     }
 
+    public void setTypeSystem(TypeSystemData typeSystem) {
+        this.typeSystem = typeSystem;
+    }
+
     @Override
     public String dump() {
         return dump(0);
@@ -642,11 +647,12 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return children;
     }
 
-    public Collection<SpecializationData> computeUncachedSpecializations(List<SpecializationData> s) {
-        Set<SpecializationData> uncached = new LinkedHashSet<>(s);
-        // remove all replacable specializations
-        for (SpecializationData specialization : s) {
-            uncached.removeAll(specialization.getReplaces());
+    public Collection<SpecializationData> computeUncachedSpecializations(List<SpecializationData> allSpecializations) {
+        Set<SpecializationData> uncached = new LinkedHashSet<>(allSpecializations);
+        for (SpecializationData current : allSpecializations) {
+            if (current.isExcludeForUncached()) {
+                uncached.remove(current);
+            }
         }
         return uncached;
     }
@@ -735,6 +741,35 @@ public class NodeData extends Template implements Comparable<NodeData> {
         }
 
         return Arrays.asList(ElementUtils.getCommonSuperType(ProcessorContext.getInstance(), foundTypes));
+    }
+
+    public List<SpecializationData> findSpecializationsByName(Collection<String> methodNames) {
+        Set<String> specializationsLeft = new HashSet<>(methodNames);
+        List<SpecializationData> includedSpecializations = new ArrayList<>();
+        for (SpecializationData specialization : getReachableSpecializations()) {
+            if (specialization.getMethod() == null) {
+                continue;
+            }
+            String methodName = specialization.getMethodName();
+            if (specializationsLeft.contains(methodName)) {
+                includedSpecializations.add(specialization);
+                specializationsLeft.remove(methodName);
+            }
+            if (specializationsLeft.isEmpty()) {
+                break;
+            }
+        }
+        if (!specializationsLeft.isEmpty()) {
+            Set<String> availableNames = new HashSet<>();
+            for (SpecializationData specialization : getReachableSpecializations()) {
+                availableNames.add(specialization.getMethodName());
+            }
+            throw new IllegalArgumentException(
+                            String.format("Referenced specialization(s) with method names %s  not found for in type '%s'. Available names %s.", ElementUtils.getSimpleName(getTemplateType()),
+                                            specializationsLeft, availableNames));
+        }
+
+        return includedSpecializations;
     }
 
     public void setReportPolymorphism(boolean report) {

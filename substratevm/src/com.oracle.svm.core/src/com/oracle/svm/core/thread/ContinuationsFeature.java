@@ -27,11 +27,12 @@ package com.oracle.svm.core.thread;
 import java.lang.reflect.Field;
 import java.util.List;
 
-import com.oracle.svm.core.SubstrateControlFlowIntegrityFeature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
+import com.oracle.svm.core.SubstrateControlFlowIntegrityFeature;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -59,7 +60,15 @@ public class ContinuationsFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess access) {
         /* If continuations are not supported, "virtual" threads are bound to platform threads. */
         if (ContinuationSupport.Options.VMContinuations.getValue()) {
-            supported = !DeoptimizationSupport.enabled() && !SubstrateOptions.useLLVMBackend() && SubstrateControlFlowIntegrity.singleton().continuationsSupported();
+            boolean hostSupport = jdk.internal.vm.ContinuationSupport.isSupported();
+            if (!hostSupport) {
+                if (ContinuationSupport.Options.VMContinuations.hasBeenSet()) {
+                    throw UserError.abort("Continuation support has been explicitly enabled with option %s but is not available in the host VM", ContinuationSupport.Options.VMContinuations.getName());
+                }
+                RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+                rci.initializeAtRunTime("jdk.internal.vm.Continuation", "Host continuations are not supported");
+            }
+            supported = hostSupport && !DeoptimizationSupport.enabled() && !SubstrateOptions.useLLVMBackend() && SubstrateControlFlowIntegrity.singleton().continuationsSupported();
             UserError.guarantee(supported || !ContinuationSupport.Options.VMContinuations.hasBeenSet(),
                             "Continuation support has been explicitly enabled with option %s but is not available " +
                                             "because of the runtime compilation, LLVM backend, or control flow integrity features.",

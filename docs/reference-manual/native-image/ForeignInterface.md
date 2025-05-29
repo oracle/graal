@@ -30,14 +30,18 @@ These two kinds of calls are referred to as "downcalls" and "upcalls" respective
 ### Looking Up Native Functions
 
 The FFM API provides the `SymbolLookup` interface to find functions in native libraries by name.
-`SymbolLookup.loaderLookup()` is currently the only supported kind of `SymbolLookup`.
+Native image supports all available symbol lookup methods, i.e., `SymbolLookup.loaderLookup()`, `SymbolLookup.libraryLookup()`, and `Linker.defaultLookup()`.
 
 ### Registering Foreign Calls
 
 In order to perform calls to native code at run time, supporting code must be generated at image build time.
-Therefore, the `native-image` tool must be provided with descriptors that characterize the functions to which downcalls may be performed at run time.
+Therefore, the `native-image` tool must be provided with descriptors that characterize the functions with which downcalls or upcalls can be performed at runtime.
 
-These descriptors can be registered using a custom `Feature`, for example:
+For upcalls, it is recommended to register a specific static method as an upcall target by providing its declaring class and the method name.
+This allows `native-image` to create specialized upcall code that can be orders of magnitude faster than a upcall registered only by function descriptor.
+Whenever possible, this should be the preferred way to register upcalls.
+
+Descriptors and target methods can be registered using a custom `Feature`, for example:
 ```java
 import static java.lang.foreign.ValueLayout.*;
 
@@ -50,6 +54,9 @@ class ForeignRegistrationFeature implements Feature {
     RuntimeForeignAccess.registerForUpcall(FunctionDescriptor.of(JAVA_INT, JAVA_INT, JAVA_INT));
     RuntimeForeignAccess.registerForDowncall(FunctionDescriptor.of(ADDRESS, JAVA_INT, JAVA_INT), Linker.Option.firstVariadicArg(1));
     RuntimeForeignAccess.registerForDowncall(FunctionDescriptor.ofVoid(JAVA_INT), Linker.Option.captureCallState("errno"));
+
+    MethodHandle target = MethodHandles.lookup().findStatic(UserClass.class, "aStaticMethod", MethodType.of(int.class, int.class, int.class));
+    RuntimeForeignAccess.registerForUpcall(target, FunctionDescriptor.of(JAVA_INT, JAVA_INT, JAVA_INT));
   }
 }
 ```

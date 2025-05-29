@@ -42,12 +42,21 @@ package com.oracle.truffle.sl.nodes.expression;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives;
+import com.oracle.truffle.api.bytecode.OperationProxy;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
@@ -57,34 +66,60 @@ import com.oracle.truffle.sl.runtime.SLBigInteger;
  * This class is similar to the extensively documented {@link SLAddNode}.
  */
 @NodeInfo(shortName = "-")
+@OperationProxy.Proxyable(allowUncached = true)
 public abstract class SLSubNode extends SLBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class)
-    protected long doLong(long left, long right) {
+    public static long doLong(long left, long right) {
         return Math.subtractExact(left, right);
     }
 
-    @Specialization
-    @TruffleBoundary
-    protected SLBigInteger doSLBigInteger(SLBigInteger left, SLBigInteger right) {
-        return new SLBigInteger(left.getValue().subtract(right.getValue()));
+    @Specialization(replaces = "doLong")
+    public static SLBigInteger doSLBigInteger(SLBigInteger left, SLBigInteger right) {
+        BigInteger castLeft = left.getValue();
+        BigInteger castRight = right.getValue();
+        BigInteger result = subBoundary(castLeft, castRight);
+        return new SLBigInteger(result);
     }
 
-    @Specialization(replaces = "doSLBigInteger", guards = {"leftLibrary.fitsInBigInteger(left)", "rightLibrary.fitsInBigInteger(right)"}, limit = "3")
-    @TruffleBoundary
-    protected SLBigInteger doInteropBigInteger(Object left, Object right,
-                    @CachedLibrary("left") InteropLibrary leftLibrary,
-                    @CachedLibrary("right") InteropLibrary rightLibrary) {
-        try {
-            return new SLBigInteger(leftLibrary.asBigInteger(left).subtract(rightLibrary.asBigInteger(right)));
-        } catch (UnsupportedMessageException e) {
-            throw shouldNotReachHere(e);
-        }
+    @TruffleBoundary(allowInlining = true)
+    private static BigInteger subBoundary(BigInteger castLeft, BigInteger castRight) {
+        return castLeft.subtract(castRight);
     }
 
     @Fallback
-    protected Object typeError(Object left, Object right) {
-        throw SLException.typeError(this, left, right);
+    @HostCompilerDirectives.InliningCutoff
+    public static Object doFallback(Object left, Object right,
+                    @Cached SlowPathNode fallback,
+                    @Bind Node node) {
+        return fallback.execute(node, left, right);
+    }
+
+    @GenerateInline(false)
+    @GenerateUncached
+    public abstract static class SlowPathNode extends Node {
+
+        abstract Object execute(Node node, Object left, Object right);
+
+        @Specialization(guards = {"leftLibrary.fitsInBigInteger(left)", "rightLibrary.fitsInBigInteger(right)"}, limit = "3")
+        @SuppressWarnings("unused")
+        static SLBigInteger doInteropBigInteger(Node node, Object left, Object right,
+                        @CachedLibrary("left") InteropLibrary leftLibrary,
+                        @CachedLibrary("right") InteropLibrary rightLibrary) {
+            try {
+                BigInteger castLeft = leftLibrary.asBigInteger(left);
+                BigInteger castRight = rightLibrary.asBigInteger(right);
+                BigInteger result = subBoundary(castLeft, castRight);
+                return new SLBigInteger(result);
+            } catch (UnsupportedMessageException e) {
+                throw shouldNotReachHere(e);
+            }
+        }
+
+        @Fallback
+        static Object typeError(Node node, Object left, Object right) {
+            throw SLException.typeError(node, "-", left, right);
+        }
     }
 
 }

@@ -42,7 +42,7 @@ public final class NeverStripMineNode extends FixedWithNextNode implements LIRLo
 
     public static final NodeClass<NeverStripMineNode> TYPE = NodeClass.create(NeverStripMineNode.class);
 
-    private static class Unique {
+    private static final class Unique {
     }
 
     protected Unique unique;

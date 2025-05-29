@@ -236,7 +236,7 @@ public class FrameInfoEncoder {
      * compressed and uncompressed frame slices, uncompressed frame slices start with the
      * {@link FrameInfoDecoder#UNCOMPRESSED_FRAME_SLICE_MARKER}.
      */
-    private static class CompressedFrameInfoEncodingMetadata {
+    private static final class CompressedFrameInfoEncodingMetadata {
         final List<CompressedFrameData> framesToEncode = new ArrayList<>();
         final EconomicMap<CompressedFrameData, Integer> framesToEncodeIndexMap = EconomicMap.create(Equivalence.DEFAULT);
         final List<List<CompressedFrameData>> frameSlices = new ArrayList<>();
@@ -295,7 +295,7 @@ public class FrameInfoEncoder {
             sliceFrequency.addObject(frameSliceIndex);
         }
 
-        void encodeCompressedData(UnsafeArrayTypeWriter encodingBuffer, Encoders encoders) {
+        void encodeCompressedData(Runnable recordActivity, UnsafeArrayTypeWriter encodingBuffer, Encoders encoders) {
             assert !sealed : "already sealed";
             sealed = true;
 
@@ -303,7 +303,7 @@ public class FrameInfoEncoder {
              * First encode all shared frames.
              */
             EconomicMap<CompressedFrameData, Long> sharedEncodedFrameIndexMap = EconomicMap.create(Equivalence.DEFAULT);
-            List<CompressedFrameData> sharedFrames = framesToEncode.stream().filter((f) -> frameSliceFrequency.get(f) > 1).sorted(
+            framesToEncode.stream().filter((f) -> frameSliceFrequency.get(f) > 1).sorted(
                             /*
                              * We want frames which are referenced frequently to be encoded first.
                              * If two frames have the same frequency, then the frame with the
@@ -315,24 +315,26 @@ public class FrameInfoEncoder {
                                 if (result == 0) {
                                     result = -Integer.compare(frameMaxHeight.get(f1), frameMaxHeight.get(f2));
                                 }
+                                recordActivity.run();
                                 return result;
-                            }).toList();
-            for (CompressedFrameData frame : sharedFrames) {
-                assert !sharedEncodedFrameIndexMap.containsKey(frame) : frame;
-                sharedEncodedFrameIndexMap.put(frame, encodingBuffer.getBytesWritten());
+                            }).forEachOrdered((sharedFrame) -> {
+                                assert !sharedEncodedFrameIndexMap.containsKey(sharedFrame) : sharedFrame;
+                                sharedEncodedFrameIndexMap.put(sharedFrame, encodingBuffer.getBytesWritten());
 
-                // Determining the frame's unique successor index (if any).
-                final int uniqueSuccessorIndex;
-                CompressedFrameData uniqueSuccessor = getUniqueSuccessor(frame);
-                if (uniqueSuccessor != null) {
-                    // The unique successor is always encoded first due to sorting by height.
-                    assert sharedEncodedFrameIndexMap.containsKey(uniqueSuccessor) : uniqueSuccessor;
-                    uniqueSuccessorIndex = NumUtil.safeToInt(sharedEncodedFrameIndexMap.get(uniqueSuccessor));
-                } else {
-                    uniqueSuccessorIndex = NO_SUCCESSOR_INDEX_MARKER;
-                }
-                encodeCompressedFrame(encodingBuffer, encoders, frame, uniqueSuccessorIndex);
-            }
+                                // Determining the frame's unique successor index (if any).
+                                final int uniqueSuccessorIndex;
+                                CompressedFrameData uniqueSuccessor = getUniqueSuccessor(sharedFrame);
+                                if (uniqueSuccessor != null) {
+                                    // The unique successor is always encoded first due to sorting
+                                    // by height.
+                                    assert sharedEncodedFrameIndexMap.containsKey(uniqueSuccessor) : uniqueSuccessor;
+                                    uniqueSuccessorIndex = NumUtil.safeToInt(sharedEncodedFrameIndexMap.get(uniqueSuccessor));
+                                } else {
+                                    uniqueSuccessorIndex = NO_SUCCESSOR_INDEX_MARKER;
+                                }
+                                encodeCompressedFrame(encodingBuffer, encoders, sharedFrame, uniqueSuccessorIndex);
+                                recordActivity.run();
+                            });
 
             /*
              * Next encode all frame slices. Frames which are shared by multiple slices will be
@@ -901,7 +903,7 @@ public class FrameInfoEncoder {
 
     private NonmovableArray<Byte> encodeFrameDatas(Runnable recordActivity) {
         UnsafeArrayTypeWriter encodingBuffer = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
-        frameMetadata.encodeCompressedData(encodingBuffer, encoders);
+        frameMetadata.encodeCompressedData(recordActivity, encodingBuffer, encoders);
         for (FrameData data : allDebugInfos) {
             if (data.frameSliceIndex == UNCOMPRESSED_FRAME_SLICE_INDEX) {
                 data.encodedFrameInfoIndex = encodingBuffer.getBytesWritten();

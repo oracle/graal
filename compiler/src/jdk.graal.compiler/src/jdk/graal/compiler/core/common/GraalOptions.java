@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -112,6 +112,9 @@ public final class GraalOptions {
     @Option(help = "Reassociates loop invariants and constants.", type = OptionType.Expert)
     public static final OptionKey<Boolean> ReassociateExpressions = new OptionKey<>(true);
 
+    @Option(help = "Speculate that locks can be virtualized on HotSpot.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> SpeculateVirtualLocks = new OptionKey<>(true);
+
     @Option(help = "Performs loop unrolling optimization. ", type = OptionType.Expert)
     public static final OptionKey<Boolean> FullUnroll = new OptionKey<>(true);
 
@@ -204,6 +207,9 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> ReplaceInputsWithConstantsBasedOnStamps = new OptionKey<>(true);
 
+    @Option(help = "", type=OptionType.Debug)
+    public static final OptionKey<Boolean> EnableFixReadsConditionalElimination = new OptionKey<>(true);
+
     @Option(help = "Uses deoptimization to prune branches of code in the generated code that have never " +
                    "been executed by the interpreter.", type = OptionType.Expert)
     public static final OptionKey<Boolean> RemoveNeverExecutedCode = new OptionKey<>(true);
@@ -288,7 +294,15 @@ public final class GraalOptions {
     @Option(help = "Use a cache for snippet graphs.", type = OptionType.Debug)
     public static final OptionKey<Boolean> UseSnippetGraphCache = new OptionKey<>(true);
 
-    @Option(help = "file:doc-files/TraceInliningHelp.txt", type = OptionType.Debug, stability = OptionStability.STABLE)
+    @Option(help = """
+    Enable tracing of inlining decisions.
+    Output format:
+      compilation of 'Signature of the compilation root method':
+        at 'Signature of the root method' ['Bytecode index']: <'Phase'> 'Child method signature': 'Decision made about this callsite'
+          at 'Signature of the child method' ['Bytecode index']:
+             |--<'Phase 1'> 'Grandchild method signature': 'First decision made about this callsite'
+             \\--<'Phase 2'> 'Grandchild method signature': 'Second decision made about this callsite'
+          at 'Signature of the child method' ['Bytecode index']: <'Phase'> 'Another grandchild method signature': 'The only decision made about this callsite.'""", type = OptionType.Debug, stability = OptionStability.STABLE)
     public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
 
     @Option(help = "Enable inlining decision tracing in stubs and snippets.", type = OptionType.Debug)
@@ -325,4 +339,15 @@ public final class GraalOptions {
     @Option(help = "Optimize integer division operation by using various mathematical foundations to "
                     + " express it in faster, equivalent, arithmetic.", type = OptionType.Debug)
     public static final OptionKey<Boolean> OptimizeDiv = new OptionKey<>(true);
+
+    @Option(help = "If the probability that a type check will hit one of the profiled types (up to " +
+                   "TypeCheckMaxHints) is below this value, the type check will be compiled without profiling info.", type = OptionType.Debug)
+    public static final OptionKey<Double> TypeCheckMinProfileHitProbability = new OptionKey<>(0.5);
+
+    @Option(help = "The maximum number of profiled types that will be used when compiling a profiled type check. " +
+                    "Note that TypeCheckMinProfileHitProbability also influences whether profiling info is used in compiled type checks.", type = OptionType.Debug)
+    public static final OptionKey<Integer> TypeCheckMaxHints = new OptionKey<>(2);
+
+    @Option(help = "Enables target-specific lowering and legalization of SIMD operations. Required for SIMD code generation.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> TargetVectorLowering = new OptionKey<>(true);
 }

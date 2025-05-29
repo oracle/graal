@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.meta;
 
+import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.vm.ci.code.Register;
 
 /**
@@ -45,4 +46,14 @@ public interface HotSpotRegistersProvider {
      * Gets the stack pointer register.
      */
     Register getStackPointerRegister();
+
+    /**
+     * Gets the register whose value is always 0.
+     */
+    Register getZeroValueRegister(GraalHotSpotVMConfig config);
+
+    /**
+     * Determines whether the given register is one of the reserved special registers.
+     */
+    boolean isReservedRegister(Register r);
 }

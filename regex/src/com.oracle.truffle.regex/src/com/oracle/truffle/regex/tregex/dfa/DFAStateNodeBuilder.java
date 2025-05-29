@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -288,53 +288,44 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
     public DFAStateNodeBuilder updateFinalStateData(DFAGenerator dfaGenerator) {
         boolean forward = dfaGenerator.isForward();
         boolean traceFinder = dfaGenerator.getNfa().isTraceFinderNFA();
-        for (NFAStateTransition t : nfaTransitionSet.getTransitions()) {
-            NFAState target = t.getTarget(forward);
-            if (target.hasTransitionToAnchoredFinalState(forward)) {
-                if (anchoredFinalStateTransition == null) {
-                    if (traceFinder && isBackwardPrefixState()) {
-                        for (NFAStateTransition t2 : target.getSuccessors(forward)) {
-                            NFAState target2 = t2.getTarget(forward);
-                            if (target2.isAnchoredFinalState(forward) && target2.hasPrefixStates()) {
-                                setAnchoredFinalState();
-                                setAnchoredFinalStateTransition(t2);
-                            }
-                        }
-                    } else {
-                        setAnchoredFinalState();
-                        setAnchoredFinalStateTransition(target.getFirstTransitionToFinalState(forward));
-                    }
+        if (forward) {
+            for (NFAStateTransition t : nfaTransitionSet.getTransitions()) {
+                // In forward mode, a state is final if it contains a NFA transition to a NFA state
+                // that has a subsequent transition to a final state
+                NFAState target = t.getTarget(true);
+                if (target.hasTransitionToAnchoredFinalState(true) && anchoredFinalStateTransition == null) {
+                    setAnchoredFinalState();
+                    setAnchoredFinalStateTransition(target.getFirstTransitionToFinalState(true));
                 }
-            }
-            if (target.hasTransitionToUnAnchoredFinalState(forward)) {
-                if (traceFinder && isBackwardPrefixState()) {
-                    for (NFAStateTransition t2 : target.getSuccessors(forward)) {
-                        NFAState target2 = t2.getTarget(forward);
-                        if (target2.isUnAnchoredFinalState(forward) && target2.hasPrefixStates()) {
-                            setUnAnchoredFinalState();
-                            setUnAnchoredFinalStateTransition(t2);
-                        }
-                    }
-                } else {
+                if (target.hasTransitionToUnAnchoredFinalState(true)) {
                     setUnAnchoredFinalState();
-                    setUnAnchoredFinalStateTransition(target.getTransitionToUnAnchoredFinalState(forward));
-                }
-                if (forward) {
+                    setUnAnchoredFinalStateTransition(target.getTransitionToUnAnchoredFinalState(true));
                     return this;
                 }
             }
-            if (traceFinder) {
-                for (NFAStateTransition t2 : target.getSuccessors(forward)) {
-                    NFAState target2 = t2.getTarget(forward);
-                    if (!isBackwardPrefixState() || target2.hasPrefixStates()) {
-                        if (target2.isAnchoredFinalState(forward)) {
-                            assert target2.hasPossibleResults() && target2.getPossibleResults().numberOfSetBits() == 1;
-                            updatePreCalcAnchoredResult(target2.getPossibleResults().iterator().nextInt());
+        } else {
+            for (NFAStateTransition t : nfaTransitionSet.getTransitions()) {
+                // In backward mode, a state is final if it contains a NFA transition to a NFA final
+                // state
+                NFAState target = t.getTarget(false);
+                if (target.isAnchoredFinalState(false)) {
+                    if (!(traceFinder && isBackwardPrefixState()) || target.hasPrefixStates()) {
+                        if (traceFinder) {
+                            assert target.hasPossibleResults() && target.getPossibleResults().numberOfSetBits() == 1;
+                            updatePreCalcAnchoredResult(target.getPossibleResults().iterator().nextInt());
                         }
-                        if (target2.isUnAnchoredFinalState(forward)) {
-                            assert target2.hasPossibleResults() && target2.getPossibleResults().numberOfSetBits() == 1;
-                            updatePreCalcUnAnchoredResult(target2.getPossibleResults().iterator().nextInt());
+                        setAnchoredFinalState();
+                        setAnchoredFinalStateTransition(t);
+                    }
+                }
+                if (target.isUnAnchoredFinalState(false)) {
+                    if (!(traceFinder && isBackwardPrefixState()) || target.hasPrefixStates()) {
+                        if (traceFinder) {
+                            assert target.hasPossibleResults() && target.getPossibleResults().numberOfSetBits() == 1;
+                            updatePreCalcUnAnchoredResult(target.getPossibleResults().iterator().nextInt());
                         }
+                        setUnAnchoredFinalState();
+                        setUnAnchoredFinalStateTransition(t);
                     }
                 }
             }
@@ -414,7 +405,7 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
     @Override
     public JsonValue toJson() {
         return Json.obj(Json.prop("id", getId()),
-                        Json.prop("stateSet", Json.array(Arrays.stream(nfaTransitionSet.getTransitions()).map(x -> Json.val(x.getTarget().getId())))),
+                        Json.prop("stateSet", Json.array(Arrays.stream(nfaTransitionSet.getTransitions()).map(x -> Json.val(x.getTarget(isForward()).getId())))),
                         Json.prop("finalState", isUnAnchoredFinalState()),
                         Json.prop("anchoredFinalState", isAnchoredFinalState()),
                         Json.prop("transitions", Arrays.stream(getSuccessors()).map(x -> Json.val(x.getId()))));

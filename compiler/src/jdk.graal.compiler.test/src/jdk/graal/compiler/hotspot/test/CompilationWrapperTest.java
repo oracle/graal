@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package jdk.graal.compiler.hotspot.test;
 
 import static jdk.graal.compiler.debug.StandardPathUtilitiesProvider.DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_FORMAT;
 import static jdk.graal.compiler.debug.StandardPathUtilitiesProvider.DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP;
+import static jdk.graal.compiler.test.SubprocessUtil.getProcessCommandLine;
 import static jdk.graal.compiler.test.SubprocessUtil.getVMCommandLine;
 import static jdk.graal.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 
@@ -50,7 +51,7 @@ import jdk.graal.compiler.core.GraalCompilerOptions;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.test.SubprocessUtil;
 import jdk.graal.compiler.test.SubprocessUtil.Subprocess;
-import jdk.graal.compiler.truffle.test.SLTruffleGraalTestSuite;
+import jdk.graal.compiler.truffle.test.SLCompileASTTestSuite;
 
 /**
  * Tests support for dumping graphs and other info useful for debugging a compiler crash.
@@ -207,8 +208,9 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                                         "-Djdk.graal.CompilationFailureAction=ExitVM",
                                         "-Dpolyglot.engine.CompilationFailureAction=ExitVM",
                                         "-Dpolyglot.engine.TreatPerformanceWarningsAsErrors=all",
+                                        "-Dpolyglot.engine.AssertProbes=false",
                                         "-Djdk.graal.CrashAt=root test1"),
-                        SLTruffleGraalTestSuite.class.getName(), "test");
+                        SLCompileASTTestSuite.class.getName(), "test");
     }
 
     /**
@@ -226,11 +228,12 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                                         "-Djdk.graal.CompilationFailureAction=Silent",
                                         "-Dpolyglot.engine.CompilationFailureAction=ExitVM",
                                         "-Dpolyglot.engine.TreatPerformanceWarningsAsErrors=all",
+                                        "-Dpolyglot.engine.AssertProbes=false",
                                         "-Djdk.graal.CrashAt=root test1:PermanentBailout"),
-                        SLTruffleGraalTestSuite.class.getName(), "test");
+                        SLCompileASTTestSuite.class.getName(), "test");
     }
 
-    private static final boolean VERBOSE = Boolean.getBoolean("CompilationWrapperTest.verbose");
+    private static final boolean VERBOSE = Boolean.getBoolean("CompilationWrapperTest.verbose") || String.valueOf(getProcessCommandLine()).contains("-JUnitVerbose");
 
     public static void testHelper(List<Probe> initialProbes,
                     List<String> extraVmArgs,

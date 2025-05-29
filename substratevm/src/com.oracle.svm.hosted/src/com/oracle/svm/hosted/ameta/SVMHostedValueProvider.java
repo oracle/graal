@@ -37,12 +37,12 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
-import com.oracle.svm.hosted.meta.RelocatableConstant;
+import com.oracle.svm.hosted.meta.PatchedWordConstant;
 
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PrimitiveConstant;
@@ -69,13 +69,11 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
             return ValueSupplier.eagerValue(doReadValue(field, receiver));
         }
         /*
-         * Return a lazy value. First, this applies to fields annotated with
-         * RecomputeFieldValue.Kind.FieldOffset and RecomputeFieldValue.Kind.Custom whose value
-         * becomes available during hosted universe building and is installed by calling
-         * ComputedValueField.processSubstrate() or ComputedValueField.readValue(). Secondly, this
-         * applies to fields annotated with @UnknownObjectField whose value is set directly either
-         * during analysis or in a later phase. Attempts to materialize the value before it becomes
-         * available will result in an error.
+         * Return a lazy value. First, this applies to fields that have a
+         * FieldValueTransformerWithAvailability. Secondly, this applies to fields annotated
+         * with @UnknownObjectField whose value is set directly either during analysis or in a later
+         * phase. Attempts to materialize the value before it becomes available will result in an
+         * error.
          */
         return ValueSupplier.lazyValue(() -> doReadValue(field, receiver), () -> fieldValueInterceptionSupport.isValueAvailable(field));
     }
@@ -102,13 +100,13 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
     }
 
     /**
-     * {@link #forObject} replaces relocatable pointers with {@link RelocatableConstant} and regular
-     * {@link WordBase} values with {@link PrimitiveConstant}. No other {@link WordBase} values can
-     * be reachable at this point.
+     * {@link #forObject} replaces patched words such as relocatable pointers with
+     * {@link PatchedWordConstant}, and regular {@link WordBase} values with
+     * {@link PrimitiveConstant}. No other {@link WordBase} values can be reachable at this point.
      */
     @Override
     public JavaConstant validateReplacedConstant(JavaConstant value) {
-        VMError.guarantee(value instanceof RelocatableConstant || !universe.getBigbang().getMetaAccess().isInstanceOf(value, WordBase.class));
+        VMError.guarantee(value instanceof PatchedWordConstant || !universe.getBigbang().getMetaAccess().isInstanceOf(value, WordBase.class));
         return value;
     }
 
@@ -121,8 +119,8 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
 
     @Override
     public <T> T asObject(Class<T> type, JavaConstant constant) {
-        if (constant instanceof RelocatableConstant relocatable) {
-            return type.cast(relocatable.getPointer());
+        if (constant instanceof PatchedWordConstant pwc) {
+            return type.cast(pwc.getWord());
         }
         return super.asObject(type, constant);
     }
@@ -135,9 +133,9 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
      * object from ImageHeapInfo we reference a {@link ImageHeapConstant} which allows using
      * simulated constant as partition limits. However, since the original
      * {@link ConstantReflectionProvider} is not aware of {@link ImageHeapConstant} it always treats
-     * them as hosted objects and wraps them into a {@link HotSpotObjectConstant}. Therefore, we
-     * need intercept the {@link HotSpotObjectConstant} and if it wraps an {@link ImageHeapConstant}
-     * unwrap it and return the original constant.</li>
+     * them as hosted objects and wraps them into a host {@link JavaConstant}. Therefore, we need
+     * intercept the host {@link JavaConstant} and if it wraps an {@link ImageHeapConstant} unwrap
+     * it and return the original constant.</li>
      * <li>Second, intercept {@link WordBase} constants. See {@link #interceptWordType(Object)} for
      * details.</li>
      * </ul>
@@ -159,17 +157,18 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
     /**
      * Intercept {@link WordBase} constants and:
      * <ul>
-     * <li>replace {@link RelocatedPointer} constants with {@link RelocatableConstant} to easily and
-     * reliably distinguish them from other {@link WordBase} values during image build.</li>
+     * <li>replace {@link RelocatedPointer} and {@link MethodOffset} constants with
+     * {@link PatchedWordConstant} to easily and reliably distinguish them from other
+     * {@link WordBase} values during image build.</li>
      * <li>replace regular {@link WordBase} values with corresponding integer kind
      * {@link PrimitiveConstant}.</li>
      * </ul>
      */
     private Optional<JavaConstant> interceptWordType(Object object) {
-        if (object instanceof RelocatedPointer pointer) {
-            return Optional.of(new RelocatableConstant(pointer, metaAccess.lookupJavaType(object.getClass())));
-        }
         if (object instanceof WordBase word) {
+            if (object instanceof RelocatedPointer || object instanceof MethodOffset) {
+                return Optional.of(new PatchedWordConstant(word, metaAccess.lookupJavaType(object.getClass())));
+            }
             return Optional.of(JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), word.rawValue()));
         }
         return Optional.empty();

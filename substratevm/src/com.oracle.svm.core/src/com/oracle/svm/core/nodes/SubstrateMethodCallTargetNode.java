@@ -33,6 +33,12 @@ import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * Extension of {@link MethodCallTargetNode} that adds a {@link JavaMethodProfile} when available.
+ * Note that the replacement from {@link MethodCallTargetNode} to
+ * {@link SubstrateMethodCallTargetNode} is not mandatory. SVM code can introduce new
+ * {@link MethodCallTargetNode}s.
+ */
 @NodeInfo
 public final class SubstrateMethodCallTargetNode extends MethodCallTargetNode {
     public static final NodeClass<SubstrateMethodCallTargetNode> TYPE = NodeClass.create(SubstrateMethodCallTargetNode.class);
@@ -46,7 +52,11 @@ public final class SubstrateMethodCallTargetNode extends MethodCallTargetNode {
     private JavaTypeProfile staticTypeProfile;
 
     public SubstrateMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp) {
-        super(TYPE, invokeKind, targetMethod, arguments, returnStamp, null);
+        this(invokeKind, targetMethod, arguments, returnStamp, null);
+    }
+
+    public SubstrateMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp, JavaTypeProfile typeProfile) {
+        super(TYPE, invokeKind, targetMethod, arguments, returnStamp, typeProfile);
     }
 
     public void setProfiles(JavaTypeProfile typeProfile, JavaMethodProfile methodProfile) {

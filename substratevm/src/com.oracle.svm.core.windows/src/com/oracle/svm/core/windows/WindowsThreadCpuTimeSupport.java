@@ -25,11 +25,11 @@
 package com.oracle.svm.core.windows;
 
 import com.oracle.svm.core.util.BasedOnJDKFile;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -55,7 +55,7 @@ final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
         return getThreadCpuTime(hThread, includeSystemTime);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+26/src/hotspot/os/windows/os_windows.cpp#L4960-L4976")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+24/src/hotspot/os/windows/os_windows.cpp#L4787-L4803")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long getThreadCpuTime(HANDLE hThread, boolean includeSystemTime) {
         FILETIME create = StackValue.get(FILETIME.class);
@@ -83,7 +83,7 @@ final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord fileTimeToNanos(FILETIME ft) {
-        UnsignedWord value = WordFactory.unsigned(ft.dwHighDateTime()).shiftLeft(32).or(WordFactory.unsigned(ft.dwLowDateTime()));
+        UnsignedWord value = Word.unsigned(ft.dwHighDateTime()).shiftLeft(32).or(Word.unsigned(ft.dwLowDateTime()));
         return value.multiply(100);
     }
 }

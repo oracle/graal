@@ -27,16 +27,17 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.impl.ParserKlass;
+import com.oracle.truffle.espresso.runtime.EspressoVerifier;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.verifier.MethodVerifier;
 
 public final class CachedParserKlassProvider extends AbstractCachedKlassProvider implements ParserKlassProvider {
     private final ParserKlassProvider fallbackProvider;
-    private final Map<Symbol<Symbol.Type>, ParserKlass> bootParserKlassCache = new ConcurrentHashMap<>();
+    private final Map<Symbol<Type>, ParserKlass> bootParserKlassCache = new ConcurrentHashMap<>();
     private final Map<ParserKlassCacheKey, ParserKlass> appParserKlassCache = new ConcurrentHashMap<>();
 
     public CachedParserKlassProvider(TruffleLogger logger, ParserKlassProvider fallbackProvider) {
@@ -45,7 +46,7 @@ public final class CachedParserKlassProvider extends AbstractCachedKlassProvider
     }
 
     @Override
-    public ParserKlass getParserKlass(ClassLoadingEnv env, StaticObject loader, Symbol<Symbol.Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
+    public ParserKlass getParserKlass(ClassLoadingEnv env, StaticObject loader, Symbol<Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
         if (env.shouldCacheClass(info, loader) && typeOrNull != null) {
             ParserKlassCacheKey key = null;
             ParserKlass parserKlass = null;
@@ -58,7 +59,7 @@ public final class CachedParserKlassProvider extends AbstractCachedKlassProvider
                 parserKlass = bootParserKlassCache.get(typeOrNull);
             } else if (loaderIsApp) {
                 // For other class loaders, query the application cache
-                boolean verifiable = MethodVerifier.needsVerify(env.getLanguage(), loader);
+                boolean verifiable = EspressoVerifier.needsVerify(env.getLanguage(), loader);
                 assert !info.isAnonymousClass() && !info.isHidden() && info.patches == null;
                 key = new ParserKlassCacheKey(bytes, typeOrNull, verifiable);
                 parserKlass = appParserKlassCache.get(key);
@@ -92,17 +93,17 @@ public final class CachedParserKlassProvider extends AbstractCachedKlassProvider
     private static final class ParserKlassCacheKey {
         private final byte[] bytes;
         private final int hash;
-        private final Symbol<Symbol.Type> type;
+        private final Symbol<Type> type;
         private final boolean verifiable;
 
-        ParserKlassCacheKey(byte[] bytes, Symbol<Symbol.Type> type, boolean verifiable) {
+        ParserKlassCacheKey(byte[] bytes, Symbol<Type> type, boolean verifiable) {
             this.bytes = bytes;
             this.type = type;
             this.verifiable = verifiable;
             this.hash = computeHash(bytes, type, verifiable);
         }
 
-        private static int computeHash(byte[] bytes, Symbol<Symbol.Type> typeOrNull, boolean verifiable) {
+        private static int computeHash(byte[] bytes, Symbol<Type> typeOrNull, boolean verifiable) {
             int result = Arrays.hashCode(bytes);
             result = 31 * result + typeOrNull.hashCode();
             result = 31 * result + Boolean.hashCode(verifiable);

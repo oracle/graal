@@ -56,17 +56,24 @@ import java.nio.file.NoSuchFileException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
+import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 
@@ -80,7 +87,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  * the file. File content is <em>read eagerly</em> and may be optionally <em>cached</em>. Sample
  * usage: <br>
  *
- * {@snippet file="com/oracle/truffle/api/source/Source.java" region="SourceSnippets#fromFile"}
+ * {@snippet file = "com/oracle/truffle/api/source/Source.java" region = "SourceSnippets#fromFile"}
  *
  * The starting point is {@link Source#newBuilder(String, TruffleFile)} method.
  *
@@ -89,7 +96,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  * One can read remote or in JAR resources using the {@link Source#newBuilder(String, java.net.URL)}
  * factory: <br>
  *
- * {@snippet file="com/oracle/truffle/api/source/Source.java" region="SourceSnippets#fromURL"}
+ * {@snippet file = "com/oracle/truffle/api/source/Source.java" region = "SourceSnippets#fromURL"}
  *
  * Each URL source is represented as a canonical object, indexed by the URL. Contents are <em>read
  * eagerly</em> once the {@link SourceBuilder#build()} method is called.
@@ -99,14 +106,16 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  * An anonymous immutable code snippet can be created from a string via the
  * {@link Source#newBuilder(String, CharSequence, String) } factory method: <br>
  *
- * {@snippet file="com/oracle/truffle/api/source/Source.java" region="SourceSnippets#fromAString"}
+ * {@snippet file = "com/oracle/truffle/api/source/Source.java" region =
+ * "SourceSnippets#fromAString"}
  *
  * <h3>Reading from a stream</h3>
  *
  * If one has a {@link Reader} one can convert its content into a {@link Source} via
  * {@link Source#newBuilder(String, java.io.Reader, String)} method: <br>
  *
- * {@snippet file="com/oracle/truffle/api/source/Source.java" region="SourceSnippets#fromReader"}
+ * {@snippet file = "com/oracle/truffle/api/source/Source.java" region =
+ * "SourceSnippets#fromReader"}
  *
  * the content is <em>read eagerly</em> once the {@link SourceBuilder#build()} method is called.
  *
@@ -115,7 +124,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  * Sources can be created from bytes. Please note that all character related methods will throw an
  * {@link UnsupportedOperationException} if that is the case.
  *
- * {@snippet file="com/oracle/truffle/api/source/Source.java" region="SourceSnippets#fromBytes"}
+ * {@snippet file = "com/oracle/truffle/api/source/Source.java" region = "SourceSnippets#fromBytes"}
  *
  * <h2>Attributes</h2>
  *
@@ -154,7 +163,7 @@ public abstract class Source {
     private static final CharSequence CONTENT_UNSET = new String();
     private static final byte[] CONTENT_EMPTY = new byte[0];
 
-    private static final Source EMPTY = new SourceImpl.ImmutableKey(null, null, null, null, null, null, null, false, false, false, null, false).toSourceNotInterned();
+    private static final Source EMPTY = new SourceImpl.ImmutableKey(null, null, null, null, null, null, null, false, false, false, null, false, Map.of()).toSourceNotInterned();
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
     private static final String URI_SCHEME = "truffle";
     private static final int MAX_BUFFER_SIZE = Integer.MAX_VALUE - 8;
@@ -518,6 +527,8 @@ public abstract class Source {
         return getTextMap().lineStartOffset(lineNumber);
     }
 
+    abstract Map<String, String> getOptions();
+
     /**
      * The number of characters (not counting a possible terminating newline) in a (1-based)
      * numbered line. Causes the contents of this source to be loaded if they are loaded lazily.
@@ -529,6 +540,29 @@ public abstract class Source {
      */
     public final int getLineLength(int lineNumber) throws IllegalArgumentException {
         return getTextMap().lineLength(lineNumber);
+    }
+
+    /**
+     * Returns the parsed option values of the given source for the given language. Options can be
+     * specified by implementing {@link TruffleLanguage#getSourceOptionDescriptors()}. When
+     * accessing source options during parsing, use {@link ParsingRequest#getOptionValues()} instead
+     * of this method, to avoid parsing the options twice.
+     * <p>
+     * Note that options may not be validated beforehand, which can result in an
+     * {@link IllegalArgumentException} if validation fails. If the source was parsed previously,
+     * all options are guaranteed to have been validated. Otherwise, this method validates only the
+     * options of the current language.
+     *
+     * @param language the language accessible via {@link LanguageReference}
+     * @return the parsed {@link OptionValues} for the specified source
+     * @throws IllegalArgumentException if option validation fails
+     * @see com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#getOptions(Source) to
+     *      access options from an instrument
+     * @since 25.0
+     */
+    public final OptionValues getOptions(TruffleLanguage<?> language) {
+        Objects.requireNonNull(language);
+        return SourceAccessor.ENGINE.parseLanguageSourceOptions(SourceAccessor.LANGUAGE.getPolyglotLanguageInstance(language), this);
     }
 
     /**
@@ -729,7 +763,7 @@ public abstract class Source {
     public String toString() {
         return "Source [language=" + getLanguage() + ", name=" + getName() + ", path=" + getPath() + ", internal=" + isInternal() + ", cached=" + isCached() +
                         ", interactive=" + isInteractive() + ", hasBytes=" + hasBytes() + ", hasCharacters=" + hasCharacters() + ", URL=" + getURL() + ", URI=" + getURI() +
-                        ", mimeType=" + getMimeType() + "]";
+                        ", mimeType=" + getMimeType() + ", options=" + getOptions() + "]";
     }
 
     private static boolean assertValid(SourceSection section) {
@@ -789,8 +823,8 @@ public abstract class Source {
      * Use this method for sources that do originate from a literal. For file or URL sources use the
      * appropriate builder constructor and {@link SourceBuilder#content(CharSequence)}.
      * <p>
-     * Example usage: {@snippet file="com/oracle/truffle/api/source/Source.java"
-     * region="SourceSnippets#fromAString"}
+     * Example usage: {@snippet file = "com/oracle/truffle/api/source/Source.java" region =
+     * "SourceSnippets#fromAString"}
      *
      * @param language the language id, must not be <code>null</code>
      * @param characters the character sequence or string, must not be <code>null</code>
@@ -809,8 +843,8 @@ public abstract class Source {
      * Use this method for sources that do originate from a literal. For file or URL sources use the
      * appropriate builder constructor and {@link SourceBuilder#content(ByteSequence)}.
      * <p>
-     * Example usage: {@snippet file="com/oracle/truffle/api/source/Source.java"
-     * region="SourceSnippets#fromBytes"}
+     * Example usage: {@snippet file = "com/oracle/truffle/api/source/Source.java" region =
+     * "SourceSnippets#fromBytes"}
      *
      * @param language the language id, must not be <code>null</code>
      * @param bytes the byte sequence or string, must not be <code>null</code>
@@ -830,8 +864,8 @@ public abstract class Source {
      * {@link SourceBuilder#mimeType(String) MIME type}. A language may be detected from an existing
      * file using {@link #findLanguage(TruffleFile)}.
      * <p>
-     * Example usage: {@snippet file="com/oracle/truffle/api/source/Source.java"
-     * region="SourceSnippets#fromFile"}
+     * Example usage: {@snippet file = "com/oracle/truffle/api/source/Source.java" region =
+     * "SourceSnippets#fromFile"}
      *
      * @param language the language id, must not be <code>null</code>
      * @param file the file to use and load, must not be <code>null</code>
@@ -856,8 +890,8 @@ public abstract class Source {
      * {@link SourceBuilder#mimeType(String) MIME type}. A language may be detected from an existing
      * file using {@link #findLanguage(URL)}.
      * <p>
-     * Example usage: {@snippet file="com/oracle/truffle/api/source/Source.java"
-     * region="SourceSnippets#fromURL"}
+     * Example usage: {@snippet file = "com/oracle/truffle/api/source/Source.java" region =
+     * "SourceSnippets#fromURL"}
      *
      * @param language the language id, must not be <code>null</code>
      * @param url the URL to use and load, must not be <code>null</code>
@@ -873,8 +907,8 @@ public abstract class Source {
      * Use this method for sources that do originate from a literal. For file or URL sources use the
      * appropriate builder constructor and {@link SourceBuilder#content(CharSequence)}.
      * <p>
-     * Example usage: {@snippet file="com/oracle/truffle/api/source/Source.java"
-     * region="SourceSnippets#fromReader"}
+     * Example usage: {@snippet file = "com/oracle/truffle/api/source/Source.java" region =
+     * "SourceSnippets#fromReader"}
      *
      * @since 19.0
      */
@@ -986,7 +1020,7 @@ public abstract class Source {
     private static final boolean ALLOW_IO = SourceAccessor.ACCESSOR.engineSupport().isIOSupported();
 
     static Source buildSource(String language, Object origin, String name, String path, boolean canonicalizePath, String mimeType, Object content, URL url, URI uri, Charset encoding,
-                    boolean internal, boolean interactive, boolean cached, Object fileSystemContext, boolean embedderSource) throws IOException {
+                    boolean internal, boolean interactive, boolean cached, Object fileSystemContext, boolean embedderSource, Map<String, String> options) throws IOException {
         String useName = name;
         URI useUri = uri;
         Object useContent = content;
@@ -1093,6 +1127,13 @@ public abstract class Source {
             useName = "Unnamed";
         }
 
+        Map<String, String> useOptions;
+        if (options != null) {
+            useOptions = options;
+        } else {
+            useOptions = Map.of();
+        }
+
         useContent = enforceInterfaceContracts(useContent);
         String relativePathInLanguageHome = null;
         if (useTruffleFile != null) {
@@ -1107,15 +1148,16 @@ public abstract class Source {
                 if (SourceAccessor.ACCESSOR.engineSupport().inContextPreInitialization(fsEngineObject)) {
                     SourceImpl.Key key = new SourceImpl.ReinitializableKey(useTruffleFile, useContent, useMimeType, language,
                                     useUrl, useUri, useName, usePath, internal, interactive, cached,
-                                    relativePathInLanguageHome, embedderSource);
+                                    relativePathInLanguageHome, embedderSource, useOptions);
                     Source source = SOURCES.intern(key);
                     SourceAccessor.onSourceCreated(source);
                     return source;
                 }
             }
         }
+
         SourceImpl.Key key = new SourceImpl.ImmutableKey(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, relativePathInLanguageHome,
-                        embedderSource);
+                        embedderSource, useOptions);
         return SOURCES.intern(key);
     }
 
@@ -1329,25 +1371,28 @@ public abstract class Source {
      *
      * To load a source from disk one can use:
      * <p>
-     * {@snippet file="com/oracle/truffle/api/source/Source.java" region="SourceSnippets#fromFile"}
+     * {@snippet file = "com/oracle/truffle/api/source/Source.java" region =
+     * "SourceSnippets#fromFile"}
      * <p>
      * To load source from a {@link URL} one can use:
      * <p>
-     * {@snippet file="com/oracle/truffle/api/source/Source.java" region="SourceSnippets#fromURL"}
+     * {@snippet file = "com/oracle/truffle/api/source/Source.java" region =
+     * "SourceSnippets#fromURL"}
      * <p>
      * To create a source representing characters:
      * <p>
-     * {@snippet file="com/oracle/truffle/api/source/Source.java"
-     * region="SourceSnippets#fromAString"}
+     * {@snippet file = "com/oracle/truffle/api/source/Source.java" region =
+     * "SourceSnippets#fromAString"}
      * <p>
      * or read a source from a {@link Reader}:
      * <p>
-     * {@snippet file="com/oracle/truffle/api/source/Source.java"
-     * region="SourceSnippets#fromReader"}
+     * {@snippet file = "com/oracle/truffle/api/source/Source.java" region =
+     * "SourceSnippets#fromReader"}
      * <p>
      * To create a source representing bytes:
      * <p>
-     * {@snippet file="com/oracle/truffle/api/source/Source.java" region="SourceSnippets#fromBytes"}
+     * {@snippet file = "com/oracle/truffle/api/source/Source.java" region =
+     * "SourceSnippets#fromBytes"}
      *
      * Once your builder is configured, call {@link #build()} to perform the loading and
      * construction of new {@link Source}.
@@ -1371,6 +1416,7 @@ public abstract class Source {
         private Charset fileEncoding;
         private Object fileSystemContext;
         private boolean embedderSource;
+        private Map<String, String> options;
 
         SourceBuilder(String language, Object origin) {
             Objects.requireNonNull(language);
@@ -1399,8 +1445,8 @@ public abstract class Source {
          * {@link Source#hasCharacters()} will be <code>false</code> then. The given characters must
          * not mutate after they were accessed for the first time. Example:
          *
-         * {@snippet file="com/oracle/truffle/api/source/Source.java"
-         * region="SourceSnippets#fromURLWithOwnContent"}
+         * {@snippet file = "com/oracle/truffle/api/source/Source.java" region =
+         * "SourceSnippets#fromURLWithOwnContent"}
          *
          * @param characters the code to be available via {@link Source#getCharacters()}, or
          *            {@link #CONTENT_NONE}
@@ -1555,6 +1601,50 @@ public abstract class Source {
             return this;
         }
 
+        /**
+         * Sets a source option key and value for the built source. Source options allow you to
+         * attach language- or instrument-specific configuration to a source. These options are
+         * parsed and validated only when source is parsed by a language, rather than when the
+         * source is created.
+         * <p>
+         * If the source is validated, all source options will be validated. Therefore, each
+         * language or instrument associated with a source option must be installed.
+         * <p>
+         * The available source option keys can be found in the respective language or instrument
+         * documentation, or at runtime via {@link Language#getSourceOptions()} or
+         * {@link Instrument#getSourceOptions()}.
+         *
+         * @param key the option key (must not be null)
+         * @param value the option value (must not be null)
+         * @see ParsingRequest#getOptionValues()
+         * @see TruffleLanguage#getSourceOptionDescriptors()
+         * @see Source#getOptions(TruffleLanguage)
+         *
+         * @since 25.0
+         */
+        public SourceBuilder option(String key, String value) {
+            Objects.requireNonNull(key);
+            Objects.requireNonNull(value);
+            if (this.options == null) {
+                this.options = new HashMap<>();
+            }
+            this.options.put(key, value);
+            return this;
+        }
+
+        /**
+         * Shortcut for setting multiple {@link #option(String, String) options} using a map. All
+         * values of the provided map must be non-null.
+         *
+         * @since 25.0
+         */
+        public SourceBuilder options(@SuppressWarnings("hiding") Map<String, String> options) {
+            for (var entry : options.entrySet()) {
+                option(entry.getKey(), entry.getValue());
+            }
+            return this;
+        }
+
         SourceBuilder fileSystemContext(Object context) {
             this.fileSystemContext = context;
             return this;
@@ -1584,7 +1674,7 @@ public abstract class Source {
         public Source build() throws IOException {
             assert this.language != null;
             Source source = buildSource(this.language, this.origin, this.name, this.path, this.canonicalizePath, this.mimeType, this.content, this.url, this.uri, this.fileEncoding, this.internal,
-                            this.interactive, this.cached, fileSystemContext, this.embedderSource);
+                            this.interactive, this.cached, fileSystemContext, this.embedderSource, this.options);
 
             // make sure origin is not consumed again if builder is used twice
             if (source.hasBytes()) {
@@ -1740,6 +1830,16 @@ public abstract class Source {
         @Override
         public LiteralBuilder encoding(Charset encoding) {
             return (LiteralBuilder) super.encoding(encoding);
+        }
+
+        @Override
+        public LiteralBuilder option(String key, String value) {
+            return (LiteralBuilder) super.option(key, value);
+        }
+
+        @Override
+        public LiteralBuilder options(Map<String, String> options) {
+            return (LiteralBuilder) super.options(options);
         }
 
         /**

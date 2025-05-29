@@ -28,11 +28,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * Run an ObjectReferenceVisitor ({@link GreyToBlackObjRefVisitor}) over any interior object
@@ -40,7 +38,7 @@ import com.oracle.svm.core.util.VMError;
  *
  * This visitor is used during GC and so it must be constructed during native image generation.
  */
-public final class GreyToBlackObjectVisitor implements ObjectVisitor {
+public final class GreyToBlackObjectVisitor implements UninterruptibleObjectVisitor {
     private final GreyToBlackObjRefVisitor objRefVisitor;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -49,17 +47,10 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
     }
 
     @Override
-    @NeverInline("Non-performance critical version")
-    public boolean visitObject(Object o) {
-        throw VMError.shouldNotReachHere("For performance reasons, this should not be called.");
-    }
-
-    @Override
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
-    public boolean visitObjectInline(Object o) {
+    public void visitObject(Object o) {
         ReferenceObjectProcessing.discoverIfReference(o, objRefVisitor);
         InteriorObjRefWalker.walkObjectInline(o, objRefVisitor);
-        return true;
     }
 }

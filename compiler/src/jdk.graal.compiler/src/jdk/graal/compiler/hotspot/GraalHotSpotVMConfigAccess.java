@@ -32,11 +32,11 @@ import java.util.Formatter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
@@ -112,7 +112,6 @@ public class GraalHotSpotVMConfigAccess {
         return JVMCI && !JVMCI_VERSION.isLessThan(v);
     }
 
-    public static final int JDK = Runtime.version().feature();
     public static final JVMCIVersionCheck.Version JVMCI_VERSION;
     public static final boolean JVMCI;
     public static final boolean JDK_PRERELEASE;
@@ -183,7 +182,7 @@ public class GraalHotSpotVMConfigAccess {
         if (!missing.isEmpty() || !unexpected.isEmpty()) {
             String jvmci = JVMCI_VERSION == null ? "" : " jvmci-" + JVMCI_VERSION;
             String runtime = String.format("JDK %d%s %s-%s (java.home=%s, java.vm.name=%s, java.vm.version=%s)",
-                            JDK, jvmci, osName, osArch,
+                            JavaVersionUtil.JAVA_SPEC, jvmci, osName, osArch,
                             getSavedProperty("java.home"),
                             getSavedProperty("java.vm.name"),
                             getSavedProperty("java.vm.version"));
@@ -258,22 +257,6 @@ public class GraalHotSpotVMConfigAccess {
             return access.getConstant(name, type, notPresent);
         }
         return notPresent;
-    }
-
-    /**
-     * Verifies that if the constant described by {@code name} and {@code type} is defined by the
-     * VM, it has the value {@code expect}.
-     *
-     * @return {@code expect}
-     */
-    public <T> T verifyConstant(String name, Class<T> type, T expect) {
-        if (vmConstants.containsKey(name)) {
-            T value = access.getConstant(name, type, expect);
-            if (!Objects.equals(value, expect)) {
-                recordError(name, unexpected, String.valueOf(value));
-            }
-        }
-        return expect;
     }
 
     /**

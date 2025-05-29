@@ -24,17 +24,17 @@
  */
 package jdk.graal.compiler.truffle.hotspot;
 
+import java.util.function.Supplier;
+
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
+
 import jdk.graal.compiler.core.phases.CommunityCompilerConfiguration;
 import jdk.graal.compiler.core.phases.HighTier;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.truffle.host.InjectImmutableFrameFieldsPhase;
 import jdk.graal.compiler.truffle.host.HostInliningPhase;
 import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
-
-import com.oracle.truffle.compiler.TruffleCompilerRuntime;
-
 import jdk.vm.ci.code.Architecture;
 
 /**
@@ -44,7 +44,7 @@ import jdk.vm.ci.code.Architecture;
  * Note that this configuration is also used as basis for Truffle guest compilation on HotSpot.
  * Therefore make sure that phases which are only relevant for host compilations are explicitly
  * disabled for Truffle guest compilation in
- * {@link HotSpotTruffleCompilerImpl#create(TruffleCompilerRuntime)}.
+ * {@link HotSpotTruffleCompilerImpl#create(TruffleCompilerRuntime, Supplier)}.
  * <p>
  * Note that on SubstrateVM TruffleBaseFeature and TruffleFeature must be used for this purpose,
  * this configuration is NOT loaded. So make sure SVM configuration is in sync if you make changes
@@ -61,7 +61,6 @@ public final class TruffleCommunityCompilerConfiguration extends CommunityCompil
 
     public static void installCommunityHighTier(OptionValues options, HighTier defaultHighTier) {
         HostInliningPhase.install(defaultHighTier, options);
-        InjectImmutableFrameFieldsPhase.install(defaultHighTier, options);
     }
 
     @Override

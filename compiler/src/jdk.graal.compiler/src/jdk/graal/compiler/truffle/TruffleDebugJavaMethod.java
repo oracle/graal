@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.truffle;
 
+import java.util.Objects;
+
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 
@@ -51,27 +53,44 @@ public final class TruffleDebugJavaMethod implements JavaMethod {
         }
     }
 
-    private static class TruffleJavaType implements JavaType {
+    public static final class TruffleSignature implements Signature {
+        private final TruffleJavaType returnType;
 
+        public TruffleSignature(TruffleJavaType returnType) {
+            this.returnType = returnType;
+        }
+
+        @Override
+        public JavaType getReturnType(ResolvedJavaType accessingClass) {
+            return returnType;
+        }
+
+        @Override
+        public int getParameterCount(boolean receiver) {
+            return 0;
+        }
+
+        @Override
+        public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {
+            throw new IndexOutOfBoundsException();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof TruffleSignature truffleSignature)) {
+                return false;
+            }
+            return returnType.equals(truffleSignature.returnType);
+        }
+
+        @Override
+        public int hashCode() {
+            return returnType.hashCode();
+        }
+    }
+
+    public static final class TruffleJavaType implements JavaType {
         private final String name;
-
-        final Signature signature = new Signature() {
-
-            @Override
-            public JavaType getReturnType(ResolvedJavaType accessingClass) {
-                return TruffleJavaType.this;
-            }
-
-            @Override
-            public int getParameterCount(boolean receiver) {
-                return 0;
-            }
-
-            @Override
-            public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {
-                throw new IndexOutOfBoundsException();
-            }
-        };
 
         TruffleJavaType(int tier) {
             this.name = "LTruffleIR/Tier" + tier + ";";
@@ -141,12 +160,12 @@ public final class TruffleDebugJavaMethod implements JavaMethod {
 
     @Override
     public Signature getSignature() {
-        return TIERS[task.tier()].signature;
+        return new TruffleSignature(TIERS[task.tier()]);
     }
 
     @Override
     public String getName() {
-        return (compilable.getName() + "").replace('.', '_').replace(' ', '_');
+        return Objects.toString(compilable.getName()).replace('.', '_').replace(' ', '_');
     }
 
     @Override

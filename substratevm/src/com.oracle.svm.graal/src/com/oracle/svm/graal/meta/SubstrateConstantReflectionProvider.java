@@ -137,10 +137,10 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
         JavaKind kind = field.getStorageKind();
         Object baseObject;
         if (field.isStatic()) {
-            if (kind == JavaKind.Object) {
-                baseObject = StaticFieldsSupport.getStaticObjectFields();
+            if (kind.isObject()) {
+                baseObject = StaticFieldsSupport.getStaticObjectFieldsAtRuntime(field.getInstalledLayerNum());
             } else {
-                baseObject = StaticFieldsSupport.getStaticPrimitiveFields();
+                baseObject = StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(field.getInstalledLayerNum());
             }
         } else {
             if (receiver == null || !field.getDeclaringClass().isInstance(receiver)) {
@@ -160,7 +160,7 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
          * static fields the offsets are into the known data arrays that hold the fields. So we can
          * use read methods that do not perform further checks.
          */
-        if (kind == JavaKind.Object) {
+        if (kind.isObject()) {
             result = SubstrateMemoryAccessProviderImpl.readObjectUnchecked(baseObject, location, false, isVolatile);
         } else {
             result = SubstrateMemoryAccessProviderImpl.readPrimitiveUnchecked(kind, baseObject, location, kind.getByteCount() * 8, isVolatile);

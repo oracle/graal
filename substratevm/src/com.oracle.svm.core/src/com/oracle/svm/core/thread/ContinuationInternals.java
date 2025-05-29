@@ -27,7 +27,6 @@ package com.oracle.svm.core.thread;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -38,6 +37,8 @@ import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 /** Implementation of and access to {@link Target_jdk_internal_vm_Continuation} internals. */
 @InternalVMMethod
@@ -122,9 +123,9 @@ public final class ContinuationInternals {
         Pointer returnSP = c.sp;
         CodePointer returnIP = c.ip;
 
-        c.ip = WordFactory.nullPointer();
-        c.sp = WordFactory.nullPointer();
-        c.baseSP = WordFactory.nullPointer();
+        c.ip = Word.nullPointer();
+        c.sp = Word.nullPointer();
+        c.baseSP = Word.nullPointer();
         assert c.isEmpty();
 
         KnownIntrinsics.farReturn(null, returnSP, returnIP, false);
@@ -155,11 +156,21 @@ public final class ContinuationInternals {
             return preemptStatus;
         }
 
-        c.ip = WordFactory.nullPointer();
-        c.sp = WordFactory.nullPointer();
-        c.baseSP = WordFactory.nullPointer();
+        c.ip = Word.nullPointer();
+        c.sp = Word.nullPointer();
+        c.baseSP = Word.nullPointer();
 
         KnownIntrinsics.farReturn(null, returnSP, returnIP, false);
         throw VMError.shouldNotReachHereAtRuntime();
+    }
+
+    /**
+     * Avoids references to the current carrier thread from leaking into the caller frame, which
+     * prevents persisting continuation stacks in (auxiliary) image heaps.
+     */
+    @NeverInline("Prevent a reference to the current carrier thread from leaking into the caller frame.")
+    static Target_jdk_internal_vm_Continuation getContinuationFromCarrier() {
+        Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
+        return carrier.cont;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -203,7 +203,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         return c;
     }
 
-    private static class ReadI8 {
+    private static final class ReadI8 {
 
         /**
          * Read an i8 from an untyped polyglot array without cast.
@@ -293,7 +293,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
     }
 
-    private static class ReadI16 {
+    private static final class ReadI16 {
 
         /**
          * Read an i16 from an untyped polyglot array without cast.
@@ -420,7 +420,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
     }
 
-    private static class ReadI32 {
+    private static final class ReadI32 {
 
         /**
          * Read an i32 from an untyped polyglot array without cast.
@@ -563,7 +563,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
     }
 
-    private static class ReadI64 {
+    private static final class ReadI64 {
 
         /**
          * Read an i64 from an untyped polyglot array without cast.
@@ -720,7 +720,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
     }
 
-    private static class ReadFloat {
+    private static final class ReadFloat {
 
         /**
          * Read a float from an untyped polyglot array without cast.
@@ -808,7 +808,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
     }
 
-    private static class ReadDouble {
+    private static final class ReadDouble {
 
         /**
          * Read a double from an untyped polyglot array without cast.
@@ -953,7 +953,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
 
     }
 
-    private static class ReadPointer {
+    private static final class ReadPointer {
 
         /**
          * Read a pointer from an untyped polyglot array without cast.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,13 +34,12 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.calc.ConvertNode;
+import jdk.graal.compiler.nodes.calc.UnaryNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.type.StampTool;
-import jdk.graal.compiler.nodes.calc.ConvertNode;
-import jdk.graal.compiler.nodes.calc.UnaryNode;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -128,12 +127,23 @@ public abstract class CompressionNode extends UnaryNode implements ConvertNode, 
         return encoding;
     }
 
+    /**
+     * Returns true if {@code constant} can be compressed.
+     *
+     * @param constant constant value to be compressed
+     */
+    public boolean isCompressible(Constant constant) {
+        return true;
+    }
+
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
             ConstantNode constant = (ConstantNode) forValue;
-            return ConstantNode.forConstant(stamp(NodeView.DEFAULT), convert(constant.getValue(), tool.getConstantReflection()), constant.getStableDimension(), constant.isDefaultStable(),
-                            tool.getMetaAccess());
+            if (isCompressible(constant.getValue())) {
+                return ConstantNode.forConstant(stamp(NodeView.DEFAULT), convert(constant.getValue(), tool.getConstantReflection()), constant.getStableDimension(),
+                                constant.isDefaultStable(), tool.getMetaAccess());
+            }
         } else if (forValue instanceof CompressionNode) {
             CompressionNode other = (CompressionNode) forValue;
             if (op != other.op && encoding.equals(other.encoding)) {

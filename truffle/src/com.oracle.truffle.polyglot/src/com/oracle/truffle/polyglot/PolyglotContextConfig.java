@@ -109,6 +109,7 @@ final class PolyglotContextConfig {
     final Runnable onCancelled;
     final Consumer<Integer> onExited;
     final Runnable onClosed;
+    final Consumer<String> threadAccessDeniedHandler;
 
     /**
      * Groups PolyglotContext's filesystem related configurations.
@@ -231,6 +232,7 @@ final class PolyglotContextConfig {
                         sharableConfig.polyglotAccess == null ? engine.getAPIAccess().getPolyglotAccessAll() : sharableConfig.polyglotAccess,
                         sharableConfig.nativeAccessAllowed,
                         sharableConfig.createThreadAllowed,
+                        null,
                         false,
                         false,
                         false,
@@ -256,7 +258,7 @@ final class PolyglotContextConfig {
     PolyglotContextConfig(PolyglotEngineImpl engine, SandboxPolicy sandboxPolicy, Boolean forceSharing,
                     OutputStream out, OutputStream err, InputStream in,
                     boolean hostLookupAllowed, Object polyglotAccess, boolean nativeAccessAllowed,
-                    boolean createThreadAllowed, boolean hostClassLoadingAllowed,
+                    boolean createThreadAllowed, Consumer<String> threadAccessDeniedHandler, boolean hostClassLoadingAllowed,
                     boolean contextOptionsAllowed, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
                     Set<String> onlyLanguages, Map<String, String> options, FileSystemConfig fileSystemConfig, LogHandler logHandler,
@@ -278,6 +280,7 @@ final class PolyglotContextConfig {
         this.polyglotAccess = polyglotAccess;
         this.nativeAccessAllowed = nativeAccessAllowed;
         this.createThreadAllowed = createThreadAllowed;
+        this.threadAccessDeniedHandler = threadAccessDeniedHandler;
         this.hostClassLoadingAllowed = hostClassLoadingAllowed;
         this.innerContextOptionsAllowed = contextOptionsAllowed;
         this.allowExperimentalOptions = allowExperimentalOptions;
@@ -285,7 +288,7 @@ final class PolyglotContextConfig {
         this.classFilter = classFilter;
         this.applicationArguments = applicationArguments;
         this.onlyLanguages = onlyLanguages;
-        this.allowedPublicLanguages = onlyLanguages.isEmpty() ? engine.getLanguages().keySet() : onlyLanguages;
+        this.allowedPublicLanguages = onlyLanguages.isEmpty() ? engine.getPublicLanguages().keySet() : onlyLanguages;
         this.fileSystemConfig = fileSystemConfig;
         this.optionsById = new HashMap<>();
         this.logHandler = logHandler;
@@ -333,7 +336,8 @@ final class PolyglotContextConfig {
                 targetOptions = engineOptionValues.copy();
                 optionsById.put(id, targetOptions);
             }
-            OptionDescriptor d = targetOptions.put(engine, optionKey, options.get(optionKey), allowExperimentalOptions);
+
+            OptionDescriptor d = targetOptions.put(optionKey, options.get(optionKey), allowExperimentalOptions, engine::getAllOptions);
             if (d != null && d.isDeprecated()) {
                 if (deprecatedOptions == null) {
                     deprecatedOptions = new ArrayList<>();

@@ -30,8 +30,8 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.IsolateArguments;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -52,7 +52,7 @@ public interface CommittedMemoryProvider {
      * @return zero in case of success, non-zero in case of an error.
      */
     @Uninterruptible(reason = "Still being initialized.")
-    int initialize(WordPointer heapBasePointer, CEntryPointCreateIsolateParameters parameters);
+    int initialize(WordPointer heapBasePointer, IsolateArguments arguments);
 
     /**
      * Tear down <em>for the current isolate</em>. This must be the last method of this interface
@@ -71,6 +71,13 @@ public interface CommittedMemoryProvider {
     default UnsignedWord getGranularity() {
         return VirtualMemoryProvider.get().getGranularity();
     }
+
+    /**
+     * Returns the size of the address space that is reserved for the collected Java heap (i.e.,
+     * this explicitly excludes all heap parts that are not collected, such as the image heap or the
+     * protected memory before the image heap).
+     */
+    UnsignedWord getCollectedHeapAddressSpaceSize();
 
     Pointer allocateExecutableMemory(UnsignedWord nbytes, UnsignedWord alignment);
 

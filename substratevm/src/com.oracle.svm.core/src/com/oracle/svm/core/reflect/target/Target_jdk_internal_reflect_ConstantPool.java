@@ -30,8 +30,27 @@ import com.oracle.svm.core.annotate.TargetClass;
 /**
  * All usages of ConstantPool are substituted to go through
  * {@link com.oracle.svm.core.reflect.RuntimeMetadataDecoder.MetadataAccessor}.
+ * <p>
+ * In Native Image, the constant pool is not used. However, in the context of Layered Image, the
+ * constant pool needs to be able to provide the layer number it is associated with. This is because
+ * the {@link com.oracle.svm.core.reflect.RuntimeMetadataDecoder.MetadataAccessor} needs a layer
+ * number for retrieving the information in the correct layer and in some cases, only the constant
+ * pool can provide this information. The constant pool is only used with Layered Image, and only to
+ * provide a layer number.
  */
 @TargetClass(className = "jdk.internal.reflect.ConstantPool")
 @Substitute
 public final class Target_jdk_internal_reflect_ConstantPool {
+    /**
+     * The layer number associated with this constant pool.
+     */
+    private final int layerId;
+
+    public Target_jdk_internal_reflect_ConstantPool(int layerId) {
+        this.layerId = layerId;
+    }
+
+    public int getLayerId() {
+        return layerId;
+    }
 }

@@ -37,7 +37,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
@@ -95,8 +94,8 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     // Value from Reflection.getClassAccessFlags()
     public static final int CLASS_ACCESS_FLAGS_MASK = 0x1FFF;
 
-    static byte[] getEncoding(DynamicHub hub) {
-        return MultiLayeredImageSingleton.getAllLayers(RuntimeMetadataEncoding.class)[hub.getLayerId()].getEncoding();
+    static byte[] getEncoding(int layerId) {
+        return MultiLayeredImageSingleton.getForLayer(RuntimeMetadataEncoding.class, layerId).getEncoding();
     }
 
     static List<byte[]> getEncodings() {
@@ -111,16 +110,14 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      * </pre>
      */
     @Override
-    public Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly) {
-        int layerId = declaringType.getLayerId();
-        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(declaringType), index, ByteArrayReader.supportsUnalignedMemoryAccess());
+    public Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly, int layerId) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         return decodeArray(reader, Field.class, (i) -> (Field) decodeField(reader, DynamicHub.toClass(declaringType), publicOnly, true, layerId), layerId);
     }
 
     @Override
-    public FieldDescriptor[] parseReachableFields(DynamicHub declaringType, int index) {
-        int layerId = declaringType.getLayerId();
-        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(declaringType), index, ByteArrayReader.supportsUnalignedMemoryAccess());
+    public FieldDescriptor[] parseReachableFields(DynamicHub declaringType, int index, int layerId) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         return decodeArray(reader, FieldDescriptor.class, (i) -> (FieldDescriptor) decodeField(reader, DynamicHub.toClass(declaringType), false, false, layerId), layerId);
     }
 
@@ -132,16 +129,14 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      * </pre>
      */
     @Override
-    public Method[] parseMethods(DynamicHub declaringType, int index, boolean publicOnly) {
-        int layerId = declaringType.getLayerId();
-        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(declaringType), index, ByteArrayReader.supportsUnalignedMemoryAccess());
+    public Method[] parseMethods(DynamicHub declaringType, int index, boolean publicOnly, int layerId) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         return decodeArray(reader, Method.class, (i) -> (Method) decodeExecutable(reader, DynamicHub.toClass(declaringType), publicOnly, true, true, layerId), layerId);
     }
 
     @Override
-    public MethodDescriptor[] parseReachableMethods(DynamicHub declaringType, int index) {
-        int layerId = declaringType.getLayerId();
-        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(declaringType), index, ByteArrayReader.supportsUnalignedMemoryAccess());
+    public MethodDescriptor[] parseReachableMethods(DynamicHub declaringType, int index, int layerId) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         return decodeArray(reader, MethodDescriptor.class, (i) -> (MethodDescriptor) decodeExecutable(reader, DynamicHub.toClass(declaringType), false, false, true, layerId), layerId);
     }
 
@@ -153,16 +148,14 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      * </pre>
      */
     @Override
-    public Constructor<?>[] parseConstructors(DynamicHub declaringType, int index, boolean publicOnly) {
-        int layerId = declaringType.getLayerId();
-        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(declaringType), index, ByteArrayReader.supportsUnalignedMemoryAccess());
+    public Constructor<?>[] parseConstructors(DynamicHub declaringType, int index, boolean publicOnly, int layerId) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         return decodeArray(reader, Constructor.class, (i) -> (Constructor<?>) decodeExecutable(reader, DynamicHub.toClass(declaringType), publicOnly, true, false, layerId), layerId);
     }
 
     @Override
-    public ConstructorDescriptor[] parseReachableConstructors(DynamicHub declaringType, int index) {
-        int layerId = declaringType.getLayerId();
-        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(declaringType), index, ByteArrayReader.supportsUnalignedMemoryAccess());
+    public ConstructorDescriptor[] parseReachableConstructors(DynamicHub declaringType, int index, int layerId) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         return decodeArray(reader, ConstructorDescriptor.class, (i) -> (ConstructorDescriptor) decodeExecutable(reader, DynamicHub.toClass(declaringType), false, false, false, layerId),
                         layerId);
     }
@@ -176,7 +169,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      */
     @Override
     public Class<?>[] parseClasses(int index, DynamicHub declaringType) {
-        return parseClasses(index, getEncoding(declaringType), declaringType.getLayerId());
+        return parseClasses(index, getEncoding(declaringType.getLayerId()), declaringType.getLayerId());
     }
 
     @Override
@@ -202,9 +195,8 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      * </pre>
      */
     @Override
-    public RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index) {
-        int layerId = declaringType.getLayerId();
-        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(declaringType), index, ByteArrayReader.supportsUnalignedMemoryAccess());
+    public RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index, int layerId) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(declaringType.getLayerId()), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         return decodeArray(reader, RecordComponent.class, (i) -> decodeRecordComponent(reader, DynamicHub.toClass(declaringType), layerId), layerId);
     }
 
@@ -217,7 +209,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      */
     @Override
     public Object[] parseObjects(int index, DynamicHub declaringType) {
-        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(declaringType), index, ByteArrayReader.supportsUnalignedMemoryAccess());
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(declaringType.getLayerId()), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         int layerId = declaringType.getLayerId();
         return decodeArray(reader, Object.class, (i) -> decodeObject(reader, layerId), layerId);
     }
@@ -254,7 +246,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         if (isErrorIndex(index)) {
             decodeAndThrowError(index, layerId);
         }
-        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(declaringType), index, ByteArrayReader.supportsUnalignedMemoryAccess());
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(declaringType.getLayerId()), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         Class<?> declaringClass = decodeType(reader, layerId);
         String name = decodeMemberName(reader, layerId);
         String descriptor = decodeOtherString(reader, layerId);
@@ -263,7 +255,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
 
     @Override
     public byte[] parseByteArray(int index, DynamicHub declaringType) {
-        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(declaringType), index, ByteArrayReader.supportsUnalignedMemoryAccess());
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(declaringType.getLayerId()), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         return decodeByteArray(reader);
     }
 
@@ -279,7 +271,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
 
     @Override
     public int getMetadataByteLength() {
-        return ImageSingletons.lookup(RuntimeMetadataEncoding.class).getEncoding().length;
+        return RuntimeMetadataEncoding.currentLayer().getEncoding().length;
     }
 
     public static boolean isErrorIndex(int index) {
@@ -531,7 +523,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
                  */
                 if (isMethod) {
                     executable = ReflectionObjectFactory.newMethod(conditions, declaringClass, executable.getName(), executable.getParameterTypes(), Object.class, null, modifiers | NEGATIVE_FLAG_MASK,
-                                    null, null, null, null, null, null, null);
+                                    null, null, null, null, null, null, null, layerId);
                 } else {
                     executable = ReflectionObjectFactory.newConstructor(conditions, declaringClass, executable.getParameterTypes(), null, modifiers | NEGATIVE_FLAG_MASK, null, null, null, null, null,
                                     null);
@@ -577,7 +569,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
                     return new MethodDescriptor(declaringClass, name, (String[]) parameterTypes);
                 }
                 return ReflectionObjectFactory.newMethod(conditions, declaringClass, name, (Class<?>[]) parameterTypes, negative ? Object.class : returnType, null, modifiers,
-                                null, null, null, null, null, null, null);
+                                null, null, null, null, null, null, null, layerId);
             } else {
                 if (!reflectOnly) {
                     return new ConstructorDescriptor(declaringClass, (String[]) parameterTypes);
@@ -600,7 +592,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         Target_java_lang_reflect_Executable executable;
         if (isMethod) {
             Method method = ReflectionObjectFactory.newMethod(conditions, declaringClass, name, (Class<?>[]) parameterTypes, returnType, exceptionTypes, modifiers,
-                            signature, annotations, parameterAnnotations, annotationDefault, accessor, reflectParameters, typeAnnotations);
+                            signature, annotations, parameterAnnotations, annotationDefault, accessor, reflectParameters, typeAnnotations, layerId);
             if (!reflectOnly) {
                 return new MethodDescriptor(method);
             }

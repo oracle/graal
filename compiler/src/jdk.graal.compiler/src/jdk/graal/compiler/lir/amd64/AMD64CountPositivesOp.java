@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@ package jdk.graal.compiler.lir.amd64;
 
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRMVOp.SHLX;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VPBROADCASTD;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPXOR;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPXORD;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.QWORD;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.ZMM;
@@ -55,8 +55,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/715fa8f9fe7242e86b985aece3d078b226f53fb9/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L4047-L4317",
-          sha1 = "684b5353c58bbf92e4403aa985113a78a1f38930")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/765cef45465806e53f11fa7d92b9c184899b0932/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L4131-L4374",
+          sha1 = "1aa453c52215c1fc8d467460a93fa590f9edab15")
 // @formatter:on
 @Opcode("AMD64_COUNT_POSITIVES")
 public final class AMD64CountPositivesOp extends AMD64ComplexVectorOp {
@@ -144,7 +144,7 @@ public final class AMD64CountPositivesOp extends AMD64ComplexVectorOp {
             Register mask2 = asRegister(maskValue2);
 
             masm.movl(tmp1, len);
-            masm.emit(EVPXOR, vec2, vec2, vec2, ZMM);
+            masm.emit(EVPXORD, vec2, vec2, vec2, ZMM);
             // tail count (in chars) 0x3
             masm.andl(tmp1, 0x0000003f);
             // vector count (in chars)

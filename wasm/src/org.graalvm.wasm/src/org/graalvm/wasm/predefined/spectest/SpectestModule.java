@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,8 +67,8 @@ public class SpectestModule extends BuiltinModule {
         defineFunction(context, module, "print_f64_f64", types(F64_TYPE, F64_TYPE), types(), new PrintNode(language, module));
         defineGlobal(module, "global_i32", I32_TYPE, GlobalModifier.CONSTANT, 666);
         defineGlobal(module, "global_i64", I64_TYPE, GlobalModifier.CONSTANT, 666L);
-        defineGlobal(module, "global_f32", F32_TYPE, GlobalModifier.CONSTANT, 666.0f);
-        defineGlobal(module, "global_f64", F64_TYPE, GlobalModifier.CONSTANT, 666.0);
+        defineGlobal(module, "global_f32", F32_TYPE, GlobalModifier.CONSTANT, 666.6f);
+        defineGlobal(module, "global_f64", F64_TYPE, GlobalModifier.CONSTANT, 666.6);
         defineTable(context, module, "table", 10, 20, WasmType.FUNCREF_TYPE);
         defineMemory(context, module, "memory", 1, 2, false, false);
         if (context.getContextOptions().supportThreads() && context.getContextOptions().useUnsafeMemory()) {

@@ -42,7 +42,7 @@ typedef const struct MokapotNativeInterface_ *MokapotEnv;
 #endif
 
 #define UNIMPLEMENTED(name) \
-  fprintf(stderr, "Calling unimplemented mokapot %s\n", #name);
+  fprintf(stderr, "Calling unimplemented mokapot %s" OS_NEWLINE_STR, #name);
 
 #define IMPLEMENTED(name) do {} while (0);
 
@@ -352,6 +352,7 @@ typedef uint64_t julong;
     V(JVM_GetNextThreadIdOffset) \
     V(JVM_RegisterContinuationMethods) \
     V(JVM_IsPreviewEnabled) \
+    V(JVM_IsFinalizationEnabled) \
     /* V(JVM_DumpClassListToFile) */ \
     /* V(JVM_DumpDynamicArchive) */ \
     /* V(JVM_VirtualThreadMountBegin) */ \

@@ -1,0 +1,5 @@
+[[rule]]
+files = "AMD64InterpreterStubs.java"
+all = [
+    "bernhard.urban-forster@oracle.com",
+]

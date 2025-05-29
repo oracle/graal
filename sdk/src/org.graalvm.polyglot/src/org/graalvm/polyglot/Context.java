@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package org.graalvm.polyglot;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.ref.Reference;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -102,9 +103,10 @@ import org.graalvm.polyglot.proxy.Proxy;
  * {@link #initialize(String) initialized}.
  * <li>Then, we assert the result value by converting the result value as primitive <code>int</code>
  * .
- * <li>Finally, if the context is no longer needed, it is necessary to close it to ensure that all
- * resources are freed. Contexts are also {@link AutoCloseable} for use with the Java
- * {@code try-with-resources} statement.
+ * <li>Finally, when a context is no longer needed, it is recommended to explicitly close it to
+ * ensure timely release of resources. While contexts are automatically closed when no longer
+ * strongly reachable, explicit closure is still preferred. Contexts are also {@link AutoCloseable},
+ * allowing them to be used with the Java {@code try-with-resources} statement.
  * </ul>
  *
  * <h3>Configuration</h3>
@@ -337,15 +339,22 @@ public final class Context implements AutoCloseable {
     final AbstractContextDispatch dispatch;
     final Object receiver;
     final Context currentAPI;
+    final Context parent;
+    /**
+     * Strong reference to the creator {@link Context} to prevent it from being garbage collected
+     * and closed while API {@link Context} is still reachable.
+     */
+    final Context creatorContext;
     final Engine engine;
 
     @SuppressWarnings("unchecked")
-    <T> Context(AbstractContextDispatch dispatch, T receiver, Engine engine) {
+    <T> Context(AbstractContextDispatch dispatch, T receiver, Context parentContext, Engine engine) {
         this.dispatch = dispatch;
         this.receiver = receiver;
         this.engine = engine;
         this.currentAPI = new Context(this);
-        dispatch.setAPI(receiver, this);
+        this.parent = parentContext;
+        this.creatorContext = this;
     }
 
     private Context() {
@@ -353,6 +362,8 @@ public final class Context implements AutoCloseable {
         this.receiver = null;
         this.engine = null;
         this.currentAPI = null;
+        this.parent = null;
+        this.creatorContext = null;
     }
 
     private <T> Context(Context creatorAPI) {
@@ -360,6 +371,8 @@ public final class Context implements AutoCloseable {
         this.receiver = creatorAPI.receiver;
         this.engine = creatorAPI.engine.currentAPI;
         this.currentAPI = null;
+        this.parent = creatorAPI.parent != null ? creatorAPI.parent.currentAPI : null;
+        this.creatorContext = creatorAPI;
     }
 
     /**
@@ -393,13 +406,19 @@ public final class Context implements AutoCloseable {
      * @throws IllegalStateException if the context is already closed and the current thread is not
      *             allowed to access it.
      * @throws IllegalArgumentException if the language of the given source is not installed or the
-     *             {@link Source#getMimeType() MIME type} is not supported with the language.
+     *             {@link Source#getMimeType() MIME type} is not supported with the language or the
+     *             validation of a {@link Source.Builder#option(String, String) source option}
+     *             failed.
      * @return the evaluation result. The returned instance is never <code>null</code>, but the
      *         result might represent a {@link Value#isNull() null} value.
      * @since 19.0
      */
     public Value eval(Source source) {
-        return (Value) dispatch.eval(receiver, source.getLanguage(), source);
+        try {
+            return (Value) dispatch.eval(receiver, source.getLanguage(), source);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
+        }
     }
 
     /**
@@ -425,7 +444,11 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value eval(String languageId, CharSequence source) {
-        return eval(Source.create(languageId, source));
+        try {
+            return eval(Source.create(languageId, source));
+        } finally {
+            Reference.reachabilityFence(creatorContext);
+        }
     }
 
     /**
@@ -474,13 +497,20 @@ public final class Context implements AutoCloseable {
      *
      * @param source a source object to parse
      * @throws PolyglotException in case the guest language code parsing or validation failed.
-     * @throws IllegalArgumentException if the language does not exist or is not accessible.
+     * @throws IllegalArgumentException if the language of the given source is not installed or the
+     *             {@link Source#getMimeType() MIME type} is not supported with the language or the
+     *             validation of a {@link Source.Builder#option(String, String) source option}
+     *             failed.
      * @throws IllegalStateException if the context is already closed and the current thread is not
      *             allowed to access it, or if the given language is not installed.
      * @since 20.2
      */
     public Value parse(Source source) throws PolyglotException {
-        return (Value) dispatch.parse(receiver, source.getLanguage(), source);
+        try {
+            return (Value) dispatch.parse(receiver, source.getLanguage(), source);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
+        }
     }
 
     /**
@@ -523,7 +553,11 @@ public final class Context implements AutoCloseable {
      * @since 20.2
      */
     public Value parse(String languageId, CharSequence source) {
-        return parse(Source.create(languageId, source));
+        try {
+            return parse(Source.create(languageId, source));
+        } finally {
+            Reference.reachabilityFence(creatorContext);
+        }
     }
 
     /**
@@ -543,7 +577,11 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value getPolyglotBindings() {
-        return (Value) dispatch.getPolyglotBindings(receiver);
+        try {
+            return (Value) dispatch.getPolyglotBindings(receiver);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
+        }
     }
 
     /**
@@ -560,7 +598,11 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value getBindings(String languageId) {
-        return (Value) dispatch.getBindings(receiver, languageId);
+        try {
+            return (Value) dispatch.getBindings(receiver, languageId);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
+        }
     }
 
     /**
@@ -576,7 +618,11 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public boolean initialize(String languageId) {
-        return dispatch.initializeLanguage(receiver, languageId);
+        try {
+            return dispatch.initializeLanguage(receiver, languageId);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
+        }
     }
 
     /**
@@ -586,6 +632,7 @@ public final class Context implements AutoCloseable {
      */
     public void resetLimits() {
         dispatch.resetLimits(receiver);
+        Reference.reachabilityFence(creatorContext);
     }
 
     /**
@@ -735,7 +782,11 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value asValue(Object hostValue) {
-        return (Value) dispatch.asValue(receiver, hostValue);
+        try {
+            return (Value) dispatch.asValue(receiver, hostValue);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
+        }
     }
 
     /**
@@ -754,6 +805,7 @@ public final class Context implements AutoCloseable {
     public void enter() {
         checkCreatorAccess("entered");
         dispatch.explicitEnter(receiver);
+        Reference.reachabilityFence(creatorContext);
     }
 
     /**
@@ -832,6 +884,7 @@ public final class Context implements AutoCloseable {
     public void close(boolean cancelIfExecuting) {
         checkCreatorAccess("closed");
         dispatch.close(receiver, cancelIfExecuting);
+        Reference.reachabilityFence(creatorContext);
     }
 
     /**
@@ -883,6 +936,7 @@ public final class Context implements AutoCloseable {
         if (!dispatch.interrupt(receiver, timeout)) {
             throw new TimeoutException("Interrupt timed out.");
         }
+        Reference.reachabilityFence(creatorContext);
     }
 
     /**
@@ -929,6 +983,7 @@ public final class Context implements AutoCloseable {
      */
     public void safepoint() {
         dispatch.safepoint(receiver);
+        Reference.reachabilityFence(creatorContext);
     }
 
     /**
@@ -1934,11 +1989,11 @@ public final class Context implements AutoCloseable {
             }
             Object logHandler = customLogHandler != null ? Engine.getImpl().newLogHandler(customLogHandler) : null;
             String tmpDir = Engine.getImpl().getIO().hasHostFileAccess(useIOAccess) ? System.getProperty("java.io.tmpdir") : null;
-            ctx = (Context) engine.dispatch.createContext(engine.receiver, useSandboxPolicy, contextOut, contextErr, contextIn, hostClassLookupEnabled,
+            ctx = engine.dispatch.createContext(engine.receiver, engine, useSandboxPolicy, contextOut, contextErr, contextIn, hostClassLookupEnabled,
                             hostAccess, polyglotAccess, nativeAccess, createThread, hostClassLoading, innerContextOptions,
                             experimentalOptions, localHostLookupFilter, contextOptions, arguments == null ? Collections.emptyMap() : arguments,
                             permittedLanguages, useIOAccess, logHandler, createProcess, processHandler, useEnvironmentAccess, environment, zone, limits,
-                            localCurrentWorkingDirectory, tmpDir, hostClassLoader, allowValueSharing, useSystemExit);
+                            localCurrentWorkingDirectory, tmpDir, hostClassLoader, allowValueSharing, useSystemExit, true);
             return ctx;
         }
 

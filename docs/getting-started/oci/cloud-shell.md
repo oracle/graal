@@ -50,18 +50,18 @@ You are all set to run Java applications using Oracle GraalVM JDK in Cloud Shell
 
 ## Run a Java Application
 
-The example is a minimal REST-based application, built on top of Spring Boot using Maven. 
+The example is a minimal REST-based application, built on top of Spring Boot 3 using Maven. 
 The _pom.xml_ file was generated using [Spring Initializr](https://start.spring.io/) with Spring Native Tools added as a feature. 
 The [Spring AOT plugin](https://docs.spring.io/spring-native/docs/current/reference/htmlsingle/#spring-aot) performs ahead-of-time transformations of a Spring application into a native executable.
 
 1.  Clone the _demos_ repository and change to the application root directory:
     ```shell
     git clone https://github.com/graalvm/graalvm-demos.git
-    cd graalvm-demos/spring-native-image
+    cd graalvm-demos/native-image
     ```
 2. Build the application with Maven (Apache Maven is also preinstalled in Cloud Shell):
     ```shell
-    mvn clean package
+    ./mvnw clean package
     ```
     This will generate a runnable JAR file that contains all of the application’s dependencies as well as a correctly configured `MANIFEST` file.
 
@@ -85,7 +85,7 @@ The [Spring AOT plugin](https://docs.spring.io/spring-native/docs/current/refere
 
 4. Next, build a native executable for this Spring Boot application using the [`native` Maven profile](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html#quickstart).
     ```shell
-    mvn -Pnative native:compile
+    ./mvnw -Pnative native:compile
     ```
     This will generate a native executable for Linux in the _target_ directory, named _benchmark-jibber_.
 
@@ -116,4 +116,3 @@ Thus, you can use Oracle GraalVM in OCI Cloud Shell to build and test simple Jav
 - [Micronaut Hello World REST App with Oracle GraalVM in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/micronaut-hello-rest-maven/README-Cloud-Shell.md)
 - [Spring Boot Microservice with Oracle GraalVM in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/spring-native-image/README-Cloud-Shell.md)
 - [Oracle GraalVM in OCI Code Editor](code-editor.md)
-

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import static org.graalvm.word.WordFactory.signed;
+import static jdk.graal.compiler.word.Word.signed;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -38,7 +38,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
@@ -60,6 +59,7 @@ import com.oracle.svm.hosted.c.CGlobalDataFeature;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -69,18 +69,20 @@ import jdk.vm.ci.meta.JavaConstant;
  * Presently the layout of this section is as follows:
  *
  * <pre>
- *  --------------------------------------------------------
- *  |  byte offset | name                                  |
- *  |  0           | heap begin                            |
- *  |  8           | heap end                              |
- *  |  16          | heap relocatable begin                |
- *  |  24          | heap relocatable end                  |
- *  |  32          | heap any relocatable pointer          |
- *  |  40          | heap writable begin                   |
- *  |  48          | heap writable end                     |
- *  |  56          | next layer section (0 if final layer) |
- *  |  64          | cross-layer singleton table start     |
- *  --------------------------------------------------------
+ *  ---------------------------------------------------------
+ *  |  byte offset  | name                                  |
+ *  |  0            | heap begin                            |
+ *  |  8            | heap end                              |
+ *  |  16           | heap relocatable begin                |
+ *  |  24           | heap relocatable end                  |
+ *  |  32           | heap writable begin                   |
+ *  |  40           | heap writable end                     |
+ *  |  48           | heap writable patched begin           |
+ *  |  56           | heap writable patched end             |
+ *  |  64           | next layer section (0 if final layer) |
+ *  |  72           | cross-layer singleton table start     |
+ *  | (after table) | heap relative patches                 |
+ *  ---------------------------------------------------------
  * </pre>
  */
 @AutomaticallyRegisteredFeature
@@ -92,14 +94,18 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
     private static final int HEAP_END_OFFSET = 8;
     private static final int HEAP_RELOCATABLE_BEGIN_OFFSET = 16;
     private static final int HEAP_RELOCATABLE_END_OFFSET = 24;
-    private static final int HEAP_ANY_RELOCATABLE_POINTER_OFFSET = 32;
-    private static final int HEAP_WRITABLE_BEGIN_OFFSET = 40;
-    private static final int HEAP_WRITABLE_END_OFFSET = 48;
-    private static final int NEXT_SECTION_OFFSET = 56;
-    private static final int STATIC_SECTION_SIZE = 64;
+    private static final int HEAP_WRITABLE_BEGIN_OFFSET = 32;
+    private static final int HEAP_WRITABLE_END_OFFSET = 40;
+    private static final int HEAP_WRITABLE_PATCHED_BEGIN_OFFSET = 48;
+    private static final int HEAP_WRITABLE_PATCHED_END_OFFSET = 56;
+    private static final int NEXT_SECTION_OFFSET = 64;
+    private static final int STATIC_SECTION_SIZE = 72;
 
     private static final String CACHED_IMAGE_FDS_NAME = "__svm_layer_cached_image_fds";
     private static final String CACHED_IMAGE_HEAP_OFFSETS_NAME = "__svm_layer_cached_image_heap_offsets";
+    private static final String CACHED_IMAGE_HEAP_RELOCATIONS_NAME = "__svm_layer_cached_image_heap_relocations";
+
+    private static final String HEAP_RELATIVE_RELOCATIONS_NAME = "__svm_heap_relative_relocations";
 
     private static final SignedWord UNASSIGNED_FD = signed(-1);
 
@@ -110,7 +116,7 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(HostedDynamicLayerInfoFeature.class, LoadImageSingletonFeature.class);
+        return List.of(HostedDynamicLayerInfoFeature.class, LoadImageSingletonFeature.class, CrossLayerConstantRegistryFeature.class);
     }
 
     @Override
@@ -133,22 +139,27 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
     }
 
     private static ImageLayerSectionImpl createImageLayerSection() {
-        CGlobalData<Pointer> initialSectionStart = ImageLayerBuildingSupport.buildingInitialLayer() ? CGlobalDataFactory.forSymbol(getLayerName(DynamicImageLayerInfo.singleton().layerNumber)) : null;
+        CGlobalData<Pointer> initialSectionStart = ImageLayerBuildingSupport.buildingInitialLayer() ? CGlobalDataFactory.forSymbol(getLayerName(DynamicImageLayerInfo.getCurrentLayerNumber())) : null;
         CGlobalData<WordPointer> cachedImageFDs;
         CGlobalData<WordPointer> cachedImageHeapOffsets;
+        CGlobalData<WordPointer> cachedImageHeapRelocations;
+        CGlobalData<Word> heapRelativeRelocations = ImageLayerBuildingSupport.buildingInitialLayer() ? CGlobalDataFactory.forSymbol(HEAP_RELATIVE_RELOCATIONS_NAME) : null;
 
         if (ImageLayerBuildingSupport.buildingInitialLayer()) {
             cachedImageFDs = CGlobalDataFactory.forSymbol(CACHED_IMAGE_FDS_NAME);
             cachedImageHeapOffsets = CGlobalDataFactory.forSymbol(CACHED_IMAGE_HEAP_OFFSETS_NAME);
+            cachedImageHeapRelocations = CGlobalDataFactory.forSymbol(CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
         } else if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
             cachedImageFDs = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, UNASSIGNED_FD), CACHED_IMAGE_FDS_NAME);
-            cachedImageHeapOffsets = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, WordFactory.zero()), CACHED_IMAGE_HEAP_OFFSETS_NAME);
+            cachedImageHeapOffsets = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, Word.zero()), CACHED_IMAGE_HEAP_OFFSETS_NAME);
+            cachedImageHeapRelocations = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, Word.zero()), CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
         } else {
             cachedImageFDs = null;
             cachedImageHeapOffsets = null;
+            cachedImageHeapRelocations = null;
         }
 
-        return new ImageLayerSectionImpl(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets);
+        return new ImageLayerSectionImpl(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets, cachedImageHeapRelocations, heapRelativeRelocations);
     }
 
     @Override
@@ -156,6 +167,7 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
         if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
             CGlobalDataFeature.singleton().registerWithGlobalSymbol(ImageLayerSection.getCachedImageFDs());
             CGlobalDataFeature.singleton().registerWithGlobalSymbol(ImageLayerSection.getCachedImageHeapOffsets());
+            CGlobalDataFeature.singleton().registerWithGlobalSymbol(ImageLayerSection.getCachedImageHeapRelocations());
         }
     }
 
@@ -172,7 +184,19 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
         ObjectFile objectFile = ((FeatureImpl.AfterAbstractImageCreationAccessImpl) access).getImage().getObjectFile();
 
         int numSingletonSlots = ImageSingletons.lookup(LoadImageSingletonFeature.class).getConstantToTableSlotMap().size();
-        layeredSectionDataByteBuffer = ByteBuffer.wrap(new byte[STATIC_SECTION_SIZE + (ConfigurationValues.getObjectLayout().getReferenceSize() * numSingletonSlots)]).order(ByteOrder.LITTLE_ENDIAN);
+        int singletonSlotsBufferSize = ConfigurationValues.getObjectLayout().getReferenceSize() * numSingletonSlots;
+
+        int heapPatchInfoStart = STATIC_SECTION_SIZE + singletonSlotsBufferSize;
+        int heapPatchInfoSize = 0;
+        if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
+            /*
+             * See CrossLayerConstantRegistryFeature#generateRelocationPatchArray for a description
+             * of the patching table layout.
+             */
+            heapPatchInfoSize = Integer.BYTES + (Integer.BYTES * CrossLayerConstantRegistryFeature.singleton().computeRelocationPatchesLength());
+        }
+
+        layeredSectionDataByteBuffer = ByteBuffer.wrap(new byte[heapPatchInfoStart + heapPatchInfoSize]).order(ByteOrder.LITTLE_ENDIAN);
         layeredSectionData = new BasicProgbitsSectionImpl(layeredSectionDataByteBuffer.array());
 
         // since relocations are present the section it is considered writable
@@ -184,16 +208,20 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
             // this symbol will be defined in the next layer's layer section
             objectFile.createUndefinedSymbol(nextLayerSymbolName, 0, false);
             layeredSectionData.markRelocationSite(NEXT_SECTION_OFFSET, ObjectFile.RelocationKind.DIRECT_8, nextLayerSymbolName, 0);
+            objectFile.createUndefinedSymbol(HEAP_RELATIVE_RELOCATIONS_NAME, 0, false);
         } else {
             /*
              * Note because we provide a byte buffer initialized to zeros nothing needs to be done.
              * Otherwise, the NEXT_SECTION field entry would need to be cleared within the
              * application layer.
              */
+
+            // Define the heap relative patching start
+            objectFile.createDefinedSymbol(HEAP_RELATIVE_RELOCATIONS_NAME, layeredImageSection, heapPatchInfoStart, 0, false, true);
         }
 
         // this symbol must be global when it will be read by the prior section
-        objectFile.createDefinedSymbol(getLayerName(DynamicImageLayerInfo.singleton().layerNumber), layeredImageSection, 0, 0, false, ImageLayerBuildingSupport.buildingExtensionLayer());
+        objectFile.createDefinedSymbol(getLayerName(DynamicImageLayerInfo.getCurrentLayerNumber()), layeredImageSection, 0, 0, false, ImageLayerBuildingSupport.buildingExtensionLayer());
 
         if (numSingletonSlots != 0) {
             assert ImageLayerBuildingSupport.buildingApplicationLayer() : "Currently only application layer is supported";
@@ -211,9 +239,10 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
         layeredSectionData.markRelocationSite(HEAP_END_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_END_SYMBOL_NAME, 0);
         layeredSectionData.markRelocationSite(HEAP_RELOCATABLE_BEGIN_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, 0);
         layeredSectionData.markRelocationSite(HEAP_RELOCATABLE_END_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, 0);
-        layeredSectionData.markRelocationSite(HEAP_ANY_RELOCATABLE_POINTER_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, 0);
         layeredSectionData.markRelocationSite(HEAP_WRITABLE_BEGIN_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, 0);
         layeredSectionData.markRelocationSite(HEAP_WRITABLE_END_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, 0);
+        layeredSectionData.markRelocationSite(HEAP_WRITABLE_PATCHED_BEGIN_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_WRITABLE_PATCHED_BEGIN_SYMBOL_NAME, 0);
+        layeredSectionData.markRelocationSite(HEAP_WRITABLE_PATCHED_END_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_WRITABLE_PATCHED_END_SYMBOL_NAME, 0);
 
         var config = (FeatureImpl.BeforeImageWriteAccessImpl) access;
 
@@ -236,12 +265,34 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
             }
             singletonTableOffset += referenceSize;
         }
+
+        if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
+            /*
+             * Currently we place the heap relocation patches exclusively in the application layer.
+             *
+             * Note the patch information is always written as an array of ints regardless of the
+             * reference size. This is allowed because we require the image heap to be less than 2GB
+             * in size.
+             *
+             * See CrossLayerConstantRegistryFeature#generateRelocationPatchArray for a thorough
+             * description of the patching table layout.
+             */
+            int patchesOffset = singletonTableOffset;
+            int[] relocationPatches = CrossLayerConstantRegistryFeature.singleton().getRelocationPatches();
+            layeredSectionDataByteBuffer.putInt(patchesOffset, relocationPatches.length);
+            patchesOffset += Integer.BYTES;
+            for (int value : relocationPatches) {
+                layeredSectionDataByteBuffer.putInt(patchesOffset, value);
+                patchesOffset += Integer.BYTES;
+            }
+        }
     }
 
     private static class ImageLayerSectionImpl extends ImageLayerSection implements UnsavedSingleton {
 
-        ImageLayerSectionImpl(CGlobalData<Pointer> initialSectionStart, CGlobalData<WordPointer> cachedImageFDs, CGlobalData<WordPointer> cachedImageHeapOffsets) {
-            super(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets);
+        ImageLayerSectionImpl(CGlobalData<Pointer> initialSectionStart, CGlobalData<WordPointer> cachedImageFDs, CGlobalData<WordPointer> cachedImageHeapOffsets,
+                        CGlobalData<WordPointer> cachedImageHeapRelocations, CGlobalData<Word> heapRelativeRelocations) {
+            super(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets, cachedImageHeapRelocations, heapRelativeRelocations);
         }
 
         @Override
@@ -251,9 +302,10 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
                 case HEAP_END -> HEAP_END_OFFSET;
                 case HEAP_RELOCATABLE_BEGIN -> HEAP_RELOCATABLE_BEGIN_OFFSET;
                 case HEAP_RELOCATABLE_END -> HEAP_RELOCATABLE_END_OFFSET;
-                case HEAP_ANY_RELOCATABLE_POINTER -> HEAP_ANY_RELOCATABLE_POINTER_OFFSET;
                 case HEAP_WRITEABLE_BEGIN -> HEAP_WRITABLE_BEGIN_OFFSET;
                 case HEAP_WRITEABLE_END -> HEAP_WRITABLE_END_OFFSET;
+                case HEAP_WRITEABLE_PATCHED_BEGIN -> HEAP_WRITABLE_PATCHED_BEGIN_OFFSET;
+                case HEAP_WRITEABLE_PATCHED_END -> HEAP_WRITABLE_PATCHED_END_OFFSET;
                 case NEXT_SECTION -> NEXT_SECTION_OFFSET;
             };
         }

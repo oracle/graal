@@ -48,14 +48,15 @@ public class TStringOpsCalcStringAttributesUTF32ConstantTest extends TStringOpsC
     @Test
     public void testUTF32() {
         setConstantArgs(DUMMY_LOCATION, arrayA, offsetA, lengthA);
-        test(getTStringOpsMethod("calcStringAttributesUTF32", Object.class, int.class, int.class), null, DUMMY_LOCATION, arrayA, offsetA, lengthA);
+        test(getTStringOpsMethod("calcStringAttributesUTF32", byte[].class, long.class, int.class), null, DUMMY_LOCATION, arrayA, offsetA, lengthA);
     }
 
     @Test
     public void testUTF32I() {
         int[] intArray = toIntArray(arrayA);
-        setConstantArgs(DUMMY_LOCATION, intArray, offsetA, lengthA);
-        test(getTStringOpsMethod("calcStringAttributesUTF32I", int[].class, int.class, int.class), null, DUMMY_LOCATION, intArray, offsetA, lengthA);
+        long offsetIntArray = offsetA - byteArrayBaseOffset() + intArrayBaseOffset();
+        setConstantArgs(DUMMY_LOCATION, intArray, offsetIntArray, lengthA);
+        test(getTStringOpsMethod("calcStringAttributesUTF32I", int[].class, long.class, int.class), null, DUMMY_LOCATION, intArray, offsetIntArray, lengthA);
     }
 
 }

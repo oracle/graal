@@ -1,6 +1,7 @@
 {
   local c = (import '../../../ci/ci_common/common.jsonnet'),
   local bc = (import '../../../ci/ci_common/bench-common.libsonnet'),
+  local config = (import '../../../ci/repo-configuration.libsonnet'),
   local cc = (import 'compiler-common.libsonnet'),
 
   local _suite_key(a) = a['suite'],
@@ -8,7 +9,7 @@
 
   // convenient sets of benchmark suites for easy reuse
   groups:: {
-    open_suites:: unique_suites([$.awfy, $.dacapo, $.scala_dacapo, $.renaissance]),
+    open_suites:: unique_suites([$.awfy, $.dacapo, $.scala_dacapo, $.renaissance, $.barista]),
     spec_suites:: unique_suites([$.specjvm2008, $.specjbb2015]),
     jmh_micros_suites:: unique_suites([$.micros_graal_dist]),
     graal_internals_suites:: unique_suites([$.micros_graal_whitebox]),
@@ -27,7 +28,7 @@
   awfy: cc.compiler_benchmark + c.heap.small + bc.bench_max_threads + {
     suite:: "awfy",
     run+: [
-      self.benchmark_cmd + ["awfy:*", "--"] + self.extra_vm_args
+      self.benchmark_cmd + [self.suite + ":*", "--"] + self.extra_vm_args
     ],
     timelimit: "30:00",
     forks_batches:: null,
@@ -39,9 +40,20 @@
   dacapo: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "dacapo",
     run+: [
-      self.benchmark_cmd + ["dacapo:*", "--"] + self.extra_vm_args
+      self.benchmark_cmd + [self.suite + ":*", "--"] + self.extra_vm_args
     ],
-    timelimit: "50:00",
+    logs+: [
+        "%s/*/scratch/%s" % [config.compiler.compiler_suite, file]
+        for file in [
+            "biojava.out",
+            "pmd-report.txt",
+        ] + [
+            "lusearch.out%d" % n
+            # only capture the files used for output validation; defined in lusearch.cnf
+            for n in [0, 1, 2, 3, 4, 5, 6, 7, 265, 511, 767, 1023, 1279, 1535, 1791, 2047]
+        ]
+    ],
+    timelimit: "1:30:00",
     forks_batches:: 2,
     bench_forks_per_batch:: 3,
     forks_timelimit:: "3:00:00",
@@ -68,9 +80,9 @@
   scala_dacapo: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "scala-dacapo",
     run+: [
-      self.benchmark_cmd + ["scala-dacapo:*", "--"] + self.extra_vm_args
+      self.benchmark_cmd + [self.suite + ":*", "--"] + self.extra_vm_args
     ],
-    timelimit: "01:00:00",
+    timelimit: "01:30:00",
     forks_batches:: 2,
     bench_forks_per_batch:: 3,
     forks_timelimit:: "02:30:00",
@@ -103,9 +115,9 @@
     suite:: suite_name,
     local suite_version_args = if suite_version != null then ["--bench-suite-version=" + suite_version] else [],
     run+: [
-      self.benchmark_cmd + ["renaissance:*"] + suite_version_args + ["--"] + self.extra_vm_args
+      self.benchmark_cmd + [self.suite + ":*"] + suite_version_args + ["--"] + self.extra_vm_args
     ],
-    timelimit: "2:00:00",
+    timelimit: "2:30:00",
     forks_batches:: 4,
     bench_forks_per_batch:: 2,
     forks_timelimit:: "4:00:00",
@@ -114,6 +126,47 @@
   },
 
   renaissance: self.renaissance_template(),
+
+  barista_template(suite_version=null, suite_name="barista", max_jdk_version=null, cmd_app_prefix=["hwloc-bind --cpubind node:0.core:0-3.pu:0 --membind node:0"], non_prefix_barista_args=[]):: cc.compiler_benchmark + {
+    suite:: suite_name,
+    local barista_version = "v0.4.2",
+    local suite_version_args = if suite_version != null then ["--bench-suite-version=" + suite_version] else [],
+    local prefix_barista_arg = if std.length(cmd_app_prefix) > 0 then [std.format("--cmd-app-prefix=%s", std.join(" ", cmd_app_prefix))] else [],
+    local all_barista_args = prefix_barista_arg + non_prefix_barista_args,
+    local barista_args_with_separator = if std.length(all_barista_args) > 0 then ["--"] + all_barista_args else [],
+    downloads+: {
+      "WRK": { "name": "wrk", "version": "a211dd5", platformspecific: true},
+      "WRK2": { "name": "wrk2", "version": "2.1", platformspecific: true},
+      "BARISTA_BENCHMARKS": { "name": "barista", "version": "0.3.5"}
+    },
+    packages+: {
+      maven: "==3.8.6",
+      "pip:toml": "==0.10.2"
+    },
+    setup: [
+      ["set-export", "PATH", "$WRK:$PATH"],
+      ["set-export", "PATH", "$WRK2:$PATH"],
+      ["git", "clone", "--depth", "1", "--branch", barista_version, ["mx", "urlrewrite", "https://github.com/graalvm/barista-suite.git"], "$BARISTA_HOME"],
+      ["cp", "-r", "$BARISTA_BENCHMARKS/*", "$BARISTA_HOME"] // copy the prebuilt jar/nib files
+    ] + super.setup,
+    run+: [
+      self.benchmark_cmd + ["barista:*"] + suite_version_args + ["--"] + self.extra_vm_args + barista_args_with_separator
+    ],
+    notify_emails+: ["andrija.kolic@oracle.com"],
+    timelimit: "2:00:00",
+    should_use_hwloc: false, // hwloc-bind is passed to barista with '--cmd-app-prefix'
+    environment+: {
+      BARISTA_HOME: "$BUILD_DIR/barista-suite",
+      XMX: "500m"
+    },
+    min_jdk_version:: 8,
+    max_jdk_version:: max_jdk_version,
+    forks_batches:: 3,
+    bench_forks_per_batch:: 4,
+    forks_timelimit:: "4:30:00"
+  },
+
+  barista: self.barista_template(),
 
   specjbb2015: cc.compiler_benchmark + c.heap.large_with_large_young_gen + bc.bench_no_thread_cap + {
     suite:: "specjbb2015",
@@ -136,7 +189,7 @@
       "SPECJVM2008": { name: "specjvm2008", version: "1.01" }
     },
     run+: [
-      self.benchmark_cmd + ["specjvm2008:*", "--"] + self.extra_vm_args + ["--", "-ikv", "-it", "30s", "-wt", "30s"]
+      self.benchmark_cmd + [self.suite + ":*", "--"] + self.extra_vm_args + ["--", "-ikv", "-it", "30s", "-wt", "30s"]
     ],
     timelimit: "1:15:00",
     forks_batches:: 3,
@@ -210,5 +263,20 @@
     timelimit: "5:00:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
+  },
+
+  // Benchmark mixins that run metric-collecting variants of the benchmark suite they're applied to.
+  // For example, dacapo-timing is a variant of the dacapo benchmark which collects phase times and other compiler timers in its results.
+
+  timing: {
+    suite+: "-timing",
+    forks_batches:: null,
+    forks_timelimit:: null,
+  },
+
+  mem_use: {
+    suite+: "-mem-use",
+    forks_batches:: null,
+    forks_timelimit:: null,
   }
 }

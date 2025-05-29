@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.collections.EconomicMap;
@@ -38,15 +39,14 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.APIOption;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.util.CPUType;
-import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.options.Option;
@@ -56,8 +56,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 
 public class NativeImageOptions {
-
-    public static final int DEFAULT_MAX_ANALYSIS_SCALING = 16;
 
     @Option(help = "Comma separated list of CPU features that will be enabled while building the " +
                     "target executable, irrespective of whether they are supported by the hosted " +
@@ -88,7 +86,7 @@ public class NativeImageOptions {
     public static final String MICRO_ARCHITECTURE_LIST = "list";
 
     @APIOption(name = "-march")//
-    @Option(help = "Generate instructions for a specific machine type. Defaults to 'x86-64-v3' on AMD64 and 'armv8-a' on AArch64. " +
+    @Option(help = "Generate instructions for a specific machine type. Defaults to 'x86-64-v3' on AMD64 and 'armv8.1-a' on AArch64. " +
                     "Use -march=" + MICRO_ARCHITECTURE_COMPATIBILITY + " for best compatibility, or -march=" + MICRO_ARCHITECTURE_NATIVE +
                     " for best performance if the native executable is deployed on the same machine or on a machine with the same CPU features. " +
                     "To list all available machine types, use -march=" + MICRO_ARCHITECTURE_LIST + ".", type = User)//
@@ -188,11 +186,11 @@ public class NativeImageOptions {
     }
 
     /**
-     * Configures the number of threads of the common pool (see driver).
+     * Configures the number of threads of the common pool.
      */
     private static final String PARALLELISM_OPTION_NAME = "parallelism";
     @APIOption(name = PARALLELISM_OPTION_NAME)//
-    @Option(help = "The maximum number of threads to use concurrently during native image generation.")//
+    @Option(help = "The maximum number of threads the build process is allowed to use.")//
     public static final HostedOptionKey<Integer> NumberOfThreads = new HostedOptionKey<>(Math.max(1, Math.min(Runtime.getRuntime().availableProcessors(), 32)), key -> {
         int numberOfThreads = key.getValue();
         if (numberOfThreads < 1) {
@@ -203,8 +201,13 @@ public class NativeImageOptions {
     public static int getActualNumberOfThreads() {
         int commonThreadParallelism = ForkJoinPool.getCommonPoolParallelism();
         if (NumberOfThreads.getValue() == 1) {
-            assert commonThreadParallelism == 1 : "Disabled common pool expected to report parallelism of 1";
-            commonThreadParallelism = 0; /* A disabled common pool has no actual threads */
+            /*
+             * Overriding zero parallelism must ensure at least one worker, but due to other
+             * backward compatibility constraints, it ensures two.
+             */
+            assert commonThreadParallelism == 2 : "The common pool with zero parallelism has two worker threads.";
+            /* The common pool with zero parallelism has no actual threads. */
+            commonThreadParallelism = 0;
         }
         /*
          * Main thread plus common pool threads. setCommonPoolParallelism() asserts that this number
@@ -213,30 +216,28 @@ public class NativeImageOptions {
         return 1 + commonThreadParallelism;
     }
 
+    /**
+     * The --parallelism flag controls the number of threads used during native image builds.
+     * <p>
+     * There are two ways to apply this value to set the thread count in the common pool: using
+     * system properties (though this approach is strongly discouraged in recent JDK versions), and
+     * using the {@link ForkJoinPool#setParallelism} method.
+     * <p>
+     * By default, the common pool's parallelism level (without explicitly setting it via system
+     * properties or method) equals the number of available processors minus one.
+     * <p>
+     * If zero parallelism is desired, the flag should be set to {@code 1} (main thread only). While
+     * this value can be assigned to the common pool, note that when using
+     * {@link CompletableFuture}, the minimal effective parallelism becomes two due to its internal
+     * pool requirements (see CompletableFuture#ASYNC_POOL). Therefore, the actual thread count must
+     * be incremented by one.
+     */
     public static void setCommonPoolParallelism(OptionValues optionValues) {
-        if (NativeImageOptions.NumberOfThreads.hasBeenSet(optionValues)) {
-            /*
-             * The main thread always helps to process tasks submitted to the common pool (e.g., see
-             * ForkJoinPool#awaitTermination()), so subtract one from the number of threads. The
-             * common pool can be disabled "by setting the parallelism property to zero" (see
-             * ForkJoinPool's javadoc).
-             */
-            int numberOfCommonPoolThreads = NativeImageOptions.NumberOfThreads.getValue(optionValues) - 1;
-            String commonPoolParallelismProperty = "java.util.concurrent.ForkJoinPool.common.parallelism";
-            assert System.getProperty(commonPoolParallelismProperty) == null : commonPoolParallelismProperty + " already set";
-            System.setProperty(commonPoolParallelismProperty, "" + numberOfCommonPoolThreads);
-            int actualCommonPoolParallelism = ForkJoinPool.commonPool().getParallelism();
-            /*
-             * getParallelism() returns at least 1, even in single-threaded mode where common pool
-             * is disabled.
-             */
-            boolean isSingleThreadedMode = numberOfCommonPoolThreads == 0 && actualCommonPoolParallelism == 1;
-            if (!isSingleThreadedMode && actualCommonPoolParallelism != numberOfCommonPoolThreads) {
-                String warning = "Failed to set parallelism of common pool (actual parallelism is %s).".formatted(actualCommonPoolParallelism);
-                assert false : warning;
-                LogUtils.warning(warning);
-            }
+        int numberOfCommonPoolThreads = NativeImageOptions.NumberOfThreads.getValueOrDefault(optionValues.getMap());
+        if (numberOfCommonPoolThreads == 1) {
+            numberOfCommonPoolThreads += 1;
         }
+        ForkJoinPool.commonPool().setParallelism(numberOfCommonPoolThreads);
     }
 
     @Option(help = "Deprecated, option no longer has any effect", deprecated = true, deprecationMessage = "Please use '--parallelism' instead.")//

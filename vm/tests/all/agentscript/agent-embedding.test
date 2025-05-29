@@ -22,11 +22,11 @@
 # questions.
 #
 >[0] javac Embedding*.java -d ${TMP_DIR}
->[0] java -ea -cp .:${TMP_DIR} Embedding
+>[0] java ${SUN_MISC_UNSAFE_OPTION} --enable-native-access=org.graalvm.truffle -ea -cp .:${TMP_DIR} Embedding
 Everything is OK!
->[0] java -ea -cp ${TMP_DIR} EmbeddingDoubled
+>[0] java ${SUN_MISC_UNSAFE_OPTION} --enable-native-access=org.graalvm.truffle -ea -cp ${TMP_DIR} EmbeddingDoubled
 Everything is OK!
->[0] java -ea -cp .:${TMP_DIR} EmbeddingMoreContexts 2
+>[0] java ${SUN_MISC_UNSAFE_OPTION} --enable-native-access=org.graalvm.truffle -ea -cp .:${TMP_DIR} EmbeddingMoreContexts 2
 calling fib with 11
 result is 89
 calling fib with 12
@@ -46,10 +46,10 @@ OK 2 times!
 # ##################################################################
 # Register instrument using deprecated -Dtruffle.class.path.append
 # ##################################################################
->[1] java -ea -Dtruffle.class.path.append=${TMP_DIR}/instrument.jar -cp ${TMP_DIR} EmbeddingRegisterSymbols primitives
+>[1] java ${SUN_MISC_UNSAFE_OPTION} --enable-native-access=org.graalvm.truffle -ea -Dtruffle.class.path.append=${TMP_DIR}/instrument.jar -cp ${TMP_DIR} EmbeddingRegisterSymbols primitives
 \[engine\] The internal option -Dtruffle\.class\.path\.append option is deprecated.*
 
-Exception in thread "main" Stop: 0
+Exception in thread "main" org.graalvm.polyglot.PolyglotException: Stop: 0
 .*at.*js.*insight.js.*
 .*at.*js.*fib.*Unnamed.*
 .*at.*js.*fib.*Unnamed.*
@@ -61,10 +61,10 @@ Exception in thread "main" Stop: 0
 .*at.*org.graalvm.polyglot.Value.execute.*
 .*at.*EmbeddingRegisterSymbols.exportAndTest.*
 .*at.*EmbeddingRegisterSymbols.main.*
->[1] java -ea -Dtruffle.class.path.append=${TMP_DIR}/instrument.jar -cp ${TMP_DIR} EmbeddingRegisterSymbols object
+>[1] java ${SUN_MISC_UNSAFE_OPTION} --enable-native-access=org.graalvm.truffle -ea -Dtruffle.class.path.append=${TMP_DIR}/instrument.jar -cp ${TMP_DIR} EmbeddingRegisterSymbols object
 \[engine\] The internal option -Dtruffle\.class\.path\.append option is deprecated.*
 
-Exception in thread "main" Stop: 0
+Exception in thread "main" org.graalvm.polyglot.PolyglotException: Stop: 0
 .*at.*js.*insight.js.*
 .*at.*js.*fib.*Unnamed.*
 .*at.*js.*fib.*Unnamed.*
@@ -79,9 +79,9 @@ Exception in thread "main" Stop: 0
 # ##################################################################
 # Register instrument using module-path
 # ##################################################################
->[1] java -ea --module-path ${TMP_DIR}/instrument.jar:${GRAALVM_HOME}/tools/insight -cp ${TMP_DIR} EmbeddingRegisterSymbols primitives
+>[1] java ${SUN_MISC_UNSAFE_OPTION} --enable-native-access=org.graalvm.truffle -ea --module-path ${TMP_DIR}/instrument.jar:${GRAALVM_HOME}/tools/insight -cp ${TMP_DIR} EmbeddingRegisterSymbols primitives
 
-Exception in thread "main" Stop: 0
+Exception in thread "main" org.graalvm.polyglot.PolyglotException: Stop: 0
 .*at.*js.*insight.js.*
 .*at.*js.*fib.*Unnamed.*
 .*at.*js.*fib.*Unnamed.*
@@ -93,9 +93,9 @@ Exception in thread "main" Stop: 0
 .*at.*org.graalvm.polyglot.Value.execute.*
 .*at.*EmbeddingRegisterSymbols.exportAndTest.*
 .*at.*EmbeddingRegisterSymbols.main.*
->[1] java -ea --module-path ${TMP_DIR}/instrument.jar:${GRAALVM_HOME}/tools/insight -cp ${TMP_DIR} EmbeddingRegisterSymbols object
+>[1] java ${SUN_MISC_UNSAFE_OPTION} --enable-native-access=org.graalvm.truffle -ea --module-path ${TMP_DIR}/instrument.jar:${GRAALVM_HOME}/tools/insight -cp ${TMP_DIR} EmbeddingRegisterSymbols object
 
-Exception in thread "main" Stop: 0
+Exception in thread "main" org.graalvm.polyglot.PolyglotException: Stop: 0
 .*at.*js.*insight.js.*
 .*at.*js.*fib.*Unnamed.*
 .*at.*js.*fib.*Unnamed.*

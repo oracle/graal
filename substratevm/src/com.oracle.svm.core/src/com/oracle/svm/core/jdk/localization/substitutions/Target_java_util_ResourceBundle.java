@@ -24,10 +24,7 @@
  */
 package com.oracle.svm.core.jdk.localization.substitutions;
 
-import static sun.security.util.SecurityConstants.GET_CLASSLOADER_PERMISSION;
-
 import java.util.Locale;
-import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -133,27 +130,6 @@ final class Target_java_util_ResourceBundle {
             MissingResourceRegistrationUtils.missingResourceBundle(baseName);
         }
         return getBundleImpl(callerModule, unnamedModule, baseName, locale, control);
-    }
-
-    @Substitute
-    @SuppressWarnings({"removal", "deprecation"})
-    private static ResourceBundle getBundleFromModule(Class<?> caller,
-                    Module module,
-                    String baseName,
-                    Locale locale,
-                    ResourceBundle.Control control) {
-        Objects.requireNonNull(module);
-        Module callerModule = getCallerModule(caller);
-        if (callerModule != module) {
-            SecurityManager sm = System.getSecurityManager();
-            if (sm != null) {
-                sm.checkPermission(GET_CLASSLOADER_PERMISSION);
-            }
-        }
-        if (!ImageSingletons.lookup(LocalizationSupport.class).isRegisteredBundleLookup(baseName, locale, control)) {
-            MissingResourceRegistrationUtils.missingResourceBundle(baseName);
-        }
-        return getBundleImpl(callerModule, module, baseName, locale, control);
     }
 
     @Alias

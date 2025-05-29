@@ -28,6 +28,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
+import java.nio.CharBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,13 +65,18 @@ public final class JsonParser {
     private final Reader source;
 
     // Current reading position within source
-    private int pos = 0;
+    private int pos;
     // Current line number, used for error reporting.
     private int line = 0;
     // Position of the start of the current line in source, used for error reporting.
     private int beginningOfLine = 0;
     // Next character to be scanned, obtained from source
     private int next;
+    /**
+     * Characters following 'next'. Managing our own buffer instead of using {@link BufferedReader}
+     * avoids unnecessary locking that becomes significant when getting individual characters.
+     */
+    private final CharBuffer buffer = CharBuffer.allocate(8192).limit(0);
 
     private static final int EOF = -1;
 
@@ -90,12 +96,12 @@ public final class JsonParser {
     /**
      * Creates a new {@link JsonParser} that reads characters from {@code source}.
      *
-     * @param source character stream containing JSON text. Will be adapted internally through a
-     *            {@link BufferedReader}.
+     * @param source character reader containing JSON text.
      */
     public JsonParser(Reader source) throws IOException {
-        this.source = new BufferedReader(source);
-        next = source.read();
+        this.source = source;
+        next();
+        this.pos = 0;
     }
 
     /**
@@ -475,8 +481,10 @@ public final class JsonParser {
     }
 
     private Object parseKeyword(final String keyword, final Object value) throws IOException {
-        if (!read(keyword.length()).equals(keyword)) {
-            throw expectedError(pos, "json literal", "ident");
+        for (int i = 0; i < keyword.length(); i++) {
+            if (next() != keyword.charAt(i)) {
+                throw expectedError(pos, "json literal", "ident");
+            }
         }
         return value;
     }
@@ -487,20 +495,17 @@ public final class JsonParser {
 
     private int next() throws IOException {
         int cur = next;
-        next = source.read();
+        if (buffer.isEmpty()) {
+            buffer.clear(); // resets position and limit
+            if (source.read(buffer) == -1) { // eof
+                next = -1;
+                return cur;
+            }
+            buffer.flip();
+        }
+        next = buffer.get();
         pos++;
         return cur;
-    }
-
-    private String read(int length) throws IOException {
-        char[] buffer = new char[length];
-
-        buffer[0] = (char) peek();
-        source.read(buffer, 1, length - 1);
-        pos += length - 1;
-        next();
-
-        return String.valueOf(buffer);
     }
 
     private void skipWhiteSpace() throws IOException {

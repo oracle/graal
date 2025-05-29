@@ -27,6 +27,7 @@
 #endif
 
 #include "mokapot.h"
+#include "probe_option_type.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -79,9 +80,8 @@ JNIEXPORT void mokapotCaptureState(int32_t* addr, jint mask) {
 
 
 JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetch_by_name)(const char *, void*)) {
-
   MokapotEnv *moka_env = (MokapotEnv *) malloc(sizeof(*moka_env));
- 
+
   struct MokapotNativeInterface_ *functions = (struct MokapotNativeInterface_*) malloc(sizeof(*functions));
   struct JNIInvokeInterface_ *java_vm_functions = (struct JNIInvokeInterface_*) malloc(sizeof(*java_vm_functions));
 
@@ -96,6 +96,7 @@ JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetc
   java_vm_functions->reserved2 = NULL;
 
   // Store the MokapotEnv* in the JNIEnv*.
+  // This is read in nespresso's GetJavaVM
   struct JNINativeInterface_* tmp = (struct JNINativeInterface_*) *env;
   tmp->reserved1 = (void*) moka_env;
 
@@ -551,7 +552,7 @@ JNIEXPORT jobject JNICALL JVM_GetArrayElement(JNIEnv *env, jobject arr, jint ind
 
 JNIEXPORT jvalue JNICALL JVM_GetPrimitiveArrayElement(JNIEnv *env, jobject arr, jint index, jint wCode) {
   jvalue result = {0};
-  UNIMPLEMENTED(JVM_GetPrimitiveArrayElement);  
+  UNIMPLEMENTED(JVM_GetPrimitiveArrayElement);
   return result;
 }
 
@@ -876,7 +877,8 @@ JNIEXPORT void JNICALL JVM_ReportFinalizationComplete(JNIEnv *env, jobject final
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsFinalizationEnabled(JNIEnv *env) {
-  return JNI_TRUE;
+  IMPLEMENTED(JVM_IsFinalizationEnabled);
+  return (*getEnv())->JVM_IsFinalizationEnabled(env);
 }
 
 JNIEXPORT jint JNICALL JVM_DTraceGetVersion(JNIEnv *env) {
@@ -1066,7 +1068,7 @@ JNIEXPORT jint JNICALL JVM_GetLastErrorString(char *buf, int len) {
 }
 
 JNIEXPORT char* JNICALL JVM_NativePath(char *pathname) {
-  NATIVE(JVM_NativePath);  
+  NATIVE(JVM_NativePath);
   return os_native_path(pathname);
 }
 
@@ -1203,7 +1205,7 @@ JNIEXPORT jint JNICALL JVM_SendTo(jint fd, char *buf, int len, int flags, struct
 
 JNIEXPORT jint JNICALL JVM_SocketAvailable(jint fd, jint *result) {
   NATIVE(JVM_SocketAvailable);
-  return os_socket_available(fd, result);  
+  return os_socket_available(fd, result);
 }
 
 JNIEXPORT jint JNICALL JVM_GetSockName(jint fd, struct sockaddr *him, int *len) {
@@ -2084,23 +2086,29 @@ static jint process_isolate_args(JavaVMInitArgs *initArgs, int *isolate_argc, ch
     for (int i = 0; i < initArgs->nOptions; i++) {
         const JavaVMOption *option = initArgs->options + i;
         char *optionString = NULL;
-        if (strcmp("-XX:+AutoAdjustHeapSize", option->optionString) == 0) {
-            auto_adjust_heap_size = JNI_TRUE;
-        } else if (strcmp("-XX:-AutoAdjustHeapSize", option->optionString) == 0) {
-            auto_adjust_heap_size = JNI_FALSE;
-        } else if (option_starts_with("-Xms", option) ||
-            option_starts_with("-XX:MinHeapSize=", option) ||
-            option_starts_with("-Xmn", option) ||
-            option_starts_with("-XX:MaxNewSize=", option) ||
-            option_starts_with("-XX:ReservedAddressSpaceSize=", option) ||
-            option_starts_with("-XX:MaxRAM=", option) ||
-            strcmp("-XX:+ExitOnOutOfMemoryError", option->optionString) == 0 ||
-            strcmp("-XX:-ExitOnOutOfMemoryError", option->optionString) == 0) {
+        if (option_starts_with("-XX:", option)) {
+            if (option->optionString[4] == '-' || option->optionString[4] == '+') {
+                if (strcmp("AutomaticReferenceHandling", option->optionString + 5) == 0) {
+                    fprintf(stderr, "Unsupported option: AutomaticReferenceHandling" OS_NEWLINE_STR);
+                    return JNI_ERR;
+                } else if (strcmp("AutoAdjustHeapSize", option->optionString + 5) == 0) {
+                    auto_adjust_heap_size = option->optionString[4] == '+' ? JNI_TRUE : JNI_FALSE;
+                } else if (probe_option_type(option->optionString + 5) == OPTION_BOOLEAN) {
+                    optionString = option->optionString;
+                } else {
+                    continue;
+                }
+            } else if (option_starts_with("-XX:MaxHeapSize=", option)) {
+                optionString = maybe_adjust_max_heap_size(option->optionString, strlen("-XX:MaxHeapSize="), auto_adjust_heap_size);
+            } else if (probe_option_type(option->optionString + 4) == OPTION_STRING) {
+                optionString = option->optionString;
+            } else {
+                continue;
+            }
+        } else if (option_starts_with("-Xms", option) || option_starts_with("-Xmn", option)) {
             optionString = option->optionString;
         } else if (option_starts_with("-Xmx", option)) {
             optionString = maybe_adjust_max_heap_size(option->optionString, strlen("-Xmx"), auto_adjust_heap_size);
-        } else if (option_starts_with("-XX:MaxHeapSize=", option)) {
-            optionString = maybe_adjust_max_heap_size(option->optionString, strlen("-XX:MaxHeapSize="), auto_adjust_heap_size);
         } else {
             continue;
         }
@@ -2310,7 +2318,7 @@ JNIEXPORT int JNICALL jio_vsnprintf(char *str, size_t count, const char *fmt, va
 JNIEXPORT int JNICALL jio_snprintf(char *str, size_t count, const char *fmt, ...) {
   int len;
   va_list args;
-  NATIVE(jio_snprintf);  
+  NATIVE(jio_snprintf);
   va_start(args, fmt);
   len = jio_vsnprintf(str, count, fmt, args);
   va_end(args);
@@ -2320,7 +2328,7 @@ JNIEXPORT int JNICALL jio_snprintf(char *str, size_t count, const char *fmt, ...
 JNIEXPORT int JNICALL jio_fprintf(FILE *file, const char *fmt, ...) {
   int len;
   va_list args;
-  NATIVE(jio_fprintf);  
+  NATIVE(jio_fprintf);
   va_start(args, fmt);
   len = jio_vfprintf(file, fmt, args);
   va_end(args);

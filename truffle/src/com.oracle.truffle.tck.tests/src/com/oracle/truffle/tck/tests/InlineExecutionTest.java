@@ -135,7 +135,7 @@ public class InlineExecutionTest {
         } catch (PolyglotException | AssertionError e) {
             throw new AssertionError(
                             TestUtil.formatErrorMessage(
-                                            "Unexpected Exception: " + e.getMessage(),
+                                            "Unexpected Exception: " + e,
                                             testRun,
                                             context, result, ex),
                             e);
@@ -145,7 +145,7 @@ public class InlineExecutionTest {
         }
     }
 
-    private class TestResultVerifier implements InlineVerifier.ResultVerifier {
+    private final class TestResultVerifier implements InlineVerifier.ResultVerifier {
 
         Exception exception;
 

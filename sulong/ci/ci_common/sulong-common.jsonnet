@@ -158,7 +158,7 @@ local sulong_deps = common.deps.sulong;
     extra_gate_args+:: ["--strict-mode"],
   },
 
-  coverage(builds):: $.llvmBundled + $.requireGMP + $.optionalGCC + $.mxGate + {
+  coverage(builds):: $.llvmBundled + $.requireGMP + $.mxGate + {
       local sameArchBuilds = std.filter(function(b) b.os == self.os && b.arch == self.arch, builds),
       local allTags = std.set(std.flattenArrays([b.gateTags for b in sameArchBuilds if std.objectHasAll(b, "gateTags")])),
       local coverageTags = std.setDiff(allTags, ["build", "build-all", "fullbuild", "style"]),
@@ -183,22 +183,6 @@ local sulong_deps = common.deps.sulong;
   },
 
   llvmBundled:: {},
-
-  requireGCC:: {
-    packages+: {
-      gcc: "==6.1.0",
-    },
-    downloads+: {
-      DRAGONEGG_GCC: { name: "gcc+dragonegg", version: "4.6.4-1", platformspecific: true },
-      DRAGONEGG_LLVM: { name: "clang+llvm", version: "3.2", platformspecific: true },
-    },
-  },
-
-  # like requireGCC, but only on linux/amd64, ignored otherwise
-  optionalGCC:: {
-    packages+: if self.os == "linux" && self.arch == "amd64" then $.requireGCC.packages else {},
-    downloads+: if self.os == "linux" && self.arch == "amd64" then $.requireGCC.downloads else {},
-  },
 
   requireGMP:: {
     packages+: if self.os == "darwin" && self.arch == "aarch64" then {

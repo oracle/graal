@@ -31,29 +31,40 @@ import java.lang.annotation.Target;
 
 import org.graalvm.nativeimage.c.function.CFunction;
 
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+
 /**
- * This annotation is used to override or extend the behavior of {@link CFunction}. Must only be
- * used on methods that are annotated with {@link CFunction}.
+ * This annotation is used to override or extend the behavior of {@link CFunction}. May only be used
+ * on methods that are annotated with {@link CFunction}.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface CFunctionOptions {
-    /**
-     * Describes the thread state transition performed when the C function is invoked.
-     */
     enum Transition {
         /**
-         * The thread state is transitioned from Java to VM, and the Java parts of the stack are
-         * made walkable. If the C code blocks or calls back to Java, it must do an explicit thread
-         * state transition to native to prevent that safepoints (and therefore garbage collections)
-         * of other threads are delayed.
+         * Does a transition to {@link StatusSupport#STATUS_IN_VM}. This prevents safepoints
+         * (similar to {@code NO_TRANSITION}) but also pushes a frame anchor (similar to {@code
+         * TO_NATIVE}) to make the Java part of the stack walkable.
+         *
+         * The executed C code can safely assume that there are no safepoints happening in the VM.
+         * If it is necessary to block in the native code, the C code can do an explicit thread
+         * state transition to {@link StatusSupport#STATUS_IN_NATIVE} to allow safepoints in a
+         * controlled manner.
+         *
+         * Note that this transition does not do a safepoint check when the C code returns back to
+         * Java. This allows C functions to return raw pointers to Java objects, if the Java caller
+         * is an {@link Uninterruptible} method.
+         *
+         * This transition may only be used by trusted native code as it can result in deadlocks
+         * easily. Therefore, it is not part of the Native Image API.
          */
         TO_VM
     }
 
     /**
-     * The Java-to-C thread transition code used when calling the C function. Overrides the
-     * transition that is set via the {@link CFunction} annotation.
+     * The thread state transition performed when calling the C function. Overrides the transition
+     * that is set via the {@link CFunction} annotation.
      */
     Transition transition();
 }

@@ -75,12 +75,12 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/715fa8f9fe7242e86b985aece3d078b226f53fb9/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L1804-L1913",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/765cef45465806e53f11fa7d92b9c184899b0932/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L1896-L2005",
           sha1 = "1cc5a10b19e7746105493d8f430f628cc7f89c51")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/715fa8f9fe7242e86b985aece3d078b226f53fb9/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L2104-L2150",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/765cef45465806e53f11fa7d92b9c184899b0932/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L2194-L2240",
           sha1 = "9cbba8bd6c4037427fa46f067abb722b15aca90c")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/715fa8f9fe7242e86b985aece3d078b226f53fb9/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L3462-L3649",
-          sha1 = "2457cf3f9d3ff89c1515fa5d95cc7c8437a5318b")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/765cef45465806e53f11fa7d92b9c184899b0932/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L3551-L3738",
+          sha1 = "a3fe941a49e0e3f8443b2e16e550d6c94b012b12")
 // @formatter:on
 @Opcode("VECTORIZED_HASHCODE")
 public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {

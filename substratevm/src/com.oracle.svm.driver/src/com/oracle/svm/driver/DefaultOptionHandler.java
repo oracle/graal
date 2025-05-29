@@ -28,9 +28,15 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.OptionOrigin;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
+import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
+import com.oracle.svm.hosted.driver.IncludeOptionsSupport.ExtendedOption;
+import com.oracle.svm.hosted.driver.LayerOptionsSupport.LayerOption;
 import com.oracle.svm.util.LogUtils;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
@@ -46,8 +52,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     /* Defunct legacy options that we have to accept to maintain backward compatibility */
     private static final String noServerOption = "--no-server";
-
-    private static final String nativeAccessOption = "--enable-native-access";
 
     DefaultOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
@@ -130,14 +134,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 nativeImage.addCustomJavaArgs("--enable-preview");
                 return true;
-            case nativeAccessOption:
-                args.poll();
-                String modules = args.poll();
-                if (modules == null) {
-                    NativeImage.showError(nativeAccessOption + moduleSetModifierOptionErrorMessage);
-                }
-                nativeImage.addCustomJavaArgs(nativeAccessOption + "=" + modules + ",org.graalvm.nativeimage.foreign");
-                return true;
         }
 
         String singleArgClasspathPrefix = newStyleClasspathOptionName + "=";
@@ -148,6 +144,32 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             }
             processClasspathArgs(cpArgs);
             return true;
+        }
+        if (headArg.startsWith(nativeImage.oHLayerCreate)) {
+            String rawLayerCreateValue = headArg.substring(nativeImage.oHLayerCreate.length());
+            if (!rawLayerCreateValue.isEmpty()) {
+                List<String> layerCreateValue = OptionUtils.resolveOptionValuesRedirection(SubstrateOptions.LayerCreate, rawLayerCreateValue, OptionOrigin.from(args.argumentOrigin));
+                LayerOption layerOption = LayerOption.parse(layerCreateValue);
+                for (ExtendedOption option : layerOption.extendedOptions()) {
+                    var packageOptionValue = IncludeOptionsSupport.PackageOptionValue.from(option);
+                    if (packageOptionValue == null) {
+                        continue;
+                    }
+                    String packageName = packageOptionValue.name();
+                    if (packageOptionValue.isWildcard()) {
+                        nativeImage.systemPackagesToModules.forEach((systemPackageName, moduleName) -> {
+                            if (systemPackageName.startsWith(packageName)) {
+                                nativeImage.addAddedModules(moduleName);
+                            }
+                        });
+                    } else {
+                        String moduleName = nativeImage.systemPackagesToModules.get(packageName);
+                        if (moduleName != null) {
+                            nativeImage.addAddedModules(moduleName);
+                        }
+                    }
+                }
+            }
         }
         if (headArg.startsWith(NativeImage.oH)) {
             args.poll();
@@ -209,15 +231,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
             }
             nativeImage.addLimitedModules(limitModulesArgs);
-            return true;
-        }
-        if (headArg.startsWith(nativeAccessOption + "=")) {
-            args.poll();
-            String nativeAccessModules = headArg.substring(nativeAccessOption.length() + 1);
-            if (nativeAccessModules.isEmpty()) {
-                NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
-            }
-            nativeImage.addCustomJavaArgs(headArg + ",org.graalvm.nativeimage.foreign");
             return true;
         }
         return false;

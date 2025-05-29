@@ -30,7 +30,14 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
 import java.util.List;
 
+import org.junit.Assert;
+import org.junit.Test;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.MethodVisitor;
+
 import com.oracle.truffle.api.impl.asm.Opcodes;
+
 import jdk.graal.compiler.core.test.SubprocessTest;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -40,11 +47,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.test.AddExports;
 import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.junit.Assert;
-import org.junit.Test;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.FieldVisitor;
-import org.objectweb.asm.MethodVisitor;
 
 /**
  * Assert that a barrier is inserted at the end of a constructor that writes to Stable fields or if
@@ -89,7 +91,7 @@ public class SafeConstructionTest extends SubprocessTest {
 
     @Test
     public void runCheckStableWriteConstructors() throws IOException, InterruptedException {
-        launchSubprocess("runCheckStableWriteConstructors", this::checkStableWriteConstructors, "--add-opens=java.base/java.lang=ALL-UNNAMED");
+        launchSubprocess(this::checkStableWriteConstructors, "--add-opens=java.base/java.lang=ALL-UNNAMED");
     }
 
     private void checkStableWriteConstructors() {

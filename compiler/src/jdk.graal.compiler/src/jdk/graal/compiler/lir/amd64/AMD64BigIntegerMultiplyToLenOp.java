@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,14 +51,15 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/715fa8f9fe7242e86b985aece3d078b226f53fb9/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L3034-L3089",
-          sha1 = "2bf2eb0a9feca080f99e6932d3750cdf3ce2ef3a")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/fbe4cc96e223882a18c7ff666fe6f68b3fa2cfe4/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L6692-L7149",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/de29ef3bf3a029f99f340de9f093cd20544217fd/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L3143-L3199",
+          sha1 = "bb78557c95005fea278c78ad114bfdc8e256151a")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a8cd01f6e2075bef89fcd82893cf417c9e1fa877/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L6161-L6618",
           sha1 = "0763af542cf9f40a1c542e4834a67fc4b2c74e1c")
 // @formatter:on
 public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
@@ -75,14 +76,16 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
     @Temp({OperandFlag.REG}) private Value tmp1Value;
     @Temp({OperandFlag.REG}) private Value[] tmpValues;
 
+    private final boolean spillR13;
+
     public AMD64BigIntegerMultiplyToLenOp(
+                    LIRGeneratorTool tool,
                     Value xValue,
                     Value xlenValue,
                     Value yValue,
                     Value ylenValue,
                     Value zValue,
-                    Value zlenValue,
-                    Register heapBaseRegister) {
+                    Value zlenValue) {
         super(TYPE);
 
         // Due to lack of allocatable registers, we use fixed registers and mark them as @Use+@Temp.
@@ -101,7 +104,14 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
         this.zValue = zValue;
         this.zlenValue = zlenValue;
 
-        this.tmp1Value = r12.equals(heapBaseRegister) ? r14.asValue() : r12.asValue();
+        if (tool.isReservedRegister(r12)) {
+            GraalError.guarantee(!tool.isReservedRegister(r14), "One of r12 or r14 must be available");
+            this.tmp1Value = r14.asValue();
+        } else {
+            this.tmp1Value = r12.asValue();
+        }
+        this.spillR13 = tool.isReservedRegister(r13);
+
         this.tmpValues = new Value[]{
                         rax.asValue(),
                         rcx.asValue(),
@@ -139,7 +149,13 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
         Register tmp4 = r10;
         Register tmp5 = rbx;
 
+        if (spillR13) {
+            masm.push(r13);
+        }
         multiplyToLen(masm, x, xlen, y, ylen, z, zlen, tmp1, tmp2, tmp3, tmp4, tmp5);
+        if (spillR13) {
+            masm.pop(r13);
+        }
     }
 
     private static void add2WithCarry(AMD64MacroAssembler masm,
@@ -183,14 +199,17 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
         Label labelOneY = new Label();
         Label labelMultiply = new Label();
 
-        masm.declAndJcc(xstart, ConditionFlag.Negative, labelOneX, false);
+        masm.decl(xstart);
+        masm.jcc(ConditionFlag.Negative, labelOneX);
 
         masm.movq(xAtXstart, new AMD64Address(x, xstart, Stride.S4, 0));
         masm.rorq(xAtXstart, 32); // convert big-endian to little-endian
 
         masm.bind(labelFirstLoop);
-        masm.declAndJcc(idx, ConditionFlag.Negative, labelFirstLoopExit, false);
-        masm.declAndJcc(idx, ConditionFlag.Negative, labelOneY, false);
+        masm.decl(idx);
+        masm.jcc(ConditionFlag.Negative, labelFirstLoopExit);
+        masm.decl(idx);
+        masm.jcc(ConditionFlag.Negative, labelOneY);
         masm.movq(yAtIdx, new AMD64Address(y, idx, Stride.S4, 0));
         masm.rorq(yAtIdx, 32); // convert big-endian to little-endian
         masm.bind(labelMultiply);
@@ -287,7 +306,8 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
         masm.shrl(jdx, 2);
 
         masm.bind(labelThirdLoop);
-        masm.sublAndJcc(jdx, 1, ConditionFlag.Negative, labelThirdLoopExit, false);
+        masm.decl(jdx);
+        masm.jcc(ConditionFlag.Negative, labelThirdLoopExit);
         masm.subl(idx, 4);
 
         multiplyAdd128x128(masm, xAtXstart, y, z, yzAtIdx, idx, carry, product, 8);
@@ -301,7 +321,8 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
 
         masm.andlAndJcc(idx, 0x3, ConditionFlag.Zero, labelPostThirdLoopDone, false);
 
-        masm.sublAndJcc(idx, 2, ConditionFlag.Negative, labelCheck1, false);
+        masm.subl(idx, 2);
+        masm.jcc(ConditionFlag.Negative, labelCheck1);
 
         multiplyAdd128x128(masm, xAtXstart, y, z, yzAtIdx, idx, carry, product, 0);
         masm.movq(carry, rdx);
@@ -309,7 +330,8 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
         masm.bind(labelCheck1);
         masm.addl(idx, 0x2);
         masm.andl(idx, 0x1);
-        masm.sublAndJcc(idx, 1, ConditionFlag.Negative, labelPostThirdLoopDone, false);
+        masm.decl(idx);
+        masm.jcc(ConditionFlag.Negative, labelPostThirdLoopDone);
 
         masm.movl(yzAtIdx, new AMD64Address(y, idx, Stride.S4, 0));
         masm.movq(product, xAtXstart);
@@ -374,7 +396,8 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
         masm.shrl(jdx, 2);
 
         masm.bind(labelThirdLoop);
-        masm.sublAndJcc(jdx, 1, ConditionFlag.Negative, labelThirdLoopExit, false);
+        masm.decl(jdx);
+        masm.jcc(ConditionFlag.Negative, labelThirdLoopExit);
         masm.subl(idx, 4);
 
         masm.movq(yzAtIdx1, new AMD64Address(y, idx, Stride.S4, 8));
@@ -420,7 +443,8 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
 
         masm.andlAndJcc(idx, 0x3, ConditionFlag.Zero, labelPostThirdLoopDone, false);
 
-        masm.sublAndJcc(idx, 2, ConditionFlag.Negative, labelCheck1, false);
+        masm.subl(idx, 2);
+        masm.jcc(ConditionFlag.Negative, labelCheck1);
 
         masm.movq(yzAtIdx1, new AMD64Address(y, idx, Stride.S4, 0));
         masm.rorxq(yzAtIdx1, yzAtIdx1, 32);
@@ -438,7 +462,8 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
         masm.bind(labelCheck1);
         masm.addl(idx, 0x2);
         masm.andl(idx, 0x1);
-        masm.sublAndJcc(idx, 1, ConditionFlag.Negative, labelPostThirdLoopDone, false);
+        masm.decl(idx);
+        masm.jcc(ConditionFlag.Negative, labelPostThirdLoopDone);
         masm.movl(tmp4, new AMD64Address(y, idx, Stride.S4, 0));
         masm.mulxq(carry2, tmp3, tmp4);  // tmp4 * rdx -> carry2:tmp3
         masm.movl(tmp4, new AMD64Address(z, idx, Stride.S4, 0));
@@ -504,13 +529,14 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
         masm.xorq(carry, carry);   // carry = 0;
 
         masm.movl(xstart, xlen);
-        masm.declAndJcc(xstart, ConditionFlag.Negative, labelDone, false);
+        masm.decl(xstart);
+        masm.jcc(ConditionFlag.Negative, labelDone);
 
         multiply64x64Loop(masm, x, xstart, xAtXstart, y, yAtIdx, z, carry, product, idx, kdx);
 
         masm.testlAndJcc(kdx, kdx, ConditionFlag.Zero, labelSecondLoop, false);
 
-        masm.sublAndJcc(kdx, 1, ConditionFlag.Zero, labelCarry, false);
+        masm.declAndJcc(kdx, ConditionFlag.Zero, labelCarry, false);
 
         masm.movl(new AMD64Address(z, kdx, Stride.S4, 0), carry);
         masm.shrq(carry, 32);
@@ -542,14 +568,16 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
         masm.xorq(carry, carry);    // carry = 0;
         masm.movl(jdx, ylen);       // j = ystart+1
         // i = xstart-1;
-        masm.sublAndJcc(xstart, 1, ConditionFlag.Negative, labelDone, false);
+        masm.decl(xstart);
+        masm.jcc(ConditionFlag.Negative, labelDone);
 
         masm.push(z);
 
         // z = z + k - j
         masm.leaq(z, new AMD64Address(z, xstart, Stride.S4, 4));
         // i = xstart-1;
-        masm.sublAndJcc(xstart, 1, ConditionFlag.Negative, labelLastX, false);
+        masm.decl(xstart);
+        masm.jcc(ConditionFlag.Negative, labelLastX);
 
         if (useBMI2Instructions) {
             masm.movq(rdx, new AMD64Address(x, xstart, Stride.S4, 0));
@@ -579,7 +607,8 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
         masm.movl(tmp3, xlen);
         masm.addl(tmp3, 1);
         masm.movl(new AMD64Address(z, tmp3, Stride.S4, 0), carry);
-        masm.sublAndJcc(tmp3, 1, ConditionFlag.Negative, labelDone, false);
+        masm.decl(tmp3);
+        masm.jcc(ConditionFlag.Negative, labelDone);
 
         masm.shrq(carry, 32);
         masm.movl(new AMD64Address(z, tmp3, Stride.S4, 0), carry);

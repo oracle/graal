@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -38,17 +38,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-name: Nightly Quarkus Tests
+name: Weekly Quarkus Tests
 
 on:
-  push:
-    paths:
-      - '.github/workflows/quarkus.yml'
   pull_request:
     paths:
       - '.github/workflows/quarkus.yml'
   schedule:
-  - cron: '0 3 * * *'
+  - cron: '0 3 * * 1'
   workflow_dispatch:
 
 env:
@@ -56,7 +53,7 @@ env:
   DB_NAME: hibernate_orm_test
   DB_PASSWORD: hibernate_orm_test
   DB_USER: hibernate_orm_test
-  NATIVE_TEST_MAVEN_ARGS: "-Dtest-containers -Dstart-containers -Dquarkus.native.native-image-xmx=5g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install -DskipDocs -Dquarkus.native.container-build=false"
+  NATIVE_TEST_MAVEN_ARGS: "-Dtest-containers -Dstart-containers -Dquarkus.native.native-image-xmx=6g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install -DskipDocs -Dquarkus.native.container-build=false"
   QUARKUS_JAVA_VERSION: 17 # Use Java 17 to build Quarkus as that's the lowest supported JDK version currently
   QUARKUS_PATH: ${{ github.workspace }}/quarkus
 
@@ -67,7 +64,7 @@ jobs:
       contents: read # to fetch code (actions/checkout)
 
     name: Nightly Quarkus and GraalVM build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     if: (github.event_name == 'schedule' && github.repository == 'oracle/graal') || (github.event_name != 'schedule')
     outputs:
       matrix: ${{ steps.read.outputs.matrix }}
@@ -133,7 +130,7 @@ jobs:
     steps:
       - name: Download GraalVM JDK build
         if: startsWith(matrix.os-name, 'ubuntu')
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           name: graalvm
           path: .
@@ -154,7 +151,7 @@ jobs:
         run: ${QUARKUS_PATH}/.github/ci-prerequisites.sh
       - name: Download Maven Repo
         if: startsWith(matrix.os-name, 'ubuntu')
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           name: maven-repo
           path: .

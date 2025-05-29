@@ -78,6 +78,7 @@ import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class BreakpointTest extends AbstractDebugTest {
 
@@ -1653,7 +1654,15 @@ public class BreakpointTest extends AbstractDebugTest {
                         "STATEMENT)))");
 
         final int numChecks = 1000;
-        try (Context context = Context.create()) {
+        Context.Builder builder = Context.newBuilder();
+        // TODO GR-65179
+        if (TruffleTestAssumptions.isOptimizingRuntime()) {
+            builder.option("engine.MaximumCompilations", "-1");
+            if (TruffleTestAssumptions.isDeoptLoopDetectionAvailable()) {
+                builder.option("compiler.DeoptCycleDetectionThreshold", "-1");
+            }
+        }
+        try (Context context = builder.build()) {
             Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
             try (DebuggerSession session = debugger.startSession(event -> {
             })) {

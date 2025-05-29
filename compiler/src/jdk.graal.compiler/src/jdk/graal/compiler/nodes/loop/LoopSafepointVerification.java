@@ -142,12 +142,12 @@ public class LoopSafepointVerification {
              * inner/outer mapping. Any other loop optimization is sequential in that it does only
              * copy a loop but never creates new loop nests.
              */
-            final boolean isTouchedByStripMining = lb1.isStripMinedInner() || lb1.isStripMinedOuter();
+            final boolean isTouchedByStripMining = lb1.isAnyStripMinedInner() || lb1.isAnyStripMinedOuter();
             if (isTouchedByStripMining) {
-                if (lb1.isStripMinedInner() != lb2.isStripMinedInner()) {
+                if (lb1.isAnyStripMinedInner() != lb2.isAnyStripMinedInner()) {
                     return false;
                 }
-                if (lb2.isStripMinedOuter() != lb2.isStripMinedOuter()) {
+                if (lb1.isAnyStripMinedOuter() != lb2.isAnyStripMinedOuter()) {
                     return false;
                 }
             }

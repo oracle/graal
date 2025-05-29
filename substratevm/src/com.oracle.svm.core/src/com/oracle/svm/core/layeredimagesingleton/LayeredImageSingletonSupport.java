@@ -24,19 +24,34 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import java.util.Collection;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import jdk.vm.ci.meta.JavaConstant;
+
+@Platforms(Platform.HOSTED_ONLY.class)
 public interface LayeredImageSingletonSupport {
 
     static LayeredImageSingletonSupport singleton() {
         return ImageSingletons.lookup(LayeredImageSingletonSupport.class);
     }
 
-    <T> T runtimeLookup(Class<T> key);
+    /**
+     * This method is intended to be used in special situations during the building process to
+     * access singletons which (1) are only allowed to be accessed at runtime
+     * ({@link LayeredImageSingletonBuilderFlags#RUNTIME_ACCESS}) and/or (2) implement
+     * {@link MultiLayeredImageSingleton}.
+     */
+    <T> T lookup(Class<T> key, boolean accessRuntimeOnly, boolean accessMultiLayer);
 
     Collection<Class<?>> getMultiLayeredImageSingletonKeys();
 
-    void freezeMultiLayeredImageSingletons();
+    Collection<Class<?>> getFutureLayerAccessibleImageSingletonKeys();
+
+    void freezeLayeredImageSingletonMetadata();
+
+    JavaConstant getInitialLayerOnlyImageSingleton(Class<?> key);
 }

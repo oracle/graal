@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.vm;
 
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
@@ -54,7 +53,9 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
@@ -65,7 +66,6 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -74,10 +74,10 @@ import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 import com.oracle.truffle.espresso.threads.State;
-import com.oracle.truffle.espresso.threads.ThreadsAccess;
+import com.oracle.truffle.espresso.threads.ThreadAccess;
 
 @GenerateNativeEnv(target = ManagementImpl.class, prependEnv = true)
 public final class Management extends NativeEnv {
@@ -339,17 +339,17 @@ public final class Management extends NativeEnv {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "The length of the given ThreadInfo array does not match the length of the given array of thread IDs");
         }
 
-        Method init = meta.java_lang_management_ThreadInfo.lookupDeclaredMethod(Symbol.Name._init_, getSignatures().makeRaw(
-                        /* returns */Symbol.Type._void,
-                        /* t */ Symbol.Type.java_lang_Thread,
-                        /* state */ Symbol.Type._int,
-                        /* lockObj */ Symbol.Type.java_lang_Object,
-                        /* lockOwner */Symbol.Type.java_lang_Thread,
-                        /* blockedCount */Symbol.Type._long,
-                        /* blockedTime */Symbol.Type._long,
-                        /* waitedCount */Symbol.Type._long,
-                        /* waitedTime */Symbol.Type._long,
-                        /* StackTraceElement[] */ Symbol.Type.java_lang_StackTraceElement_array));
+        Method init = meta.java_lang_management_ThreadInfo.lookupDeclaredMethod(Names._init_, getSignatures().makeRaw(
+                        /* returns */Types._void,
+                        /* t */ Types.java_lang_Thread,
+                        /* state */ Types._int,
+                        /* lockObj */ Types.java_lang_Object,
+                        /* lockOwner */Types.java_lang_Thread,
+                        /* blockedCount */Types._long,
+                        /* blockedTime */Types._long,
+                        /* waitedCount */Types._long,
+                        /* waitedTime */Types._long,
+                        /* StackTraceElement[] */ Types.java_lang_StackTraceElement_array));
 
         for (int i = 0; i < threads.length; i++) {
             StaticObject thread = threads[i];
@@ -417,7 +417,7 @@ public final class Management extends NativeEnv {
     private Klass getMemoryPoolMXBeanKlass() {
         if (memoryPoolMXBeanKlass == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            memoryPoolMXBeanKlass = getMeta().resolveSymbolOrFail(Symbol.Type.java_lang_management_MemoryPoolMXBean, StaticObject.NULL, StaticObject.NULL);
+            memoryPoolMXBeanKlass = getMeta().resolveSymbolOrFail(Types.java_lang_management_MemoryPoolMXBean, StaticObject.NULL, StaticObject.NULL);
         }
         return memoryPoolMXBeanKlass;
     }
@@ -485,7 +485,7 @@ public final class Management extends NativeEnv {
     private Klass getMemoryManagerMXBeanKlass() {
         if (memoryManagerMXBeanKlass == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            memoryManagerMXBeanKlass = getMeta().resolveSymbolOrFail(Symbol.Type.java_lang_management_MemoryManagerMXBean, StaticObject.NULL, StaticObject.NULL);
+            memoryManagerMXBeanKlass = getMeta().resolveSymbolOrFail(Types.java_lang_management_MemoryManagerMXBean, StaticObject.NULL, StaticObject.NULL);
         }
         return memoryManagerMXBeanKlass;
     }
@@ -556,8 +556,8 @@ public final class Management extends NativeEnv {
     private Method getMemoryUsageInit() {
         if (memoryUsageInit == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            memoryUsageInit = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name._init_,
-                            getSignatures().makeRaw(Symbol.Type._void, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long));
+            memoryUsageInit = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Names._init_,
+                            getSignatures().makeRaw(Types._void, Types._long, Types._long, Types._long, Types._long));
         }
         return memoryUsageInit;
     }
@@ -639,7 +639,7 @@ public final class Management extends NativeEnv {
                     return ProcessHandle.current().pid();
                 case JMM_THREAD_DAEMON_COUNT:
                     int daemonCount = 0;
-                    ThreadsAccess threadAccess = getContext().getThreadAccess();
+                    ThreadAccess threadAccess = getContext().getThreadAccess();
                     for (StaticObject t : getContext().getActiveThreads()) {
                         if (threadAccess.isDaemon(t)) {
                             ++daemonCount;

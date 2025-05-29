@@ -37,7 +37,7 @@ import jdk.graal.compiler.lir.SyncPort;
  * Emits spin wait instruction(s).
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/d7b941640638b35f9ac1ef11cd6bf6ccb795c29a/src/hotspot/cpu/aarch64/vm_version_aarch64.cpp#L52-L68",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/aarch64/vm_version_aarch64.cpp#L53-L69",
           sha1 = "92f81ed500658553a2ef2e7c48633094d95ba974")
 // @formatter:on
 @Opcode("SPIN_WAIT")

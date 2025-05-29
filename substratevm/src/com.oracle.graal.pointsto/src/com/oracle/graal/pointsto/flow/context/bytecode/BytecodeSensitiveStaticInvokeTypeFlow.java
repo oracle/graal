@@ -79,8 +79,22 @@ final class BytecodeSensitiveStaticInvokeTypeFlow extends AbstractStaticInvokeTy
     }
 
     @Override
+    public boolean needsInitialization() {
+        return true;
+    }
+
+    @Override
+    public void initFlow(PointsToAnalysis bb) {
+        /* Trigger the update for static invokes, there is no receiver to trigger it. */
+        if (isClone() && isFlowEnabled()) {
+            bb.postFlow(this);
+        }
+    }
+
+    @Override
     public void update(PointsToAnalysis bb) {
-        assert this.isClone() : this;
+        assert isFlowEnabled() : "The linking should only be triggered for enabled flows: " + this;
+        assert isClone() : "Only clones should be updated: " + this;
         /* The static invokes should be updated only once and the callee should be null. */
         guarantee(LightImmutableCollection.isEmpty(this, CALLEES_ACCESSOR), "static invoke updated multiple times!");
 

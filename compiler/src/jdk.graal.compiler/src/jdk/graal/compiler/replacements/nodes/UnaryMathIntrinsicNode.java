@@ -60,6 +60,7 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
         SIN(new ForeignCallSignature("arithmeticSin", double.class, double.class)),
         COS(new ForeignCallSignature("arithmeticCos", double.class, double.class)),
         TAN(new ForeignCallSignature("arithmeticTan", double.class, double.class)),
+        TANH(new ForeignCallSignature("arithmeticTanh", double.class, double.class)),
         EXP(new ForeignCallSignature("arithmeticExp", double.class, double.class));
 
         public final ForeignCallSignature foreignCallSignature;
@@ -82,6 +83,8 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
                     return Math.cos(value);
                 case TAN:
                     return Math.tan(value);
+                case TANH:
+                    return Math.tanh(value);
                 default:
                     throw new GraalError("unknown op %s", op);
             }
@@ -94,6 +97,7 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
             if (valueStamp instanceof FloatStamp) {
                 FloatStamp floatStamp = (FloatStamp) valueStamp;
                 switch (op) {
+                    case TANH:
                     case COS:
                     case SIN: {
                         boolean nonNaN = floatStamp.lowerBound() != Double.NEGATIVE_INFINITY && floatStamp.upperBound() != Double.POSITIVE_INFINITY && floatStamp.isNonNaN();
@@ -182,6 +186,9 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
                 break;
             case TAN:
                 result = gen.emitMathTan(input);
+                break;
+            case TANH:
+                result = gen.emitMathTanh(input);
                 break;
             default:
                 throw GraalError.shouldNotReachHereUnexpectedValue(getOperation()); // ExcludeFromJacocoGeneratedReport

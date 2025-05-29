@@ -40,7 +40,8 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
         JNIRegistrationSupport jniRegistrationSupport = JNIRegistrationSupport.singleton();
         if (jniRegistrationSupport.isRegisteredLibrary("awt")) {
             jniRegistrationSupport.addJvmShimExports(
-                            "jio_snprintf");
+                            "jio_snprintf",
+                            "JVM_IsStaticallyLinked");
             jniRegistrationSupport.addJavaShimExports(
                             "JNU_CallMethodByName",
                             "JNU_CallStaticMethodByName",

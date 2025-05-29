@@ -28,15 +28,19 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.util.concurrent.TimeUnit;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.thread.VMOperationListener;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.JavaMainWrapper;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.attach.AttachApiSupport;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.jdk.SystemPropertiesSupport;
+import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.VMOperationListener;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.sun.management.OperatingSystemMXBean;
 
 /**
@@ -52,6 +56,7 @@ class SystemCounters implements PerfDataHolder, VMOperationListener {
     private final PerfLongConstant frequency;
     private final PerfLongConstant loadedClasses;
     private final PerfLongConstant processors;
+    private final PerfStringConstant jvmCapabilities;
 
     // Exported system properties.
     private final PerfStringConstant tempDir;
@@ -98,6 +103,7 @@ class SystemCounters implements PerfDataHolder, VMOperationListener {
         osName = perfManager.createStringConstant("java.property.os.name");
         userDir = perfManager.createStringConstant("java.property.user.dir");
         userName = perfManager.createStringConstant("java.property.user.name");
+        jvmCapabilities = perfManager.createStringConstant("sun.rt.jvmCapabilities");
 
         gcInProgress = perfManager.createLongVariable("com.oracle.svm.gcInProgress", PerfUnit.NONE);
 
@@ -123,15 +129,17 @@ class SystemCounters implements PerfDataHolder, VMOperationListener {
         loadedClasses.allocate(numberOfLoadedClasses());
         processors.allocate(getAvailableProcessors());
 
-        tempDir.allocate(getSystemProperty("java.io.tmpdir"));
-        javaVersion.allocate(getSystemProperty("java.version"));
-        vmName.allocate(getSystemProperty("java.vm.name"));
-        vmVendor.allocate(getSystemProperty("java.vm.vendor"));
-        vmVersion.allocate(getSystemProperty("java.vm.version"));
-        osArch.allocate(getSystemProperty("os.arch"));
-        osName.allocate(getSystemProperty("os.name"));
-        userDir.allocate(getSystemProperty("user.dir"));
-        userName.allocate(getSystemProperty("user.name"));
+        SystemPropertiesSupport properties = SystemPropertiesSupport.singleton();
+        tempDir.allocate(properties.getInitialProperty("java.io.tmpdir"));
+        javaVersion.allocate(properties.getInitialProperty("java.version"));
+        vmName.allocate(properties.getInitialProperty("java.vm.name"));
+        vmVendor.allocate(properties.getInitialProperty("java.vm.vendor"));
+        vmVersion.allocate(properties.getInitialProperty("java.vm.version"));
+        osArch.allocate(properties.getInitialProperty("os.arch"));
+        osName.allocate(properties.getInitialProperty("os.name"));
+        userDir.allocate(properties.getInitialProperty("user.dir"));
+        userName.allocate(properties.getInitialProperty("user.name"));
+        jvmCapabilities.allocate(getJvmCapabilities());
 
         gcInProgress.allocate();
 
@@ -142,16 +150,19 @@ class SystemCounters implements PerfDataHolder, VMOperationListener {
         daemonThreads.allocate();
         processCPUTimeCounter.allocate();
 
-        initDoneTime.allocate(System.currentTimeMillis());
+        initDoneTime.allocate(Isolates.getInitDoneTimeMillis());
     }
 
-    private static String getSystemProperty(String s) {
-        /* Certain system properties (e.g., "user.dir"), may throw an exception. */
-        try {
-            return System.getProperty(s);
-        } catch (Throwable e) {
-            return "";
-        }
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/runtimeService.cpp#L68-L77") //
+    private static String getJvmCapabilities() {
+        /*
+         * The capabilities are encoded as a string with 64 characters, where each character
+         * represent one specific capability. The first character is the attach API support.
+         */
+        String attachApiSupport = AttachApiSupport.isPresent() ? "1" : "0";
+        String result = attachApiSupport + "000000000000000000000000000000000000000000000000000000000000000";
+        assert result.length() == 64;
+        return result;
     }
 
     @Override

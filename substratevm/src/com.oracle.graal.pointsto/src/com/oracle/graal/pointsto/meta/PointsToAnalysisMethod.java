@@ -30,11 +30,13 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualParameterTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -42,6 +44,7 @@ import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class PointsToAnalysisMethod extends AnalysisMethod {
@@ -50,7 +53,6 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
     /** The parsing context in which given method was parsed, preserved after analysis. */
     private Object parsingReason;
 
-    private Set<InvokeTypeFlow> invokedBy;
     private Set<InvokeTypeFlow> implementationInvokedBy;
     /**
      * Unique, per method, per multi-method key, context insensitive invoke. The context insensitive
@@ -83,9 +85,6 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
 
     @Override
     public void startTrackInvocations() {
-        if (invokedBy == null) {
-            invokedBy = ConcurrentHashMap.newKeySet();
-        }
         if (implementationInvokedBy == null) {
             implementationInvokedBy = ConcurrentHashMap.newKeySet();
         }
@@ -98,9 +97,6 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
     @Override
     public boolean registerAsInvoked(Object reason) {
         assert reason instanceof InvokeTypeFlow || reason instanceof String : reason;
-        if (invokedBy != null && reason instanceof InvokeTypeFlow) {
-            invokedBy.add((InvokeTypeFlow) reason);
-        }
         return super.registerAsInvoked(unwrapInvokeReason(reason));
     }
 
@@ -196,11 +192,13 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
         actualParameters[0] = receiverFlow;
         for (int i = 1; i < actualParameters.length; i++) {
             actualParameters[i] = new ActualParameterTypeFlow(method.getSignature().getParameterType(i - 1));
+            actualParameters[i].enableFlow(bb);
         }
         ActualReturnTypeFlow actualReturn = null;
         AnalysisType returnType = method.getSignature().getReturnType();
-        if (bb.isSupportedJavaKind(returnType.getStorageKind())) {
+        if (bb.isSupportedJavaKind(returnType.getStorageKind()) || (bb.usePredicates() && returnType.getStorageKind() == JavaKind.Void)) {
             actualReturn = new ActualReturnTypeFlow(returnType);
+            actualReturn.enableFlow(bb);
         }
 
         InvokeTypeFlow invoke;
@@ -211,6 +209,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
             invoke = bb.analysisPolicy().createVirtualInvokeTypeFlow(originalLocation, receiverType, method, actualParameters,
                             actualReturn, callerMultiMethodKey);
         }
+        invoke.enableFlow(bb);
         invoke.markAsContextInsensitive();
 
         return invoke;
@@ -234,12 +233,23 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
     }
 
     @Override
+    public boolean validateFixedPointState(BigBang bb) {
+        if (typeFlow != null) {
+            for (MethodFlowsGraph flowsGraph : typeFlow.getFlows()) {
+                for (TypeFlow<?> flow : flowsGraph.flows()) {
+                    assert flow.validateFixedPointState(bb);
+                }
+            }
+        }
+        return true;
+    }
+
+    @Override
     public void cleanupAfterAnalysis() {
         super.cleanupAfterAnalysis();
         contextInsensitiveVirtualInvoke = null;
         contextInsensitiveSpecialInvoke = null;
         typeFlow = null;
-        invokedBy = null;
         implementationInvokedBy = null;
     }
 

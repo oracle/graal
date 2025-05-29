@@ -39,7 +39,7 @@ import java.util.function.Function;
 // deserializes lambda class
 public class LambdaClassDeserializationTest {
 
-    private static class SerializeLambda {
+    private static final class SerializeLambda {
         public static Function<Integer, String> createLambda() {
             @SuppressWarnings("unchecked")
             Function<Integer, String> lambda = (Function<Integer, String> & Serializable) (x) -> "Value of parameter is " + x;
@@ -53,7 +53,7 @@ public class LambdaClassDeserializationTest {
         }
     }
 
-    private static class DeserializeLambda {
+    private static final class DeserializeLambda {
         public static Object deserialize(ByteArrayOutputStream byteArrayOutputStream) throws IOException, ClassNotFoundException {
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
             ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);

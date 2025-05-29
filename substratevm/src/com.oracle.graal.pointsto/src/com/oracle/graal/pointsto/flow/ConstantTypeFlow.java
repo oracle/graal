@@ -73,6 +73,6 @@ public class ConstantTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public String toString() {
-        return "ConstantFlow<" + getState() + ">";
+        return "ConstantFlow<" + getStateDescription() + ">";
     }
 }

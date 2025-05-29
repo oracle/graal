@@ -35,7 +35,6 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.foreign.AbiUtils;
 import com.oracle.svm.core.foreign.DowncallStubsHolder;
 import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;
-import com.oracle.svm.core.foreign.LinkToNativeSupportImpl;
 import com.oracle.svm.core.foreign.NativeEntryPointInfo;
 import com.oracle.svm.core.foreign.Target_jdk_internal_foreign_abi_NativeEntryPoint;
 import com.oracle.svm.core.graal.code.AssignedLocation;
@@ -65,7 +64,7 @@ import jdk.vm.ci.meta.Signature;
  * float, double, pointer) which fit in a register --- done by HotSpot's implementation using method
  * handles (or specialized classes);</li>
  * <li>Unbox the arguments (the arguments are in an array of Objects, due to funneling through
- * {@link LinkToNativeSupportImpl#linkToNative}) --- done by
+ * {@link ForeignFunctionsRuntime#linkToNative}) --- done by
  * {@link ForeignGraphKit#unboxArguments};</li>
  * <li>Further adapt arguments as to satisfy SubstrateVM's backends --- done by
  * {@link AbiUtils.adapt}</li>
@@ -85,9 +84,10 @@ import jdk.vm.ci.meta.Signature;
  * the call state, which could happen if a safepoint was inserted between the downcall and the
  * capture.
  */
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+12/src/hotspot/share/prims/nativeEntryPoint.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+12/src/hotspot/cpu/x86/downcallLinker_x86_64.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+12/src/hotspot/cpu/aarch64/downcallLinker_aarch64.cpp")
+@SuppressWarnings("javadoc")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+7/src/hotspot/share/prims/nativeEntryPoint.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/cpu/x86/downcallLinker_x86_64.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+17/src/hotspot/cpu/aarch64/downcallLinker_aarch64.cpp")
 class DowncallStub extends NonBytecodeMethod {
     public static Signature createSignature(MetaAccessProvider metaAccess) {
         return ResolvedSignature.fromKinds(new JavaKind[]{JavaKind.Object}, JavaKind.Object, metaAccess);
@@ -128,11 +128,11 @@ class DowncallStub extends NonBytecodeMethod {
 
     /**
      * The arguments follow the structure described in
-     * {@link LinkToNativeSupportImpl#linkToNative(Object...)}.
+     * {@link ForeignFunctionsRuntime#linkToNative(Object...)}.
      */
     @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
-        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method, purpose);
+        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method);
         FrameStateBuilder state = kit.getFrameState();
         boolean deoptimizationTarget = SubstrateCompilationDirectives.isDeoptTarget(method);
         List<ValueNode> arguments = kit.getInitialArguments();

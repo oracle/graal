@@ -54,7 +54,8 @@ public class TestJavaLevelVirtualThreadEvents extends JfrRecordingTest {
 
     @Test
     public void test() throws Throwable {
-        String[] events = new String[]{"jdk.ThreadSleep", "jdk.VirtualThreadStart", "jdk.VirtualThreadEnd", "jdk.VirtualThreadPinned", "com.jfr.String"};
+        String[] events;
+        events = new String[]{"jdk.ThreadSleep", "jdk.VirtualThreadStart", "jdk.VirtualThreadEnd", "com.jfr.String"};
         Recording recording = startRecording(events);
         Runnable r = () -> {
             try {

@@ -49,7 +49,6 @@ JNIEXPORT void * JNICALL allocateMemory(size_t size);
 JNIEXPORT void JNICALL freeMemory(void *ptr);
 JNIEXPORT void * JNICALL reallocateMemory(void *ptr, size_t new_size);
 JNIEXPORT void JNICALL ctypeInit(void);
-JNIEXPORT jlong JNICALL get_SIZE_MAX();
 
 #define JNI_FUNCTION_LIST(V) \
     V(GetVersion) \

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,17 +24,19 @@
  */
 package jdk.graal.compiler.hotspot.word;
 
+import static jdk.graal.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.FROM_COMPRESSED_POINTER;
 import static jdk.graal.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.FROM_POINTER;
 import static jdk.graal.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.IS_NULL;
+
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.SignedWord;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordBase;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.Word.Opcode;
 import jdk.graal.compiler.word.Word.Operation;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.SignedWord;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordBase;
 
 /**
  * Marker type for a metaspace pointer.
@@ -46,6 +48,9 @@ public abstract class MetaspacePointer {
 
     @HotSpotOperation(opcode = FROM_POINTER)
     public abstract Word asWord();
+
+    @HotSpotOperation(opcode = FROM_COMPRESSED_POINTER)
+    public abstract int asInt();
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -280,6 +285,16 @@ public abstract class MetaspacePointer {
      */
     @Operation(opcode = Opcode.READ_POINTER)
     public abstract Object readObject(int offset, LocationIdentity locationIdentity);
+
+    /**
+     * Reads the memory at address {@code (this + offset)} in accordance with volatile semantics.
+     * Both the base address and offset are in bytes.
+     *
+     * @param offset the signed offset for the memory access
+     * @return the result of the memory access
+     */
+    @Operation(opcode = Opcode.READ_POINTER_VOLATILE)
+    public abstract byte readByteVolatile(int offset, LocationIdentity locationIdentity);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in

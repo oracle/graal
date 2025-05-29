@@ -34,7 +34,7 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 /**
  * This class is used to model the elements type flow for array objects.
  */
-public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> {
+public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> implements GlobalFlow {
 
     /** The array object. */
     private final AnalysisObject object;
@@ -50,28 +50,37 @@ public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> {
     }
 
     @Override
-    public boolean canSaturate() {
-        return false;
+    public boolean canSaturate(PointsToAnalysis bb) {
+        /* Arrays flows with a closed component type don't saturate, they track all input types. */
+        return !bb.isClosed(declaredType);
     }
 
     @Override
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
-        /*
-         * When an array store is saturated conservatively assume that the array can contain any
-         * subtype of its declared type.
-         */
-        getDeclaredType().getTypeFlow(bb, true).addUse(bb, this);
+        if (bb.isClosed(declaredType)) {
+            /*
+             * When an array store is saturated conservatively assume that the array can contain any
+             * subtype of its declared type, i.e., of its component type.
+             */
+            declaredType.getTypeFlow(bb, true).addUse(bb, this);
+        } else {
+            /* Propagate the saturation stamp through the array flow. */
+            super.onInputSaturated(bb, input);
+        }
     }
 
+    /**
+     * Filters the incoming type state using the declared type.
+     */
     @Override
-    public TypeState filter(PointsToAnalysis bb, TypeState update) {
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState update) {
         if (declaredType.equals(bb.getObjectType())) {
             /* No need to filter. */
             return update;
         } else {
             /*
              * Filter out the objects not compatible with the declared type, i.e., those objects
-             * whose type cannot be converted to the component type of the this array by assignment
+             * whose type cannot be converted to the component type of this array by assignment
              * conversion. At runtime that will throw an ArrayStoreException but during the analysis
              * we can detect such cases and filter out the incompatible types.
              */
@@ -85,7 +94,7 @@ public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> {
 
     @Override
     public String toString() {
-        return "MixedElementsFlow<" + source.getName() + "\n" + getState() + ">";
+        return "MixedElementsFlow<" + source.getName() + "\n" + getStateDescription() + ">";
     }
 
 }

@@ -969,7 +969,7 @@ public final class InspectorRuntime extends RuntimeDomain {
         return WHITESPACES_PATTERN.matcher(str).replaceAll("");
     }
 
-    private class ContextListener implements InspectorExecutionContext.Listener {
+    private final class ContextListener implements InspectorExecutionContext.Listener {
 
         @Override
         public void contextCreated(long id, String name) {

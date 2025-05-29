@@ -63,8 +63,11 @@ For other installation options, visit the [Downloads section](https://www.graalv
     ```shell
     jar --create --file App.jar --main-class com.example.App -C build .
     ```
-    It will generate a runnable JAR file, named _App.jar_, in the project root directory: 
-    To view its contents, run the command `jar tf App.jar`.
+    It will generate a runnable JAR file, named _App.jar_, in the project root directory.
+    To view its contents, run the command:
+    ```shell
+    jar tf App.jar
+    ```
 
 4. Create a native executable:
     ```shell
@@ -79,9 +82,10 @@ For other installation options, visit the [Downloads section](https://www.graalv
     ./App
     ```
 
-The default behavior of `native-image` is aligned with the `java` command which means you can pass the `-jar`, `-cp`, `-m`  options to build with Native Image as you would normally do with `java`. For example, `java -jar App.jar someArgument` becomes `native-image -jar App.jar` and `./App someArgument`.
+The default behavior of `native-image` is aligned with the `java` command which means you can pass the `-jar`, `-cp`, `-m`  options to build with Native Image as you would normally do with `java`.
+For example, `java -jar App.jar someArgument` becomes `native-image -jar App.jar` and `./App someArgument`.
 
 ### Related Documentation
 
-* [GraalVM Native Image Quick Start](https://luna.oracle.com/lab/47dafec8-4095-4fba-8313-dad43a64dee4)
+* [Hands-on Labs: GraalVM Native Image Quick Start](https://luna.oracle.com/lab/47dafec8-4095-4fba-8313-dad43a64dee4)
 * [Build Java Modules into a Native Executable](build-java-module-app-aot.md)

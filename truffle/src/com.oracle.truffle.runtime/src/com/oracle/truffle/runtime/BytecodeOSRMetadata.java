@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
@@ -78,11 +79,14 @@ public final class BytecodeOSRMetadata {
     // interval.
     public static final int OSR_POLL_INTERVAL = 1024;
 
+    // Biggest index of 2 used for OSR_POLL_INTERVAL
+    public static final int OSR_POLL_SHIFT = 10;
+
     /**
      * Default original stage for bytecode OSR compilation. In this stage,
      * {@link #incrementAndPoll() polling} will succeed only after a {@link #backEdgeCount backedge}
      * has been reported {@link #osrThreshold} times. After the first successful
-     * {@link #requestOSRCompilation(int, OptimizedCallTarget, FrameWithoutBoxing) request for
+     * {@link #requestOSRCompilation(long, OptimizedCallTarget, FrameWithoutBoxing) request for
      * compilation}, switch to {@link #HOT_STAGE}.
      */
     private static final byte FRESH_STAGE = 0;
@@ -139,7 +143,7 @@ public final class BytecodeOSRMetadata {
                     // Support for deprecated frame transfer: GR-38296
                     extends FinalCompilationListMap {
 
-        private final Map<Integer, OptimizedCallTarget> compilationMap;
+        private final Map<Long, OptimizedCallTarget> compilationMap;
         @CompilationFinal private FrameDescriptor frameDescriptor;
 
         LazyState() {
@@ -149,7 +153,7 @@ public final class BytecodeOSRMetadata {
             this.frameDescriptor = null;
         }
 
-        private void push(int target, OptimizedCallTarget callTarget, OsrEntryDescription entry) {
+        private void push(long target, OptimizedCallTarget callTarget, OsrEntryDescription entry) {
             compilationMap.put(target, callTarget);
             // Support for deprecated frame transfer: GR-38296
             put(target, entry);
@@ -244,7 +248,7 @@ public final class BytecodeOSRMetadata {
         }
     }
 
-    Object tryOSR(int target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
+    Object tryOSR(long target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
         if (isDisabled()) {
             return null;
         }
@@ -263,6 +267,9 @@ public final class BytecodeOSRMetadata {
                         requestOSRCompilation(target, lockedTarget, (FrameWithoutBoxing) parentFrame);
                         stage = HOT_STAGE;
                     }
+                    // Set the OSR target's loop count to the count of the non OSR call target
+                    OptimizedCallTarget nonOSRCallTarget = (OptimizedCallTarget) ((Node) osrNode).getRootNode().getCallTarget();
+                    lockedTarget.onLoopCount(nonOSRCallTarget.getCallAndLoopCount());
                 }
                 return lockedTarget;
             });
@@ -270,6 +277,9 @@ public final class BytecodeOSRMetadata {
 
         // Case 1: code is still being compiled
         if (callTarget.isCompiling()) {
+            // Report loop count to the OSR target. Since this function is called every
+            // OSR_POLL_INTERVAL times, OSR_POLL_INTERVAL is reported as a loop count
+            callTarget.onLoopCount(OSR_POLL_INTERVAL);
             return null;
         }
         // Case 2: code is compiled and valid
@@ -309,6 +319,15 @@ public final class BytecodeOSRMetadata {
         int newBackEdgeCount = ++backEdgeCount; // Omit overflow check; OSR should trigger long
                                                 // before overflow happens
         return (newBackEdgeCount >= osrThreshold && (newBackEdgeCount & (OSR_POLL_INTERVAL - 1)) == 0);
+    }
+
+    public boolean incrementAndPoll(int loopCountIncrement) {
+        int oldBackEdgeCount = this.backEdgeCount;
+        // with custom loop increments we need to expect overflows
+        int newBackEdgeCount = Math.max(1, oldBackEdgeCount + loopCountIncrement);
+        this.backEdgeCount = newBackEdgeCount;
+        return newBackEdgeCount >= osrThreshold && //
+                        (oldBackEdgeCount >>> OSR_POLL_SHIFT) < (newBackEdgeCount >>> OSR_POLL_SHIFT);
     }
 
     /**
@@ -353,13 +372,13 @@ public final class BytecodeOSRMetadata {
      * Creates an OSR call target at the given dispatch target and requests compilation. The node's
      * AST lock should be held when this is invoked.
      */
-    private OptimizedCallTarget createOSRTarget(int target, Object interpreterState, FrameDescriptor frameDescriptor, Object frameEntryState) {
+    private OptimizedCallTarget createOSRTarget(long target, Object interpreterState, FrameDescriptor frameDescriptor, Object frameEntryState) {
         TruffleLanguage<?> language = OptimizedRuntimeAccessor.NODES.getLanguage(((Node) osrNode).getRootNode());
         return (OptimizedCallTarget) new BytecodeOSRRootNode(language, frameDescriptor, osrNode, target, interpreterState, frameEntryState).getCallTarget();
 
     }
 
-    private void requestOSRCompilation(int target, OptimizedCallTarget callTarget, FrameWithoutBoxing frame) {
+    private void requestOSRCompilation(long target, OptimizedCallTarget callTarget, FrameWithoutBoxing frame) {
         OptimizedCallTarget previousCompilation = getCurrentlyCompiling();
         if (previousCompilation != null && !previousCompilation.isSubmittedForCompilation()) {
             // Completed compilation of the previously scheduled compilation. Clear the reference.
@@ -412,7 +431,7 @@ public final class BytecodeOSRMetadata {
      * Transfer state from {@code source} to {@code target}. Can be used to transfer state into an
      * OSR frame.
      */
-    public void transferFrame(FrameWithoutBoxing source, FrameWithoutBoxing target, int bytecodeTarget, Object targetMetadata) {
+    public void transferFrame(FrameWithoutBoxing source, FrameWithoutBoxing target, long bytecodeTarget, Object targetMetadata) {
         LazyState state = getLazyState();
         CompilerAsserts.partialEvaluationConstant(state);
         // The frames should use the same descriptor.
@@ -433,7 +452,7 @@ public final class BytecodeOSRMetadata {
 
         OptimizedRuntimeAccessor.ACCESSOR.startOSRFrameTransfer(target);
         // Transfer indexed frame slots
-        transferLoop(description.indexedFrameTags.length, source, target, description.indexedFrameTags);
+        transferLoop(description.indexedFrameTags, source, target);
         // transfer auxiliary slots
         transferAuxiliarySlots(source, target, state);
     }
@@ -441,7 +460,7 @@ public final class BytecodeOSRMetadata {
     /**
      * Transfer state from {@code source} to {@code target}. Can be used to transfer state from an
      * OSR frame to a parent frame. Overall less efficient than its
-     * {@link #transferFrame(FrameWithoutBoxing, FrameWithoutBoxing, int, Object) counterpart},
+     * {@link #transferFrame(FrameWithoutBoxing, FrameWithoutBoxing, long, Object) counterpart},
      * mainly due to not being able to speculate on the source tags: While entering bytecode OSR is
      * done through specific entry points (likely back edges), returning could be done from anywhere
      * within a method body (through regular returns, or exception thrown).
@@ -483,10 +502,11 @@ public final class BytecodeOSRMetadata {
         // The frames should use the same descriptor.
         validateDescriptors(source, target, state);
 
-        // We can't reasonably have constant expected tags for parent frame restoration.
+        // We can't reasonably have constant expected tags for parent frame restoration. We pass
+        // state.frameDescriptor to restoreLoop in order to correctly account for static slots.
 
         // transfer indexed frame slots
-        transferLoop(state.frameDescriptor.getNumberOfSlots(), source, target, null);
+        restoreLoop(state.frameDescriptor, source, target);
         // transfer auxiliary slots
         transferAuxiliarySlots(source, target, state);
     }
@@ -506,26 +526,23 @@ public final class BytecodeOSRMetadata {
     }
 
     /**
-     * Common transfer loop for copying over legacy frame slot or indexed slots from a source frame
-     * to a target frame.
+     * Transfer loop for copying over indexed frame slots from a source parent frame to a target OSR
+     * frame.
      *
-     * @param length Number of slots to transfer. Must be
-     *            {@link CompilerDirectives#isCompilationConstant(Object) compilation constant}
+     * @param expectedTags The array of tags the source is expected to have. If compilation
+     *            constant, frame slot accesses may be simplified.
      * @param source The frame to copy from
      * @param target The frame to copy to
-     * @param expectedTags The array of tags the source is expected to have, or null if no previous
-     *            knowledge of tags was collected. If compilation constant, frame slot accesses may
-     *            be simplified.
      */
     @ExplodeLoop
     private static void transferLoop(
-                    int length,
-                    FrameWithoutBoxing source, FrameWithoutBoxing target,
-                    byte[] expectedTags) {
+                    byte[] expectedTags,
+                    FrameWithoutBoxing source, FrameWithoutBoxing target) {
+        CompilerAsserts.partialEvaluationConstant(expectedTags.length);
         int i = 0;
-        while (i < length) {
+        while (i < expectedTags.length) {
             byte actualTag = source.getTag(i);
-            byte expectedTag = expectedTags == null ? actualTag : expectedTags[i];
+            byte expectedTag = expectedTags[i];
 
             if (expectedTag == FrameWithoutBoxing.STATIC_TAG) {
                 // Here we can skip incompatible tag check in case of static slot since the frame
@@ -544,6 +561,33 @@ public final class BytecodeOSRMetadata {
 
             transferIndexedFrameSlot(source, target, i, expectedTag);
             i++;
+        }
+    }
+
+    /**
+     * Transfer loop for copying over indexed frame slots from a source OSR frame to a target parent
+     * frame.
+     *
+     * @param frameDescriptor The common frame descriptor of source and target
+     * @param source The frame to copy from
+     * @param target The frame to copy to
+     */
+    private static void restoreLoop(
+                    FrameDescriptor frameDescriptor,
+                    FrameWithoutBoxing source, FrameWithoutBoxing target) {
+        CompilerAsserts.neverPartOfCompilation();
+        for (int i = 0; i < frameDescriptor.getNumberOfSlots(); i++) {
+            byte tag = source.getTag(i);
+
+            if (tag == 0 && frameDescriptor.getSlotKind(i) == FrameSlotKind.Static) {
+                // When using static slots, the tags might never be initialized. We cannot rely
+                // solely on the source frame instance tags in order to detect static slots and
+                // distinguish them from non-static Object-type slots. Hence, if the tag is 0, we
+                // check the FrameDescriptor whether the slot has a static kind.
+                tag = FrameWithoutBoxing.STATIC_TAG;
+            }
+
+            transferIndexedFrameSlot(source, target, i, tag);
         }
     }
 
@@ -621,7 +665,7 @@ public final class BytecodeOSRMetadata {
     }
 
     // for testing
-    public Map<Integer, OptimizedCallTarget> getOSRCompilations() {
+    public Map<Long, OptimizedCallTarget> getOSRCompilations() {
         return getLazyState().compilationMap;
     }
 
@@ -640,10 +684,10 @@ public final class BytecodeOSRMetadata {
      * synchronized portions of code.
      */
     private static final class ReAttemptsCounter {
-        private final Set<Integer> knownTargets = new HashSet<>(1);
+        private final Set<Long> knownTargets = new HashSet<>(1);
         private int total = 0;
 
-        public void inc(int target) {
+        public void inc(long target) {
             if (knownTargets.contains(target)) {
                 // Further compilation attempt.
                 total++;
@@ -673,10 +717,10 @@ public final class BytecodeOSRMetadata {
     private abstract static class FinalCompilationListMap {
         private static final class Cell {
             final Cell next;
-            final int target;
+            final long target;
             final OsrEntryDescription entry;
 
-            Cell(int target, OsrEntryDescription entry, Cell next) {
+            Cell(long target, OsrEntryDescription entry, Cell next) {
                 this.next = next;
                 this.target = target;
                 this.entry = entry;
@@ -687,7 +731,7 @@ public final class BytecodeOSRMetadata {
         volatile Cell head = null;
 
         @ExplodeLoop
-        public final OsrEntryDescription get(int target) {
+        public final OsrEntryDescription get(long target) {
             Cell cur = head;
             while (cur != null) {
                 if (cur.target == target) {
@@ -698,7 +742,7 @@ public final class BytecodeOSRMetadata {
             return null;
         }
 
-        public final void put(int target, OsrEntryDescription value) {
+        public final void put(long target, OsrEntryDescription value) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             synchronized (this) {
                 assert get(target) == null;

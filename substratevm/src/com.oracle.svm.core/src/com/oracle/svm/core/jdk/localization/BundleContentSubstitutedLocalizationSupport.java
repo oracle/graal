@@ -69,8 +69,8 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     private final Set<String> existingBundles = ConcurrentHashMap.newKeySet();
 
-    public BundleContentSubstitutedLocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset, List<String> requestedPatterns, ForkJoinPool pool) {
-        super(defaultLocale, locales, defaultCharset);
+    public BundleContentSubstitutedLocalizationSupport(Set<Locale> locales, Charset defaultCharset, List<String> requestedPatterns, ForkJoinPool pool) {
+        super(locales, defaultCharset);
         this.pool = pool;
         this.compressBundlesPatterns = parseCompressBundlePatterns(requestedPatterns);
     }
@@ -112,8 +112,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private StoredBundle processBundle(ResourceBundle bundle) {
-        boolean isInDefaultLocale = bundle.getLocale().equals(defaultLocale);
-        if (!isInDefaultLocale && shouldCompressBundle(bundle) && GzipBundleCompression.canCompress(bundle)) {
+        if (shouldCompressBundle(bundle) && GzipBundleCompression.canCompress(bundle)) {
             return GzipBundleCompression.compress(bundle);
         }
         Map<String, Object> content = BundleSerializationUtils.extractContent(bundle);

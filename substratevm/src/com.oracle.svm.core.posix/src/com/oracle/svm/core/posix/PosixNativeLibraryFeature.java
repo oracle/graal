@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -32,7 +33,6 @@ import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.Alias;
@@ -83,7 +83,7 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
                 if (Platform.includedIn(Platform.DARWIN.class)) {
                     // On Darwin, getrlimit may return RLIM_INFINITY for rlim_max, but then OPEN_MAX
                     // must be used for setrlimit or it will fail with errno EINVAL.
-                    newValue = WordFactory.unsigned(DarwinSyslimits.OPEN_MAX());
+                    newValue = Word.unsigned(DarwinSyslimits.OPEN_MAX());
                 }
                 rlp.set_rlim_cur(newValue);
                 if (Resource.setrlimit(Resource.RLIMIT_NOFILE(), rlp) != 0) {
@@ -114,7 +114,7 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
                  */
                 if (Platform.includedIn(Platform.DARWIN.class)) {
                     Time.timeval tv = UnsafeStackValue.get(Time.timeval.class);
-                    Time.NoTransitions.gettimeofday(tv, WordFactory.nullPointer());
+                    Time.NoTransitions.gettimeofday(tv, Word.nullPointer());
                     Time.tm tm = UnsafeStackValue.get(Time.tm.class);
                     Time.NoTransitions.localtime_r(tv.addressOftv_sec(), tm);
                 }
@@ -133,6 +133,7 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         Target_java_io_UnixFileSystem_JNI.initIDs();
     }
 
+    @SuppressWarnings("restricted")
     private static void loadNetLibrary() {
         if (Isolates.isCurrentFirst()) {
             /*
@@ -162,7 +163,7 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
 
         private final String canonicalIdentifier;
         private final boolean builtin;
-        private PointerBase dlhandle = WordFactory.nullPointer();
+        private PointerBase dlhandle = Word.nullPointer();
         private boolean loaded = false;
 
         PosixNativeLibrary(String canonicalIdentifier, boolean builtin) {
@@ -195,7 +196,7 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
             }
             assert dlhandle.isNonNull();
             if (PosixUtils.dlclose(dlhandle)) {
-                dlhandle = WordFactory.nullPointer();
+                dlhandle = Word.nullPointer();
                 return true;
             } else {
                 return false;

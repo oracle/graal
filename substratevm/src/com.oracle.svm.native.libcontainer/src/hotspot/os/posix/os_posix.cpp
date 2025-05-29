@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -113,49 +113,44 @@ static int clock_tics_per_sec = 100;
 size_t os::_os_min_stack_allowed = PTHREAD_STACK_MIN;
 
 // Check core dump limit and report possible place where core can be found
-void os::check_dump_limit(char* buffer, size_t bufferSize) {
+void os::check_core_dump_prerequisites(char* buffer, size_t bufferSize, bool check_only) {
   if (!FLAG_IS_DEFAULT(CreateCoredumpOnCrash) && !CreateCoredumpOnCrash) {
     jio_snprintf(buffer, bufferSize, "CreateCoredumpOnCrash is disabled from command line");
     VMError::record_coredump_status(buffer, false);
-    return;
-  }
-
-  int n;
-  struct rlimit rlim;
-  bool success;
-
-  char core_path[PATH_MAX];
-  n = get_core_path(core_path, PATH_MAX);
-
-  if (n <= 0) {
-    jio_snprintf(buffer, bufferSize, "core.%d (may not exist)", current_process_id());
-    success = true;
-#ifdef LINUX
-  } else if (core_path[0] == '"') { // redirect to user process
-    jio_snprintf(buffer, bufferSize, "Core dumps may be processed with %s", core_path);
-    success = true;
-#endif
-  } else if (getrlimit(RLIMIT_CORE, &rlim) != 0) {
-    jio_snprintf(buffer, bufferSize, "%s (may not exist)", core_path);
-    success = true;
   } else {
-    switch(rlim.rlim_cur) {
-      case RLIM_INFINITY:
-        jio_snprintf(buffer, bufferSize, "%s", core_path);
-        success = true;
-        break;
-      case 0:
-        jio_snprintf(buffer, bufferSize, "Core dumps have been disabled. To enable core dumping, try \"ulimit -c unlimited\" before starting Java again");
-        success = false;
-        break;
-      default:
-        jio_snprintf(buffer, bufferSize, "%s (max size " UINT64_FORMAT " k). To ensure a full core dump, try \"ulimit -c unlimited\" before starting Java again", core_path, uint64_t(rlim.rlim_cur) / K);
-        success = true;
-        break;
+    struct rlimit rlim;
+    bool success = true;
+    bool warn = true;
+    char core_path[PATH_MAX];
+    if (get_core_path(core_path, PATH_MAX) <= 0) {
+      jio_snprintf(buffer, bufferSize, "core.%d (may not exist)", current_process_id());
+#ifdef LINUX
+    } else if (core_path[0] == '"') { // redirect to user process
+      jio_snprintf(buffer, bufferSize, "Core dumps may be processed with %s", core_path);
+#endif
+    } else if (getrlimit(RLIMIT_CORE, &rlim) != 0) {
+      jio_snprintf(buffer, bufferSize, "%s (may not exist)", core_path);
+    } else {
+      switch(rlim.rlim_cur) {
+        case RLIM_INFINITY:
+          jio_snprintf(buffer, bufferSize, "%s", core_path);
+          warn = false;
+          break;
+        case 0:
+          jio_snprintf(buffer, bufferSize, "Core dumps have been disabled. To enable core dumping, try \"ulimit -c unlimited\" before starting Java again");
+          success = false;
+          break;
+        default:
+          jio_snprintf(buffer, bufferSize, "%s (max size " UINT64_FORMAT " k). To ensure a full core dump, try \"ulimit -c unlimited\" before starting Java again", core_path, uint64_t(rlim.rlim_cur) / K);
+          break;
+      }
+    }
+    if (!check_only) {
+      VMError::record_coredump_status(buffer, success);
+    } else if (warn) {
+      warning("CreateCoredumpOnCrash specified, but %s", buffer);
     }
   }
-
-  VMError::record_coredump_status(buffer, success);
 }
 
 bool os::committed_in_range(address start, size_t size, address& committed_start, size_t& committed_size) {
@@ -357,6 +352,16 @@ int os::create_file_for_heap(const char* dir) {
   return fd;
 }
 
+// return current position of file pointer
+jlong os::current_file_offset(int fd) {
+  return (jlong)::lseek(fd, (off_t)0, SEEK_CUR);
+}
+
+// move file pointer to the specified offset
+jlong os::seek_to_file_offset(int fd, jlong offset) {
+  return (jlong)::lseek(fd, (off_t)offset, SEEK_SET);
+}
+
 // Is a (classpath) directory empty?
 bool os::dir_is_empty(const char* path) {
   DIR *dir = nullptr;
@@ -376,7 +381,7 @@ bool os::dir_is_empty(const char* path) {
   return result;
 }
 
-static char* reserve_mmapped_memory(size_t bytes, char* requested_addr, MEMFLAGS flag) {
+static char* reserve_mmapped_memory(size_t bytes, char* requested_addr, MemTag mem_tag) {
   char * addr;
   int flags = MAP_PRIVATE NOT_AIX( | MAP_NORESERVE ) | MAP_ANONYMOUS;
   if (requested_addr != nullptr) {
@@ -391,7 +396,7 @@ static char* reserve_mmapped_memory(size_t bytes, char* requested_addr, MEMFLAGS
                        flags, -1, 0);
 
   if (addr != MAP_FAILED) {
-    MemTracker::record_virtual_memory_reserve((address)addr, bytes, CALLER_PC, flag);
+    MemTracker::record_virtual_memory_reserve((address)addr, bytes, CALLER_PC, mem_tag);
     return addr;
   }
   return nullptr;
@@ -504,7 +509,7 @@ char* os::reserve_memory_aligned(size_t size, size_t alignment, bool exec) {
   return chop_extra_memory(size, alignment, extra_base, extra_size);
 }
 
-char* os::map_memory_to_file_aligned(size_t size, size_t alignment, int file_desc, MEMFLAGS flag) {
+char* os::map_memory_to_file_aligned(size_t size, size_t alignment, int file_desc, MemTag mem_tag) {
   size_t extra_size = calculate_aligned_extra_size(size, alignment);
   // For file mapping, we do not call os:map_memory_to_file(size,fd) since:
   // - we later chop away parts of the mapping using os::release_memory and that could fail if the
@@ -512,7 +517,7 @@ char* os::map_memory_to_file_aligned(size_t size, size_t alignment, int file_des
   // - The memory API os::reserve_memory uses is an implementation detail. It may (and usually is)
   //   mmap but it also may System V shared memory which cannot be uncommitted as a whole, so
   //   chopping off and unmapping excess bits back and front (see below) would not work.
-  char* extra_base = reserve_mmapped_memory(extra_size, nullptr, flag);
+  char* extra_base = reserve_mmapped_memory(extra_size, nullptr, mem_tag);
   if (extra_base == nullptr) {
     return nullptr;
   }
@@ -524,14 +529,6 @@ char* os::map_memory_to_file_aligned(size_t size, size_t alignment, int file_des
   MemTracker::record_virtual_memory_commit((address)aligned_base, size, CALLER_PC);
   return aligned_base;
 }
-
-} // namespace svm_container
-
-#endif // !NATIVE_IMAGE
-
-#ifndef NATIVE_IMAGE
-
-namespace svm_container {
 
 int os::get_fileno(FILE* fp) {
   return NOT_AIX(::)fileno(fp);
@@ -563,7 +560,7 @@ void os::Posix::print_uptime_info(outputStream* st) {
   setutxent();
   while ((ent = getutxent())) {
     if (!strcmp("system boot", ent->ut_line)) {
-      bootsec = ent->ut_tv.tv_sec;
+      bootsec = (int)ent->ut_tv.tv_sec;
       break;
     }
   }
@@ -708,14 +705,6 @@ void os::print_active_locale(outputStream* st) {
   }
 }
 
-void os::print_jni_name_prefix_on(outputStream* st, int args_size) {
-  // no prefix required
-}
-
-void os::print_jni_name_suffix_on(outputStream* st, int args_size) {
-  // no suffix required
-}
-
 bool os::get_host_name(char* buf, size_t buflen) {
   struct utsname name;
   int retcode = uname(&name);
@@ -828,7 +817,7 @@ void* os::dll_lookup(void* handle, const char* name) {
   void* ret = ::dlsym(handle, name);
   if (ret == nullptr) {
     const char* tmp = ::dlerror();
-    // It is possible that we found a NULL symbol, hence no error.
+    // It is possible that we found a null symbol, hence no error.
     if (tmp != nullptr) {
       log_debug(os)("Symbol %s not found in dll: %s", name, tmp);
     }
@@ -872,6 +861,12 @@ void os::dll_unload(void *lib) {
     JFR_ONLY(unload_event.set_error_msg(ebuf);)
   }
   LINUX_ONLY(os::free(l_pathdup));
+}
+
+void* os::lookup_function(const char* name) {
+  // This returns the global symbol in the main executable and its dependencies,
+  // as well as shared objects dynamically loaded with RTLD_GLOBAL flag.
+  return dlsym(RTLD_DEFAULT, name);
 }
 
 jlong os::lseek(int fd, jlong offset, int whence) {
@@ -951,57 +946,8 @@ void os::_exit(int num) {
   ALLOW_C_FUNCTION(::_exit, ::_exit(num);)
 }
 
-bool os::dont_yield() {
-  return DontYieldALot;
-}
-
 void os::naked_yield() {
   sched_yield();
-}
-
-// Builds a platform dependent Agent_OnLoad_<lib_name> function name
-// which is used to find statically linked in agents.
-// Parameters:
-//            sym_name: Symbol in library we are looking for
-//            lib_name: Name of library to look in, null for shared libs.
-//            is_absolute_path == true if lib_name is absolute path to agent
-//                                     such as "/a/b/libL.so"
-//            == false if only the base name of the library is passed in
-//               such as "L"
-char* os::build_agent_function_name(const char *sym_name, const char *lib_name,
-                                    bool is_absolute_path) {
-  char *agent_entry_name;
-  size_t len;
-  size_t name_len;
-  size_t prefix_len = strlen(JNI_LIB_PREFIX);
-  size_t suffix_len = strlen(JNI_LIB_SUFFIX);
-  const char *start;
-
-  if (lib_name != nullptr) {
-    name_len = strlen(lib_name);
-    if (is_absolute_path) {
-      // Need to strip path, prefix and suffix
-      if ((start = strrchr(lib_name, *os::file_separator())) != nullptr) {
-        lib_name = ++start;
-      }
-      if (strlen(lib_name) <= (prefix_len + suffix_len)) {
-        return nullptr;
-      }
-      lib_name += prefix_len;
-      name_len = strlen(lib_name) - suffix_len;
-    }
-  }
-  len = (lib_name != nullptr ? name_len : 0) + strlen(sym_name) + 2;
-  agent_entry_name = NEW_C_HEAP_ARRAY_RETURN_NULL(char, len, mtThread);
-  if (agent_entry_name == nullptr) {
-    return nullptr;
-  }
-  strcpy(agent_entry_name, sym_name);
-  if (lib_name != nullptr) {
-    strcat(agent_entry_name, "_");
-    strncat(agent_entry_name, lib_name, name_len);
-  }
-  return agent_entry_name;
 }
 
 // Sleep forever; naked call to OS-specific sleep; use with CAUTION
@@ -1035,16 +981,16 @@ char* os::Posix::describe_pthread_attr(char* buf, size_t buflen, const pthread_a
   // Work around glibc stack guard issue, see os::create_thread() in os_linux.cpp.
   LINUX_ONLY(if (os::Linux::adjustStackSizeForGuardPages()) stack_size -= guard_size;)
   pthread_attr_getdetachstate(attr, &detachstate);
-  jio_snprintf(buf, buflen, "stacksize: " SIZE_FORMAT "k, guardsize: " SIZE_FORMAT "k, %s",
+  jio_snprintf(buf, buflen, "stacksize: %zuk, guardsize: %zuk, %s",
     stack_size / K, guard_size / K,
     (detachstate == PTHREAD_CREATE_DETACHED ? "detached" : "joinable"));
   return buf;
 }
 
-char* os::Posix::realpath(const char* filename, char* outbuf, size_t outbuflen) {
+char* os::realpath(const char* filename, char* outbuf, size_t outbuflen) {
 
   if (filename == nullptr || outbuf == nullptr || outbuflen < 1) {
-    assert(false, "os::Posix::realpath: invalid arguments.");
+    assert(false, "os::realpath: invalid arguments.");
     errno = EINVAL;
     return nullptr;
   }
@@ -1079,12 +1025,21 @@ char* os::Posix::realpath(const char* filename, char* outbuf, size_t outbuflen) 
     }
   }
   return result;
-
 }
+
+
+} // namespace svm_container
+
+#endif // !NATIVE_IMAGE
+
+
+namespace svm_container {
 
 int os::stat(const char *path, struct stat *sbuf) {
   return ::stat(path, sbuf);
 }
+
+#ifndef NATIVE_IMAGE
 
 char * os::native_path(char *path) {
   return path;
@@ -2136,7 +2091,7 @@ void os::shutdown() {
 // easily trigger secondary faults in those threads. To reduce the likelihood
 // of that we use _exit rather than exit, so that no atexit hooks get run.
 // But note that os::shutdown() could also trigger secondary faults.
-void os::abort(bool dump_core, void* siginfo, const void* context) {
+void os::abort(bool dump_core, const void* siginfo, const void* context) {
   os::shutdown();
   if (dump_core) {
     LINUX_ONLY(if (DumpPrivateMappingsInCore) ClassLoader::close_jrt_image();)
@@ -2212,6 +2167,45 @@ bool os::pd_unmap_memory(char* addr, size_t bytes) {
   return munmap(addr, bytes) == 0;
 }
 
+#ifdef CAN_SHOW_REGISTERS_ON_ASSERT
+static ucontext_t _saved_assert_context;
+static bool _has_saved_context = false;
+#endif // CAN_SHOW_REGISTERS_ON_ASSERT
+
+void os::save_assert_context(const void* ucVoid) {
+#ifdef CAN_SHOW_REGISTERS_ON_ASSERT
+  assert(ucVoid != nullptr, "invariant");
+  assert(!_has_saved_context, "invariant");
+  memcpy(&_saved_assert_context, ucVoid, sizeof(ucontext_t));
+  // on Linux ppc64, ucontext_t contains pointers into itself which have to be patched up
+  //  after copying the context (see comment in sys/ucontext.h):
+#if defined(PPC64)
+  *((void**)&_saved_assert_context.uc_mcontext.regs) = &(_saved_assert_context.uc_mcontext.gp_regs);
+#elif defined(AMD64)
+  // In the copied version, fpregs should point to the copied contents.
+  // Sanity check: fpregs should point into the context.
+  if ((address)((const ucontext_t*)ucVoid)->uc_mcontext.fpregs > (address)ucVoid) {
+    size_t fpregs_offset = pointer_delta(((const ucontext_t*)ucVoid)->uc_mcontext.fpregs, ucVoid, 1);
+    if (fpregs_offset < sizeof(ucontext_t)) {
+      // Preserve the offset.
+      *((void**)&_saved_assert_context.uc_mcontext.fpregs) = (void*)((address)(void*)&_saved_assert_context + fpregs_offset);
+    }
+  }
+#endif
+  _has_saved_context = true;
+#endif // CAN_SHOW_REGISTERS_ON_ASSERT
+}
+
+const void* os::get_saved_assert_context(const void** sigInfo) {
+#ifdef CAN_SHOW_REGISTERS_ON_ASSERT
+  assert(sigInfo != nullptr, "invariant");
+  *sigInfo = nullptr;
+  return _has_saved_context ? &_saved_assert_context : nullptr;
+#endif
+  *sigInfo = nullptr;
+  return nullptr;
+}
+#endif // !NATIVE_IMAGE
+
 } // namespace svm_container
 
-#endif // !NATIVE_IMAGE

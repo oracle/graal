@@ -36,6 +36,7 @@ import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
+import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -48,7 +49,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
-import com.oracle.svm.hosted.meta.RelocatableConstant;
+import com.oracle.svm.hosted.meta.PatchedWordConstant;
 
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.vm.ci.meta.Constant;
@@ -94,7 +95,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
         } else if (constant.isNull()) {
             /* System.identityHashCode is specified to return 0 when passed null. */
             return 0;
-        } else if (constant instanceof RelocatableConstant) {
+        } else if (constant instanceof PatchedWordConstant) {
             /* Kind of a primitive constant, so it does not have an identity hash code. */
             return null;
         }
@@ -199,12 +200,12 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
     }
 
     private static boolean isExpectedJavaConstant(JavaConstant value) {
-        return value.isNull() || value.getJavaKind().isPrimitive() || value instanceof RelocatableConstant || value instanceof ImageHeapConstant;
+        return value.isNull() || value.getJavaKind().isPrimitive() || value instanceof PatchedWordConstant || value instanceof ImageHeapConstant;
     }
 
     @Override
     public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
-        return readValue((AnalysisField) field, receiver, false);
+        return readValue((AnalysisField) field, receiver, false, false);
     }
 
     @Override
@@ -212,7 +213,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
         throw VMError.intentionallyUnimplemented();
     }
 
-    public JavaConstant readValue(AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues) {
+    public JavaConstant readValue(AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues, boolean readRelocatableValues) {
         if (!field.isStatic()) {
             if (!(receiver instanceof ImageHeapInstance imageHeapInstance) || !field.getDeclaringClass().isAssignableFrom(imageHeapInstance.getType())) {
                 /*
@@ -220,12 +221,16 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
                  * receiver of a wrong type. The code will later be removed as dead code, and in
                  * most cases the field read would also be rejected as illegal by the HotSpot
                  * constant reflection provider doing the actual field load. But there are several
-                 * other ways how a field can be accessed, e.g., our ReadableJavaField mechanism or
-                 * fields of classes that are initialized at image run time. To avoid any surprises,
-                 * we abort the field reading here early.
+                 * other ways how a field can be accessed, e.g., fields of classes that are
+                 * initialized at image run time. To avoid any surprises, we abort the field reading
+                 * here early.
                  */
                 return null;
             }
+        }
+
+        if (field.preventConstantFolding()) {
+            return null;
         }
 
         if (receiver instanceof ImageHeapInstance imageHeapInstance && imageHeapInstance.isInBaseLayer() && imageHeapInstance.nullFieldValues()) {
@@ -264,6 +269,14 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
             ImageHeapScanner heapScanner = universe.getHeapScanner();
             HostedValuesProvider hostedValuesProvider = universe.getHostedValuesProvider();
             value = heapScanner.createImageHeapConstant(hostedValuesProvider.readFieldValueWithReplacement(field, receiver), ObjectScanner.OtherReason.UNKNOWN);
+        }
+
+        if (!readRelocatableValues && value instanceof ImageHeapRelocatableConstant) {
+            /*
+             * During compilation we do not want to fold relocatable constants. However, they must
+             * be seen during the heap scanning process.
+             */
+            return null;
         }
         return value;
     }

@@ -28,6 +28,7 @@ import static jdk.graal.compiler.core.common.GraalOptions.VerifyAssemblyGCBarrie
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
 import jdk.graal.compiler.lir.gen.G1WriteBarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.options.OptionValues;
@@ -60,9 +61,15 @@ public class AMD64G1BarrierSetLIRGenerator implements G1WriteBarrierSetLIRGenera
     @Override
     public void emitPostWriteBarrier(LIRGeneratorTool lirTool, Value address, Value value, boolean nonNull) {
         AllocatableValue temp = lirTool.newVariable(LIRKind.value(AMD64Kind.QWORD));
-        AllocatableValue temp2 = lirTool.newVariable(LIRKind.value(AMD64Kind.QWORD));
-        ForeignCallLinkage callTarget = lirTool.getForeignCalls().lookupForeignCall(this.barrierSetLIRTool.postWriteBarrierDescriptor());
-        lirTool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-        lirTool.append(new AMD64G1PostWriteBarrierOp(address, value, temp, temp2, callTarget, nonNull, this.barrierSetLIRTool));
+        AMD64LIRInstruction op;
+        if (barrierSetLIRTool.supportsLowLatencyBarriers()) {
+            op = new AMD64G1PostWriteBarrierOp(address, value, temp, nonNull, this.barrierSetLIRTool);
+        } else {
+            AllocatableValue temp2 = lirTool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+            ForeignCallLinkage callTarget = lirTool.getForeignCalls().lookupForeignCall(this.barrierSetLIRTool.postWriteBarrierDescriptor());
+            lirTool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
+            op = new AMD64G1CardQueuePostWriteBarrierOp(address, value, temp, temp2, callTarget, nonNull, this.barrierSetLIRTool);
+        }
+        lirTool.append(op);
     }
 }

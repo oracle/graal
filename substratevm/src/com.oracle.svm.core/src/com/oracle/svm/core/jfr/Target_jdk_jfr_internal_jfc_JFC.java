@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -41,7 +42,14 @@ import jdk.jfr.Configuration;
 import jdk.jfr.internal.jfc.JFC;
 
 @TargetClass(value = jdk.jfr.internal.jfc.JFC.class, onlyWith = HasJfrSupport.class)
+@SuppressWarnings("unused")
 public final class Target_jdk_jfr_internal_jfc_JFC {
+
+    // Checkstyle: stop
+    @Delete //
+    private static Path JFC_DIRECTORY;
+    // Checkstyle: resume
+
     @Substitute
     public static List<Configuration> getConfigurations() {
         return new ArrayList<>(SubstrateJVM.getKnownConfigurations());
@@ -49,23 +57,23 @@ public final class Target_jdk_jfr_internal_jfc_JFC {
 
     @Substitute
     public static Configuration createKnown(String name) throws IOException, ParseException {
+        Path localPath = Paths.get(name);
+        String jfcName = JFC.nameFromPath(localPath);
+
         // Check if this is a pre-parsed known configuration.
         for (Configuration config : SubstrateJVM.getKnownConfigurations()) {
-            if (config.getName().equals(name)) {
+            if (config.getName().equals(jfcName)) {
                 return config;
             }
         }
 
-        // Assume path included in name
-        Path localPath = Paths.get(name);
-        String jfcName = JFC.nameFromPath(localPath);
+        // Try to read the configuration from a file.
         try (Reader r = Files.newBufferedReader(localPath)) {
             return Target_jdk_jfr_internal_jfc_JFCParser.createConfiguration(jfcName, r);
         }
     }
 
     @Substitute
-    @SuppressWarnings("unused")
     public static Configuration getPredefined(String name) throws IOException, ParseException {
         for (Configuration config : SubstrateJVM.getKnownConfigurations()) {
             if (config.getName().equals(name)) {

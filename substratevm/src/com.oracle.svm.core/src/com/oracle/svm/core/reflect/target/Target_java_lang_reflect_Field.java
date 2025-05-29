@@ -29,10 +29,12 @@ import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
@@ -42,6 +44,8 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 
 import sun.reflect.generics.repository.FieldRepository;
@@ -67,6 +71,12 @@ public final class Target_java_lang_reflect_Field {
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = FieldOffsetComputer.class) //
     public int offset;
+
+    /**
+     * If a static field and building a layered image, stores the layer the field was installed in.
+     */
+    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = LayerNumberComputer.class)//
+    public int installedLayerNumber;
 
     /** If non-null, the field was deleted via substitution and this string provides the reason. */
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = FieldDeletionReasonComputer.class) //
@@ -127,8 +137,8 @@ public final class Target_java_lang_reflect_Field {
 
     public static final class FieldDeletionReasonComputer implements FieldValueTransformerWithAvailability {
         @Override
-        public ValueAvailability valueAvailability() {
-            return ValueAvailability.AfterAnalysis;
+        public boolean isAvailable() {
+            return BuildPhaseProvider.isHostedUniverseBuilt();
         }
 
         @Override
@@ -141,6 +151,36 @@ public final class Target_java_lang_reflect_Field {
         @Override
         public Object transform(Object receiver, Object originalValue) {
             return ImageSingletons.lookup(EncodedRuntimeMetadataSupplier.class).getAnnotationsEncoding((AccessibleObject) receiver);
+        }
+    }
+
+    static class FieldOffsetComputer implements FieldValueTransformerWithAvailability {
+        @Override
+        public boolean isAvailable() {
+            return BuildPhaseProvider.isHostedUniverseBuilt();
+        }
+
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            return ReflectionSubstitutionSupport.singleton().getFieldOffset((Field) receiver, true);
+        }
+    }
+
+    static class LayerNumberComputer implements FieldValueTransformerWithAvailability {
+        @Override
+        public boolean isAvailable() {
+            return BuildPhaseProvider.isHostedUniverseBuilt();
+        }
+
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                Field field = (Field) receiver;
+                if (Modifier.isStatic(field.getModifiers())) {
+                    return ReflectionSubstitutionSupport.singleton().getInstalledLayerNumber((Field) receiver);
+                }
+            }
+            return MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
         }
     }
 }

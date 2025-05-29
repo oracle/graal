@@ -40,23 +40,17 @@ public class SingleTypeState extends TypeState {
     protected boolean merged;
 
     /** Creates a new type state from incoming objects. */
-    @SuppressWarnings("this-escape")
-    public SingleTypeState(PointsToAnalysis bb, boolean canBeNull, AnalysisType type) {
+    public SingleTypeState(boolean canBeNull, AnalysisType type) {
         this.type = type;
         this.canBeNull = canBeNull;
         this.merged = false;
-
-        PointsToStats.registerTypeState(bb, this);
     }
 
     /** Create a type state with the same content and a reversed canBeNull value. */
-    @SuppressWarnings("this-escape")
-    protected SingleTypeState(PointsToAnalysis bb, boolean canBeNull, SingleTypeState other) {
+    protected SingleTypeState(boolean canBeNull, SingleTypeState other) {
         this.type = other.type;
         this.canBeNull = canBeNull;
         this.merged = other.merged;
-
-        PointsToStats.registerTypeState(bb, this);
     }
 
     @Override
@@ -121,7 +115,7 @@ public class SingleTypeState extends TypeState {
         if (stateCanBeNull == this.canBeNull()) {
             return this;
         } else {
-            return new SingleTypeState(bb, stateCanBeNull, this);
+            return PointsToStats.registerTypeState(bb, new SingleTypeState(stateCanBeNull, this));
         }
     }
 

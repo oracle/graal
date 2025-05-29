@@ -31,14 +31,13 @@ import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.NodeSourcePosition;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -63,8 +62,8 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public Stamp getInjectedStamp(Class<?> type, boolean nonNull) {
-        return delegate.getInjectedStamp(type, nonNull);
+    public Stamp getInjectedStamp(Class<?> type) {
+        return delegate.getInjectedStamp(type);
     }
 
     @Override
@@ -109,10 +108,9 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public StructuredGraph getInlineSubstitution(ResolvedJavaMethod method, int invokeBci, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
-                    AllowAssumptions allowAssumptions,
-                    OptionValues options) {
-        return delegate.getInlineSubstitution(method, invokeBci, inlineControl, trackNodeSourcePosition, replaceePosition, allowAssumptions, options);
+    public StructuredGraph getInlineSubstitution(ResolvedJavaMethod method, int invokeBci, boolean isInOOMETry, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition,
+                    NodeSourcePosition replaceePosition, AllowAssumptions allowAssumptions, OptionValues options) {
+        return delegate.getInlineSubstitution(method, invokeBci, isInOOMETry, inlineControl, trackNodeSourcePosition, replaceePosition, allowAssumptions, options);
     }
 
     @Override

@@ -522,13 +522,6 @@ public final class GraphState {
         }
 
         /**
-         * Checks if this guards stage indicates it is necessary to have value proxies in the graph.
-         */
-        public boolean requiresValueProxies() {
-            return this != AFTER_FSA;
-        }
-
-        /**
          * Checks if this guards stage indicates a later or equivalent stage of the compilation than
          * the given stage.
          */
@@ -542,6 +535,13 @@ public final class GraphState {
      */
     public GuardsStage getGuardsStage() {
         return guardsStage;
+    }
+
+    /**
+     * Sets the {@linkplain #getGuardsStage() guards stage} to {@link GuardsStage#FLOATING_GUARDS}.
+     */
+    public void initGuardsStage() {
+        setGuardsStage(GuardsStage.FLOATING_GUARDS);
     }
 
     /**
@@ -580,7 +580,7 @@ public final class GraphState {
     public void configureExplicitExceptionsNoDeopt() {
         assert !isExplicitExceptionsNoDeopt();
         assert stageFlags.isEmpty() : "Must not have set a stage flag before";
-        assert guardsStage == GuardsStage.FLOATING_GUARDS : "Default guards stage is floating guards";
+        assert guardsStage.allowsFloatingGuards() : "Default guards stage is floating guards";
         setGuardsStage(GraphState.GuardsStage.FIXED_DEOPTS);
         setAfterStage(StageFlag.GUARD_LOWERING);
     }
@@ -614,6 +614,7 @@ public final class GraphState {
         FLOATING_READS,
         GUARD_MOVEMENT,
         GUARD_LOWERING,
+        STRIP_MINING,
         VALUE_PROXY_REMOVAL,
         SAFEPOINTS_INSERTION,
         MID_TIER_LOWERING,

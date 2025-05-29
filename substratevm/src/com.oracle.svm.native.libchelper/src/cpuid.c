@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -315,6 +315,13 @@ static void initialize_cpuinfo(CpuidInfo *_cpuid_info)
     _cpuid_info->sefsl1_cpuid7_edx.value = edx;
   }
 
+  if (max_level >= 24)
+  {
+    get_cpuid(24, &eax, &ebx, &ecx, &edx);
+    _cpuid_info->std_cpuid24_eax.value = eax;
+    _cpuid_info->std_cpuid24_ebx.value = ebx;
+  }
+
   // topology
   if (max_level >= 0xB)
   {
@@ -438,12 +445,16 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
   {
     features->fAVX = 1;
     features->fVZEROUPPER = 1;
+    if (_cpuid_info->sefsl1_cpuid7_eax.bits.sha512 != 0)
+      features->fSHA512 = 1;
     if (_cpuid_info->std_cpuid1_ecx.bits.f16c != 0)
       features->fF16C = 1;
     if (_cpuid_info->sef_cpuid7_ebx.bits.avx2 != 0)
       features->fAVX2 = 1;
       if (_cpuid_info->sefsl1_cpuid7_eax.bits.avx_ifma != 0)
         features->fAVX_IFMA = 1;
+    if (_cpuid_info->sef_cpuid7_ecx.bits.gfni != 0)
+      features->fGFNI = 1;
     if (_cpuid_info->sef_cpuid7_ebx.bits.avx512f != 0 &&
         _cpuid_info->xem_xcr0_eax.bits.opmask != 0 &&
         _cpuid_info->xem_xcr0_eax.bits.zmm512 != 0 &&
@@ -470,8 +481,6 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
         features->fAVX512_VPCLMULQDQ = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.vaes != 0)
         features->fAVX512_VAES = 1;
-      if (_cpuid_info->sef_cpuid7_ecx.bits.gfni != 0)
-        features->fGFNI = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.avx512_vnni != 0)
         features->fAVX512_VNNI = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.avx512_bitalg != 0)
@@ -480,6 +489,35 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
         features->fAVX512_VBMI = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.avx512_vbmi2 != 0)
         features->fAVX512_VBMI2 = 1;
+    }
+    if (is_intel(_cpuid_info)) {
+      if (_cpuid_info->sefsl1_cpuid7_edx.bits.avx10 != 0 &&
+          _cpuid_info->std_cpuid24_ebx.bits.avx10_vlen_512 !=0 &&
+          _cpuid_info->std_cpuid24_ebx.bits.avx10_converged_isa_version >= 1 &&
+          _cpuid_info->xem_xcr0_eax.bits.opmask != 0 &&
+          _cpuid_info->xem_xcr0_eax.bits.zmm512 != 0 &&
+          _cpuid_info->xem_xcr0_eax.bits.zmm32 != 0) {
+        features->fAVX10_1 = 1;
+        features->fAVX_IFMA = 1;
+        features->fAVX512F = 1;
+        features->fAVX512CD = 1;
+        features->fAVX512DQ = 1;
+        features->fAVX512_IFMA = 1;
+        features->fAVX512PF = 1;
+        features->fAVX512ER = 1;
+        features->fAVX512BW = 1;
+        features->fAVX512VL = 1;
+        features->fAVX512_VPOPCNTDQ = 1;
+        features->fAVX512_VPCLMULQDQ = 1;
+        features->fAVX512_VAES = 1;
+        features->fAVX512_VNNI = 1;
+        features->fAVX512_BITALG = 1;
+        features->fAVX512_VBMI = 1;
+        features->fAVX512_VBMI2 = 1;
+        if (_cpuid_info->std_cpuid24_ebx.bits.avx10_converged_isa_version >= 2) {
+          features->fAVX10_2 = 1;
+        }
+      }
     }
   }
   if (_cpuid_info->std_cpuid1_ecx.bits.hv != 0)
@@ -492,6 +530,10 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
     features->fTSCINV_BIT = 1;
   if (_cpuid_info->std_cpuid1_ecx.bits.aes != 0)
     features->fAES = 1;
+  if (_cpuid_info->ext_cpuid1_ecx.bits.lzcnt != 0)
+    features->fLZCNT = 1;
+  if (_cpuid_info->ext_cpuid1_ecx.bits.prefetchw != 0)
+    features->fAMD_3DNOW_PREFETCH = 1;
   if (_cpuid_info->sef_cpuid7_ebx.bits.erms != 0)
     features->fERMS = 1;
   if (_cpuid_info->sef_cpuid7_edx.bits.fast_short_rep_mov != 0)
@@ -510,6 +552,8 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
     features->fFMA = 1;
   if (_cpuid_info->sef_cpuid7_ebx.bits.clflushopt != 0)
     features->fFLUSHOPT = 1;
+  if (_cpuid_info->sef_cpuid7_ebx.bits.clwb != 0)
+    features->fCLWB = 1;
   if (_cpuid_info->ext_cpuid1_edx.bits.rdtscp != 0)
     features->fRDTSCP = 1;
   if (_cpuid_info->sef_cpuid7_ecx.bits.rdpid != 0)
@@ -518,44 +562,31 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
       _cpuid_info->xem_xcr0_eax.bits.apx_f != 0)
     features->fAPX_F = 1;
 
-  // AMD|Hygon features.
+  // AMD|Hygon additional features.
   if (is_amd_family(_cpuid_info))
   {
-    if ((_cpuid_info->ext_cpuid1_edx.bits.tdnow != 0) ||
-        (_cpuid_info->ext_cpuid1_ecx.bits.prefetchw != 0))
+    // PREFETCHW was checked above, check TDNOW here.
+    if (_cpuid_info->ext_cpuid1_edx.bits.tdnow != 0)
       features->fAMD_3DNOW_PREFETCH = 1;
-    if (_cpuid_info->ext_cpuid1_ecx.bits.lzcnt != 0)
-      features->fLZCNT = 1;
     if (_cpuid_info->ext_cpuid1_ecx.bits.sse4a != 0)
       features->fSSE4A = 1;
   }
 
-  // Intel features.
+  // Intel additional features.
   if (is_intel(_cpuid_info))
   {
-    if (_cpuid_info->ext_cpuid1_ecx.bits.lzcnt != 0) {
-      features->fLZCNT = 1;
-    }
-    if (_cpuid_info->ext_cpuid1_ecx.bits.prefetchw != 0) {
-      features->fAMD_3DNOW_PREFETCH = 1;
-    }
-    if (_cpuid_info->sef_cpuid7_ebx.bits.clwb != 0) {
-      features->fCLWB = 1;
-    }
-    if (_cpuid_info->sef_cpuid7_edx.bits.serialize != 0) {
+    if (_cpuid_info->sef_cpuid7_edx.bits.serialize != 0)
       features->fSERIALIZE = 1;
-    }
+    if (_cpuid_info->sef_cpuid7_edx.bits.avx512_fp16 != 0)
+      features->fAVX512_FP16 = 1;
   }
 
-  // ZX features.
+  // ZX additional features.
   if (is_zx(_cpuid_info))
   {
-    if (_cpuid_info->ext_cpuid1_ecx.bits.lzcnt != 0) {
-      features->fLZCNT = 1;
-    }
-    if (_cpuid_info->ext_cpuid1_ecx.bits.prefetchw != 0) {
-      features->fAMD_3DNOW_PREFETCH = 1;
-    }
+    // We do not know if these are supported by ZX, so we cannot trust
+    // common CPUID bit for them.
+    features->fCLWB = 0;
   }
 
   // Protection key features.
@@ -723,6 +754,12 @@ void determineCPUFeatures(CPUFeatures* features) {
 #ifndef HWCAP_PACA
 #define HWCAP_PACA          (1L << 30)
 #endif
+#ifndef HWCAP_FPHP
+#define HWCAP_FPHP          (1L << 9)
+#endif
+#ifndef HWCAP_ASIMDHP
+#define HWCAP_ASIMDHP       (1L << 10)
+#endif
 #ifndef HWCAP2_SVE2
 #define HWCAP2_SVE2         (1L << 1)
 #endif
@@ -760,6 +797,8 @@ void determineCPUFeatures(CPUFeatures* features) {
   features->fDMB_ATOMICS = 0;
   features->fPACA = !!(auxv & HWCAP_PACA);
   features->fSVEBITPERM = !!(auxv2 & HWCAP2_SVEBITPERM);
+  features->fFPHP = !!(auxv & HWCAP_FPHP);
+  features->fASIMDHP = !!(auxv & HWCAP_ASIMDHP);
 
   //checking for features signaled in another way
 

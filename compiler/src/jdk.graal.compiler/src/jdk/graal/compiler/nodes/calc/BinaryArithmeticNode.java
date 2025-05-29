@@ -27,7 +27,7 @@ package jdk.graal.compiler.nodes.calc;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import java.util.Set;
+import java.util.Arrays;
 
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
@@ -76,7 +76,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
 
     protected final BinaryOp<OP> getOp(ValueNode forX, ValueNode forY) {
         ArithmeticOpTable table = getArithmeticOpTable(forX);
-        assert table.equals(getArithmeticOpTable(forY));
+        assert table.equals(getArithmeticOpTable(forY)) : Assertions.errorMessage("Invalid table ops", forX, table, forY, getArithmeticOpTable(forY));
         return getOp(table);
     }
 
@@ -166,7 +166,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return umax(v1, v2, view);
         } else if (IntegerStamp.OPS.getUMin().equals(op)) {
             return umin(v1, v2, view);
-        } else if (Set.of(IntegerStamp.OPS.getBinaryOps()).contains(op)) {
+        } else if (Arrays.asList(IntegerStamp.OPS.getBinaryOps()).contains(op)) {
             GraalError.unimplemented(String.format("creating %s via BinaryArithmeticNode#binaryIntegerOp is not implemented yet", op));
         } else {
             GraalError.shouldNotReachHere(String.format("%s is not a binary operation!", op));
@@ -185,6 +185,8 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return sub(v1, v2, view);
         } else if (FloatStamp.OPS.getMul().equals(op)) {
             return mul(v1, v2, view);
+        } else if (FloatStamp.OPS.getDiv().equals(op)) {
+            return FloatDivNode.create(v1, v2, view);
         } else if (FloatStamp.OPS.getAnd().equals(op)) {
             return and(v1, v2, view);
         } else if (FloatStamp.OPS.getOr().equals(op)) {
@@ -195,7 +197,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return max(v1, v2, view);
         } else if (FloatStamp.OPS.getMin().equals(op)) {
             return min(v1, v2, view);
-        } else if (Set.of(FloatStamp.OPS.getBinaryOps()).contains(op)) {
+        } else if (Arrays.asList(FloatStamp.OPS.getBinaryOps()).contains(op)) {
             GraalError.unimplemented(String.format("creating %s via BinaryArithmeticNode#binaryFloatOp is not implemented yet", op));
         } else {
             GraalError.shouldNotReachHere(String.format("%s is not a binary operation!", op));

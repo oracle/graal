@@ -71,6 +71,7 @@ import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.LogUtils;
@@ -184,7 +185,7 @@ public class NativeImageGeneratorRunner {
         if (verbose) {
             System.out.println(transitiveBuilderModules.stream()
                             .map(Module::getName)
-                            .collect(Collectors.joining("\n", "All builder modules: \n", "\n")));
+                            .collect(Collectors.joining(System.lineSeparator(), "All builder modules: " + System.lineSeparator(), System.lineSeparator())));
         }
 
         Set<Module> modulesBuilderDependsOn = new LinkedHashSet<>();
@@ -195,11 +196,12 @@ public class NativeImageGeneratorRunner {
         if (verbose) {
             System.out.println(modulesBuilderDependsOn.stream()
                             .map(Module::getName)
-                            .collect(Collectors.joining("\n", "All modules the builder modules depend on: \n", "\n")));
+                            .collect(Collectors.joining(System.lineSeparator(), "All modules the builder modules depend on: " + System.lineSeparator(), System.lineSeparator())));
         }
 
         Set<String> expectedBuilderDependencies = Set.of(
                         "java.base",
+                        "java.instrument",
                         "java.management",
                         "java.logging",
                         // workaround for GR-47773 on the module-path which requires java.sql (like
@@ -220,7 +222,7 @@ public class NativeImageGeneratorRunner {
         }
     }
 
-    private static void transitiveReaders(Module readModule, Set<Module> potentialReaders, Set<Module> actualReaders) {
+    public static void transitiveReaders(Module readModule, Set<Module> potentialReaders, Set<Module> actualReaders) {
         for (Module potentialReader : potentialReaders) {
             if (potentialReader.canRead(readModule)) {
                 if (actualReaders.add(potentialReader)) {
@@ -283,6 +285,7 @@ public class NativeImageGeneratorRunner {
         NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
         NativeImageClassLoaderSupport nativeImageClassLoaderSupport = new NativeImageClassLoaderSupport(nativeImageSystemClassLoader.defaultSystemClassLoader, classpath, modulepath);
         nativeImageClassLoaderSupport.setupHostedOptionParser(arguments);
+        nativeImageClassLoaderSupport.setupLibGraalClassLoader();
         /* Perform additional post-processing with the created nativeImageClassLoaderSupport */
         for (NativeImageClassLoaderPostProcessing postProcessing : ServiceLoader.load(NativeImageClassLoaderPostProcessing.class)) {
             postProcessing.apply(nativeImageClassLoaderSupport);
@@ -408,16 +411,16 @@ public class NativeImageGeneratorRunner {
                 NativeImageKind imageKind = null;
                 boolean isStaticExecutable = SubstrateOptions.StaticExecutable.getValue(parsedHostedOptions);
                 boolean isSharedLibrary = SubstrateOptions.SharedLibrary.getValue(parsedHostedOptions);
-                boolean isImageLayer = SubstrateOptions.LayerCreate.hasBeenSet(parsedHostedOptions);
+                boolean layerCreateOptionEnabled = HostedImageLayerBuildingSupport.isLayerCreateOptionEnabled(parsedHostedOptions);
                 if (isStaticExecutable && isSharedLibrary) {
                     reportConflictingOptions(SubstrateOptions.SharedLibrary, SubstrateOptions.StaticExecutable);
-                } else if (isStaticExecutable && isImageLayer) {
+                } else if (isStaticExecutable && layerCreateOptionEnabled) {
                     reportConflictingOptions(SubstrateOptions.StaticExecutable, SubstrateOptions.LayerCreate);
-                } else if (isSharedLibrary && isImageLayer) {
+                } else if (isSharedLibrary && layerCreateOptionEnabled) {
                     reportConflictingOptions(SubstrateOptions.SharedLibrary, SubstrateOptions.LayerCreate);
                 } else if (isSharedLibrary) {
                     imageKind = NativeImageKind.SHARED_LIBRARY;
-                } else if (isImageLayer) {
+                } else if (layerCreateOptionEnabled) {
                     imageKind = NativeImageKind.IMAGE_LAYER;
                 } else if (isStaticExecutable) {
                     imageKind = NativeImageKind.STATIC_EXECUTABLE;
@@ -444,7 +447,7 @@ public class NativeImageGeneratorRunner {
                                             .orElseThrow(() -> UserError.abort("Module " + moduleName + " for mainclass not found."));
                         }
                         if (className.isEmpty()) {
-                            className = classLoader.getMainClassFromModule(mainModule)
+                            className = ImageClassLoader.getMainClassFromModule(mainModule)
                                             .orElseThrow(() -> UserError.abort("Module %s does not have a ModuleMainClass attribute, use -m <module>/<main-class>", moduleName));
                         }
                         mainClass = classLoader.forName(className, mainModule);
@@ -460,7 +463,7 @@ public class NativeImageGeneratorRunner {
                                             " 1) Recompile the source files for your application using Java %s, then try running native-image again%n" +
                                             " 2) Use a version of native-image corresponding to the version of Java with which you compiled the source files for your application%n%n" +
                                             "Root cause: %s",
-                                            className, Runtime.version().feature(), ex);
+                                            className, JavaVersionUtil.JAVA_SPEC, ex);
                         } else {
                             throw UserError.abort(ex.getMessage());
                         }
@@ -472,7 +475,7 @@ public class NativeImageGeneratorRunner {
                     }
                     try {
                         /*
-                         * First look for an main method with the C-level signature for arguments.
+                         * First look for a main method with the C-level signature for arguments.
                          */
                         mainEntryPoint = mainClass.getDeclaredMethod(mainEntryPointName, int.class, CCharPointerPointer.class);
                     } catch (NoSuchMethodException ignored2) {
@@ -490,7 +493,7 @@ public class NativeImageGeneratorRunner {
                                  *
                                  * MainMethodFinder will perform all the necessary checks
                                  */
-                                String mainMethodFinderClassName = JavaVersionUtil.JAVA_SPEC >= 22 ? "jdk.internal.misc.MethodFinder" : "jdk.internal.misc.MainMethodFinder";
+                                String mainMethodFinderClassName = "jdk.internal.misc.MethodFinder";
                                 Class<?> mainMethodFinder = ReflectionUtil.lookupClass(false, mainMethodFinderClassName);
                                 Method findMainMethod = ReflectionUtil.lookupMethod(mainMethodFinder, "findMainMethod", Class.class);
                                 javaMainMethod = (Method) findMainMethod.invoke(null, mainClass);
@@ -713,11 +716,10 @@ public class NativeImageGeneratorRunner {
         } else {
             reportUserError(e.getMessage());
         }
-        Throwable current = e.getCause();
-        while (current != null) {
+        Throwable cause = e.getCause();
+        if (cause != null) {
             System.out.print("Caused by: ");
-            current.printStackTrace(System.out);
-            current = current.getCause();
+            cause.printStackTrace(System.out);
         }
         if (parsedHostedOptions != null && NativeImageOptions.ReportExceptionStackTraces.getValue(parsedHostedOptions)) {
             System.out.print("Internal exception: ");
@@ -757,7 +759,6 @@ public class NativeImageGeneratorRunner {
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.loader");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.misc");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.text.spi");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.org.objectweb.asm");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.reflect.annotation");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.security.jca");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.jdeps", "com.sun.tools.classfile");

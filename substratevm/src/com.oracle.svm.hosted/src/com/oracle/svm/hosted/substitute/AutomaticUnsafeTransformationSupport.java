@@ -41,6 +41,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.nodes.calc.NarrowNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
@@ -268,32 +269,6 @@ public class AutomaticUnsafeTransformationSupport {
         suppressWarnings = List.of(originalMetaAccess.lookupJavaType(ReflectionUtil.lookupClass(false, "sun.security.provider.ByteArrayAccess")));
     }
 
-    /**
-     * We use {@link ComputedValueField} to hold information about transformations, because it is a
-     * convenient holder class to check for equality for manually registered substitutions. But now
-     * we need to convert it to a {@link FieldValueTransformer}, because that is the only mechanism
-     * we can install late while the analysis is already running.
-     */
-    private static void addTransformation(BigBang bb, ResolvedJavaField original, ComputedValueField transformation) {
-        JavaKind returnKind = original.getType().getJavaKind();
-
-        FieldValueTransformer transformer = switch (transformation.getRecomputeValueKind()) {
-            case ArrayBaseOffset -> new ArrayBaseOffsetFieldValueTransformer(transformation.getTargetClass(), returnKind);
-            case ArrayIndexScale -> new ArrayIndexScaleFieldValueTransformer(transformation.getTargetClass(), returnKind);
-            case ArrayIndexShift -> new ArrayIndexShiftFieldValueTransformer(transformation.getTargetClass(), returnKind);
-            case FieldOffset -> createFieldOffsetFieldValueTransformer(bb, original, transformation.getTargetField());
-            case StaticFieldBase -> new StaticFieldBaseFieldValueTransformer(transformation.getTargetField());
-            default -> throw VMError.shouldNotReachHere("Unexpected kind: " + transformation);
-        };
-
-        FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(original, transformer);
-    }
-
-    private static FieldOffsetFieldValueTransformer createFieldOffsetFieldValueTransformer(BigBang bb, ResolvedJavaField original, Field targetField) {
-        bb.postTask(debugContext -> bb.getMetaAccess().lookupJavaField(targetField).registerAsUnsafeAccessed(original));
-        return new FieldOffsetFieldValueTransformer(targetField, original.getType().getJavaKind());
-    }
-
     @SuppressWarnings("try")
     public void computeTransformations(BigBang bb, SVMHost hostVM, ResolvedJavaType hostType) {
         if (hostType.isArray()) {
@@ -371,22 +346,19 @@ public class AutomaticUnsafeTransformationSupport {
     private void processUnsafeFieldComputation(BigBang bb, ResolvedJavaType type, Invoke invoke, Kind kind) {
         List<Supplier<String>> unsuccessfulReasons = new ArrayList<>();
 
-        Class<?> targetFieldHolder = null;
-        String targetFieldName = null;
-
+        Field targetField = null;
         String methodFormat = invoke.callTarget().targetMethod().format("%H.%n(%P)");
         ValueNode fieldArgumentNode = invoke.callTarget().arguments().get(1);
         JavaConstant fieldArgument = nodeAsConstant(fieldArgumentNode);
         if (fieldArgument != null) {
-            Field targetField = GraalAccess.getOriginalSnippetReflection().asObject(Field.class, fieldArgument);
-            if (isValidField(invoke, targetField, unsuccessfulReasons, methodFormat)) {
-                targetFieldHolder = targetField.getDeclaringClass();
-                targetFieldName = targetField.getName();
+            Field field = GraalAccess.getOriginalSnippetReflection().asObject(Field.class, fieldArgument);
+            if (isValidField(invoke, field, unsuccessfulReasons, methodFormat)) {
+                targetField = field;
             }
         } else {
             unsuccessfulReasons.add(() -> "The argument of " + methodFormat + " is not a constant value or a field load that can be constant-folded.");
         }
-        processUnsafeFieldComputation(bb, type, invoke, kind, unsuccessfulReasons, targetFieldHolder, targetFieldName);
+        processUnsafeFieldComputation(bb, type, invoke, kind, unsuccessfulReasons, targetField);
     }
 
     /**
@@ -475,11 +447,17 @@ public class AutomaticUnsafeTransformationSupport {
         } else {
             unsuccessfulReasons.add(() -> "The name argument of Unsafe.objectFieldOffset(Class, String) is not a constant String.");
         }
-        processUnsafeFieldComputation(bb, type, unsafeObjectFieldOffsetInvoke, FieldOffset, unsuccessfulReasons, targetFieldHolder, targetFieldName);
+        Field targetField = null;
+        if (unsuccessfulReasons.isEmpty()) {
+            targetField = ReflectionUtil.lookupField(true, targetFieldHolder, targetFieldName);
+            if (targetField == null) {
+                unsuccessfulReasons.add(() -> "The arguments of Unsafe.objectFieldOffset(Class, String) do not reference an existing field.");
+            }
+        }
+        processUnsafeFieldComputation(bb, type, unsafeObjectFieldOffsetInvoke, FieldOffset, unsuccessfulReasons, targetField);
     }
 
-    private void processUnsafeFieldComputation(BigBang bb, ResolvedJavaType type, Invoke invoke, Kind kind, List<Supplier<String>> unsuccessfulReasons, Class<?> targetFieldHolder,
-                    String targetFieldName) {
+    private void processUnsafeFieldComputation(BigBang bb, ResolvedJavaType type, Invoke invoke, Kind kind, List<Supplier<String>> unsuccessfulReasons, Field targetField) {
         assert kind == FieldOffset || kind == StaticFieldBase;
         /*
          * If the value returned by the call to Unsafe.objectFieldOffset() is stored into a field
@@ -497,10 +475,9 @@ public class AutomaticUnsafeTransformationSupport {
          * If the target field holder and name, and the offset field were found try to register a
          * transformation.
          */
-        if (targetFieldHolder != null && targetFieldName != null && valueStoreField != null) {
-            Supplier<ComputedValueField> supplier = () -> ComputedValueField.create(valueStoreField, null, kind, targetFieldHolder, targetFieldName, false);
-            if (tryAutomaticTransformation(bb, valueStoreField, kind, supplier)) {
-                reportSuccessfulAutomaticRecomputation(kind, valueStoreField, targetFieldHolder.getName() + "." + targetFieldName);
+        if (targetField != null && valueStoreField != null) {
+            if (tryAutomaticTransformation(bb, valueStoreField, kind, null, targetField)) {
+                reportSuccessfulAutomaticRecomputation(kind, valueStoreField, targetField.getDeclaringClass().getName() + "." + targetField.getName());
             }
         } else {
             reportUnsuccessfulAutomaticRecomputation(type, valueStoreField, invoke, kind, unsuccessfulReasons);
@@ -534,8 +511,7 @@ public class AutomaticUnsafeTransformationSupport {
         ResolvedJavaField offsetField = result.valueStoreField;
         if (arrayClass != null && offsetField != null) {
             Class<?> finalArrayClass = arrayClass;
-            Supplier<ComputedValueField> supplier = () -> ComputedValueField.create(offsetField, null, ArrayBaseOffset, finalArrayClass, null, true);
-            if (tryAutomaticTransformation(bb, offsetField, ArrayBaseOffset, supplier)) {
+            if (tryAutomaticTransformation(bb, offsetField, ArrayBaseOffset, finalArrayClass, null)) {
                 reportSuccessfulAutomaticRecomputation(ArrayBaseOffset, offsetField, arrayClass.getCanonicalName());
             }
         } else {
@@ -576,9 +552,7 @@ public class AutomaticUnsafeTransformationSupport {
 
         if (arrayClass != null) {
             if (indexScaleField != null) {
-                Class<?> finalArrayClass = arrayClass;
-                Supplier<ComputedValueField> supplier = () -> ComputedValueField.create(indexScaleField, null, ArrayIndexScale, finalArrayClass, null, true);
-                if (tryAutomaticTransformation(bb, indexScaleField, ArrayIndexScale, supplier)) {
+                if (tryAutomaticTransformation(bb, indexScaleField, ArrayIndexScale, arrayClass, null)) {
                     reportSuccessfulAutomaticRecomputation(ArrayIndexScale, indexScaleField, arrayClass.getCanonicalName());
                     indexScaleComputed = true;
                     /* Try transformation for the array index shift computation if present. */
@@ -697,9 +671,7 @@ public class AutomaticUnsafeTransformationSupport {
                 }
 
                 if (indexShiftField != null) {
-                    ResolvedJavaField finalIndexShiftField = indexShiftField;
-                    Supplier<ComputedValueField> supplier = () -> ComputedValueField.create(finalIndexShiftField, null, ArrayIndexShift, arrayClass, null, true);
-                    if (tryAutomaticTransformation(bb, indexShiftField, ArrayIndexShift, supplier)) {
+                    if (tryAutomaticTransformation(bb, indexShiftField, ArrayIndexShift, arrayClass, null)) {
                         reportSuccessfulAutomaticRecomputation(ArrayIndexShift, indexShiftField, arrayClass.getCanonicalName());
                         return true;
                     }
@@ -794,23 +766,45 @@ public class AutomaticUnsafeTransformationSupport {
          * continues until all usages are exhausted or an illegal use is found.
          */
         outer: for (Node valueNodeUsage : valueNode.usages()) {
-            if (valueNodeUsage instanceof StoreFieldNode && valueStoreField == null) {
-                valueStoreField = ((StoreFieldNode) valueNodeUsage).field();
-            } else if (valueNodeUsage instanceof SignExtendNode && valueStoreField == null) {
-                SignExtendNode signExtendNode = (SignExtendNode) valueNodeUsage;
+            if (valueNodeUsage instanceof StoreFieldNode storeFieldNode && valueStoreField == null) {
+                valueStoreField = storeFieldNode.field();
+            } else if (valueNodeUsage instanceof SignExtendNode signExtendNode && valueStoreField == null) {
                 for (Node signExtendNodeUsage : signExtendNode.usages()) {
-                    if (signExtendNodeUsage instanceof StoreFieldNode && valueStoreField == null) {
-                        valueStoreField = ((StoreFieldNode) signExtendNodeUsage).field();
-                    } else if (isAllowedUnsafeValueSink(signExtendNodeUsage)) {
-                        continue;
-                    } else {
+                    if (signExtendNodeUsage instanceof StoreFieldNode storeFieldNode && valueStoreField == null) {
+                        valueStoreField = storeFieldNode.field();
+                    } else if (!isAllowedUnsafeValueSink(signExtendNodeUsage)) {
                         illegalUseFound = true;
                         break outer;
                     }
                 }
-            } else if (isAllowedUnsafeValueSink(valueNodeUsage)) {
-                continue;
-            } else {
+            } else if (recomputeKind == ArrayBaseOffset && valueNodeUsage instanceof NarrowNode narrowNode &&
+                            narrowNode.getInputBits() == 64 && narrowNode.getResultBits() == 32 && valueStoreField == null) {
+                /*
+                 * JDK-8344168 changes the return type of Unsafe.arrayBaseOffset from int to long.
+                 * The rationale is to avoid 32 bit overflows when deriving values from the result.
+                 * However, the offset is still known to fit into in 32 bits. Usages of the function
+                 * might therefore cast the result to int, which is fine as it does not lose
+                 * information in this case. To support these patterns, we treat casts from long to
+                 * int as transparent, similar to sign extend from int to long.
+                 */
+                for (Node narrowNodeUsage : narrowNode.usages()) {
+                    if (narrowNodeUsage instanceof StoreFieldNode storeFieldNode && valueStoreField == null) {
+                        valueStoreField = storeFieldNode.field();
+                    } else if (narrowNodeUsage instanceof SignExtendNode signExtendNode && valueStoreField == null) {
+                        for (Node signExtendNodeUsage : signExtendNode.usages()) {
+                            if (signExtendNodeUsage instanceof StoreFieldNode storeFieldNode && valueStoreField == null) {
+                                valueStoreField = storeFieldNode.field();
+                            } else if (!isAllowedUnsafeValueSink(signExtendNodeUsage)) {
+                                illegalUseFound = true;
+                                break outer;
+                            }
+                        }
+                    } else if (!isAllowedUnsafeValueSink(narrowNodeUsage)) {
+                        illegalUseFound = true;
+                        break outer;
+                    }
+                }
+            } else if (!isAllowedUnsafeValueSink(valueNodeUsage)) {
                 illegalUseFound = true;
                 break;
             }
@@ -888,58 +882,62 @@ public class AutomaticUnsafeTransformationSupport {
      * Try to register the automatic transformation for a field. Bail if the field was deleted or a
      * conflicting substitution is detected.
      */
-    private boolean tryAutomaticTransformation(BigBang bb, ResolvedJavaField field, Kind kind, Supplier<ComputedValueField> transformationSupplier) {
+    private boolean tryAutomaticTransformation(BigBang bb, ResolvedJavaField field, RecomputeFieldValue.Kind kind, Class<?> targetClass, Field targetField) {
         if (annotationSubstitutions.isDeleted(field)) {
             String conflictingSubstitution = "The field " + field.format("%H.%n") + " is marked as deleted. ";
             reportConflictingSubstitution(field, kind, conflictingSubstitution);
             return false;
         } else {
-            ComputedValueField transformation = transformationSupplier.get();
-            Field targetField = transformation.getTargetField();
             if (targetField != null && annotationSubstitutions.isDeleted(targetField)) {
                 String conflictingSubstitution = "The target field of " + field.format("%H.%n") + " is marked as deleted. ";
                 reportSkippedSubstitution(field, kind, conflictingSubstitution);
                 return false;
             }
+
+            FieldValueTransformer newTransformer = switch (kind) {
+                case ArrayBaseOffset -> new ArrayBaseOffsetFieldValueTransformer(targetClass, field.getType().getJavaKind());
+                case ArrayIndexScale -> new ArrayIndexScaleFieldValueTransformer(targetClass, field.getType().getJavaKind());
+                case ArrayIndexShift -> new ArrayIndexShiftFieldValueTransformer(targetClass, field.getType().getJavaKind());
+                case FieldOffset -> new FieldOffsetFieldValueTransformer(targetField, field.getType().getJavaKind());
+                case StaticFieldBase -> new StaticFieldBaseFieldValueTransformer(targetField);
+                default -> throw VMError.shouldNotReachHere("Unexpected kind: " + kind);
+            };
+
+            FieldValueTransformer existingTransformer = FieldValueInterceptionSupport.singleton().lookupAlreadyRegisteredTransformer(field);
+            if (existingTransformer != null) {
+                if (existingTransformer.equals(newTransformer)) {
+                    reportUnnecessarySubstitution(field, kind);
+                } else if (existingTransformer.getClass() == newTransformer.getClass()) {
+                    /*
+                     * Skip the warning when, for example, the target field of the found manual
+                     * substitution differs from the target field of the discovered original offset
+                     * computation. This will avoid printing false positives for substitutions like
+                     * Target_java_lang_Class_Atomic.*Offset.
+                     */
+                } else {
+                    String conflictingSubstitution = "Detected and existing field value transformer: " + existingTransformer;
+                    reportConflictingSubstitution(field, kind, conflictingSubstitution);
+                }
+                return false;
+            }
+
             Optional<ResolvedJavaField> annotationSubstitution = annotationSubstitutions.findSubstitution(field);
             if (annotationSubstitution.isPresent()) {
                 ResolvedJavaField substitutionField = annotationSubstitution.get();
-                if (substitutionField instanceof ComputedValueField computedValueField) {
-                    if (computedValueField.getRecomputeValueKind().equals(kind)) {
-                        if (computedValueField.getTargetField().equals(transformation.getTargetField())) {
-                            /*
-                             * Skip the warning when the target field of the found manual
-                             * substitution differs from the target field of the discovered original
-                             * offset computation. This will avoid printing false positives for
-                             * substitutions like Target_java_lang_Class_Atomic.*Offset.
-                             */
-                            reportUnnecessarySubstitution(transformation, computedValueField);
-                        }
-                        return false;
-                    } else if (computedValueField.getRecomputeValueKind().equals(Kind.None)) {
-                        /*
-                         * This is essentially an @Alias field. An @Alias for a field with an
-                         * automatic recomputed value is allowed.
-                         */
-                        addTransformation(bb, field, transformation);
-                        reportOvewrittenSubstitution(substitutionField, kind, computedValueField.getAnnotated(), computedValueField.getRecomputeValueKind());
-                        return true;
-                    } else {
-                        String conflictingSubstitution = "Detected RecomputeFieldValue." + computedValueField.getRecomputeValueKind() +
-                                        " " + computedValueField.getAnnotated().format("%H.%n") + " substitution field. ";
-                        reportConflictingSubstitution(substitutionField, kind, conflictingSubstitution);
-                        return false;
-                    }
+                if (substitutionField instanceof AliasField) {
+                    /* An @Alias for a field with an automatic recomputed value is allowed. */
                 } else {
                     String conflictingSubstitution = "Detected " + substitutionField.format("%H.%n") + " substitution field. ";
-                    reportConflictingSubstitution(substitutionField, kind, conflictingSubstitution);
+                    reportConflictingSubstitution(field, kind, conflictingSubstitution);
                     return false;
                 }
-            } else {
-                /* No other substitutions detected. */
-                addTransformation(bb, field, transformation);
-                return true;
             }
+
+            if (kind == FieldOffset) {
+                bb.postTask(debugContext -> bb.getMetaAccess().lookupJavaField(targetField).registerAsUnsafeAccessed(field));
+            }
+            FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(field, newTransformer);
+            return true;
         }
     }
 
@@ -950,16 +948,12 @@ public class AutomaticUnsafeTransformationSupport {
         }
     }
 
-    private static void reportUnnecessarySubstitution(ResolvedJavaField offsetField, ComputedValueField computedSubstitutionField) {
+    private static void reportUnnecessarySubstitution(ResolvedJavaField field, Kind kind) {
         if (Options.AutomaticUnsafeTransformationLogLevel.getValue() >= BASIC_LEVEL) {
-            Kind kind = computedSubstitutionField.getRecomputeValueKind();
-            String kindStr = RecomputeFieldValue.class.getSimpleName() + "." + kind;
-            String annotatedFieldStr = computedSubstitutionField.getAnnotated().format("%H.%n");
-            String offsetFieldStr = offsetField.format("%H.%n");
             String optionStr = SubstrateOptionsParser.commandArgument(Options.AutomaticUnsafeTransformationLogLevel, "+");
-            LogUtils.warning("Detected unnecessary %s %s substitution field for %s. The annotated field can be removed. " +
+            LogUtils.warning("Detected unnecessary %s.%s substitution field for %s. The annotated field can be removed. " +
                             "This %s computation can be detected automatically. Use option -H:+%s=%s to print all automatically detected substitutions.",
-                            kindStr, annotatedFieldStr, offsetFieldStr, kind, optionStr, INFO_LEVEL);
+                            RecomputeFieldValue.class.getSimpleName(), kind, field.format("%H.%n"), kind, optionStr, INFO_LEVEL);
         }
     }
 
@@ -968,16 +962,6 @@ public class AutomaticUnsafeTransformationSupport {
             String recomputeKindStr = RecomputeFieldValue.class.getSimpleName() + "." + recomputeKind;
             String substitutedFieldStr = substitutedField.format("%H.%n");
             LogUtils.info("%s substitution automatically registered for %s, target element %s.", recomputeKindStr, substitutedFieldStr, target);
-        }
-    }
-
-    private static void reportOvewrittenSubstitution(ResolvedJavaField offsetField, Kind newKind, ResolvedJavaField overwrittenField, Kind overwrittenKind) {
-        if (Options.AutomaticUnsafeTransformationLogLevel.getValue() >= INFO_LEVEL) {
-            String newKindStr = RecomputeFieldValue.class.getSimpleName() + "." + newKind;
-            String overwrittenKindStr = RecomputeFieldValue.class.getSimpleName() + "." + overwrittenKind;
-            String offsetFieldStr = offsetField.format("%H.%n");
-            String overwrittenFieldStr = overwrittenField.format("%H.%n");
-            LogUtils.info("The %s %s substitution was overwritten. A %s substitution for %s was automatically registered.", overwrittenKindStr, overwrittenFieldStr, newKindStr, offsetFieldStr);
         }
     }
 

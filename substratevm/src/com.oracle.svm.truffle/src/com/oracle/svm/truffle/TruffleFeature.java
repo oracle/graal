@@ -100,7 +100,6 @@ import java.util.function.ToLongBiFunction;
 import java.util.function.ToLongFunction;
 import java.util.function.UnaryOperator;
 
-import jdk.graal.compiler.phases.common.InsertGuardFencesPhase;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -132,7 +131,6 @@ import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompiledMethod;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
@@ -141,15 +139,19 @@ import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
 import com.oracle.svm.truffle.api.SubstrateTruffleUniverseFactory;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.TruffleCallBoundary;
 
 import jdk.graal.compiler.core.phases.HighTier;
@@ -164,6 +166,7 @@ import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.InsertGuardFencesPhase;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
@@ -337,8 +340,17 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
+        /*
+         * Both methods are needed in HostInliningPhase to not be optimized / strengthened. By
+         * specifying them as opaque we make sure that the original dominator tree is preserved. If
+         * we do not set these methods as opaque we might end up host inlining into paths that are
+         * not designed for PE/HostInlining.
+         */
+        config.registerOpaqueMethodReturn(ReflectionUtil.lookupMethod(CompilerDirectives.class, "inInterpreter"));
+        config.registerOpaqueMethodReturn(ReflectionUtil.lookupMethod(HostCompilerDirectives.class, "inInterpreterFastPath"));
+
+        SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
         TruffleHostEnvironment.overrideLookup(new SubstrateTruffleHostEnvironmentLookup(truffleRuntime, config.getMetaAccess()));
 
         ImageSingletons.lookup(TruffleBaseFeature.class).setProfilingEnabled(truffleRuntime.isProfilingEnabled());
@@ -409,12 +421,16 @@ public class TruffleFeature implements InternalFeature {
         }
 
         /*
-         * The concrete subclass of OptimizedCallTarget needs to be registered as in heap for the
-         * forced compilation of frame methods to work. Forcing compilation of a method effectively
-         * adds it as a root and non-static root methods are only compiled if types implementing
-         * them or any of their subtypes are allocated.
+         * GR-57561: The constructor of the concrete subclass of OptimizedCallTarget needs to be
+         * seen by the analysis, otherwise the analysis will not see any writes to its fields
+         * (namely rootNode and engine), which will make a lot of Truffle code look unreachable.
+         * Since the createOptimizedCallTarget is a member method, we also need to ensure that an
+         * instance of TruffleSupport is always seen as instantiated, otherwise the method might not
+         * be considered reachable.
          */
-        config.registerAsInHeap(TruffleSupport.singleton().getOptimizedCallTargetClass(), "Concrete subclass of OptimizedCallTarget registered by " + TruffleFeature.class);
+        config.registerAsInHeap(TruffleSupport.singleton().getClass(), "Concrete subclass of TruffleSupport needs to be seen as instantiated, registered by " + TruffleFeature.class);
+        config.registerAsRoot(ReflectionUtil.lookupMethod(TruffleSupport.singleton().getClass(), "createOptimizedCallTarget", OptimizedCallTarget.class, RootNode.class), true,
+                        "The constructor of the concrete subclass of OptimizedCallTarget needs to be seen by the analysis, registered by " + TruffleFeature.class);
 
         /*
          * This effectively initializes the Truffle fallback engine which does all the system
@@ -430,18 +446,9 @@ public class TruffleFeature implements InternalFeature {
 
         /* Support for deprecated bytecode osr frame transfer: GR-38296 */
         config.registerSubtypeReachabilityHandler((acc, klass) -> {
-            DuringAnalysisAccessImpl impl = (DuringAnalysisAccessImpl) acc;
             /* Pass known reachable classes to the initializer: it will decide there what to do. */
-            Boolean modified = TruffleBaseFeature.invokeStaticMethod(
-                            "com.oracle.truffle.runtime.BytecodeOSRRootNode",
-                            "initializeClassUsingDeprecatedFrameTransfer",
-                            Collections.singleton(Class.class),
-                            klass);
-            if (modified != null && modified) {
-                if (!impl.concurrentReachabilityHandlers()) {
-                    impl.requireAnalysisIteration();
-                }
-            }
+            TruffleBaseFeature.invokeStaticMethod("com.oracle.truffle.runtime.BytecodeOSRRootNode", "initializeClassUsingDeprecatedFrameTransfer",
+                            Collections.singleton(Class.class), klass);
         }, BytecodeOSRNode.class);
     }
 

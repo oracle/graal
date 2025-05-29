@@ -41,8 +41,6 @@
 #include "trufflenfi.h"
 #include "internal.h"
 
-__thread int errnoMirror;
-
 static TruffleContext *getTruffleContext(TruffleEnv *tenv) {
     struct __TruffleEnvInternal *env = (struct __TruffleEnvInternal *) tenv;
     return (TruffleContext *) env->context;

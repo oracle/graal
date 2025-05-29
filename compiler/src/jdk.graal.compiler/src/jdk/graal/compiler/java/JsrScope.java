@@ -108,6 +108,19 @@ public final class JsrScope {
     }
 
     /**
+     * Checks if a block with the same bci is already in this jsr scope.
+     */
+    public boolean containsJSREntry(BciBlock entry) {
+        for (JsrScope s = this; s != null && !s.isEmpty(); s = s.parent) {
+            assert s.jsrEntryBlock != null : "unexpected null value for jsrEntryBlock for scope: " + s;
+            if (s.jsrEntryBlock.startBci == entry.startBci) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Determines if the {@linkplain #getAncestry() ancestry} of this scope is a prefix of the
      * ancestry of {@code other}.
      */

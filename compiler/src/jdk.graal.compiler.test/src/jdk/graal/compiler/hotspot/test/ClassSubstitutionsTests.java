@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -117,6 +118,7 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
     }
 
     @Test
+    @Ignore("GR-62659")
     public void testFieldIsNotArray() {
         testConstantReturn("fieldIsNotArray", 0);
     }
@@ -192,6 +194,7 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
     }
 
     @Test
+    @Ignore("GR-62659")
     public void testFieldIsArray() {
         testConstantReturn("fieldIsArray", 1);
     }
@@ -208,10 +211,10 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
     private static class A {
     }
 
-    private static class B extends A {
+    private static final class B extends A {
     }
 
-    private static class C {
+    private static final class C {
     }
 
     private static final A aInstance = new A();

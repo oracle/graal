@@ -84,20 +84,25 @@ public class HeapSnapshotVerifier {
         return checkHeapSnapshot(metaAccess, executor, stage, false, embeddedConstants);
     }
 
+    public boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, CompletionExecutor executor, String phase, boolean forAnalysis, Map<Constant, Object> embeddedConstants) {
+        return checkHeapSnapshot(metaAccess, executor, phase, forAnalysis, embeddedConstants, false);
+    }
+
     /**
      * Heap verification does a complete scan from roots (static fields and embedded constant) and
      * compares the object graph against the shadow heap. If any new reachable objects or primitive
      * values are found then the verifier automatically patches the shadow heap. If this is during
      * analysis then the heap scanner will also notify the analysis of the new objects.
      */
-    public boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, CompletionExecutor executor, String phase, boolean forAnalysis, Map<Constant, Object> embeddedConstants) {
+    protected boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, CompletionExecutor executor, String phase, boolean forAnalysis, Map<Constant, Object> embeddedConstants,
+                    boolean skipReachableCheck) {
         info("Verifying the heap snapshot %s%s ...", phase, (forAnalysis ? ", iteration " + iterations : ""));
         analysisModified = false;
         heapPatched = false;
         int reachableTypesBefore = bb.getUniverse().getReachableTypes();
         iterations++;
         scannedObjects.reset();
-        ObjectScanner objectScanner = installObjectScanner(metaAccess, executor);
+        ObjectScanner objectScanner = installObjectScanner(metaAccess, executor, skipReachableCheck);
         executor.start();
         scanTypes(objectScanner);
         objectScanner.scanBootImageHeapRoots(embeddedConstants);
@@ -132,8 +137,8 @@ public class HeapSnapshotVerifier {
         return analysisModified || verificationReachableTypes > 0;
     }
 
-    protected ObjectScanner installObjectScanner(@SuppressWarnings("unused") UniverseMetaAccess metaAccess, CompletionExecutor executor) {
-        return new ObjectScanner(bb, executor, scannedObjects, new ScanningObserver());
+    protected ObjectScanner installObjectScanner(@SuppressWarnings("unused") UniverseMetaAccess metaAccess, CompletionExecutor executor, boolean skipReachableCheck) {
+        return new ObjectScanner(bb, executor, scannedObjects, new ScanningObserver(skipReachableCheck));
     }
 
     protected void scanTypes(@SuppressWarnings("unused") ObjectScanner objectScanner) {
@@ -144,7 +149,10 @@ public class HeapSnapshotVerifier {
 
     protected final class ScanningObserver implements ObjectScanningObserver {
 
-        public ScanningObserver() {
+        private final boolean skipReachableCheck;
+
+        public ScanningObserver(boolean skipReachableCheck) {
+            this.skipReachableCheck = skipReachableCheck;
         }
 
         @Override
@@ -418,7 +426,7 @@ public class HeapSnapshotVerifier {
 
         @SuppressWarnings({"unchecked", "rawtypes"})
         private void ensureTypeScanned(JavaConstant value, JavaConstant typeConstant, AnalysisType type, ScanReason reason) {
-            if (!type.isReachable()) {
+            if (!skipReachableCheck && !type.isReachable()) {
                 error(reason, "The heap snapshot verifier discovered a type not marked as reachable: %s", type);
             }
             Object task = imageHeap.getSnapshot(typeConstant);

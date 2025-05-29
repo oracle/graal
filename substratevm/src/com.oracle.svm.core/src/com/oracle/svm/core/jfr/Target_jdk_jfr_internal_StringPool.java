@@ -29,8 +29,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(value = jdk.jfr.internal.StringPool.class, onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_StringPool {
+
+    @SuppressWarnings("unused")
     @Substitute
-    public static long addString(@SuppressWarnings("unused") String s) {
+    public static long addString(String s, boolean pinVirtualThread) {
         // This disables String caching and forces the EventWriter to write strings by value.
         return -1;
     }

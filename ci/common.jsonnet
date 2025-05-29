@@ -44,8 +44,6 @@ local common_json = import "../common.json";
     _version_build_id[1]
     ,
   local jdks_data = {
-    oraclejdk11: jdk_base + common_json.jdks["oraclejdk11"] + { jdk_version:: 11 },
-  } + {
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: 17 }
     for name in ["oraclejdk17"] + variants("labsjdk-ce-17") + variants("labsjdk-ee-17")
   } + {
@@ -57,6 +55,8 @@ local common_json = import "../common.json";
   } + {
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: 21 }
     for name in ["oraclejdk21"] + variants("labsjdk-ce-21") + variants("labsjdk-ee-21")
+  } + {
+    'oraclejdk24': jdk_base + common_json.jdks["oraclejdk24"] + { jdk_version:: 24 },
   } + {
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self), jdk_name:: "jdk-latest"}
     for name in ["oraclejdk-latest"] + variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
@@ -112,7 +112,7 @@ local common_json = import "../common.json";
     "windows-jdk19": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk20": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk21": { packages+: { "devkit:VS2022-17.1.0+1": "==1" }},
-    "windows-jdk-latest": { packages+: { "devkit:VS2022-17.6.5+1": "==0" }},
+    "windows-jdk-latest": { packages+: { "devkit:VS2022-17.13.2+1": "==0" }},
     "windows-jdkLatest": self["windows-jdk-latest"],
     "linux-jdk17": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk19": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
@@ -152,6 +152,8 @@ local common_json = import "../common.json";
         "@(?P<filename>.*SubprocessUtil-argfiles.*\\.argfile)",
         # Keep in sync with com.oracle.truffle.api.test.SubprocessTestUtils#makeArgfile
         "@(?P<filename>.*SubprocessTestUtils-argfiles.*\\.argfile)",
+        # Keep in sync with mx_gate.py:get_jacoco_agent_args
+        "JaCoCo agent config: '(?P<filename>[^']+)'",
       ],
     },
 
@@ -203,6 +205,12 @@ local common_json = import "../common.json";
       },
     },
 
+    gradle:: {
+      downloads+: {
+        GRADLE_JAVA_HOME: jdks_data["oraclejdk21"],
+      }
+    },
+
     local code_tools = {
       downloads+: if 'jdk_version' in self && self.jdk_version > 21 then {
         TOOLS_JAVA_HOME: jdks_data['oraclejdk21'],
@@ -251,12 +259,21 @@ local common_json = import "../common.json";
       } else {},
     },
 
-    graalpy:: {
+    graalpy:: self.gradle + {
       packages+: if (self.os == "linux") then {
         libffi: '>=3.2.1',
         bzip2: '>=1.0.6',
         maven: ">=3.3.9",
       } else {},
+    },
+
+    wasm:: {
+      downloads+: {
+        WABT_DIR: {name: 'wabt', version: '1.0.36', platformspecific: true},
+      },
+      environment+: {
+        WABT_DIR: '$WABT_DIR/bin',
+      },
     },
 
     fastr:: {
@@ -269,7 +286,7 @@ local common_json = import "../common.json";
         if (self.os == "linux" && self.arch == "amd64") then {
           readline: '==6.3',
           pcre2: '==10.37',
-          curl: '>=7.50.1',
+          curl: '==7.50.1',
           gnur: '==4.0.3-gcc4.8.5-pcre2',
         }
         else if (self.os == "darwin" && self.arch == "amd64") then {

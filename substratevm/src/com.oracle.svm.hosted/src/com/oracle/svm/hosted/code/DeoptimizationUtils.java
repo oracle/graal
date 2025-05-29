@@ -149,7 +149,7 @@ public class DeoptimizationUtils {
             return false;
         }
 
-        if (method.isEntryPoint()) {
+        if (method.isNativeEntryPoint()) {
             /*
              * Entry points from C have special entry/exit nodes added, so they cannot be
              * deoptimized.

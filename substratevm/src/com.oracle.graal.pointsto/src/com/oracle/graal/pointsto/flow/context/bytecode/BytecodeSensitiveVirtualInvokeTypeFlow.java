@@ -81,6 +81,13 @@ final class BytecodeSensitiveVirtualInvokeTypeFlow extends AbstractVirtualInvoke
     }
 
     @Override
+    protected void onFlowEnabled(PointsToAnalysis bb) {
+        if (isClone()) {
+            bb.postTask(() -> onObservedUpdate(bb));
+        }
+    }
+
+    @Override
     public void onObservedUpdate(PointsToAnalysis bb) {
         assert this.isClone() || this.isContextInsensitive() : this;
 

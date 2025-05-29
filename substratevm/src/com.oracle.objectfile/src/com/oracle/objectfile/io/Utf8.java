@@ -36,8 +36,22 @@ public final class Utf8 {
     private Utf8() {
     }
 
+    private static int utf8Size(char c) {
+        // Based On
+        // https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/utilities/utf8.cpp#L479-L488
+        if ((0x0001 <= c) && (c <= 0x007F)) {
+            // ASCII character
+            return 1;
+        } else if (c <= 0x07FF) {
+            return 2;
+        } else {
+            return 3;
+        }
+    }
+
     /**
-     * @return the length in bytes of the UTF8 representation of the string
+     * @return the length as {@code int} in bytes of the UTF8 representation of the string. Might
+     *         return a truncated size if the value does not fit into {@code int} (see JDK-8328877).
      */
     public static int utf8Length(String string) {
         return utf8Length(string, 0, string.length());
@@ -46,24 +60,29 @@ public final class Utf8 {
     /**
      * @param beginIndex first index that is part of the region, inclusive
      * @param endIndex index at the end of the region, exclusive
-     * @return the length in bytes of the UTF8 representation of the string region
+     * @return the length as {@code int} in bytes of the UTF8 representation of the string region.
+     *         Might return a truncated size if the value does not fit into {@code int} (see
+     *         JDK-8328877).
      */
     public static int utf8Length(String s, int beginIndex, int endIndex) {
+        // Based on
+        // https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/utilities/utf8.cpp#L511-L526.
         if (beginIndex < 0 || endIndex > s.length() || beginIndex > endIndex) {
             throw new StringIndexOutOfBoundsException();
         }
-        int length = 0;
-        for (int i = beginIndex; i < endIndex; i++) {
-            final int c = s.charAt(i);
-            if ((c >= 0x0001) && (c <= 0x007F)) {
-                length++;
-            } else if (c > 0x07FF) {
-                length += 3;
-            } else {
-                length += 2;
+        long result = 0;
+        for (int index = beginIndex; index < endIndex; index++) {
+            char c = s.charAt(index);
+            long sz = utf8Size(c);
+            // If the length is > INT_MAX-1 we truncate at a completed
+            // modified-UTF8 encoding. This allows for +1 to be added
+            // by the caller for NUL-termination, without overflow.
+            if (result + sz > Integer.MAX_VALUE - 1) {
+                break;
             }
+            result += sz;
         }
-        return length;
+        return (int) result;
     }
 
     /**

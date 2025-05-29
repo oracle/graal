@@ -42,6 +42,7 @@ package com.oracle.truffle.api.source;
 
 import java.net.URI;
 import java.net.URL;
+import java.util.Map;
 
 import org.graalvm.polyglot.io.ByteSequence;
 
@@ -68,6 +69,11 @@ final class SubSourceImpl extends Source {
     @Override
     public boolean hasBytes() {
         return key.base.hasBytes();
+    }
+
+    @Override
+    Map<String, String> getOptions() {
+        return key.base.getOptions();
     }
 
     @Override

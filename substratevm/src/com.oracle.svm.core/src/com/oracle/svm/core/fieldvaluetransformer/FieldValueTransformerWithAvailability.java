@@ -36,34 +36,10 @@ import jdk.vm.ci.meta.JavaConstant;
 public interface FieldValueTransformerWithAvailability extends FieldValueTransformer {
 
     /**
-     * Controls when the transformed value is available at image build time.
+     * Returns true when the value for this custom computation is available.
      */
-    enum ValueAvailability {
-        /**
-         * The value is available without time constraints, i.e., it is independent of static
-         * analysis or compilation.
-         */
-        BeforeAnalysis,
-
-        /**
-         * The value depends on data computed by the static analysis and is therefore not yet
-         * available to the static analysis. The value still might be constant folded during
-         * compilation.
-         */
-        AfterAnalysis,
-
-        /**
-         * Value depends on data computed during compilation and is therefore available only when
-         * writing out the image heap into the native image. Such a value is never available for
-         * constant folding.
-         */
-        AfterCompilation
-    }
-
-    /**
-     * Returns information about when the value for this custom computation is available.
-     */
-    ValueAvailability valueAvailability();
+    @Override
+    boolean isAvailable();
 
     /**
      * Optionally provide a Graal IR node to intrinsify the field access before the static analysis.

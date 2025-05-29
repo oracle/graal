@@ -43,6 +43,7 @@ package com.oracle.truffle.runtime;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
@@ -64,6 +66,7 @@ import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -80,7 +83,9 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.runtime.OptimizedBlockNode.PartialBlockRootNode;
 import com.oracle.truffle.runtime.OptimizedRuntimeOptions.ExceptionAction;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime.CompilationActivityMode;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -294,6 +299,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
      * after the compilation has started does not reset the task until the compilation finishes.
      */
     private volatile CompilationTask compilationTask;
+    private int successfulCompilationsCount;
 
     private volatile boolean needsSplit;
 
@@ -394,17 +400,58 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return size > 0 ? size : childrenCount;
     }
 
-    @Override
+    /*
+     * Legacy implementation.
+     */
+    @SuppressWarnings("deprecation")
     public final void prepareForCompilation() {
-        if (rootNode == null) {
+        RootNode root = this.rootNode;
+        if (root == null) {
             throw CompilerDirectives.shouldNotReachHere("Initialization call targets cannot be compiled.");
         }
+        /*
+         * Compared to the new prepareForCompilation we do not return for not initialized call
+         * targets. This is on purpose, as the return value of prepareForCompilation has no effect.
+         */
+        OptimizedRuntimeAccessor.NODES.prepareForCompilation(root, true, 2, true);
+        /*
+         * We need to unconditionally initialize the assumptions as the return value is not
+         * interpreted for the legacy implementation.
+         */
         if (nodeRewritingAssumption == null) {
             initializeNodeRewritingAssumption();
         }
         if (validRootAssumption == null) {
             initializeValidRootAssumption();
         }
+    }
+
+    @Override
+    public final boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
+        RootNode root = this.rootNode;
+        if (root == null) {
+            throw CompilerDirectives.shouldNotReachHere("Initialization call targets cannot be compiled.");
+        }
+
+        if (!initialized && !isOSR() && !isPartialBlock()) {
+            /*
+             * We must not compile a method that was not yet initialized, as they may likely
+             * deoptimize and their instrumentation is not yet attached. OSR and partial blocks do
+             * not need initialization.
+             */
+            return false;
+        }
+
+        boolean result = OptimizedRuntimeAccessor.NODES.prepareForCompilation(root, rootCompilation, compilationTier, lastTier);
+        if (result) {
+            if (nodeRewritingAssumption == null) {
+                initializeNodeRewritingAssumption();
+            }
+            if (validRootAssumption == null) {
+                initializeValidRootAssumption();
+            }
+        }
+        return result;
     }
 
     final Assumption getNodeRewritingAssumption() {
@@ -803,7 +850,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return (OptimizedTruffleRuntime) Truffle.getRuntime();
     }
 
-    private void ensureInitialized() {
+    public final void ensureInitialized() {
         if (!initialized) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             initialize(true);
@@ -855,6 +902,58 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return compilationFailed;
     }
 
+    private CompilationActivityMode getCompilationActivityMode() {
+        CompilationActivityMode compilationActivityMode = runtime().getCompilationActivityMode();
+        long stoppedTime = runtime().stoppedCompilationTime().get();
+        if (compilationActivityMode == CompilationActivityMode.STOP_COMPILATION) {
+            if (stoppedTime != 0 && System.currentTimeMillis() - stoppedTime > engine.stoppedCompilationRetryDelay) {
+                runtime().stoppedCompilationTime().compareAndSet(stoppedTime, 0);
+                // Try again every StoppedCompilationRetryDelay milliseconds to potentially trigger
+                // a code cache sweep.
+                compilationActivityMode = CompilationActivityMode.RUN_COMPILATION;
+            }
+        }
+
+        switch (compilationActivityMode) {
+            case RUN_COMPILATION:
+                // This is the common case - compilations are not stopped.
+                return CompilationActivityMode.RUN_COMPILATION;
+            case STOP_COMPILATION:
+                if (stoppedTime == 0) {
+                    runtime().stoppedCompilationTime().compareAndSet(0, System.currentTimeMillis());
+                }
+                // Flush the compilations queue for now. There's still a chance that compilation
+                // will be re-enabled eventually, if the hosts code cache can be cleaned up.
+                Collection<OptimizedCallTarget> targets = runtime().getCompileQueue().getQueuedTargets(null);
+                // If there's just a single compilation target in the queue, the chance is high that
+                // it is the one we've just added after the StoppedCompilationRetryDelay ran out, so
+                // keep it to potentially trigger a code cache sweep.
+                if (targets.size() > 1) {
+                    for (OptimizedCallTarget target : targets) {
+                        target.cancelCompilation("Compilation temporary disabled due to full code cache.");
+                    }
+                }
+                return CompilationActivityMode.STOP_COMPILATION;
+            case SHUTDOWN_COMPILATION:
+                // Compilation was shut down permanently because the hosts code cache ran full and
+                // the host was configured without support for code cache sweeping.
+                TruffleLogger logger = engine.getLogger("engine");
+                // The logger can be null if the engine is closed.
+                if (logger != null && engine.logShutdownCompilations().compareAndExchange(true, false)) {
+                    logger.log(Level.WARNING, "Truffle compilations permanently disabled because of full code cache. " +
+                                    "Increase the code cache size using '-XX:ReservedCodeCacheSize=' and/or run with '-XX:+UseCodeCacheFlushing -XX:+MethodFlushing'.");
+                }
+                // Flush the compilation queue and mark all methods as not compilable.
+                for (OptimizedCallTarget target : runtime().getCompileQueue().getQueuedTargets(null)) {
+                    target.cancelCompilation("Compilation permanently disabled due to full code cache.");
+                    target.compilationFailed = true;
+                }
+                return CompilationActivityMode.SHUTDOWN_COMPILATION;
+            default:
+                throw CompilerDirectives.shouldNotReachHere("Invalid compilation activity mode: " + compilationActivityMode);
+        }
+    }
+
     /**
      * Returns <code>true</code> if the call target was already compiled or was compiled
      * synchronously. Returns <code>false</code> if compilation was not scheduled or is happening in
@@ -866,10 +965,20 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         if (!needsCompile(lastTier)) {
             return true;
         }
+
         if (!isSubmittedForCompilation()) {
             if (!acceptForCompilation()) {
                 // do not try to compile again
                 compilationFailed = true;
+                return false;
+            }
+
+            CompilationActivityMode cam = getCompilationActivityMode();
+            if (cam != CompilationActivityMode.RUN_COMPILATION) {
+                if (cam == CompilationActivityMode.SHUTDOWN_COMPILATION) {
+                    // Compilation was shut down permanently.
+                    compilationFailed = true;
+                }
                 return false;
             }
 
@@ -892,6 +1001,15 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
                     try {
                         assert compilationTask == null;
+                        if (engine.maximumCompilations >= 0 && successfulCompilationsCount >= engine.maximumCompilations) {
+                            compilationFailed = true;
+                            runtime().getListener().onCompilationStarted(this, new PresubmitFailureCompilationTask(engine.firstTierOnly, lastTier));
+                            String failureReason = String.format("Maximum compilation count %d reached.", engine.maximumCompilations);
+                            runtime().getListener().onCompilationFailed(this, failureReason, true, true,
+                                            lastTier ? 2 : 1, null);
+                            handleCompilationFailure(() -> failureReason, false, true, true);
+                            return false;
+                        }
                         this.compilationTask = task = runtime().submitForCompilation(this, lastTier);
                     } catch (RejectedExecutionException e) {
                         return false;
@@ -1017,7 +1135,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             return false;
         }
         CompilationTask task = this.compilationTask;
-        if (cancelAndResetCompilationTask()) {
+        if (task != null && cancelAndResetCompilationTask()) {
             runtime().getListener().onCompilationDequeued(this, null, reason, task != null ? task.tier() : 0);
             return true;
         }
@@ -1025,13 +1143,11 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     }
 
     private boolean cancelAndResetCompilationTask() {
-        CompilationTask task = this.compilationTask;
-        if (task != null) {
-            synchronized (this) {
-                task = this.compilationTask;
-                if (task != null) {
-                    return task.cancel();
-                }
+        CompilationTask task;
+        synchronized (this) {
+            task = this.compilationTask;
+            if (task != null) {
+                return task.cancel();
             }
         }
         return false;
@@ -1052,6 +1168,16 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     }
 
     @Override
+    public void onCompilationSuccess(int compilationTier, boolean lastTier) {
+        successfulCompilationsCount++;
+    }
+
+    @Override
+    public int getSuccessfulCompilationCount() {
+        return successfulCompilationsCount;
+    }
+
+    @Override
     public final boolean onInvalidate(Object source, CharSequence reason, boolean wasActive) {
         cachedNonTrivialNodeCount = -1;
         if (wasActive) {
@@ -1069,6 +1195,10 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             }
         }
 
+        handleCompilationFailure(serializedException, silent, bailout, permanentBailout);
+    }
+
+    private void handleCompilationFailure(Supplier<String> serializedException, boolean silent, boolean bailout, boolean permanentBailout) {
         ExceptionAction action;
         if (bailout && !permanentBailout) {
             /*
@@ -1132,7 +1262,8 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     }
 
     /**
-     * Intrinsifiable compiler directive to tighten the type information for {@code args}.
+     * Intrinsifiable compiler directive to tighten the type information for {@code args}. This
+     * intrinsic only applies during runtime compilation.
      *
      * @param length the length of {@code args} that is guaranteed to be final at compile time
      */
@@ -1141,7 +1272,8 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     }
 
     /**
-     * Intrinsifiable compiler directive to tighten the type information for {@code value}.
+     * Intrinsifiable compiler directive to tighten the type information for {@code value}. This
+     * intrinsic only applies during runtime compilation.
      *
      * @param type the type the compiler should assume for {@code value}
      * @param condition the condition that guards the assumptions expressed by this directive
@@ -1848,18 +1980,49 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return true;
     }
 
-    boolean isOSR() {
+    final boolean isOSR() {
         return rootNode instanceof BaseOSRRootNode;
     }
 
+    final boolean isPartialBlock() {
+        return rootNode instanceof PartialBlockRootNode;
+    }
+
     @Override
-    public long engineId() {
+    public final long engineId() {
         return engine.id;
     }
 
     @Override
-    public Map<String, String> getCompilerOptions() {
+    public final Map<String, String> getCompilerOptions() {
         return engine.getCompilerOptions();
     }
 
+    private static class PresubmitFailureCompilationTask extends AbstractCompilationTask {
+        private final boolean firstTierOnly;
+        private final boolean lastTier;
+
+        PresubmitFailureCompilationTask(boolean firstTierOnly, boolean lastTier) {
+            this.firstTierOnly = firstTierOnly;
+            this.lastTier = lastTier;
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return false;
+        }
+
+        @Override
+        public boolean isLastTier() {
+            return lastTier;
+        }
+
+        @Override
+        public boolean hasNextTier() {
+            if (lastTier) {
+                return false;
+            }
+            return !firstTierOnly;
+        }
+    }
 }

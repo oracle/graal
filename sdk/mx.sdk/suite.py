@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.28.0",
+  "mxversion": "7.49.0",
   "name" : "sdk",
-  "version" : "24.2.0",
+  "version" : "25.0.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -127,68 +127,68 @@ suite = {
     },
     "JLINE_READER": {
       "moduleName": "org.jline.reader",
-      "digest": "sha512:777733fa5d19f34386e4ff4ac578fb8ef3bbe160db5755dc551a5ec085dd3d966d74525be0e2d0c7bab222f03e09e28190cb5b263a92c63c6683a09332accf2e",
-      "sourceDigest": "sha512:a0f4c316c46f06ea30a6c6819d5c129dccc74b43fd8ba0380646feec89b61d0465a052645ca699211aab931daa1216b26de064ca2be9e16dfe842d2fd2a91404",
+      "digest": "sha512:dafd45af79a9874d7b41d146d37386da605e19ec2bf9c8989f121f9403902ce60ca9708fb016afed785186935d2dddd4b5b3304aca234c926b0e4368607b11ed",
+      "sourceDigest": "sha512:f8ec62508f3e83278156b7bd14d5daded72976b10da63adac53be2f7b1c5e6c69340fac5b2f10ffe7e92d86b27425beee73e5d5b3c775e72595b47158bfbed1b",
       "maven": {
         "groupId": "org.jline",
         "artifactId": "jline-reader",
-        "version": "3.23.0",
+        "version": "3.28.0",
       },
     },
 
     "JLINE_TERMINAL": {
       "moduleName": "org.jline.terminal",
-      "digest": "sha512:d0d96389d750d6de82f4d8a29fc3756c0f28c19f520e761db69c6668b1e3fc9c2add30aee86ab7ac10426f2c075a63a0e5f7537096591fe585d8836f25c692ed",
-      "sourceDigest": "sha512:931de13f023b9d15751c7e5b76ec9ad7811df19e7254146875ebd7e6d68e69764b916eef045ea743bd6d21515badeb1ddb795504d71ff1cad7e1b5889486c500",
+      "digest": "sha512:abe0ad0303e5eb81b549301dfdcf34aace14495240816f14302d193296c7a8be31488e468d18a215976b8e4e8fa29f72d830e492eed7d4a6f9f04c81a6e36c3c",
+      "sourceDigest": "sha512:cb70ad2bee2f7713fa5358c16fc7c53974c862e33957d3ec809468abcbc0b20de8546ecb41955dcc2003e702e5469069fd856a1ce51b132e29d0286beec4fe7e",
       "maven": {
         "groupId": "org.jline",
         "artifactId": "jline-terminal",
-        "version": "3.23.0",
+        "version": "3.28.0",
       },
     },
 
     "JLINE_BUILTINS": {
       "moduleName": "org.jline.builtins",
-      "digest": "sha512:166920f4252b4d6618a29aabc0e501930807c84df53cc727d238005aefc453b7c915345daa6653d281077e9dc25d3eb2f5a13ac9ceee1e230d9fd83b38113e32",
-      "sourceDigest": "sha512:9b1c2cf976044810ea12e7a4c2b9462b33ce36c36716a2029b171dd3f4151d1852320d3b08f21bf5e86f694f85d77ccd71bbef679764dfa393516f6e0e0bfa32",
+      "digest": "sha512:189d893405170a3edc624a6b822a8a394a2f8b623c23aed9e015d4b018b232307408b6038322719155fc7da7e9c04a9bb0a76c8521f49dd86a5f84ea3880acb6",
+      "sourceDigest": "sha512:33f06d7e2bb232ce413d8cf7234bdb416c3a6770dcf18a5c17e3889887b287378ff5fc531758143383c3f50b56613e5bf802b5c49a2a09b748c804568e0565b8",
       "maven": {
         "groupId": "org.jline",
         "artifactId": "jline-builtins",
-        "version": "3.23.0",
+        "version": "3.28.0",
       },
     },
     "LLVM_ORG" : {
-      "version" : "18.1.3-4-gd3f23e9e73-bg3b8289d0a4",
+      "version" : "20.1.4-1-ga7183f5a17-bg217527b869",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "os_arch" : {
         "linux" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-amd64.tar.gz"],
-            "digest" : "sha512:6ed66161ae39849d92ba13b16759e5c97a6a499bd61fce0a7516e9813e201a8142e8e98e13baac74150916b72a284850e0fff878ddc97017f63dc6c4f83f6004",
+            "digest" : "sha512:7b01495c3af3f5cd6ce8835e56ca3c99f24c1ae91425c0d090018bdf1639a27c527b76dc93e9e940beacfaeb31b63729ec35c54972891b0aedc04006ab498a15",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-aarch64.tar.gz"],
-            "digest" : "sha512:609ff4ccfb1249413a18656543d149bc3ed04d753ba2873ba82b75d50c4db9cbe47a60a33e63f479b20ec472957533b97bb279d7c9185fcdf6537aae85ac7ad7",
+            "digest" : "sha512:6c193bd952a3efbaa0b12875984d3898a2cce5d62b385e1b2adb78aac38d4a7df34b0bba55d9b705c970b7e1cc146c48c8cfdfdfc03c89c468a6ed4ecd522be4",
           },
           "riscv64": {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-riscv64.tar.gz"],
-            "digest" : "sha512:e4ad54bef601c1ff3f75e63816590bf578180285316440ec6ed4a6a454323ac1f62e14630aee64b2d44654dbc7e7a2c1a868ca3a2d15c40a977d3f9b8a94d036",
+            "digest" : "sha512:28a83428a925a3ce41c99e107df96b570131f4ae6e14ece29be0a038bb521e020f785645dd931f06110c292d4ca688d9272c67f97b426f16f8ff89c57a36f868",
           },
         },
         "darwin" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-amd64.tar.gz"],
-            "digest" : "sha512:26d827536104e06f4baf964dd8d999266d3a89442c658d4490bef412fd12dfaa3bc06d9f748531b280b121d88e1fd9ed53aba8d217bae7f8a6e60d0f10e842be",
+            "digest" : "sha512:88da0b36e7bdf03b7ec683b7f6c044e7a884b9e1575ae7a82c76eb073278df9fcfe7cac9f2e827cd7312468e9a337572fa93dfb5a16360a634e96154ba121dd4",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-aarch64.tar.gz"],
-            "digest" : "sha512:741a2d007b9ce34d8f46e785d528cd116f3937bc2b403f68db405cfc272025d4b382ae234e2c0b3bba414e61abfc7a85aa8dfc6306cd274289bd1f10fb033e41",
+            "digest" : "sha512:27ca7c82608e5fb379563ed3d39393e1a6c5c7300d42abb2ad9bdac232c5708511f287f562fa90ef15e069073f533f65ba73c8a9e5c95e7c0f04fdd15e84f65e",
           }
         },
         "windows" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-windows-amd64.tar.gz"],
-            "digest" : "sha512:7e1e1eae6ea1218486c752a04356a516bc1fbba52b09235f64c8bec39d3287a7157ea5ffd9f09bf6172e1af976e691b373dbae6e4cadc512ce7e4d054d282848",
+            "digest" : "sha512:87a0337c0e73bef91952295e5510f54bffbdc395877e612e7e14dc2ab0943b9d460e9dbaf47dd41f619362315fc2db80fa97927ec95230a90eb895e3c30fd12f",
           }
         },
         "<others>": {
@@ -200,19 +200,19 @@ suite = {
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_COMPILER_RT_LINUX" : {
-      "version" : "18.1.3-4-gd3f23e9e73-bg3b8289d0a4",
+      "version" : "20.1.4-1-ga7183f5a17-bg217527b869",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
       "urls" : ["{host}/compiler-rt-llvmorg-{version}-linux-amd64.tar.gz"],
-      "digest" : "sha512:15334c645908d9195893c3fada3c291a5c2dc93d02de797b117ee801df59bd0087835dc2862d97b2862136961e474cedc9d3f90bb94d54d27af66021372e5172",
+      "digest" : "sha512:70fb32a94e35b44a170737aa5ad188214b4c6d72a7aaae141b348f18c0d7815d99dfb117b6f5b0bd1b9d2821aa47d374496d58209c9219f11f0ad090a04ef40a",
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_SRC" : {
-      "version" : "18.1.3-4-gd3f23e9e73-bg3b8289d0a4",
+      "version" : "20.1.4-1-ga7183f5a17-bg217527b869",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "packedResource" : True,
       "urls" : ["{host}/llvm-src-llvmorg-{version}.tar.gz"],
-      "digest" : "sha512:7eb738373300c6c86acc081b9cd29e82c4f3ef4ebcf7ecd1b37e60346edbf0eb4b8edbc14d440a2f896966ed1f8824f940aca467f22630c81ee1403acefff2bd",
+      "digest" : "sha512:9c83d01eb6745a3e20e3426d8334728a977da11528819cdc835bb2d62925b4d15cd167a549e08c4f263d15461771be2bc92d1ea36c1fd99ab7888740733c534c",
       "license" : "Apache-2.0-LLVM",
     },
     "MUSL_GCC_TOOLCHAIN" : {
@@ -301,6 +301,12 @@ suite = {
       "digest" : "sha512:3707b0aee8b1f53828832a85d118981c9b0919c7c1f26dc86fd368d8092857a0b5b75cb5427fee791b0ea89bb7b60a66e2130f55a037c8b082235d3035d9e9cf",
     },
 
+    "DACAPO_23.11_MR2_chopin" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-23.11-MR2-chopin.zip"],
+      "digest" : "sha512:1399c9a743d4a52202372d7a5acef7e5d90181b79194484056cb716ba0284224c9bd7a7620b6db3a7a3c4ccdb8427ee4843fca4d23e37c0b13ada6ce9f041b6f",
+      "packedResource": True,
+    },
+
     "DACAPO_SCALA" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-scala-0.1.0-20120216.jar"],
       "digest" : "sha512:9a3908f3a0f2937bbc7edcd78f7e7e229bea8dee566d5f2d922bd4dc3c5b02cf97de294e479200372ff90bfbdf80e88dc7fc9fda9cb294088346e4a5ff28893e",
@@ -320,6 +326,11 @@ suite = {
     "RENAISSANCE_0.15.0" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.15.0.jar"],
       "digest" : "sha512:2682ac2dd133efb143352fc571671859980044565470188ea26a95926132f43477686fe321f012f7af9ba5f4022b797e4b7591f63bb12450a80f820456a54ac2",
+    },
+
+    "RENAISSANCE_0.16.0" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.16.0.jar"],
+      "digest" : "sha512:82cc829636f3420622b9ce55fb0406230a2a90692f03f0e85bfe6d99f1bd58ee9ec173695bd1c597aeae149b19391231d0f7fe47ca290334b2dba7c7cd3ef64e",
     },
 
     "UBENCH_AGENT_DIST" : {
@@ -404,8 +415,23 @@ suite = {
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "11+",
-      "checkstyleVersion" : "10.7.0",
+      "checkstyleVersion" : "10.21.0",
       "workingSets" : "API,SDK",
+    },
+
+    "org.graalvm.word.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "org.graalvm.word"
+      ],
+      "javaCompliance" : "21+",
+      "workingSets" : "SDK",
+      "checkstyle" : "org.graalvm.word",
+      "graalCompilerSourceEdition": "ignore",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
 
     "org.graalvm.nativeimage" : {
@@ -418,6 +444,18 @@ suite = {
       "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
+
+    # Native Image API extensions for libgraal.
+    "org.graalvm.nativeimage.libgraal" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:NATIVEIMAGE"
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "21+"
+    },
+
     "com.oracle.svm.core.annotate" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -439,6 +477,8 @@ suite = {
       "workingSets" : "SDK",
       "checkstyle" : "org.graalvm.word",
       "graalCompilerSourceEdition": "ignore",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
     "org.graalvm.launcher" : {
       "subDir" : "src",
@@ -469,6 +509,8 @@ suite = {
       "workingSets" : "Truffle,Tools,Test",
       "checkstyle" : "org.graalvm.word",
       "graalCompilerSourceEdition": "ignore",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
     "org.graalvm.polyglot.tck" : {
       "subDir" : "src",
@@ -499,6 +541,8 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK,Test",
       "graalCompilerSourceEdition": "ignore",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
     "org.graalvm.home" : {
       "subDir" : "src",
@@ -522,6 +566,8 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
       "graalCompilerSourceEdition": "ignore",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
     "org.graalvm.jniutils" : {
       "subDir" : "src",
@@ -640,6 +686,12 @@ suite = {
             "JLineNativeLoader.initialize\\(\\);": "",
             "return JLineLibrary.newFileDescriptor\\(fd\\);": "throw new RuntimeException(\"not implemented\");",
           },
+          "org/jline/terminal/impl/exec/ExecTerminalProvider.java": {
+            "import org.graalvm.shadowed.org.jline.nativ.JLineLibrary;": "",
+            "import org.graalvm.shadowed.org.jline.nativ.JLineNativeLoader;": "",
+            "JLineNativeLoader.initialize\\(\\);": "",
+            "return JLineLibrary.newRedirectPipe\\(fd\\);": "throw new RuntimeException(\"not implemented\");",
+          },
           # Hard-coded list of terminal providers replaces a generic reflection based mechanism that
           # looks up the provider class names in the resources
           "org/jline/terminal/spi/TerminalProvider.java": {
@@ -685,6 +737,16 @@ suite = {
       ],
       "graalCompilerSourceEdition": "ignore",
     },
+    "org.graalvm.resourcecopy" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "license" : "UPL",
+      "dependencies": [
+        "sdk:POLYGLOT",
+      ],
+      "graalCompilerSourceEdition": "ignore",
+    },
   },
   "licenses" : {
     "UPL" : {
@@ -722,6 +784,14 @@ suite = {
     "EPL-2.0": {
       "name": "Eclipse Public License 2.0",
       "url": "https://opensource.org/licenses/EPL-2.0",
+    },
+    "Oracle Proprietary": {
+      "name": "ORACLE PROPRIETARY/CONFIDENTIAL",
+      "url": "http://www.oracle.com/us/legal/copyright/index.html"
+    },
+    "GFTC": {
+      "name": "GraalVM Free Terms and Conditions (GFTC) including License for Early Adopter Versions",
+      "url": "https://www.oracle.com/downloads/licenses/graal-free-license.html"
     },
 },
 
@@ -802,6 +872,37 @@ suite = {
       "description" : "A framework that allows to customize native image generation.",
       "maven": {
           "tag": ["default", "public"],
+      },
+    },
+
+    "NATIVEIMAGE_LIBGRAAL" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.nativeimage.libgraal",
+      ],
+      "distDependencies" : ["NATIVEIMAGE"],
+      "javadocType": "api",
+      "moduleInfo" : {
+        "name" : "org.graalvm.nativeimage.libgraal",
+        "requires" : [
+          "transitive org.graalvm.nativeimage",
+        ],
+        "exports" : [
+          "org.graalvm.nativeimage.libgraal",
+          "org.graalvm.nativeimage.libgraal.hosted",
+          "org.graalvm.nativeimage.libgraal.impl to org.graalvm.nativeimage.builder",
+        ],
+        "uses" : [],
+        "opens" : [],
+      },
+      "description" : "Native Image API extensions for libgraal.",
+      "maven": {
+        # Explicitly set the artifactId here instead of relying on mx automatically
+        # deriving it from the distribution name. This also makes the maven
+        # coordinates stable in case of the (unlikely) event that the distribution
+        # is renamed.
+        "artifactId": "nativeimage-libgraal",
+        "tag": ["default", "public"],
       },
     },
 
@@ -942,6 +1043,7 @@ suite = {
     "SDK_TEST" : {
       "subDir" : "src",
       "dependencies" : [
+        "org.graalvm.word.test",
         "org.graalvm.collections.test",
         "org.graalvm.nativeimage.test",
         "org.graalvm.launcher.test",
@@ -952,6 +1054,7 @@ suite = {
         "sdk:POLYGLOT",
         "sdk:NATIVEIMAGE",
         "sdk:COLLECTIONS",
+        "sdk:WORD",
         "sdk:LAUNCHER_COMMON"
       ],
       "maven" : False,
@@ -972,6 +1075,7 @@ suite = {
           "org.graalvm.shadowed.org.jline.reader.impl.history",
           "org.graalvm.shadowed.org.jline.terminal",
           "org.graalvm.shadowed.org.jline.terminal.impl",
+          "org.graalvm.shadowed.org.jline.terminal.impl.exec",
           "org.graalvm.shadowed.org.jline.terminal.spi",
           "org.graalvm.shadowed.org.jline.utils",
         ],
@@ -1104,6 +1208,17 @@ suite = {
       },
       "maven": False,
       "testDistribution" : True,
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "RESOURCECOPY" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.resourcecopy"
+      ],
+      "distDependencies" : [
+        "POLYGLOT",
+      ],
+      "maven": False,
       "graalCompilerSourceEdition": "ignore",
     },
     "LLVM_TOOLCHAIN": {
@@ -1278,7 +1393,7 @@ CXX=xcrun <path:LLVM_TOOLCHAIN>/bin/clang++
 AR=xcrun <path:LLVM_TOOLCHAIN>/bin/llvm-ar
 CFLAGS=
 CXXFLAGS=
-LDFLAGS=
+LDFLAGS=-fuse-ld=lld
 '''
             },
           },
@@ -1318,6 +1433,7 @@ LDFLAGS=
       "platformDependent" : True,
       "native_toolchain" : {
         "kind": "ninja",
+        "compiler": "gcc",
         "target": {
           # host os/arch
           "libc": "musl",
@@ -1380,6 +1496,7 @@ LDFLAGS=
       "platformDependent" : True,
       "native_toolchain" : {
         "kind": "cmake",
+        "compiler": "gcc",
         "target": {
           # host os/arch
           "libc": "musl",

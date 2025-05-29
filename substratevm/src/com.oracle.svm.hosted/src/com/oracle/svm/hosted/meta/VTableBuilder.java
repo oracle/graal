@@ -40,7 +40,7 @@ import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.hosted.OpenTypeWorldFeature;
+import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
 
 import jdk.graal.compiler.debug.Assertions;
 
@@ -48,20 +48,84 @@ public final class VTableBuilder {
     private final HostedUniverse hUniverse;
     private final HostedMetaAccess hMetaAccess;
 
+    private final OpenTypeWorldHubLayoutUtils openHubUtils;
+
     private VTableBuilder(HostedUniverse hUniverse, HostedMetaAccess hMetaAccess) {
         this.hUniverse = hUniverse;
         this.hMetaAccess = hMetaAccess;
+        openHubUtils = SubstrateOptions.useClosedTypeWorldHubLayout() ? null : new OpenTypeWorldHubLayoutUtils(hUniverse);
     }
 
     public static void buildTables(HostedUniverse hUniverse, HostedMetaAccess hMetaAccess) {
         VTableBuilder builder = new VTableBuilder(hUniverse, hMetaAccess);
-        if (SubstrateOptions.closedTypeWorld()) {
+        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
             builder.buildClosedTypeWorldVTables();
         } else {
             builder.buildOpenTypeWorldDispatchTables();
             assert builder.verifyOpenTypeWorldDispatchTables();
-            OpenTypeWorldFeature.persistDispatchInfo(hUniverse.getTypes());
-            OpenTypeWorldFeature.persistMethodInfo(hUniverse.methods.values());
+        }
+    }
+
+    private static class OpenTypeWorldHubLayoutUtils {
+        private final boolean closedTypeWorld;
+        private final boolean registerTrackedTypes;
+        private final boolean registerAllTypes;
+
+        OpenTypeWorldHubLayoutUtils(HostedUniverse hUniverse) {
+            closedTypeWorld = SubstrateOptions.useClosedTypeWorld();
+
+            registerTrackedTypes = hUniverse.hostVM().enableTrackAcrossLayers();
+            registerAllTypes = ImageLayerBuildingSupport.buildingApplicationLayer();
+            assert !(registerTrackedTypes && registerAllTypes) : "We expect these flags to be mutually exclusive";
+            assert (registerTrackedTypes || registerAllTypes) == ImageLayerBuildingSupport.buildingImageLayer() : "Type information must be registered during layered image builds";
+        }
+
+        /**
+         * We are allowed to filter vtables as long as we know the type layout does not need to
+         * match the layout of another layer.
+         *
+         * When filtering is allowed, we can filter out methods that we know will be simplified to
+         * direct calls (i.e., when at most a single implementation exists for the given target).
+         * See generateDispatchTable for the use of this filter.
+         */
+        private boolean filterVTableMethods(HostedType type) {
+            return closedTypeWorld && !type.getWrapped().isInBaseLayer();
+        }
+
+        private boolean shouldIncludeType(HostedType type) {
+            if (closedTypeWorld) {
+                if (type.getWrapped().isInBaseLayer()) {
+                    /*
+                     * This check will be later removed.
+                     *
+                     * GR-60010 - We are currently loading base analysis types too late.
+                     */
+                    return type.getWrapped().isOpenTypeWorldDispatchTableMethodsCalculated();
+                }
+
+                /*
+                 * When using the closed type world we know calls to unreachable types will be
+                 * removed via graph strengthening. It is also always possible to see base layer
+                 * types.
+                 */
+                return type.getWrapped().isReachable() || type.getWrapped().isInBaseLayer();
+            } else {
+                /*
+                 * When using the open type world we are conservative and calculate metadata for all
+                 * types seen during analysis.
+                 */
+                return type.getWrapped().isOpenTypeWorldDispatchTableMethodsCalculated();
+            }
+        }
+
+        private boolean shouldRegisterType(HostedType type) {
+            if (registerAllTypes) {
+                return true;
+            }
+            if (registerTrackedTypes && type.getWrapped().isTrackedAcrossLayers()) {
+                return true;
+            }
+            return false;
         }
     }
 
@@ -119,12 +183,30 @@ public final class VTableBuilder {
 
     private List<HostedMethod> generateDispatchTable(HostedType type, int startingIndex) {
         Predicate<HostedMethod> includeMethod;
-        if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            // include all methods
-            includeMethod = m -> true;
-        } else {
+        if (openHubUtils.filterVTableMethods(type)) {
             // include only methods which will be indirect calls
-            includeMethod = m -> m.implementations.length > 1 || m.wrapped.isVirtualRootMethod();
+            includeMethod = m -> {
+                assert !m.isConstructor() : Assertions.errorMessage("Constructors should never be in dispatch tables", m);
+                if (m.implementations.length > 1) {
+                    return true;
+                } else {
+                    if (m.wrapped.isVirtualRootMethod()) {
+                        return !m.canBeStaticallyBound();
+                    } else {
+                        return false;
+                    }
+                }
+            };
+        } else {
+            includeMethod = m -> {
+                assert !m.isConstructor() : Assertions.errorMessage("Constructors should never be in dispatch tables", m);
+                /*
+                 * We have to use the analysis method's canBeStaticallyBound implementation because
+                 * within HostedMethod we sometimes do additional pruning when operating under the
+                 * close type world assumption.
+                 */
+                return !m.getWrapped().canBeStaticallyBound();
+            };
         }
         var table = type.getWrapped().getOpenTypeWorldDispatchTableMethods().stream().map(hUniverse::lookup).filter(includeMethod).sorted(HostedUniverse.METHOD_COMPARATOR).toList();
 
@@ -136,7 +218,9 @@ public final class VTableBuilder {
             index++;
         }
 
-        OpenTypeWorldFeature.persistDispatchTable(type, table);
+        if (openHubUtils.shouldRegisterType(type)) {
+            LayeredDispatchTableFeature.singleton().registerDeclaredDispatchInfo(type, table);
+        }
 
         return table;
     }
@@ -174,6 +258,7 @@ public final class VTableBuilder {
             }
             type.openTypeWorldDispatchTables = new HostedMethod[aggregatedTable.size()];
             type.openTypeWorldDispatchTableSlotTargets = aggregatedTable.toArray(HostedMethod[]::new);
+            boolean[] validTarget = new boolean[aggregatedTable.size()];
             for (int i = 0; i < aggregatedTable.size(); i++) {
                 HostedMethod method = aggregatedTable.get(i);
                 /*
@@ -185,6 +270,7 @@ public final class VTableBuilder {
                     var resolvedMethod = (HostedMethod) type.resolveConcreteMethod(method, type);
                     if (resolvedMethod != null) {
                         targetMethod = resolvedMethod;
+                        validTarget[i] = true;
                     }
 
                     if (SubstrateUtil.assertionsEnabled()) {
@@ -199,10 +285,14 @@ public final class VTableBuilder {
 
                 type.openTypeWorldDispatchTables[i] = targetMethod;
             }
+
+            if (openHubUtils.shouldRegisterType(type)) {
+                LayeredDispatchTableFeature.singleton().registerNonArrayDispatchTable(type, validTarget);
+            }
         }
 
         for (HostedType subType : type.subTypes) {
-            if (subType instanceof HostedInstanceClass instanceClass && subType.getWrapped().isReachable()) {
+            if (subType instanceof HostedInstanceClass instanceClass && openHubUtils.shouldIncludeType(subType)) {
                 generateOpenTypeWorldDispatchTable(instanceClass, dispatchTablesMap, invalidDispatchTableEntryHandler);
             }
         }
@@ -216,7 +306,7 @@ public final class VTableBuilder {
              * Each interface has its own dispatch table. These can be directly determined via
              * looking at their declared methods.
              */
-            if (type.isInterface() && type.getWrapped().isReachable()) {
+            if (type.isInterface() && openHubUtils.shouldIncludeType(type)) {
                 dispatchTablesMap.put(type, generateITable(type));
             }
         }
@@ -227,13 +317,16 @@ public final class VTableBuilder {
         int[] emptyITableOffsets = new int[0];
         var objectType = hUniverse.getObjectClass();
         for (HostedType type : hUniverse.getTypes()) {
-            if (type.isArray()) {
+            if (type.isArray() && openHubUtils.shouldIncludeType(type)) {
                 type.openTypeWorldDispatchTables = objectType.openTypeWorldDispatchTables;
                 type.openTypeWorldDispatchTableSlotTargets = objectType.openTypeWorldDispatchTableSlotTargets;
                 type.itableStartingOffsets = objectType.itableStartingOffsets;
+                if (openHubUtils.shouldRegisterType(type)) {
+                    LayeredDispatchTableFeature.singleton().registerArrayDispatchTable(type, objectType);
+                }
             }
             if (type.openTypeWorldDispatchTables == null) {
-                assert !needsDispatchTable(type) : type;
+                assert !openHubUtils.shouldIncludeType(type) || hasEmptyDispatchTable(type) : type;
                 type.openTypeWorldDispatchTables = HostedMethod.EMPTY_ARRAY;
                 type.openTypeWorldDispatchTableSlotTargets = HostedMethod.EMPTY_ARRAY;
                 type.itableStartingOffsets = emptyITableOffsets;
@@ -241,8 +334,12 @@ public final class VTableBuilder {
         }
     }
 
-    public static boolean needsDispatchTable(HostedType type) {
-        return type.getWrapped().isReachable() && !(type.isInterface() || type.isPrimitive() || type.isAbstract());
+    public static boolean hasEmptyDispatchTable(HostedType type) {
+        /*
+         * Note that array types are by definition abstract, i.e., if type.isArray() is true then
+         * type.isAbstract() is true.
+         */
+        return (type.isInterface() || type.isPrimitive() || type.isAbstract()) && !type.isArray();
     }
 
     private void buildClosedTypeWorldVTables() {
@@ -333,8 +430,8 @@ public final class VTableBuilder {
             if (type.isArray()) {
                 type.closedTypeWorldVTable = objectClass.closedTypeWorldVTable;
             }
-            if (type.closedTypeWorldVTable == null) {
-                assert type.isInterface() || type.isPrimitive();
+            if (type.closedTypeWorldVTable == null || type.closedTypeWorldVTable.length == 0) {
+                assert type.isInterface() || type.isPrimitive() || type.closedTypeWorldVTable.length == 0;
                 type.closedTypeWorldVTable = HostedMethod.EMPTY_ARRAY;
             }
 
@@ -382,18 +479,31 @@ public final class VTableBuilder {
     }
 
     private void assignImplementations(HostedType type, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap, Map<HostedMethod, Set<Integer>> vtablesSlots) {
+        /*
+         * Methods with 1 implementation do not need a vtable because invokes can be done as direct
+         * calls without the need for a vtable. Methods with 0 implementations are unreachable.
+         *
+         * However, virtual roots (even those with 0 implementations) that cannot be statically
+         * bound always need a vtable entry. This is because the vtable is used to invoke these
+         * methods via reflection and/or jni.
+         */
+        Predicate<HostedMethod> vtableEntryRequired = (hMethod) -> {
+            if (hMethod.implementations.length > 1) {
+                return true;
+            } else {
+                if (hMethod.wrapped.isVirtualRootMethod()) {
+                    return !hMethod.canBeStaticallyBound();
+                } else {
+                    return false;
+                }
+            }
+        };
+
         for (HostedMethod method : type.getAllDeclaredMethods()) {
             /* We only need to look at methods that the static analysis registered as invoked. */
             if (method.wrapped.isInvoked() || method.wrapped.isImplementationInvoked()) {
-                /*
-                 * Methods with 1 implementations do not need a vtable because invokes can be done
-                 * as direct calls without the need for a vtable. Methods with 0 implementations are
-                 * unreachable.
-                 *
-                 * Methods manually registered as virtual root methods always need a vtable slot,
-                 * even if there are 0 or 1 implementations.
-                 */
-                if (method.implementations.length > 1 || method.wrapped.isVirtualRootMethod()) {
+                if (vtableEntryRequired.test(method)) {
+                    assert !method.isConstructor() : Assertions.errorMessage("Constructors should never be in vtables", method);
                     /*
                      * Find a suitable vtable slot for the method, taking the existing vtable
                      * assignments into account.

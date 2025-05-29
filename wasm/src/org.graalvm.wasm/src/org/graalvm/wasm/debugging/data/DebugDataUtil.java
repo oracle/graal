@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,9 @@
 package org.graalvm.wasm.debugging.data;
 
 import org.graalvm.wasm.collection.IntArrayList;
-import org.graalvm.wasm.debugging.parser.DebugParserContext;
-import org.graalvm.wasm.debugging.parser.DebugData;
 import org.graalvm.wasm.debugging.encoding.Attributes;
+import org.graalvm.wasm.debugging.parser.DebugData;
+import org.graalvm.wasm.debugging.parser.DebugParserContext;
 
 /**
  * Utility class used for resolving the data of a debug entry.
@@ -61,17 +61,17 @@ public final class DebugDataUtil {
      * @return the pc values int an int array or null, if the pcs are not present or malformed.
      */
     public static int[] readPcsOrNull(DebugData data, DebugParserContext context) {
-        int lowPc = data.asI32OrDefault(Attributes.LOW_PC, -1);
+        int lowPc = data.asU32OrDefault(Attributes.LOW_PC, -1);
         if (lowPc == -1) {
             return null;
         }
-        int highPc = data.asI32OrDefault(Attributes.HIGH_PC, -1);
+        int highPc = data.asU32OrDefault(Attributes.HIGH_PC, -1);
         if (highPc != -1) {
             if (data.isConstant(Attributes.HIGH_PC)) {
                 highPc = lowPc + highPc;
             }
         } else {
-            final int rangeOffset = data.asI32OrDefault(Attributes.RANGES, -1);
+            final int rangeOffset = data.asU32OrDefault(Attributes.RANGES, -1);
             if (rangeOffset == -1) {
                 return null;
             }

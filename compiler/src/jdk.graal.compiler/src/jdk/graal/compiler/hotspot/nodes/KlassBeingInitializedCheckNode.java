@@ -27,15 +27,20 @@ package jdk.graal.compiler.hotspot.nodes;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_4;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_16;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.DeoptimizingFixedWithNextNode;
+import jdk.graal.compiler.nodes.FixedGlobalValueNumberable;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 
-@NodeInfo(cycles = CYCLES_4, size = SIZE_16)
-public class KlassBeingInitializedCheckNode extends DeoptimizingFixedWithNextNode implements Lowerable {
+@NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = CYCLES_4, size = SIZE_16)
+public class KlassBeingInitializedCheckNode extends DeoptimizingFixedWithNextNode implements Lowerable, SingleMemoryKill, FixedGlobalValueNumberable {
     public static final NodeClass<KlassBeingInitializedCheckNode> TYPE = NodeClass.create(KlassBeingInitializedCheckNode.class);
 
     @Input protected ValueNode klass;
@@ -43,6 +48,15 @@ public class KlassBeingInitializedCheckNode extends DeoptimizingFixedWithNextNod
     public KlassBeingInitializedCheckNode(ValueNode klass) {
         super(TYPE, StampFactory.forVoid());
         this.klass = klass;
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        /*
+         * Since JDK-8338379, reading the class init state requires an ACQUIRE barrier, which orders
+         * memory accesses
+         */
+        return LocationIdentity.ANY_LOCATION;
     }
 
     public ValueNode getKlass() {

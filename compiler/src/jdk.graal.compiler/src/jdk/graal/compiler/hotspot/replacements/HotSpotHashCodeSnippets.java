@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,10 +27,11 @@ package jdk.graal.compiler.hotspot.replacements;
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.IDENTITY_HASHCODE;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.identityHashCode;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.identityHashCodeShift;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadWordFromObject;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockMaskInPlace;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markWordHashCodeShift;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markWordHashMark;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markWordLockMaskInPlace;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.monitorValue;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.uninitializedIdentityHashCodeValue;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.unlockedValue;
@@ -39,14 +40,12 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.us
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
-import org.graalvm.word.WordFactory;
-
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;
 import jdk.graal.compiler.word.Word;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/f0374a0bc181d0f2a8c0aa9aa032b07998ffaf60/src/hotspot/share/opto/library_call.cpp#L4543-L4677",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/765cef45465806e53f11fa7d92b9c184899b0932/src/hotspot/share/opto/library_call.cpp#L4680-L4814",
           sha1 = "c212d1dbff26d02d4d749e085263d4104895f1ba")
 // @formatter:on
 public class HotSpotHashCodeSnippets extends IdentityHashCodeSnippets {
@@ -57,26 +56,31 @@ public class HotSpotHashCodeSnippets extends IdentityHashCodeSnippets {
 
         // In HotSpot, the upper bits (i.e., [63:2] in 64-bits VM) of the mark word in object header
         // are
-        // 1) not used with lightweight locking;
+        // 1) not used or partially used (i.e., [63:42] in 64-bits VM to store compressed class
+        // pointer with -XX:+UseCompactObjectHeaders) with lightweight locking;
         // 2) pointer to the displaced mark in a thread's stack with stack locking; or
-        // 3) pointer to the monitor object with heavy monitor locking.
+        // 3) pointer to the monitor object with heavy monitor locking when
+        // -XX:+UseObjectMonitorTable is not specified.
         //
-        // When these upper bits are not used, i.e., when an object is either unlocked or locked
-        // with lightweight locking, HotSpot reuses fraction of the upper bits (e.g., [38:8] in
-        // 64-bits VM) for caching the identity hash code. Therefore,
+        // When an object is either unlocked, locked with lightweight locking, locked with heavy
+        // monitor locking using -XX:+UseObjectMonitorTable, HotSpot reuses fraction of the upper
+        // bits (e.g., [41:11] in 64-bits VM) for caching the identity hash code.
+        // Therefore,
         // 1) when lightweight locking is employed as fast locking scheme (-XX:LockingMode=2), we
-        // only need to test if the object is NOT in a monitor-locked state, i.e., lock bits not
-        // equals to 0b10;
+        // only need to test if UseObjectMonitorTable is specified or if the object is NOT in a
+        // monitor-locked state, i.e., lock bits not equals to 0b10;
         // 2) when stack locking is employed as fast locking scheme (-XX:LockingMode=1) or no fast
         // locking scheme is employed (-XX:LockingMode=0), we need to test if the object is
         // unlocked, i.e., lock bits equals to 0b01.
         //
         // See src/hotspot/share/oops/markWord.hpp for more details.
-        final Word lockBits = mark.and(lockMaskInPlace(INJECTED_VMCONFIG));
-        if (probability(FAST_PATH_PROBABILITY, useObjectMonitorTable(INJECTED_VMCONFIG) ||
-                        useLightweightLocking(INJECTED_VMCONFIG) ? lockBits.notEqual(WordFactory.unsigned(monitorValue(INJECTED_VMCONFIG)))
-                                        : lockBits.equal(WordFactory.unsigned(unlockedValue(INJECTED_VMCONFIG))))) {
-            int hash = (int) mark.unsignedShiftRight(identityHashCodeShift(INJECTED_VMCONFIG)).rawValue();
+        final Word lockBits = mark.and(Word.unsigned(markWordLockMaskInPlace(INJECTED_VMCONFIG)));
+        if (useObjectMonitorTable(INJECTED_VMCONFIG) || probability(FAST_PATH_PROBABILITY,
+                        useLightweightLocking(INJECTED_VMCONFIG) ? lockBits.notEqual(Word.unsigned(monitorValue(INJECTED_VMCONFIG)))
+                                        : lockBits.equal(Word.unsigned(unlockedValue(INJECTED_VMCONFIG))))) {
+            // `& markWord::hash_mask' is essential with -XX:+UseCompactObjectHeaders, because bit
+            // 42 might be set.
+            int hash = (int) mark.unsignedShiftRight(markWordHashCodeShift(INJECTED_VMCONFIG)).and((int) markWordHashMark(INJECTED_VMCONFIG)).rawValue();
             if (probability(FAST_PATH_PROBABILITY, hash != uninitializedIdentityHashCodeValue(INJECTED_VMCONFIG))) {
                 return hash;
             }

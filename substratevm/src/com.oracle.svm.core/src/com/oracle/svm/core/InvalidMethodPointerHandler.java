@@ -28,14 +28,16 @@ import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import java.lang.reflect.Method;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -47,9 +49,11 @@ import com.oracle.svm.util.ReflectionUtil;
  * the stubs provide full diagnostic output with a stack trace.
  */
 public final class InvalidMethodPointerHandler {
+    @Platforms(Platform.HOSTED_ONLY.class) //
     public static final Method INVALID_VTABLE_ENTRY_HANDLER_METHOD = ReflectionUtil.lookupMethod(InvalidMethodPointerHandler.class, "invalidVTableEntryHandler");
     public static final String INVALID_VTABLE_ENTRY_MSG = "Fatal error: Virtual method call used an illegal vtable entry that was seen as unused by the static analysis";
 
+    @Platforms(Platform.HOSTED_ONLY.class) //
     public static final Method METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD = ReflectionUtil.lookupMethod(InvalidMethodPointerHandler.class, "methodPointerNotCompiledHandler");
     public static final String METHOD_POINTER_NOT_COMPILED_MSG = "Fatal error: Method pointer invoked on a method that was not compiled because it was not seen as invoked by the static analysis nor was it directly registered for compilation";
 
@@ -85,7 +89,7 @@ public final class InvalidMethodPointerHandler {
         LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
         Log log = Log.enterFatalContext(logHandler, callerIP, message, null);
         if (log != null) {
-            SubstrateDiagnostics.printFatalError(log, callerSP, callerIP, WordFactory.nullPointer(), true);
+            SubstrateDiagnostics.printFatalError(log, callerSP, callerIP, Word.nullPointer(), true);
             log.string(message).newline();
         }
         logHandler.fatalError();

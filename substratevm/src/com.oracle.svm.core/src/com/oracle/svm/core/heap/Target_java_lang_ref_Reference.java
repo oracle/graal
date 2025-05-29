@@ -117,21 +117,22 @@ public final class Target_java_lang_ref_Reference<T> {
     @Uninterruptible(reason = "The initialization of the fields must be atomic with respect to collection.")
     Target_java_lang_ref_Reference(T referent, Target_java_lang_ref_ReferenceQueue<? super T> queue) {
         this.referent = referent;
-        this.queue = (queue == null) ? Target_java_lang_ref_ReferenceQueue.NULL : queue;
+        this.queue = (queue == null) ? Target_java_lang_ref_ReferenceQueue.NULL_QUEUE : queue;
     }
 
     @KeepOriginal
     native T get();
 
-    @Substitute
-    public void clear() {
-        ReferenceInternals.clear(SubstrateUtil.cast(this, Reference.class));
-    }
+    @KeepOriginal
+    native void clear();
 
     @Substitute
     private void clear0() {
-        clear();
+        ReferenceInternals.clear(SubstrateUtil.cast(this, Reference.class));
     }
+
+    @KeepOriginal
+    native void clearImpl();
 
     @KeepOriginal
     native boolean refersToImpl(T obj);

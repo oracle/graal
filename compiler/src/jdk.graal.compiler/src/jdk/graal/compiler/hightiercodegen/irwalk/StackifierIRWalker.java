@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package jdk.graal.compiler.hightiercodegen.irwalk;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.SortedSet;
 
@@ -54,7 +55,6 @@ import jdk.graal.compiler.nodes.ControlSplitNode;
 import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.IfNode;
-import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopEndNode;
 import jdk.graal.compiler.nodes.NodeView;
@@ -343,7 +343,7 @@ public class StackifierIRWalker extends IRWalker {
     }
 
     protected boolean isWithExceptionNode(Node lastNode) {
-        return lastNode instanceof InvokeWithExceptionNode;
+        return lastNode instanceof WithExceptionNode;
     }
 
     /**
@@ -527,8 +527,18 @@ public class StackifierIRWalker extends IRWalker {
             lowerNode(lastNode);
         }
 
-        HIRBlock successor = nodeToBlockMap.get(lastNode.cfgSuccessors().iterator().next());
-        generateForwardJump(currentBlock, successor);
+        generateForwardJump(currentBlock, getSuccessorForUnhandledBlockEnd(lastNode));
+    }
+
+    /**
+     * Determines successor block that should be jumped to after the given last node of the block is
+     * executed.
+     */
+    protected HIRBlock getSuccessorForUnhandledBlockEnd(FixedNode lastNode) {
+        Iterator<? extends Node> it = lastNode.cfgSuccessors().iterator();
+        Node singleSuccessor = it.next();
+        assert !it.hasNext() : "Node " + lastNode + " has multiple successors";
+        return nodeToBlockMap.get(singleSuccessor);
     }
 
     /**

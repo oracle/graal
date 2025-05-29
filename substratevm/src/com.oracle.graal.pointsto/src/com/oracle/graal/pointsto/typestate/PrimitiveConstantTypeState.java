@@ -26,12 +26,14 @@ package com.oracle.graal.pointsto.typestate;
 
 import java.util.Objects;
 
+import com.oracle.graal.pointsto.PointsToAnalysis;
+
 /**
  * Represents a primitive constant that is propagated through the type flow graph. Instances for
  * corresponding primitive values are accessible via a factory method
  * {@link TypeState#forPrimitiveConstant }.
  */
-public final class PrimitiveConstantTypeState extends AnyPrimitiveTypeState {
+public final class PrimitiveConstantTypeState extends PrimitiveTypeState {
 
     private static final int CACHE_SIZE = 16;
 
@@ -43,13 +45,19 @@ public final class PrimitiveConstantTypeState extends AnyPrimitiveTypeState {
         }
     }
 
+    public static void registerCachedTypeStates(PointsToAnalysis bb) {
+        for (var typeState : CACHE) {
+            PointsToStats.registerTypeState(bb, typeState);
+        }
+    }
+
     private final long value;
 
-    public static TypeState forValue(long value) {
+    public static TypeState forValue(PointsToAnalysis bb, long value) {
         if (value >= 0 && value < CACHE_SIZE) {
             return CACHE[(int) value];
         }
-        return new PrimitiveConstantTypeState(value);
+        return PointsToStats.registerTypeState(bb, new PrimitiveConstantTypeState(value));
     }
 
     private PrimitiveConstantTypeState(long value) {
@@ -58,6 +66,16 @@ public final class PrimitiveConstantTypeState extends AnyPrimitiveTypeState {
 
     public long getValue() {
         return value;
+    }
+
+    @Override
+    public boolean canBeTrue() {
+        return value != 0;
+    }
+
+    @Override
+    public boolean canBeFalse() {
+        return value == 0;
     }
 
     @Override

@@ -60,6 +60,8 @@ public interface ReachabilityAnalysis {
 
     AnalysisType addRootField(Field field);
 
+    AnalysisType addRootField(AnalysisField field);
+
     /**
      * Registers the method as root. Must be an {@link MultiMethod#ORIGINAL_METHOD}.
      *
@@ -91,8 +93,8 @@ public interface ReachabilityAnalysis {
 
     /**
      * In addition to register the method as a root, saturate all the parameters. Meant to be used
-     * under the {@code LayeredBaseImageAnalysis} option to ensure the invocation is replaced by the
-     * context-insensitive invoke.
+     * under the {@code UseBaseLayerInclusionPolicy} option to ensure the invocation is replaced by
+     * the context-insensitive invoke.
      *
      * @see ReachabilityAnalysis#addRootMethod(AnalysisMethod, boolean, Object,
      *      MultiMethod.MultiMethodKey...)

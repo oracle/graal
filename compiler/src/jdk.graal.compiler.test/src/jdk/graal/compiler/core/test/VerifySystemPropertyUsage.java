@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.core.test;
 
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
@@ -42,8 +43,8 @@ import jdk.vm.ci.services.Services;
  * System properties can be modified by application code so {@link GraalServices#getSavedProperty}
  * should be used instead.
  * <p>
- * In the context of GuestGraal, JVMCI code is run at image build time in a non-boot class loader
- * and so JVMCI native methods will fail to link (they are only linked by the boot loader). As
+ * In the context of LibGraal, JVMCI code is run at image build time in a non-boot class loader and
+ * so JVMCI native methods will fail to link (they are only linked by the boot loader). As
  * {@link Services#getSavedProperties()} calls a JVMCI native method, it cannot be used during build
  * time initialization. Instead, {@link GraalServices#getSavedProperties()} must be used.
  */
@@ -88,6 +89,9 @@ public class VerifySystemPropertyUsage extends VerifyPhase<CoreProviders> {
             return;
         } else if (holderQualified.equals("jdk.graal.compiler.hotspot.HotSpotReplacementsImpl") && caller.getName().equals("registerSnippet")) {
             // We allow opening snippet registration in jargraal unit tests.
+            return;
+        } else if (holderQualified.equals(NativeImageSupport.class.getName())) {
+            // Called as part of initializing GraalServices
             return;
         }
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {

@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.nodes.graphbuilderconf;
 
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -386,7 +386,7 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
                 return String.format("%s.%s()", m.getDeclaringClass().getName(), m.getName());
             }
         }
-        if (IS_IN_NATIVE_IMAGE) {
+        if (inRuntimeCode()) {
             return String.format("%s.%s()", c.getName(), "apply");
         }
         throw new GraalError("could not find method named \"apply\" or \"defaultHandler\" in " + c.getName());
@@ -510,6 +510,18 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
     public abstract static class RequiredInlineOnlyInvocationPlugin extends RequiredInvocationPlugin {
 
         public RequiredInlineOnlyInvocationPlugin(String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+        }
+
+        @Override
+        public final boolean inlineOnly() {
+            return true;
+        }
+    }
+
+    public abstract static class OptionalInlineOnlyInvocationPlugin extends OptionalInvocationPlugin {
+
+        public OptionalInlineOnlyInvocationPlugin(String name, Type... argumentTypes) {
             super(name, argumentTypes);
         }
 

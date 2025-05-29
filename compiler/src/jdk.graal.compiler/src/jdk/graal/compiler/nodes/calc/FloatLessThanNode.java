@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -96,7 +96,7 @@ public final class FloatLessThanNode extends CompareNode {
                 return result;
             }
             if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
-                if (!unorderedIsTrue || (((FloatStamp) forX.stamp(view)).isNonNaN() && ((FloatStamp) forY.stamp(view)).isNonNaN())) {
+                if (!unorderedIsTrue || (forX.stamp(view) instanceof FloatStamp xStamp && xStamp.isNonNaN() && forY.stamp(view) instanceof FloatStamp yStamp && yStamp.isNonNaN())) {
                     /*
                      * If x is NaN and an unordered result is false, x < x is false. Otherwise, if x
                      * cannot be NaN, x < x is false too.

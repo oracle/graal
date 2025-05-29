@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,25 @@
 #include "cgroupV2Subsystem_linux.hpp"
 #include "cgroupUtil_linux.hpp"
 
+// Constructor
+
+namespace svm_container {
+
+CgroupV2Controller::CgroupV2Controller(char* mount_path,
+                                       char *cgroup_path,
+                                       bool ro) :  _read_only(ro),
+                                                   _path(construct_path(mount_path, cgroup_path)) {
+  _cgroup_path = os::strdup(cgroup_path);
+  _mount_point = os::strdup(mount_path);
+}
+// Shallow copy constructor
+CgroupV2Controller::CgroupV2Controller(const CgroupV2Controller& o) :
+                                            _read_only(o._read_only),
+                                            _path(o._path) {
+  _cgroup_path = o._cgroup_path;
+  _mount_point = o._mount_point;
+}
+
 /* cpu_shares
  *
  * Return the amount of cpu shares available to the process
@@ -37,9 +56,6 @@
  *    -1 for no share setup
  *    OSCONTAINER_ERROR for not supported
  */
-
-namespace svm_container {
-
 int CgroupV2CpuController::cpu_shares() {
   julong shares;
   CONTAINER_READ_NUMBER_CHECKED(reader(), "/cpu.weight", "Raw value for CPU Shares", shares);
@@ -98,6 +114,17 @@ int CgroupV2CpuController::cpu_quota() {
   int limit = (int)quota_val;
   log_trace(os, container)("CPU Quota is: %d", limit);
   return limit;
+}
+
+// Constructor
+CgroupV2Subsystem::CgroupV2Subsystem(CgroupV2MemoryController * memory,
+                                     CgroupV2CpuController* cpu,
+                                     CgroupV2Controller unified) :
+                                     _unified(unified) {
+  CgroupUtil::adjust_controller(memory);
+  CgroupUtil::adjust_controller(cpu);
+  _memory = new CachingCgroupController<CgroupMemoryController>(memory);
+  _cpu = new CachingCgroupController<CgroupCpuController>(cpu);
 }
 
 bool CgroupV2Subsystem::is_containerized() {
@@ -269,6 +296,22 @@ jlong memory_swap_limit_value(CgroupV2Controller* ctrl) {
   return swap_limit;
 }
 
+void CgroupV2Controller::set_subsystem_path(const char* cgroup_path) {
+  if (_cgroup_path != nullptr) {
+    os::free(_cgroup_path);
+  }
+  _cgroup_path = os::strdup(cgroup_path);
+  if (_path != nullptr) {
+    os::free(_path);
+  }
+  _path = construct_path(_mount_point, cgroup_path);
+}
+
+// For cgv2 we only need hierarchy walk if the cgroup path isn't '/' (root)
+bool CgroupV2Controller::needs_hierarchy_adjustment() {
+  return strcmp(_cgroup_path, "/") != 0;
+}
+
 #ifndef NATIVE_IMAGE
 void CgroupV2MemoryController::print_version_specific_info(outputStream* st, julong phys_mem) {
   jlong swap_current = memory_swap_current_value(reader());
@@ -279,7 +322,7 @@ void CgroupV2MemoryController::print_version_specific_info(outputStream* st, jul
 }
 #endif // !NATIVE_IMAGE
 
-char* CgroupV2Controller::construct_path(char* mount_path, char *cgroup_path) {
+char* CgroupV2Controller::construct_path(char* mount_path, const char* cgroup_path) {
   stringStream ss;
   ss.print_raw(mount_path);
   if (strcmp(cgroup_path, "/") != 0) {

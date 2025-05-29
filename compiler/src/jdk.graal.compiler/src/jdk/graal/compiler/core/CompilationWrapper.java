@@ -40,10 +40,12 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Formatter;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
@@ -286,6 +288,7 @@ public abstract class CompilationWrapper<T> {
                 try (PrintStream ps = new PrintStream(baos)) {
                     ps.printf("%s: Compilation of %s failed: ", Thread.currentThread(), this);
                     cause.printStackTrace(ps);
+                    ps.println("Options: " + initialOptions);
                     printCompilationFailureActionAlternatives(ps, ExceptionAction.Silent, ExceptionAction.Diagnose);
                 }
                 TTY.print(baos.toString());
@@ -320,6 +323,7 @@ public abstract class CompilationWrapper<T> {
 
                 ps.printf("%s: Compilation of %s failed:%n", Thread.currentThread(), this);
                 cause.printStackTrace(ps);
+                ps.println("Options: " + initialOptions);
                 printCompilationFailureActionAlternatives(ps, ExceptionAction.Silent, ExceptionAction.Print);
                 if (dumpPath != null) {
                     ps.println("Retrying compilation of " + this);
@@ -350,6 +354,7 @@ public abstract class CompilationWrapper<T> {
 
                 T res;
                 try {
+                    CompilationAlarm.current().reset(retryOptions);
                     res = performCompilation(retryDebug);
                 } finally {
                     ps.println("<Metrics>");
@@ -425,10 +430,10 @@ public abstract class CompilationWrapper<T> {
 
     // Global counters used to measure compilation failure rate over a
     // period of COMPILATION_FAILURE_DETECTION_PERIOD_MS
-    private static final GlobalAtomicLong totalCompilations = new GlobalAtomicLong(0L);
-    private static final GlobalAtomicLong failedCompilations = new GlobalAtomicLong(0L);
-    private static final GlobalAtomicLong compilationPeriodStart = new GlobalAtomicLong(0L);
-    private static final int COMPILATION_FAILURE_DETECTION_PERIOD_MS = 2000;
+    private static final GlobalAtomicLong totalCompilations = new GlobalAtomicLong("TOTAL_COMPILATIONS", 0L);
+    private static final GlobalAtomicLong failedCompilations = new GlobalAtomicLong("FAILED_COMPILATIONS", 0L);
+    private static final GlobalAtomicLong compilationPeriodStart = new GlobalAtomicLong("COMPILATION_PERIOD_START", 0L);
+    private static final long COMPILATION_FAILURE_DETECTION_PERIOD_NS = TimeUnit.SECONDS.toNanos(2);
     private static final int MIN_COMPILATIONS_FOR_FAILURE_DETECTION = 25;
 
     /**
@@ -473,11 +478,11 @@ public abstract class CompilationWrapper<T> {
         }
 
         int maxRate = Math.min(100, NumUtil.safeAbs(maxRateValue));
-        long now = System.currentTimeMillis();
-        long start = getCompilationPeriodStart(now);
+        long nowNS = System.nanoTime();
+        long startNS = getCompilationPeriodStart(nowNS);
 
-        long period = now - start;
-        boolean periodExpired = period > COMPILATION_FAILURE_DETECTION_PERIOD_MS;
+        long periodNS = nowNS - startNS;
+        boolean periodExpired = periodNS > COMPILATION_FAILURE_DETECTION_PERIOD_NS;
 
         // Wait for period to expire or some minimum amount of compilations
         // before detecting systemic failure.
@@ -485,7 +490,7 @@ public abstract class CompilationWrapper<T> {
             Formatter msg = new Formatter();
             String option = GraalCompilerOptions.SystemicCompilationFailureRate.getName();
             msg.format("Warning: Systemic Graal compilation failure detected: %d of %d (%d%%) of compilations failed during last %d ms [max rate set by %s is %d%%]. ",
-                            failed, total, rate, period, option, maxRateValue);
+                            failed, total, rate, TimeUnit.NANOSECONDS.toMillis(periodNS), option, maxRateValue);
             msg.format("To mitigate systemic compilation failure detection, set %s to a higher value. ", option);
             msg.format("To disable systemic compilation failure detection, set %s to 0. ", option);
             msg.format("To get more information on compilation failures, set %s to Print or Diagnose. ", GraalCompilerOptions.CompilationFailureAction.getName());
@@ -499,7 +504,7 @@ public abstract class CompilationWrapper<T> {
 
         if (periodExpired) {
 
-            if (compilationPeriodStart.compareAndSet(start, now)) {
+            if (compilationPeriodStart.compareAndSet(startNS, nowNS)) {
                 // Reset compilation counters for new period
                 failedCompilations.set(0);
                 totalCompilations.set(0);

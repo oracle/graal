@@ -9,7 +9,7 @@ permalink: /reference-manual/native-image/guides/debug-native-image-process/
 
 ### Which GDB to Use?
 
-* Please use GDB 10.2 or later. The debug info is tested via `mx debuginfotest` against 10.2.
+* Please use GDB 14.2 or later. The debug info is tested via `mx debuginfotest` against 14.2.
 * Note that later versions might have slightly different formatting of debugger output (which, for example, may cause CI/CD gate checks to fail)
 * GDB bundled in recent Linux releases works just fine for debugging sessions 
 

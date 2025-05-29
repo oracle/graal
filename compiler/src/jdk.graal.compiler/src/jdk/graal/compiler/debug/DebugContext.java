@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,11 +51,12 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 
+import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.graphio.GraphOutput;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -86,6 +87,7 @@ public final class DebugContext implements AutoCloseable {
      */
     public static final String DUMP_FILE_MESSAGE_REGEXP = "Dumping debug output to '(?<filename>[^']+)'";
 
+    private static final Description DISABLED_DESCRIPTION = new Description(null, "DISABLED_DESCRIPTION");
     public static final Description NO_DESCRIPTION = new Description(null, "NO_DESCRIPTION");
     public static final GlobalMetrics NO_GLOBAL_METRIC_VALUES = null;
     public static final Iterable<DebugHandlersFactory> NO_CONFIG_CUSTOMIZERS = Collections.emptyList();
@@ -349,7 +351,7 @@ public final class DebugContext implements AutoCloseable {
     /**
      * Singleton used to represent a disabled debug context.
      */
-    private static final DebugContext DISABLED = new DebugContext(NO_DESCRIPTION, null, NO_GLOBAL_METRIC_VALUES, getDefaultLogStream(), new Immutable(), NO_CONFIG_CUSTOMIZERS);
+    private static final DebugContext DISABLED = new DebugContext(DISABLED_DESCRIPTION, null, NO_GLOBAL_METRIC_VALUES, getDefaultLogStream(), new Immutable(), NO_CONFIG_CUSTOMIZERS);
 
     /**
      * Create a DebugContext with debugging disabled.
@@ -454,11 +456,37 @@ public final class DebugContext implements AutoCloseable {
      *         object whose {@link CompilerPhaseScope#close()} method must be called when the phase
      *         ends
      */
-    public CompilerPhaseScope enterCompilerPhase(CharSequence phaseName) {
+    public CompilerPhaseScope enterCompilerPhase(CharSequence phaseName, StructuredGraph graph) {
+        CompilationAlarm.current().enterPhase(phaseName, graph);
         if (compilationListener != null) {
-            return enterCompilerPhase(() -> phaseName);
+            return new DecoratingCompilerPhaseScope(() -> {
+                CompilationAlarm.current().exitPhase(phaseName, graph);
+            }, enterCompilerPhase(() -> phaseName));
         }
-        return null;
+        return new CompilerPhaseScope() {
+
+            @Override
+            public void close() {
+                CompilationAlarm.current().exitPhase(phaseName, graph);
+            }
+        };
+    }
+
+    private static class DecoratingCompilerPhaseScope implements CompilerPhaseScope {
+        final Runnable closeAction;
+        final CompilerPhaseScope wrapped;
+
+        DecoratingCompilerPhaseScope(Runnable closeAction, CompilerPhaseScope wrapped) {
+            this.closeAction = closeAction;
+            this.wrapped = wrapped;
+        }
+
+        @Override
+        public void close() {
+            closeAction.run();
+            wrapped.close();
+        }
+
     }
 
     /**
@@ -612,6 +640,7 @@ public final class DebugContext implements AutoCloseable {
                     Immutable immutable,
                     Iterable<DebugHandlersFactory> factories, boolean disableConfig) {
         this.immutable = immutable;
+        this.invariants = Assertions.assertionsEnabled() && description != DISABLED_DESCRIPTION ? new Invariants() : null;
         this.description = description;
         this.globalMetrics = globalMetrics;
         this.compilationListener = compilationListener;
@@ -847,11 +876,7 @@ public final class DebugContext implements AutoCloseable {
         }
     }
 
-    /**
-     * Arbitrary threads cannot be in the image so null out {@code DebugContext.invariants} which
-     * holds onto a thread and is only used for assertions.
-     */
-    @NativeImageReinitialize private final Invariants invariants = Assertions.assertionsEnabled() ? new Invariants() : null;
+    private final Invariants invariants;
 
     static StackTraceElement[] getStackTrace(Thread thread) {
         return thread.getStackTrace();
@@ -1984,12 +2009,21 @@ public final class DebugContext implements AutoCloseable {
     }
 
     /**
-     * Creates a {@linkplain TimerKey timer}.
+     * Creates a {@linkplain CPUTimerKey} timer.
      * <p>
      * A disabled timer has virtually no overhead.
      */
     public static TimerKey timer(CharSequence name) {
         return createTimer("%s", name, null);
+    }
+
+    /**
+     * Creates a {@link WallClockTimerKey} timer.
+     * <p>
+     * A disabled timer has virtually no overhead.
+     */
+    public static TimerKey wallClockTimer(CharSequence name) {
+        return createWallClockTimer("%s", name, null);
     }
 
     /**
@@ -2088,7 +2122,11 @@ public final class DebugContext implements AutoCloseable {
     }
 
     private static TimerKey createTimer(String format, Object arg1, Object arg2) {
-        return new TimerKeyImpl(format, arg1, arg2);
+        return new CPUTimerKey(format, arg1, arg2);
+    }
+
+    private static TimerKey createWallClockTimer(String format, Object arg1, Object arg2) {
+        return new WallClockTimerKey(format, arg1, arg2);
     }
 
     /**
@@ -2108,7 +2146,7 @@ public final class DebugContext implements AutoCloseable {
         void close();
     }
 
-    boolean isTimerEnabled(TimerKeyImpl key) {
+    boolean isTimerEnabled(BaseTimerKey key) {
         if (!metricsEnabled) {
             // Pulling this common case out of `isTimerEnabledSlow`
             // gives C1 a better chance to inline this method.

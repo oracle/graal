@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.r13;
 import static jdk.vm.ci.amd64.AMD64.r14;
 import static jdk.vm.ci.amd64.AMD64.r15;
 
@@ -38,10 +39,16 @@ import jdk.vm.ci.code.Register;
 public final class AMD64ReservedRegisters extends ReservedRegisters {
 
     public static final Register THREAD_REGISTER = r15;
-    public static final Register HEAP_BASE_REGISTER_CANDIDATE = r14;
+    public static final Register HEAP_BASE_REGISTER = r14;
+    public static final Register CODE_BASE_REGISTER_CANDIDATE = r13;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     AMD64ReservedRegisters() {
-        super(AMD64.rsp, THREAD_REGISTER, HEAP_BASE_REGISTER_CANDIDATE);
+        super(AMD64.rsp, THREAD_REGISTER, HEAP_BASE_REGISTER, CODE_BASE_REGISTER_CANDIDATE);
+    }
+
+    @Override
+    public boolean isReservedRegister(Register reg) {
+        return super.isReservedRegister(reg) || reg.equals(AMD64.rip);
     }
 }

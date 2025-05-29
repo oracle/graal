@@ -32,7 +32,7 @@ import jdk.graal.compiler.jtt.JTTTest;
 
 public final class Class_isInstance06 extends JTTTest {
 
-    private static class TestClass implements Cloneable {
+    private static final class TestClass implements Cloneable {
     }
 
     static final String string = "";

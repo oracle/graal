@@ -122,7 +122,7 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
     private final boolean log;
 
     /*
-     * GR-49601: only check non boolean assertion calls for now.
+     * GR-49601: only check non-boolean assertion calls for now.
      */
     private final boolean verifyBooleanAssertionConditions;
 
@@ -471,19 +471,19 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
     }
 
     private void reportMissingAssertions(StringBuilder allErrorMessages) {
-        StringBuilder sbMissingAssertionMessages = new StringBuilder();
+        List<String> missingAssertionMessages = new ArrayList<>();
         for (AssertionCall ac : assertionCallsWithoutMessage) {
             ResolvedJavaMethod callee = ac.callee;
             if (callee == null || !getMethodInfo(callee).canBeCalledWithoutErrorMessage()) {
-                sbMissingAssertionMessages.append(formatNSP(ac.nsp)).append(System.lineSeparator());
+                missingAssertionMessages.add(formatNSP(ac.nsp));
             }
         }
-        if (!sbMissingAssertionMessages.isEmpty()) {
-            allErrorMessages.append(String.format("Found the following assertions that need error messages %n%s%n " +
-                            "This is because you added a new assertion without an error message. " +
-                            "Please fix all assertions in the report above such that they have error messages." +
-                            "Consider using API from " + Assertions.class.getName() + " to format assertion error messages with more context.",
-                            sbMissingAssertionMessages));
+        if (!missingAssertionMessages.isEmpty()) {
+            String sep = String.format("%n  ");
+            allErrorMessages.append(String.format("Found the assertions that need error messages at:%s%s%n" +
+                            "Please fix all above assertions such that they have error messages. " +
+                            "Consider using API from %s to format assertion error messages with more context.",
+                            sep, String.join(sep, missingAssertionMessages), Assertions.class));
             allErrorMessages.append(System.lineSeparator());
         }
     }

@@ -127,48 +127,56 @@ public class TStringSwitchEncodingTest extends TStringTestBase {
                 return;
             }
             for (TruffleString.Encoding targetEncoding : reducedEncodingSet) {
-                boolean bothUTF = isUTF(encoding) && isUTF(targetEncoding);
-                for (TranscodingErrorHandler errorHandler : bothUTF ? new TranscodingErrorHandler[]{TranscodingErrorHandler.DEFAULT,
-                                TranscodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8}
-                                : new TranscodingErrorHandler[]{TranscodingErrorHandler.DEFAULT}) {
-                    TruffleString b = node.execute(a, targetEncoding, errorHandler);
-                    MutableTruffleString bMutable = nodeMutable.execute(a, targetEncoding, errorHandler);
-                    if (a instanceof TruffleString &&
-                                    (encoding == targetEncoding || !isDebugStrictEncodingChecks() && codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(targetEncoding))) {
-                        Assert.assertSame(a, b);
-                    }
-                    if (a instanceof MutableTruffleString && encoding == targetEncoding) {
-                        Assert.assertSame(a, bMutable);
-                    }
-                    if (bothUTF) {
-                        for (AbstractTruffleString target : new AbstractTruffleString[]{b, bMutable}) {
-                            if (encoding == targetEncoding || isValid) {
-                                assertCodePointsEqual(target, targetEncoding, codepoints);
-                            } else {
-                                TruffleStringIterator it = target.createCodePointIteratorUncached(targetEncoding);
-                                for (int codepoint : codepoints) {
-                                    int expected = codepoint;
-                                    if (codepoint > Character.MAX_CODE_POINT) {
-                                        expected = 0xfffd;
-                                    } else if (targetEncoding == TruffleString.Encoding.UTF_8 && codepoint <= 0xffff &&
-                                                    Character.isSurrogate((char) codepoint)) {
-                                        if (errorHandler == TranscodingErrorHandler.DEFAULT) {
-                                            expected = 0xfffd;
-                                        } else if (errorHandler == TranscodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8) {
-                                            expected = 0xfffd;
-                                            Assert.assertEquals(codepoint, TStringTestUtil.utf8DecodeValid(b, it.getByteIndex()));
-                                        } else {
-                                            Assert.fail();
-                                        }
-                                    }
-                                    Assert.assertEquals(expected, it.nextUncached());
+                checkSwitchEncoding(a, codeRange, isValid, encoding, codepoints, targetEncoding, node, nodeMutable);
+            }
+        });
+    }
+
+    public static void checkSwitchEncoding(AbstractTruffleString a, TruffleString.CodeRange codeRange, boolean isValid, TruffleString.Encoding encoding, int[] codepoints,
+                    TruffleString.Encoding targetEncoding,
+                    TruffleString.SwitchEncodingNode node,
+                    MutableTruffleString.SwitchEncodingNode nodeMutable) {
+        boolean bothUTF = isUTF(encoding) && isUTF(targetEncoding);
+        for (TranscodingErrorHandler errorHandler : bothUTF ? new TranscodingErrorHandler[]{TranscodingErrorHandler.DEFAULT,
+                        TranscodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8}
+                        : new TranscodingErrorHandler[]{TranscodingErrorHandler.DEFAULT}) {
+            TruffleString b = node.execute(a, targetEncoding, errorHandler);
+            MutableTruffleString bMutable = nodeMutable.execute(a, targetEncoding, errorHandler);
+            if (a instanceof TruffleString &&
+                            (encoding == targetEncoding || !isDebugStrictEncodingChecks() && codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(targetEncoding)) &&
+                            a.getStringCompactionLevelUncached(encoding).getLog2() <= getNaturalStride(targetEncoding)) {
+                Assert.assertSame(a, b);
+            }
+            if (a instanceof MutableTruffleString && encoding == targetEncoding) {
+                Assert.assertSame(a, bMutable);
+            }
+            if (bothUTF) {
+                for (AbstractTruffleString target : new AbstractTruffleString[]{b, bMutable}) {
+                    if (encoding == targetEncoding || isValid) {
+                        assertCodePointsEqual(target, targetEncoding, codepoints);
+                    } else {
+                        TruffleStringIterator it = target.createCodePointIteratorUncached(targetEncoding);
+                        for (int codepoint : codepoints) {
+                            int expected = codepoint;
+                            if (codepoint > Character.MAX_CODE_POINT) {
+                                expected = 0xfffd;
+                            } else if (targetEncoding == TruffleString.Encoding.UTF_8 && codepoint <= 0xffff &&
+                                            Character.isSurrogate((char) codepoint)) {
+                                if (errorHandler == TranscodingErrorHandler.DEFAULT) {
+                                    expected = 0xfffd;
+                                } else if (errorHandler == TranscodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8) {
+                                    expected = 0xfffd;
+                                    Assert.assertEquals(codepoint, TStringTestUtil.utf8DecodeValid(b, it.getByteIndex()));
+                                } else {
+                                    Assert.fail();
                                 }
                             }
+                            Assert.assertEquals(expected, it.nextUncached(targetEncoding));
                         }
                     }
                 }
             }
-        });
+        }
     }
 
     @Test

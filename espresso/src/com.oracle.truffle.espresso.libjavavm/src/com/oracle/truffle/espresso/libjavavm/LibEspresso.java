@@ -84,10 +84,13 @@ public final class LibEspresso {
         builder.option("java.EnableSignals", "true");
         builder.option("java.ExposeNativeJavaVM", "true");
         builder.option("java.GuestFieldOffsetStrategy", "graal"); // most "hotspot-like"
-        Context context = builder.build();
-        context.enter();
+        Context context = null;
+        boolean entered = false;
         Value bindings;
         try {
+            context = builder.build();
+            context.enter();
+            entered = true;
             bindings = context.getBindings("java");
         } catch (PolyglotException e) {
             if (e.isExit()) {
@@ -101,8 +104,12 @@ public final class LibEspresso {
             System.exit(1);
             // this is dead code
             // it's what we should do if we supported cleanly tearing down the context in this state
-            context.leave();
-            context.close(true);
+            if (entered) {
+                context.leave();
+            }
+            if (context != null) {
+                context.close(true);
+            }
             return JNIErrors.JNI_ERR();
         }
         Value java = bindings.getMember("<JavaVM>");

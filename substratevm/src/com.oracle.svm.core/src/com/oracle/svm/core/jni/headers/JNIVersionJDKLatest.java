@@ -29,13 +29,7 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-
 final class JNIHeaderDirectivesJDKLatest extends JNIHeaderDirectives {
-    @Override
-    public boolean isInConfiguration() {
-        return JavaVersionUtil.JAVA_SPEC > 21;
-    }
 }
 
 @CContext(JNIHeaderDirectivesJDKLatest.class)
@@ -43,12 +37,15 @@ public final class JNIVersionJDKLatest {
 
     // Checkstyle: stop
 
+    @CConstant
+    public static native int JNI_VERSION_24();
+
     /*
      * GR-50948: there is not yet a JNI_VERSION_XX constant defined for JDK latest. As soon as it
      * gets available, the "value" property of the CConstant annotation below must be removed.
      */
-    @CConstant(value = "JNI_VERSION_21")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/java.base/share/native/include/jni.h#L1985-L1996")
+    @CConstant(value = "JNI_VERSION_24")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/java.base/share/native/include/jni.h#L1994-L2006")
     public static native int JNI_VERSION_LATEST();
 
     // Checkstyle: resume

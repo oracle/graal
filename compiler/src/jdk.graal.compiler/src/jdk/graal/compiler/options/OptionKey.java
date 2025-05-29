@@ -85,7 +85,7 @@ public class OptionKey<T> {
                             stackTrace[1].getClassName().equals(OptionKey.class.getName()) &&
                             stackTrace[1].getMethodName().equals("getValue")) {
                 String caller = stackTrace[2].getClassName();
-                result.append(" In suite.py, add GRAAL_OPTIONS_PROCESSOR to the \"annotationProcessors\" attribute of the project containing ");
+                result.append(" In suite.py, add compiler:GRAAL_PROCESSOR to the \"annotationProcessors\" attribute of the project containing ");
                 result.append(caller);
             }
             throw new AssertionError(result.toString());

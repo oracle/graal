@@ -33,7 +33,6 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.NeverInline;
@@ -140,7 +139,7 @@ public final class VMOperationControl {
 
         int size = SizeOf.get(NativeVMOperationData.class);
         NativeVMOperationData data = StackValue.get(size);
-        UnmanagedMemoryUtil.fill((Pointer) data, WordFactory.unsigned(size), (byte) 0);
+        UnmanagedMemoryUtil.fill((Pointer) data, Word.unsigned(size), (byte) 0);
         NativeStopVMOperationThread operation = get().stopVMOperationThreadOperation;
         data.setNativeVMOperation(operation);
         /*
@@ -266,7 +265,7 @@ public final class VMOperationControl {
     }
 
     void enqueue(JavaVMOperation operation) {
-        enqueue(operation, WordFactory.nullPointer());
+        enqueue(operation, Word.nullPointer());
     }
 
     void enqueue(NativeVMOperationData data) {
@@ -379,7 +378,7 @@ public final class VMOperationControl {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while acquiring / holding lock")
         @Override
         public void run() {
-            ThreadingSupportImpl.pauseRecurringCallback("VM operation thread must not execute recurring callbacks.");
+            RecurringCallbackSupport.suspendCallbackTimer("VM operation thread must not execute recurring callbacks.");
             this.isolateThread = CurrentIsolate.getCurrentThread();
 
             VMOperationControl control = VMOperationControl.get();
@@ -564,11 +563,11 @@ public final class VMOperationControl {
                 boolean startedSafepoint = false;
                 boolean lockedForSafepoint = false;
 
-                Safepoint.Master master = Safepoint.Master.singleton();
-                if (!master.isFrozen()) {
+                Safepoint safepoint = Safepoint.singleton();
+                if (!safepoint.isInProgress()) {
                     startedSafepoint = true;
                     safepointReason = getSafepointReason(nativeSafepointOperations, javaSafepointOperations);
-                    lockedForSafepoint = master.freeze(safepointReason);
+                    lockedForSafepoint = safepoint.startSafepoint(safepointReason);
                 }
 
                 try {
@@ -576,7 +575,7 @@ public final class VMOperationControl {
                     drain(javaSafepointOperations);
                 } finally {
                     if (startedSafepoint) {
-                        master.thaw(lockedForSafepoint);
+                        safepoint.endSafepoint(lockedForSafepoint);
                     }
                 }
             }
@@ -619,9 +618,9 @@ public final class VMOperationControl {
                 while (!workQueue.isEmpty()) {
                     JavaVMOperation operation = workQueue.pop();
                     try {
-                        operation.execute(WordFactory.nullPointer());
+                        operation.execute(Word.nullPointer());
                     } finally {
-                        markAsFinished(operation, WordFactory.nullPointer(), operationFinished);
+                        markAsFinished(operation, Word.nullPointer(), operationFinished);
                     }
                 }
                 trace.string("]").newline();
@@ -634,10 +633,10 @@ public final class VMOperationControl {
             JavaVMOperation op = workQueue.peek();
             while (op != null) {
                 JavaVMOperation next = op.getNext();
-                if (!op.hasWork(WordFactory.nullPointer())) {
+                if (!op.hasWork(Word.nullPointer())) {
                     trace.string("[Skipping unnecessary operation in queue ").string(workQueue.name).string(": ").string(op.getName());
                     workQueue.remove(prev, op);
-                    markAsFinished(op, WordFactory.nullPointer(), operationFinished);
+                    markAsFinished(op, Word.nullPointer(), operationFinished);
                 } else {
                     prev = op;
                 }
@@ -647,7 +646,7 @@ public final class VMOperationControl {
 
         private void filterUnnecessary(NativeVMOperationQueue workQueue) {
             Log trace = log();
-            NativeVMOperationData prev = WordFactory.nullPointer();
+            NativeVMOperationData prev = Word.nullPointer();
             NativeVMOperationData data = workQueue.peek();
             while (data.isNonNull()) {
                 NativeVMOperation op = data.getNativeVMOperation();
@@ -821,11 +820,11 @@ public final class VMOperationControl {
         @Override
         public NativeVMOperationData pop() {
             if (head.isNull()) {
-                return WordFactory.nullPointer();
+                return Word.nullPointer();
             }
             NativeVMOperationData resultElement = head;
             head = resultElement.getNext();
-            resultElement.setNext(WordFactory.nullPointer());
+            resultElement.setNext(Word.nullPointer());
             return resultElement;
         }
 
@@ -839,7 +838,7 @@ public final class VMOperationControl {
             if (prev.isNull()) {
                 assert head == remove;
                 head = remove.getNext();
-                remove.setNext(WordFactory.nullPointer());
+                remove.setNext(Word.nullPointer());
             } else {
                 prev.setNext(remove.getNext());
             }
@@ -894,14 +893,14 @@ public final class VMOperationControl {
         public void add(VMOpStatus status, VMOperation operation, IsolateThread queueingThread, IsolateThread executingThread, int nestingLevel) {
             assert Heap.getHeap().isInImageHeap(status);
             VMOpStatusChange entry = history.next();
-            entry.timestamp = System.currentTimeMillis();
+            entry.uptimeMillis = Isolates.getUptimeMillis();
             entry.status = status;
             entry.name = operation.getName();
             entry.causesSafepoint = operation.getCausesSafepoint();
             entry.queueingThread = queueingThread;
             entry.executingThread = executingThread;
             entry.nestingLevel = nestingLevel;
-            entry.safepointId = Safepoint.Master.singleton().getSafepointId();
+            entry.safepointId = Safepoint.singleton().getSafepointId();
         }
 
         public void print(Log log, boolean allowJavaHeapAccess) {
@@ -936,7 +935,7 @@ public final class VMOperationControl {
      * data structures).
      */
     private static class VMOpStatusChange {
-        long timestamp;
+        long uptimeMillis;
         VMOpStatus status;
         String name;
         boolean causesSafepoint;
@@ -952,8 +951,7 @@ public final class VMOperationControl {
         void print(Log log, boolean allowJavaHeapAccess) {
             VMOpStatus localStatus = status;
             if (localStatus != null) {
-                long uptime = timestamp - Isolates.getCurrentStartTimeMillis();
-                log.rational(uptime, TimeUtils.millisPerSecond, 3).string("s - ").spaces(nestingLevel * 2).string(localStatus.name());
+                log.rational(uptimeMillis, TimeUtils.millisPerSecond, 3).string("s - ").spaces(nestingLevel * 2).string(localStatus.name());
                 if (allowJavaHeapAccess) {
                     log.string(" ").string(name);
                 }

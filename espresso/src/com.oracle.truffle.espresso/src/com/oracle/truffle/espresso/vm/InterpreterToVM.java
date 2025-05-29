@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.vm;
 
 import java.util.List;
@@ -40,7 +39,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.Field;
@@ -54,8 +53,8 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Throws;
+import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.Transition;
 
@@ -689,7 +688,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
                 return false;
             }
             if (!afterFillInStackTrace) {
-                if (Name.fillInStackTrace.equals(m.getName()) || Name.fillInStackTrace0.equals(m.getName())) {
+                if (Names.fillInStackTrace.equals(m.getName()) || Names.fillInStackTrace0.equals(m.getName())) {
                     return false;
                 } else {
                     afterFillInStackTrace = true;
@@ -697,7 +696,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
             }
             if (!afterThrowableInit) {
                 assert afterFillInStackTrace;
-                if (Name._init_.equals(m.getName()) && m.getMeta().java_lang_Throwable.isAssignableFrom(m.getDeclaringKlass())) {
+                if (Names._init_.equals(m.getName()) && m.getMeta().java_lang_Throwable.isAssignableFrom(m.getDeclaringKlass())) {
                     return false;
                 } else {
                     afterThrowableInit = true;

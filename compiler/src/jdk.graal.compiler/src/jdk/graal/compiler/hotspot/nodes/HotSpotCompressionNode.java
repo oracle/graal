@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
@@ -37,11 +38,13 @@ import jdk.graal.compiler.nodes.CompressionNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotConstant;
+import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo(nameTemplate = "{p#op/s}", cycles = CYCLES_2, size = SIZE_2)
 public final class HotSpotCompressionNode extends CompressionNode {
@@ -69,11 +72,21 @@ public final class HotSpotCompressionNode extends CompressionNode {
     }
 
     @Override
+    public boolean isCompressible(Constant constant) {
+        if (constant instanceof HotSpotMetaspaceConstant mc) {
+            ResolvedJavaType type = mc.asResolvedJavaType();
+            // As of JDK-8338526, interface and abstract types are not compressible.
+            return type.isArray() || (!type.isAbstract() && !type.isInterface());
+        }
+        return true;
+    }
+
+    @Override
     protected Constant compress(Constant c) {
         if (JavaConstant.NULL_POINTER.equals(c)) {
             return HotSpotCompressedNullConstant.COMPRESSED_NULL;
-        } else if (c instanceof HotSpotConstant) {
-            return ((HotSpotConstant) c).compress();
+        } else if (c instanceof HotSpotConstant hc && isCompressible(hc)) {
+            return hc.compress();
         } else {
             throw GraalError.shouldNotReachHere("invalid constant input for compress op: " + c); // ExcludeFromJacocoGeneratedReport
         }
@@ -104,4 +117,13 @@ public final class HotSpotCompressionNode extends CompressionNode {
     protected Stamp mkStamp(Stamp input) {
         return HotSpotNarrowOopStamp.mkStamp(op, input, encoding);
     }
+
+    /**
+     * Returns true only if {@code value} is compressible and the original preservesOrder holds.
+     */
+    @Override
+    public boolean preservesOrder(CanonicalCondition condition, Constant constant, ConstantReflectionProvider constantReflection) {
+        return isCompressible(constant) && super.preservesOrder(condition, constant, constantReflection);
+    }
+
 }

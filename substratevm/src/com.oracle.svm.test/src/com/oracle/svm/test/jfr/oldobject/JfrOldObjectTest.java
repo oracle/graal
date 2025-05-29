@@ -27,6 +27,7 @@
 package com.oracle.svm.test.jfr.oldobject;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -36,7 +37,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.word.WordFactory;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -48,6 +48,7 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.test.jfr.JfrRecordingTest;
 
+import jdk.graal.compiler.word.Word;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedFrame;
@@ -85,7 +86,7 @@ public abstract class JfrOldObjectTest extends JfrRecordingTest {
         boolean success;
         long endTime = System.currentTimeMillis() + TimeUtils.secondsToMillis(5);
         do {
-            success = SubstrateJVM.getOldObjectProfiler().sample(obj, WordFactory.unsigned(1024 * 1024 * 1024), arrayLength);
+            success = SubstrateJVM.getOldObjectProfiler().sample(obj, Word.unsigned(1024 * 1024 * 1024), arrayLength);
         } while (!success && System.currentTimeMillis() < endTime);
 
         Assert.assertTrue("Timed out waiting for sampling to complete", success);
@@ -94,7 +95,7 @@ public abstract class JfrOldObjectTest extends JfrRecordingTest {
     }
 
     protected List<RecordedEvent> validateEvents(List<RecordedEvent> events, Class<?> expectedSampledType, int expectedArrayLength) {
-        assertTrue(events.size() > 0);
+        assertFalse(events.isEmpty());
 
         ArrayList<RecordedEvent> matchingEvents = new ArrayList<>();
         String expectedTypeName = expectedSampledType.getName();
@@ -112,8 +113,10 @@ public abstract class JfrOldObjectTest extends JfrRecordingTest {
                 assertNotNull("No event thread", eventThread);
 
                 List<RecordedFrame> frames = event.getStackTrace().getFrames();
-                assertTrue(frames.size() > 0);
+                assertFalse(frames.isEmpty());
                 assertTrue(frames.stream().anyMatch(e -> testName.getMethodName().equals(e.getMethod().getName())));
+
+                checkTopStackFrame(event, "testSampling");
 
                 long allocationTime = event.getLong("allocationTime");
                 assertTrue(allocationTime > 0);
@@ -131,7 +134,7 @@ public abstract class JfrOldObjectTest extends JfrRecordingTest {
             }
         }
 
-        assertTrue(matchingEvents.size() > 0);
+        assertFalse(matchingEvents.isEmpty());
         return matchingEvents;
     }
 }

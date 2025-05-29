@@ -26,16 +26,22 @@ package jdk.graal.compiler.management;
 
 import static jdk.graal.compiler.serviceprovider.GraalServices.getCurrentThreadId;
 
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
+import com.sun.management.HotSpotDiagnosticMXBean;
 import jdk.graal.compiler.serviceprovider.JMXService;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
 
 import com.sun.management.ThreadMXBean;
 
+import javax.management.MBeanServer;
+
 /**
- * Implementation of {@link JMXService} for JDK 11+.
+ * Implementation of {@link JMXService}.
  */
 @ServiceProvider(JMXService.class)
 public class JMXServiceProvider extends JMXService {
@@ -65,5 +71,50 @@ public class JMXServiceProvider extends JMXService {
     @Override
     protected List<String> getInputArguments() {
         return ManagementFactory.getRuntimeMXBean().getInputArguments();
+    }
+
+    /**
+     * Name of the HotSpot Diagnostic MBean.
+     */
+    private static final String HOTSPOT_BEAN_NAME = "com.sun.management:type=HotSpotDiagnostic";
+
+    private volatile HotSpotDiagnosticMXBean hotspotMXBean;
+
+    @Override
+    protected void dumpHeap(String outputFile, boolean live) throws IOException {
+        initHotSpotMXBean();
+        try {
+            Path path = Path.of(outputFile);
+            if (Files.exists(path) && Files.size(path) == 0) {
+                Files.delete(path);
+            }
+            hotspotMXBean.dumpHeap(outputFile, live);
+        } catch (IOException | RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void initHotSpotMXBean() {
+        if (hotspotMXBean == null) {
+            synchronized (this) {
+                if (hotspotMXBean == null) {
+                    hotspotMXBean = getHotSpotMXBean();
+                }
+            }
+        }
+    }
+
+    private static HotSpotDiagnosticMXBean getHotSpotMXBean() {
+        try {
+            MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+            return ManagementFactory.newPlatformMXBeanProxy(server,
+                            HOTSPOT_BEAN_NAME, HotSpotDiagnosticMXBean.class);
+        } catch (RuntimeException re) {
+            throw re;
+        } catch (Exception exp) {
+            throw new RuntimeException(exp);
+        }
     }
 }

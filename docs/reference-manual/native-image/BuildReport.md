@@ -1,6 +1,6 @@
 ---
 layout: docs
-toc_group: build-report
+toc_group: build-overview
 link_title: Build Report
 permalink: /reference-manual/native-image/overview/build-report/
 redirect_from: /reference-manual/native-image/build-report/
@@ -88,9 +88,9 @@ Each section is described in detail the following subsections.
 
 The *Summary* section provides a general overview of the build.
 The section consists of four subsections that correspond to a stage in the build process or provide additional useful information:
-- [*Environment*](BuildOutput.md#a-namestage-initializingainitializing) provides the information about the environment used in the build (Java version, GraalVM version, Graal compiler configuration, and so on).
-- [*Analysis Results*](BuildOutput.md#a-namestage-analysisaperforming-analysis) displays the results of the points-to analysis (Types, Fields, and Methods) grouped by category (Reachable, Reflection, JNI, and Loaded).
-- [*Image Details*](BuildOutput.md#a-namestage-creatingacreating-image) gives an overview of the contents of the binary. The chart visualizes how different parts of the binary (Code area, Image heap, Debug info, and Other data) relate to each other in terms of their size.
+- [*Environment*](BuildOutput.md#stage-initializing) provides the information about the environment used in the build (Java version, GraalVM version, Graal compiler configuration, and so on).
+- [*Analysis Results*](BuildOutput.md#stage-analysis) displays the results of the points-to analysis (Types, Fields, and Methods) grouped by category (Reachable, Reflection, JNI, and Loaded).
+- [*Image Details*](BuildOutput.md#stage-creating) gives an overview of the contents of the binary. The chart visualizes how different parts of the binary (Code area, Image heap, Debug info, and Other data) relate to each other in terms of their size.
 - [*Security Report*](BuildOutput.md#security-report) reports various kinds of security-related information about the build (Deserialization, Embedded SBOM, and Backwards-Edge Control-Flow Integrity (CFI)).
 - [*Resource Usage*](BuildOutput.md#resource-usage-statistics) provides additional information about the resources used for the build (Garbage collection, Peak RSS, and CPU load) as well as total time spent generating the binary.
 
@@ -154,7 +154,7 @@ Similarly, the reverse can be achieved by clicking &uarr; (shown in the first ro
 
 ### Image Heap
 
-The object heap of the binary is broken down and grouped by object type (similar to the [Image Heap](BuildOutput.md#a-nameglossary-image-heapaimage-heap) table in CLI Build Output).
+The object heap of the binary is broken down and grouped by object type (similar to the [Image Heap](BuildOutput.md#glossary-image-heap) table in CLI Build Output).
 The main difference is that Build Report shows a complete list of object types along with more detailed information such as their counts, sizes, and relative percentages (visualized in the form of progress bars).
 
 One common use case for the full list is to determine if any instances of a specific class are a part of the image heap (using *Find in page*).

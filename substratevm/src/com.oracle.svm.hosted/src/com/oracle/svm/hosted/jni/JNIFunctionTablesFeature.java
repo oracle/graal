@@ -43,9 +43,11 @@ import com.oracle.svm.core.jni.functions.JNIFunctionTables;
 import com.oracle.svm.core.jni.functions.JNIFunctions;
 import com.oracle.svm.core.jni.functions.JNIFunctions.UnimplementedWithJNIEnvArgument;
 import com.oracle.svm.core.jni.functions.JNIFunctions.UnimplementedWithJavaVMArgument;
+import com.oracle.svm.core.jni.functions.JNIFunctionsJDKLatest;
 import com.oracle.svm.core.jni.functions.JNIInvocationInterface;
 import com.oracle.svm.core.jni.headers.JNIInvokeInterface;
 import com.oracle.svm.core.jni.headers.JNINativeInterface;
+import com.oracle.svm.core.jni.headers.JNINativeInterfaceJDKLatest;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -81,6 +83,7 @@ public class JNIFunctionTablesFeature implements Feature {
      *      for the Interface Function Table</a>
      */
     private StructInfo functionTableMetadata;
+    private StructInfo functionTableMetadataJDKLatest;
 
     /**
      * Metadata about the table pointed to by the {@code JavaVM*} C pointer.
@@ -108,12 +111,14 @@ public class JNIFunctionTablesFeature implements Feature {
         invokeInterfaceMetadata = (StructInfo) nativeLibraries.findElementInfo(invokeInterface);
         AnalysisType functionTable = metaAccess.lookupJavaType(JNINativeInterface.class);
         functionTableMetadata = (StructInfo) nativeLibraries.findElementInfo(functionTable);
+        functionTableMetadataJDKLatest = (StructInfo) nativeLibraries.findElementInfo(metaAccess.lookupJavaType(JNINativeInterfaceJDKLatest.class));
 
         // Manually add functions as entry points so this is only done when JNI features are enabled
         AnalysisType invokes = metaAccess.lookupJavaType(JNIInvocationInterface.class);
         AnalysisType exports = metaAccess.lookupJavaType(JNIInvocationInterface.Exports.class);
         AnalysisType functions = metaAccess.lookupJavaType(JNIFunctions.class);
-        Stream<AnalysisMethod> analysisMethods = Stream.of(invokes, functions, exports).filter(type -> type != null).flatMap(type -> Stream.of(type.getDeclaredMethods(false)));
+        AnalysisType functionsJDKLatest = metaAccess.lookupJavaType(JNIFunctionsJDKLatest.class);
+        Stream<AnalysisMethod> analysisMethods = Stream.of(invokes, functions, functionsJDKLatest, exports).flatMap(type -> Stream.of(type.getDeclaredMethods(false)));
         Stream<AnalysisMethod> unimplementedMethods = Stream.of((AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJNIEnvArgument.class),
                         (AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJavaVMArgument.class));
         Stream.concat(analysisMethods, unimplementedMethods).forEach(method -> {
@@ -176,6 +181,12 @@ public class JNIFunctionTablesFeature implements Feature {
         HostedType functions = access.getMetaAccess().lookupJavaType(JNIFunctions.class);
         for (HostedMethod method : functions.getDeclaredMethods(false)) {
             StructFieldInfo field = findFieldFor(functionTableMetadata, method.getName());
+            int offset = field.getOffsetInfo().getProperty();
+            tables.initFunctionEntry(offset, getStubFunctionPointer(access, method));
+        }
+        HostedType functionsJDKLatest = access.getMetaAccess().lookupJavaType(JNIFunctionsJDKLatest.class);
+        for (HostedMethod method : functionsJDKLatest.getDeclaredMethods(false)) {
+            StructFieldInfo field = findFieldFor(functionTableMetadataJDKLatest, method.getName());
             int offset = field.getOffsetInfo().getProperty();
             tables.initFunctionEntry(offset, getStubFunctionPointer(access, method));
         }

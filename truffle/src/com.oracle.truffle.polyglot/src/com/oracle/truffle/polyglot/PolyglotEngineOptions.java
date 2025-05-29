@@ -179,4 +179,19 @@ final class PolyglotEngineOptions {
                             }
                         }
                     }));
+
+    @Option(category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL, sandbox = SandboxPolicy.UNTRUSTED, usageSyntax = "Ignore|Print|Throw", help = CloseOnGCExceptionAction.HELP)//
+    static final OptionKey<CloseOnGCExceptionAction> CloseOnGCFailureAction = new OptionKey<>(CloseOnGCExceptionAction.Print);
+
+    enum CloseOnGCExceptionAction {
+        Ignore,
+        Print,
+        Throw;
+
+        private static final String HELP = "Specifies the action to take when closing a garbage collected engine or context fails.%n" +
+                        "The accepted values are:%n" +
+                        "    Ignore:    Do not print this warning.%n" +
+                        "    Print:     Print this warning (default value).%n" +
+                        "    Throw:     Throw an exception instead of printing this warning.";
+    }
 }

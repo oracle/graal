@@ -40,7 +40,6 @@ import jdk.graal.compiler.hotspot.HotSpotLIRGenerator;
 import jdk.graal.compiler.hotspot.HotSpotLockStack;
 import jdk.graal.compiler.hotspot.HotSpotNodeLIRBuilder;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
-import jdk.graal.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
 import jdk.graal.compiler.hotspot.nodes.HotSpotIndirectCallTargetNode;
 import jdk.graal.compiler.hotspot.stubs.Stub;
 import jdk.graal.compiler.lir.LIRFrameState;
@@ -102,7 +101,6 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         if (stub != null && stub.getLinkage().getEffect() == HotSpotForeignCallLinkage.RegisterEffect.KILLS_NO_REGISTERS) {
             assert stub.getLinkage().getDescriptor().getTransition() != HotSpotForeignCallDescriptor.Transition.SAFEPOINT : stub;
             AMD64SaveRegistersOp saveOp = getGen().emitSaveAllRegisters(false);
-            append(saveOp);
             result.setSaveOnEntry(saveOp);
         }
 
@@ -129,7 +127,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
     @Override
     protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        InvokeKind invokeKind = ((HotSpotDirectCallTargetNode) callTarget).invokeKind();
+        InvokeKind invokeKind = callTarget.invokeKind();
         if (invokeKind.isIndirect()) {
             append(new AMD64HotspotDirectVirtualCallOp(callTarget.targetMethod(), result, parameters, temps, callState, invokeKind, getGen().config));
         } else {

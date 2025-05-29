@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.hosted.config;
 
+import static com.oracle.svm.configure.ConfigurationParserOption.JNI_PARSER;
 import static com.oracle.svm.core.configure.ConfigurationFiles.Options.ReachabilityMetadataResources;
-import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllNameEntriesAsType;
 
 import java.io.IOException;
 import java.net.URI;
@@ -34,6 +34,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Spliterator;
@@ -44,28 +45,30 @@ import java.util.stream.StreamSupport;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
+import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
+import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
+import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
-import com.oracle.svm.core.configure.ConfigurationConditionResolver;
-import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.ConfigurationParser;
+import com.oracle.svm.configure.ReflectionConfigurationParser;
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFiles;
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.configure.ReflectionConfigurationParser;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 
 import jdk.graal.compiler.util.json.JsonParserException;
 
 public final class ConfigurationParserUtils {
 
-    public static ReflectionConfigurationParser<ConfigurationCondition, Class<?>> create(String combinedFileKey, boolean strictMetadata,
-                    ConfigurationConditionResolver<ConfigurationCondition> conditionResolver, ReflectionRegistry registry, ProxyRegistry proxyRegistry, ImageClassLoader imageClassLoader) {
-        return ReflectionConfigurationParser.create(combinedFileKey, strictMetadata, conditionResolver,
-                        RegistryAdapter.create(registry, proxyRegistry, imageClassLoader),
-                        ConfigurationFiles.Options.StrictConfiguration.getValue(),
-                        ConfigurationFiles.Options.WarnAboutMissingReflectionOrJNIMetadataElements.getValue(), TreatAllNameEntriesAsType.getValue());
+    public static ReflectionConfigurationParser<ConfigurationCondition, Class<?>> create(ConfigurationFile configurationKind, boolean combinedFileSchema,
+                    ConfigurationConditionResolver<ConfigurationCondition> conditionResolver, ReflectionRegistry registry, RuntimeProxyCreationSupport proxyRegistry,
+                    RuntimeSerializationSupport<ConfigurationCondition> serializationSupport, RuntimeJNIAccessSupport jniSupport, ImageClassLoader imageClassLoader) {
+        var additionalParserOptions = configurationKind == ConfigurationFile.JNI ? EnumSet.of(JNI_PARSER) : null;
+        return ReflectionConfigurationParser.create(combinedFileSchema, conditionResolver, RegistryAdapter.create(registry, proxyRegistry, serializationSupport, jniSupport, imageClassLoader),
+                        ConfigurationFiles.Options.getConfigurationParserOptions(additionalParserOptions, null));
     }
 
     /**

@@ -37,6 +37,7 @@ import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -77,16 +78,22 @@ public abstract class PosixSubstrateSigprofHandler extends SubstrateSigprofHandl
     @Uninterruptible(reason = "Signal handler may only execute uninterruptible code.")
     private static void dispatch(@SuppressWarnings("unused") int signalNumber, @SuppressWarnings("unused") Signal.siginfo_t sigInfo, Signal.ucontext_t uContext) {
         /* We need to keep the code in this method to a minimum to avoid races. */
-        if (tryEnterIsolate()) {
-            CodePointer ip = (CodePointer) RegisterDumper.singleton().getIP(uContext);
-            Pointer sp = (Pointer) RegisterDumper.singleton().getSP(uContext);
-            tryUninterruptibleStackWalk(ip, sp, true);
+        int savedErrno = LibC.errno();
+        try {
+            if (tryEnterIsolate()) {
+                CodePointer ip = (CodePointer) RegisterDumper.singleton().getIP(uContext);
+                Pointer sp = (Pointer) RegisterDumper.singleton().getSP(uContext);
+                tryUninterruptibleStackWalk(ip, sp, true);
+            }
+        } finally {
+            LibC.setErrno(savedErrno);
         }
     }
 
     @Override
     protected void installSignalHandler() {
-        PosixUtils.installSignalHandler(Signal.SignalEnum.SIGPROF, advancedSignalDispatcher.getFunctionPointer(), Signal.SA_RESTART());
+        PosixSignalHandlerSupport.installNativeSignalHandler(Signal.SignalEnum.SIGPROF, advancedSignalDispatcher.getFunctionPointer(), Signal.SA_RESTART(),
+                        SubstrateOptions.EnableSignalHandling.getValue());
     }
 
     static boolean isSignalHandlerBasedExecutionSamplerEnabled() {
@@ -102,7 +109,7 @@ public abstract class PosixSubstrateSigprofHandler extends SubstrateSigprofHandl
     }
 
     private static void validateSamplerOption(HostedOptionKey<Boolean> isSamplerEnabled) {
-        if (isSamplerEnabled.getValue()) {
+        if (isSamplerEnabled.hasBeenSet() && isSamplerEnabled.getValue()) {
             UserError.guarantee(isPlatformSupported(),
                             "The %s cannot be used to profile on this platform.",
                             SubstrateOptionsParser.commandArgument(isSamplerEnabled, "+"));

@@ -36,6 +36,8 @@ import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 
+import jdk.graal.compiler.word.Word;
+
 /**
  * An OldGeneration has two Spaces, {@link #fromSpace} for existing objects, and {@link #toSpace}
  * for newly-allocated or promoted objects.
@@ -63,8 +65,9 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
-    public boolean walkObjects(ObjectVisitor visitor) {
-        return getFromSpace().walkObjects(visitor) && getToSpace().walkObjects(visitor);
+    public void walkObjects(ObjectVisitor visitor) {
+        getFromSpace().walkObjects(visitor);
+        getToSpace().walkObjects(visitor);
     }
 
     /** Promote an Object to ToSpace if it is not already in ToSpace. */
@@ -144,6 +147,11 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
+    void appendChunk(AlignedHeapChunk.AlignedHeader hdr) {
+        getToSpace().appendAlignedHeapChunk(hdr);
+    }
+
+    @Override
     void swapSpaces() {
         assert getFromSpace().isEmpty() : "fromSpace should be empty.";
         getFromSpace().absorb(getToSpace());
@@ -151,13 +159,18 @@ final class CopyingOldGeneration extends OldGeneration {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor) {
-        RememberedSet.get().walkDirtyObjects(toSpace, visitor, true);
+    void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor, GreyToBlackObjRefVisitor refVisitor) {
+        RememberedSet.get().walkDirtyObjects(toSpace.getFirstAlignedHeapChunk(), toSpace.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, refVisitor, true);
     }
 
     @Override
     boolean isInSpace(Pointer ptr) {
         return fromSpace.contains(ptr) || toSpace.contains(ptr);
+    }
+
+    @Override
+    boolean printLocationInfo(Log log, Pointer ptr) {
+        return fromSpace.printLocationInfo(log, ptr) || toSpace.printLocationInfo(log, ptr);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.dsl.Cached;
@@ -31,6 +30,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.nodes.interop.InteropUnwrapNode;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
@@ -61,7 +61,8 @@ public final class EspressoFunction implements TruffleObject {
 
     @ExportMessage
     public Object execute(Object[] args,
-                    @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
-        return invoke.execute(m, receiver, args);
+                    @Cached InvokeEspressoNode invoke,
+                    @Cached InteropUnwrapNode unwrapNode) throws ArityException, UnsupportedTypeException {
+        return invoke.execute(m, receiver, args, unwrapNode);
     }
 }

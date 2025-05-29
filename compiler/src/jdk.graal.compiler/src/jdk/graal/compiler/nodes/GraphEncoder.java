@@ -49,6 +49,7 @@ import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
+import jdk.graal.compiler.util.ObjectCopier;
 import jdk.vm.ci.code.Architecture;
 
 /**
@@ -58,17 +59,13 @@ import jdk.vm.ci.code.Architecture;
  *
  * One encoder instance can be used to encode multiple graphs. This requires that {@link #prepare}
  * is called for all graphs first, followed by one call to {@link #finishPrepare}. Then
- * {@link #encode} can be called for all graphs. The {@link #getObjects() objects} and
- * {@link #getNodeClasses() node classes} arrays do not change anymore after preparation.
+ * {@link #encode} can be called for all graphs. The {@link #getObjects() objects} array does not
+ * change anymore after preparation.
  *
  * Multiple encoded graphs share the Object[] array, and elements of the Object[] array are
  * de-duplicated using {@link Object#equals Object equality}. This uses the assumption and good
  * coding practice that data objects are immutable if {@link Object#equals} is implemented.
  * Unfortunately, this cannot be enforced.
- *
- * The Graal {@link NodeClass} does not have a unique id that allows class lookup from an id.
- * Therefore, the encoded graph contains a {@link NodeClass}[] array for lookup, and type ids are
- * encoding-local.
  *
  * The encoded graph has the following structure: First, all nodes and their edges are serialized.
  * The start offset of every node is then known. The raw node data is followed by metadata, i.e.,
@@ -77,13 +74,13 @@ import jdk.vm.ci.code.Architecture;
  *
  * The beginning of this metadata is the return value of {@link #encode} and stored in
  * {@link EncodedGraph#getStartOffset()}. The order of nodes in the table of contents is the
- * {@link NodeOrder#orderIds orderId} of a node. Note that the orderId is not the regular node id
- * that every Graal graph node gets assigned. The orderId is computed and used just for encoding and
- * decoding. The orderId of fixed nodes is assigned in reverse postorder. The decoder processes
- * nodes using that order, which ensures that all predecessors of a node (including all
- * {@link EndNode predecessors} of a {@link AbstractBeginNode block}) are decoded before the node.
- * The order id of floating node does not matter during decoding, so floating nodes get order ids
- * after all fixed nodes. The order id is used to encode edges between nodes
+ * {@link NodeOrder#orderIds orderId} of a node. Note that the orderId is not the same as
+ * {@code Node.getId()}. The orderId is computed and used just for encoding and decoding. The
+ * orderId of fixed nodes is assigned in reverse postorder. The decoder processes nodes using that
+ * order, which ensures that all predecessors of a node (including all {@link EndNode predecessors}
+ * of a {@link AbstractBeginNode block}) are decoded before the node. The orderId of a floating node
+ * does not matter during decoding, so floating nodes get orderIds after all fixed nodes. The
+ * orderId is used to encode edges between nodes
  *
  * Structure of an encoded node:
  *
@@ -149,20 +146,23 @@ public class GraphEncoder {
      * used objects have the small indices.
      */
     protected final FrequencyEncoder<Object> objects;
-    /**
-     * Collects all node classes referenced in graphs. This is necessary because {@link NodeClass}
-     * currently does not have a unique id.
-     */
-    protected final FrequencyEncoder<NodeClass<?>> nodeClasses;
     /** The writer for the encoded graphs. */
     protected final UnsafeArrayTypeWriter writer;
 
+    protected final NodeClassMap nodeClasses;
+
     /** The last snapshot of {@link #objects} that was retrieved. */
     protected Object[] objectsArray;
-    /** The last snapshot of {@link #nodeClasses} that was retrieved. */
-    protected NodeClass<?>[] nodeClassesArray;
 
     protected DebugContext debug;
+
+    /**
+     * Global map used in HotSpot JIT compilation as well as Native Image AOT compilation. Encoding
+     * graphs for Native Image runtime compilation must not use this map as it will contain
+     * hosted-only types.
+     */
+    @ObjectCopier.NotExternalValue(reason = "Needs to be persisted separately") //
+    public static final NodeClassMap GLOBAL_NODE_CLASS_MAP = new NodeClassMap();
 
     private final InliningLogCodec inliningLogCodec;
 
@@ -187,17 +187,17 @@ public class GraphEncoder {
     }
 
     public GraphEncoder(Architecture architecture) {
-        this(architecture, null);
+        this(architecture, null, GLOBAL_NODE_CLASS_MAP);
     }
 
-    public GraphEncoder(Architecture architecture, DebugContext debug) {
+    public GraphEncoder(Architecture architecture, DebugContext debug, NodeClassMap nodeClasses) {
         this.architecture = architecture;
         this.debug = debug;
-        objects = FrequencyEncoder.createEqualityEncoder();
-        nodeClasses = FrequencyEncoder.createIdentityEncoder();
-        writer = UnsafeArrayTypeWriter.create(architecture.supportsUnalignedMemoryAccess());
-        inliningLogCodec = new InliningLogCodec();
-        optimizationLogCodec = new OptimizationLogCodec();
+        this.objects = FrequencyEncoder.createEqualityEncoder();
+        this.nodeClasses = nodeClasses == null ? GLOBAL_NODE_CLASS_MAP : nodeClasses;
+        this.writer = UnsafeArrayTypeWriter.create(architecture.supportsUnalignedMemoryAccess());
+        this.inliningLogCodec = new InliningLogCodec();
+        this.optimizationLogCodec = new OptimizationLogCodec();
     }
 
     /**
@@ -210,7 +210,10 @@ public class GraphEncoder {
         optimizationLogCodec.prepare(graph, this::addObject);
         for (Node node : graph.getNodes()) {
             NodeClass<? extends Node> nodeClass = node.getNodeClass();
-            nodeClasses.addObject(nodeClass);
+
+            // Create encoding id for the node class
+            nodeClasses.getId(nodeClass);
+
             addObject(node.getNodeSourcePosition());
             for (int i = 0; i < nodeClass.getData().getCount(); i++) {
                 if (!nodeClass.getData().getType(i).isPrimitive()) {
@@ -223,35 +226,51 @@ public class GraphEncoder {
         }
     }
 
+    protected Object replaceObjectForEncoding(Object object) {
+        return object;
+    }
+
     protected void addObject(Object object) {
-        objects.addObject(object);
+        objects.addObject(replaceObjectForEncoding(object));
     }
 
     public void finishPrepare() {
         objectsArray = objects.encodeAll(new Object[objects.getLength()]);
-        nodeClassesArray = nodeClasses.encodeAll(new NodeClass<?>[nodeClasses.getLength()]);
     }
 
     public Object[] getObjects() {
         return objectsArray;
     }
 
-    public NodeClass<?>[] getNodeClasses() {
-        return nodeClassesArray;
+    /**
+     * Gets the map used to assign ids to {@link NodeClass} objects encoded by this encoder. Note
+     * that there may be entries for {@link NodeClass} objects not encoded by this encoder as maps
+     * can be shared between encoders.
+     */
+    public NodeClassMap getNodeClasses() {
+        return nodeClasses;
     }
 
     /**
      * Compresses a graph to a byte array. Multiple graphs can be compressed with the same
      * {@link GraphEncoder}.
      *
-     * @param graph The graph to encode
+     * @param graph graph to encode
+     * @return the offset of the encoded graph in {@link #getEncoding()}
      */
     public int encode(StructuredGraph graph) {
         return encode(graph, null);
     }
 
+    /**
+     * Compresses a graph to a byte array. Multiple graphs can be compressed with the same
+     * {@link GraphEncoder}.
+     *
+     * @param graph graph to encode
+     * @return the offset of the encoded graph
+     */
     protected int encode(StructuredGraph graph, Iterable<EncodedGraph.EncodedNodeReference> nodeReferences) {
-        assert objectsArray != null && nodeClassesArray != null : "finishPrepare() must be called before encode()";
+        assert objectsArray != null : "finishPrepare() must be called before encode()";
 
         NodeOrder nodeOrder = new NodeOrder(graph);
         int nodeCount = nodeOrder.nextOrderId;
@@ -282,14 +301,13 @@ public class GraphEncoder {
 
             /* Write out the type, properties, and edges. */
             NodeClass<?> nodeClass = node.getNodeClass();
-            writer.putUV(nodeClasses.getIndex(nodeClass));
+            writer.putUV(getNodeClasses().getId(nodeClass));
             writeEdges(node, nodeClass.getEdges(Edges.Type.Inputs), nodeOrder);
             writeProperties(node, nodeClass.getData());
             writeEdges(node, nodeClass.getEdges(Edges.Type.Successors), nodeOrder);
 
             /* Special handling for some nodes that require additional information for decoding. */
-            if (node instanceof AbstractEndNode) {
-                AbstractEndNode end = (AbstractEndNode) node;
+            if (node instanceof AbstractEndNode end) {
                 AbstractMergeNode merge = end.merge();
                 /*
                  * Write the orderId of the merge. The merge is not a successor in the Graal graph
@@ -298,8 +316,8 @@ public class GraphEncoder {
                 writeOrderId(merge, nodeOrder);
 
                 /*
-                 * Write all phi mappings (the oderId of the phi input for this EndNode, and the
-                 * orderId of the phi node.
+                 * Write all phi mappings (the orderId of the phi input for this EndNode, and the
+                 * orderId of the phi node).
                  */
                 writer.putUV(merge.phis().count());
                 for (PhiNode phi : merge.phis()) {
@@ -307,8 +325,7 @@ public class GraphEncoder {
                     writeOrderId(phi, nodeOrder);
                 }
 
-            } else if (node instanceof LoopExitNode) {
-                LoopExitNode exit = (LoopExitNode) node;
+            } else if (node instanceof LoopExitNode exit) {
                 writeOrderId(exit.stateAfter(), nodeOrder);
                 /* Write all proxy nodes of the LoopExitNode. */
                 writer.putUV(exit.proxies().count());
@@ -355,12 +372,15 @@ public class GraphEncoder {
             writer.putUV(metadataStart - nodeStartOffsets[i]);
         }
 
-        /* Check that the decoding of the encode graph is the same as the input. */
+        /* Check that the decoding of the encoded graph is the same as the input. */
         assert verifyEncoding(graph, new EncodedGraph(getEncoding(), metadataStart, getObjects(), getNodeClasses(), graph));
 
         return metadataStart;
     }
 
+    /**
+     * Gets the encoded bytes for all graphs that were encoded by this encoder.
+     */
     public byte[] getEncoding() {
         return writer.toArray(new byte[TypeConversion.asS4(writer.getBytesWritten())]);
     }
@@ -448,8 +468,7 @@ public class GraphEncoder {
                 long primitive = fields.getRawPrimitive(node, idx);
                 writer.putSV(primitive);
             } else {
-                Object property = fields.get(node, idx);
-                writeObjectId(property);
+                writeObjectId(node, fields, idx);
             }
         }
     }
@@ -498,8 +517,17 @@ public class GraphEncoder {
         }
     }
 
-    protected void writeObjectId(Object object) {
+    private void writeObjectId(Object value) {
+        Object object = replaceObjectForEncoding(value);
         writer.putUV(objects.getIndex(object));
+    }
+
+    private void writeObjectId(Node node, Fields fields, int fieldIndex) {
+        Object value = fields.get(node, fieldIndex);
+        Object object = replaceObjectForEncoding(value);
+        int index = objects.findIndex(object);
+        assert index >= 0 : Assertions.errorMessageContext("node", node, "field", fields.getName(fieldIndex), "object", object);
+        writer.putUV(index);
     }
 
     /**
@@ -533,7 +561,7 @@ public class GraphEncoder {
         }
         return optimizationLogCodec.verify(originalGraph, decodedGraph) && inliningLogCodec.verify(originalGraph, decodedGraph);
     }
-    
+
     protected GraphDecoder graphDecoderForVerification(StructuredGraph decodedGraph) {
         return new GraphDecoder(architecture, decodedGraph);
     }

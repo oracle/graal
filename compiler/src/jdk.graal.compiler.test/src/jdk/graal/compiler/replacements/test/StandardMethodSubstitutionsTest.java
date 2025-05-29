@@ -61,12 +61,17 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         testGraph("mathTan");
         testGraph("mathAll");
 
+        if (getReplacements().hasSubstitution(getResolvedJavaMethod(Math.class, "tanh"), getInitialOptions())) {
+            testGraph("mathTanh");
+        }
+
         test("mathCos", value);
         test("mathLog", value);
         test("mathLog10", value);
         test("mathSin", value);
         test("mathSqrt", value);
         test("mathTan", value);
+        test("mathTanh", value);
         test("mathAll", value);
     }
 
@@ -132,6 +137,10 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         return Math.tan(value);
     }
 
+    public static double mathTanh(double value) {
+        return Math.tanh(value);
+    }
+
     public static double mathAll(double value) {
         return Math.sqrt(value) + Math.log(value) + Math.log10(value) + Math.sin(value) + Math.cos(value) + Math.tan(value);
     }
@@ -142,7 +151,7 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         StructuredGraph graph = testGraph(testMethodName);
 
         // Check to see if the resulting graph contains the expected node
-        StructuredGraph replacement = getReplacements().getInlineSubstitution(realJavaMethod, 0, Invoke.InlineControl.Normal, false, null, graph.allowAssumptions(), graph.getOptions());
+        StructuredGraph replacement = getReplacements().getInlineSubstitution(realJavaMethod, 0, false, Invoke.InlineControl.Normal, false, null, graph.allowAssumptions(), graph.getOptions());
         if (replacement == null && !optional) {
             assertInGraph(graph, intrinsicClasses);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -105,6 +105,14 @@ public abstract class ByteArraySupport {
      */
     public static ByteArraySupport bigEndian() {
         return ByteArraySupports.BIG_ENDIAN;
+    }
+
+    static ByteArraySupport nativeUnsafe() {
+        return ByteArraySupports.NATIVE_UNSAFE;
+    }
+
+    static ByteArraySupport nativeChecked() {
+        return ByteArraySupports.NATIVE_CHECKED;
     }
 
     /**

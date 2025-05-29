@@ -2,12 +2,48 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
+## GraalVM for JDK 25
+* (GR-52276) (GR-61959) Add support for Arena.ofShared().
+* (GR-58668) Enabled [Whole-Program Sparse Conditional Constant Propagation (WP-SCCP)](https://github.com/oracle/graal/pull/9821) by default, improving the precision of points-to analysis in Native Image. This optimization enhances static analysis accuracy and scalability, potentially reducing the size of the final native binary.
+* (GR-59313) Deprecated class-level metadata extraction using `native-image-inspect` and removed option `DumpMethodsData`. Use class-level SBOMs instead by passing `--enable-sbom=class-level,export` to the `native-image` builder. The default value of option `IncludeMethodData` was changed to `false`.
+* (GR-52400) The build process now uses 85% of system memory in containers and CI environments. Otherwise, it tries to only use available memory. If less than 8GB of memory are available, it falls back to 85% of system memory. The reason for the selected memory limit is now also shown in the build resources section of the build output.
+* (GR-59864) Added JVM version check to the Native Image agent. The agent will abort execution if the JVM major version does not match the version it was built with, and warn if the full JVM version is different.
+* (GR-59135) Verify if hosted options passed to `native-image` exist prior to starting the builder. Provide suggestions how to fix unknown options early on.
+* (GR-61492) The experimental JDWP option is now present in standard GraalVM builds.
+* (GR-55222) Enabled lazy deoptimization of runtime-compiled code, which reduces memory used for deoptimization. Can be turned off with `-H:-LazyDeoptimization`.
+* (GR-54953) Add the experimental option `-H:Preserve` that makes the program work correctly without providing reachability metadata. Correctness is achieved by preserving all classes, resources, and reflection metadata in the image. Usage: `-H:Preserve=[all|none|module=<module>|package=<package>|package=<package-wildcard>|path=<cp-entry>][,...]`.
+* (GR-58659) (GR-58660) Support for FFM API ("Panama") has been added for darwin-aarch64 and linux-aarch64.
+* (GR-49525) Introduced `--future-defaults=[all|<options>|none]` that enables options that are planned to become defaults in future releases. The enabled options are:
+    1. `run-time-initialized-jdk` shifts away from build-time initialization of the JDK, instead initializing most of it at run time. This transition is gradual, with individual components of the JDK becoming run-time initialized in each release. This process should complete with JDK 29 when this option should not be needed anymore. Unless you store classes from the JDK in the image heap, this option should not affect you. In case this option breaks your build, follow the suggestions in the error messages.
+* (GR-63494) Recurring callback support is no longer enabled by default. If this feature is needed, please specify `-H:+SupportRecurringCallback` at image build-time.
+* (GR-60209) New syntax for configuration of the [Foreign Function & Memory API](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/ForeignInterface.md)
+* (GR-64584) Experimental option `-H:+RelativeCodePointers` to significantly reduce relocation entries in position-independent executables and shared libraries.
+* (GR-60238) JNI registration is now included as part of the `"reflection"` section of _reachability-metadata.json_ using the `"jniAccessible"` attribute. Registrations performed through the `"jni"` section of _reachability-metadata.json_ and through _jni-config.json_ will still be accepted and parsed correctly.
+* (GR-65008) Remove the sequential reachability handler. The only remaining variant is the concurrent reachability handler, which has been the default implementation since its introduction. Additionally, remove the `-H:-RunReachabilityHandlersConcurrently` option which was introduced to simplify migration and has been deprecated since Version 24.0.0.
+* (GR-53985) Add experimental option `ClassForNameRespectsClassLoader` that makes `Class.forName(...)` respect the class loader hierarchy.
+* (GR-59869) Implemented initial optimization of Java Vector API (JEP 338) operations in native images. See the compiler changelog for more details.
+* (GR-63268) Reflection and JNI queries do not require metadata entries to throw the expected JDK exception when querying a class that doesn't exist under `--exact-reachability-metadata` if the query cannot possibly be a valid class name
+* (GR-47881) Remove the total number of loaded types, fields, and methods from the build output, deprecated these metrics in the build output schema, and removed already deprecated build output metrics.
+
 ## GraalVM for JDK 24 (Internal Version 24.2.0)
+* (GR-59717) Added `DuringSetupAccess.registerObjectReachabilityHandler` to allow registering a callback that is executed when an object of a specified type is marked as reachable during heap scanning.
+* (GR-55708) (Alibaba contribution) Support for running premain methods of Java agents at runtime as an experimental feature. At build time, `-H:PremainClasses` is used to set the premain classes.
+At runtime, premain runtime options are set along with main class' arguments in the format of `-XXpremain:[class]:[options]`.
 * (GR-54476): Issue a deprecation warning on first use of a legacy `graal.` prefix (see GR-49960 in [Compiler changelog](../compiler/CHANGELOG.md)).
   The warning is planned to be replaced by an error in GraalVM for JDK 25.
 * (GR-48384) Added a GDB Python script (`gdb-debughelpers.py`) to improve the Native Image debugging experience.
 * (GR-49517) Add support for emitting Windows x64 unwind info. This enables stack walking in native tooling such as debuggers and profilers.
+* (GR-52576) Optimize FFM API upcalls for specifiable static upcall target methods.
+* (GR-56599) Update native image debuginfo from DWARF4 to DWARF5 and store type information for debugging in DWARF type units.
+* (GR-56601) Together with Red Hat, we added experimental support for `jcmd` on Linux and macOS. Add `--enable-monitoring=jcmd` to your build arguments to try it out.
 * (GR-57384) Preserve the origin of a resource included in a native image. The information is included in the report produced by -H:+GenerateEmbeddedResourcesFile.
+* (GR-58000) Support for `GetStringUTFLengthAsLong` added in JNI_VERSION_24 ([JDK-8328877](https://bugs.openjdk.org/browse/JDK-8328877))
+* (GR-58383) The length of the printed stack trace when using `-XX:MissingRegistrationReportingMode=Warn` can now be set with `-XX:MissingRegistrationWarnContextLines=` and its default length is now 8.
+* (GR-58914) `ActiveProcessorCount` must be set at isolate or VM creation time.
+* (GR-59326) Ensure builder ForkJoin commonPool parallelism always respects NativeImageOptions.NumberOfThreads.
+* (GR-60081) Native Image now targets `armv8.1-a` by default on AArch64. Use `-march=compatibility` for best compatibility or `-march=native` for best performance if the native executable is deployed on the same machine or on a machine with the same CPU features. To list all available machine types, use `-march=list`.
+* (GR-60234) Remove `"customTargetConstructorClass"` field from the serialization JSON metadata. All possible constructors are now registered by default when registering a type for serialization. `RuntimeSerialization.registerWithTargetConstructorClass` is now deprecated.
+* (GR-60237) Include serialization JSON reachability metadata as part of reflection metadata by introducing the `"serializable"` flag for reflection entries.
 
 ## GraalVM for JDK 23 (Internal Version 24.1.0)
 * (GR-51520) The old class initialization strategy, which was deprecated in GraalVM for JDK 22, is removed. The option `StrictImageHeap` no longer has any effect.
@@ -36,6 +72,8 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-49770) Add support for glob patterns in resource-config files in addition to regexp. The Tracing Agent now prints entries in the glob format.
 * (GR-46386) Throw missing registration errors for JNI queries when the query was not included in the reachability metadata.
 * (GR-51479) Implement cgroup support in native code. See the [README](src/com.oracle.svm.native.libcontainer/README.md) and the [PR description](https://github.com/oracle/graal/pull/8989).
+* (GR-54241) Streamline Native Image reachability metadata into a single `reachability-metadata.json`. The formerly-used individual metadata files (`reflection-config.json`, `resource-config.json`, etc.) are now deprecated, but will still be accepted.
+  Native Image will only output `reachability-metadata.json` files, and those will be readable on the previous LTS versions of GraalVM. See the [documentation](../docs/reference-manual/native-image/ReachabilityMetadata.md).
 
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
 * (GR-48304) Red Hat added support for the JFR event ThreadAllocationStatistics.
@@ -95,7 +133,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-42467) The search path for `System.loadLibrary()` by default includes the directory containing the native image.
 * (GR-44216) Native Image is now shipped as part of the GraalVM JDK and thus no longer needs to be installed via `gu install native-image`.
 * (GR-44105) A warning is displayed when trying to generate debug info on macOS since that is not supported. It is now an error to use `-H:+StripDebugInfo` on macOS or `-H:-StripDebugInfo` on Windows since those values are not supported.
-* (GR-43966) Remove analysis options -H:AnalysisStatisticsFile and -H:ImageBuildStatisticsFile. Output files are now written to fixed subdirectories relative to image location (reports/image_build_statistics.json). 
+* (GR-43966) Remove analysis options -H:AnalysisStatisticsFile and -H:ImageBuildStatisticsFile. Output files are now written to fixed subdirectories relative to image location (reports/image_build_statistics.json).
 * (GR-38414) BellSoft implemented the `MemoryPoolMXBean` for the serial and epsilon GCs.
 * (GR-40641) Dynamic linking of AWT libraries on Linux.
 * (GR-40463) Red Hat added experimental support for JMX, which can be enabled with the `--enable-monitoring` option (e.g. `--enable-monitoring=jmxclient,jmxserver`).
@@ -109,7 +147,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 ## Version 22.3.0
 * (GR-35721) Remove old build output style and the `-H:±BuildOutputUseNewStyle` option.
 * (GR-39390) (GR-39649) (GR-40033) Red Hat added support for the JFR events `JavaMonitorEnter`, `JavaMonitorWait`, and `ThreadSleep`.
-* (GR-39497) Add `-H:BuildOutputJSONFile=<file.json>` option for [JSON build output](https://github.com/oracle/graal/edit/master/docs/reference-manual/native-image/BuildOutput.md#machine-readable-build-output). Please feel free to provide feedback so that we can stabilize the schema/API.
+* (GR-39497) Add `-H:BuildOutputJSONFile=<file.json>` option for [JSON build output](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md#machine-readable-build-output). Please feel free to provide feedback so that we can stabilize the schema/API.
 * (GR-40170) Add `--silent` option to silence the build output.
 * (GR-39475) Add initial support for jvmstat.
 * (GR-39563) Add support for JDK 19 and Project Loom Virtual Threads (JEP 425) for high-throughput lightweight concurrency. Enable on JDK 19 with `native-image --enable-preview`.

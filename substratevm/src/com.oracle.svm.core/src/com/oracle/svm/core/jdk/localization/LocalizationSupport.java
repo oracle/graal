@@ -34,7 +34,6 @@ import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.IllformedLocaleException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -77,8 +76,6 @@ public class LocalizationSupport {
 
     public final Map<String, Charset> charsets = new HashMap<>();
 
-    public final Locale defaultLocale;
-
     public final Locale[] allLocales;
 
     public final Set<String> supportedLanguageTags;
@@ -89,10 +86,9 @@ public class LocalizationSupport {
 
     public final Charset defaultCharset;
 
-    private final EconomicMap<String, RuntimeConditionSet> registeredBundles = ImageHeapMap.create();
+    private final EconomicMap<String, RuntimeConditionSet> registeredBundles = ImageHeapMap.create("registeredBundles");
 
-    public LocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
-        this.defaultLocale = defaultLocale;
+    public LocalizationSupport(Set<Locale> locales, Charset defaultCharset) {
         this.allLocales = locales.toArray(new Locale[0]);
         this.defaultCharset = defaultCharset;
         this.supportedLanguageTags = locales.stream().map(Locale::toString).collect(Collectors.toSet());
@@ -179,21 +175,6 @@ public class LocalizationSupport {
         return uniformBundleName.substring(0, classSep);
     }
 
-    public String getResultingPattern(String bundleName, Locale locale) {
-        String fixedBundleName = bundleName.replace("$", "\\$");
-        return getBundleName(fixedBundleName, locale);
-    }
-
-    private String getBundleName(String fixedBundleName, Locale locale) {
-        String[] bundleNameWithModule = SubstrateUtil.split(fixedBundleName, ":", 2);
-        if (bundleNameWithModule.length < 2) {
-            return toSlashSeparated(control.toBundleName(fixedBundleName, locale));
-        } else {
-            String patternWithLocale = toSlashSeparated(control.toBundleName(bundleNameWithModule[1], locale));
-            return bundleNameWithModule[0] + ':' + patternWithLocale;
-        }
-    }
-
     public void registerRequiredReflectionAndResourcesForBundle(String baseName, Collection<Locale> wantedLocales, boolean jdkBundle) {
         if (!jdkBundle) {
             int i = baseName.lastIndexOf('.');
@@ -225,7 +206,7 @@ public class LocalizationSupport {
             if (bundleClass != null) {
                 registerNullaryConstructor(bundleClass);
             }
-            Resources.singleton().registerNegativeQuery(bundleWithLocale.replace('.', '/') + ".properties");
+            Resources.currentLayer().registerNegativeQuery(bundleWithLocale.replace('.', '/') + ".properties");
 
             if (jdkBundle) {
                 String otherBundleName = Bundles.toOtherBundleName(baseName, bundleWithLocale, locale);
@@ -275,29 +256,6 @@ public class LocalizationSupport {
     @SuppressWarnings("unused")
     public boolean isNotIncluded(String bundleName) {
         return false;
-    }
-
-    /**
-     * @return locale for given tag or null for invalid ones
-     */
-    @SuppressWarnings("deprecation")
-    public static Locale parseLocaleFromTag(String tag) {
-        try {
-            return new Locale.Builder().setLanguageTag(tag).build();
-        } catch (IllformedLocaleException ex) {
-            /*- Custom made locales consisting of at most three parts separated by '-' are also supported */
-            String[] parts = tag.split("-");
-            switch (parts.length) {
-                case 1:
-                    return new Locale(parts[0]);
-                case 2:
-                    return new Locale(parts[0], parts[1]);
-                case 3:
-                    return new Locale(parts[0], parts[1], parts[2]);
-                default:
-                    return null;
-            }
-        }
     }
 
     public void prepareClassResourceBundle(@SuppressWarnings("unused") String basename, Class<?> bundleClass) {

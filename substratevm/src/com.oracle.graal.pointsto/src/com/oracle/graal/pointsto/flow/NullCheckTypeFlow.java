@@ -59,8 +59,11 @@ public class NullCheckTypeFlow extends TypeFlow<BytecodePosition> {
         return blockNull;
     }
 
+    /**
+     * Filters the incoming type state by performing a null check.
+     */
     @Override
-    public TypeState filter(PointsToAnalysis bb, TypeState newState) {
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState newState) {
         if (blockNull) {
             return newState.forNonNull(bb);
         } else if (newState.canBeNull()) {
@@ -72,7 +75,7 @@ public class NullCheckTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public String toString() {
-        return "NullCheckTypeFlow<" + (getDeclaredType() != null ? getDeclaredType().toJavaName(false) : "null") + " : " + getState() + ">";
+        return "NullCheckTypeFlow<" + (getDeclaredType() != null ? getDeclaredType().toJavaName(false) : "null") + " : " + getStateDescription() + ">";
     }
 
 }

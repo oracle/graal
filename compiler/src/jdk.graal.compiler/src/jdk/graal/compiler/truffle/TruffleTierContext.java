@@ -26,7 +26,12 @@ package jdk.graal.compiler.truffle;
 
 import java.util.Objects;
 
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
+
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.RetryableBailoutException;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.Cancellable;
@@ -37,11 +42,6 @@ import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.truffle.nodes.TruffleAssumption;
-
-import com.oracle.truffle.compiler.TruffleCompilable;
-import com.oracle.truffle.compiler.TruffleCompilationTask;
-import com.oracle.truffle.compiler.TruffleCompilerRuntime;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -62,12 +62,13 @@ public final class TruffleTierContext extends HighTierContext {
     public final StructuredGraph graph;
     public final PerformanceInformationHandler handler;
 
-    public TruffleTierContext(PartialEvaluator partialEvaluator,
+    private TruffleTierContext(PartialEvaluator partialEvaluator,
                     OptionValues compilerOptions,
                     DebugContext debug,
-                    TruffleCompilable compilable, ResolvedJavaMethod method,
+                    TruffleCompilable compilable,
                     CompilationIdentifier compilationId, SpeculationLog log,
-                    TruffleCompilationTask task, PerformanceInformationHandler handler) {
+                    TruffleCompilationTask task, PerformanceInformationHandler handler,
+                    ResolvedJavaMethod initialMethod) {
         super(partialEvaluator.getProviders(), new PhaseSuite<>(), OptimisticOptimizations.NONE);
         Objects.requireNonNull(debug);
         Objects.requireNonNull(compilable);
@@ -82,12 +83,71 @@ public final class TruffleTierContext extends HighTierContext {
         this.log = log;
         this.task = task;
         this.handler = handler;
-        this.graph = createInitialGraph(method);
+        this.graph = createInitialGraph(initialMethod);
+    }
+
+    private TruffleTierContext(TruffleTierContext parent,
+                    TruffleCompilable compilable,
+                    ResolvedJavaMethod initialMethod) {
+        this(parent.partialEvaluator,
+                        parent.compilerOptions,
+                        parent.debug,
+                        compilable,
+                        parent.compilationId,
+                        parent.log,
+                        parent.task,
+                        parent.handler,
+                        initialMethod);
+    }
+
+    public static TruffleTierContext createInitialContext(PartialEvaluator partialEvaluator,
+                    OptionValues compilerOptions,
+                    DebugContext debug,
+                    TruffleCompilable compilable,
+                    CompilationIdentifier compilationId, SpeculationLog log,
+                    TruffleCompilationTask task, PerformanceInformationHandler handler) {
+
+        boolean readyForCompilation = compilable.prepareForCompilation(true, task.tier(), !task.hasNextTier());
+        if (!readyForCompilation) {
+            /*
+             * If the root node not ready for compilation we throw a retryable bailout for root
+             * compilations. This will have the effect that the method will be called again in the
+             * interpreter to reprofile.
+             */
+            throw new RetryableBailoutException("Compilable not ready for compilation.");
+        }
+        ResolvedJavaMethod method = partialEvaluator.rootForCallTarget(compilable);
+        TruffleTierContext context = new TruffleTierContext(partialEvaluator, compilerOptions, debug, compilable, compilationId, log, task, handler, method);
+        context.recordStabilityAssumptions();
+        return context;
+    }
+
+    public TruffleTierContext createInlineContext(TruffleCompilable inlinedCompilable) {
+        boolean readyForCompilation = inlinedCompilable.prepareForCompilation(false, task.tier(), !task.hasNextTier());
+        if (!readyForCompilation) {
+            /*
+             * If the root node not ready for compilation we throw a retryable bailout. For inlining
+             * this bailout triggers the Bailout state in the inlining call tree which forces the
+             * call to a materialize and not inline.
+             */
+            throw new RetryableBailoutException("Compilable not ready for compilation.");
+        }
+        TruffleTierContext context = new TruffleTierContext(this, inlinedCompilable,
+                        partialEvaluator.inlineRootForCallTarget(compilable));
+        context.recordStabilityAssumptions();
+        return context;
+    }
+
+    /**
+     * This creates a compilation context for call site finalization during inlining. We PE all
+     * candidates up to callInlined, then when we are done with inlining we finalize the graph by PE
+     * from callDirect to the call boundary for call sites not inlined.
+     */
+    public TruffleTierContext createFinalizationContext(TruffleCompilable inlinedCompilable) {
+        return new TruffleTierContext(this, inlinedCompilable, partialEvaluator.getCallDirect());
     }
 
     private StructuredGraph createInitialGraph(ResolvedJavaMethod method) {
-        compilable.prepareForCompilation();
-
         // @formatter:off
         StructuredGraph.Builder builder = new StructuredGraph.Builder(this.debug.getOptions(), this.debug, StructuredGraph.AllowAssumptions.YES).
                 name(this.compilable.getName()).
@@ -97,11 +157,12 @@ public final class TruffleTierContext extends HighTierContext {
                 trackNodeSourcePosition(partialEvaluator.graphBuilderConfigForParsing.trackNodeSourcePosition()).
                 cancellable(new CancellableTask(this.task));
         // @formatter:on
-        builder = partialEvaluator.customizeStructuredGraphBuilder(builder);
-        StructuredGraph g = builder.build();
-        g.getAssumptions().record(new TruffleAssumption(getValidRootAssumption(partialEvaluator.getProviders())));
-        g.getAssumptions().record(new TruffleAssumption(getNodeRewritingAssumption(partialEvaluator.getProviders())));
-        return g;
+        return partialEvaluator.customizeStructuredGraphBuilder(builder).build();
+    }
+
+    private void recordStabilityAssumptions() {
+        graph.getAssumptions().record(new TruffleAssumption(getValidRootAssumption(partialEvaluator.getProviders())));
+        graph.getAssumptions().record(new TruffleAssumption(getNodeRewritingAssumption(partialEvaluator.getProviders())));
     }
 
     public PartialEvaluator getPartialEvaluator() {

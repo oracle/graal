@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,19 @@
  */
 package jdk.graal.compiler.core.aarch64;
 
+import java.util.ListIterator;
+
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.java.DefaultSuitesCreator;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
+import jdk.graal.compiler.phases.tiers.LowTierContext;
+import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.vector.phases.aarch64.AArch64VectorLoweringPhase;
+import jdk.vm.ci.code.Architecture;
 
 public abstract class AArch64SuitesCreator extends DefaultSuitesCreator {
 
@@ -36,5 +46,18 @@ public abstract class AArch64SuitesCreator extends DefaultSuitesCreator {
 
     public AArch64SuitesCreator(CompilerConfiguration compilerConfiguration) {
         super(compilerConfiguration);
+    }
+
+    @Override
+    public Suites createSuites(OptionValues options, Architecture arch) {
+        Suites suites = super.createSuites(options, arch);
+        if (GraalOptions.TargetVectorLowering.getValue(options)) {
+            ListIterator<BasePhase<? super LowTierContext>> position = suites.getLowTier().findPhase(DeadCodeEliminationPhase.class);
+            if (position != null) {
+                position.previous();
+                position.add(new AArch64VectorLoweringPhase());
+            }
+        }
+        return suites;
     }
 }

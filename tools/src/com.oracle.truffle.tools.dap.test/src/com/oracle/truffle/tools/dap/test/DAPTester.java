@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -78,9 +79,13 @@ public final class DAPTester {
     }
 
     public static DAPTester start(boolean suspend, Consumer<Context> prolog, List<URI> sourcePath) throws IOException {
+        return start(suspend, prolog, sourcePath, Collections.emptyMap());
+    }
+
+    public static DAPTester start(boolean suspend, Consumer<Context> prolog, List<URI> sourcePath, Map<String, String> options) throws IOException {
         final ProxyOutputStream err = new ProxyOutputStream(System.err);
         Engine engine = Engine.newBuilder().err(err).build();
-        Context context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
+        Context context = Context.newBuilder().engine(engine).options(options).allowAllAccess(true).build();
         Runnable runProlog;
         if (prolog != null) {
             runProlog = () -> prolog.accept(context);

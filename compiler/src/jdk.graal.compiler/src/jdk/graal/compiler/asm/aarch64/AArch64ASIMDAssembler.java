@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -729,6 +729,7 @@ public abstract class AArch64ASIMDAssembler {
         /* Advanced SIMD shift by immediate (C4-371). */
         SSHR(0b00000 << 11),
         SHL(0b01010 << 11),
+        SHRN(0b10000 << 11),
         SSHLL(0b10100 << 11),
         USHR(UBit | 0b00000 << 11),
         USRA(UBit | 0b00010 << 11),
@@ -2959,6 +2960,37 @@ public abstract class AArch64ASIMDAssembler {
         int imm7 = eSize.nbits + shiftAmt;
 
         shiftByImmEncoding(ASIMDInstruction.SHL, size, imm7, dst, src);
+    }
+
+    /**
+     * C7.2.258 shift right narrow
+     * <p>
+     * From the manual: "This instruction reads each unsigned integer value from the source
+     * SIMD&amp;FP register, right shifts each result by an immediate value, put the final result
+     * into a vector, and writes the vector to the lower or upper half of the destination
+     * SIMD&amp;FP register. The destination vector elements are half as long as the source vector
+     * elements. The results are truncated..."
+     *
+     * <code>
+     *     for i in 0..(n/2)-1 do dst_bits[i * size, (i+1) * size] = truncate(src_bits[i * 2 * size, (i+1) * 2 * size] >>> shift)
+     *     for i in n/2..n-1 do dst[i] = 0
+     * </code>
+     *
+     * @param dstESize destination element size.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     * @param shift the shift amount.
+     */
+    public void shrnVV(ElementSize dstESize, Register dst, Register src, int shift) {
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert dstESize != ElementSize.DoubleWord : "Invalid lane width for shrn";
+        assert shift > 0 && shift <= dstESize.nbits : shift + " " + dstESize;
+
+        // shift = dstESize.nbits * 2 - imm7
+        int imm7 = dstESize.nbits * 2 - shift;
+
+        shiftByImmEncoding(ASIMDInstruction.SHRN, false, imm7, dst, src);
     }
 
     /**

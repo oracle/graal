@@ -25,7 +25,6 @@
 package com.oracle.svm.core.meta;
 
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 

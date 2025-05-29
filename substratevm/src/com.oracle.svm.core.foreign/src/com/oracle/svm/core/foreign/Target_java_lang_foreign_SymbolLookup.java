@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,7 +50,6 @@ import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.Utils;
 import jdk.internal.loader.NativeLibrary;
@@ -67,7 +66,8 @@ import jdk.internal.reflect.Reflection;
  * succeed. See
  * {@link com.oracle.svm.core.jdk.Target_java_lang_ClassLoader#loadLibrary(java.lang.Class, java.lang.String)}
  */
-@TargetClass(className = "java.lang.foreign.SymbolLookup", onlyWith = ForeignFunctionsEnabled.class)
+@SuppressWarnings("javadoc")
+@TargetClass(className = "java.lang.foreign.SymbolLookup", onlyWith = ForeignAPIPredicates.Enabled.class)
 public final class Target_java_lang_foreign_SymbolLookup {
 
     @Substitute
@@ -139,11 +139,7 @@ final class Util_java_lang_foreign_SymbolLookup {
          */
         Target_java_lang_Module module = SubstrateUtil.cast(currentClass != null ? currentClass.getModule() : ClassLoader.getSystemClassLoader().getUnnamedModule(),
                         Target_java_lang_Module.class);
-        if (JavaVersionUtil.JAVA_SPEC <= 21) {
-            module.ensureNativeAccess(owner, methodName);
-        } else {
-            module.ensureNativeAccess(owner, methodName, currentClass);
-        }
+        module.ensureNativeAccess(owner, methodName, currentClass, false);
 
     }
 

@@ -65,12 +65,13 @@ public enum LayeredImageSingletonBuilderFlags {
             assert flags.equals(EnumSet.of(UNSUPPORTED)) : "Unsupported should be the only flag set " + flags;
         }
 
-        if (singleton instanceof MultiLayeredImageSingleton || singleton instanceof ApplicationLayerOnlyImageSingleton) {
+        if (singleton instanceof MultiLayeredImageSingleton || ApplicationLayerOnlyImageSingleton.isSingletonInstanceOf(singleton)) {
             assert flags.contains(RUNTIME_ACCESS) : String.format("%s must be set when implementing either %s or %s: %s", RUNTIME_ACCESS, MultiLayeredImageSingleton.class,
                             ApplicationLayerOnlyImageSingleton.class, singleton);
         }
 
-        assert !(singleton instanceof MultiLayeredImageSingleton && singleton instanceof ApplicationLayerOnlyImageSingleton) : String.format("%s can only implement one of %s or %s", singleton,
+        assert !(singleton instanceof MultiLayeredImageSingleton && ApplicationLayerOnlyImageSingleton.isSingletonInstanceOf(singleton)) : String.format("%s can only implement one of %s or %s",
+                        singleton,
                         MultiLayeredImageSingleton.class, ApplicationLayerOnlyImageSingleton.class);
 
         return true;

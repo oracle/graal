@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.runtime.debug;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -65,6 +67,17 @@ import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
  * for each event.
  */
 public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeListener {
+    private static final Method GET_COMPILATION_ID_METHOD;
+
+    static {
+        Method getCompilationIdMethod = null;
+        try {
+            getCompilationIdMethod = CompilationResultInfo.class.getMethod("getCompilationId");
+        } catch (NoSuchMethodException e) {
+            // deliberately ignored, getCompilationIdMethod is null in this case
+        }
+        GET_COMPILATION_ID_METHOD = getCompilationIdMethod;
+    }
 
     private final ThreadLocal<Times> currentCompilation = new ThreadLocal<>();
 
@@ -77,18 +90,19 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     }
 
     public static final String TIER_FORMAT = "Tier %d";
-    private static final String QUEUE_FORMAT = "Queue: Size %4d Change %c%-2d Load %5.2f Time %5dus                    ";
+    private static final String QUEUE_FORMAT = "Queue: Size %4d Change %c%-2d Load %5.2f Time %5dus                                   ";
     private static final String TARGET_FORMAT = "engine=%-2d id=%-5d %-50s ";
     public static final String COUNT_THRESHOLD_FORMAT = "Count/Thres  %9d/%9d";
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS").withZone(ZoneId.of("UTC"));
     // @formatter:off
     private static final String QUEUED_FORMAT   = "opt queued " + TARGET_FORMAT + "|" + TIER_FORMAT + "|" + COUNT_THRESHOLD_FORMAT + "|" + QUEUE_FORMAT + "|UTC %s|Src %s";
     private static final String UNQUEUED_FORMAT = "opt unque. " + TARGET_FORMAT + "|" + TIER_FORMAT + "|" + COUNT_THRESHOLD_FORMAT + "|" + QUEUE_FORMAT + "|UTC %s|Src %s|Reason %s";
-    private static final String START_FORMAT    = "opt start  " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Priority %9d|Rate %.6f|"         + QUEUE_FORMAT + "|UTC %s|Src %s";
-    private static final String DONE_FORMAT     = "opt done   " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Time %18s|AST %4d|Inlined %3dY %3dN|IR %6d/%6d|CodeSize %7d|Addr 0x%012x|UTC %s|Src %s";
+    private static final String START_FORMAT    = "opt start  " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Priority %9d|Rate %.6f|"         + QUEUE_FORMAT + "|UTC %s|Src %s|Bonuses %s";
+    private static final String DONE_FORMAT     = "opt done   " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Time %18s|AST %4d|Inlined %3dY %3dN|IR %6d/%6d|CodeSize %7d|Addr 0x%012x|CompId %-7s|UTC %s|Src %s";
     private static final String FAILED_FORMAT   = "opt failed " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Time %18s|Reason: %s|UTC %s|Src %s";
-    private static final String INV_FORMAT      = "opt inval. " + TARGET_FORMAT + "                                                                                                                |UTC %s|Src %s|Reason %s";
-    private static final String DEOPT_FORMAT    = "opt deopt  " + TARGET_FORMAT + "|                                                                                                               |UTC %s|Src %s";
+    private static final String PADDING         = "                                                                                                                              ";
+    private static final String INV_FORMAT      = "opt inval. " + TARGET_FORMAT + " " + PADDING + "|UTC %s|Src %s|Reason %s";
+    private static final String DEOPT_FORMAT    = "opt deopt  " + TARGET_FORMAT + "|" + PADDING + "|UTC %s|Src %s";
     // @formatter:on
 
     @Override
@@ -167,16 +181,19 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             long time;
             double rate;
             int queueChange;
+            String appliedBonuses;
             if (task instanceof CompilationTask t) {
                 weight = t.weight();
                 time = t.time();
                 rate = t.rate();
                 queueChange = t.queueChange();
+                appliedBonuses = String.join(", ", t.bonusDescriptors());
             } else {
                 weight = 0.0d;
                 time = 0;
                 rate = Double.NaN;
                 queueChange = 0;
+                appliedBonuses = "";
             }
             log(target, String.format(START_FORMAT,
                             target.engineId(),
@@ -191,7 +208,8 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                             FixedPointMath.toDouble(runtime.compilationThresholdScale()),
                             time / 1000,
                             TIME_FORMATTER.format(ZonedDateTime.now()),
-                            formatSourceSection(safeSourceSection(target))));
+                            formatSourceSection(safeSourceSection(target)),
+                            appliedBonuses));
         }
 
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
@@ -245,9 +263,29 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                         graph == null ? 0 : graph.getNodeCount(),
                         result == null ? 0 : result.getTargetCodeSize(),
                         target.getCodeAddress(),
+                        result == null ? "n/a" : getCompilationId(result),
                         TIME_FORMATTER.format(ZonedDateTime.now()),
                         formatSourceSection(safeSourceSection(target))));
         currentCompilation.remove();
+    }
+
+    static String getCompilationId(CompilationResultInfo result) {
+        /*
+         * When the CompilationResultInfo class is from GraalVM, the getCompilationId method might
+         * not be there.
+         */
+        String toRet = "n/a";
+        if (GET_COMPILATION_ID_METHOD != null) {
+            try {
+                long compilationId = (long) GET_COMPILATION_ID_METHOD.invoke(result);
+                if (compilationId >= 0) {
+                    toRet = String.valueOf(compilationId);
+                }
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                // deliberately ignored, the compilationId is n/a in this case
+            }
+        }
+        return toRet;
     }
 
     private SourceSection safeSourceSection(OptimizedCallTarget target) {

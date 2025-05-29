@@ -24,90 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.log.Log;
-
-/**
- * A single wall-clock stopwatch that can be repeatedly {@linkplain #open started} and
- * {@linkplain #close() stopped}.
- */
-final class Timer implements AutoCloseable {
-    private final String name;
-    private boolean wasOpened;
-    private long openNanos;
-    private boolean wasClosed;
-    private long closeNanos;
-    private long collectedNanos;
-
-    Timer(String name) {
-        this.name = name;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Timer open() {
-        return openAt(System.nanoTime());
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    Timer openAt(long nanoTime) {
-        openNanos = nanoTime;
-        wasOpened = true;
-        closeNanos = 0L;
-        wasClosed = false;
-        return this;
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void close() {
-        closeAt(System.nanoTime());
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void closeAt(long nanoTime) {
-        closeNanos = nanoTime;
-        wasClosed = true;
-        collectedNanos += closeNanos - getOpenedTime();
-    }
-
-    public void reset() {
-        openNanos = 0L;
-        wasOpened = false;
-        closeNanos = 0L;
-        wasClosed = false;
-        collectedNanos = 0L;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getOpenedTime() {
-        if (!wasOpened) {
-            /* If a timer was not opened, pretend it was opened at the start of the VM. */
-            assert openNanos == 0;
-            return Isolates.getCurrentStartNanoTime();
-        }
-        return openNanos;
-    }
-
-    public long getClosedTime() {
-        assert wasClosed : "Should have closed timer";
-        return closeNanos;
-    }
-
-    /** Get all the nanoseconds collected between open/close pairs since the last reset. */
-    long getMeasuredNanos() {
-        return collectedNanos;
-    }
-
-    /** Get the nanoseconds collected by the most recent open/close pair. */
-    long getLastIntervalNanos() {
-        return getClosedTime() - getOpenedTime();
-    }
-}
+import com.oracle.svm.core.util.Timer;
 
 /** Collection timers primarily for {@link GCImpl}. */
 final class Timers {
@@ -209,8 +127,8 @@ final class Timers {
     }
 
     static void logOneTimer(Log log, String prefix, Timer timer) {
-        if (timer.getMeasuredNanos() > 0) {
-            log.newline().string(prefix).string(timer.getName()).string(": ").signed(timer.getMeasuredNanos());
+        if (timer.totalNanos() > 0) {
+            log.newline().string(prefix).string(timer.name()).string(": ").signed(timer.totalNanos());
         }
     }
 
@@ -221,8 +139,8 @@ final class Timers {
      * multi-threaded.
      */
     private static void logGCLoad(Log log, String prefix, String label, Timer cTimer, Timer mTimer) {
-        long collectionNanos = cTimer.getLastIntervalNanos();
-        long mutatorNanos = mTimer.getLastIntervalNanos();
+        long collectionNanos = cTimer.lastIntervalNanos();
+        long mutatorNanos = mTimer.lastIntervalNanos();
         long intervalNanos = mutatorNanos + collectionNanos;
         long intervalGCPercent = (((100 * collectionNanos) + (intervalNanos / 2)) / intervalNanos);
         log.newline().string(prefix).string(label).string(": ").signed(intervalGCPercent).string("%");

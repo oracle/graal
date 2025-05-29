@@ -71,9 +71,13 @@ public class HostedConstantReflectionProvider extends AnalysisConstantReflection
 
     @Override
     public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
+        return readFieldValue(field, receiver, false);
+    }
+
+    public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver, boolean readRelocatableValues) {
         var hField = (HostedField) field;
         assert checkHub(receiver) : "Receiver " + receiver + " of field " + hField + " read should not be java.lang.Class. Expecting to see DynamicHub here.";
-        return super.readValue(hField.getWrapped(), receiver, true);
+        return super.readValue(hField.getWrapped(), receiver, true, readRelocatableValues);
     }
 
     private boolean checkHub(JavaConstant constant) {

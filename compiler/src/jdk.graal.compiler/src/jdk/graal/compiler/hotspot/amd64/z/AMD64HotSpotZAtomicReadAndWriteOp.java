@@ -56,7 +56,7 @@ public class AMD64HotSpotZAtomicReadAndWriteOp extends AMD64HotSpotZStoreBarrier
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         emitPreWriteBarrier(crb, masm, asRegister(result), null);
         zColor(crb, masm, asRegister(result), asRegister(newValue));
-        masm.xchgq(asRegister(result), storeAddress.toAddress());
+        masm.xchgq(asRegister(result), storeAddress.toAddress(masm));
         Register ref = asRegister(result);
         AMD64HotSpotZBarrierSetLIRGenerator.zUncolor(crb, masm, ref);
     }

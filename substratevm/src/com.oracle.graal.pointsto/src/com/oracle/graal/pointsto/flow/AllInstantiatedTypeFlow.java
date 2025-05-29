@@ -32,11 +32,11 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
  * of the all assignable types. This flow is used for uses that need to be notified when a sub-type
  * of a specific type is marked as instantiated, e.g., a saturated field access type flow needs to
  * be notified when a sub-type of its declared type is marked as instantiated.
- *
+ * <p>
  * Note this flow should only be instantiated within AnalysisType. When needed, this flow should be
  * retrieved via calling {@link AnalysisType#getTypeFlow}.
  */
-public final class AllInstantiatedTypeFlow extends TypeFlow<AnalysisType> {
+public final class AllInstantiatedTypeFlow extends TypeFlow<AnalysisType> implements GlobalFlow {
 
     public AllInstantiatedTypeFlow(AnalysisType declaredType, boolean canBeNull) {
         super(declaredType, declaredType, canBeNull);
@@ -48,7 +48,7 @@ public final class AllInstantiatedTypeFlow extends TypeFlow<AnalysisType> {
     }
 
     @Override
-    public boolean canSaturate() {
+    public boolean canSaturate(PointsToAnalysis bb) {
         return false;
     }
 

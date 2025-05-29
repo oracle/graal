@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -47,6 +46,8 @@ import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.jni.headers.JNIVersion;
 import com.oracle.svm.core.util.ImageHeapMap;
 
+import jdk.graal.compiler.word.Word;
+
 interface JNIOnLoadFunctionPointer extends CFunctionPointer {
     @InvokeCFunctionPointer
     int invoke(JNIJavaVM vm, VoidPointer reserved);
@@ -54,7 +55,7 @@ interface JNIOnLoadFunctionPointer extends CFunctionPointer {
 
 public class JNILibraryInitializer implements NativeLibrarySupport.LibraryInitializer {
 
-    private final EconomicMap<String, CGlobalData<PointerBase>> onLoadCGlobalDataMap = ImageHeapMap.create(Equivalence.IDENTITY);
+    private final EconomicMap<String, CGlobalData<PointerBase>> onLoadCGlobalDataMap = ImageHeapMap.create(Equivalence.IDENTITY, "onLoadCGlobalDataMap");
 
     private static String getOnLoadName(String libName, boolean isBuiltIn) {
         String name = "JNI_OnLoad";
@@ -115,7 +116,7 @@ public class JNILibraryInitializer implements NativeLibrarySupport.LibraryInitia
         }
         if (onLoadFunction.isNonNull()) {
             JNIOnLoadFunctionPointer onLoad = (JNIOnLoadFunctionPointer) onLoadFunction;
-            int expected = onLoad.invoke(JNIFunctionTables.singleton().getGlobalJavaVM(), WordFactory.nullPointer());
+            int expected = onLoad.invoke(JNIFunctionTables.singleton().getGlobalJavaVM(), Word.nullPointer());
             if (!JNIVersion.isSupported(expected, lib.isBuiltin())) {
                 throw new UnsatisfiedLinkError("Unsupported JNI version 0x" + Integer.toHexString(expected) + ", required by " + libName);
             }
@@ -124,6 +125,6 @@ public class JNILibraryInitializer implements NativeLibrarySupport.LibraryInitia
 
     private PointerBase getOnLoadSymbolAddress(String libName) {
         CGlobalData<PointerBase> symbol = onLoadCGlobalDataMap.get(libName);
-        return symbol == null ? WordFactory.nullPointer() : symbol.get();
+        return symbol == null ? Word.nullPointer() : symbol.get();
     }
 }

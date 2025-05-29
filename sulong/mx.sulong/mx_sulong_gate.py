@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2025, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -37,8 +37,6 @@ from mx_gate import Task, add_gate_runner, add_gate_argument
 
 import mx_sulong_suite_constituents
 import mx_sulong_unittest
-
-import mx_sdk_vm
 
 _suite = mx.suite('sulong')
 
@@ -169,11 +167,11 @@ def _sulong_gate_runner(args, tasks):
 
     if standaloneMode == "native":
         with Task('Build Native LLVM Standalone', tasks, tags=['standalone']) as t:
-            if t: mx.command_function('build')(['--dependencies', f'LLVM_NATIVE_STANDALONE_SVM_JAVA{mx_sdk_vm.base_jdk_version()}'])
+            if t: mx.command_function('build')(['--dependencies', f'SULONG_NATIVE_STANDALONE'])
 
     if standaloneMode == "jvm":
         with Task('Build Java LLVM Standalone', tasks, tags=['standalone']) as t:
-            if t: mx.command_function('build')(['--dependencies', f'LLVM_JAVA_STANDALONE_SVM_JAVA{mx_sdk_vm.base_jdk_version()}'])
+            if t: mx.command_function('build')(['--dependencies', f'SULONG_JVM_STANDALONE'])
 
     # Folders not containing tests: options, services, util
     _unittest('Benchmarks', 'SULONG_SHOOTOUT_TEST_SUITE', description="Language Benchmark game tests", testClasses=['ShootoutsSuite'], tags=['benchmarks', 'sulongMisc'])
@@ -185,7 +183,6 @@ def _sulong_gate_runner(args, tasks):
     _unittest('GCCParserTorture', 'SULONG_PARSER_TORTURE', description="Parser test using GCC suite", testClasses=['ParserTortureSuite'], tags=['parser'])
     _unittest('GCC_C', 'SULONG_GCC_C_TEST_SUITE', description="GCC 5.2 test suite (C tests)", testClasses=['GccCSuite'], tags=['gcc_c'])
     _unittest('GCC_CPP', 'SULONG_GCC_CPP_TEST_SUITE', description="GCC 5.2 test suite (C++ tests)", testClasses=['GccCppSuite'], tags=['gcc_cpp'])
-    _unittest('GCC_Fortran', 'SULONG_GCC_FORTRAN_TEST_SUITE', description="GCC 5.2 test suite (Fortran tests)", testClasses=['GccFortranSuite'], tags=['gcc_fortran'])
     _unittest('Sulong', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests", testClasses='SulongSuite', tags=['sulongStandalone', 'sulongBasic', 'standalone'],
               # run only a small subset of the tests on the jvm standalone, the startup overhead per test is too high for more
               extraUnittestArgs=['-Dsulongtest.testNameFilter=cpp'] if slowStandalone else [])

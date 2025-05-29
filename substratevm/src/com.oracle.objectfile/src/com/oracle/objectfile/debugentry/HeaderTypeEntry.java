@@ -26,16 +26,22 @@
 
 package com.oracle.objectfile.debugentry;
 
-import jdk.graal.compiler.debug.DebugContext;
-
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugHeaderTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
 
+import jdk.graal.compiler.debug.DebugContext;
+
 public class HeaderTypeEntry extends StructureTypeEntry {
+
+    FieldEntry hubField;
 
     public HeaderTypeEntry(String typeName, int size) {
         super(typeName, size);
+    }
+
+    public FieldEntry getHubField() {
+        return hubField;
     }
 
     @Override
@@ -49,5 +55,6 @@ public class HeaderTypeEntry extends StructureTypeEntry {
         assert debugTypeInfo.typeName().equals(typeName);
         DebugHeaderTypeInfo debugHeaderTypeInfo = (DebugHeaderTypeInfo) debugTypeInfo;
         debugHeaderTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
+        hubField = createField(debugHeaderTypeInfo.hubField(), debugInfoBase, debugContext);
     }
 }

@@ -45,7 +45,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.ForeignCall;
 import jdk.graal.compiler.nodes.spi.NodeValueMap;
 import jdk.graal.compiler.nodes.spi.NodeWithState;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.StackLockValue;
 import jdk.vm.ci.code.VirtualObject;
@@ -102,7 +101,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
 
         FrameState current = topState;
         while (current != null) {
-            assert current.getMethod() instanceof HotSpotResolvedJavaMethod : current;
+            GraalError.guarantee(current.getMethod() instanceof HotSpotResolvedJavaMethod, "unsupported method type %s", current.getMethod());
             current = current.outerFrameState();
         }
 
@@ -112,7 +111,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
             if (DefaultHotSpotLoweringProvider.RuntimeCalls.runtimeCalls.containsValue(descriptor.getSignature())) {
                 // This case is special because we can't use rethrowException. This path must be
                 // marked as reexecutable so it doesn't fail some internal asserts even though the
-                // actual deopt is done with Unpack_exception which overrides the reexectuable flag
+                // actual deopt is done with Unpack_exception which overrides the reexecutable flag
                 GraalError.guarantee(topState.getStackState() == FrameState.StackState.BeforePop && topState.bci >= 0 && topState.stackSize() == 0, "invalid state %s for bytecode exception %s",
                                 topState, descriptor.getSignature());
                 GraalError.guarantee(!topState.getStackState().duringCall, "must be not duringCall to set reexecute bit");

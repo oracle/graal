@@ -32,6 +32,7 @@ import java.util.stream.StreamSupport;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.PrimitiveComparison;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
@@ -109,12 +110,16 @@ public abstract class TypeState {
         return this == EmptyTypeState.SINGLETON;
     }
 
+    public final boolean isNotEmpty() {
+        return !isEmpty();
+    }
+
     public boolean isNull() {
         return this == NullTypeState.SINGLETON;
     }
 
     public boolean isPrimitive() {
-        return this instanceof AnyPrimitiveTypeState;
+        return false;
     }
 
     public abstract boolean canBeNull();
@@ -145,16 +150,20 @@ public abstract class TypeState {
         return NullTypeState.SINGLETON;
     }
 
-    public static TypeState defaultValueForKind(JavaKind javaKind) {
+    public static TypeState defaultValueForKind(PointsToAnalysis bb, JavaKind javaKind) {
         if (javaKind.isPrimitive()) {
-            return TypeState.forPrimitiveConstant(0);
+            return TypeState.forPrimitiveConstant(bb, 0);
         } else {
             return TypeState.forNull();
         }
     }
 
-    public static TypeState forPrimitiveConstant(long value) {
-        return PrimitiveConstantTypeState.forValue(value);
+    public static TypeState forPrimitiveConstant(PointsToAnalysis bb, long value) {
+        return PrimitiveConstantTypeState.forValue(bb, value);
+    }
+
+    public static TypeState forBoolean(PointsToAnalysis bb, boolean value) {
+        return value ? TypeState.forPrimitiveConstant(bb, 1) : TypeState.forPrimitiveConstant(bb, 0);
     }
 
     public static TypeState anyPrimitiveState() {
@@ -206,14 +215,9 @@ public abstract class TypeState {
             return s1;
         } else if (s2.isNull()) {
             return s1.forCanBeNull(bb, true);
-        } else if (s1 instanceof PrimitiveConstantTypeState c1 && s2 instanceof PrimitiveConstantTypeState c2 && c1.getValue() == c2.getValue()) {
-            return s1;
-        } else if (s1.isPrimitive()) {
-            assert s2.isPrimitive() : s2;
-            return TypeState.anyPrimitiveState();
-        } else if (s2.isPrimitive()) {
-            assert s1.isPrimitive() : s1;
-            return TypeState.anyPrimitiveState();
+        } else if (s1.isPrimitive() || s2.isPrimitive()) {
+            assert s1 instanceof PrimitiveTypeState && s2 instanceof PrimitiveTypeState : "Both type states should be primitive: " + s1 + " " + s2;
+            return ((PrimitiveTypeState) s1).forUnion((PrimitiveTypeState) s2);
         } else if (s1 instanceof SingleTypeState && s2 instanceof SingleTypeState) {
             return bb.analysisPolicy().doUnion(bb, (SingleTypeState) s1, (SingleTypeState) s2);
         } else if (s1 instanceof SingleTypeState && s2 instanceof MultiTypeState) {
@@ -267,6 +271,16 @@ public abstract class TypeState {
         } else {
             return bb.analysisPolicy().doSubtraction(bb, (MultiTypeState) s1, (MultiTypeState) s2);
         }
+    }
+
+    /** Returns a type state representing left filtered with respect to the comparison and right. */
+    public static TypeState filter(TypeState left, PrimitiveComparison comparison, TypeState right, boolean isUnsigned) {
+        assert left.isPrimitive() || left.isEmpty() : left;
+        assert right.isPrimitive() || right.isEmpty() : right;
+        if (left.isEmpty() || right.isEmpty()) {
+            return forEmpty();
+        }
+        return ((PrimitiveTypeState) left).filter(comparison, isUnsigned, (PrimitiveTypeState) right);
     }
 }
 

@@ -418,7 +418,7 @@ class AllocationReporterSnippets extends TruffleLanguage<ContextObject> {
         return null;
     }
 
-    private static class MyTruffleObject {
+    private static final class MyTruffleObject {
     }
 
 }

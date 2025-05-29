@@ -27,9 +27,8 @@ package com.oracle.svm.configure.config;
 import java.io.IOException;
 import java.util.Objects;
 
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
-
-import com.oracle.svm.core.configure.SerializationConfigurationParser;
+import com.oracle.svm.configure.SerializationConfigurationParser;
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
@@ -57,7 +56,7 @@ public class SerializationConfigurationLambdaCapturingType implements JsonPrinta
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
-        ConfigurationConditionPrintable.printConditionAttribute(condition, writer);
+        ConfigurationConditionPrintable.printConditionAttribute(condition, writer, false);
 
         writer.quote(SerializationConfigurationParser.NAME_KEY).append(":").quote(qualifiedJavaName);
         writer.unindent().newline().append('}');

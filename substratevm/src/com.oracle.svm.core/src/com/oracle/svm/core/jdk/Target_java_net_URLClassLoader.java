@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package com.oracle.svm.core.jdk;
 import java.io.Closeable;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.security.AccessControlContext;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.WeakHashMap;
@@ -51,10 +50,6 @@ final class Target_jdk_internal_loader_URLClassPath {
     /* The original locations of the .jar files are no longer available at run time. */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ArrayList.class)//
     private ArrayList<URL> path;
-
-    /* Reset acc to null, since contexts in image heap are replaced */
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    private AccessControlContext acc;
 }
 
 @TargetClass(URLClassLoader.class)

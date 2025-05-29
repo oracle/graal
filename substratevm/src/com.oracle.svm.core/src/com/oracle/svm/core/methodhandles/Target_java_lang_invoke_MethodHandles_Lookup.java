@@ -88,10 +88,4 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
 
     @Delete
     native MethodHandle linkMethodHandleConstant(byte refKind, Class<?> defc, String name, Object type) throws ReflectiveOperationException;
-
-    /** This call is a noop without the security manager. */
-    @SuppressWarnings("unused")
-    @Substitute
-    void checkSecurityManager(Class<?> refc) {
-    }
 }

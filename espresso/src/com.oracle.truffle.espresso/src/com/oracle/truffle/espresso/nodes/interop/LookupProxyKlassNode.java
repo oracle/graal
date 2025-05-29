@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.nodes.interop;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -33,9 +34,14 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
+import com.oracle.truffle.espresso.impl.EspressoType;
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -81,33 +87,54 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
                     if (!targetType.isAssignableFrom(superKlass)) {
                         return null;
                     }
-                    return new WrappedProxyKlass(superKlass);
+                    int numTypeArguments = superKlass == getMeta().polyglot.EspressoForeignMap ? 2 : 1;
+                    return new WrappedProxyKlass(superKlass, numTypeArguments);
                 }
                 return null;
             }
             proxyBytes = EspressoForeignProxyGenerator.getProxyKlassBytes(metaName, parentInterfaces.toArray(ObjectKlass.EMPTY_ARRAY), superKlass, getContext());
         }
-        Klass proxyKlass = lookupOrDefineInBindingsLoader(proxyBytes, getContext());
+        ObjectKlass proxyKlass = (ObjectKlass) lookupOrDefineInBindingsLoader(proxyBytes, getContext());
 
         if (!targetType.isAssignableFrom(proxyKlass)) {
             return null;
         }
-        return proxyBytes.getProxyKlass((ObjectKlass) proxyKlass);
+        return proxyBytes.getWrappedProxyKlass(proxyKlass);
     }
 
     private static Klass lookupOrDefineInBindingsLoader(EspressoForeignProxyGenerator.GeneratedProxyBytes proxyBytes, EspressoContext context) {
         ClassRegistry registry = context.getRegistries().getClassRegistry(context.getBindingsLoader());
 
-        Symbol<Symbol.Type> proxyName = context.getTypes().fromClassGetName(proxyBytes.name);
+        Symbol<Type> proxyName = context.getTypes().fromClassGetName(proxyBytes.name);
         Klass proxyKlass = registry.findLoadedKlass(context.getClassLoadingEnv(), proxyName);
-        if (proxyKlass == null) {
-            try {
-                proxyKlass = registry.defineKlass(context, proxyName, proxyBytes.bytes);
-            } catch (EspressoClassLoadingException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
+
+        if (proxyKlass != null) {
+            return proxyKlass;
         }
-        return proxyKlass;
+        // double-checked locking on the proxy name
+        synchronized (proxyName) {
+            proxyKlass = registry.findLoadedKlass(context.getClassLoadingEnv(), proxyName);
+            if (proxyKlass == null) {
+                try {
+                    proxyKlass = registry.defineKlass(context, proxyName, proxyBytes.bytes);
+                    // inject static generic return types in static fields
+                    injectStaticGenericTypes(proxyKlass, proxyBytes.getStaticGenericReturnTypes());
+                } catch (EspressoClassLoadingException e) {
+                    throw EspressoError.shouldNotReachHere(e);
+                }
+            }
+            return proxyKlass;
+        }
+    }
+
+    private static void injectStaticGenericTypes(Klass proxyKlass, Map<Symbol<Name>, EspressoType> staticGenericReturnTypes) {
+        for (Map.Entry<Symbol<Name>, EspressoType> entry : staticGenericReturnTypes.entrySet()) {
+            Symbol<Name> fieldName = entry.getKey();
+            EspressoType type = entry.getValue();
+            Field field = proxyKlass.lookupDeclaredField(fieldName, Types.com_oracle_truffle_espresso_polyglot_TypeLiteral);
+            assert field != null;
+            field.setObject(proxyKlass.getStatics(), type.getGuestTypeLiteral());
+        }
     }
 
     private static ObjectKlass fillParents(Object metaObject, InteropLibrary interop, PolyglotTypeMappings mappings, Set<ObjectKlass> parents, EspressoContext context) throws ClassCastException {

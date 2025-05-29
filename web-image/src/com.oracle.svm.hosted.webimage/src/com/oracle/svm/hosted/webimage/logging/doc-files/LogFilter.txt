@@ -1,0 +1,29 @@
+Filter pattern for specifying scopes in which logging is enabled.
+
+A filter is a list of comma-separated terms of the form:
+
+  <pattern>
+
+If <pattern> contains a "*" or "?" character, it is interpreted as a glob pattern.
+Otherwise, it is interpreted as a substring. If <pattern> is empty, it
+matches every scope. The term ~<pattern> is used to disable logging for specified pattern.
+A filter with no terms matches every scope.
+
+Examples of filters:
+---------
+  (empty string)
+
+  Enables logging for all scopes.
+---------
+  PointsToAnalysis,CodeGen
+
+  Matches and enables logging for scopes containing "CodeGen" or "PointsToAnalysis".
+---------
+  CodeGen*
+
+  Matches and enables logging for scopes starting with "CodeGen".
+---------
+CodeGen, ~PointsToAnalysis
+
+Matches scopes containing "CodeGen" and enables logging for them,
+while for scopes containing "PointsToAnalysis" logging is disabled.

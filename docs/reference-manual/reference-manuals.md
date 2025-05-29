@@ -17,10 +17,9 @@ These manuals are aimed at software engineers and developers who already work wi
 * To learn more about security considerations in GraalVM, check the [Security Guide](../security/security-guide.md).
 
 If you are mostly interested in a specific language runtime on GraalVM, see the following:
-* [Java on Truffle](java-on-truffle/README.md)
+* [Espresso](java-on-truffle/README.md)
 * [GraalJS](https://github.com/oracle/graaljs/blob/master/docs/user/README.md)
-* [GraalPy](https://github.com/oracle/graalpython/blob/master/docs/user/README.md)
-* [GraalWasm](wasm/README.md)
+* [GraalPy](https://www.graalvm.org/python/docs/)
+* [GraalWasm](https://www.graalvm.org/webassembly/docs/)
 * [LLVM Languages](llvm/README.md)
 * [TruffleRuby](https://github.com/oracle/truffleruby/blob/master/doc/user/README.md)
-* [FastR](https://github.com/oracle/fastr/blob/master/documentation/user/README.md)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -837,6 +837,18 @@ public final class FrameStateBuilder implements SideEffectsState {
         return stackSize;
     }
 
+    /**
+     * Whether locals should be retained in the state being built irrespective of whether they are
+     * dead according to a {@link LocalLiveness} object. This is true when a debugger has requested
+     * capabilities implying it wants to access variables that are live according Java source scope.
+     * The source scope of a variable is often larger than a compiler's liveness scope which ends at
+     * the last read of the exact value (that is the last read before the next write into that
+     * slot).
+     */
+    public boolean shouldRetainLocalVariables() {
+        return shouldRetainLocalVariables;
+    }
+
     private boolean verifyKind(JavaKind slotKind, ValueNode x) {
         assert x != null;
         assert x != TWO_SLOT_MARKER : x;
@@ -1210,17 +1222,4 @@ public final class FrameStateBuilder implements SideEffectsState {
                         new FrameState(null, new ResolvedJavaMethodBytecode(original), 0, newLocals, newStack, stackSize, null, null, locks, Collections.emptyList(), FrameState.StackState.BeforePop));
         return stateAfterStart;
     }
-
-    /**
-     * Sets monitorIds and lockedObjects of this FrameStateBuilder to the values in {@code from}.
-     */
-    public void setLocks(FrameStateBuilder from) {
-        lockedObjects = new ValueNode[from.lockedObjects.length];
-        monitorIds = new MonitorIdNode[from.lockedObjects.length];
-        for (int i = 0; i < from.lockedObjects.length; i++) {
-            lockedObjects[i] = from.lockedObjects[i];
-            monitorIds[i] = from.monitorIds[i];
-        }
-    }
-
 }

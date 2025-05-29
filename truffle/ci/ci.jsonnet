@@ -51,18 +51,25 @@
     ],
   },
 
+  local graalVMCELatest = common.labsjdkLatest + common.deps.svm + {
+    mx_build_graalvm_cmd: ["mx", "-p", "../vm", "--env", "ce", "--native-images=lib:jvmcicompiler"],
+    run+: [
+        self.mx_build_graalvm_cmd + ["build"],
+        ["set-export", "JAVA_HOME", self.mx_build_graalvm_cmd + ["--quiet", "--no-warning", "graalvm-home"]]
+    ]
+  },
+
   local simple_tool_maven_project_gate = truffle_common + {
     name: 'gate-external-mvn-simpletool-' + self.jdk_name,
     packages+: {
       maven: "==3.3.9"
     },
-    mx_cmd: ["mx", "-p", "../vm", "--env", "ce", "--dynamicimports", "/graal-js", "--native-images=none"],
+    mx_cmd: ["mx", "-p", "../vm", "--dynamicimports", "/graal-js"],
     run+: [
       ["set-export", "ROOT_DIR", ["pwd"]],
       self.mx_cmd + ["build"],
       ["mkdir", "mxbuild/tmp_mvn_repo"],
       self.mx_cmd + ["maven-deploy", "--tags=public", "--all-suites", "--all-distribution-types", "--validate=full", "--licenses=EPL-2.0,PSF-License,GPLv2-CPE,ICU,GPLv2,BSD-simplified,BSD-new,UPL,MIT", "--version-string", self.mx_cmd + ["graalvm-version"], "--suppress-javadoc", "local", "file://$ROOT_DIR/mxbuild/tmp_mvn_repo"],
-      ["set-export", "JAVA_HOME", self.mx_cmd + ["--quiet", "--no-warning", "graalvm-home"]],
       ["cd", "external_repos/"],
       ["python", "populate.py"],
       ["cd", "simpletool"],
@@ -77,13 +84,12 @@
       maven: "==3.3.9",
       ruby: ">=2.1.0",
     },
-    mx_cmd: ["mx", "-p", "../vm", "--env", "ce", "--native-images=none"],
+    mx_cmd: ["mx"],
     run+: [
       ["set-export", "ROOT_DIR", ["pwd"]],
       self.mx_cmd + ["build"],
       ["mkdir", "mxbuild/tmp_mvn_repo"],
       self.mx_cmd + ["maven-deploy", "--tags=public", "--all-suites", "--all-distribution-types", "--validate=full", "--licenses=EPL-2.0,PSF-License,GPLv2-CPE,ICU,GPLv2,BSD-simplified,BSD-new,UPL,MIT", "--version-string", self.mx_cmd + ["graalvm-version"], "--suppress-javadoc", "local", "file://$ROOT_DIR/mxbuild/tmp_mvn_repo"],
-      ["set-export", "JAVA_HOME", self.mx_cmd + ["--quiet", "--no-warning", "graalvm-home"]],
       ["cd", "external_repos"],
       ["python", "populate.py"],
       ["cd", "simplelanguage"],
@@ -96,9 +102,47 @@
     ],
   },
 
+  local truffle_jvm_gate = truffle_common + {
+    run+: [
+      ['mx', '--no-jlinking', 'gate', '--no-warning-as-error', '--tags', 'build,truffle-jvm'],
+    ],
+    notify_groups: ["truffle"],
+    components+: ["truffle"],
+    timelimit: '1:15:00',
+    name: 'gate-truffle-ce-jvm-' + self.jdk_name + '-linux-amd64',
+  },
+
+  # runs only truffle native unittests
+  local truffle_native_unittest_gate = truffle_common + {
+    gate_tag_suffix: '',
+    run+: [
+      ['mx', '--no-jlinking', 'gate', '--no-warning-as-error', '--tags', 'build,unittest-native' + self.gate_tag_suffix],
+    ],
+    notify_groups: ["truffle"],
+    components+: ["truffle"],
+    timelimit: '1:00:00',
+    name: 'gate-truffle-ce-native-unittest' + self.gate_tag_suffix + '-jvm-' + self.jdk_name + '-' + self.os + '-' + self.arch,
+  },
+
+  # runs native SL tests and truffle native unittests
+  local truffle_native_gate = truffle_common + {
+    gate_tag_suffix: '',
+    run+: [
+      ['mx', '--no-jlinking', 'gate', '--no-warning-as-error', '--tags', 'build,truffle-native' + self.gate_tag_suffix],
+    ],
+    notify_groups: ["truffle"],
+    components+: ["truffle"],
+    timelimit: '1:30:00',
+    name: 'gate-truffle-ce-native' + self.gate_tag_suffix + '-jvm-' + self.jdk_name + '-' + self.os + '-' + self.arch,
+  },
+
   local truffle_gate = truffle_common + common.deps.eclipse + common.deps.jdt + common.deps.spotbugs {
-    name: 'gate-truffle-oraclejdk-' + self.jdk_name,
-    run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
+    name: 'gate-truffle-oraclejdk-' + self.jdk_name + '-' + self.os + '-' + self.arch,
+    # The `fulltest` tag includes all Truffle test gate tasks except those that require GraalVM.
+    run: [["mx", "--strict-compliance", "gate", "--strict-mode", "--tag"] + (if (self.os == 'windows') then ["style:0:6,fullbuild,fulltest"] else ["style,fullbuild,fulltest"])],
+    environment+: if self.os == 'windows' then {
+      ECLIPSE_EXE: "$ECLIPSE\\eclipse.exe",
+    } else {},
   },
 
   local truffle_weekly = common.weekly + {notify_groups:: ["truffle"]},
@@ -112,17 +156,35 @@
     ]) +
   [
     # The simple_language_maven_project_gate uses native-image, so we must run on labsjdk rather than oraclejdk
-    linux_amd64  + common.labsjdk21 + simple_language_maven_project_gate,
-    linux_amd64  + common.labsjdkLatest + simple_language_maven_project_gate,
+    linux_amd64  + common.graalvmee21 + simple_language_maven_project_gate,
+    linux_amd64  + graalVMCELatest + simple_language_maven_project_gate,
     # The simple_tool_maven_project_gate builds compiler, so we must run on labsjdk rather than oraclejdk because of compiler module rename
-    linux_amd64  + common.labsjdk21 + simple_tool_maven_project_gate,
-    linux_amd64  + common.labsjdkLatest + simple_tool_maven_project_gate,
+    linux_amd64  + common.graalvmee21 + simple_tool_maven_project_gate,
+    linux_amd64  + graalVMCELatest + simple_tool_maven_project_gate,
+    # Truffle JVM gate
+    linux_amd64  + common.graalvmee21 + truffle_jvm_gate,
+    # GR-65191
+    # linux_amd64  + common.oraclejdk24 + truffle_jvm_gate,
+    linux_amd64  + graalVMCELatest + truffle_jvm_gate,
+    # Truffle Native gate
+    linux_amd64     + common.graalvmee21 + truffle_native_gate,
+    linux_amd64     + common.graalvmee21 + truffle_native_gate + {
+        gate_tag_suffix: '-quickbuild'
+    },
+    linux_amd64     + graalVMCELatest + truffle_native_gate,
+    windows_amd64   + graalVMCELatest + devkits["windows-jdkLatest"] + truffle_native_unittest_gate,
+    linux_amd64     + graalVMCELatest + truffle_native_gate + {
+        gate_tag_suffix: '-quickbuild'
+    },
+    windows_amd64   + graalVMCELatest + devkits["windows-jdkLatest"] + truffle_native_unittest_gate + {
+        gate_tag_suffix: '-quickbuild'
+    },
 
-    linux_amd64 + common.oraclejdk21 + truffle_gate + guard + {timelimit: "45:00"},
+    linux_amd64 + common.oraclejdk21 + truffle_gate + guard + {timelimit: "1:30:00"},
     linux_amd64 + common.oraclejdkLatest + truffle_gate + guard + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
-    truffle_common + linux_amd64 + common.oraclejdk21 + guard {
-      name: "gate-truffle-javadoc",
+    truffle_common + linux_amd64 + common.oraclejdkLatest + guard {
+      name: "gate-truffle-javadoc-" + self.jdk_name,
       run: [
         ["mx", "build"],
         ["mx", "javadoc"],
@@ -140,14 +202,13 @@
       ],
     },
 
-    # TODO Run full gate on Windows GR-51441
-    windows_amd64 + gate_lite + common.oraclejdk21 + devkits["windows-jdk21"] + guard,
-    windows_amd64 + gate_lite + common.oraclejdkLatest + devkits["windows-jdkLatest"] + guard,
+    windows_amd64 + truffle_gate + common.oraclejdk21 + devkits["windows-jdk21"] + guard + {timelimit: "1:30:00"},
+    windows_amd64 + truffle_gate + common.oraclejdkLatest + devkits["windows-jdkLatest"] + guard + {timelimit: "1:00:00", environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
     truffle_common + linux_amd64 + common.oraclejdk21 + common.deps.eclipse + common.deps.jdt + guard + {
       name: "weekly-truffle-coverage-21-linux-amd64",
       run: [
-        ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
+        ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov", "--tags", "build,fulltest"],
       ],
       teardown+: [
         ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
@@ -159,8 +220,8 @@
 
     # BENCHMARKS
 
-    bench_hw.e3 + common.labsjdkLatestCE + bench_common + {
-      name: "bench-truffle-jmh",
+    bench_hw.x52 + common.labsjdkLatestCE + bench_common + {
+      name: "bench-truffle-jmh-linux-amd64",
       notify_groups:: ["truffle_bench"],
       run: [
         ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "com.oracle.truffle"],

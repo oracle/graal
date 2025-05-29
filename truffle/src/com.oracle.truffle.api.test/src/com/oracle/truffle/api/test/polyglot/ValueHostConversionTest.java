@@ -198,7 +198,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         Integer get();
     }
 
-    private class SuplierExtensionImpl implements SupplierExtension {
+    private final class SuplierExtensionImpl implements SupplierExtension {
         @Override
         public Integer get() {
             return 42;
@@ -318,6 +318,33 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
 
         assertValue(record, Trait.MEMBERS, Trait.HOST_OBJECT);
         assertValue(record.getMetaObject(), Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.META);
+    }
+
+    @Test
+    public void testDisconnectedObject() {
+        context.leave();
+        try {
+            Value r = Value.asValue(new JavaRecord());
+            // disconnected members cannot be accessed
+            String[] publicKeys = new String[]{};
+
+            assertEquals(new HashSet<>(Arrays.asList(publicKeys)), r.getMemberKeys());
+
+            assertFalse(r.hasMember("hashCode"));
+            assertFalse(r.hasMember("equals"));
+            assertFalse(r.hasMember("toString"));
+            assertFalse(r.hasMember("getClass"));
+            assertFalse(r.hasMember("clone"));
+            assertFalse(r.hasMember("notify"));
+            assertFalse(r.hasMember("wait"));
+            assertFalse(r.hasMember("notifyAll"));
+
+            // no traits expected for disconnected values
+            assertValue(r, Trait.HOST_OBJECT);
+            assertValue(r.getMetaObject(), Trait.HOST_OBJECT);
+        } finally {
+            context.enter();
+        }
     }
 
     @Test

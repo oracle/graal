@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,7 +65,6 @@ import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphState;
-import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.IfNode;
@@ -267,6 +266,10 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         public void run(StructuredGraph graph, SchedulingStrategy selectedStrategy, boolean immutableGraph) {
             if (this.cfg == null) {
                 this.cfg = ControlFlowGraph.computeForSchedule(graph);
+            } else {
+                GraalError.guarantee(this.cfg == graph.getLastCFG() && graph.isLastCFGValid(),
+                                "Cannot compute schedule for stale CFG; given: %s, graph's last CFG is %s, is valid: %s.",
+                                this.cfg, graph.getLastCFG(), graph.isLastCFGValid());
             }
 
             NodeMap<HIRBlock> currentNodeMap = graph.createNodeMap();
@@ -335,9 +338,9 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                             // We are scheduling a floating read node => check memory
                             // anti-dependencies.
                             FloatingReadNode floatingReadNode = (FloatingReadNode) currentNode;
-                            LocationIdentity location = floatingReadNode.getLocationIdentity();
-                            if (location.isMutable()) {
+                            if (floatingReadNode.potentialAntiDependency()) {
                                 // Location can be killed.
+                                LocationIdentity location = floatingReadNode.getLocationIdentity();
                                 constrainingLocation = location;
                                 if (currentBlock.canKill(location)) {
                                     if (killed == null) {
@@ -399,7 +402,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                     assert n.isAlive();
                     assert nodeMap.get(n) == b : Assertions.errorMessage(n, b);
                     StructuredGraph g = (StructuredGraph) n.graph();
-                    if (g.hasLoops() && g.getGuardsStage() == GuardsStage.AFTER_FSA && n instanceof DeoptimizeNode) {
+                    if (g.hasLoops() && g.getGuardsStage().areFrameStatesAtDeopts() && n instanceof DeoptimizeNode) {
                         assert b.getLoopDepth() == 0 : n;
                     }
                 }
@@ -603,9 +606,24 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
             unprocessed.clear(n);
 
-            for (Node input : n.inputs()) {
-                if (nodeMap.get(input) == b && unprocessed.isMarked(input) && input != excludeNode) {
-                    sortIntoList(input, b, result, nodeMap, unprocessed, excludeNode);
+            /*
+             * Schedule all unprocessed transitive inputs. This uses an explicit stack instead of
+             * recursion to avoid overflowing the call stack.
+             */
+            NodeStack stack = new NodeStack();
+            ArrayList<Node> tempList = new ArrayList<>();
+            stack.push(n);
+            while (!stack.isEmpty()) {
+                Node top = stack.peek();
+                pushUnprocessedInputs(top, b, nodeMap, unprocessed, excludeNode, stack, tempList);
+                if (stack.peek() == top) {
+                    if (top != n) {
+                        if (unprocessed.isMarked(top) && !(top instanceof ProxyNode)) {
+                            result.add(top);
+                        }
+                        unprocessed.clear(top);
+                    }
+                    stack.pop();
                 }
             }
 
@@ -614,7 +632,24 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             } else {
                 result.add(n);
             }
+        }
 
+        private static void pushUnprocessedInputs(Node n, HIRBlock b, NodeMap<HIRBlock> nodeMap, NodeBitMap unprocessed, Node excludeNode, NodeStack stack, ArrayList<Node> tempList) {
+            tempList.clear();
+            n.inputs().snapshotTo(tempList);
+            /*
+             * Nodes on top of the stack are scheduled first. Pushing inputs left to right would
+             * therefore mean scheduling them right to left. We observe the best performance when
+             * scheduling inputs left to right, therefore we push them in reverse order. We could
+             * explore more elaborate scheduling policies, like scheduling for reduced register
+             * pressure using Sethi-Ullman numbering (GR-34624).
+             */
+            for (int i = tempList.size() - 1; i >= 0; i--) {
+                Node input = tempList.get(i);
+                if (nodeMap.get(input) == b && unprocessed.isMarked(input) && input != excludeNode && !(input instanceof PhiNode)) {
+                    stack.push(input);
+                }
+            }
         }
 
         protected void calcLatestBlock(HIRBlock earliestBlock, SchedulingStrategy strategy, Node currentNode, NodeMap<HIRBlock> currentNodeMap, LocationIdentity constrainingLocation,
@@ -1091,7 +1126,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             }
         }
 
-        private static class GuardOrder {
+        private static final class GuardOrder {
             /**
              * After an earliest schedule, this will re-sort guards to honor their
              * {@linkplain StaticDeoptimizingNode#computePriority() priority}.

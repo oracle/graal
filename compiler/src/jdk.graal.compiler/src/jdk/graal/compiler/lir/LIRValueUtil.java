@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,6 @@ import jdk.graal.compiler.core.common.LIRKindWithCast;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.framemap.SimpleVirtualStackSlot;
 import jdk.graal.compiler.lir.framemap.SimpleVirtualStackSlotAlias;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;

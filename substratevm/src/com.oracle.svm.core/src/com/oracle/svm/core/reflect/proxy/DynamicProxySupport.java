@@ -27,6 +27,7 @@ package com.oracle.svm.core.reflect.proxy;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
@@ -40,7 +41,11 @@ import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
+import com.oracle.svm.core.layeredimagesingleton.DuplicableImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
@@ -50,7 +55,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.GraalError;
 
-public class DynamicProxySupport implements DynamicProxyRegistry {
+public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImageSingleton {
 
     public static final Pattern PROXY_CLASS_NAME_PATTERN = Pattern.compile(".*\\$Proxy[0-9]+");
 
@@ -73,7 +78,17 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
         @Override
         public int hashCode() {
-            return Arrays.hashCode(interfaces);
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                /*
+                 * The hash code cannot be computed using the interfaces' hash code in Layered Image
+                 * because the hash code of classes cannot be injected in the application layer.
+                 * This causes the internal structure of the proxyCache to be unusable in the
+                 * application layer.
+                 */
+                return Arrays.hashCode(Arrays.stream(interfaces).map(Class::getName).toArray());
+            } else {
+                return Arrays.hashCode(interfaces);
+            }
         }
 
         @Override
@@ -82,7 +97,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         }
     }
 
-    private final EconomicMap<ProxyCacheKey, ConditionalRuntimeValue<Object>> proxyCache = ImageHeapMap.create();
+    private final EconomicMap<ProxyCacheKey, ConditionalRuntimeValue<Object>> proxyCache = ImageHeapMap.create("proxyCache");
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicProxySupport() {
@@ -232,5 +247,15 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
     public static String proxyTypeDescriptor(String... interfaceNames) {
         return "Proxy[" + String.join(", ", interfaceNames) + "]";
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+    }
+
+    @Override
+    public PersistFlags preparePersist(ImageSingletonWriter writer) {
+        return PersistFlags.NOTHING;
     }
 }

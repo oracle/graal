@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.EnumSet;
+import java.util.List;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -59,7 +60,6 @@ import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
 import jdk.graal.compiler.lir.util.IndexedValueMap;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -811,7 +811,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
             };
 
             // create a list with all caller-save registers (cpu, fpu, xmm)
-            RegisterArray callerSaveRegs = allocator.getRegisterAllocationConfig().getRegisterConfig().getCallerSaveRegisters();
+            List<Register> callerSaveRegs = allocator.getRegisterAllocationConfig().getRegisterConfig().getCallerSaveRegisters();
 
             // iterate all blocks in reverse order
             for (int i = allocator.blockCount() - 1; i >= 0; i--) {
@@ -918,6 +918,15 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
             StandardOp.LoadConstantOp move = StandardOp.LoadConstantOp.asLoadConstantOp(op);
 
             if (!allocator.neverSpillConstants()) {
+                if (!move.canRematerializeToStack()) {
+                    /*
+                     * This allocator cannot ensure that a rematerialized value is always assigned a
+                     * register; sometimes it rematerializes directly to a stack slot. Therefore, we
+                     * must not try to rematerialize constant loads that do not support
+                     * rematerialization to the stack.
+                     */
+                    return null;
+                }
                 /*
                  * Check if the interval has any uses which would accept an stack location (priority
                  * == ShouldHaveRegister). Rematerialization of such intervals can result in a

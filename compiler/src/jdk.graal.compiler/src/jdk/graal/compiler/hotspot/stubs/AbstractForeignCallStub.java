@@ -28,7 +28,6 @@ import static jdk.graal.compiler.nodes.ConstantNode.forBoolean;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -194,7 +193,7 @@ public abstract class AbstractForeignCallStub extends Stub {
      *         return getAndClearObjectResult(thread());
      *     }
      * </pre>
-     *
+     * <p>
      * If the stub returns a primitive or word, the graph created corresponds to this pseudo code
      * (using {@code int} as the primitive return type):
      *
@@ -207,7 +206,7 @@ public abstract class AbstractForeignCallStub extends Stub {
      *         return result;
      *     }
      * </pre>
-     *
+     * <p>
      * If the stub is void, the graph created corresponds to this pseudo code:
      *
      * <pre>
@@ -218,7 +217,7 @@ public abstract class AbstractForeignCallStub extends Stub {
      *         }
      *     }
      * </pre>
-     *
+     * <p>
      * In each example above, the {@code currentThread} argument is the C++ JavaThread value (i.e.,
      * %r15 on AMD64) and is only prepended if {@link #prependThread} is true.
      */
@@ -233,7 +232,7 @@ public abstract class AbstractForeignCallStub extends Stub {
             ForeignCallSnippets.Templates foreignCallSnippets = lowerer.getForeignCallSnippets();
             ResolvedJavaMethod handlePendingException = foreignCallSnippets.handlePendingException.getMethod();
             ResolvedJavaMethod getAndClearObjectResult = foreignCallSnippets.getAndClearObjectResult.getMethod();
-            ResolvedJavaMethod thisMethod = getGraphMethod();
+            ResolvedJavaMethod thisMethod = getGraphMethod(providers.getMetaAccess());
             HotSpotGraphKit kit = new HotSpotGraphKit(debug, thisMethod, providers, providers.getGraphBuilderPlugins(), compilationId, toString(), false, true);
             StructuredGraph graph = kit.getGraph();
             graph.getGraphState().forceDisableFrameStateVerification();
@@ -261,26 +260,20 @@ public abstract class AbstractForeignCallStub extends Stub {
 
     protected abstract boolean shouldClearException();
 
-    private ResolvedJavaMethod getGraphMethod() {
-        ResolvedJavaMethod thisMethod = null;
-        MetaAccessProvider metaAccess = providers.getMetaAccess();
+    /**
+     * Gets the {@link ResolvedJavaMethod} object representing
+     * {@link #getGraph(DebugContext, CompilationIdentifier)}.
+     */
+    public static ResolvedJavaMethod getGraphMethod(MetaAccessProvider metaAccess) {
+        ResolvedJavaMethod candidate = null;
         for (ResolvedJavaMethod method : metaAccess.lookupJavaType(AbstractForeignCallStub.class).getDeclaredMethods(false)) {
             if (method.getName().equals("getGraph")) {
-                if (thisMethod == null) {
-                    thisMethod = method;
-                } else {
-                    throw new InternalError("getGraph is ambiguous");
-                }
+                GraalError.guarantee(candidate == null, "Multiple getGraph methods found: %s and %s", method, candidate);
+                candidate = method;
             }
         }
-        if (thisMethod == null) {
-            throw new InternalError("Can't find " + getClass().getSimpleName() + ".getGraph");
-        }
-        if (IS_BUILDING_NATIVE_IMAGE) {
-            HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) providers.getReplacements();
-            replacements.findSnippetMethod(thisMethod);
-        }
-        return thisMethod;
+        GraalError.guarantee(candidate != null, "Missing method %s.getGraph", AbstractForeignCallStub.class.getName());
+        return candidate;
     }
 
     protected ParameterNode[] createParameters(GraphKit kit) {

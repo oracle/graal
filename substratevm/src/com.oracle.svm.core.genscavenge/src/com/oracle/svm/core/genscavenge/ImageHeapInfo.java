@@ -28,7 +28,6 @@ import java.util.EnumSet;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.Uninterruptible;
@@ -59,6 +58,9 @@ public final class ImageHeapInfo implements MultiLayeredImageSingleton, UnsavedS
     @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object firstReadOnlyRelocatableObject;
     @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object lastReadOnlyRelocatableObject;
 
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object firstWritablePatchedObject;
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object lastWritablePatchedObject;
+
     @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object firstWritableRegularObject;
     @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object lastWritableRegularObject;
 
@@ -83,6 +85,7 @@ public final class ImageHeapInfo implements MultiLayeredImageSingleton, UnsavedS
 
     @SuppressWarnings("hiding")
     public void initialize(Object firstReadOnlyRegularObject, Object lastReadOnlyRegularObject, Object firstReadOnlyRelocatableObject, Object lastReadOnlyRelocatableObject,
+                    Object firstWritablePatchedObject, Object lastWritablePatchedObject,
                     Object firstWritableRegularObject, Object lastWritableRegularObject, Object firstWritableHugeObject, Object lastWritableHugeObject,
                     Object firstReadOnlyHugeObject, Object lastReadOnlyHugeObject, long offsetOfFirstWritableAlignedChunk, long offsetOfFirstWritableUnalignedChunk,
                     long offsetOfLastWritableUnalignedChunk, int dynamicHubCount) {
@@ -93,6 +96,8 @@ public final class ImageHeapInfo implements MultiLayeredImageSingleton, UnsavedS
         this.lastReadOnlyRegularObject = lastReadOnlyRegularObject;
         this.firstReadOnlyRelocatableObject = firstReadOnlyRelocatableObject;
         this.lastReadOnlyRelocatableObject = lastReadOnlyRelocatableObject;
+        this.firstWritablePatchedObject = firstWritablePatchedObject;
+        this.lastWritablePatchedObject = lastWritablePatchedObject;
         this.firstWritableRegularObject = firstWritableRegularObject;
         this.lastWritableRegularObject = lastWritableRegularObject;
         this.firstWritableHugeObject = firstWritableHugeObject;
@@ -104,15 +109,32 @@ public final class ImageHeapInfo implements MultiLayeredImageSingleton, UnsavedS
         this.offsetOfLastWritableUnalignedChunk = offsetOfLastWritableUnalignedChunk;
         this.dynamicHubCount = dynamicHubCount;
 
-        // Compute boundaries for checks considering partitions can be empty (first == last == null)
-        Object firstReadOnlyNonHugeObject = (firstReadOnlyRegularObject != null) ? firstReadOnlyRegularObject : firstReadOnlyRelocatableObject;
-        Object lastReadOnlyNonHugeObject = (lastReadOnlyRelocatableObject != null) ? lastReadOnlyRelocatableObject : lastReadOnlyRegularObject;
-        Object firstNonHugeObject = (firstReadOnlyNonHugeObject != null) ? firstReadOnlyNonHugeObject : firstWritableRegularObject;
-        Object lastNonHugeObject = (lastWritableRegularObject != null) ? lastWritableRegularObject : lastReadOnlyNonHugeObject;
-        Object firstHugeObject = (firstWritableHugeObject != null) ? firstWritableHugeObject : firstReadOnlyHugeObject;
-        Object lastHugeObject = (lastReadOnlyHugeObject != null) ? lastReadOnlyHugeObject : lastWritableHugeObject;
-        this.firstObject = (firstNonHugeObject != null) ? firstNonHugeObject : firstHugeObject;
-        this.lastObject = (lastHugeObject != null) ? lastHugeObject : lastNonHugeObject;
+        /*
+         * Determine first and last objects. Note orderedObject is ordered based on the partition
+         * layout. Empty partitions will have (first == last == null).
+         */
+        Object[] orderedObjects = {
+                        firstReadOnlyRegularObject,
+                        lastReadOnlyRegularObject,
+                        firstReadOnlyRelocatableObject,
+                        lastReadOnlyRelocatableObject,
+                        firstWritablePatchedObject,
+                        lastWritablePatchedObject,
+                        firstWritableRegularObject,
+                        lastWritableRegularObject,
+                        firstWritableHugeObject,
+                        lastWritableHugeObject,
+                        firstReadOnlyHugeObject,
+                        lastReadOnlyHugeObject
+        };
+        for (Object cur : orderedObjects) {
+            if (cur != null) {
+                if (firstObject == null) {
+                    firstObject = cur;
+                }
+                lastObject = cur;
+            }
+        }
     }
 
     /*
@@ -133,6 +155,12 @@ public final class ImageHeapInfo implements MultiLayeredImageSingleton, UnsavedS
     public boolean isInReadOnlyRelocatablePartition(Pointer ptr) {
         assert ptr.isNonNull();
         return Word.objectToUntrackedPointer(firstReadOnlyRelocatableObject).belowOrEqual(ptr) && ptr.belowThan(getObjectEnd(lastReadOnlyRelocatableObject));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isInWritablePatchedPartition(Pointer ptr) {
+        assert ptr.isNonNull();
+        return Word.objectToUntrackedPointer(firstWritablePatchedObject).belowOrEqual(ptr) && ptr.belowThan(getObjectEnd(lastWritablePatchedObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -181,7 +209,7 @@ public final class ImageHeapInfo implements MultiLayeredImageSingleton, UnsavedS
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer getObjectEnd(Object obj) {
         if (obj == null) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         return LayoutEncoding.getImageHeapObjectEnd(obj);
     }
@@ -190,15 +218,16 @@ public final class ImageHeapInfo implements MultiLayeredImageSingleton, UnsavedS
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static <T extends HeapChunk.Header<T>> T asImageHeapChunk(long offsetInImageHeap) {
         if (offsetInImageHeap < 0) {
-            return (T) WordFactory.nullPointer();
+            return (T) Word.nullPointer();
         }
-        UnsignedWord offset = WordFactory.unsigned(offsetInImageHeap);
+        UnsignedWord offset = Word.unsigned(offsetInImageHeap);
         return (T) KnownIntrinsics.heapBase().add(offset);
     }
 
     public void print(Log log) {
         log.string("ReadOnly: ").zhex(Word.objectToUntrackedPointer(firstReadOnlyRegularObject)).string(" - ").zhex(getObjectEnd(lastReadOnlyRegularObject)).newline();
         log.string("ReadOnly Relocatables: ").zhex(Word.objectToUntrackedPointer(firstReadOnlyRelocatableObject)).string(" - ").zhex(getObjectEnd(lastReadOnlyRelocatableObject)).newline();
+        log.string("Writeable Patched: ").zhex(Word.objectToUntrackedPointer(firstWritablePatchedObject)).string(" - ").zhex(getObjectEnd(lastWritablePatchedObject)).newline();
         log.string("Writable: ").zhex(Word.objectToUntrackedPointer(firstWritableRegularObject)).string(" - ").zhex(getObjectEnd(lastWritableRegularObject)).newline();
         log.string("Writable Huge: ").zhex(Word.objectToUntrackedPointer(firstWritableHugeObject)).string(" - ").zhex(getObjectEnd(lastWritableHugeObject)).newline();
         log.string("ReadOnly Huge: ").zhex(Word.objectToUntrackedPointer(firstReadOnlyHugeObject)).string(" - ").zhex(getObjectEnd(lastReadOnlyHugeObject)).newline();

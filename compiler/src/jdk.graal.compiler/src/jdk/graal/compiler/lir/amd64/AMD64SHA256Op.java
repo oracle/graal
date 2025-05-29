@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,17 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.BelowEqual;
+import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.pointerConstant;
+import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.amd64.AMD64.xmm1;
 import static jdk.vm.ci.amd64.AMD64.xmm10;
+import static jdk.vm.ci.amd64.AMD64.xmm11;
+import static jdk.vm.ci.amd64.AMD64.xmm12;
+import static jdk.vm.ci.amd64.AMD64.xmm13;
+import static jdk.vm.ci.amd64.AMD64.xmm14;
+import static jdk.vm.ci.amd64.AMD64.xmm15;
 import static jdk.vm.ci.amd64.AMD64.xmm2;
 import static jdk.vm.ci.amd64.AMD64.xmm3;
 import static jdk.vm.ci.amd64.AMD64.xmm4;
@@ -36,30 +44,27 @@ import static jdk.vm.ci.amd64.AMD64.xmm7;
 import static jdk.vm.ci.amd64.AMD64.xmm8;
 import static jdk.vm.ci.amd64.AMD64.xmm9;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.BelowEqual;
-import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.pointerConstant;
-import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.core.amd64.AMD64LIRGenerator;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.ArrayDataPointerConstant;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/715fa8f9fe7242e86b985aece3d078b226f53fb9/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L1514-L1556",
-          sha1 = "593a45db708f1b6a74086cf170612c1102fe56c2")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/8c9d091f19760deece8daf3e57add85482b9f2a7/src/hotspot/cpu/x86/macroAssembler_x86_sha.cpp#L235-L493",
-          sha1 = "722bdd7519a7d7b9d9cec900af38137f1849ac4e")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/de29ef3bf3a029f99f340de9f093cd20544217fd/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L1579-L1632",
+          sha1 = "ab4fd62b52f1ad67abecf4cb2f919c5cd2c27610")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/9eeb86d972ac4cc38d923b2b868b426bbd27a4e8/src/hotspot/cpu/x86/macroAssembler_x86_sha.cpp#L234-L467",
+          sha1 = "fa2ae53c6b33b111e059e68ac3da4a9f17de3481")
 // @formatter:on
 public final class AMD64SHA256Op extends AMD64LIRInstruction {
 
@@ -79,11 +84,11 @@ public final class AMD64SHA256Op extends AMD64LIRInstruction {
 
     private final boolean multiBlock;
 
-    public AMD64SHA256Op(LIRGeneratorTool tool, AllocatableValue bufValue, AllocatableValue stateValue) {
+    public AMD64SHA256Op(AMD64LIRGenerator tool, AllocatableValue bufValue, AllocatableValue stateValue) {
         this(tool, bufValue, stateValue, Value.ILLEGAL, Value.ILLEGAL, Value.ILLEGAL, false);
     }
 
-    public AMD64SHA256Op(LIRGeneratorTool tool, AllocatableValue bufValue, AllocatableValue stateValue, AllocatableValue ofsValue,
+    public AMD64SHA256Op(AMD64LIRGenerator tool, AllocatableValue bufValue, AllocatableValue stateValue, AllocatableValue ofsValue,
                     AllocatableValue limitValue, AllocatableValue resultValue, boolean multiBlock) {
         super(TYPE);
 
@@ -97,19 +102,40 @@ public final class AMD64SHA256Op extends AMD64LIRInstruction {
 
         this.keyTempValue = tool.newVariable(bufValue.getValueKind());
 
-        this.temps = new Value[]{
-                        xmm0.asValue(),
-                        xmm1.asValue(),
-                        xmm2.asValue(),
-                        xmm3.asValue(),
-                        xmm4.asValue(),
-                        xmm5.asValue(),
-                        xmm6.asValue(),
-                        xmm7.asValue(),
-                        xmm8.asValue(),
-                        xmm9.asValue(),
-                        xmm10.asValue(),
-        };
+        if (tool.supportsCPUFeature(CPUFeature.AVX)) {
+            // vzeroupper clears upper bits of xmm0-xmm15
+            this.temps = new Value[]{
+                            xmm0.asValue(),
+                            xmm1.asValue(),
+                            xmm2.asValue(),
+                            xmm3.asValue(),
+                            xmm4.asValue(),
+                            xmm5.asValue(),
+                            xmm6.asValue(),
+                            xmm7.asValue(),
+                            xmm8.asValue(),
+                            xmm9.asValue(),
+                            xmm10.asValue(),
+                            xmm11.asValue(),
+                            xmm12.asValue(),
+                            xmm13.asValue(),
+                            xmm14.asValue(),
+                            xmm15.asValue(),
+            };
+        } else {
+            this.temps = new Value[]{
+                            xmm0.asValue(),
+                            xmm1.asValue(),
+                            xmm2.asValue(),
+                            xmm3.asValue(),
+                            xmm4.asValue(),
+                            xmm5.asValue(),
+                            xmm6.asValue(),
+                            xmm7.asValue(),
+                            xmm8.asValue(),
+                            xmm9.asValue(),
+            };
+        }
 
         if (multiBlock) {
             this.bufTempValue = tool.newVariable(bufValue.getValueKind());
@@ -198,6 +224,12 @@ public final class AMD64SHA256Op extends AMD64LIRInstruction {
 
         // keyTemp replaces the hardcoded rax in the original stub.
         Register keyTemp = asRegister(keyTempValue);
+
+        if (masm.supports(CPUFeature.AVX)) {
+            // Insert vzeroupper here to avoid performance penalty of SSE-AVX transition between
+            // previously executed AVX instructions and the following SHA-256 instructions.
+            masm.vzeroupper();
+        }
 
         masm.movdqu(state0, new AMD64Address(state, 0));
         masm.movdqu(state1, new AMD64Address(state, 16));

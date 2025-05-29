@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,7 @@ import jdk.graal.compiler.lir.LabelRef;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexNode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
@@ -230,6 +231,11 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
     @SuppressWarnings("unused")
     default Variable emitVectorizedHashCode(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayStart, Value length, Value initialValue, JavaKind arrayKind) {
         throw GraalError.unimplemented("vectorizedHashCode substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @SuppressWarnings("unused")
+    default void emitArrayFill(JavaKind commonElementKind, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value arrayBaseOffset, Value length, Value value) {
+        throw GraalError.unimplemented("Arrays.fill substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
@@ -509,6 +515,12 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
         throw GraalError.unimplemented("StringUTF16.compress substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
+    @SuppressWarnings("unused")
+    default Variable emitCodepointIndexToByteIndex(StringCodepointIndexToByteIndexNode.InputEncoding inputEncoding, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value offset, Value length,
+                    Value index) {
+        throw GraalError.unimplemented("CodepointIndexToByteIndex substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
+    }
+
     enum CharsetName {
         ASCII,
         ISO_8859_1
@@ -705,4 +717,10 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
     default VectorSize getMaxVectorSize(EnumSet<?> runtimeCheckedCPUFeatures) {
         throw GraalError.unimplemented("Max vector size is not specified on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
+
+    /**
+     * Determines whether the given register is a reserved register, such as the register holding
+     * the heap base address for compressed pointers.
+     */
+    boolean isReservedRegister(Register r);
 }

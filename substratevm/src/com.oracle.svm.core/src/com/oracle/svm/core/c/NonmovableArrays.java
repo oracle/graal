@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.SubstrateUtil;
@@ -54,6 +53,7 @@ import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.word.Word;
 
@@ -100,9 +100,8 @@ public final class NonmovableArrays {
 
         ObjectHeader header = Heap.getHeap().getObjectHeader();
         Word encodedHeader = header.encodeAsUnmanagedObjectHeader(hub);
-        header.initializeHeaderOfNewObject(array, encodedHeader, true);
-
-        array.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length);
+        header.initializeHeaderOfNewObjectOffHeap(array, encodedHeader, true);
+        array.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length, NamedLocationIdentity.OFF_HEAP_LOCATION);
         // already zero-initialized thanks to calloc()
         trackUnmanagedArray((NonmovableArray<?>) array);
         return (T) array;
@@ -148,7 +147,7 @@ public final class NonmovableArrays {
     /** Provides the size of the given array in bytes. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord byteSizeOf(NonmovableArray<?> array) {
-        return array.isNonNull() ? LayoutEncoding.getArrayAllocationSize(readLayoutEncoding(array), lengthOf(array)) : WordFactory.zero();
+        return array.isNonNull() ? LayoutEncoding.getArrayAllocationSize(readLayoutEncoding(array), lengthOf(array)) : Word.zero();
     }
 
     /** @see System#arraycopy */
@@ -160,7 +159,7 @@ public final class NonmovableArrays {
         }
         assert srcPos >= 0 && destPos >= 0 && length >= 0 && srcPos + length <= lengthOf(src) && destPos + length <= lengthOf(dest);
         assert readHub(src) == readHub(dest) : "copying is only allowed with same component types";
-        UnmanagedMemoryUtil.copy(addressOf(src, srcPos), addressOf(dest, destPos), WordFactory.unsigned(length << readElementShift(dest)));
+        UnmanagedMemoryUtil.copy(addressOf(src, srcPos), addressOf(dest, destPos), Word.unsigned(length << readElementShift(dest)));
     }
 
     /** Provides an array for which {@link NonmovableArray#isNull()} returns {@code true}. */
@@ -170,7 +169,7 @@ public final class NonmovableArrays {
         if (SubstrateUtil.HOSTED) {
             return (T) HOSTED_NULL_VALUE;
         }
-        return WordFactory.nullPointer();
+        return Word.nullPointer();
     }
 
     /**
@@ -286,7 +285,7 @@ public final class NonmovableArrays {
         Pointer destAddressAtPos = Word.objectToUntrackedPointer(dest).add(LayoutEncoding.getArrayElementOffset(destHub.getLayoutEncoding(), destPos));
         if (LayoutEncoding.isPrimitiveArray(destHub.getLayoutEncoding())) {
             Pointer srcAddressAtPos = addressOf(src, srcPos);
-            JavaMemoryUtil.copyPrimitiveArrayForward(srcAddressAtPos, destAddressAtPos, WordFactory.unsigned(length << readElementShift(src)));
+            JavaMemoryUtil.copyPrimitiveArrayForward(srcAddressAtPos, destAddressAtPos, Word.unsigned(length << readElementShift(src)));
         } else { // needs barriers
             Object[] destArr = (Object[]) dest;
             for (int i = 0; i < length; i++) {
@@ -322,7 +321,7 @@ public final class NonmovableArrays {
             return new HostedNonmovableArray<>(array);
         }
         assert array == null || Heap.getHeap().isInImageHeap(array);
-        return (array != null) ? (NonmovableArray<T>) Word.objectToUntrackedPointer(array) : WordFactory.nullPointer();
+        return (array != null) ? (NonmovableArray<T>) Word.objectToUntrackedPointer(array) : Word.nullPointer();
     }
 
     /** Returns a {@link NonmovableObjectArray} for an object array in the image heap. */
@@ -445,36 +444,29 @@ public final class NonmovableArrays {
      * Visits all array elements with the provided {@link ObjectReferenceVisitor}.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor) {
+    public static void walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor) {
         if (array.isNonNull()) {
-            return walkUnmanagedObjectArray(array, visitor, 0, lengthOf(array));
+            walkUnmanagedObjectArray(array, visitor, 0, lengthOf(array));
         }
-        return true;
     }
 
     /**
      * Visits all array elements with the provided {@link ObjectReferenceVisitor}.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor, int startIndex, int count) {
+    public static void walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor, int startIndex, int count) {
         if (array.isNonNull()) {
             assert startIndex >= 0 && count <= lengthOf(array) - startIndex;
             int refSize = ConfigurationValues.getObjectLayout().getReferenceSize();
             assert refSize == (1 << readElementShift(array));
-            Pointer p = ((Pointer) array).add(readArrayBase(array)).add(startIndex * refSize);
-            for (int i = 0; i < count; i++) {
-                if (!callVisitor(visitor, p)) {
-                    return false;
-                }
-                p = p.add(refSize);
-            }
+            Pointer firstObjRef = ((Pointer) array).add(readArrayBase(array)).add(startIndex * refSize);
+            callVisitor(visitor, firstObjRef, refSize, count);
         }
-        return true;
     }
 
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
-    private static boolean callVisitor(ObjectReferenceVisitor visitor, Pointer p) {
-        return visitor.visitObjectReference(p, true, null);
+    private static void callVisitor(ObjectReferenceVisitor visitor, Pointer firstObjRef, int referenceSize, int count) {
+        visitor.visitObjectReferences(firstObjRef, true, referenceSize, null, count);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

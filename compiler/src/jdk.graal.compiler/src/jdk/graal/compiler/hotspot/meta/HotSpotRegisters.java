@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.meta;
 
+import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.vm.ci.code.Register;
 
 public class HotSpotRegisters implements HotSpotRegistersProvider {
@@ -54,5 +55,22 @@ public class HotSpotRegisters implements HotSpotRegistersProvider {
     public Register getStackPointerRegister() {
         assert !stackPointerRegister.equals(Register.None) : "stack pointer register is not defined";
         return stackPointerRegister;
+    }
+
+    @Override
+    public Register getZeroValueRegister(GraalHotSpotVMConfig config) {
+        if (config.useCompressedOops && !config.getOopEncoding().hasBase()) {
+            /*
+             * Heap base register is exempted from register allocation when using compressed oops.
+             * Its value will be config.getOopEncoding().getBase().
+             */
+            return getHeapBaseRegister();
+        }
+        return Register.None;
+    }
+
+    @Override
+    public boolean isReservedRegister(Register r) {
+        return !r.equals(Register.None) && (r.equals(threadRegister) || r.equals(heapBaseRegister) || r.equals(stackPointerRegister));
     }
 }

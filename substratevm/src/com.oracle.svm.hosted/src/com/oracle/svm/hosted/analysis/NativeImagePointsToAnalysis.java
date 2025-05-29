@@ -29,6 +29,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
@@ -36,7 +37,6 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -44,14 +44,16 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.TimerCollection;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.CustomTypeFieldHandler;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
@@ -60,6 +62,7 @@ import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 
 public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inflation {
 
@@ -67,6 +70,14 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     private final DynamicHubInitializer dynamicHubInitializer;
     private final CustomTypeFieldHandler customTypeFieldHandler;
     private final CallChecker callChecker;
+
+    /**
+     * Track the fallback methods created so that they are unique.
+     */
+    private final ConcurrentHashMap<FallbackDescriptor, IncompatibleClassChangeFallbackMethod> fallbackMethods = new ConcurrentHashMap<>();
+
+    record FallbackDescriptor(AnalysisType resolvingType, String name, Signature signature) {
+    }
 
     @SuppressWarnings("this-escape")
     public NativeImagePointsToAnalysis(OptionValues options, AnalysisUniverse universe,
@@ -117,7 +128,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
 
     @Override
     public void onFieldAccessed(AnalysisField field) {
-        customTypeFieldHandler.handleField(field);
+        postTask(() -> customTypeFieldHandler.handleField(field));
     }
 
     @Override
@@ -135,18 +146,21 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
                  * avoid deadlocks, the hub needs to be rescanned manually after the metadata is
                  * initialized.
                  */
-                universe.getImageLayerLoader().rescanHub(type, ((SVMHost) hostVM).dynamicHub(type));
+                HostedImageLayerBuildingSupport.singleton().getLoader().rescanHub(type, ((SVMHost) hostVM).dynamicHub(type));
             }
-            if (SubstrateOptions.includeAll()) {
+            if (type.isArray() && type.getComponentType().isInBaseLayer()) {
+                /* Rescan the component hub. This will be simplified by GR-60254. */
+                HostedImageLayerBuildingSupport.singleton().getLoader().rescanHub(type.getComponentType(), ((SVMHost) hostVM).dynamicHub(type).getComponentHub());
+            }
+            if (ImageLayerBuildingSupport.buildingSharedLayer()) {
                 /*
                  * Using getInstanceFields and getStaticFields allows to include the fields from the
                  * substitution class.
                  */
                 Stream.concat(Arrays.stream(getOrDefault(type, t -> t.getInstanceFields(true), new AnalysisField[0])),
                                 Arrays.stream(getOrDefault(type, AnalysisType::getStaticFields, new AnalysisField[0])))
-                                .map(OriginalFieldProvider::getJavaField)
-                                .filter(field -> field != null && classInclusionPolicy.isFieldIncluded(field))
-                                .forEach(classInclusionPolicy::includeField);
+                                .filter(field -> field != null && classInclusionPolicy.isFieldIncluded((AnalysisField) field))
+                                .forEach(field -> classInclusionPolicy.includeField((AnalysisField) field));
 
                 /*
                  * Only the class initializers that are executed at run time should be included in
@@ -172,6 +186,15 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
             return ((HostedType) type).getWrapped().getWrapped();
         } else {
             return type;
+        }
+    }
+
+    @Override
+    protected void validateRootMethodRegistration(AnalysisMethod aMethod, boolean invokeSpecial) {
+        super.validateRootMethodRegistration(aMethod, invokeSpecial);
+
+        if (!invokeSpecial && aMethod.isConstructor()) {
+            LogUtils.warning("Constructors should be registered as special invoke entry points: %s", aMethod);
         }
     }
 
@@ -206,7 +229,10 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
                  */
                 return method;
             }
-            return getUniverse().lookup(new IncompatibleClassChangeFallbackMethod(resolvingType.getWrapped(), method.getWrapped(), findResolutionError(resolvingType, method.getJavaMethod())));
+
+            var uniqueFallbackMethod = fallbackMethods.computeIfAbsent(new FallbackDescriptor(resolvingType, method.getName(), method.getSignature()),
+                            (k) -> new IncompatibleClassChangeFallbackMethod(resolvingType.getWrapped(), method.getWrapped(), findResolutionError(resolvingType, method.getJavaMethod())));
+            return getUniverse().lookup(uniqueFallbackMethod);
         }
         return super.fallbackResolveConcreteMethod(resolvingType, method);
     }

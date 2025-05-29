@@ -472,25 +472,17 @@ public class PolyglotCachingTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            byte[] bytes = new byte[16 * 1024 * 1024 - Integer.parseInt(request.getSource().getCharacters().toString())];
-            byte byteValue = (byte) 'a';
-            Arrays.fill(bytes, byteValue);
-            String testString = new String(bytes); // big string
-
             storedLanguageInstances.add(this);
             CallTarget callTarget = new RootNode(this) {
                 @SuppressWarnings("unused") final com.oracle.truffle.api.source.Source source = request.getSource();
 
                 @Child TestInstrumentableNode testNode = new TestInstrumentableNode(source);
 
-                @SuppressWarnings("unused") final String bigString = testString;
-
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return testNode.execute(frame);
                 }
             }.getCallTarget();
-            System.gc();
             return callTarget;
         }
     }
@@ -516,6 +508,13 @@ public class PolyglotCachingTest {
         runInSubprocess(() -> {
             try (Engine engine = Engine.create()) {
                 GCUtils.assertObjectsCollectible((iteration) -> {
+                    if (iteration != 0 && iteration % 4 == 0) {
+                        /*
+                         * GenerateGcPressure is expensive. We don't need to do it in every
+                         * iteration.
+                         */
+                        GCUtils.generateGcPressure(0.7);
+                    }
                     Context context = Context.newBuilder().engine(engine).build();
                     context.eval(LanguageInstanceStoringTestLanguage.ID, String.valueOf(iteration));
                     return context;

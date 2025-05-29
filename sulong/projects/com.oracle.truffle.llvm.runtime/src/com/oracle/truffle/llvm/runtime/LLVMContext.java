@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,27 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
+import java.util.stream.Collectors;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.Pair;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -45,6 +66,7 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
@@ -66,29 +88,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Pair;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.stream.Collectors;
-
-import com.oracle.truffle.api.profiles.BranchProfile;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
 
 public final class LLVMContext {
     public static final String SULONG_INIT_CONTEXT = "__sulong_init_context";
@@ -552,7 +551,7 @@ public final class LLVMContext {
         }
 
         Thread[] allThreads;
-        try (TLSInitializerAccess access = getTLSInitializerAccess()) {
+        try (TLSInitializerAccess access = getTLSInitializerAccess(true)) {
             allThreads = access.getAllRunningThreads();
         }
 
@@ -649,29 +648,50 @@ public final class LLVMContext {
 
     public Object getFreeGlobalsBlockFunction() {
         if (freeGlobalsBlockFunction == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            NativeContextExtension nativeContextExtension = getContextExtensionOrNull(NativeContextExtension.class);
-            freeGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_free_globals_block", "(POINTER, UINT64):VOID");
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            initFreeGlobalsBlockFunction();
         }
         return freeGlobalsBlockFunction;
     }
 
+    @TruffleBoundary
+    private void initFreeGlobalsBlockFunction() {
+        NativeContextExtension nativeContextExtension = getContextExtensionOrNull(NativeContextExtension.class);
+        freeGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_free_globals_block", "(POINTER, UINT64):VOID");
+    }
+
     public Object getProtectReadOnlyGlobalsBlockFunction() {
         if (protectGlobalsBlockFunction == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            NativeContextExtension nativeContextExtension = getContextExtensionOrNull(NativeContextExtension.class);
-            protectGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_protect_readonly_globals_block", "(POINTER, UINT64):VOID");
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            initProtectReadOnlyGlobalsBlockFunction();
         }
         return protectGlobalsBlockFunction;
     }
 
+    @TruffleBoundary
+    private void initProtectReadOnlyGlobalsBlockFunction() {
+        NativeContextExtension nativeContextExtension = getContextExtensionOrNull(NativeContextExtension.class);
+        protectGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_protect_readonly_globals_block", "(POINTER, UINT64):VOID");
+    }
+
     public Object getAllocateGlobalsBlockFunction() {
         if (allocateGlobalsBlockFunction == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            NativeContextExtension nativeContextExtension = getContextExtensionOrNull(NativeContextExtension.class);
-            allocateGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_allocate_globals_block", "(UINT64):POINTER");
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            initAllocateGlobalsBlockFunction();
         }
         return allocateGlobalsBlockFunction;
+    }
+
+    @TruffleBoundary
+    private void initAllocateGlobalsBlockFunction() {
+        NativeContextExtension nativeContextExtension = getContextExtensionOrNull(NativeContextExtension.class);
+        allocateGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_allocate_globals_block", "(UINT64):POINTER");
     }
 
     /**
@@ -1047,8 +1067,12 @@ public final class LLVMContext {
     public final class TLSInitializerAccess implements AutoCloseable {
 
         @TruffleBoundary
-        private TLSInitializerAccess() {
-            threadInitLock.lock();
+        private TLSInitializerAccess(boolean interruptible) {
+            if (interruptible) {
+                TruffleSafepoint.setBlockedThreadInterruptible(null, ReentrantLock::lockInterruptibly, threadInitLock);
+            } else {
+                threadInitLock.lock();
+            }
         }
 
         @TruffleBoundary
@@ -1088,8 +1112,8 @@ public final class LLVMContext {
         }
     }
 
-    public TLSInitializerAccess getTLSInitializerAccess() {
-        return new TLSInitializerAccess();
+    public TLSInitializerAccess getTLSInitializerAccess(boolean interruptible) {
+        return new TLSInitializerAccess(interruptible);
     }
 
     @TruffleBoundary

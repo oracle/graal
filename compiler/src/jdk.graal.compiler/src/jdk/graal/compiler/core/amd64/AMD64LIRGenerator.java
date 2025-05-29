@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -92,6 +92,7 @@ import jdk.graal.compiler.lir.amd64.AMD64CalcStringAttributesOp;
 import jdk.graal.compiler.lir.amd64.AMD64Call;
 import jdk.graal.compiler.lir.amd64.AMD64CipherBlockChainingAESDecryptOp;
 import jdk.graal.compiler.lir.amd64.AMD64CipherBlockChainingAESEncryptOp;
+import jdk.graal.compiler.lir.amd64.AMD64CodepointIndexToByteIndexOp;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.BranchOp;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.CmpBranchOp;
@@ -120,9 +121,11 @@ import jdk.graal.compiler.lir.amd64.AMD64Move.CompareAndSwapOp;
 import jdk.graal.compiler.lir.amd64.AMD64Move.MembarOp;
 import jdk.graal.compiler.lir.amd64.AMD64Move.StackLeaOp;
 import jdk.graal.compiler.lir.amd64.AMD64PauseOp;
+import jdk.graal.compiler.lir.amd64.AMD64ReadTimestampCounterWithProcid;
 import jdk.graal.compiler.lir.amd64.AMD64SHA1Op;
 import jdk.graal.compiler.lir.amd64.AMD64SHA256AVX2Op;
 import jdk.graal.compiler.lir.amd64.AMD64SHA256Op;
+import jdk.graal.compiler.lir.amd64.AMD64SHA3Op;
 import jdk.graal.compiler.lir.amd64.AMD64SHA512Op;
 import jdk.graal.compiler.lir.amd64.AMD64StringLatin1InflateOp;
 import jdk.graal.compiler.lir.amd64.AMD64StringUTF16CompressOp;
@@ -138,6 +141,7 @@ import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.LIRGenerator;
 import jdk.graal.compiler.lir.gen.MoveFactory;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexNode;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -245,9 +249,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    private Value emitCompareAndSwap(boolean isLogic, LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, BarrierType barrierType) {
+    private Value emitCompareAndSwapHelper(boolean isLogic, LIRKind accessKind, Value address, Value expectedValue, Value newValue, BarrierType barrierType) {
         ValueKind<?> kind = newValue.getValueKind();
-        assert kind.equals(expectedValue.getValueKind());
+        GraalError.guarantee(kind.equals(expectedValue.getValueKind()), "%s != %s", kind, expectedValue.getValueKind());
 
         AMD64AddressValue addressValue = asAddressValue(address);
         LIRKind integerAccessKind = accessKind;
@@ -268,15 +272,20 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         AllocatableValue allocatableNewValue = asAllocatable(reinterpretedNewValue, integerAccessKind);
         emitMove(aRes, reinterpretedExpectedValue);
         emitCompareAndSwapOp(isLogic, integerAccessKind, memKind, aRes, addressValue, allocatableNewValue, barrierType);
+        return aRes;
+    }
+
+    private Value emitCompareAndSwap(boolean isLogic, LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, BarrierType barrierType) {
+        Value aRes = emitCompareAndSwapHelper(isLogic, accessKind, address, expectedValue, newValue, barrierType);
 
         if (isLogic) {
             assert trueValue.getValueKind().equals(falseValue.getValueKind());
             return emitCondMoveOp(Condition.EQ, trueValue, falseValue, false, false);
         } else {
-            if (isXmm) {
+            if (((AMD64Kind) accessKind.getPlatformKind()).isXMM()) {
                 return arithmeticLIRGen.emitReinterpret(accessKind, aRes);
             } else {
-                Variable result = newVariable(kind);
+                Variable result = newVariable(newValue.getValueKind());
                 emitMove(result, aRes);
                 return result;
             }
@@ -296,13 +305,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     public void emitCompareAndSwapBranch(boolean isLogic, LIRKind kind, AMD64AddressValue address, Value expectedValue, Value newValue, Condition condition, LabelRef trueLabel, LabelRef falseLabel,
                     double trueLabelProbability, BarrierType barrierType) {
-        assert kind.getPlatformKind().getSizeInBytes() <= expectedValue.getValueKind().getPlatformKind().getSizeInBytes() : kind + " " + expectedValue;
-        assert kind.getPlatformKind().getSizeInBytes() <= newValue.getValueKind().getPlatformKind().getSizeInBytes() : kind + " " + newValue;
-        assert condition == Condition.EQ || condition == Condition.NE : Assertions.errorMessage(condition, address, expectedValue, newValue);
-        AMD64Kind memKind = (AMD64Kind) kind.getPlatformKind();
-        RegisterValue raxValue = AMD64.rax.asValue(kind);
-        emitMove(raxValue, expectedValue);
-        emitCompareAndSwapOp(isLogic, kind, memKind, raxValue, address, asAllocatable(newValue), barrierType);
+        GraalError.guarantee(kind.getPlatformKind().getSizeInBytes() <= expectedValue.getValueKind().getPlatformKind().getSizeInBytes(), "kind=%s, expectedValue=%s", kind, expectedValue);
+        GraalError.guarantee(kind.getPlatformKind().getSizeInBytes() <= newValue.getValueKind().getPlatformKind().getSizeInBytes(), "kind=%s, newValue=%s", kind, newValue);
+        GraalError.guarantee(condition == Condition.EQ || condition == Condition.NE, Assertions.errorMessage(condition, address, expectedValue, newValue));
+
+        emitCompareAndSwapHelper(isLogic, kind, address, expectedValue, newValue, barrierType);
         append(new BranchOp(condition, trueLabel, falseLabel, trueLabelProbability));
     }
 
@@ -441,11 +448,22 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         } else {
             assert ((AMD64Kind) left.getPlatformKind()).isInteger();
             OperandSize size = left.getPlatformKind() == AMD64Kind.QWORD ? QWORD : DWORD;
-            if (isJavaConstant(right) && NumUtil.is32bit(asJavaConstant(right).asLong())) {
-                append(new TestConstBranchOp(size, asAllocatable(left), (int) asJavaConstant(right).asLong(), null, Condition.EQ, trueDestination, falseDestination, trueDestinationProbability));
-            } else if (isJavaConstant(left) && NumUtil.is32bit(asJavaConstant(left).asLong())) {
-                append(new TestConstBranchOp(size, asAllocatable(right), (int) asJavaConstant(left).asLong(), null, Condition.EQ, trueDestination, falseDestination, trueDestinationProbability));
-            } else if (isAllocatableValue(right)) {
+            if (isJavaConstant(left) || isJavaConstant(right)) {
+                Value x = isJavaConstant(right) ? left : right;
+                Value y = isJavaConstant(right) ? right : left;
+                long con = asJavaConstant(y).asLong();
+                if (NumUtil.isUByte(con)) {
+                    size = BYTE;
+                } else if (NumUtil.isUInt(con)) {
+                    size = DWORD;
+                }
+                if (size != QWORD || NumUtil.isInt(con)) {
+                    append(new TestConstBranchOp(size, asAllocatable(x), (int) con, null, Condition.EQ, trueDestination, falseDestination, trueDestinationProbability));
+                    return;
+                }
+            }
+
+            if (isAllocatableValue(right)) {
                 append(new TestBranchOp(size, asAllocatable(right), asAllocatable(left), null, Condition.EQ, trueDestination, falseDestination, trueDestinationProbability));
             } else {
                 append(new TestBranchOp(size, asAllocatable(left), asAllocatable(right), null, Condition.EQ, trueDestination, falseDestination, trueDestinationProbability));
@@ -554,11 +572,23 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         } else {
             assert ((AMD64Kind) a.getPlatformKind()).isInteger();
             OperandSize size = a.getPlatformKind() == AMD64Kind.QWORD ? QWORD : DWORD;
-            if (isJavaConstant(b) && NumUtil.is32bit(asJavaConstant(b).asLong())) {
-                append(new AMD64BinaryConsumer.ConstOp(AMD64MIOp.TEST, size, asAllocatable(a), (int) asJavaConstant(b).asLong()));
-            } else if (isJavaConstant(a) && NumUtil.is32bit(asJavaConstant(a).asLong())) {
-                append(new AMD64BinaryConsumer.ConstOp(AMD64MIOp.TEST, size, asAllocatable(b), (int) asJavaConstant(a).asLong()));
-            } else if (isAllocatableValue(b)) {
+            if (isJavaConstant(a) || isJavaConstant(b)) {
+                Value x = isJavaConstant(b) ? a : b;
+                Value y = isJavaConstant(b) ? b : a;
+                long con = asJavaConstant(y).asLong();
+                if (NumUtil.isUByte(con)) {
+                    size = BYTE;
+                } else if (NumUtil.isUInt(con)) {
+                    size = DWORD;
+                }
+                if (size != QWORD || NumUtil.isInt(con)) {
+                    AMD64MIOp op = size == BYTE ? AMD64MIOp.TESTB : AMD64MIOp.TEST;
+                    append(new AMD64BinaryConsumer.ConstOp(op, size, asAllocatable(x), (int) con));
+                    return;
+                }
+            }
+
+            if (isAllocatableValue(b)) {
                 append(new AMD64BinaryConsumer.Op(AMD64RMOp.TEST, size, asAllocatable(b), asAllocatable(a)));
             } else {
                 append(new AMD64BinaryConsumer.Op(AMD64RMOp.TEST, size, asAllocatable(a), asAllocatable(b)));
@@ -948,7 +978,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         emitMove(rZ, z);
         emitMove(rZlen, zlen);
 
-        append(new AMD64BigIntegerMultiplyToLenOp(rX, rXlen, rY, rYlen, rZ, rZlen, getHeapBaseRegister()));
+        append(new AMD64BigIntegerMultiplyToLenOp(this, rX, rXlen, rY, rYlen, rZ, rZlen));
     }
 
     @Override
@@ -965,7 +995,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         emitMove(rLen, len);
         emitMove(rK, k);
 
-        append(new AMD64BigIntegerMulAddOp(rOut, rIn, rOffset, rLen, rK, getHeapBaseRegister()));
+        append(new AMD64BigIntegerMulAddOp(this, rOut, rIn, rOffset, rLen, rK));
         // result of AMD64BigIntegerMulAddOp is stored at rax
         Variable result = newVariable(len.getValueKind());
         emitMove(result, AMD64.rax.asValue(len.getValueKind()));
@@ -984,7 +1014,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         emitMove(rZ, z);
         emitMove(rZlen, zlen);
 
-        append(new AMD64BigIntegerSquareToLenOp(rX, rLen, rZ, rZlen, getHeapBaseRegister()));
+        append(new AMD64BigIntegerSquareToLenOp(this, rX, rLen, rZ, rZlen));
     }
 
     @Override
@@ -1005,6 +1035,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
             append(new AMD64SHA256AVX2Op(rBuf, rState));
         }
+    }
+
+    @Override
+    public void emitSha3ImplCompress(Value buf, Value state, Value blockSize) {
+        append(new AMD64SHA3Op(asAllocatable(buf), asAllocatable(state), asAllocatable(blockSize)));
     }
 
     @Override
@@ -1097,6 +1132,15 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return res;
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public Variable emitCodepointIndexToByteIndex(StringCodepointIndexToByteIndexNode.InputEncoding inputEncoding, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value offset, Value length,
+                    Value index) {
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        append(AMD64CodepointIndexToByteIndexOp.movParamsAndCreate(this, inputEncoding, (EnumSet<AMD64.CPUFeature>) runtimeCheckedCPUFeatures, array, offset, length, index, result));
+        return result;
+    }
+
     protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key, AllocatableValue temp) {
         return new StrategySwitchOp(strategy, keyTargets, defaultTarget, key, temp);
     }
@@ -1109,10 +1153,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue key) {
-        Variable scratch = newVariable(LIRKind.value(target().arch.getWordKind()));
-        Variable idxScratch = newVariable(key.getValueKind());
-        append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, key, scratch, idxScratch));
+    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key) {
+        append(new RangeTableSwitchOp(this, lowKey, defaultTarget, targets, remainingStrategy, remainingTargets, key));
     }
 
     @Override
@@ -1196,5 +1238,35 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         } catch (IllegalArgumentException e) {
             return false;
         }
+    }
+
+    public boolean usePopCountInstruction() {
+        return supportsCPUFeature(CPUFeature.POPCNT);
+    }
+
+    public boolean useCountLeadingZerosInstruction() {
+        return supportsCPUFeature(CPUFeature.LZCNT);
+    }
+
+    public boolean useCountTrailingZerosInstruction() {
+        return supportsCPUFeature(CPUFeature.BMI1);
+    }
+
+    @Override
+    public Value emitTimeStamp() {
+        AMD64ReadTimestampCounterWithProcid timestamp = new AMD64ReadTimestampCounterWithProcid();
+        append(timestamp);
+        // Combine RDX and RAX into a single 64-bit register.
+        AllocatableValue lo = timestamp.getLowResult();
+        Value hi = getArithmetic().emitZeroExtend(timestamp.getHighResult(), 32, 64);
+        return combineLoAndHi(lo, hi);
+    }
+
+    /**
+     * Combines two 32 bit values to a 64 bit value: ( (hi << 32) | lo ).
+     */
+    protected Value combineLoAndHi(Value lo, Value hi) {
+        Value shiftedHi = getArithmetic().emitShl(hi, emitConstant(LIRKind.value(AMD64Kind.DWORD), JavaConstant.forInt(32)));
+        return getArithmetic().emitOr(shiftedHi, lo);
     }
 }

@@ -61,7 +61,7 @@ public class ExactClassValueProfileTest extends AbstractProfileTest {
     private static class TestBaseClass {
     }
 
-    private static class TestSubClass extends TestBaseClass {
+    private static final class TestSubClass extends TestBaseClass {
     }
 
     @BeforeClass

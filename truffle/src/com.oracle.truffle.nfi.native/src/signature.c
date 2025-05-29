@@ -56,10 +56,8 @@ struct cif_data {
 };
 
 static int align_up(int index, int alignment) {
-    if (index % alignment != 0) {
-        index += alignment - (index % alignment);
-    }
-    return index;
+    int mask = alignment - 1;
+    return (index + mask) & ~mask;
 }
 
 __thread struct __TruffleEnvInternal *cachedTruffleEnv = NULL;
@@ -77,11 +75,14 @@ static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *
     jobject *objectsForRelease;
     const void **ptrsForRelease;
     int releaseCount;
+    struct __TruffleContextInternal *context = (struct __TruffleContextInternal *) ctx;
 
     truffleEnv.functions = &truffleNativeAPI;
-    truffleEnv.context = (struct __TruffleContextInternal *) ctx;
+    truffleEnv.context = context;
     truffleEnv.jniEnv = env;
     truffleEnv.nfiState = nfiState;
+    int *nfiErrno = (int *) (*env)->GetLongField(env, nfiState, context->NFIState_nfiErrnoAddress);
+    truffleEnv.nfiErrnoAddress = nfiErrno;
 
     prevCachedEnv = cachedTruffleEnv;
     cachedTruffleEnv = &truffleEnv;
@@ -174,11 +175,11 @@ static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *
         (*env)->ReleaseIntArrayElements(env, patch, patches, JNI_ABORT);
     }
 
-    errno = errnoMirror;
+    errno = *nfiErrno;
 
     ffi_call(cif, (void (*)(void))(intptr_t) address, ret, argPtrs);
 
-    errnoMirror = errno;
+    *nfiErrno = errno;
 
     (*env)->ReleaseByteArrayElements(env, primArgs, primArgValues, JNI_ABORT);
 

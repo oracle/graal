@@ -187,6 +187,9 @@ exit /b %errorlevel%
     ) else if "!vm_arg:~0,10!"=="classpath=" (
         call :unquote_arg %vm_arg:~10%
         set "absolute_cp=%absolute_cp%;!arg!"
+    ) else if "!vm_arg:~0,1!"=="@" (
+        if %arg_quoted%==true ( set "arg="%vm_arg%"" ) else ( set "arg=%vm_arg%" )
+        set "jvm_args=%jvm_args% !arg!"
     ) else (
         if %arg_quoted%==true ( set "arg="-%vm_arg%"" ) else ( set "arg=-%vm_arg%" )
         set "jvm_args=%jvm_args% !arg!"

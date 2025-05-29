@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -48,6 +49,8 @@ final class ContextPauseHandle implements Future<Void> {
     final PauseThreadLocalAction pauseThreadLocalAction;
     private final Future<Void> pauseActionFuture;
 
+    private boolean cancelled;
+
     ContextPauseHandle(PauseThreadLocalAction pauseThreadLocalAction, Future<Void> pauseActionFuture) {
         this.pauseThreadLocalAction = pauseThreadLocalAction;
         this.pauseActionFuture = pauseActionFuture;
@@ -55,28 +58,37 @@ final class ContextPauseHandle implements Future<Void> {
 
     @Override
     public boolean cancel(boolean mayInterruptIfRunning) {
-        throw new UnsupportedOperationException();
+        pauseActionFuture.cancel(mayInterruptIfRunning);
+        resume();
+        cancelled = true;
+        return true;
     }
 
     @Override
     public boolean isCancelled() {
-        return false;
+        return cancelled || pauseActionFuture.isCancelled();
     }
 
     @Override
     public boolean isDone() {
-        return pauseThreadLocalAction.wasPaused(pauseActionFuture);
+        return cancelled || pauseActionFuture.isCancelled() || pauseThreadLocalAction.wasPaused(pauseActionFuture);
     }
 
     @Override
     public Void get() throws InterruptedException {
         pauseThreadLocalAction.waitUntilPaused(pauseActionFuture);
+        if (cancelled || pauseActionFuture.isCancelled()) {
+            throw new CancellationException();
+        }
         return null;
     }
 
     @Override
     public Void get(long timeout, TimeUnit unit) throws InterruptedException, TimeoutException {
         pauseThreadLocalAction.waitUntilPaused(pauseActionFuture, timeout, unit);
+        if (cancelled || pauseActionFuture.isCancelled()) {
+            throw new CancellationException();
+        }
         return null;
     }
 

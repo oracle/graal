@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,14 +29,23 @@ import java.lang.reflect.Field;
 
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
+import com.oracle.graal.pointsto.heap.TLABObjectHeaderConstant;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.NonFoldingConstantNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.word.WordTypes;
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -63,6 +72,31 @@ public class HostedSnippetReflectionProvider implements SnippetReflectionProvide
     }
 
     @Override
+    public ValueNode forTLABObjectHeader(Object hub, StructuredGraph graph) {
+        VMError.guarantee(hub instanceof DynamicHub, "must be a DynamicHub: %s", hub);
+        int constantHeaderSize = Heap.getHeap().getObjectHeader().constantHeaderSize();
+        if (constantHeaderSize < 0) {
+            return null;
+        }
+        if (DeoptimizationSupport.enabled() && SubstrateCompilationDirectives.isDeoptTarget(graph.method())) {
+            /*
+             * This implies the existence of alternative entry points of the method. Since the
+             * object header constant is a floating node, if it moves to before a method entry, we
+             * lose its value if the method starts executing at that entry because it is not in the
+             * frame state.
+             */
+            return null;
+        }
+
+        JavaConstant constant = new TLABObjectHeaderConstant((ImageHeapInstance) forObject(hub), constantHeaderSize);
+        ValueNode res = NonFoldingConstantNode.create(constant, graph);
+        if (constantHeaderSize == Integer.BYTES) {
+            res = graph.addOrUniqueWithInputs(ZeroExtendNode.create(res, Long.SIZE, NodeView.DEFAULT));
+        }
+        return res;
+    }
+
+    @Override
     public JavaConstant forBoxed(JavaKind kind, Object value) {
         if (kind == JavaKind.Object) {
             return forObject(value);
@@ -80,8 +114,8 @@ public class HostedSnippetReflectionProvider implements SnippetReflectionProvide
                 return null;
             }
         }
-
-        if (type == Class.class && constant instanceof HotSpotObjectConstant) {
+        VMError.guarantee(!(constant instanceof ImageHeapConstant));
+        if (type == Class.class && constant.getJavaKind().isObject()) {
             /* Only unwrap the DynamicHub if a Class object is required explicitly. */
             if (heapScanner.getHostedValuesProvider().asObject(Object.class, constant) instanceof DynamicHub hub) {
                 return type.cast(hub.getHostedJavaClass());

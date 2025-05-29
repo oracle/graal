@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -50,6 +51,8 @@ import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -95,8 +98,20 @@ public class VarHandleFeature implements InternalFeature {
 
     class VarHandleSupportImpl extends VarHandleSupport {
         @Override
-        protected ResolvedJavaField findVarHandleField(Object varHandle) {
-            return hUniverse != null ? findVarHandleHostedField(varHandle) : findVarHandleAnalysisField(varHandle);
+        protected ResolvedJavaField findVarHandleField(Object varHandle, boolean guaranteeUnsafeAccessed) {
+            ResolvedJavaField result;
+            if (hUniverse != null) {
+                result = findVarHandleHostedField(varHandle);
+            } else {
+                result = findVarHandleAnalysisField(varHandle);
+            }
+
+            if (guaranteeUnsafeAccessed) {
+                AnalysisField aField = result instanceof AnalysisField ? (AnalysisField) result : ((HostedField) result).getWrapped();
+                AnalysisError.guarantee(aField.isUnsafeAccessed(), "Field not registered as unsafe accessed %s", aField);
+            }
+
+            return result;
         }
     }
 
@@ -184,31 +199,80 @@ public class VarHandleFeature implements InternalFeature {
 
     private static Map<Class<?>, VarHandleInfo> buildInfos() {
         Map<Class<?>, VarHandleInfo> infos = new HashMap<>();
-        for (String typeName : new String[]{"Booleans", "Bytes", "Chars", "Doubles", "Floats", "Ints", "Longs", "Shorts", "References"}) {
-            buildInfo(infos, false, "receiverType",
+        for (Map.Entry<String, JavaKind> type : Map.of(
+                        "Booleans", JavaKind.Boolean,
+                        "Bytes", JavaKind.Byte,
+                        "Chars", JavaKind.Char,
+                        "Doubles", JavaKind.Double,
+                        "Floats", JavaKind.Float,
+                        "Ints", JavaKind.Int,
+                        "Longs", JavaKind.Long,
+                        "Shorts", JavaKind.Short,
+                        "References", JavaKind.Object).entrySet()) {
+            String typeName = type.getKey();
+            JavaKind kind = type.getValue();
+            Function<Object, JavaKind> kindGetter = o -> kind;
+            buildInfo(infos, false, kindGetter,
                             ReflectionUtil.lookupClass(false, "java.lang.invoke.VarHandle" + typeName + "$FieldInstanceReadOnly"),
                             ReflectionUtil.lookupClass(false, "java.lang.invoke.VarHandle" + typeName + "$FieldInstanceReadWrite"));
-            buildInfo(infos, true, "base",
+            buildInfo(infos, true, kindGetter,
                             ReflectionUtil.lookupClass(false, "java.lang.invoke.VarHandle" + typeName + "$FieldStaticReadOnly"),
                             ReflectionUtil.lookupClass(false, "java.lang.invoke.VarHandle" + typeName + "$FieldStaticReadWrite"));
         }
 
         Class<?> staticAccessorClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle$StaticAccessor");
-        infos.put(staticAccessorClass, new VarHandleInfo(true, createOffsetFieldGetter(staticAccessorClass, "staticOffset"),
-                        createTypeFieldGetter(staticAccessorClass, "staticBase")));
+        infos.put(staticAccessorClass, new StaticVarHandleInfo(createKindGetter(staticAccessorClass, "fieldType"), createOffsetFieldGetter(staticAccessorClass, "staticOffset"),
+                        createBaseFieldGetter(staticAccessorClass, "staticBase")));
 
         Class<?> accessorClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle$Accessor");
         Function<Object, Class<?>> accessorTypeGetter = obj -> ((MethodHandle) obj).type().parameterType(0);
-        infos.put(accessorClass, new VarHandleInfo(false, createOffsetFieldGetter(accessorClass, "fieldOffset"), accessorTypeGetter));
+        infos.put(accessorClass, new InstanceVarHandleInfo(createKindGetter(accessorClass, "fieldType"), createOffsetFieldGetter(accessorClass, "fieldOffset"), accessorTypeGetter));
         return infos;
     }
 
-    private static void buildInfo(Map<Class<?>, VarHandleInfo> infos, boolean isStatic, String typeFieldName, Class<?> readOnlyClass, Class<?> readWriteClass) {
+    private static void buildInfo(Map<Class<?>, VarHandleInfo> infos, boolean isStatic, Function<Object, JavaKind> kindGetter, Class<?> readOnlyClass, Class<?> readWriteClass) {
+        assert readOnlyClass.isAssignableFrom(readWriteClass);
         ToLongFunction<Object> offsetGetter = createOffsetFieldGetter(readOnlyClass, "fieldOffset");
-        Function<Object, Class<?>> typeGetter = createTypeFieldGetter(readOnlyClass, typeFieldName);
-        VarHandleInfo readOnlyInfo = new VarHandleInfo(isStatic, offsetGetter, typeGetter);
-        infos.put(readOnlyClass, readOnlyInfo);
-        infos.put(readWriteClass, readOnlyInfo);
+        VarHandleInfo info;
+        if (isStatic) {
+            info = new StaticVarHandleInfo(kindGetter, offsetGetter, createBaseFieldGetter(readOnlyClass, "base"));
+        } else {
+            info = new InstanceVarHandleInfo(kindGetter, offsetGetter, createTypeFieldGetter(readOnlyClass, "receiverType"));
+        }
+        infos.put(readOnlyClass, info);
+        infos.put(readWriteClass, info);
+    }
+
+    private static Function<Object, JavaKind> createKindGetter(Class<?> accessorClass, String fieldName) {
+        Field classField = ReflectionUtil.lookupField(accessorClass, fieldName);
+        return obj -> {
+            try {
+                Class<?> c = (Class<?>) classField.get(obj);
+                if (!c.isPrimitive()) {
+                    return JavaKind.Object;
+                } else if (c == boolean.class) {
+                    return JavaKind.Boolean;
+                } else if (c == byte.class) {
+                    return JavaKind.Byte;
+                } else if (c == char.class) {
+                    return JavaKind.Char;
+                } else if (c == short.class) {
+                    return JavaKind.Short;
+                } else if (c == int.class) {
+                    return JavaKind.Int;
+                } else if (c == long.class) {
+                    return JavaKind.Long;
+                } else if (c == float.class) {
+                    return JavaKind.Float;
+                } else if (c == double.class) {
+                    return JavaKind.Double;
+                } else {
+                    throw VMError.shouldNotReachHere(c.toString());
+                }
+            } catch (IllegalAccessException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        };
     }
 
     private static ToLongFunction<Object> createOffsetFieldGetter(Class<?> clazz, String offsetFieldName) {
@@ -216,6 +280,17 @@ public class VarHandleFeature implements InternalFeature {
         return obj -> {
             try {
                 return offsetField.getLong(obj);
+            } catch (IllegalAccessException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        };
+    }
+
+    private static Function<Object, Object> createBaseFieldGetter(Class<?> clazz, String baseFieldName) {
+        Field typeField = ReflectionUtil.lookupField(clazz, baseFieldName);
+        return obj -> {
+            try {
+                return typeField.get(obj);
             } catch (IllegalAccessException e) {
                 throw VMError.shouldNotReachHere(e);
             }
@@ -256,9 +331,10 @@ public class VarHandleFeature implements InternalFeature {
     }
 
     /**
-     * Find the original {@link Field} referenced by a VarHandle that accesses an instance field or
-     * a static field. The VarHandle stores the field offset and the holder type. We iterate all
-     * fields of that type and look for the field with a matching offset.
+     * Find the original {@linkplain ResolvedJavaField field} referenced by a VarHandle that
+     * accesses an instance field or a static field. The VarHandle stores the field offset and the
+     * holder type. We iterate all fields of that type and look for the field with a matching
+     * offset.
      */
     ResolvedJavaField findVarHandleOriginalField(Object varHandle) {
         VarHandleInfo info = infos.get(varHandle.getClass());
@@ -267,19 +343,7 @@ public class VarHandleFeature implements InternalFeature {
          * be done in the original universe of the hosting VM, because the field offsets in the
          * objects at image build time are also from those original fields.
          */
-        ResolvedJavaType originalType = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(info.typeGetter().apply(varHandle));
-        long originalFieldOffset = info.offsetGetter().applyAsLong(varHandle);
-        /*
-         * For instance fields, we need to search the whole class hierarchy. For static fields, we
-         * must only search the exact class.
-         */
-        for (ResolvedJavaField field : info.isStatic() ? originalType.getStaticFields() : originalType.getInstanceFields(true)) {
-            long fieldOffset = field.getOffset();
-            if (fieldOffset == originalFieldOffset) {
-                return field;
-            }
-        }
-        throw VMError.shouldNotReachHere("Could not find field referenced in VarHandle: " + originalType + ", offset = " + originalFieldOffset + ", isStatic = " + info.isStatic());
+        return info.findOriginalField(varHandle);
     }
 
     AnalysisField findVarHandleAnalysisField(Object varHandle) {
@@ -292,8 +356,58 @@ public class VarHandleFeature implements InternalFeature {
 
 }
 
-record VarHandleInfo(
-                boolean isStatic,
-                ToLongFunction<Object> offsetGetter,
-                Function<Object, Class<?>> typeGetter) {
+abstract sealed class VarHandleInfo permits StaticVarHandleInfo, InstanceVarHandleInfo {
+    final Function<Object, JavaKind> kindGetter;
+    final ToLongFunction<Object> offsetGetter;
+
+    VarHandleInfo(Function<Object, JavaKind> kindGetter, ToLongFunction<Object> offsetGetter) {
+        this.kindGetter = kindGetter;
+        this.offsetGetter = offsetGetter;
+    }
+
+    abstract ResolvedJavaField findOriginalField(Object varHandle);
+}
+
+final class StaticVarHandleInfo extends VarHandleInfo {
+    final Function<Object, Object> baseGetter;
+
+    StaticVarHandleInfo(Function<Object, JavaKind> kindGetter, ToLongFunction<Object> offsetGetter, Function<Object, Object> baseGetter) {
+        super(kindGetter, offsetGetter);
+        this.baseGetter = baseGetter;
+    }
+
+    @Override
+    ResolvedJavaField findOriginalField(Object varHandle) {
+        long offset = offsetGetter.applyAsLong(varHandle);
+        Object base = baseGetter.apply(varHandle);
+        JavaKind kind = kindGetter.apply(varHandle);
+        JavaConstant baseHandle = GraalAccess.getOriginalProviders().getSnippetReflection().forObject(base);
+        ResolvedJavaField result = GraalAccess.getOriginalProviders().getMetaAccessExtensionProvider().getStaticFieldForAccess(baseHandle, offset, kind);
+        if (result == null) {
+            throw VMError.shouldNotReachHere("Could not find static field referenced in VarHandle: base = " + base + ", offset = " + offset + ", kind = " + kind);
+        }
+        return result;
+    }
+}
+
+final class InstanceVarHandleInfo extends VarHandleInfo {
+    final Function<Object, Class<?>> typeGetter;
+
+    InstanceVarHandleInfo(Function<Object, JavaKind> kindGetter, ToLongFunction<Object> offsetGetter, Function<Object, Class<?>> typeGetter) {
+        super(kindGetter, offsetGetter);
+        this.typeGetter = typeGetter;
+    }
+
+    @Override
+    ResolvedJavaField findOriginalField(Object varHandle) {
+        long offset = offsetGetter.applyAsLong(varHandle);
+        Class<?> clazz = typeGetter.apply(varHandle);
+        ResolvedJavaType type = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(clazz);
+        JavaKind kind = kindGetter.apply(varHandle);
+        ResolvedJavaField result = type.findInstanceFieldWithOffset(offset, kind);
+        if (result == null) {
+            throw VMError.shouldNotReachHere("Could not find instance field referenced in VarHandle: type = " + type + ", offset = " + offset + ", kind = " + kind);
+        }
+        return result;
+    }
 }

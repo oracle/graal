@@ -29,16 +29,12 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 
 import com.oracle.svm.core.Uninterruptible;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-
 @CContext(JNIHeaderDirectives.class)
 public final class JNIVersion {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isSupported(int version, boolean builtInLibrary) {
-        if (JavaVersionUtil.JAVA_SPEC >= 22 && version == JNIVersionJDKLatest.JNI_VERSION_LATEST()) {
-            return true;
-        }
-        if (version == JNI_VERSION_21() || version == JNI_VERSION_20() || version == JNI_VERSION_19() || version == JNI_VERSION_10() || version == JNI_VERSION_9() || version == JNI_VERSION_1_8()) {
+        if (version == JNIVersionJDKLatest.JNI_VERSION_LATEST() || version == JNI_VERSION_21() || version == JNI_VERSION_20() || version == JNI_VERSION_19() || version == JNI_VERSION_10() ||
+                        version == JNI_VERSION_9() || version == JNI_VERSION_1_8()) {
             return true;
         }
         if (builtInLibrary) {

@@ -51,6 +51,9 @@ def _tregex_tests_gate_runner(args, tasks):
     with Task('UnitTests', tasks, tags=['default', 'all'], report=True) as t:
         if t:
             unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.regex'], test_report_tags={'task': t.title})
+    with Task("CoverageTests", tasks, tags=['coverage'], report=True) as t:
+        if t:
+            unittest(['com.oracle.truffle.regex'], test_report_tags={'task': t.title})
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(

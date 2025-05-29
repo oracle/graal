@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,7 +87,7 @@ public class InliningPhase extends AbstractInliningPhase {
      *
      */
     @Override
-    protected void run(final StructuredGraph graph, final HighTierContext context) {
+    protected void runInlining(final StructuredGraph graph, final HighTierContext context) {
         final InliningData data = new InliningData(graph, context, maxMethodPerInlining, canonicalizer, inliningPolicy, rootInvokes);
 
         int count = 0;

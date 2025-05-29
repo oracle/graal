@@ -25,15 +25,30 @@
 package jdk.graal.compiler.hotspot.replacements;
 
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_BITMAP_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_HASH_SLOT_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_SUPER_CHECK_OFFSET_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.METASPACE_ARRAY_LENGTH_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OPTIMIZING_PRIMARY_SUPERS_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPERS_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassBitmapOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassHashSlotOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.metaspaceArrayLengthOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.secondarySuperCacheOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.secondarySupersOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.superCheckOffsetOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useSecondarySupersCache;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useSecondarySupersTable;
 import static jdk.graal.compiler.hotspot.stubs.LookUpSecondarySupersTableStub.SECONDARY_SUPERS_TABLE_MASK;
 import static jdk.graal.compiler.hotspot.stubs.LookUpSecondarySupersTableStub.loadSecondarySupersElement;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_LIKELY_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.util.Arrays;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.hotspot.nodes.type.KlassPointerStamp;
 import jdk.graal.compiler.hotspot.stubs.LookUpSecondarySupersTableStub;
@@ -44,7 +59,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.TypeCheckHints;
 import jdk.graal.compiler.replacements.SnippetCounter;
 import jdk.graal.compiler.replacements.SnippetCounter.Group;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -56,28 +70,13 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 public class TypeCheckSnippetUtils {
 
-    @Fold
-    static boolean isJDK21() {
-        return JavaVersionUtil.JAVA_SPEC == 21;
-    }
-
-    static boolean checkSecondarySubType(KlassPointer t, KlassPointer sNonNull, Counters counters) {
-        // if (S.cache == T) return true
-        if (isJDK21() && sNonNull.readKlassPointer(HotSpotReplacementsUtil.secondarySuperCacheOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION).equal(t)) {
-            counters.cacheHit.inc();
-            return true;
-        }
-
-        return checkSelfAndSupers(t, sNonNull, counters);
-    }
-
     static boolean checkUnknownSubType(KlassPointer t, KlassPointer sNonNull, Counters counters) {
         // int off = T.offset
-        int superCheckOffset = t.readInt(HotSpotReplacementsUtil.superCheckOffsetOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.KLASS_SUPER_CHECK_OFFSET_LOCATION);
-        boolean primary = superCheckOffset != HotSpotReplacementsUtil.secondarySuperCacheOffset(INJECTED_VMCONFIG);
+        int superCheckOffset = t.readInt(superCheckOffsetOffset(INJECTED_VMCONFIG), KLASS_SUPER_CHECK_OFFSET_LOCATION);
+        boolean primary = superCheckOffset != secondarySuperCacheOffset(INJECTED_VMCONFIG);
 
-        if (primary) {
-            if (sNonNull.readKlassPointer(superCheckOffset, HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION).equal(t)) {
+        if (probability(LIKELY_PROBABILITY, primary)) {
+            if (probability(LIKELY_PROBABILITY, sNonNull.readKlassPointer(superCheckOffset, OPTIMIZING_PRIMARY_SUPERS_LOCATION).equal(t))) {
                 // if (T = S[off]) return true
                 counters.displayHit.inc();
                 return true;
@@ -86,28 +85,34 @@ public class TypeCheckSnippetUtils {
                 return false;
             }
         } else {
-            return checkSecondarySubType(t, sNonNull, counters);
+            return checkSecondarySubType(t, sNonNull, false, counters);
         }
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/fbe8a81d1900d0de1920ad1df6ad574f3da4bd51/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L4791-L4886",
-              sha1 = "c0e2fdd973dc975757d58080ba94efe628d6a380")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/a8cd01f6e2075bef89fcd82893cf417c9e1fa877/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L4233-L4451",
+              sha1 = "10849f217123323ad73af5fe2aee2876a2943e1d")
     // @formatter:on
-    static boolean checkSelfAndSupers(KlassPointer t, KlassPointer s, Counters counters) {
+    static boolean checkSecondarySubType(KlassPointer t, KlassPointer s, boolean isTAlwaysAbstract, Counters counters) {
+        // if (S.cache == T) return true
+        if (useSecondarySupersCache(INJECTED_VMCONFIG) &&
+                        probability(FREQUENT_PROBABILITY, s.readKlassPointer(secondarySuperCacheOffset(INJECTED_VMCONFIG), SECONDARY_SUPER_CACHE_LOCATION).equal(t))) {
+            counters.cacheHit.inc();
+            return true;
+        }
+
         // if (T == S) return true
-        if (s.equal(t)) {
+        if (!isTAlwaysAbstract && probability(LIKELY_PROBABILITY, s.equal(t))) {
             counters.equalsSecondary.inc();
             return true;
         }
 
-        Word secondarySupers = s.readWord(HotSpotReplacementsUtil.secondarySupersOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.SECONDARY_SUPERS_LOCATION);
-
-        if (isJDK21()) {
-            int length = secondarySupers.readInt(HotSpotReplacementsUtil.metaspaceArrayLengthOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.METASPACE_ARRAY_LENGTH_LOCATION);
+        if (!useSecondarySupersTable(INJECTED_VMCONFIG)) {
+            Word secondarySupers = s.readWord(secondarySupersOffset(INJECTED_VMCONFIG), SECONDARY_SUPERS_LOCATION);
+            int length = secondarySupers.readInt(metaspaceArrayLengthOffset(INJECTED_VMCONFIG), METASPACE_ARRAY_LENGTH_LOCATION);
             for (int i = 0; i < length; i++) {
                 if (probability(NOT_LIKELY_PROBABILITY, t.equal(loadSecondarySupersElement(secondarySupers, i)))) {
-                    s.writeKlassPointer(HotSpotReplacementsUtil.secondarySuperCacheOffset(INJECTED_VMCONFIG), t, HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION);
+                    s.writeKlassPointer(secondarySuperCacheOffset(INJECTED_VMCONFIG), t, SECONDARY_SUPER_CACHE_LOCATION);
                     counters.secondariesHit.inc();
                     return true;
                 }
@@ -143,8 +148,8 @@ public class TypeCheckSnippetUtils {
         // Long.bitCount(S.bitmap << (63 - T.hash)) - 1
 
         // bit will be folded when T is constant.
-        int bit = t.readByte(HotSpotReplacementsUtil.klassHashSlotOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.KLASS_HASH_SLOT_LOCATION);
-        long bitmap = s.readLong(HotSpotReplacementsUtil.klassBitmapOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.KLASS_BITMAP_LOCATION);
+        int bit = t.readByte(klassHashSlotOffset(INJECTED_VMCONFIG), KLASS_HASH_SLOT_LOCATION);
+        long bitmap = s.readLong(klassBitmapOffset(INJECTED_VMCONFIG), KLASS_BITMAP_LOCATION);
 
         long bitmapShifted = bitmap << (SECONDARY_SUPERS_TABLE_MASK - bit);
         if (probability(NOT_LIKELY_PROBABILITY, bitmapShifted >= 0)) {
@@ -159,6 +164,7 @@ public class TypeCheckSnippetUtils {
         // We instead rely on the compiler for constant folding.
         // Use long to avoid unnecessary zero extension.
         long index = Long.bitCount(bitmapShifted) - 1L;
+        Word secondarySupers = s.readWord(secondarySupersOffset(INJECTED_VMCONFIG), SECONDARY_SUPERS_LOCATION);
         KlassPointer hashed = loadSecondarySupersElement(secondarySupers, index);
 
         if (probability(FREQUENT_PROBABILITY, t.equal(hashed))) {
