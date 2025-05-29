@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,13 +29,14 @@
  */
 package com.oracle.truffle.llvm.parser.model.blocks;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.DebugInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public final class InstructionBlock {
 
@@ -57,6 +58,20 @@ public final class InstructionBlock {
 
     public void append(Instruction instruction) {
         instructions.add(instruction);
+    }
+
+    /**
+     * In LLVM 20, debug instructions are after the instruction they apply to. In LLVM <= 18, they
+     * were represented as VoidCall instructions that are before the actual instruction. Always
+     * insert it before, to simplify the version independent processing of debug instructions.
+     */
+    public void addDebug(DebugInstruction instruction) {
+        int size = instructions.size();
+        if (size == 0) {
+            instructions.add(instruction);
+        } else {
+            instructions.add(size - 1, instruction);
+        }
     }
 
     public int getBlockIndex() {

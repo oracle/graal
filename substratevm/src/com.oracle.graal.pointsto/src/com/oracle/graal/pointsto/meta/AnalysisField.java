@@ -517,9 +517,9 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     /**
-     * Ensure that all reachability handler that were present at the time the declaring type was
-     * marked as reachable are executed before accessing field values. This allows field value
-     * transformer to be installed reliably in reachability handler.
+     * Ensure that all reachability handlers that were present at the time the declaring type was
+     * marked as reachable are executed before accessing field values. This allows a field value
+     * transformer to be installed reliably in a reachability handler.
      */
     public void beforeFieldValueAccess() {
         declaringClass.registerAsReachable(this);

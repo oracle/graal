@@ -24,6 +24,10 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.graal.compiler.lir.aarch64.AArch64AESEncryptOp.aesecbEncrypt;
+import static jdk.graal.compiler.lir.aarch64.AArch64AESEncryptOp.aesencLoadkeys;
+import static jdk.graal.compiler.lir.aarch64.AArch64AESEncryptOp.asFloatRegister;
 import static jdk.vm.ci.aarch64.AArch64.r11;
 import static jdk.vm.ci.aarch64.AArch64.r12;
 import static jdk.vm.ci.aarch64.AArch64.r13;
@@ -48,12 +52,6 @@ import static jdk.vm.ci.aarch64.AArch64.v8;
 import static jdk.vm.ci.aarch64.AArch64.v9;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static jdk.graal.compiler.lir.aarch64.AArch64AESEncryptOp.aesecbEncrypt;
-import static jdk.graal.compiler.lir.aarch64.AArch64AESEncryptOp.aesencLoadkeys;
-import static jdk.graal.compiler.lir.aarch64.AArch64AESEncryptOp.asFloatRegister;
-
-import java.util.Arrays;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction;
@@ -63,10 +61,9 @@ import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
-
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
@@ -124,7 +121,7 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
                         r12.asValue(),
                         r13.asValue(),
         };
-        this.simdTemps = Arrays.stream(AArch64.simdRegisters.toArray()).map(Register::asValue).toArray(Value[]::new);
+        this.simdTemps = AArch64.simdRegisters.stream().map(Register::asValue).toArray(Value[]::new);
     }
 
     @Override

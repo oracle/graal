@@ -28,7 +28,6 @@ import java.net.URI;
 import java.util.EnumSet;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 

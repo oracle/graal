@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.hotspot.meta;
 
+import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_PARTITION;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_SORT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.BASE64_DECODE_BLOCK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.CHACHA20Block;
@@ -64,6 +66,10 @@ import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import static jdk.graal.compiler.nodes.ConstantNode.forBoolean;
 import static jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData.injected;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
+import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin.T_DOUBLE;
+import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin.T_FLOAT;
+import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin.T_INT;
+import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin.T_LONG;
 import static jdk.vm.ci.meta.DeoptimizationReason.TypeCheckedInliningViolated;
 
 import java.lang.annotation.Annotation;
@@ -86,6 +92,7 @@ import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
@@ -141,6 +148,7 @@ import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.calc.XorNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
 import jdk.graal.compiler.nodes.extended.JavaWriteNode;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
@@ -198,8 +206,10 @@ import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIIntrinsics;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -297,6 +307,10 @@ public class HotSpotGraphBuilderPlugins {
                 registerPoly1305Plugins(invocationPlugins, config, replacements);
                 registerChaCha20Plugins(invocationPlugins, config, replacements);
                 registerP256Plugins(invocationPlugins, config, replacements);
+                registerDualPivotQuicksortPlugins(invocationPlugins, config, replacements, target.arch);
+                if (VectorAPIIntrinsics.intrinsificationSupported(options)) {
+                    VectorAPIIntrinsics.registerPlugins(plugins.getInvocationPlugins(), replacements);
+                }
             }
 
         });
@@ -557,19 +571,20 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode componentType, ValueNode length) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    // If (componentType == null) then deopt
-                    ValueNode nonNullComponentType = b.nullCheckedValue(componentType);
+                    // If (componentType == null) then take the fallback path
+                    GuardingNode guard = helper.doFallbackIf(IsNullNode.create(componentType), GraalDirectives.UNLIKELY_PROBABILITY);
+                    ValueNode nonNullComponentType = helper.piCast(componentType, guard, ((AbstractPointerStamp) componentType.stamp(NodeView.DEFAULT)).asNonNull());
                     // Read Class.array_klass
                     ValueNode arrayClass = helper.loadArrayKlass(nonNullComponentType);
-                    // Take the fallback path is the array klass is null
+                    // Take the fallback path if the array klass is null
                     helper.doFallbackIf(IsNullNode.create(arrayClass), GraalDirectives.UNLIKELY_PROBABILITY);
                     // Otherwise perform the array allocation
-                    helper.emitFinalReturn(JavaKind.Object, new DynamicNewArrayNode(nonNullComponentType, length,
-                                    true));
+                    helper.emitFinalReturn(JavaKind.Object, new DynamicNewArrayNode(nonNullComponentType, length, true));
                 }
                 return true;
             }
         });
+        r.register(StandardGraphBuilderPlugins.newArrayPlugin("newInstance"));
     }
 
     private static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements, WordTypes wordTypes, ArrayCopyForeignCalls foreignCalls, GraalHotSpotVMConfig vmConfig) {
@@ -1696,6 +1711,78 @@ public class HotSpotGraphBuilderPlugins {
                     b.setStateAfter(merge);
                 }
                 return true;
+            }
+        });
+    }
+
+    private static boolean isSimdSortSupported(Architecture arch, GraalHotSpotVMConfig config, int jvmType) {
+        if (config.stubArraySort == 0L || config.stubArrayPartition == 0L) {
+            return false;
+        }
+        if (arch instanceof AMD64 && !config.supportsAvx512SimdSort) {
+            return switch (jvmType) {
+                case T_INT, T_FLOAT -> true;
+                default -> false;
+            };
+        }
+        return true;
+    }
+
+    private static void registerDualPivotQuicksortPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements, Architecture arch) {
+        Registration r = new Registration(plugins, "java.util.DualPivotQuicksort", replacements);
+        r.registerConditional(config.stubArraySort != 0L, new InlineOnlyInvocationPlugin("sort", Class.class, Object.class, long.class, int.class, int.class,
+                        new InvocationPlugins.OptionalLazySymbol("java.util.DualPivotQuicksort$SortOperation")) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode elemType, ValueNode array,
+                            ValueNode offset, ValueNode low, ValueNode high, ValueNode so) {
+                if (elemType.isConstant()) {
+                    ResolvedJavaType type = b.getConstantReflection().asJavaType(elemType.asJavaConstant());
+                    int jvmType = switch (type.getJavaKind()) {
+                        case Float -> T_FLOAT;
+                        case Double -> T_DOUBLE;
+                        case Int -> T_INT;
+                        case Long -> T_LONG;
+                        default -> throw GraalError.shouldNotReachHere("Unexpected element type " + type.toJavaName());
+                    };
+                    if (isSimdSortSupported(arch, config, jvmType)) {
+                        ValueNode arrayNonNull = b.nullCheckedValue(array);
+                        ValueNode arrayStart = b.add(new ComputeObjectAddressNode(arrayNonNull, offset));
+                        b.add(new ForeignCallNode(ARRAY_SORT, arrayStart, ConstantNode.forInt(jvmType), low, high));
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
+        r.registerConditional(config.stubArrayPartition != 0L, new InlineOnlyInvocationPlugin("partition", Class.class, Object.class, long.class, int.class, int.class, int.class, int.class,
+                        new InvocationPlugins.OptionalLazySymbol("java.util.DualPivotQuicksort$PartitionOperation")) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode elemType, ValueNode array,
+                            ValueNode offset, ValueNode low, ValueNode high, ValueNode pivotIndex1, ValueNode pivotIndex2, ValueNode so) {
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                    if (elemType.isConstant()) {
+                        ResolvedJavaType type = b.getConstantReflection().asJavaType(elemType.asJavaConstant());
+                        int jvmType = switch (type.getJavaKind()) {
+                            case Float -> T_FLOAT;
+                            case Double -> T_DOUBLE;
+                            case Int -> T_INT;
+                            case Long -> T_LONG;
+                            default -> throw GraalError.shouldNotReachHere("Unexpected element type " + type.toJavaName());
+                        };
+                        if (isSimdSortSupported(arch, config, jvmType)) {
+                            ValueNode arrayNonNull = b.nullCheckedValue(array);
+                            ValueNode arrayStart = b.add(new ComputeObjectAddressNode(arrayNonNull, offset));
+                            ValueNode pivotIndices = b.append(new NewArrayNode(b.getMetaAccess().lookupJavaType(Integer.TYPE), ConstantNode.forInt(2), false));
+                            ValueNode pivotIndicesStart = helper.arrayStart(pivotIndices, JavaKind.Int);
+
+                            ForeignCallNode call = b.append(new ForeignCallNode(ARRAY_PARTITION, arrayStart, ConstantNode.forInt(jvmType), low, high, pivotIndicesStart, pivotIndex1, pivotIndex2));
+                            b.push(JavaKind.Object, pivotIndices);
+                            b.setStateAfter(call);
+                            return true;
+                        }
+                    }
+                    return false;
+                }
             }
         });
     }

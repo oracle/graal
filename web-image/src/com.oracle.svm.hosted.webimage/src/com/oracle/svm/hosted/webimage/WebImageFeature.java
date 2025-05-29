@@ -56,6 +56,7 @@ import org.graalvm.webimage.api.JSSymbol;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ReflectionConfigurationParser;
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 import com.oracle.svm.core.c.ProjectHeaderFile;
@@ -112,7 +113,6 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredFeature
@@ -191,45 +191,33 @@ public class WebImageFeature implements InternalFeature {
          * the cost of having to recreate the Locale and BaseLocale objects once when they're
          * requested.
          *
-         * On JDK21, ReferencedKeySet and ReferencedKeyMap don't exist, so we can't reference them
-         * directly and have to go through reflection.
+         * On JDK21, ReferencedKeySet and ReferencedKeyMap don't exist. We have to go through
+         * reflection to access them because analysis tools like spotbugs still run on JDK21
          */
-        if (JavaVersionUtil.JAVA_SPEC > 21) {
-            Field baseLocaleCacheField = accessImpl.findField("sun.util.locale.BaseLocale$1InterningCache", "CACHE");
-            Field localeCacheField = accessImpl.findField("java.util.Locale$LocaleCache", "LOCALE_CACHE");
+        Field baseLocaleCacheField = accessImpl.findField("sun.util.locale.BaseLocale$1InterningCache", "CACHE");
+        Field localeCacheField = accessImpl.findField("java.util.Locale$LocaleCache", "LOCALE_CACHE");
 
-            access.registerFieldValueTransformer(baseLocaleCacheField, (receiver, originalValue) -> {
-                /*
-                 * Executes `ReferencedKeySet.create(true,
-                 * ReferencedKeySet.concurrentHashMapSupplier())` with reflection.
-                 */
-                Class<?> referencedKeySetClazz = ReflectionUtil.lookupClass("jdk.internal.util.ReferencedKeySet");
-                Method createMethod = ReflectionUtil.lookupMethod(referencedKeySetClazz, "create", boolean.class, Supplier.class);
-                Method concurrentHashMapSupplierMethod = ReflectionUtil.lookupMethod(referencedKeySetClazz, "concurrentHashMapSupplier");
-                return ReflectionUtil.invokeMethod(createMethod, null, true, ReflectionUtil.invokeMethod(concurrentHashMapSupplierMethod, null));
-            });
-
-            access.registerFieldValueTransformer(localeCacheField, (receiver, originalValue) -> {
-                /*
-                 * Executes `ReferencedKeyMap.create(true,
-                 * ReferencedKeyMap.concurrentHashMapSupplier())` with reflection.
-                 */
-                Class<?> referencedKeyMapClazz = ReflectionUtil.lookupClass("jdk.internal.util.ReferencedKeyMap");
-                Method createMethod = ReflectionUtil.lookupMethod(referencedKeyMapClazz, "create", boolean.class, Supplier.class);
-                Method concurrentHashMapSupplierMethod = ReflectionUtil.lookupMethod(referencedKeyMapClazz, "concurrentHashMapSupplier");
-                return ReflectionUtil.invokeMethod(createMethod, null, true, ReflectionUtil.invokeMethod(concurrentHashMapSupplierMethod, null));
-            });
-        } else {
+        access.registerFieldValueTransformer(baseLocaleCacheField, (receiver, originalValue) -> {
             /*
-             * These fields contain an instance of the declaring class (Cache). It has a default
-             * constructor that we can invoke to create an empty cache.
+             * Executes `ReferencedKeySet.create(true,
+             * ReferencedKeySet.concurrentHashMapSupplier())` with reflection.
              */
-            Field baseLocaleCacheField = accessImpl.findField("sun.util.locale.BaseLocale$Cache", "CACHE");
-            Field localeCacheField = accessImpl.findField("java.util.Locale$Cache", "LOCALECACHE");
+            Class<?> referencedKeySetClazz = ReflectionUtil.lookupClass("jdk.internal.util.ReferencedKeySet");
+            Method createMethod = ReflectionUtil.lookupMethod(referencedKeySetClazz, "create", boolean.class, Supplier.class);
+            Method concurrentHashMapSupplierMethod = ReflectionUtil.lookupMethod(referencedKeySetClazz, "concurrentHashMapSupplier");
+            return ReflectionUtil.invokeMethod(createMethod, null, true, ReflectionUtil.invokeMethod(concurrentHashMapSupplierMethod, null));
+        });
 
-            access.registerFieldValueTransformer(baseLocaleCacheField, (receiver, originalValue) -> ReflectionUtil.newInstance(originalValue.getClass()));
-            access.registerFieldValueTransformer(localeCacheField, (receiver, originalValue) -> ReflectionUtil.newInstance(originalValue.getClass()));
-        }
+        access.registerFieldValueTransformer(localeCacheField, (receiver, originalValue) -> {
+            /*
+             * Executes `ReferencedKeyMap.create(true,
+             * ReferencedKeyMap.concurrentHashMapSupplier())` with reflection.
+             */
+            Class<?> referencedKeyMapClazz = ReflectionUtil.lookupClass("jdk.internal.util.ReferencedKeyMap");
+            Method createMethod = ReflectionUtil.lookupMethod(referencedKeyMapClazz, "create", boolean.class, Supplier.class);
+            Method concurrentHashMapSupplierMethod = ReflectionUtil.lookupMethod(referencedKeyMapClazz, "concurrentHashMapSupplier");
+            return ReflectionUtil.invokeMethod(createMethod, null, true, ReflectionUtil.invokeMethod(concurrentHashMapSupplierMethod, null));
+        });
     }
 
     @Override
@@ -240,8 +228,8 @@ public class WebImageFeature implements InternalFeature {
         if (entryPointConfig != null) {
             ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
                             ClassInitializationSupport.singleton());
-            ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(null, false, conditionResolver, entryPointsData, null, null,
-                            access.getImageClassLoader());
+            ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(ConfigurationFile.REFLECTION, false, conditionResolver, entryPointsData, null,
+                            null, null, access.getImageClassLoader());
             try {
                 parser.parseAndRegister(Path.of(entryPointConfig).toUri());
             } catch (IOException ex) {

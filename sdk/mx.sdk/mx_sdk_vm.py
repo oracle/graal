@@ -334,14 +334,10 @@ class GraalVmComponent(object):
         self.priority = priority or 0
         self.launcher_configs = launcher_configs or []
         self.library_configs = library_configs or []
-        if installable is None:
-            installable = isinstance(self, GraalVmLanguage)
-        self.installable = installable
-        if standalone is None:
-            standalone = installable
-        self.standalone = standalone
-        self.post_install_msg = post_install_msg
-        self.installable_id = installable_id or self.dir_name
+        self.installable = None
+        self.standalone = None
+        self.post_install_msg = None
+        self.installable_id = None
         self.extra_installable_qualifiers = extra_installable_qualifiers or []
         self.has_relative_home = has_relative_home
         self.jvm_configs = jvm_configs or []
@@ -836,6 +832,9 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
             if default_to_jvmci or 'jdk.graal.compiler' in non_synthetic_modules:
                 threads = get_JVMCIThreadsPerNativeLibraryRuntime(jdk)
                 vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct'])
+                # -XX:+EnableJVMCI must be explicitly specified to the java launcher to add
+                # jdk.internal.vm.ci to the root set (JDK-8345826)
+                vm_options.append('-XX:+EnableJVMCI')
                 if threads is not None and threads != 1:
                     vm_options.append('-XX:JVMCIThreadsPerNativeLibraryRuntime=1')
                 if default_to_jvmci == 'lib':
@@ -1043,7 +1042,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         jlink_persist = []
 
         if jdk_enables_jvmci_by_default(jdk):
-            # On JDK 9+, +EnableJVMCI forces jdk.internal.vm.ci to be in the root set
+            # +EnableJVMCI forces jdk.internal.vm.ci to be in the root set
             jlink += ['-J-XX:-EnableJVMCI', '-J-XX:-UseJVMCICompiler']
 
         jlink.append('--add-modules=' + ','.join(_get_image_root_modules(root_module_names, module_names, jdk_modules.keys(), use_upgrade_module_path)))

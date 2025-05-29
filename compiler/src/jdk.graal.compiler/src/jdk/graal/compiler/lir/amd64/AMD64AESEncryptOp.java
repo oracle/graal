@@ -108,7 +108,7 @@ public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
     }
 
     static Register asXMMRegister(int index) {
-        return AMD64.xmmRegistersAVX512[index];
+        return AMD64.xmmRegistersAVX512.get(index);
     }
 
     @Override

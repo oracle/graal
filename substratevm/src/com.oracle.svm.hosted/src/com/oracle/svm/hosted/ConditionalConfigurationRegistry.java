@@ -39,6 +39,7 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 public abstract class ConditionalConfigurationRegistry {
     private Feature.BeforeAnalysisAccess beforeAnalysisAccess;
+    private SVMHost hostVM;
     private final Map<Class<?>, Collection<Runnable>> pendingReachabilityHandlers = new ConcurrentHashMap<>();
 
     protected void registerConditionalConfiguration(ConfigurationCondition condition, Consumer<ConfigurationCondition> consumer) {
@@ -80,6 +81,14 @@ public abstract class ConditionalConfigurationRegistry {
             this.beforeAnalysisAccess.registerReachabilityHandler(access -> reachabilityEntry.getValue().forEach(Runnable::run), reachabilityEntry.getKey());
         }
         pendingReachabilityHandlers.clear();
+    }
+
+    public void setHostVM(SVMHost hostVM) {
+        this.hostVM = hostVM;
+    }
+
+    public SVMHost getHostVM() {
+        return hostVM;
     }
 
 }

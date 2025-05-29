@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -338,9 +338,9 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                             // We are scheduling a floating read node => check memory
                             // anti-dependencies.
                             FloatingReadNode floatingReadNode = (FloatingReadNode) currentNode;
-                            LocationIdentity location = floatingReadNode.getLocationIdentity();
-                            if (location.isMutable()) {
+                            if (floatingReadNode.potentialAntiDependency()) {
                                 // Location can be killed.
+                                LocationIdentity location = floatingReadNode.getLocationIdentity();
                                 constrainingLocation = location;
                                 if (currentBlock.canKill(location)) {
                                     if (killed == null) {

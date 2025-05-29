@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -158,37 +158,37 @@ suite = {
       },
     },
     "LLVM_ORG" : {
-      "version" : "18.1.3-4-gd3f23e9e73-bg3b8289d0a4",
+      "version" : "20.1.4-1-ga7183f5a17-bg217527b869",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "os_arch" : {
         "linux" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-amd64.tar.gz"],
-            "digest" : "sha512:6ed66161ae39849d92ba13b16759e5c97a6a499bd61fce0a7516e9813e201a8142e8e98e13baac74150916b72a284850e0fff878ddc97017f63dc6c4f83f6004",
+            "digest" : "sha512:7b01495c3af3f5cd6ce8835e56ca3c99f24c1ae91425c0d090018bdf1639a27c527b76dc93e9e940beacfaeb31b63729ec35c54972891b0aedc04006ab498a15",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-aarch64.tar.gz"],
-            "digest" : "sha512:609ff4ccfb1249413a18656543d149bc3ed04d753ba2873ba82b75d50c4db9cbe47a60a33e63f479b20ec472957533b97bb279d7c9185fcdf6537aae85ac7ad7",
+            "digest" : "sha512:6c193bd952a3efbaa0b12875984d3898a2cce5d62b385e1b2adb78aac38d4a7df34b0bba55d9b705c970b7e1cc146c48c8cfdfdfc03c89c468a6ed4ecd522be4",
           },
           "riscv64": {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-riscv64.tar.gz"],
-            "digest" : "sha512:e4ad54bef601c1ff3f75e63816590bf578180285316440ec6ed4a6a454323ac1f62e14630aee64b2d44654dbc7e7a2c1a868ca3a2d15c40a977d3f9b8a94d036",
+            "digest" : "sha512:28a83428a925a3ce41c99e107df96b570131f4ae6e14ece29be0a038bb521e020f785645dd931f06110c292d4ca688d9272c67f97b426f16f8ff89c57a36f868",
           },
         },
         "darwin" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-amd64.tar.gz"],
-            "digest" : "sha512:26d827536104e06f4baf964dd8d999266d3a89442c658d4490bef412fd12dfaa3bc06d9f748531b280b121d88e1fd9ed53aba8d217bae7f8a6e60d0f10e842be",
+            "digest" : "sha512:88da0b36e7bdf03b7ec683b7f6c044e7a884b9e1575ae7a82c76eb073278df9fcfe7cac9f2e827cd7312468e9a337572fa93dfb5a16360a634e96154ba121dd4",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-aarch64.tar.gz"],
-            "digest" : "sha512:741a2d007b9ce34d8f46e785d528cd116f3937bc2b403f68db405cfc272025d4b382ae234e2c0b3bba414e61abfc7a85aa8dfc6306cd274289bd1f10fb033e41",
+            "digest" : "sha512:27ca7c82608e5fb379563ed3d39393e1a6c5c7300d42abb2ad9bdac232c5708511f287f562fa90ef15e069073f533f65ba73c8a9e5c95e7c0f04fdd15e84f65e",
           }
         },
         "windows" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-windows-amd64.tar.gz"],
-            "digest" : "sha512:7e1e1eae6ea1218486c752a04356a516bc1fbba52b09235f64c8bec39d3287a7157ea5ffd9f09bf6172e1af976e691b373dbae6e4cadc512ce7e4d054d282848",
+            "digest" : "sha512:87a0337c0e73bef91952295e5510f54bffbdc395877e612e7e14dc2ab0943b9d460e9dbaf47dd41f619362315fc2db80fa97927ec95230a90eb895e3c30fd12f",
           }
         },
         "<others>": {
@@ -200,19 +200,19 @@ suite = {
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_COMPILER_RT_LINUX" : {
-      "version" : "18.1.3-4-gd3f23e9e73-bg3b8289d0a4",
+      "version" : "20.1.4-1-ga7183f5a17-bg217527b869",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
       "urls" : ["{host}/compiler-rt-llvmorg-{version}-linux-amd64.tar.gz"],
-      "digest" : "sha512:15334c645908d9195893c3fada3c291a5c2dc93d02de797b117ee801df59bd0087835dc2862d97b2862136961e474cedc9d3f90bb94d54d27af66021372e5172",
+      "digest" : "sha512:70fb32a94e35b44a170737aa5ad188214b4c6d72a7aaae141b348f18c0d7815d99dfb117b6f5b0bd1b9d2821aa47d374496d58209c9219f11f0ad090a04ef40a",
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_SRC" : {
-      "version" : "18.1.3-4-gd3f23e9e73-bg3b8289d0a4",
+      "version" : "20.1.4-1-ga7183f5a17-bg217527b869",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "packedResource" : True,
       "urls" : ["{host}/llvm-src-llvmorg-{version}.tar.gz"],
-      "digest" : "sha512:7eb738373300c6c86acc081b9cd29e82c4f3ef4ebcf7ecd1b37e60346edbf0eb4b8edbc14d440a2f896966ed1f8824f940aca467f22630c81ee1403acefff2bd",
+      "digest" : "sha512:9c83d01eb6745a3e20e3426d8334728a977da11528819cdc835bb2d62925b4d15cd167a549e08c4f263d15461771be2bc92d1ea36c1fd99ab7888740733c534c",
       "license" : "Apache-2.0-LLVM",
     },
     "MUSL_GCC_TOOLCHAIN" : {
@@ -788,6 +788,10 @@ suite = {
     "Oracle Proprietary": {
       "name": "ORACLE PROPRIETARY/CONFIDENTIAL",
       "url": "http://www.oracle.com/us/legal/copyright/index.html"
+    },
+    "GFTC": {
+      "name": "GraalVM Free Terms and Conditions (GFTC) including License for Early Adopter Versions",
+      "url": "https://www.oracle.com/downloads/licenses/graal-free-license.html"
     },
 },
 

@@ -40,14 +40,14 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
+import java.lang.foreign.Arena;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
-
-import java.lang.foreign.Arena;
 
 final class PanamaNFIContext extends AbstractPanamaNFIContext {
 
@@ -66,8 +66,8 @@ final class PanamaNFIContext extends AbstractPanamaNFIContext {
     }
 
     @Override
-    void patchEnv(Env env) {
-        this.env = env;
+    void patchEnv(Env newEnv) {
+        this.env = newEnv;
     }
 
     @Override
@@ -81,6 +81,7 @@ final class PanamaNFIContext extends AbstractPanamaNFIContext {
         return arena;
     }
 
+    @SuppressWarnings("static-method")
     @TruffleBoundary
     PanamaType lookupEnvType() {
         // TODO

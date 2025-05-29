@@ -92,7 +92,7 @@ Run `native-image --help` for help on build options.
 
 Run `native-image --help-extra` for help on additional options.
 
-* `--exclude-config`: exclude configuration for a comma-separated pair of class path/module path pattern and resource pattern. For example: `--exclude-config foo.jar,META-INF\/native-image\/.*.properties` ignores all properties files in _META-INF/native-image_ in all JAR files named _foo.jar_.
+* `--exclude-config`: exclude configuration for a space-separated pair of class path/module path pattern and resource pattern. For example: `--exclude-config foo.jar META-INF\/native-image\/.*.properties` ignores all properties files in _META-INF/native-image_ in all JAR files named _foo.jar_.
 * `--expert-options`: list image build options for experts
 * `--expert-options-all`: list all image build options for experts (use at your own risk). Options marked with _Extra help available_ contain help that can be shown with `--expert-options-detail`
 * `--expert-options-detail`: display all available help for a comma-separated list of option names. Pass `*` to show extra help for all options that contain it.
@@ -119,7 +119,7 @@ There are some expert level options that a user may find useful or needed. For e
 
 Native Image provides an informative [build output](BuildOutput.md) including various statistics during the build process.
 The build output in a JSON-based, machine-readable format can be requested using the `-H:BuildOutputJSONFile` option, and later processed by a monitoring tool.
-The JSON files validate against the JSON schema defined in [build-output-schema-v0.9.3.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.3.json).
+The JSON files validate against the JSON schema defined in [build-output-schema-v0.9.4.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.4.json).
 A comprehensive report with additional information can be requested using the `--emit build-report` option.
 
 > Note: The `--emit build-report` option is not available in GraalVM Community Edition.

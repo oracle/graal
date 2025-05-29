@@ -787,6 +787,9 @@ public class AnalysisUniverse implements Universe {
     }
 
     public DuringAnalysisAccess getConcurrentAnalysisAccess() {
+        AnalysisError.guarantee(concurrentAnalysisAccess != null, "The requested DuringAnalysisAccess object is not available. " +
+                        "This means that an analysis task is executed too eagerly, before analysis. " +
+                        "Make sure that all analysis tasks are posted to the analysis execution engine.");
         return concurrentAnalysisAccess;
     }
 

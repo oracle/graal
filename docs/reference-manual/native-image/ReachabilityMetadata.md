@@ -131,8 +131,7 @@ The _reachability-metadata.json_ configuration contains a single object with one
 {
   "reflection":[],
   "resources":[],
-  "bundles":[],
-  "jni":[]
+  "bundles":[]
 }
 ```
 
@@ -376,12 +375,14 @@ jclass clazz = FindClass(env, "jni/accessed/Type");
 ```
 looks up the `jni.accessed.Type` class, which can then be used to instantiate `jni.accessed.Type`, invoke its methods or access its fields.
 
-The metadata entry for the above call can *only* be provided via _reachability-metadata.json_. Specify the `type` entry in the `jni` field:
+The metadata entry for the above call can *only* be provided via _reachability-metadata.json_. Specify
+the `jniAccessible` field in the `type` entry in the `reflection` section:
 ```json
 {
-  "jni":[
+  "reflection": [
     {
-      "type": "jni.accessed.Type"
+      "type": "jni.accessed.Type",
+      "jniAccessibleType": true
     }
   ]
 }
@@ -393,6 +394,7 @@ To access field values, we need to provide field names:
 ```json
 {
   "type": "jni.accessed.Type",
+  "jniAccessible": true,
   "fields": [{"name": "value"}]
 }
 ```
@@ -400,6 +402,7 @@ To access all fields one can use the following attributes:
 ```json
 {
   "type": "jni.accessed.Type",
+  "jniAccessible": true,
   "allDeclaredFields": true,
   "allPublicFields": true
 }
@@ -410,6 +413,7 @@ To call Java methods from JNI, we must provide metadata for the method signature
 ```json
 {
   "type": "jni.accessed.Type",
+  "jniAccessible": true,
   "methods": [
     {"name": "<methodName1>", "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]},
     {"name": "<methodName2>", "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]}
@@ -420,6 +424,7 @@ As a convenience, one can allow method invocation for groups of methods by addin
 ```json
 {
   "type": "jni.accessed.Type",
+  "jniAccessible": true,
   "allDeclaredConstructors": true,
   "allPublicConstructors": true,
   "allDeclaredMethods": true,
@@ -429,7 +434,8 @@ As a convenience, one can allow method invocation for groups of methods by addin
 `allDeclaredConstructors` and `allDeclaredMethods` allow calls invocations of methods declared on a given type.
 `allPublicConstructors` and `allPublicMethods` allow invocations of all public methods defined on a type and all of its supertypes.
 
-To allocate objects of a type with `AllocObject`, the metadata must be stored in the `reflection` section:
+To allocate objects of a type with `AllocObject`, the `unsafeAllocated` field must be set, but the `jniAccessible` field
+is not required:
 ```json
 {
   "reflection": [

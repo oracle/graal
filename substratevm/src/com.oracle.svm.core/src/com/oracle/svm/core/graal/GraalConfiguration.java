@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 
-import jdk.graal.compiler.nodes.loop.LoopsDataProviderImpl;
-import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
+import jdk.graal.compiler.core.aarch64.AArch64NodeMatchRules;
+import jdk.graal.compiler.core.amd64.AMD64NodeMatchRules;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -40,8 +40,6 @@ import com.oracle.svm.core.graal.code.SubstrateLoweringProviderFactory;
 import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.core.aarch64.AArch64NodeMatchRules;
-import jdk.graal.compiler.core.amd64.AMD64NodeMatchRules;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.gen.NodeMatchRules;
@@ -51,6 +49,8 @@ import jdk.graal.compiler.core.riscv64.RISCV64NodeMatchRules;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.hotspot.CommunityCompilerConfigurationFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
+import jdk.graal.compiler.nodes.loop.LoopsDataProviderImpl;
+import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.options.OptionValues;
@@ -59,6 +59,8 @@ import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.vector.lir.aarch64.AArch64VectorNodeMatchRules;
+import jdk.graal.compiler.vector.lir.amd64.AMD64VectorNodeMatchRules;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -134,20 +136,28 @@ public class GraalConfiguration {
         return COMPILER_CONFIGURATION_NAME;
     }
 
+    protected void populateMatchRuleRegistry(HashMap<Class<? extends NodeMatchRules>, EconomicMap<Class<? extends Node>, List<MatchStatement>>> matchRuleRegistry, Class<? extends NodeMatchRules> c) {
+        matchRuleRegistry.put(c, MatchRuleRegistry.createRules(c));
+    }
+
     public void populateMatchRuleRegistry(HashMap<Class<? extends NodeMatchRules>, EconomicMap<Class<? extends Node>, List<MatchStatement>>> matchRuleRegistry) {
-        Class<? extends NodeMatchRules> matchRuleClass;
+        /*
+         * We create both types of match rules so the target machine could use vectorization for
+         * run-time compilation even if the image does not support vectorization. This allows
+         * Truffle to produce optimal code on a target machine.
+         */
         final Architecture hostedArchitecture = ConfigurationValues.getTarget().arch;
         if (hostedArchitecture instanceof AMD64) {
-            matchRuleClass = AMD64NodeMatchRules.class;
+            populateMatchRuleRegistry(matchRuleRegistry, AMD64NodeMatchRules.class);
+            populateMatchRuleRegistry(matchRuleRegistry, AMD64VectorNodeMatchRules.class);
         } else if (hostedArchitecture instanceof AArch64) {
-            matchRuleClass = AArch64NodeMatchRules.class;
+            populateMatchRuleRegistry(matchRuleRegistry, AArch64NodeMatchRules.class);
+            populateMatchRuleRegistry(matchRuleRegistry, AArch64VectorNodeMatchRules.class);
         } else if (hostedArchitecture instanceof RISCV64) {
-            matchRuleClass = RISCV64NodeMatchRules.class;
+            populateMatchRuleRegistry(matchRuleRegistry, RISCV64NodeMatchRules.class);
         } else {
             throw VMError.shouldNotReachHere("Can not instantiate NodeMatchRules for architecture " + hostedArchitecture.getName());
         }
-
-        matchRuleRegistry.put(matchRuleClass, MatchRuleRegistry.createRules(matchRuleClass));
     }
 
     public SubstrateBackend createBackend(Providers newProviders) {

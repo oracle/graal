@@ -32,6 +32,7 @@ import java.util.TreeSet;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -85,15 +86,6 @@ public final class UnimplementedGraalIntrinsics {
     }
 
     public UnimplementedGraalIntrinsics(Architecture arch) {
-        add(toBeInvestigated,
-                        // JDK-8307513: C2: intrinsify Math.max(long,long) and
-                        // Math.min(long,long)
-                        "java/lang/Math.max(JJ)J",
-                        "java/lang/Math.min(JJ)J",
-                        // JDK-8309130: x86_64 AVX512 intrinsics for Arrays.sort methods (GR-48679)
-                        "java/util/DualPivotQuicksort.partition(Ljava/lang/Class;Ljava/lang/Object;JIIIILjava/util/DualPivotQuicksort$PartitionOperation;)[I",
-                        "java/util/DualPivotQuicksort.sort(Ljava/lang/Class;Ljava/lang/Object;JIILjava/util/DualPivotQuicksort$SortOperation;)V");
-
         add(toBeInvestigated, // @formatter:off
                         // JDK-8342103: C2 compiler support for Float16 type and associated
                         // scalar operations
@@ -119,7 +111,9 @@ public final class UnimplementedGraalIntrinsics {
                         // instructions. We are ignoring them as cmovs are not necessarily
                         // beneficial.
                         "java/lang/Math.max(II)I",
+                        "java/lang/Math.max(JJ)J",
                         "java/lang/Math.min(II)I",
+                        "java/lang/Math.min(JJ)J",
                         // see Math.min/max
                         "java/lang/StrictMath.max(II)I",
                         "java/lang/StrictMath.min(II)I",
@@ -150,10 +144,21 @@ public final class UnimplementedGraalIntrinsics {
                 add(ignore,
                                 "sun/security/provider/SHA2.implCompress0([BI)V");
             }
+
+            if (!GraalServices.getSavedProperty("os.name").contains("Linux")) {
+                add(ignore,
+                                "java/util/DualPivotQuicksort.partition(Ljava/lang/Class;Ljava/lang/Object;JIIIILjava/util/DualPivotQuicksort$PartitionOperation;)[I",
+                                "java/util/DualPivotQuicksort.sort(Ljava/lang/Class;Ljava/lang/Object;JIILjava/util/DualPivotQuicksort$SortOperation;)V");
+            }
         } else if (arch instanceof AArch64) {
-            // Newly added by JDK-8338694. HotSpot runtime does not implement
-            // C2Compiler::is_intrinsic_supported for this intrinsic properly
-            add(ignore, "java/lang/Math.tanh(D)D");
+            // HotSpot runtime does not implement C2Compiler::is_intrinsic_supported for the
+            // following intrinsics properly
+            add(ignore,
+                            // JDK-8338694
+                            "java/lang/Math.tanh(D)D",
+                            // JDK-8309130
+                            "java/util/DualPivotQuicksort.partition(Ljava/lang/Class;Ljava/lang/Object;JIIIILjava/util/DualPivotQuicksort$PartitionOperation;)[I",
+                            "java/util/DualPivotQuicksort.sort(Ljava/lang/Class;Ljava/lang/Object;JIILjava/util/DualPivotQuicksort$SortOperation;)V");
         }
 
         // These are known to be implemented down stream

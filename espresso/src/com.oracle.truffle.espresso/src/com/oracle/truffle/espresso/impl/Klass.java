@@ -83,6 +83,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.InteropKlassesDispatch;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.nodes.interop.IHashCodeNode;
 import com.oracle.truffle.espresso.nodes.interop.InteropUnwrapNode;
 import com.oracle.truffle.espresso.nodes.interop.InteropUnwrapNodeGen;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethod;
@@ -106,7 +107,6 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import com.oracle.truffle.espresso.vm.VM;
 
 @ExportLibrary(InteropLibrary.class)
 public abstract class Klass extends ContextAccessImpl implements KlassRef, TruffleObject, EspressoType, TypeAccess<Klass, Method, Field> {
@@ -607,11 +607,11 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     }
 
     @ExportMessage
-    int identityHashCode() {
+    int identityHashCode(@Cached IHashCodeNode iHashCodeNode) {
         // In unit tests, Truffle performs additional sanity checks, this assert causes stack
         // overflow.
         // assert InteropLibrary.getUncached().hasIdentity(this);
-        return VM.JVM_IHashCode(mirror(), null /*- path where language is needed is never reached through here. */);
+        return iHashCodeNode.execute(mirror());
     }
 
     // endregion ### Identity/hashCode

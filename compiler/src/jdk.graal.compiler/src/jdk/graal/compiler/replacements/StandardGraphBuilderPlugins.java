@@ -548,9 +548,8 @@ public class StandardGraphBuilderPlugins {
         r.registerConditional(ArrayFillNode.isSupported(arch), new ArrayFillInvocationPlugin(JavaKind.Double, double[].class, double.class));
     }
 
-    private static void registerArrayPlugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, Array.class, replacements);
-        r.register(new InvocationPlugin("newInstance", Class.class, int.class) {
+    public static InvocationPlugin newArrayPlugin(final String methodName) {
+        return new InvocationPlugin(methodName, Class.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode componentType, ValueNode length) {
                 ValueNode componentTypeNonNull = b.nullCheckedValue(componentType);
@@ -562,7 +561,11 @@ public class StandardGraphBuilderPlugins {
                 }
                 return true;
             }
-        });
+        };
+    }
+
+    private static void registerArrayPlugins(InvocationPlugins plugins, Replacements replacements) {
+        Registration r = new Registration(plugins, Array.class, replacements);
         r.register(new InvocationPlugin("getLength", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode object) {
@@ -2716,9 +2719,12 @@ public class StandardGraphBuilderPlugins {
         // Sync with ArraysSupport.java
         public static final int T_BOOLEAN = 4;
         public static final int T_CHAR = 5;
+        public static final int T_FLOAT = 6;
+        public static final int T_DOUBLE = 7;
         public static final int T_BYTE = 8;
         public static final int T_SHORT = 9;
         public static final int T_INT = 10;
+        public static final int T_LONG = 11;
 
         public VectorizedHashCodeInvocationPlugin(String name) {
             super(name, Object.class, int.class, int.class, int.class, int.class);

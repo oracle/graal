@@ -90,7 +90,7 @@ import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import jdk.graal.compiler.replacements.nodes.WriteRegisterNode;
 import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.RegisterArray;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -138,7 +138,7 @@ public abstract class UpcallStub extends NonBytecodeMethod {
  */
 final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConventionMethod {
     private final ResolvedJavaMethod highLevelStub;
-    private final RegisterArray savedRegisters;
+    private final List<Register> savedRegisters;
     private final AssignedLocation[] parametersAssignment;
 
     static LowLevelUpcallStub make(JavaEntryPointInfo jep, AnalysisUniverse universe, MetaAccessProvider metaAccess) {
@@ -174,7 +174,7 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         assert ExplicitCallingConvention.Util.getCallingConventionKind(method, false) == SubstrateCallingConventionKind.Custom;
         assert Uninterruptible.Utils.isUninterruptible(method);
-        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method, purpose);
+        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method);
 
         /*
          * Read all relevant values, i.e. the MH to call, the current Isolate, the
@@ -194,8 +194,8 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
          * Saving the callee-save registers is necessary because the invocation of the high-level
          * stub uses the Java calling convention which may interfere with those registers.
          */
-        assert !savedRegisters.asList().contains(registers.methodHandle());
-        assert !savedRegisters.asList().contains(registers.isolate());
+        assert !savedRegisters.contains(registers.methodHandle());
+        assert !savedRegisters.contains(registers.isolate());
         ValueNode enterResult = kit.append(CEntryPointEnterNode.attachThread(isolate, false, true));
 
         kit.startIf(IntegerEqualsNode.create(enterResult, ConstantNode.forInt(CEntryPointErrors.NO_ERROR, kit.getGraph()), NodeView.DEFAULT),
@@ -286,7 +286,8 @@ class HighLevelUpcallStub extends UpcallStub {
                     "invokeWithArguments",
                     Object[].class);
 
-    private static MethodType computeType(JavaEntryPointInfo jep, MethodType lowType) {
+    private static MethodType computeType(JavaEntryPointInfo jep, MethodType lowTypeParam) {
+        MethodType lowType = lowTypeParam;
         /* Inject return buffer */
         if (jep.buffersReturn()) {
             lowType = lowType.insertParameterTypes(0, long.class);
@@ -301,7 +302,7 @@ class HighLevelUpcallStub extends UpcallStub {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
-        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method, purpose);
+        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method);
         MetaAccessProvider metaAccess = kit.getMetaAccess();
         FrameStateBuilder frame = kit.getFrameState();
 
@@ -336,7 +337,8 @@ class HighLevelUpcallStub extends UpcallStub {
  */
 class HighLevelDirectUpcallStub extends UpcallStub {
 
-    private static MethodType computeType(JavaEntryPointInfo jep, MethodType lowType) {
+    private static MethodType computeType(JavaEntryPointInfo jep, MethodType lowTypeParam) {
+        MethodType lowType = lowTypeParam;
         /* Inject return buffer */
         if (jep.buffersReturn()) {
             lowType = lowType.insertParameterTypes(0, long.class);
@@ -355,7 +357,7 @@ class HighLevelDirectUpcallStub extends UpcallStub {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
-        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method, purpose);
+        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method);
         FrameStateBuilder frame = kit.getFrameState();
 
         List<ValueNode> allArguments = new ArrayList<>(kit.getInitialArguments());

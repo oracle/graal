@@ -32,10 +32,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
-
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.filters.ComplexFilter;
 
@@ -209,7 +209,7 @@ public class ConditionalConfigurationComputer {
             assert list.stream().allMatch(node -> node.configuration.equals(configurationToAdd)) : "The ";
             for (MethodCallNode node : list) {
                 String className = node.methodInfo.getJavaDeclaringClassName();
-                UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.create(className);
+                UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.create(NamedConfigurationTypeDescriptor.fromJSONName(className));
                 var resolvedCondition = ConfigurationConditionResolver.identityResolver().resolveCondition(condition);
                 addConfigurationWithCondition(configurationSet, node.configuration, resolvedCondition.get());
             }

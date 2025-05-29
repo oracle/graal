@@ -137,7 +137,10 @@ final class JniCallInterceptor {
             result = nullHandle();
         }
         if (shouldTrace()) {
-            traceCall(env, "FindClass", nullHandle(), nullHandle(), callerClass, name.notEqual(nullHandle()), state, fromCString(name));
+            String className = fromCString(name);
+            if (className != null) {
+                traceCall(env, "FindClass", nullHandle(), nullHandle(), callerClass, name.notEqual(nullHandle()), state, className);
+            }
         }
         return result;
     }

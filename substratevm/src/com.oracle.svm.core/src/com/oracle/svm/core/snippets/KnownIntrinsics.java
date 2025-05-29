@@ -123,4 +123,10 @@ public class KnownIntrinsics {
      * the static analysis, and without the check that the class is already initialized.
      */
     public static native Object unvalidatedAllocateInstance(Class<?> hub);
+
+    /**
+     * Like {@link java.lang.reflect.Array#newInstance(Class, int)} but without the checks that the
+     * array of the desired class is registered for reflection.
+     */
+    public static native Object unvalidatedNewArray(Class<?> componentType, int length) throws NegativeArraySizeException;
 }

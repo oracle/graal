@@ -34,6 +34,7 @@ import com.oracle.svm.core.SubstrateOptions;
  * case of the FFM API support is disabled entirely, substitutions in
  * {@link com.oracle.svm.core.jdk.ForeignDisabledSubstitutions} will be used.
  */
+@SuppressWarnings("javadoc")
 public final class ForeignAPIPredicates {
     public static final class Enabled implements BooleanSupplier {
         @Override

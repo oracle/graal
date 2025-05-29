@@ -20,36 +20,162 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
+import re
+from abc import ABCMeta, abstractmethod
+
 import mx
 import mx_benchmark
 import mx_espresso
-import mx_sdk_benchmark
 
-from mx_benchmark import GuestVm, JavaVm
+from mx_benchmark import GuestVm, JavaVm, OutputCapturingJavaVm
 from mx_sdk_benchmark import _daCapoScalaConfig
-
 
 _suite = mx.suite('espresso')
 
 
-def espresso_dimensions(guest_vm):
-    """
-    :type guest_vm: GuestVm
-    :rtype: dict[str, str]
-    """
-    host_vm_name = guest_vm.host_vm().name()
-    if '-ce-' in host_vm_name:
-        edition = 'CE'
-    elif '-ee-' in host_vm_name:
-        edition = 'EE'
-    else:
-        edition = 'unknown'
-    return {'platform.graalvm-edition': edition}
+class EspressoStandaloneVm(OutputCapturingJavaVm, metaclass=ABCMeta):
+    def __init__(self, config_name, options):
+        super().__init__()
+        self._config_name = config_name
+        self._options = options
+
+    def config_name(self):
+        return self._config_name
+
+    def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
+        return mx.run(self.generate_java_command(args), out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+
+    def post_process_command_line_args(self, suiteArgs):
+        return self._options + suiteArgs
+
+    @abstractmethod
+    def home(self):
+        pass
+
+    @abstractmethod
+    def _print_flags_opt(self):
+        pass
+
+    def extract_vm_info(self, args=None):
+        assert args is not None
+        args = self.post_process_command_line_args(args)
+        args_str = ' '.join(args)
+        if not self.currently_extracting_vm_info and args_str not in self._vm_info:
+            self.currently_extracting_vm_info = True
+            try:
+                vm_info = {}
+                hooks = self.command_mapper_hooks
+                self.command_mapper_hooks = None
+                with mx.DisableJavaDebugging():
+                    vm_opts = _get_vm_options_for_config_extraction(args, self._print_flags_opt())
+                    vm_args = vm_opts + ["-version"]
+                    mx.logv(f"Extracting vm info by calling : java {' '.join(vm_args)}")
+                    java_version_out = mx.TeeOutputCapture(mx.OutputCapture(), mx.logv)
+                    code = self.run_java(vm_args, out=java_version_out, err=java_version_out, cwd=".")
+                    if code == 0:
+                        command_output = java_version_out.data
+                        gc, initial_heap, max_heap = _get_gc_info(command_output)
+                        vm_info["platform.gc"] = gc
+                        vm_info["platform.initial-heap-size"] = initial_heap
+                        vm_info["platform.max-heap-size"] = max_heap
+
+                        version_output = command_output.splitlines()
+                        assert len(version_output) >= 3
+                        version_start_line = 0
+                        for i, line in enumerate(version_output):
+                            if " version " in line:
+                                version_start_line = i
+                                break
+                        version_output = version_output[version_start_line:version_start_line+3]
+                        jdk_version_number = version_output[0].split("\"")[1]
+                        version = mx.VersionSpec(jdk_version_number)
+                        jdk_major_version = version.parts[1] if version.parts[0] == 1 else version.parts[0]
+                        jdk_version_string = version_output[2]
+                        vm_info["platform.jdk-version-number"] = jdk_version_number
+                        vm_info["platform.jdk-major-version"] = jdk_major_version
+                        vm_info["platform.jdk-version-string"] = jdk_version_string
+                        if mx.suite('graal-enterprise', fatalIfMissing=False) or mx.suite('truffle-enterprise', fatalIfMissing=False) or mx.suite('substratevm-enterprise', fatalIfMissing=False):
+                            vm_info["platform.graalvm-edition"] = "EE"
+                        else:
+                            vm_info["platform.graalvm-edition"] = "CE"
+                    else:
+                        mx.log_error(f"VM info extraction failed ! (code={code})")
+            finally:
+                self.currently_extracting_vm_info = False
+                self.command_mapper_hooks = hooks
+
+            self._vm_info[args_str] = vm_info
+
+def _get_vm_options_for_config_extraction(run_args, print_flags_opt):
+    vm_opts = []
+    for arg in run_args:
+        vm_arg = arg
+        if vm_arg.startswith("--vm."):
+            vm_arg = '-' + vm_arg[len("--vm."):]
+        if vm_arg.startswith("-Xm"):
+            vm_opts.append(arg)
+        if (vm_arg.startswith("-XX:+Use") or vm_arg.startswith("-XX:-Use")) and vm_arg.endswith("GC"):
+            vm_opts.append(arg)
+    vm_opts.append(print_flags_opt)
+    return vm_opts
+
+flags_re = re.compile(r' *(?P<type>[a-z_0-9]+) (?P<name>[A-Za-z0-9_]+) * = (?P<value>.+?) *(\{[A-Za-z0-9]+( [A-Za-z0-9]+)*\})? *\{(?P<origin>[A-Za-z0-9 ,]+)\}')
+
+def _get_gc_info(version_out):
+    gc = ""
+    initial_heap_size = -1
+    max_heap_size = -1
+
+    for line in version_out.splitlines():
+        m = flags_re.match(line)
+        if not m:
+            continue
+        flag = m.group('name')
+        value = m.group('value')
+        origin = m.group('origin')
+        if origin == 'default':
+            continue
+        if flag.startswith("Use") and flag.endswith("GC") and value == 'true':
+            assert gc == ''
+            gc = flag[3:]
+        if flag.startswith("InitialHeapSize"):
+            initial_heap_size = int(value)
+        if flag.startswith("MaxHeapSize"):
+            max_heap_size = int(value)
+    mx.logv(f"Detected GC is '{gc}'. Heap size : Initial = {initial_heap_size}, Max = {max_heap_size}")
+    return gc, initial_heap_size, max_heap_size
+
+class EspressoJvmStandaloneVm(EspressoStandaloneVm):
+    def name(self):
+        return 'espresso-jvm-standalone'
+
+    def generate_java_command(self, args):
+        return mx_espresso._espresso_launcher_command(self.post_process_command_line_args(args))
+
+    def home(self):
+        return mx.distribution('ESPRESSO_JVM_STANDALONE').get_output()
+
+    def _print_flags_opt(self):
+        return "--vm.XX:+PrintFlagsFinal"
 
 
-class EspressoVm(GuestVm, JavaVm):
+class EspressoNativeStandaloneVm(EspressoStandaloneVm):
+    def name(self):
+        return 'espresso-native-standalone'
+
+    def generate_java_command(self, args):
+        return mx_espresso._java_truffle_command(self.post_process_command_line_args(args))
+
+    def home(self):
+        return mx.distribution('ESPRESSO_NATIVE_STANDALONE').get_output()
+
+    def _print_flags_opt(self):
+        return "-XX:+PrintFlagsFinal"
+
+
+class EspressoGuestVm(GuestVm, JavaVm):
     def __init__(self, config_name, options, host_vm=None):
-        super(EspressoVm, self).__init__(host_vm=host_vm)
+        super().__init__(host_vm=host_vm)
         self._config_name = config_name
         self._options = options
 
@@ -63,30 +189,24 @@ class EspressoVm(GuestVm, JavaVm):
         return mx_benchmark.java_vm_registry
 
     def with_host_vm(self, host_vm):
-        _host_vm = host_vm
-        if hasattr(host_vm, 'run_launcher'):
-            # If needed, clone the host_vm and replace the `--native` argument with `-truffle`
-            if isinstance(host_vm, mx_sdk_benchmark.GraalVm) and '--native' in host_vm.extra_launcher_args:
-                extra_launcher_args = list(host_vm.extra_launcher_args)
-                extra_launcher_args.remove('--native')
-                extra_launcher_args.append('-truffle')
-                _host_vm = mx_sdk_benchmark.GraalVm(host_vm.name(), host_vm.config_name(), list(host_vm.extra_java_args), extra_launcher_args)
-        return self.__class__(self.config_name(), self._options, _host_vm)
+        return self.__class__(self.config_name(), self._options, host_vm)
 
     def run(self, cwd, args):
-        if hasattr(self.host_vm(), 'run_launcher'):
-            if '-truffle' in self.host_vm().extra_launcher_args:
-                code, out, dims = self.host_vm().run_launcher('java', self._options + args, cwd)
-            else:
-                # The host-vm is in JVM mode. Run the `espresso` launcher.
-                code, out, dims = self.host_vm().run_launcher('espresso', self._options + args, cwd)
-        else:
-            code, out, dims = self.host_vm().run(cwd, mx_espresso._espresso_standalone_command(self._options + args))
-        dims.update(espresso_dimensions(self))
+        code, out, dims = self.host_vm().run(cwd, mx_espresso._espresso_standalone_command(self._options + args))
+        guest_jdk = mx_espresso.get_java_home_dep()
+        def _preserve_host_dim(name):
+            if name in dims:
+                dims["host." + name] = dims[name]
+        _preserve_host_dim("platform.jdk-version-number")
+        _preserve_host_dim("platform.jdk-major-version")
+        _preserve_host_dim("platform.jdk-version-string")
+        dims["platform.jdk-version-number"] = str(guest_jdk.version)
+        dims["platform.jdk-major-version"] = guest_jdk.major_version
+        del dims["platform.jdk-version-string"]
         return code, out, dims
 
 
-class EspressoMinHeapVm(EspressoVm):
+class EspressoMinHeapVm(EspressoGuestVm):
     # Runs benchmarks multiple times until it finds the minimum size of max heap (`-Xmx`) required to complete the execution within a given overhead factor.
     # The minimum heap size is stored in an extra dimension.
     def __init__(self, ovh_factor, min_heap, max_heap, config_name, options, host_vm=None):
@@ -136,21 +256,25 @@ class EspressoMinHeapVm(EspressoVm):
         return exit_code, run_info['stdout'], run_info['dims']
 
 
-# Register soon-to-become-default configurations.
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('default', []), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('interpreter', ['--experimental-options', '--engine.Compilation=false']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('interpreter-inline-accessors', ['--experimental-options', '--engine.Compilation=false', '--java.InlineFieldAccessors']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('inline-accessors', ['--experimental-options', '--java.InlineFieldAccessors']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('single-tier', ['--experimental-options', '--engine.MultiTier=false']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier', ['--experimental-options', '--engine.MultiTier=true']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('3-compiler-threads', ['--experimental-options', '--engine.CompilerThreads=3']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier-inline-accessors', ['--experimental-options', '--engine.MultiTier', '--java.InlineFieldAccessors']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('no-inlining', ['--experimental-options', '--engine.Inlining=false']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('safe', ['--experimental-options', '--engine.RelaxStaticObjectSafetyChecks=false']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('field-based', ['--experimental-options', '--engine.StaticObjectStorageStrategy=field-based']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('field-based-safe', ['--experimental-options', '--engine.StaticObjectStorageStrategy=field-based', '--engine.RelaxStaticObjectSafetyChecks=false']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('array-based', ['--experimental-options', '--engine.StaticObjectStorageStrategy=array-based']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('array-based-safe', ['--experimental-options', '--engine.StaticObjectStorageStrategy=array-based', '--engine.RelaxStaticObjectSafetyChecks=false']), _suite)
+def register_standalone_vm(config_name, options):
+    mx_benchmark.java_vm_registry.add_vm(EspressoJvmStandaloneVm(config_name, options), _suite)
+    mx_benchmark.java_vm_registry.add_vm(EspressoNativeStandaloneVm(config_name, options), _suite)
+    mx_benchmark.java_vm_registry.add_vm(EspressoGuestVm(config_name, options), _suite)
+
+register_standalone_vm('default', [])
+register_standalone_vm('interpreter', ['--experimental-options', '--engine.Compilation=false'])
+register_standalone_vm('interpreter-inline-accessors', ['--experimental-options', '--engine.Compilation=false', '--java.InlineFieldAccessors'])
+register_standalone_vm('inline-accessors', ['--experimental-options', '--java.InlineFieldAccessors'])
+register_standalone_vm('single-tier', ['--experimental-options', '--engine.MultiTier=false'])
+register_standalone_vm('multi-tier', ['--experimental-options', '--engine.MultiTier=true'])
+register_standalone_vm('3-compiler-threads', ['--experimental-options', '--engine.CompilerThreads=3'])
+register_standalone_vm('multi-tier-inline-accessors', ['--experimental-options', '--engine.MultiTier', '--java.InlineFieldAccessors'])
+register_standalone_vm('no-inlining', ['--experimental-options', '--engine.Inlining=false'])
+register_standalone_vm('safe', ['--experimental-options', '--engine.RelaxStaticObjectSafetyChecks=false'])
+register_standalone_vm('field-based', ['--experimental-options', '--engine.StaticObjectStorageStrategy=field-based'])
+register_standalone_vm('field-based-safe', ['--experimental-options', '--engine.StaticObjectStorageStrategy=field-based', '--engine.RelaxStaticObjectSafetyChecks=false'])
+register_standalone_vm('array-based', ['--experimental-options', '--engine.StaticObjectStorageStrategy=array-based'])
+register_standalone_vm('array-based-safe', ['--experimental-options', '--engine.StaticObjectStorageStrategy=array-based', '--engine.RelaxStaticObjectSafetyChecks=false'])
 
 mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(0, 0, 64, 'infinite-overhead', []), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(1.5, 0, 2048, '1.5-overhead', []), _suite)

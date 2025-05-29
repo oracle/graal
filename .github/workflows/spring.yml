@@ -41,9 +41,6 @@
 name: Weekly Spring Tests
 
 on:
-  push:
-    paths:
-      - '.github/workflows/spring.yml'
   pull_request:
     paths:
       - '.github/workflows/spring.yml'

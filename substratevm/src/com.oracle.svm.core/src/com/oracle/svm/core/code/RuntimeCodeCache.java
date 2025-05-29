@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,14 +26,20 @@ package com.oracle.svm.core.code;
 
 import static com.oracle.svm.core.deopt.Deoptimizer.Options.LazyDeoptimization;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
+import static com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode.WRITE;
+import static com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode.CREATE_OR_REPLACE;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.os.RawFileOperationSupport;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -161,11 +167,52 @@ public class RuntimeCodeCache {
         return -(low + 1);  // key not found.
     }
 
+    private static RawFileOperationSupport getFileSupport() {
+        return RawFileOperationSupport.bigEndian();
+    }
+
+    private static void dumpMethod(CodeInfo info) {
+        String tmpDirPath = getFileSupport().getTempDirectory();
+        String prefix = System.nanoTime() + "_";
+        String methodName = SubstrateUtil.sanitizeForFileName(CodeInfoAccess.getName(info));
+        String suffix = "_" + CodeInfoAccess.getTier(info) + ".bin";
+
+        // Check that the file name size does not exceed the 255 chars
+        int maxMethodNameSize = 255 - prefix.length() - suffix.length();
+        if (methodName.length() > maxMethodNameSize) {
+            methodName = methodName.substring(maxMethodNameSize);
+        }
+
+        String filePath = tmpDirPath + "/" + prefix + methodName + suffix;
+
+        RawFileOperationSupport.RawFileDescriptor fd = getFileSupport().create(filePath, CREATE_OR_REPLACE, WRITE);
+        if (!getFileSupport().isValid(fd)) {
+            Log.log().string("Failed to dump runtime compiled code: '").string(filePath).string("' could not be created.").newline();
+            return;
+        }
+
+        try {
+            CCharPointer codeStart = (CCharPointer) CodeInfoAccess.getCodeStart(info);
+
+            UnsignedWord codeSize = CodeInfoAccess.getCodeSize(info);
+            if (!RawFileOperationSupport.bigEndian().write(fd, (Pointer) codeStart, codeSize)) {
+                Log.log().string("Dumping method to ").string(filePath).string(" failed").newline();
+            }
+        } finally {
+            getFileSupport().close(fd);
+        }
+    }
+
     public void addMethod(CodeInfo info) {
         assert VMOperation.isInProgressAtSafepoint() : "invalid state";
         InstalledCodeObserverSupport.activateObservers(RuntimeCodeInfoAccess.getCodeObserverHandles(info));
+
         addMethod0(info);
         RuntimeCodeInfoHistory.singleton().logAdd(info);
+
+        if (SubstrateOptions.hasDumpRuntimeCompiledMethodsSupport()) {
+            dumpMethod(info);
+        }
     }
 
     @Uninterruptible(reason = "Modifying code tables that are used by the GC")

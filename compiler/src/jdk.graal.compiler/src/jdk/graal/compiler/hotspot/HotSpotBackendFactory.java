@@ -102,8 +102,8 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
         return new HotSpotPlatformConfigurationProvider(config, barrierSet);
     }
 
-    protected HotSpotMetaAccessExtensionProvider createMetaAccessExtensionProvider(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
-        return new HotSpotMetaAccessExtensionProvider(metaAccess, constantReflection);
+    protected HotSpotMetaAccessExtensionProvider createMetaAccessExtensionProvider(ConstantReflectionProvider constantReflection) {
+        return new HotSpotMetaAccessExtensionProvider(constantReflection);
     }
 
     protected HotSpotReplacementsImpl createReplacements(TargetDescription target, HotSpotProviders p, BytecodeProvider bytecodeProvider) {
@@ -171,7 +171,7 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
             }
             HotSpotMetaAccessExtensionProvider metaAccessExtensionProvider;
             try (InitTimer rt = timer("create MetaAccessExtensionProvider")) {
-                metaAccessExtensionProvider = createMetaAccessExtensionProvider(metaAccess, constantReflection);
+                metaAccessExtensionProvider = createMetaAccessExtensionProvider(constantReflection);
             }
             HotSpotStampProvider stampProvider;
             try (InitTimer rt = timer("create stamp provider")) {

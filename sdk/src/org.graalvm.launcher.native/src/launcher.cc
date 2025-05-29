@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,9 +47,13 @@
 #include <cstdlib>
 
 #include <string>
+#include <optional>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <vector>
+
+#include <cassert>
 
 #define QUOTE(name) #name
 #define STR(macro) QUOTE(macro)
@@ -93,6 +97,8 @@
 #define VM_P_ARG_PREFIX "--vm.p="
 #define VM_MODULE_PATH_ARG_PREFIX "--vm.-module-path="
 #define VM_LIBRARY_PATH_ARG_PREFIX "--vm.Djava.library.path="
+#define VM_STACK_SIZE_ARG_PREFIX "--vm.Xss"
+#define VM_ARG_FILE_ARG_PREFIX "--vm.@"
 
 #define VM_ARG_OFFSET (sizeof(VM_ARG_PREFIX)-1)
 #define VM_CP_ARG_OFFSET (sizeof(VM_CP_ARG_PREFIX)-1)
@@ -100,13 +106,18 @@
 #define VM_P_ARG_OFFSET (sizeof(VM_P_ARG_PREFIX)-1)
 #define VM_MODULE_PATH_ARG_OFFSET (sizeof(VM_MODULE_PATH_ARG_PREFIX)-1)
 #define VM_LIBRARY_PATH_ARG_OFFSET (sizeof(VM_LIBRARY_PATH_ARG_PREFIX)-1)
+#define VM_STACK_SIZE_ARG_OFFSET (sizeof(VM_STACK_SIZE_ARG_PREFIX)-1)
+#define VM_ARG_FILE_ARG_OFFSET (sizeof(VM_ARG_FILE_ARG_PREFIX)-1)
 
-#define IS_VM_ARG(ARG) (ARG.rfind(VM_ARG_PREFIX, 0) != std::string::npos)
-#define IS_VM_CP_ARG(ARG) (ARG.rfind(VM_CP_ARG_PREFIX, 0) != std::string::npos)
-#define IS_VM_CLASSPATH_ARG(ARG) (ARG.rfind(VM_CLASSPATH_ARG_PREFIX, 0) != std::string::npos)
-#define IS_VM_P_ARG(ARG) (ARG.rfind(VM_P_ARG_PREFIX, 0) != std::string::npos)
-#define IS_VM_MODULE_PATH_ARG(ARG) (ARG.rfind(VM_MODULE_PATH_ARG_PREFIX, 0) != std::string::npos)
-#define IS_VM_LIBRARY_PATH_ARG(ARG) (ARG.rfind(VM_LIBRARY_PATH_ARG_PREFIX, 0) != std::string::npos)
+#define STARTS_WITH(ARG, PREFIX) (ARG.rfind(PREFIX, 0) != std::string::npos)
+#define IS_VM_ARG(ARG) STARTS_WITH(ARG, VM_ARG_PREFIX)
+#define IS_VM_CP_ARG(ARG) STARTS_WITH(ARG, VM_CP_ARG_PREFIX)
+#define IS_VM_CLASSPATH_ARG(ARG) STARTS_WITH(ARG, VM_CLASSPATH_ARG_PREFIX)
+#define IS_VM_P_ARG(ARG) STARTS_WITH(ARG, VM_P_ARG_PREFIX)
+#define IS_VM_MODULE_PATH_ARG(ARG) STARTS_WITH(ARG, VM_MODULE_PATH_ARG_PREFIX)
+#define IS_VM_LIBRARY_PATH_ARG(ARG) STARTS_WITH(ARG, VM_LIBRARY_PATH_ARG_PREFIX)
+#define IS_VM_STACK_SIZE_ARG(ARG) STARTS_WITH(ARG, VM_STACK_SIZE_ARG_PREFIX)
+#define IS_VM_ARG_FILE_ARG(ARG) STARTS_WITH(ARG, VM_ARG_FILE_ARG_PREFIX)
 
 #define NMT_ARG_NAME "XX:NativeMemoryTracking"
 #define NMT_ENV_NAME "NMT_LEVEL_"
@@ -143,7 +154,13 @@
     #include <objc/objc-auto.h>
 
 #elif defined (_WIN32)
+    #pragma push_macro("NOMINMAX")
+    #pragma push_macro("WIN32_LEAN_AND_MEAN")
+    #define NOMINMAX
+    #define WIN32_LEAN_AND_MEAN
     #include <windows.h>
+    #pragma pop_macro("WIN32_LEAN_AND_MEAN")
+    #pragma pop_macro("NOMINMAX")
     #include <libloaderapi.h>
     #include <cstdlib>
     #include <process.h>
@@ -275,7 +292,7 @@ static std::string canonicalize(std::string path) {
  * system JRE and fail if none is installed
  */
 static void *load_jli_lib(std::string exeDir) {
-    std::stringstream libjliPath;
+    std::ostringstream libjliPath;
     libjliPath << exeDir << DIR_SEP_STR << LIBJLI_RELPATH_STR;
     return dlopen(libjliPath.str().c_str(), RTLD_NOW);
 }
@@ -320,7 +337,7 @@ void* get_function(void* library, const char* function_name) {
 }
 
 static std::string vm_path(std::string exeDir, bool jvmMode) {
-    std::stringstream liblangPath;
+    std::ostringstream liblangPath;
     if (jvmMode) {
         liblangPath << exeDir << DIR_SEP_STR << LIBJVM_RELPATH_STR;
     } else {
@@ -334,12 +351,21 @@ static std::string vm_path(std::string exeDir, bool jvmMode) {
     return liblangPath.str();
 }
 
+static size_t parse_size(std::string_view str);
+static void expand_vm_arg_file(const char *arg_file,
+                               std::vector<std::string> *vmArgs,
+                               std::ostringstream *cp,
+                               std::ostringstream *modulePath,
+                               std::ostringstream *libraryPath,
+                               size_t* stack_size);
+
 static void parse_vm_option(
         std::vector<std::string> *vmArgs,
-        std::stringstream *cp,
-        std::stringstream *modulePath,
-        std::stringstream *libraryPath,
-        std::string option) {
+        std::ostringstream *cp,
+        std::ostringstream *modulePath,
+        std::ostringstream *libraryPath,
+        size_t* stack_size,
+        std::string_view option) {
     if (IS_VM_CP_ARG(option)) {
         *cp << CP_SEP_STR << option.substr(VM_CP_ARG_OFFSET);
     } else if (IS_VM_CLASSPATH_ARG(option)) {
@@ -350,8 +376,14 @@ static void parse_vm_option(
         *modulePath << CP_SEP_STR << option.substr(VM_MODULE_PATH_ARG_OFFSET);
     } else if (IS_VM_LIBRARY_PATH_ARG(option)) {
         *libraryPath << CP_SEP_STR << option.substr(VM_LIBRARY_PATH_ARG_OFFSET);
+    } else if (IS_VM_ARG_FILE_ARG(option)) {
+        std::string arg_file(option.substr(VM_ARG_FILE_ARG_OFFSET));
+        expand_vm_arg_file(arg_file.c_str(), vmArgs, cp, modulePath, libraryPath, stack_size);
     } else if (IS_VM_ARG(option)) {
-        std::stringstream opt;
+        if (IS_VM_STACK_SIZE_ARG(option)) {
+            *stack_size = parse_size(option.substr(VM_STACK_SIZE_ARG_OFFSET));
+        }
+        std::ostringstream opt;
         opt << '-' << option.substr(VM_ARG_OFFSET);
         vmArgs->push_back(opt.str());
     } else if (option == "--jvm") {
@@ -359,8 +391,178 @@ static void parse_vm_option(
     }
 }
 
+enum ArgFileState {
+    FIND_NEXT,
+    IN_COMMENT,
+    IN_QUOTE,
+    IN_ESCAPE,
+    SKIP_LEAD_WS,
+    IN_TOKEN
+};
+// Parse @arg-files as handled by libjli. See libjli/args.c.
+static std::optional<std::string> arg_file_next_token(std::ifstream &input) {
+    ArgFileState state = FIND_NEXT;
+    int currentQuoteChar = -1;
+    std::istream::int_type ch;
+
+    std::ostringstream token;
+    std::ostringstream::pos_type start = token.tellp();
+
+    while ((ch = input.get()) != std::istream::traits_type::eof()) {
+        // Skip white space characters
+        if (state == FIND_NEXT || state == SKIP_LEAD_WS) {
+            while (ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t' || ch == '\f') {
+                if ((ch = input.get()) == std::istream::traits_type::eof()) {
+                    goto done;
+                }
+            }
+            state = (state == FIND_NEXT) ? IN_TOKEN : IN_QUOTE;
+            // Deal with escape sequences
+        } else if (state == IN_ESCAPE) {
+            // concatenation directive
+            if (ch == '\n' || ch == '\r') {
+                state = SKIP_LEAD_WS;
+            } else {
+                // escaped character
+                switch (ch) {
+                    case 'n':
+                        token << '\n';
+                        break;
+                    case 'r':
+                        token << '\r';
+                        break;
+                    case 't':
+                        token << '\t';
+                        break;
+                    case 'f':
+                        token << '\f';
+                        break;
+                    default:
+                        token << (char) ch;
+                        break;
+                }
+                state = IN_QUOTE;
+            }
+            continue;
+            // ignore comment to EOL
+        } else if (state == IN_COMMENT) {
+            while (ch != '\n' && ch != '\r') {
+                if ((ch = input.get()) == std::istream::traits_type::eof()) {
+                    goto done;
+                }
+            }
+            state = FIND_NEXT;
+            continue;
+        }
+
+        assert(state != IN_ESCAPE);
+        assert(state != FIND_NEXT);
+        assert(state != SKIP_LEAD_WS);
+        assert(state != IN_COMMENT);
+
+        switch (ch) {
+            case ' ':
+            case '\t':
+            case '\f':
+                if (state == IN_QUOTE) {
+                    token << (char) ch;
+                    continue;
+                }
+                // fallthrough
+            case '\n':
+            case '\r':
+                return token.str();
+            case '#':
+                if (state == IN_QUOTE) {
+                    token << (char) ch;
+                    continue;
+                }
+                state = IN_COMMENT;
+                break;
+            case '\\':
+                if (state != IN_QUOTE) {
+                    token << (char) ch;
+                    continue;
+                }
+                state = IN_ESCAPE;
+                break;
+            case '\'':
+            case '"':
+                if (state == IN_QUOTE && currentQuoteChar != ch) {
+                    // not matching quote
+                    token << (char) ch;
+                    continue;
+                }
+                if (state == IN_TOKEN) {
+                    currentQuoteChar = ch;
+                    state = IN_QUOTE;
+                } else {
+                    state = IN_TOKEN;
+                }
+                break;
+            default:
+                token << (char) ch;
+                break;
+        }
+    }
+done:
+    if (token.tellp() == start) {
+        return {};
+    }
+    return token.str();
+}
+
+static void expand_vm_arg_file(const char *arg_file,
+                               std::vector<std::string> *vmArgs,
+                               std::ostringstream *cp,
+                               std::ostringstream *modulePath,
+                               std::ostringstream *libraryPath,
+                               size_t* stack_size) {
+    if (debug) {
+        std::cout << "Expanding VM arg file " << arg_file << std::endl;
+    }
+    std::ifstream input(arg_file);
+    if (input.fail()) {
+        std::cerr << "Error: could not open `" << arg_file << "': " << strerror(errno) << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    while (true) {
+        std::optional<std::string> token = arg_file_next_token(input);
+        if (token.has_value()) {
+            if (STARTS_WITH(token.value(), "--class-path=")) {
+                *cp << CP_SEP_STR << token.value().substr(sizeof("--class-path=") - 1);
+            } else if (STARTS_WITH(token.value(), "--module-path=")) {
+                *modulePath << CP_SEP_STR << token.value().substr(sizeof("--module-path=") - 1);
+            } else if (STARTS_WITH(token.value(), "-Djava.library.path=")) {
+                *libraryPath << CP_SEP_STR << token.value().substr(sizeof("-Djava.library.path=") - 1);
+            } else {
+                if (STARTS_WITH(token.value(), "-Xss")) {
+                    *stack_size = parse_size(token.value().substr(sizeof("-Xss") - 1));
+                }
+                vmArgs->push_back(token.value());
+            }
+        } else {
+            break;
+        }
+    }
+}
+
+struct MainThreadArgs {
+    int argc;
+    char **argv;
+    std::string exeDir;
+    bool jvmMode;
+    std::string libPath;
+    size_t stack_size{};
+    std::vector<std::string> vmArgs;
+    std::vector<std::string> optionVarsArgs;
+};
+
 /* parse the VM arguments that should be passed to JNI_CreateJavaVM */
-static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vector<std::string>& vmArgs, std::vector<std::string>& optionVarsArgs, bool jvmMode) {
+static void parse_vm_options(struct MainThreadArgs& parsedArgs) {
+    auto& [argc, argv, exeDir, jvmMode, _, stack_size, vmArgs, optionVarsArgs] = parsedArgs;
+
     /* check if vm args have been set on relaunch already */
     int vmArgCount = 0;
     char *vmArgInfo = getenv("GRAALVM_LANGUAGE_LAUNCHER_VMARGS");
@@ -383,7 +585,7 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vec
     }
     vmArgs.push_back("-Dorg.graalvm.version=" GRAALVM_VERSION_STR);
 
-    std::stringstream executablename;
+    std::ostringstream executablename;
     executablename << "-Dorg.graalvm.launcher.executablename=";
     char *executablenameEnv = getenv("GRAALVM_LAUNCHER_EXECUTABLE_NAME");
     if (executablenameEnv) {
@@ -398,10 +600,10 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vec
     }
 
     /* construct classpath - only needed for jvm mode */
-    std::stringstream cp;
+    std::ostringstream cp;
 
     /* construct module path - only needed for jvm mode */
-    std::stringstream modulePath;
+    std::ostringstream modulePath;
     modulePath << "--module-path=";
     #ifdef LAUNCHER_MODULE_PATH
     if (jvmMode) {
@@ -409,7 +611,7 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vec
         const char *launcherModulePathEntries[] = LAUNCHER_MODULE_PATH;
         int launcherModulePathCnt = sizeof(launcherModulePathEntries) / sizeof(*launcherModulePathEntries);
         for (int i = 0; i < launcherModulePathCnt; i++) {
-            std::stringstream entry;
+            std::ostringstream entry;
             entry << exeDir << DIR_SEP_STR << launcherModulePathEntries[i];
             modulePath << canonicalize(entry.str());
             if (i < launcherModulePathCnt-1) {
@@ -426,7 +628,7 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vec
         const char* dirs[] = { LANGUAGES_DIR_STR, TOOLS_DIR_STR };
         for (int i = 0; i < 2; i++) {
             const char* relativeDir = dirs[i];
-            std::stringstream absoluteDirStream;
+            std::ostringstream absoluteDirStream;
             absoluteDirStream << exeDir << DIR_SEP_STR << relativeDir;
             std::string absoluteDir = absoluteDirStream.str();
 
@@ -447,7 +649,7 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vec
             // From https://learn.microsoft.com/en-us/windows/win32/fileio/listing-the-files-in-a-directory
             // and https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstfilea
             WIN32_FIND_DATAA entry;
-            std::stringstream searchDir;
+            std::ostringstream searchDir;
             searchDir << absoluteDir << "\\*";
             HANDLE dir = FindFirstFileA(searchDir.str().c_str(), &entry);
             if (dir != INVALID_HANDLE_VALUE) {
@@ -466,7 +668,7 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vec
     #endif
 
     /* construct java.library.path - only needed for jvm mode */
-    std::stringstream libraryPath;
+    std::ostringstream libraryPath;
     #ifdef LAUNCHER_LIBRARY_PATH
     if (jvmMode) {
         /* add the library path */
@@ -483,8 +685,8 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vec
     const char *launcherLangHomePaths[] = LAUNCHER_LANG_HOME_PATHS;
     int launcherLangHomeNamesCnt = sizeof(launcherLangHomeNames) / sizeof(*launcherLangHomeNames);
     for (int i = 0; i < launcherLangHomeNamesCnt; i++) {
-        std::stringstream ss;
-        std::stringstream relativeHome;
+        std::ostringstream ss;
+        std::ostringstream relativeHome;
         relativeHome << exeDir << DIR_SEP_STR << launcherLangHomePaths[i];
         ss << "-Dorg.graalvm.language." << launcherLangHomeNames[i] << ".home=" << canonicalize(relativeHome.str());
         vmArgs.push_back(ss.str());
@@ -497,8 +699,8 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vec
         const char *extractedLibPaths[] = LAUNCHER_EXTRACTED_LIB_PATHS;
         int extractedLibCnt = sizeof(extractedLibNames) / sizeof(*extractedLibNames);
         for (int i = 0; i < extractedLibCnt; i++) {
-            std::stringstream ss;
-            std::stringstream relativePath;
+            std::ostringstream ss;
+            std::ostringstream relativePath;
             relativePath << exeDir << DIR_SEP_STR << extractedLibPaths[i];
             ss << "-D" << extractedLibNames[i] << "=" << canonicalize(relativePath.str());
             vmArgs.push_back(ss.str());
@@ -513,7 +715,7 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vec
     const char *launcherDefaultVmArgs[] = LAUNCHER_DEFAULT_VM_ARGS;
     for (int i = 0; i < sizeof(launcherDefaultVmArgs)/sizeof(char*); i++) {
         if (IS_VM_ARG(std::string(launcherDefaultVmArgs[i]))) {
-            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, launcherDefaultVmArgs[i]);
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, launcherDefaultVmArgs[i]);
         }
     }
     #endif
@@ -521,8 +723,8 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vec
 
     if (!relaunch) {
         /* handle CLI arguments */
-        for (int i = 0; i < argc; i++) {
-            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, std::string(argv[i]));
+        for (int i = 1; i < argc; i++) {
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, argv[i]);
         }
 
         /* handle optional vm args from LanguageLibraryConfig.option_vars */
@@ -543,12 +745,12 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vec
             while ((next = optionLine.find(" ", last)) != std::string::npos) {
                 option = optionLine.substr(last, next-last);
                 optionVarsArgs.push_back(option);
-                parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, option);
+                parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, option);
                 last = next + 1;
             };
             option = optionLine.substr(last);
             optionVarsArgs.push_back(option);
-            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, option);
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, option);
         }
         #endif
     } else {
@@ -559,7 +761,7 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vec
             std::cout << "Relaunch environment variable detected" << std::endl;
         }
         for (int i = 0; i < vmArgCount; i++) {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << "GRAALVM_LANGUAGE_LAUNCHER_VMARGS_" << i;
             std::string envKey = ss.str();
             char *cur = getenv(envKey.c_str());
@@ -567,7 +769,7 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vec
                 std::cerr << "VM arguments specified: " << vmArgCount << " but argument " << i << "missing" << std::endl;
                 break;
             }
-            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, std::string(cur));
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, cur);
             /* clean up env variable */
             setenv(envKey, "");
         }
@@ -592,9 +794,16 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vec
     }
 }
 
-static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmMode, std::string libPath);
+static int jvm_main_thread(struct MainThreadArgs& mainArgs);
+static size_t current_thread_stack_size();
+#ifndef _WIN32
+static int setstacksize(pthread_attr_t* attr, size_t stack_size);
+#endif
 
 #if defined (__APPLE__)
+/*
+ * See: https://github.com/openjdk/jdk/blob/8c1b915c7ef2b3a6e65705b91f4eb464caaec4e7/src/java.base/macosx/native/libjli/java_md_macosx.m#L277-L290
+ */
 static void dummyTimer(CFRunLoopTimerRef timer, void *info) {}
 
 static void ParkEventLoop() {
@@ -609,22 +818,26 @@ static void ParkEventLoop() {
         result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1.0e20, false);
     } while (result != kCFRunLoopRunFinished);
 }
-
-struct MainThreadArgs {
-    int argc;
-    char **argv;
-    std::string exeDir;
-    bool jvmMode;
-    std::string libPath;
-};
-
-static void *apple_main (void *arg)
-{
-    struct MainThreadArgs *args = (struct MainThreadArgs *) arg;
-    int ret = jvm_main_thread(args->argc, args->argv, args->exeDir, args->jvmMode, args->libPath);
-    exit(ret);
-}
 #endif /* __APPLE__ */
+
+#ifndef _WIN32
+static void *jvm_main_thread_start(void *arg)
+{
+    std::unique_ptr<struct MainThreadArgs> args(static_cast<struct MainThreadArgs*>(arg));
+    int ret = jvm_main_thread(*args);
+#if defined(__APPLE__)
+    exit(ret);
+#endif
+    return (void*)(intptr_t)ret;
+}
+#else /* defined(_WIN32) */
+static unsigned __stdcall jvm_main_thread_start(void *arg)
+{
+    std::unique_ptr<struct MainThreadArgs> args(static_cast<struct MainThreadArgs*>(arg));
+    int ret = jvm_main_thread(*args);
+    return (unsigned)ret;
+}
+#endif
 
 int main(int argc, char *argv[]) {
     debug = (getenv("VERBOSE_GRAALVM_LAUNCHERS") != NULL);
@@ -650,55 +863,109 @@ int main(int argc, char *argv[]) {
         }
     }
 
+
+    /* parse VM args */
+    struct MainThreadArgs parsedArgs{argc, argv, exeDir, jvmMode, libPath, 0};
+    parse_vm_options(parsedArgs);
+    size_t stack_size = parsedArgs.stack_size;
+
+    /*
+     * If -Xss is greater than the os-allocated stack size of the main thread,
+     * create a new "main" thread for the JVM with increased stack size.
+     *
+     * Unlike the `java` launcher, which always creates a new thread for the JVM by default [1],
+     * we create a new thread only if needed; otherwise, we attach the JVM to the main thread.
+     * On macOS, it is always needed because the actual main thread must run the UI event loop [2].
+     *
+     * [1] https://github.com/openjdk/jdk/blob/8c1b915c7ef2b3a6e65705b91f4eb464caaec4e7/src/java.base/unix/native/libjli/java_md.c#L114
+     * [2] https://github.com/openjdk/jdk/blob/8c1b915c7ef2b3a6e65705b91f4eb464caaec4e7/src/java.base/macosx/native/libjli/java_md_macosx.m#L292-L325
+     */
+    size_t main_thread_stack_size = current_thread_stack_size();
+    bool use_new_thread = stack_size > main_thread_stack_size;
 #if defined (__APPLE__)
+    /* On macOS, always create a dedicated "main" thread for the JVM.
+     * The actual main thread must run the UI event loop (needed for AWT).
+     */
+    use_new_thread = true;
+
     if (jvmMode) {
         if (!load_jli_lib(exeDir)) {
             std::cerr << "Loading libjli failed." << std::endl;
             return -1;
         }
     }
-
-    struct MainThreadArgs args = { argc, argv, exeDir, jvmMode, libPath};
-
-    /* Inherit stacksize of main thread. Otherwise pthread_create() defaults to
-     * 512K on darwin, while the main thread has 8192K.
-     */
-    pthread_attr_t attr;
-    if (pthread_attr_init(&attr) != 0) {
-        std::cerr << "Could not initialize pthread attribute structure: " << strerror(errno) << std::endl;
-        return -1;
-    }
-    if (pthread_attr_setstacksize(&attr, pthread_get_stacksize_np(pthread_self())) != 0) {
-        std::cerr << "Could not set stacksize in pthread attribute structure." << std::endl;
-        return -1;
-    }
-
-    /* Create dedicated "main" thread for the JVM. The actual main thread
-     * must run the UI event loop on macOS. Inspired by this OpenJDK code:
-     * https://github.com/openjdk/jdk/blob/011958d30b275f0f6a2de097938ceeb34beb314d/src/java.base/macosx/native/libjli/java_md_macosx.m#L328-L358
-     */
-    pthread_t main_thr;
-    if (pthread_create(&main_thr, &attr, &apple_main, &args) != 0) {
-        std::cerr << "Could not create main thread: " << strerror(errno) << std::endl;
-        return -1;
-    }
-    if (pthread_detach(main_thr)) {
-        std::cerr << "pthread_detach() failed: " << strerror(errno) << std::endl;
-        return -1;
-    }
-
-    ParkEventLoop();
-    return 0;
-#else
-    return jvm_main_thread(argc, argv, exeDir, jvmMode, libPath);
 #endif
+
+    if (use_new_thread) {
+        auto threadArgs = std::make_unique<decltype(parsedArgs)>(std::move(parsedArgs));
+        if (debug) {
+            std::cout << "Creating a new thread for the JVM with stack_size=" << stack_size << " main_thread_stack_size=" << main_thread_stack_size << std::endl;
+        }
+
+#ifndef _WIN32
+        pthread_attr_t attr;
+        if (pthread_attr_init(&attr) != 0) {
+            std::cerr << "Could not initialize pthread attribute structure: " << strerror(errno) << std::endl;
+            return -1;
+        }
+        if (setstacksize(&attr, stack_size) != 0) {
+            std::cerr << "Could not set stack size in pthread attribute structure to " << stack_size << " bytes." << std::endl;
+            return -1;
+        }
+
+        // See: https://github.com/openjdk/jdk/blob/8c1b915c7ef2b3a6e65705b91f4eb464caaec4e7/src/java.base/unix/native/libjli/java_md.c#L685
+        pthread_attr_setguardsize(&attr, 0); // no pthread guard page on java threads
+
+        pthread_t main_thr;
+        if (pthread_create(&main_thr, &attr, &jvm_main_thread_start, threadArgs.get()) != 0) {
+            std::cerr << "Could not create main thread: " << strerror(errno) << std::endl;
+            pthread_attr_destroy(&attr);
+            return -1;
+        }
+
+        // ownership transferred to new thread
+        threadArgs.release();
+        pthread_attr_destroy(&attr);
+
+#if defined(__APPLE__)
+        if (pthread_detach(main_thr)) {
+            std::cerr << "pthread_detach() failed: " << strerror(errno) << std::endl;
+            return -1;
+        }
+
+        ParkEventLoop();
+        return 0;
+#else
+        void* retval;
+        if (pthread_join(main_thr, &retval)) {
+            std::cerr << "pthread_join() failed: " << strerror(errno) << std::endl;
+            return -1;
+        }
+        return (int)(intptr_t)retval;
+#endif
+#else /* defined(_WIN32) */
+        uintptr_t hThread = _beginthreadex(nullptr, stack_size, &jvm_main_thread_start, threadArgs.get(), STACK_SIZE_PARAM_IS_A_RESERVATION, nullptr);
+        if (hThread == 0) {
+            std::cerr << "_beginthreadex() failed: " << GetLastError() << std::endl;
+            return -1;
+        }
+
+        // ownership transferred to new thread
+        threadArgs.release();
+
+        // join thread
+        DWORD exitCode = 0;
+        WaitForSingleObject((HANDLE)hThread, INFINITE);
+        GetExitCodeThread((HANDLE)hThread, &exitCode);
+        CloseHandle((HANDLE)hThread);
+        return (int)exitCode;
+#endif
+    }
+    return jvm_main_thread(parsedArgs);
 }
 
-static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmMode, std::string libPath) {
-    /* parse VM args */
-    std::vector<std::string> vmArgs;
-    std::vector<std::string> optionVarsArgs;
-    parse_vm_options(argc, argv, exeDir, vmArgs, optionVarsArgs, jvmMode);
+static int jvm_main_thread(struct MainThreadArgs& parsedArgs) {
+    auto& [argc, argv, _, jvmMode, libPath, stack_size, vmArgs, optionVarsArgs] = parsedArgs;
 
     /* load VM library - after parsing arguments s.t. NMT
      * tracking environment variables are already set */
@@ -906,7 +1173,7 @@ static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmM
             if (debug) {
                 std::cout << "Relaunch VM arguments read: " << vmArgCount << std::endl;
             }
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << vmArgCount;
             if (setenv("GRAALVM_LANGUAGE_LAUNCHER_VMARGS", ss.str()) == -1) {
                 return -1;
@@ -925,7 +1192,7 @@ static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmM
                     return -1;
                 }
                 /* set environment variables for relaunch vm arguments */
-                std::stringstream key;
+                std::ostringstream key;
                 key << "GRAALVM_LANGUAGE_LAUNCHER_VMARGS_" << i;
                 std::string arg(vmArg);
                 if (setenv(key.str(), arg) == -1) {
@@ -943,4 +1210,114 @@ static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmM
         return -1;
     }
 	return 0;
+}
+
+/**
+ * Parses the size part of -Xss, -Xmx, etc. options.
+ * Returns the parsed size in bytes or 0 if invalid.
+ * Inspired by: https://github.com/openjdk/jdk/blob/8c1b915c7ef2b3a6e65705b91f4eb464caaec4e7/src/java.base/share/native/libjli/java.c#L920-L954
+ */
+static size_t parse_size(std::string_view str) {
+    size_t n = 0;
+    size_t pos = 0;
+    while (pos < str.size() && str[pos] >= '0' && str[pos] <= '9') {
+        int digit = str[pos] - '0';
+        n = n * 10 + digit;
+        pos++;
+    }
+    if (pos == 0 || str.size() - pos != 1) {
+        // invalid
+        return 0;
+    }
+    size_t multiplier = 1;
+    switch (str[pos]) {
+        case 'T':
+        case 't':
+            multiplier *= 1024;
+            [[fallthrough]];
+        case 'G':
+        case 'g':
+            multiplier *= 1024;
+            [[fallthrough]];
+        case 'M':
+        case 'm':
+            multiplier *= 1024;
+            [[fallthrough]];
+        case 'K':
+        case 'k':
+            multiplier *= 1024;
+            break;
+        case '\0':
+            break;
+        default:
+            // invalid
+            return 0;
+    }
+    return n * multiplier;
+}
+
+#ifndef _WIN32
+static size_t round_to_pagesize(size_t stack_size) {
+    long page_size = sysconf(_SC_PAGESIZE);
+    size_t remainder = stack_size % page_size;
+    if (remainder == 0) {
+        return stack_size;
+    } else {
+        // Round up to the next full page
+        return stack_size - remainder + (stack_size <= SIZE_MAX - page_size ? page_size : 0);
+    }
+}
+
+/**
+ * Sets the requested thread stack size (0 = default).
+ */
+static int setstacksize(pthread_attr_t* attr, size_t stack_size) {
+    int result = 0;
+    // See: https://github.com/openjdk/jdk/blob/8c1b915c7ef2b3a6e65705b91f4eb464caaec4e7/src/java.base/unix/native/libjli/java_md.c#L675-L684
+    if (stack_size > 0) {
+        result = pthread_attr_setstacksize(attr, stack_size);
+        if (result == EINVAL) {
+            // System may require stack size to be multiple of page size
+            // Retry with adjusted value
+            size_t adjusted_stack_size = round_to_pagesize(stack_size);
+            if (adjusted_stack_size != stack_size) {
+                result = pthread_attr_setstacksize(attr, adjusted_stack_size);
+            }
+        }
+    } else {
+#if defined(__APPLE__)
+        /* Inherit stacksize of the main thread. Otherwise pthread_create()
+         * defaults to 512K on darwin, while the main thread has usually ~8M.
+         */
+        result = pthread_attr_setstacksize(attr, current_thread_stack_size());
+#endif
+    }
+    return result;
+}
+#endif /* !defined(_WIN32) */
+
+/**
+ * Returns the stack size of the current thread, or 0 if not supported.
+ */
+static size_t current_thread_stack_size() {
+    size_t current_thread_stack_size = 0;
+#if defined(__APPLE__)
+    current_thread_stack_size = pthread_get_stacksize_np(pthread_self());
+#elif defined(__linux__)
+    pthread_attr_t attr;
+    void *stack_addr;
+    if (pthread_getattr_np(pthread_self(), &attr) == 0) {
+        pthread_attr_getstack(&attr, &stack_addr, &current_thread_stack_size);
+        pthread_attr_destroy(&attr);
+    }
+#elif defined(_WIN32)
+    // Windows 8+: GetCurrentThreadStackLimits(&low, &high);
+    MEMORY_BASIC_INFORMATION mbi{};
+    VirtualQuery(&mbi, &mbi, sizeof(mbi));
+    NT_TIB* tib = (NT_TIB*)NtCurrentTeb();
+    uintptr_t low = (uintptr_t)mbi.AllocationBase;
+    uintptr_t high = (uintptr_t)tib->StackBase;
+    current_thread_stack_size = high - low;
+#endif
+    return current_thread_stack_size;
 }

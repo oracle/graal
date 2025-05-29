@@ -25,6 +25,8 @@
 package jdk.graal.compiler.truffle.test;
 
 import java.io.IOException;
+import java.lang.invoke.VarHandle;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import org.graalvm.word.LocationIdentity;
@@ -33,11 +35,14 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.test.SubprocessTestUtils;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -82,6 +87,9 @@ public class FrameHostReadsTest extends TruffleCompilerImplTest {
                     LocationIdentity identity = read.getLocationIdentity();
                     if (identity instanceof FieldLocationIdentity) {
                         fieldReads++;
+                        if (fieldReads > 1) {
+                            GraalError.guarantee(false, "%s", read.toString(Verbosity.All));
+                        }
                     } else if (NamedLocationIdentity.isArrayLocation(identity)) {
                         arrayReads++;
                     } else if (identity == NamedLocationIdentity.ARRAY_LENGTH_LOCATION) {
@@ -138,6 +146,34 @@ public class FrameHostReadsTest extends TruffleCompilerImplTest {
                 }
                 Assert.assertEquals(2, writeCount);
             });
+        }).disableAssertions(FrameWithoutBoxing.class).postfixVmOption("-Djdk.graal.TruffleTrustedFinalFrameFields=true").run();
+    }
+
+    static FrameWithoutBoxing escape;
+    static final Object[] EMPTY_ARRAY = new Object[0];
+
+    /**
+     * Test that the loads should not be hoisted incorrectly.
+     */
+    public static Object snippetNoMoveReads(FrameDescriptor desc, Object obj) {
+        FrameWithoutBoxing frame = new FrameWithoutBoxing(desc, EMPTY_ARRAY);
+        frame.setObject(0, obj);
+        VarHandle.fullFence();
+        // Don't let the frame be scalar replaced
+        escape = frame;
+        VarHandle.fullFence();
+        return frame.getObject(0);
+    }
+
+    @Test
+    public void testNoMoveReads() throws IOException, InterruptedException {
+        SubprocessTestUtils.newBuilder(FrameHostReadsTest.class, () -> {
+            FrameDescriptor.Builder descBuilder = FrameDescriptor.newBuilder();
+            descBuilder.addSlot(FrameSlotKind.Object, null, null);
+            FrameDescriptor desc = descBuilder.build();
+            Object obj = new Object();
+            Result res = test("snippetNoMoveReads", desc, obj);
+            Assert.assertSame(Objects.toString(res.returnValue), obj, res.returnValue);
         }).disableAssertions(FrameWithoutBoxing.class).postfixVmOption("-Djdk.graal.TruffleTrustedFinalFrameFields=true").run();
     }
 

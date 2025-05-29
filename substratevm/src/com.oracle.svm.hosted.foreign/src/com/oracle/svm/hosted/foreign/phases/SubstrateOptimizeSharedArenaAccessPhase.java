@@ -645,10 +645,9 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
         // Compute the graph with all the necessary data about scoped memory accesses.
         EconomicSet<DominatedCall> calls = EconomicSet.create();
         EconomicMap<Node, List<ScopedAccess>> sugaredGraph = enumerateScopedAccesses(cfg, context, calls);
-        if (sugaredGraph == null) {
-            return null;
+        if (sugaredGraph != null) {
+            ReentrantBlockIterator.apply(new MinimalSessionChecks(graph, sugaredGraph, cfg, calls), cfg.getStartBlock());
         }
-        ReentrantBlockIterator.apply(new MinimalSessionChecks(graph, sugaredGraph, cfg, calls), cfg.getStartBlock());
         return calls;
     }
 
@@ -754,16 +753,6 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
      * are not needed any more.
      */
     private void cleanupClusterNodes(StructuredGraph graph, MidTierContext context, EconomicSet<DominatedCall> calls) {
-        if (VERIFY_NO_DOMINATED_CALLS) {
-            if (calls != null) {
-                for (DominatedCall call : calls) {
-                    if (call.invoke.isAlive()) {
-                        throw GraalError.shouldNotReachHere("After inserting all session checks call " + call.invoke + " was not inlined and could access a session");
-                    }
-                }
-            }
-        }
-
         for (MemoryArenaValidInScopeNode scopeNode : graph.getNodes().filter(MemoryArenaValidInScopeNode.class).snapshot()) {
             scopeNode.delete(0);
         }
@@ -775,6 +764,17 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
         }
         canonicalizer.apply(graph, context);
         scheduleVerify(graph);
+
+        if (VERIFY_NO_DOMINATED_CALLS) {
+            if (calls != null) {
+                for (DominatedCall call : calls) {
+                    if (call.invoke.isAlive()) {
+                        throw GraalError.shouldNotReachHere("After inserting all session checks call " + call.invoke + " was not inlined and could access a session");
+                    }
+                }
+            }
+        }
+
     }
 
     /**
@@ -823,7 +823,7 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
     private static class ReachingDefScope {
         private final MemoryArenaValidInScopeNode defNode;
 
-        ReachingDefScope(HIRBlock defBlock, MemoryArenaValidInScopeNode defNode) {
+        ReachingDefScope(MemoryArenaValidInScopeNode defNode) {
             this.defNode = defNode;
         }
 
@@ -866,7 +866,7 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
 
                 for (FixedNode f : b.getNodes()) {
                     if (f instanceof MemoryArenaValidInScopeNode mas) {
-                        defs.push(new ReachingDefScope(b, mas));
+                        defs.push(new ReachingDefScope(mas));
                         newDominatingValues++;
                     } else if (f instanceof ScopedMethodNode scope) {
                         if (scope.getType() == ScopedMethodNode.Type.START) {

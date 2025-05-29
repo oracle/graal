@@ -96,6 +96,7 @@ public interface StronglyTypedRuntimeForeignAccessSupport extends RuntimeForeign
 
     void registerForUpcall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options);
 
+    @Override
     default void registerForDirectUpcall(ConfigurationCondition condition, MethodHandle target, Object desc, Object... options) {
         registerForDirectUpcall(condition, target, castDesc(desc), castOptions(options));
     }

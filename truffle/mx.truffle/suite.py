@@ -658,6 +658,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.interop",
+        "com.oracle.truffle.object",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -789,22 +790,19 @@ suite = {
     "com.oracle.truffle.object" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api.object"],
-      "requires" : [
-        "jdk.unsupported", # sun.misc.Unsafe
-      ],
+      "dependencies" : ["com.oracle.truffle.api"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "annotationProcessors" : [],
       "workingSets" : "Truffle",
       "graalCompilerSourceEdition": "ignore",
     },
 
-    "com.oracle.truffle.object.basic.test" : {
+    "com.oracle.truffle.api.object.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.object",
+        "com.oracle.truffle.api.object",
         "com.oracle.truffle.api.test",
         "mx:JUNIT"
       ],
@@ -975,7 +973,6 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "22+",
-      "forceJavac": True, # GR-51699
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
       # disable SpotBugs and Jacoco as long as JDK 22 is unsupported [GR-49566]
@@ -1587,7 +1584,7 @@ suite = {
         ],
         "exports" : [
           # Qualified exports
-          "com.oracle.truffle.compiler to org.graalvm.truffle.runtime, jdk.graal.compiler, org.graalvm.nativeimage.builder, com.oracle.truffle.enterprise, com.oracle.graal.graal_enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
+          "com.oracle.truffle.compiler to org.graalvm.truffle.runtime, jdk.graal.compiler, org.graalvm.nativeimage.builder, com.oracle.graal.graal_enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
           "com.oracle.truffle.compiler.hotspot to org.graalvm.truffle.runtime, jdk.graal.compiler",
           "com.oracle.truffle.compiler.hotspot.libgraal to org.graalvm.truffle.runtime, jdk.graal.compiler"
         ],
@@ -1635,7 +1632,6 @@ suite = {
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
-          "com.oracle.truffle.api.object.LayoutFactory",
           "com.oracle.truffle.runtime.LoopNodeFactory",
           "com.oracle.truffle.runtime.TruffleTypes",
           "com.oracle.truffle.runtime.EngineCacheSupport",
@@ -1724,6 +1720,8 @@ suite = {
           # Qualified exports
           "com.oracle.truffle.api.impl to org.graalvm.locator, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm, com.oracle.truffle.truffle_nfi_panama",
           "com.oracle.truffle.object to com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
+          "com.oracle.truffle.object.enterprise to com.oracle.truffle.enterprise",
+          # GR-64984: Exports to com.oracle.truffle.enterprise are only needed for jdk21.
         ],
         "opens" : [
           "com.oracle.truffle.polyglot to org.graalvm.truffle.runtime",
@@ -1765,7 +1763,7 @@ suite = {
         "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.utilities",
-        "com.oracle.truffle.object",
+        "com.oracle.truffle.api.object",
         "com.oracle.truffle.api.strings",
         "com.oracle.truffle.polyglot",
         "com.oracle.truffle.host",
@@ -1897,7 +1895,6 @@ suite = {
       },
       "subDir" : "src",
       "javaCompliance" : "17+",
-      "forceJavac": True, # GR-51699
       "dependencies" : [
         "com.oracle.truffle.nfi.backend.panama",
       ],
@@ -2201,7 +2198,7 @@ suite = {
          "com.oracle.truffle.api.debug.test",
          "com.oracle.truffle.api.strings.test",
          "com.oracle.truffle.api.bytecode.test",
-         "com.oracle.truffle.object.basic.test",
+         "com.oracle.truffle.api.object.test",
          "com.oracle.truffle.api.staticobject.test",
        ],
        "exclude" : [

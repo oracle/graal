@@ -40,6 +40,13 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -59,6 +66,8 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.nfi.backend.panama.FunctionExecuteNodeGen.SignatureExecuteNodeGen;
+import com.oracle.truffle.nfi.backend.panama.PanamaClosure.MonomorphicClosureInfo;
+import com.oracle.truffle.nfi.backend.panama.PanamaClosure.PolymorphicClosureInfo;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
 import com.oracle.truffle.nfi.backend.spi.NFIState;
@@ -66,21 +75,12 @@ import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayFactory;
-import com.oracle.truffle.nfi.backend.panama.PanamaClosure.MonomorphicClosureInfo;
-import com.oracle.truffle.nfi.backend.panama.PanamaClosure.PolymorphicClosureInfo;
-
-import java.lang.foreign.Arena;
-import java.lang.foreign.FunctionDescriptor;
-import java.lang.foreign.Linker;
-import java.lang.foreign.MemorySegment;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodType;
 
 @ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = false)
 final class PanamaSignature {
 
     @TruffleBoundary
-    public static PanamaSignature create(PanamaNFIContext context, CachedSignatureInfo info, MethodType upcallType) {
+    public static PanamaSignature create(CachedSignatureInfo info, MethodType upcallType) {
         return new PanamaSignature(info.functionDescriptor, upcallType, info);
     }
 
@@ -263,6 +263,7 @@ final class PanamaSignature {
             }
         }
 
+        @SuppressWarnings("static-method")
         @ExportMessage
         void makeVarargs() {
             throw new UnsupportedOperationException("Cannot make varargs because varargs are not implemented.");
@@ -274,21 +275,19 @@ final class PanamaSignature {
 
             @Specialization(guards = {"builder.argsState == cachedState", "builder.retType == cachedRetType"}, limit = "3")
             static Object doCached(PanamaSignatureBuilder builder,
-                            @Bind Node node,
+                            @Bind @SuppressWarnings("unused") Node node,
                             @Cached("builder.retType") @SuppressWarnings("unused") PanamaType cachedRetType,
                             @Cached("builder.argsState") @SuppressWarnings("unused") ArgsState cachedState,
-                            @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self,
                             @Cached("prepareSignatureInfo(cachedRetType, cachedState, node)") CachedSignatureInfo cachedSignatureInfo) {
-                return create(PanamaNFIContext.get(self), cachedSignatureInfo, builder.upcallType);
+                return create(cachedSignatureInfo, builder.upcallType);
             }
 
             @Specialization(replaces = "doCached")
             static Object doGeneric(PanamaSignatureBuilder builder,
-                            @Bind Node node,
-                            @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self) {
+                            @Bind Node node) {
                 CachedSignatureInfo sigInfo = prepareSignatureInfo(builder.retType, builder.argsState, node);
 
-                return create(PanamaNFIContext.get(self), sigInfo, builder.upcallType);
+                return create(sigInfo, builder.upcallType);
             }
         }
     }
@@ -407,7 +406,7 @@ final class PanamaSignature {
 
         @TruffleBoundary(allowInlining = true)
         private Object downcall(Object[] args, MemorySegment segment) throws Throwable {
-            return (Object) downcallHandle.invokeExact(segment, args);
+            return downcallHandle.invokeExact(segment, args);
         }
     }
 }

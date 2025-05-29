@@ -262,6 +262,7 @@ suite = {
         "java.instrument",
         "java.management",
         "jdk.jfr",
+        "jdk.incubator.vector",
       ],
       "requiresConcealed" : {
         "java.base" : [
@@ -297,6 +298,8 @@ suite = {
       "checkstyle" : "jdk.graal.compiler",
       "javaCompliance" : "21+",
       "jacoco" : "exclude",
+      # warning: [incubating] using incubating module(s): jdk.incubator.vector
+      "javac.lint.overrides" : "-incubating",
       "graalCompilerSourceEdition": "ignore",
     },
 

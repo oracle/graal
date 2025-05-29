@@ -40,6 +40,11 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
+import java.lang.foreign.MemorySegment;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -58,17 +63,12 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.nfi.backend.panama.PanamaSignature.CachedSignatureInfo;
-import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNode.GetArgumentNode;
 import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNode.ConstArgumentNode;
+import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNode.GetArgumentNode;
 import com.oracle.truffle.nfi.backend.panama.PanamaClosureFactory.CallClosureNodeGen;
+import com.oracle.truffle.nfi.backend.panama.PanamaSignature.CachedSignatureInfo;
 import com.oracle.truffle.nfi.backend.spi.NFIState;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
-
-import java.lang.foreign.MemorySegment;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 
 @ExportLibrary(InteropLibrary.class)
 final class PanamaClosure implements TruffleObject {
@@ -78,6 +78,7 @@ final class PanamaClosure implements TruffleObject {
         this.symbol = symbol;
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
     boolean isPointer() {
         return true;

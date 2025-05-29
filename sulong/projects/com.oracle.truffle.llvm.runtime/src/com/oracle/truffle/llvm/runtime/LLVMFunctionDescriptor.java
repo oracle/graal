@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -150,15 +150,22 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
     @ExportMessage
     public LLVMFunctionDescriptor toNative() {
         if (nativeWrapper == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            nativeWrapper = functionCode.getFunction().createNativeWrapper(this);
-            try {
-                nativePointer = InteropLibrary.getFactory().getUncached().asPointer(nativeWrapper);
-            } catch (UnsupportedMessageException ex) {
-                nativePointer = tagSulongFunctionPointer(llvmFunction.getSymbolIndexIllegalOk());
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
             }
+            initNativeWrapper();
         }
         return this;
+    }
+
+    @TruffleBoundary
+    private void initNativeWrapper() {
+        nativeWrapper = functionCode.getFunction().createNativeWrapper(this);
+        try {
+            nativePointer = InteropLibrary.getFactory().getUncached().asPointer(nativeWrapper);
+        } catch (UnsupportedMessageException ex) {
+            nativePointer = tagSulongFunctionPointer(llvmFunction.getSymbolIndexIllegalOk());
+        }
     }
 
     @ExportMessage

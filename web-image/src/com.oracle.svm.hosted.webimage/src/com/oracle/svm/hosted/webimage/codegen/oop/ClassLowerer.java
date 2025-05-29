@@ -36,7 +36,6 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import org.graalvm.webimage.api.JSObject;
 import org.graalvm.webimage.api.JSResource;
 
 import com.oracle.svm.hosted.meta.HostedField;
@@ -133,8 +132,8 @@ public class ClassLowerer {
          * we only collect the instance fields declared by this type, inherited fields are resolved
          * via a super call
          */
-        if (!JSObject.class.isAssignableFrom(type.getJavaClass())) {
-            for (HostedField field : type.getInstanceFields(false)) {
+        for (HostedField field : type.getInstanceFields(false)) {
+            if (!ClassWithMirrorLowerer.isFieldRepresentedInJavaScript(field)) {
                 genFieldInitialization(codeGenTool, masm, field);
             }
         }

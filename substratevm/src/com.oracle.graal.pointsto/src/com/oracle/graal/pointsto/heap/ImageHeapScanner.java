@@ -130,33 +130,36 @@ public abstract class ImageHeapScanner {
     public void onFieldRead(AnalysisField field) {
         assert field.isRead() : field;
         /* Check if the value is available before accessing it. */
-        AnalysisType declaringClass = field.getDeclaringClass();
         if (field.isStatic()) {
-            FieldScan reason = new FieldScan(field);
-            if (!field.installableInLayer()) {
-                /*
-                 * For non-installable static fields we do not scan the constant value, but instead
-                 * inject its type state in the field flow. This will be propagated to any
-                 * corresponding field loads.
-                 * 
-                 * GR-52421: the field state needs to be serialized from the base layer analysis
-                 */
-                if (field.getStorageKind().isObject()) {
-                    bb.injectFieldTypes(field, List.of(field.getType()), true);
-                } else if (bb.trackPrimitiveValues() && field.getStorageKind().isPrimitive()) {
-                    ((PointsToAnalysisField) field).saturatePrimitiveField();
-                }
-            } else if (isValueAvailable(field)) {
-                JavaConstant fieldValue = readStaticFieldValue(field);
-                if (fieldValue instanceof ImageHeapConstant imageHeapConstant && field.isFinal()) {
-                    AnalysisError.guarantee(imageHeapConstant.getOrigin() != null, "The origin of the constant %s should have been registered before", imageHeapConstant);
-                }
-                markReachable(fieldValue, reason);
-                notifyAnalysis(field, null, fieldValue, reason);
-            }
+            postTask(() -> onStaticFieldRead(field));
         } else {
             /* Trigger field scanning for the already processed objects. */
-            postTask(() -> onInstanceFieldRead(field, declaringClass));
+            postTask(() -> onInstanceFieldRead(field, field.getDeclaringClass()));
+        }
+    }
+
+    private void onStaticFieldRead(AnalysisField field) {
+        FieldScan reason = new FieldScan(field);
+        if (!field.installableInLayer()) {
+            /*
+             * For non-installable static fields we do not scan the constant value, but instead
+             * inject its type state in the field flow. This will be propagated to any corresponding
+             * field loads.
+             * 
+             * GR-52421: the field state needs to be serialized from the base layer analysis
+             */
+            if (field.getStorageKind().isObject()) {
+                bb.injectFieldTypes(field, List.of(field.getType()), true);
+            } else if (bb.trackPrimitiveValues() && field.getStorageKind().isPrimitive()) {
+                ((PointsToAnalysisField) field).saturatePrimitiveField();
+            }
+        } else if (isValueAvailable(field)) {
+            JavaConstant fieldValue = readStaticFieldValue(field);
+            if (fieldValue instanceof ImageHeapConstant imageHeapConstant && field.isFinal()) {
+                AnalysisError.guarantee(imageHeapConstant.getOrigin() != null, "The origin of the constant %s should have been registered before", imageHeapConstant);
+            }
+            markReachable(fieldValue, reason);
+            notifyAnalysis(field, null, fieldValue, reason);
         }
     }
 
@@ -605,7 +608,7 @@ public abstract class ImageHeapScanner {
                  * conditions, e.g., a started Thread should never be added to the image heap, but
                  * the structure of the object is valid, as ensured by the validity check above.
                  */
-                objectType.notifyObjectReachable(universe.getConcurrentAnalysisAccess(), object, reason);
+                objectType.notifyObjectReachable(object, reason);
             } catch (UnsupportedFeatureException e) {
                 /* Enhance the unsupported feature message with the object trace and rethrow. */
                 StringBuilder backtrace = new StringBuilder();
@@ -890,9 +893,10 @@ public abstract class ImageHeapScanner {
      *
      * In the (legacy) Feature.duringAnalysis state, the executor is not running and we must not
      * schedule new tasks, because that would be treated as "the analysis has not finished yet". So
-     * in that case we execute the task directly.
+     * in that case we execute the task directly. A task that runs in the Feature.duringAnalysis
+     * stage and modifies the analysis state should itself trigger an additional analysis iteration.
      */
-    private void maybeRunInExecutor(CompletionExecutor.DebugContextRunnable task) {
+    protected void maybeRunInExecutor(CompletionExecutor.DebugContextRunnable task) {
         if (bb.executorIsStarted()) {
             bb.postTask(task);
         } else {

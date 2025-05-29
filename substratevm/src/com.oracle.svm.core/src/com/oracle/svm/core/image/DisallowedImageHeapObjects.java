@@ -38,6 +38,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.random.RandomGenerator;
 import java.util.zip.ZipFile;
 
+import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -53,12 +54,14 @@ public final class DisallowedImageHeapObjects {
         RuntimeException raise(String msg, Object obj, String initializerAction);
     }
 
-    public static final Class<?> CANCELLABLE_CLASS = ReflectionUtil.lookupClass(false, "sun.nio.fs.Cancellable");
-    private static final Class<?> VIRTUAL_THREAD_CLASS = ReflectionUtil.lookupClass(false, "java.lang.VirtualThread");
-    public static final Class<?> CONTINUATION_CLASS = ReflectionUtil.lookupClass(false, "jdk.internal.vm.Continuation");
+    public static final Class<?> CANCELLABLE_CLASS = ReflectionUtil.lookupClass("sun.nio.fs.Cancellable");
+    private static final Class<?> VIRTUAL_THREAD_CLASS = ReflectionUtil.lookupClass("java.lang.VirtualThread");
+    public static final Class<?> CONTINUATION_CLASS = ReflectionUtil.lookupClass("jdk.internal.vm.Continuation");
     private static final Method CONTINUATION_IS_STARTED_METHOD = ReflectionUtil.lookupMethod(CONTINUATION_CLASS, "isStarted");
-    private static final Class<?> CLEANER_CLEANABLE_CLASS = ReflectionUtil.lookupClass(false, "jdk.internal.ref.CleanerImpl$CleanerCleanable");
-    public static final Class<?> LEGACY_CLEANER_CLASS = ReflectionUtil.lookupClass(false, "jdk.internal.ref.Cleaner");
+    private static final Class<?> CLEANER_CLEANABLE_CLASS = ReflectionUtil.lookupClass("jdk.internal.ref.CleanerImpl$CleanerCleanable");
+    public static final Class<?> LEGACY_CLEANER_CLASS = ReflectionUtil.lookupClass("jdk.internal.ref.Cleaner");
+    public static final Class<?> MEMORY_SEGMENT_CLASS = ReflectionUtil.lookupClass("java.lang.foreign.MemorySegment");
+    public static final Class<?> SCOPE_CLASS = ReflectionUtil.lookupClass("java.lang.foreign.MemorySegment$Scope");
 
     public static void check(Object obj, DisallowedObjectReporter reporter) {
         if (obj instanceof SplittableRandom random) {
@@ -97,6 +100,14 @@ public final class DisallowedImageHeapObjects {
 
         if (CANCELLABLE_CLASS.isInstance(obj)) {
             onCancellableReachable(obj, reporter);
+        }
+
+        if (MEMORY_SEGMENT_CLASS.isInstance(obj) && ForeignSupport.isAvailable()) {
+            ForeignSupport.singleton().onMemorySegmentReachable(obj, reporter);
+        }
+
+        if (SCOPE_CLASS.isInstance(obj) && ForeignSupport.isAvailable()) {
+            ForeignSupport.singleton().onScopeReachable(obj, reporter);
         }
     }
 

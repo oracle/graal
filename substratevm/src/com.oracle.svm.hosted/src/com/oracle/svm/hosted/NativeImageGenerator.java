@@ -42,7 +42,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
@@ -71,12 +70,10 @@ import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
+import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
 import org.graalvm.word.PointerBase;
 
@@ -227,6 +224,7 @@ import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
@@ -470,25 +468,19 @@ public class NativeImageGenerator {
                     }
                 }
             }
-            // Graal backend does not use the second argument `flags' passed to the AMD64
-            // constructor. Instead, it tests CPU feature directly.
-            AMD64 architecture = new AMD64(features, null);
+            AMD64 architecture = new AMD64(features);
             return new SubstrateTargetDescription(architecture, true, 16, 0, runtimeCheckedFeatures);
         } else if (includedIn(platform, Platform.AARCH64.class)) {
             EnumSet<AArch64.CPUFeature> features = CPUTypeAArch64.getSelectedFeatures();
             features.addAll(parseCSVtoEnum(AArch64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue().values(), AArch64.CPUFeature.values()));
-            // Graal backend does not use the second argument `flags' passed to the AArch64
-            // constructor. Instead, it tests CPU feature directly.
-            AArch64 architecture = new AArch64(features, null);
+            AArch64 architecture = new AArch64(features);
             // runtime checked features are the same as static features on AArch64 for now
             EnumSet<AArch64.CPUFeature> runtimeCheckedFeatures = architecture.getFeatures().clone();
             return new SubstrateTargetDescription(architecture, true, 16, 0, runtimeCheckedFeatures);
         } else if (includedIn(platform, Platform.RISCV64.class)) {
             EnumSet<RISCV64.CPUFeature> features = CPUTypeRISCV64.getSelectedFeatures();
             features.addAll(parseCSVtoEnum(RISCV64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue().values(), RISCV64.CPUFeature.values()));
-            // Graal backend does not use the second argument `flags' passed to the RISCV64
-            // constructor. Instead, it tests CPU feature directly.
-            RISCV64 architecture = new RISCV64(features, null);
+            RISCV64 architecture = new RISCV64(features);
             // runtime checked features are the same as static features on RISCV64 for now
             EnumSet<RISCV64.CPUFeature> runtimeCheckedFeatures = architecture.getFeatures().clone();
             return new SubstrateTargetDescription(architecture, true, 16, 0, runtimeCheckedFeatures);
@@ -811,6 +803,13 @@ public class NativeImageGenerator {
     @SuppressWarnings("try")
     protected boolean runPointsToAnalysis(String imageName, OptionValues options, DebugContext debug) {
         try (Indent ignored = debug.logAndIndent("run analysis")) {
+            /*
+             * Set the ConcurrentAnalysisAccessImpl before Feature.beforeAnalysis is executed. Some
+             * features may already execute some pre-analysis tasks, e.g., reading a hosted field
+             * value, that can trigger reachability callbacks.
+             */
+            ConcurrentAnalysisAccessImpl concurrentConfig = new ConcurrentAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
+            aUniverse.setConcurrentAnalysisAccess(concurrentConfig);
             try (Indent ignored1 = debug.logAndIndent("process analysis initializers")) {
                 BeforeAnalysisAccessImpl config = new BeforeAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
                 ServiceCatalogSupport.singleton().enableServiceCatalogMapTransformer(config);
@@ -828,8 +827,6 @@ public class NativeImageGenerator {
             try (ReporterClosable c = ProgressReporter.singleton().printAnalysis(bb.getUniverse(), nativeLibraries.getLibraries())) {
                 DuringAnalysisAccessImpl config = new DuringAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
                 try {
-                    ConcurrentAnalysisAccessImpl concurrentConfig = new ConcurrentAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
-                    aUniverse.setConcurrentAnalysisAccess(concurrentConfig);
                     if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
                         /*
                          * All the field value transformers should be installed by this point.
@@ -838,12 +835,15 @@ public class NativeImageGenerator {
                          */
                         HostedImageLayerBuildingSupport.singleton().getLoader().relinkTransformedStaticFinalFieldValues();
                     }
+                    /* All pre-analysis set-up is done and the fixed-point analysis can start. */
+                    BuildPhaseProvider.markAnalysisStarted();
                     bb.runAnalysis(debug, (universe) -> {
                         try (StopTimer t2 = TimerCollection.createTimerAndStart(TimerCollection.Registry.FEATURES)) {
                             bb.getHostVM().notifyClassReachabilityListener(universe, config);
                             featureHandler.forEachFeature(feature -> feature.duringAnalysis(config));
                         }
-                        return !config.getAndResetRequireAnalysisIteration();
+                        /* Analysis is finished if no additional iteration was requested. */
+                        return !config.getAndResetRequireAnalysisIteration() && !concurrentConfig.getAndResetRequireAnalysisIteration();
                     });
                 } catch (Throwable t) {
                     if (ImageSingletons.contains(RuntimeCompilationCallbacks.class)) {
@@ -1032,11 +1032,13 @@ public class NativeImageGenerator {
                 if (imageLayerLoader != null) {
                     imageLayerLoader.setHostedValuesProvider(hostedValuesProvider);
                 }
+                SVMHost hostVM = (SVMHost) aUniverse.hostVM();
+                ((ConditionalConfigurationRegistry) ImageSingletons.lookup(RuntimeSerializationSupport.class)).setHostVM(hostVM);
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(aMetaAccess);
                 HostedProviders aProviders = createHostedProviders(target, aUniverse, originalProviders, platformConfig, aMetaAccess, classInitializationSupport);
                 aUniverse.hostVM().initializeProviders(aProviders);
 
-                ImageSingletons.add(SimulateClassInitializerSupport.class, ((SVMHost) aUniverse.hostVM()).createSimulateClassInitializerSupport(aMetaAccess));
+                ImageSingletons.add(SimulateClassInitializerSupport.class, (hostVM).createSimulateClassInitializerSupport(aMetaAccess));
 
                 bb = createBigBang(debug, options, aUniverse, aMetaAccess, aProviders, annotationSubstitutions);
                 aUniverse.setBigBang(bb);
@@ -1101,19 +1103,11 @@ public class NativeImageGenerator {
                 }
 
                 initializeBigBang(bb, options, featureHandler, nativeLibraries, debug, aMetaAccess, aUniverse.getSubstitutions(), loader, true,
-                                new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()), this.isStubBasedPluginsSupported(), aProviders);
+                                new SubstrateClassInitializationPlugin(hostVM), this.isStubBasedPluginsSupported(), aProviders);
 
                 loader.classLoaderSupport.getClassesToIncludeUnconditionally().forEach(cls -> bb.registerTypeForBaseImage(cls));
-
-                var runtimeReflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
-
-                Set<String> classesOrPackagesToIgnore = ignoredClassesOrPackagesForPreserve();
-                loader.classLoaderSupport.getClassesToPreserve().parallel()
-                                .filter(ClassInclusionPolicy::isClassIncludedBase)
-                                .filter(c -> !(classesOrPackagesToIgnore.contains(c.getPackageName()) || classesOrPackagesToIgnore.contains(c.getName())))
-                                .forEach(c -> runtimeReflection.registerClassFully(ConfigurationCondition.alwaysTrue(), c));
-                for (String className : loader.classLoaderSupport.getClassNamesToPreserve()) {
-                    RuntimeReflection.registerClassLookup(className);
+                if (loader.classLoaderSupport.isPreserveMode()) {
+                    PreserveOptionsSupport.registerPreservedClasses(loader.classLoaderSupport);
                 }
 
                 registerEntryPointStubs(entryPoints);
@@ -1121,13 +1115,6 @@ public class NativeImageGenerator {
 
             ProgressReporter.singleton().printInitializeEnd(featureHandler.getUserSpecificFeatures(), loader);
         }
-    }
-
-    private static Set<String> ignoredClassesOrPackagesForPreserve() {
-        Set<String> ignoredClassesOrPackages = new HashSet<>(SubstrateOptions.IgnorePreserveForClasses.getValue().valuesAsSet());
-        // GR-63360: Parsing of constant_ lambda forms fails
-        ignoredClassesOrPackages.add("java.lang.invoke.LambdaForm$Holder");
-        return Collections.unmodifiableSet(ignoredClassesOrPackages);
     }
 
     protected void registerEntryPointStubs(Map<Method, CEntryPointData> entryPoints) {
@@ -1785,10 +1772,11 @@ public class NativeImageGenerator {
     /**
      * These are legit elements from the JDK that have hotspot in their name.
      */
-    private static final Set<String> HOTSPOT_IN_NAME_EXCEPTIONS = Set.of(
+    private static final Set<String> CHECK_NAMING_EXCEPTIONS = Set.of(
                     "java.awt.Cursor.DOT_HOTSPOT_SUFFIX",
                     "sun.lwawt.macosx.CCustomCursor.fHotspot",
-                    "sun.lwawt.macosx.CCustomCursor.getHotSpot()");
+                    "sun.lwawt.macosx.CCustomCursor.getHotSpot()",
+                    "sun.awt.shell.Win32ShellFolder2.ATTRIB_GHOSTED");
 
     private static void checkName(BigBang bb, AnalysisMethod method, String format) {
         /*
@@ -1798,16 +1786,20 @@ public class NativeImageGenerator {
          * JDK internal types.
          */
         String lformat = format.toLowerCase(Locale.ROOT);
-        if (lformat.contains("hosted")) {
-            report(bb, format, method, "Hosted element used at run time: " + format + ".");
-        } else if (!lformat.startsWith("jdk.internal") && lformat.contains("hotspot")) {
-            if (!HOTSPOT_IN_NAME_EXCEPTIONS.contains(format)) {
-                report(bb, format, method, "Element with HotSpot in its name used at run time: " + format + System.lineSeparator() +
-                                "If this is a regular JDK value, and not a HotSpot element that was accidentally included, you can add it to the NativeImageGenerator.HOTSPOT_IN_NAME_EXCEPTIONS" +
-                                System.lineSeparator() +
-                                "If this is HotSpot element that was accidentally included find a way to exclude it from the image.");
+        if (!CHECK_NAMING_EXCEPTIONS.contains(format)) {
+            if (lformat.contains("hosted")) {
+                report(bb, format, method, "Hosted element used at run time: " + format + namingConventionsErrorMessageSuffix("hosted"));
+            } else if (!lformat.startsWith("jdk.internal") && lformat.contains("hotspot")) {
+                report(bb, format, method, "Element with HotSpot in its name used at run time: " + format + namingConventionsErrorMessageSuffix("HotSpot"));
             }
         }
+    }
+
+    private static String namingConventionsErrorMessageSuffix(String elementType) {
+        return """
+
+                        If this is a regular JDK value, and not a %s element that was accidentally included, you can add it to the NativeImageGenerator.CHECK_NAMING_EXCEPTIONS
+                        If this is a %s element that was accidentally included, find a way to exclude it from the image.""".formatted(elementType, elementType);
     }
 
     private static void report(BigBang bb, String key, AnalysisMethod method, String message) {

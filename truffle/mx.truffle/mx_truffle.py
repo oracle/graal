@@ -462,8 +462,12 @@ class TruffleGateTags:
     dsl_max_state_bit_test = ['dsl-max-state-bit-test', 'fulltest']
     parser_test = ['parser-test', 'test', 'fulltest']
     truffle_jvm = ['truffle-jvm']
-    truffle_native = ['truffle-native']
-    truffle_native_quickbuild = ['truffle-native-quickbuild']
+    sl_native = ['sl-native', 'truffle-native']
+    sl_native_quickbuild = ['sl-native-quickbuild', 'truffle-native-quickbuild']
+    unittest_native = ['unittest-native', 'truffle-native']
+    unittest_native_quickbuild = ['unittest-native-quickbuild', 'truffle-native-quickbuild']
+    truffle_native_libcmusl_static = ['truffle-native-libcmusl-static']
+    truffle_native_libcmusl_static_quickbuild = ['truffle-native-libcmusl-static-quickbuild']
 
 def _truffle_gate_runner(args, tasks):
     jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
@@ -495,7 +499,7 @@ def _truffle_gate_runner(args, tasks):
 
 def gate_truffle_jvm(tasks):
     if mx_sdk.GraalVMJDKConfig.is_libgraal_jdk(mx.get_jdk(tag='default').home):
-        additional_jvm_args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI', '-XX:+UseJVMCINativeLibrary', '-XX:-UnlockExperimentalVMOptions']
+        additional_jvm_args = mx_sdk.GraalVMJDKConfig.libgraal_additional_vm_args
     else:
         additional_jvm_args = []
     # GR-62632: Debug VM exception translation failure
@@ -516,19 +520,33 @@ def gate_truffle_jvm(tasks):
         if t:
             sl_jvm_gate_tests(additional_jvm_args)
 
+
 def gate_truffle_native(tasks, quickbuild=False):
-    tag = TruffleGateTags.truffle_native_quickbuild if quickbuild else TruffleGateTags.truffle_native
+    tag = TruffleGateTags.sl_native_quickbuild if quickbuild else TruffleGateTags.sl_native
     name_suffix = ' with quickbuild' if quickbuild else ''
+
     with Task('Truffle SL Native Fallback' + name_suffix, tasks, tags=tag) as t:
         if t:
             sl_native_fallback_gate_tests(quickbuild)
+
     with Task('Truffle SL Native Optimized' + name_suffix, tasks, tags=tag) as t:
         if t:
             sl_native_optimized_gate_tests(quickbuild)
+
+    tag = TruffleGateTags.unittest_native_quickbuild if quickbuild else TruffleGateTags.unittest_native
     with Task('Truffle API Native Tests' + name_suffix, tasks, tags=tag) as t:
         if t:
+            truffle_native_context_preinitialization_tests(quickbuild)
             truffle_native_unit_tests_gate(True, quickbuild)
             truffle_native_unit_tests_gate(False, quickbuild)
+
+    tag = TruffleGateTags.truffle_native_libcmusl_static_quickbuild if quickbuild else TruffleGateTags.truffle_native_libcmusl_static
+    with Task('Truffle API Native Tests with static libc musl' + name_suffix, tasks, tags=tag) as t:
+        if t:
+            truffle_native_unit_tests_gate(True, False, [
+                "--libc=musl",
+                "--static"
+            ])
 
 # Run with:
 # mx -p ../vm --env ce build
@@ -707,7 +725,15 @@ def native_truffle_unittest(args):
             '-cp', tmp,
             '--features=org.graalvm.junit.platform.JUnitPlatformFeature',
             'org.graalvm.junit.platform.NativeImageJUnitLauncher']
-        mx.run([native_image] + vm_args + native_image_args)
+
+        # Use an argument file to avoid exceeding the command-line length limit on Windows
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as args_file:
+            for arg in vm_args + native_image_args:
+                args_file.write(arg)
+                args_file.write(os.linesep)
+        mx.run([native_image, '@' + args_file.name])
+        # delete file only on success
+        os.unlink(args_file.name)
 
         # 4. Execute native unittests
         test_results = os.path.join(tmp, 'test-results-native', 'test')
@@ -834,7 +860,21 @@ def sl_native_fallback_gate_tests(quick_build=False):
     _sl_native_fallback_gate_tests(force_cp=True, quick_build=quick_build)
 
 
-def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False):
+def truffle_native_context_preinitialization_tests(quick_build=False, build_args=None):
+    # ContextPreInitializationNativeImageTest can only run with its own image.
+    # See class javadoc for details.
+    # Context pre-initialization is supported only in optimized runtime.
+    # See TruffleFeature for details.
+    use_build_args = build_args if build_args else []
+    if quick_build:
+        use_build_args = use_build_args + ['-Ob']
+    native_truffle_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] + ['--build-args'] + use_build_args)
+
+
+def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False, build_args=None):
+    build_args = build_args if build_args else []
+    is_libc_musl = '--libc=musl' in build_args
+    is_static = '--static' in build_args
     if use_optimized_runtime:
         build_truffle_runtime_args = []
         run_truffle_runtime_args = []
@@ -846,20 +886,18 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False
     else:
         build_optimize_args = []
 
-    # ContextPreInitializationNativeImageTest can only run with its own image.
-    # See class javadoc for details.
-    # Context pre-initialization is supported only in optimized runtime.
-    # See TruffleFeature for details.
-    if use_optimized_runtime:
-        native_truffle_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] +
-                                ['--build-args'] + build_optimize_args)
-
     # Run Truffle and NFI tests
     test_packages = [
         'com.oracle.truffle.api.test',
         'com.oracle.truffle.api.staticobject.test',
-        'com.oracle.truffle.nfi.test',
+        'com.oracle.truffle.sandbox.enterprise.test',
     ]
+    if not is_static:
+        # static executable does not support dynamic library loading required by NFI tests
+        test_packages += [
+            'com.oracle.truffle.nfi.test',
+        ]
+
     excluded_tests = [
         'com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest',    # runs in its own image
         'com.oracle.truffle.api.test.profiles.*',    # GR-52260
@@ -872,7 +910,7 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False
         excluded_tests = excluded_tests + [
             'com.oracle.truffle.api.test.TruffleSafepointTest'    # GR-44492
         ]
-    build_args = build_optimize_args + build_truffle_runtime_args + [
+    build_args = build_args + build_optimize_args + build_truffle_runtime_args + [
         '-R:MaxHeapSize=2g',
         '-H:MaxRuntimeCompileMethods=5000',
         '--enable-url-protocols=http,jar',
@@ -881,7 +919,7 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False
         '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl.asm=ALL-UNNAMED',
         '--enable-native-access=org.graalvm.truffle',
     ]
-    run_args = run_truffle_runtime_args + [
+    run_args = run_truffle_runtime_args + (['-Xss1m'] if is_libc_musl else []) + [
         mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>'),
     ]
     exclude_args = list(itertools.chain(*[('--exclude-class', item) for item in excluded_tests]))
@@ -910,12 +948,11 @@ def _run_sl_tests(create_command):
             base_name = os.path.splitext(f)[0]
             test_file = join(test_path, base_name + '.sl')
             expected_file = join(test_path, base_name + '.output')
-            temp = tempfile.NamedTemporaryFile(delete=False)
-            command = create_command(test_file)
-            mx.log("Running SL test {}".format(test_file))
-            with open(temp.name, 'w') as out:
-                mx.run(command, nonZeroIsFatal=False, out=out, err=out)
-                out.flush()
+            with tempfile.NamedTemporaryFile(delete=False) as temp:
+                command = create_command(test_file)
+                mx.log("Running SL test {}".format(test_file))
+                mx.run(command, nonZeroIsFatal=False, out=temp, err=temp)
+
             diff = compare_files(expected_file, temp.name)
             if diff:
                 mx.log("Failed command: {}".format(" ".join(command)))

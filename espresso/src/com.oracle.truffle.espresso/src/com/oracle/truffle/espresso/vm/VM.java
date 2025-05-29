@@ -154,6 +154,7 @@ import com.oracle.truffle.espresso.substitutions.JImageExtensions;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.ModuleExtension;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
+import com.oracle.truffle.espresso.substitutions.continuations.Target_org_graalvm_continuations_IdentityHashCodes;
 import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_ref_Reference;
@@ -486,13 +487,14 @@ public final class VM extends NativeEnv {
 
     @TruffleBoundary(allowInlining = true)
     @VmImpl(isJni = true)
-    public static int JVM_IHashCode(@JavaType(Object.class) StaticObject object, @Inject EspressoLanguage lang) {
+    public static int JVM_IHashCode(@JavaType(Object.class) StaticObject object,
+                    @Inject Meta meta,
+                    @Inject EspressoLanguage language) {
         /*
          * On SVM + Windows, the System.identityHashCode substitution calls methods blocked for PE
          * (System.currentTimeMillis?).
          */
         if (object.isForeignObject()) {
-            EspressoLanguage language = lang == null ? EspressoLanguage.get(null) : lang;
             Object foreignObject = object.rawForeignObject(language);
             InteropLibrary library = InteropLibrary.getUncached(foreignObject);
             if (library.hasIdentity(foreignObject)) {
@@ -503,6 +505,9 @@ public final class VM extends NativeEnv {
                     throw EspressoError.shouldNotReachHere();
                 }
             }
+        }
+        if (meta.getLanguage().isContinuumEnabled()) {
+            return Target_org_graalvm_continuations_IdentityHashCodes.getIHashCode(object, meta, language);
         }
         return System.identityHashCode(MetaUtil.maybeUnwrapNull(object));
     }

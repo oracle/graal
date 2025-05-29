@@ -71,7 +71,7 @@ final class Target_jdk_internal_foreign_abi_SoftReferenceCache {
  * 
  * @param delegate The original upcall stub factory as created by JDK's call arranger.
  */
-record UpcallStubFactoryDecorator(UpcallStubFactory delegate) implements UpcallStubFactory {
+record UpcallStubFactoryDecorator(UpcallStubFactory delegate, FunctionDescriptor function, LinkerOptions options) implements UpcallStubFactory {
 
     @Override
     public MemorySegment makeStub(MethodHandle target, Arena arena) {
@@ -86,7 +86,7 @@ record UpcallStubFactoryDecorator(UpcallStubFactory delegate) implements UpcallS
          */
         Optional<MethodHandleDesc> methodHandleDesc = target.describeConstable();
         if (methodHandleDesc.isPresent() && methodHandleDesc.get() instanceof DirectMethodHandleDesc desc) {
-            ForeignFunctionsRuntime.singleton().patchForDirectUpcall(segment.address(), desc);
+            ForeignFunctionsRuntime.singleton().patchForDirectUpcall(segment.address(), desc, function, options);
         }
         return segment;
     }
@@ -95,35 +95,39 @@ record UpcallStubFactoryDecorator(UpcallStubFactory delegate) implements UpcallS
 @TargetClass(value = SysVx64Linker.class, onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_x64_sysv_SysVx64Linker {
 
+    @SuppressWarnings("static-method")
     @Substitute
     UpcallStubFactory arrangeUpcall(MethodType targetType, FunctionDescriptor function, LinkerOptions options) {
-        return new UpcallStubFactoryDecorator(jdk.internal.foreign.abi.x64.sysv.CallArranger.arrangeUpcall(targetType, function, options));
+        return new UpcallStubFactoryDecorator(jdk.internal.foreign.abi.x64.sysv.CallArranger.arrangeUpcall(targetType, function, options), function, options);
     }
 }
 
 @TargetClass(value = Windowsx64Linker.class, onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_x64_windows_Windowsx64Linker {
 
+    @SuppressWarnings("static-method")
     @Substitute
     UpcallStubFactory arrangeUpcall(MethodType targetType, FunctionDescriptor function, LinkerOptions options) {
-        return new UpcallStubFactoryDecorator(jdk.internal.foreign.abi.x64.windows.CallArranger.arrangeUpcall(targetType, function, options));
+        return new UpcallStubFactoryDecorator(jdk.internal.foreign.abi.x64.windows.CallArranger.arrangeUpcall(targetType, function, options), function, options);
     }
 }
 
 @TargetClass(value = MacOsAArch64Linker.class, onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_aarch64_macos_MacOsAArch64Linker {
 
+    @SuppressWarnings("static-method")
     @Substitute
     UpcallStubFactory arrangeUpcall(MethodType targetType, FunctionDescriptor function, LinkerOptions options) {
-        return new UpcallStubFactoryDecorator(jdk.internal.foreign.abi.aarch64.CallArranger.MACOS.arrangeUpcall(targetType, function, options));
+        return new UpcallStubFactoryDecorator(jdk.internal.foreign.abi.aarch64.CallArranger.MACOS.arrangeUpcall(targetType, function, options), function, options);
     }
 }
 
 @TargetClass(value = LinuxAArch64Linker.class, onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_aarch64_linux_LinuxAArch64Linker {
 
+    @SuppressWarnings("static-method")
     @Substitute
     UpcallStubFactory arrangeUpcall(MethodType targetType, FunctionDescriptor function, LinkerOptions options) {
-        return new UpcallStubFactoryDecorator(jdk.internal.foreign.abi.aarch64.CallArranger.LINUX.arrangeUpcall(targetType, function, options));
+        return new UpcallStubFactoryDecorator(jdk.internal.foreign.abi.aarch64.CallArranger.LINUX.arrangeUpcall(targetType, function, options), function, options);
     }
 }

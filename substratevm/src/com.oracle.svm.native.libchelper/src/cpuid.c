@@ -315,6 +315,13 @@ static void initialize_cpuinfo(CpuidInfo *_cpuid_info)
     _cpuid_info->sefsl1_cpuid7_edx.value = edx;
   }
 
+  if (max_level >= 24)
+  {
+    get_cpuid(24, &eax, &ebx, &ecx, &edx);
+    _cpuid_info->std_cpuid24_eax.value = eax;
+    _cpuid_info->std_cpuid24_ebx.value = ebx;
+  }
+
   // topology
   if (max_level >= 0xB)
   {
@@ -482,6 +489,35 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
         features->fAVX512_VBMI = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.avx512_vbmi2 != 0)
         features->fAVX512_VBMI2 = 1;
+    }
+    if (is_intel(_cpuid_info)) {
+      if (_cpuid_info->sefsl1_cpuid7_edx.bits.avx10 != 0 &&
+          _cpuid_info->std_cpuid24_ebx.bits.avx10_vlen_512 !=0 &&
+          _cpuid_info->std_cpuid24_ebx.bits.avx10_converged_isa_version >= 1 &&
+          _cpuid_info->xem_xcr0_eax.bits.opmask != 0 &&
+          _cpuid_info->xem_xcr0_eax.bits.zmm512 != 0 &&
+          _cpuid_info->xem_xcr0_eax.bits.zmm32 != 0) {
+        features->fAVX10_1 = 1;
+        features->fAVX_IFMA = 1;
+        features->fAVX512F = 1;
+        features->fAVX512CD = 1;
+        features->fAVX512DQ = 1;
+        features->fAVX512_IFMA = 1;
+        features->fAVX512PF = 1;
+        features->fAVX512ER = 1;
+        features->fAVX512BW = 1;
+        features->fAVX512VL = 1;
+        features->fAVX512_VPOPCNTDQ = 1;
+        features->fAVX512_VPCLMULQDQ = 1;
+        features->fAVX512_VAES = 1;
+        features->fAVX512_VNNI = 1;
+        features->fAVX512_BITALG = 1;
+        features->fAVX512_VBMI = 1;
+        features->fAVX512_VBMI2 = 1;
+        if (_cpuid_info->std_cpuid24_ebx.bits.avx10_converged_isa_version >= 2) {
+          features->fAVX10_2 = 1;
+        }
+      }
     }
   }
   if (_cpuid_info->std_cpuid1_ecx.bits.hv != 0)

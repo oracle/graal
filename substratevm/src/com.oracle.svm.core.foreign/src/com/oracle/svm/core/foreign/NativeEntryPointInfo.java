@@ -78,12 +78,13 @@ public final class NativeEntryPointInfo {
                     boolean needsReturnBuffer,
                     int capturedStateMask,
                     boolean needsTransition,
-                    boolean allowHeapAccess) {
+                    boolean allowHeapAccessParam) {
         if ((returnMoves.length > 1) != needsReturnBuffer) {
             throw new AssertionError("Multiple register return, but needsReturnBuffer was false");
         }
         var hasNull = Arrays.stream(argMoves).anyMatch(Objects::isNull);
-        VMError.guarantee(!hasNull || allowHeapAccess, "null VMStorages should only appear with Linker.Option.critical(true).");
+        VMError.guarantee(!hasNull || allowHeapAccessParam, "null VMStorages should only appear with Linker.Option.critical(true).");
+        boolean allowHeapAccess = allowHeapAccessParam;
         if (!hasNull) {
             /*
              * hasNull is only true if this entry point's FunctionDescriptor contains an

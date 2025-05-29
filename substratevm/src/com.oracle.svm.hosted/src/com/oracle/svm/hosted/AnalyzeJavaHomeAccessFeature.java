@@ -26,11 +26,7 @@ package com.oracle.svm.hosted;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.util.LogUtils;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionKey;
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import java.util.Collections;
@@ -73,20 +69,5 @@ public class AnalyzeJavaHomeAccessFeature implements InternalFeature {
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         AnalyzeJavaHomeAccessFeature.instance().printJavaHomeUsageLocations();
-    }
-
-    public static class Options {
-        @Option(help = "Track System.getProperty(\\\"java.home\\\") usage in reachable parts of the project.")//
-        public static final HostedOptionKey<Boolean> TrackJavaHomeAccess = new HostedOptionKey<>(false);
-
-        @Option(help = "Output all System.getProperty(\\\"java.home\\\") calls in reachable parts of the project.")//
-        public static final HostedOptionKey<Boolean> TrackJavaHomeAccessDetailed = new HostedOptionKey<>(false) {
-            @Override
-            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-                if (newValue) {
-                    TrackJavaHomeAccess.update(values, true);
-                }
-            }
-        };
     }
 }

@@ -38,7 +38,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public abstract class WebImageLoweringProvider extends SubstrateBasicLoweringProvider {
     public WebImageLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                     MetaAccessExtensionProvider metaAccessExtensionProvider, TargetDescription target) {
-        super(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target);
+        super(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target, null);
     }
 
     @Override

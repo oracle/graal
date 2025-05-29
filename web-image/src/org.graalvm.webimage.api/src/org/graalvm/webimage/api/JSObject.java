@@ -30,7 +30,7 @@ package org.graalvm.webimage.api;
  * is that a JavaScript object is not normally an instance of any Java class, and it therefore
  * cannot be represented as a data-type in Java programs. When the JavaScript code (invoked by the
  * method annotated with the {@link JS} annotation) returns a JavaScript object, that object gets
- * wrapped into <code>JSObject</code> instance. The <code>JSObject</code> allows the Java code to
+ * wrapped into a <code>JSObject</code> instance. The <code>JSObject</code> allows the Java code to
  * access the fields of the underlying JavaScript object using the <code>get</code> and
  * <code>set</code> methods.
  *
@@ -123,30 +123,27 @@ package org.graalvm.webimage.api;
  *
  * Directly exposing a Java object to JavaScript code means that the JavaScript code is able to
  * manipulate the data within the object (e.g. mutate fields, add new fields, or redefine existing
- * fields), which is not allowed by default for regular Java classes translated by Web Image.
- * Extending {@link JSObject} furthermore allows the JavaScript code to instantiate objects of the
- * {@link JSObject} subclass. One of the use-cases for these functionalities are JavaScript
- * frameworks that redefine properties of JavaScript objects with custom getters and setters, with
- * the goal of enabling data-binding or reactive updates.
+ * fields), which is not allowed by default for regular Java classes. Extending {@link JSObject}
+ * furthermore allows the JavaScript code to instantiate objects of the {@link JSObject} subclass.
+ * One of the use-cases for these functionalities are JavaScript frameworks that redefine properties
+ * of JavaScript objects with custom getters and setters, with the goal of enabling data-binding or
+ * reactive updates.
  *
  * In a subclass of {@link JSObject}, every JavaScript property directly corresponds to the Java
  * field of the same name. Consequently, all these properties point to native JavaScript values
- * rather than Java values, so Web Image generates bridge methods that are called instead of
- * property accesses and that convert native JavaScript values to their Java counterparts. The
- * conversion rules are the same as in a {@link JS}-annotated method. Furthermore, note that
- * JavaScript code can violate the Java type-safety by storing into some property a value that is
- * not compatible with the corresponding Java field. For this reason, the bridge methods also
- * generate check-casts on every access: if the JavaScript property that corresponds to the Java
- * field does not contain a compatible value, a {@link ClassCastException} is thrown.
+ * rather than Java values, so bridge methods are generated that are called for each property access
+ * and that convert native JavaScript values to their Java counterparts. The conversion rules are
+ * the same as in a {@link JS}-annotated method. Furthermore, note that JavaScript code can violate
+ * the Java type-safety by storing into some property a value that is not compatible with the
+ * corresponding Java field. For this reason, the bridge methods also generate check-casts on every
+ * access: if the JavaScript property that corresponds to the Java field does not contain a
+ * compatible value, a {@link ClassCastException} is thrown.
  *
- * There are several restrictions that Web Image imposes on {@link JSObject} subclasses:
+ * There are several restrictions imposed on {@link JSObject} subclasses:
  * <ul>
- * <li>Only public and protected fields are exposed to JavaScript. This restriction ensures
- * encapsulation, and also ensures that users cannot introduce two private fields of the same name
- * within the same inheritance lineage.</li>
- * <li>Subclasses of this class are only allowed to have non-final fields. This restriction ensures
- * that JavaScript code cannot inadvertently change the property that corresponds to a final
- * field.</li>
+ * <li>Only public and protected fields are allowed to ensure encapsulation.</li>
+ * <li>Instance fields must not be {@code final}. This restriction ensures that JavaScript code
+ * cannot inadvertently change the property that corresponds to a final field.</li>
  * </ul>
  *
  * <b>Example:</b> consider the following <code>JSObject</code> subclass:
@@ -172,8 +169,8 @@ package org.graalvm.webimage.api;
  * <pre>
  * class Point {
  *     constructor(x, y){
- *     this.x=x;
- *     this.y=y;
+ *         this.x=x;
+ *         this.y=y;
  *     }
  *
  *     absolute() {
@@ -225,8 +222,7 @@ package org.graalvm.webimage.api;
  * </pre>
  *
  * A {@link Class} object that represents {@link JSObject} can also be passed to JavaScript code.
- * The {@link Class} object is converted to its JavaScript representation, which is the JavaScript
- * class constructor. The JavaScript class constructor can be used inside a {@code new} expression
+ * The {@link Class} object is wrapped in a proxy, which can be used inside a {@code new} expression
  * to instantiate the object of the corresponding class from JavaScript.
  *
  * <b>Example:</b> the following code creates a {@code Point} object in JavaScript:

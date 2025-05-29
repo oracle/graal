@@ -398,7 +398,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
 
             } else if (current instanceof ResolvedJavaField field) {
                 /**
-                 * In {@link AnalysisUniverse#lookupAllowUnresolved(JavaField}} we may register a
+                 * In {@link AnalysisUniverse#lookupAllowUnresolved(JavaField)} we may register a
                  * ResolvedJavaField as reason.
                  *
                  * We convert it to AnalysisField to print more information about why the field is

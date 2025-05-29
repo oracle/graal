@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import jdk.graal.compiler.core.aarch64.AArch64AddressLoweringByUse;
-import jdk.graal.compiler.core.aarch64.AArch64LIRKindTool;
 import jdk.graal.compiler.core.aarch64.AArch64SuitesCreator;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotBackendFactory;
@@ -58,6 +57,8 @@ import jdk.graal.compiler.phases.common.AddressLoweringByUsePhase;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
 import jdk.graal.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
+import jdk.graal.compiler.vector.architecture.aarch64.VectorAArch64;
+import jdk.graal.compiler.vector.lir.hotspot.aarch64.AArch64HotSpotSimdLIRKindTool;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
@@ -66,6 +67,7 @@ import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.Value;
 
@@ -134,7 +136,7 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
     protected HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins,
                     HotSpotRegistersProvider registers, HotSpotReplacementsImpl replacements, OptionValues options) {
         AArch64SuitesCreator suitesCreator = new AArch64HotSpotSuitesCreator(compilerConfiguration, plugins);
-        BasePhase<CoreProviders> addressLoweringPhase = new AddressLoweringByUsePhase(new AArch64AddressLoweringByUse(new AArch64LIRKindTool(), true));
+        BasePhase<CoreProviders> addressLoweringPhase = new AddressLoweringByUsePhase(new AArch64AddressLoweringByUse(new AArch64HotSpotSimdLIRKindTool(), true));
         return new AddressLoweringHotSpotSuitesProvider(suitesCreator, config, runtime, addressLoweringPhase);
     }
 
@@ -142,12 +144,14 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
     protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntimeProvider graalRuntime, MetaAccessProvider metaAccess, HotSpotHostForeignCallsProvider foreignCalls,
                     HotSpotRegistersProvider registers, HotSpotConstantReflectionProvider constantReflection, HotSpotPlatformConfigurationProvider platformConfig,
                     HotSpotMetaAccessExtensionProvider metaAccessExtensionProvider, TargetDescription target) {
-        return new AArch64HotSpotLoweringProvider(graalRuntime, metaAccess, foreignCalls, registers, constantReflection, platformConfig, metaAccessExtensionProvider, target);
+        VectorAArch64 varch = new VectorAArch64((AArch64) target.arch, metaAccess.getArrayIndexScale(JavaKind.Object), graalRuntime.getVMConfig().useCompressedOops,
+                        graalRuntime.getVMConfig().objectAlignment, graalRuntime.getVMConfig().maxVectorSize);
+        return new AArch64HotSpotLoweringProvider(graalRuntime, metaAccess, foreignCalls, registers, constantReflection, platformConfig, metaAccessExtensionProvider, target, varch);
     }
 
     @Override
     protected Value[] createNativeABICallerSaveRegisters(@SuppressWarnings("unused") GraalHotSpotVMConfig config, RegisterConfig regConfig) {
-        List<Register> callerSave = new ArrayList<>(regConfig.getAllocatableRegisters().asList());
+        List<Register> callerSave = new ArrayList<>(regConfig.getAllocatableRegisters());
         // Removing callee-saved registers.
         /* General Purpose Registers. */
         callerSave.remove(AArch64.r19);

@@ -93,10 +93,10 @@ In the future we will eventually provide a solution to refine the resource inclu
 
 ##### `--layer-create` suboption `package=<package-name>`
 
-Suboption `package` allows the inclusion of individual Java packages. For this kind of inclusion it does not matter if the specified package is from a classpath-entry or part of a module, both are supported.
+Suboption `package` allows the inclusion of individual Java packages. For this kind of inclusion it does not matter if the specified package is from a classpath entry or part of a module, both are supported.
 Contrary to the `module` suboption, resources are not also automatically included. If resource inclusion is needed, the usual ways can be used (`resource-config.json`, `reachability-metadata.json` or resource related Feature API).
 
-##### `--layer-create` suboption `path=<classpath entry>`
+##### `--layer-create` suboption `path=<classpath-entry>`
 
 This is a convenience suboption that requires a `classpath entry`.
 If the provided entry is not also specified in the classpath of the given `native-image` invocation, an error message is shown.
@@ -207,13 +207,15 @@ At build time a shared layer is stored in a layer archive that contains the foll
 
 ```shell
 [shared-layer.nil]                   # shared layer archive file
-  ├── shared-layer.json              # snapshot of the shared layer metadata; used by subsequent build processes
+  ├── shared-layer.lsb               # snapshot of the shared layer metadata; used by subsequent build processes
+  ├── shared-layer.big               # serialized shared layer compiler graphs; used by subsequent build processes
   ├── shared-layer.so                # shared object of the shared layer; used by subsequent build processes and at run time
   └── shared-layer.properties        # contains info about layer input data
 ```
 
 The layer snapshot file will be consumed by subsequent build processes that depend on this layer.
 It contains Native Image metadata, such as the analysis universe and available image singletons.
+Sharing compiler graphs between layers enables cross-layer optimizations such as inlining.
 The shared object file will be used at build time for symbol resolution, and at run time for application execution.
 The layer properties file contains metadata that uniquely identifies this layer: the options used to create the
 layer, all the input files and their checksum.

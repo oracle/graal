@@ -33,6 +33,7 @@ import java.lang.foreign.Linker;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodType;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -40,12 +41,14 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
@@ -59,6 +62,7 @@ import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.util.BasedOnJDKClass;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.Label;
@@ -83,7 +87,6 @@ import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.foreign.abi.VMStorage;
 import jdk.internal.foreign.abi.aarch64.AArch64Architecture;
 import jdk.internal.foreign.abi.x64.X86_64Architecture;
-import jdk.internal.foreign.abi.x64.sysv.CallArranger;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Register;
@@ -133,10 +136,10 @@ public abstract class AbiUtils {
         }
 
         public static Result.FullNativeAdaptation adaptToNative(AbiUtils self, List<Adaptation> adaptations, List<ValueNode> originalArguments, NativeEntryPointInfo nep) {
-            originalArguments = Collections.unmodifiableList(originalArguments);
+            List<ValueNode> originalUnmodifiableArguments = Collections.unmodifiableList(originalArguments);
 
             AssignedLocation[] originalAssignment = self.toMemoryAssignment(nep.parametersAssignment(), false);
-            VMError.guarantee(allEqual(adaptations.size(), originalArguments.size(), nep.methodType().parameterCount(), originalAssignment.length));
+            VMError.guarantee(allEqual(adaptations.size(), originalUnmodifiableArguments.size(), nep.methodType().parameterCount(), originalAssignment.length));
 
             Map<Extracted, ValueNode> extractedArguments = new EnumMap<>(Extracted.class);
             List<ValueNode> arguments = new ArrayList<>();
@@ -151,7 +154,7 @@ public abstract class AbiUtils {
                     adaptation = NOOP;
                 }
 
-                arguments.addAll(adaptation.apply(originalArguments.get(i), extractedArguments, originalArguments, i, nodesToAppendToGraph::add));
+                arguments.addAll(adaptation.apply(originalUnmodifiableArguments.get(i), extractedArguments, originalUnmodifiableArguments, i, nodesToAppendToGraph::add));
                 assignment.addAll(adaptation.apply(originalAssignment[i]));
                 argumentTypes.addAll(adaptation.apply(nep.methodType().parameterType(i)));
 
@@ -243,7 +246,7 @@ public abstract class AbiUtils {
             return new ExtractSingle(as, type);
         }
 
-        public static Adaptation extractSegmentPair(Extracted as, Class<?> type) {
+        public static Adaptation extractSegmentPair(Extracted as) {
             return new ExtractSegmentPair(as);
         }
 
@@ -321,9 +324,9 @@ public abstract class AbiUtils {
          * (segments allocated using an Arena), and these have a method `unsafeGetOffset` which
          * straightforwardly returns the raw pointer. <br>
          * However, when `allowHeapAccess` is true (the argument to Linker.Option.critical), one may
-         * pass a {@link HeapMemorySegmentImpl} as well. For reasons detailed in its documentation,
-         * heap segments are represented as an Object + offset pair, where the raw pointer should be
-         * derived from their sum. <br>
+         * pass a {@link jdk.internal.foreign.HeapMemorySegmentImpl} as well. For reasons detailed
+         * in its documentation, heap segments are represented as an Object + offset pair, where the
+         * raw pointer should be derived from their sum. <br>
          * Hence, when `allowHeapAccess` is true,
          * {@link CallArranger.UnboxBindingCalculator#getBindings(Class, MemoryLayout)} passes two
          * arguments for every AddressLayout, the result of `unsafeGetBase` (of type Object) and
@@ -337,6 +340,7 @@ public abstract class AbiUtils {
          * {@code null} is when Linker.Option.critical(true) is passed. See
          * {@link CallArranger.UnboxBindingCalculator#getBindings(Class, MemoryLayout)}.
          */
+        @SuppressWarnings("javadoc")
         private static final class ComputeAddressFromSegmentPair extends Adaptation {
             private static final ComputeAddressFromSegmentPair SINGLETON = new ComputeAddressFromSegmentPair();
 
@@ -491,15 +495,31 @@ public abstract class AbiUtils {
         return ImageSingletons.lookup(AbiUtils.class);
     }
 
+    /**
+     * Specifies if a method handle invoked by an upcall stub needs to drop its return value in case
+     * of an in-memory return type. See also: {@link java.lang.invoke.MethodHandles#dropReturn} and
+     * {@code jdk.internal.foreign.abi.SharedUtils#adaptUpcallForIMR}
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public abstract boolean dropReturn();
+
+    /**
+     * Calls method {@code isInMemoryReturn} of the appropriate {@code CallArranger}. This method
+     * determines, if a given return type requires an in-memory return on the current platform.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public abstract boolean isInMemoryReturn(Optional<MemoryLayout> returnLayout);
+
     protected abstract CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options);
 
     /**
      * This method re-implements a part of the logic from the JDK so that we can get the callee-type
      * (i.e. the ABI low-level type) of a function from its descriptor.
      */
+    @Platforms(HOSTED_ONLY.class)
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L99")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/DowncallLinker.java#L71-L85")
-    public NativeEntryPointInfo makeNativeEntrypoint(FunctionDescriptor desc, LinkerOptions linkerOptions) {
+    public final NativeEntryPointInfo makeNativeEntrypoint(FunctionDescriptor desc, LinkerOptions linkerOptions) {
         // From Linker.downcallHandle implemented in AbstractLinker.downcallHandle:
         // From AbstractLinker.downcallHandle0
         MethodType type = desc.toMethodType();
@@ -519,9 +539,9 @@ public abstract class AbiUtils {
                         linkerOptions.allowsHeapAccess());
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L124")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L126")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/UpcallLinker.java#L62-L110")
-    public JavaEntryPointInfo makeJavaEntryPoint(FunctionDescriptor desc, LinkerOptions linkerOptions) {
+    public final JavaEntryPointInfo makeJavaEntryPoint(FunctionDescriptor desc, LinkerOptions linkerOptions) {
         // Linker.upcallStub implemented in AbstractLinker.upcallStub
         MethodType type = desc.toMethodType();
 
@@ -583,7 +603,7 @@ public abstract class AbiUtils {
             if (nep.allowHeapAccess()) {
                 VMError.guarantee(storages[current] != null && storages[current + 1] == null);
                 // consumes two parameters (i.e. object + offset pair)
-                handleCriticalWithHeapAccess(nep, current + 1, adaptations, Adapter.extractSegmentPair(Adapter.Extracted.CaptureBufferAddress, long.class));
+                handleCriticalWithHeapAccess(nep, current + 1, adaptations, Adapter.extractSegmentPair(Adapter.Extracted.CaptureBufferAddress));
                 current += 2;
             } else {
                 adaptations.set(current, Adapter.extract(Adapter.Extracted.CaptureBufferAddress, long.class));
@@ -659,7 +679,7 @@ public abstract class AbiUtils {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public abstract TrampolineTemplate generateTrampolineTemplate();
+    abstract TrampolineTemplate generateTrampolineTemplate();
 }
 
 class ABIs {
@@ -716,12 +736,26 @@ class ABIs {
         public TrampolineTemplate generateTrampolineTemplate() {
             return null;
         }
+
+        @Override
+        public boolean dropReturn() {
+            return fail();
+        }
+
+        @Override
+        public boolean isInMemoryReturn(Optional<MemoryLayout> returnLayout) {
+            return fail();
+        }
     }
 
     @BasedOnJDKClass(AArch64Architecture.class)
     @BasedOnJDKClass(jdk.internal.foreign.abi.DowncallLinker.class)
     @BasedOnJDKClass(jdk.internal.foreign.abi.UpcallLinker.class)
     abstract static class ARM64 extends AbiUtils {
+
+        @Platforms(Platform.HOSTED_ONLY.class) //
+        private static final Method IS_IN_MEMORY_RETURN = ReflectionUtil.lookupMethod(jdk.internal.foreign.abi.aarch64.CallArranger.class, "isInMemoryReturn", Optional.class);
+
         @Override
         public Registers upcallSpecialArgumentsRegisters() {
             return new Registers(SubstrateAArch64MacroAssembler.scratch1, SubstrateAArch64MacroAssembler.scratch2);
@@ -815,6 +849,17 @@ class ABIs {
 
             return new TrampolineTemplate(assembly, posIsolate, posMHArray, posCallTarget);
         }
+
+        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/aarch64/CallArranger.java#L195")
+        @Override
+        public boolean dropReturn() {
+            return true;
+        }
+
+        @Override
+        public boolean isInMemoryReturn(Optional<MemoryLayout> returnLayout) {
+            return ReflectionUtil.invokeMethod(IS_IN_MEMORY_RETURN, null, returnLayout);
+        }
     }
 
     @BasedOnJDKClass(jdk.internal.foreign.abi.aarch64.linux.LinuxAArch64Linker.class)
@@ -854,6 +899,7 @@ class ABIs {
     @BasedOnJDKClass(jdk.internal.foreign.abi.UpcallLinker.class)
     abstract static class X86_64 extends AbiUtils {
 
+        @Override
         protected abstract CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options);
 
         @Override
@@ -885,7 +931,7 @@ class ABIs {
                 storages[i++] = switch (move.type()) {
                     case X86_64Architecture.StorageType.PLACEHOLDER -> AssignedLocation.placeholder();
                     case X86_64Architecture.StorageType.INTEGER -> {
-                        Register reg = AMD64.cpuRegisters[move.indexOrOffset()];
+                        Register reg = AMD64.cpuRegisters.get(move.indexOrOffset());
                         assert reg.name.equals(move.debugName());
                         assert reg.getRegisterCategory().equals(AMD64.CPU);
                         yield AssignedLocation.forRegister(reg, JavaKind.Long);
@@ -895,7 +941,7 @@ class ABIs {
                          * Only the first four xmm registers should ever be used; in particular,
                          * this means we never need to index in xmmRegistersAVX512
                          */
-                        Register reg = AMD64.xmmRegistersSSE[move.indexOrOffset()];
+                        Register reg = AMD64.xmmRegistersSSE.get(move.indexOrOffset());
                         assert reg.name.equals(move.debugName());
                         assert reg.getRegisterCategory().equals(AMD64.XMM);
                         yield AssignedLocation.forRegister(reg, JavaKind.Double);
@@ -961,6 +1007,10 @@ class ABIs {
     @BasedOnJDKClass(jdk.internal.foreign.abi.x64.sysv.SysVx64Linker.class)
     @BasedOnJDKClass(jdk.internal.foreign.abi.x64.sysv.CallArranger.class)
     static final class SysV extends X86_64 {
+
+        @Platforms(Platform.HOSTED_ONLY.class) //
+        private static final Method IS_IN_MEMORY_RETURN = ReflectionUtil.lookupMethod(jdk.internal.foreign.abi.x64.sysv.CallArranger.class, "isInMemoryReturn", Optional.class);
+
         @Override
         protected CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options) {
             return jdk.internal.foreign.abi.x64.sysv.CallArranger.getBindings(type, desc, forUpcall, options).callingSequence();
@@ -1002,11 +1052,26 @@ class ABIs {
         public Map<String, MemoryLayout> canonicalLayouts() {
             return SharedUtils.canonicalLayouts(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT);
         }
+
+        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/x64/sysv/CallArranger.java#L147")
+        @Override
+        public boolean dropReturn() {
+            return true;
+        }
+
+        @Override
+        public boolean isInMemoryReturn(Optional<MemoryLayout> returnLayout) {
+            return ReflectionUtil.invokeMethod(IS_IN_MEMORY_RETURN, null, returnLayout);
+        }
     }
 
     @BasedOnJDKClass(jdk.internal.foreign.abi.x64.windows.Windowsx64Linker.class)
     @BasedOnJDKClass(jdk.internal.foreign.abi.x64.windows.CallArranger.class)
     static final class Win64 extends X86_64 {
+
+        @Platforms(Platform.HOSTED_ONLY.class) //
+        private static final Method IS_IN_MEMORY_RETURN = ReflectionUtil.lookupMethod(jdk.internal.foreign.abi.x64.windows.CallArranger.class, "isInMemoryReturn", Optional.class);
+
         @Override
         protected CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options) {
             return jdk.internal.foreign.abi.x64.windows.CallArranger.getBindings(type, desc, forUpcall, options).callingSequence();
@@ -1057,6 +1122,17 @@ class ABIs {
         @Override
         public Map<String, MemoryLayout> canonicalLayouts() {
             return SharedUtils.canonicalLayouts(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.JAVA_CHAR);
+        }
+
+        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/x64/windows/CallArranger.java#L139")
+        @Override
+        public boolean dropReturn() {
+            return false;
+        }
+
+        @Override
+        public boolean isInMemoryReturn(Optional<MemoryLayout> returnLayout) {
+            return ReflectionUtil.invokeMethod(IS_IN_MEMORY_RETURN, null, returnLayout);
         }
     }
 

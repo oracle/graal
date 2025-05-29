@@ -261,6 +261,11 @@ public final class ImageClassLoader {
 
     /** Find class, return result encoding class or failure reason. */
     public TypeResult<Class<?>> findClass(String name, boolean allowPrimitives) {
+        return findClass(name, allowPrimitives, getClassLoader());
+    }
+
+    /** Find class, return result encoding class or failure reason. */
+    public static TypeResult<Class<?>> findClass(String name, boolean allowPrimitives, ClassLoader loader) {
         try {
             if (allowPrimitives && name.indexOf('.') == -1) {
                 Class<?> primitive = forPrimitive(name);
@@ -268,7 +273,7 @@ public final class ImageClassLoader {
                     return TypeResult.forClass(primitive);
                 }
             }
-            return TypeResult.forClass(forName(name));
+            return TypeResult.forClass(forName(name, false, loader));
         } catch (ClassNotFoundException | LinkageError ex) {
             return TypeResult.forException(name, ex);
         }
@@ -294,7 +299,11 @@ public final class ImageClassLoader {
     }
 
     public Class<?> forName(String className, boolean initialize) throws ClassNotFoundException {
-        return Class.forName(className, initialize, getClassLoader());
+        return forName(className, initialize, getClassLoader());
+    }
+
+    public static Class<?> forName(String className, boolean initialize, ClassLoader loader) throws ClassNotFoundException {
+        return Class.forName(className, initialize, loader);
     }
 
     public Class<?> forName(String className, Module module) throws ClassNotFoundException {

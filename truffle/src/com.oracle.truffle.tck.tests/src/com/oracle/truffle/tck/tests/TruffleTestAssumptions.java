@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.tck.tests;
 
+import java.util.regex.Pattern;
+
 import org.graalvm.polyglot.Engine;
 import org.junit.Assume;
-
-import java.util.regex.Pattern;
 
 public class TruffleTestAssumptions {
     private static final boolean spawnIsolate = Boolean.getBoolean("polyglot.engine.SpawnIsolate");
@@ -130,4 +130,11 @@ public class TruffleTestAssumptions {
         return !aot;
     }
 
+    public static boolean isDeoptLoopDetectionAvailable() {
+        return Runtime.version().feature() >= 25;
+    }
+
+    public static void assumeDeoptLoopDetectionAvailable() {
+        Assume.assumeTrue(isDeoptLoopDetectionAvailable());
+    }
 }

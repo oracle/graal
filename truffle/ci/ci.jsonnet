@@ -112,6 +112,19 @@
     name: 'gate-truffle-ce-jvm-' + self.jdk_name + '-linux-amd64',
   },
 
+  # runs only truffle native unittests
+  local truffle_native_unittest_gate = truffle_common + {
+    gate_tag_suffix: '',
+    run+: [
+      ['mx', '--no-jlinking', 'gate', '--no-warning-as-error', '--tags', 'build,unittest-native' + self.gate_tag_suffix],
+    ],
+    notify_groups: ["truffle"],
+    components+: ["truffle"],
+    timelimit: '1:00:00',
+    name: 'gate-truffle-ce-native-unittest' + self.gate_tag_suffix + '-jvm-' + self.jdk_name + '-' + self.os + '-' + self.arch,
+  },
+
+  # runs native SL tests and truffle native unittests
   local truffle_native_gate = truffle_common + {
     gate_tag_suffix: '',
     run+: [
@@ -119,8 +132,8 @@
     ],
     notify_groups: ["truffle"],
     components+: ["truffle"],
-    timelimit: '1:00:00',
-    name: 'gate-truffle-ce-native' + self.gate_tag_suffix + '-jvm-' + self.jdk_name + '-linux-amd64',
+    timelimit: '1:30:00',
+    name: 'gate-truffle-ce-native' + self.gate_tag_suffix + '-jvm-' + self.jdk_name + '-' + self.os + '-' + self.arch,
   },
 
   local truffle_gate = truffle_common + common.deps.eclipse + common.deps.jdt + common.deps.spotbugs {
@@ -150,15 +163,20 @@
     linux_amd64  + graalVMCELatest + simple_tool_maven_project_gate,
     # Truffle JVM gate
     linux_amd64  + common.graalvmee21 + truffle_jvm_gate,
-    linux_amd64  + common.oraclejdk23 + truffle_jvm_gate,
+    # GR-65191
+    # linux_amd64  + common.oraclejdk24 + truffle_jvm_gate,
     linux_amd64  + graalVMCELatest + truffle_jvm_gate,
     # Truffle Native gate
-    linux_amd64  + common.graalvmee21 + truffle_native_gate,
-    linux_amd64  + common.graalvmee21 + truffle_native_gate + {
+    linux_amd64     + common.graalvmee21 + truffle_native_gate,
+    linux_amd64     + common.graalvmee21 + truffle_native_gate + {
         gate_tag_suffix: '-quickbuild'
     },
-    linux_amd64  + graalVMCELatest + truffle_native_gate,
-    linux_amd64  + graalVMCELatest + truffle_native_gate + {
+    linux_amd64     + graalVMCELatest + truffle_native_gate,
+    windows_amd64   + graalVMCELatest + devkits["windows-jdkLatest"] + truffle_native_unittest_gate,
+    linux_amd64     + graalVMCELatest + truffle_native_gate + {
+        gate_tag_suffix: '-quickbuild'
+    },
+    windows_amd64   + graalVMCELatest + devkits["windows-jdkLatest"] + truffle_native_unittest_gate + {
         gate_tag_suffix: '-quickbuild'
     },
 

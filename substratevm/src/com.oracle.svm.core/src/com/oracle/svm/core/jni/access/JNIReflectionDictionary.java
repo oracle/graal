@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
@@ -60,7 +61,6 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.util.SignatureUtil;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.Signature;
 
 /**
@@ -155,11 +155,7 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
         if (!classesByClassObject.containsKey(classObj)) {
             JNIAccessibleClass instance = mappingFunction.apply(classObj);
             classesByClassObject.put(classObj, instance);
-            String name = instance.getInternalName();
-            if (name.charAt(0) == 'L') { // "Ljava/lang/Object;" -> "java/lang/Object"
-                assert name.charAt(name.length() - 1) == ';';
-                name = name.substring(1, name.length() - 1);
-            }
+            String name = instance.getJNIName();
             classesByName.put(name, instance);
         }
         return classesByClassObject.get(classObj);
@@ -167,9 +163,7 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
 
     @Platforms(HOSTED_ONLY.class)
     public void addNegativeClassLookupIfAbsent(String typeName) {
-        String internalName = MetaUtil.toInternalName(typeName);
-        String queryName = internalName.startsWith("L") ? internalName.substring(1, internalName.length() - 1) : internalName;
-        classesByName.putIfAbsent(queryName, NEGATIVE_CLASS_LOOKUP);
+        classesByName.putIfAbsent(typeName, NEGATIVE_CLASS_LOOKUP);
     }
 
     @Platforms(HOSTED_ONLY.class)
@@ -185,7 +179,10 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
     public static Class<?> getClassObjectByName(CharSequence name) {
         for (var dictionary : layeredSingletons()) {
             JNIAccessibleClass clazz = dictionary.classesByName.get(name);
-            clazz = checkClass(clazz, name);
+            if (clazz == null && !ClassNameSupport.isValidJNIName(name.toString())) {
+                clazz = NEGATIVE_CLASS_LOOKUP;
+            }
+            clazz = checkClass(clazz, name.toString());
             if (clazz != null) {
                 return clazz.getClassObject();
             }
@@ -194,9 +191,9 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
         return null;
     }
 
-    private static JNIAccessibleClass checkClass(JNIAccessibleClass clazz, CharSequence name) {
+    private static JNIAccessibleClass checkClass(JNIAccessibleClass clazz, String name) {
         if (throwMissingRegistrationErrors() && clazz == null) {
-            MissingJNIRegistrationUtils.forClass(name.toString());
+            MissingJNIRegistrationUtils.forClass(name);
         } else if (clazz != null && clazz.isNegative()) {
             return null;
         }

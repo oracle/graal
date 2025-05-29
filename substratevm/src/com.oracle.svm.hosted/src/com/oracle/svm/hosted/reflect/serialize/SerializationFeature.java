@@ -66,8 +66,8 @@ import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolve
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
-import com.oracle.svm.core.reflect.serialize.SerializationRegistry;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.BasedOnJDKFile;
@@ -156,7 +156,7 @@ public class SerializationFeature implements InternalFeature {
             if (lambdaClass != null && Serializable.class.isAssignableFrom(lambdaClass)) {
                 RuntimeReflection.register(ReflectionUtil.lookupMethod(lambdaClass, "writeReplace"));
                 SerializationBuilder.registerSerializationUIDElements(lambdaClass, false);
-                serializationBuilder.serializationSupport.registerSerializationTargetClass(ConfigurationCondition.alwaysTrue(), lambdaClass);
+                serializationBuilder.serializationSupport.registerSerializationTargetClass(ConfigurationCondition.alwaysTrue(), serializationBuilder.getHostVM().dynamicHub(lambdaClass));
             }
         }
     }
@@ -206,6 +206,7 @@ public class SerializationFeature implements InternalFeature {
                 throw serializationFallback;
             }
         }
+        serializationBuilder.serializationSupport.replaceHubKeyWithTypeID();
     }
 
     public static Object getConstructorAccessor(Constructor<?> constructor) {
@@ -300,7 +301,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         this.proxyRegistry = proxyRegistry;
 
         this.serializationSupport = new SerializationSupport();
-        ImageSingletons.add(SerializationRegistry.class, serializationSupport);
+        ImageSingletons.add(SerializationSupport.class, serializationSupport);
     }
 
     private void abortIfSealed() {
@@ -379,7 +380,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             ImageSingletons.lookup(SerializationFeature.class).capturingClasses.add(lambdaCapturingClass);
             RuntimeReflection.register(lambdaCapturingClass);
             RuntimeReflection.register(ReflectionUtil.lookupMethod(lambdaCapturingClass, "$deserializeLambda$", SerializedLambda.class));
-            SerializationSupport.singleton().registerLambdaCapturingClass(cnd, lambdaCapturingClassName);
+            SerializationSupport.currentLayer().registerLambdaCapturingClass(cnd, lambdaCapturingClassName);
         });
     }
 
@@ -423,7 +424,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             RuntimeReflection.register(java.io.ObjectOutputStream.class);
 
             if (denyRegistry.isAllowed(serializationTargetClass)) {
-                addOrQueueConstructorAccessors(cnd, serializationTargetClass);
+                addOrQueueConstructorAccessors(cnd, serializationTargetClass, getHostVM().dynamicHub(serializationTargetClass));
 
                 Class<?> superclass = serializationTargetClass.getSuperclass();
                 if (superclass != null) {
@@ -439,18 +440,18 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         });
     }
 
-    private void addOrQueueConstructorAccessors(ConfigurationCondition cnd, Class<?> serializationTargetClass) {
+    private void addOrQueueConstructorAccessors(ConfigurationCondition cnd, Class<?> serializationTargetClass, DynamicHub hub) {
         if (pendingConstructorRegistrations != null) {
             // cannot yet create constructor accessor -> add to pending
-            pendingConstructorRegistrations.add(() -> registerConstructorAccessors(cnd, serializationTargetClass));
+            pendingConstructorRegistrations.add(() -> registerConstructorAccessors(cnd, serializationTargetClass, hub));
         } else {
             // can already run the registration
-            registerConstructorAccessors(cnd, serializationTargetClass);
+            registerConstructorAccessors(cnd, serializationTargetClass, hub);
         }
     }
 
-    private void registerConstructorAccessors(ConfigurationCondition cnd, Class<?> serializationTargetClass) {
-        serializationSupport.registerSerializationTargetClass(cnd, serializationTargetClass);
+    private void registerConstructorAccessors(ConfigurationCondition cnd, Class<?> serializationTargetClass, DynamicHub hub) {
+        serializationSupport.registerSerializationTargetClass(cnd, hub);
         registerConstructorAccessor(cnd, serializationTargetClass, null);
         for (Class<?> superclass = serializationTargetClass; superclass != null; superclass = superclass.getSuperclass()) {
             registerConstructorAccessor(cnd, serializationTargetClass, superclass);
@@ -603,6 +604,9 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             constructorToCall = getConstructorForSerialization(serializationTargetClass);
         } else {
             constructorToCall = customConstructorToCall;
+        }
+        if (constructorToCall == null) {
+            return null;
         }
         ConstructorAccessor acc = getConstructorAccessor(serializationTargetClass, constructorToCall);
         JavaLangReflectAccess langReflectAccess = ReflectionUtil.readField(ReflectionFactory.class, "langReflectAccess", ReflectionFactory.getReflectionFactory());

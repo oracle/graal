@@ -68,6 +68,7 @@ import java.nio.charset.Charset;
 import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryStream;
+import java.nio.file.FileStore;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitOption;
 import java.nio.file.FileVisitResult;
@@ -120,6 +121,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleFile.FileStoreInfo;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.interop.InteropException;
@@ -1177,6 +1179,48 @@ public class TruffleFileTest {
         }
     }
 
+    @Test
+    public void testFileStoreInfo() {
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestFileStoreInfoLanguage.class, "");
+        }
+    }
+
+    @Registration
+    static final class TestFileStoreInfoLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleFile cwd = env.getCurrentWorkingDirectory();
+            FileStoreInfo fsInfo = cwd.getFileStoreInfo();
+            Path path = Path.of(cwd.getAbsoluteFile().getPath());
+            FileStore fileStore = Files.getFileStore(path);
+            assertEquals(fileStore.getTotalSpace(), fsInfo.getTotalSpace());
+            // Unallocated space may change after retrieval; use a weak assertion to account for
+            // fluctuations.
+            assertInTolerance(fileStore.getUnallocatedSpace(), fsInfo.getUnallocatedSpace());
+            // Unallocated space may change after retrieval; use a weak assertion to account for
+            // fluctuations.
+            assertInTolerance(fileStore.getUsableSpace(), fsInfo.getUsableSpace());
+            assertEquals(fileStore.getBlockSize(), fsInfo.getBlockSize());
+            assertEquals(fileStore.isReadOnly(), fsInfo.isReadOnly());
+            return null;
+        }
+
+        /**
+         * Asserts that the {@code actual} value is within 10% of the {@code expected} value. This
+         * method computes a tolerance range of 10% around the expected value and verifies that the
+         * actual value falls within that range (inclusive).
+         */
+        private static void assertInTolerance(long expected, long actual) {
+            long delta = expected / 10;
+            long lowerBound = expected - delta;
+            long upperBound = expected + delta;
+            assertTrue(lowerBound <= actual);
+            assertTrue(upperBound >= actual);
+        }
+    }
+
     private static void delete(Path path) throws IOException {
         if (Files.isDirectory(path)) {
             try (DirectoryStream<Path> dir = Files.newDirectoryStream(path)) {
@@ -1440,6 +1484,31 @@ public class TruffleFileTest {
 
         @Override
         public boolean isSameFile(Path path1, Path path2, LinkOption... options) {
+            throw fail();
+        }
+
+        @Override
+        public long getFileStoreTotalSpace(Path path) {
+            throw fail();
+        }
+
+        @Override
+        public long getFileStoreUnallocatedSpace(Path path) {
+            throw fail();
+        }
+
+        @Override
+        public long getFileStoreUsableSpace(Path path) {
+            throw fail();
+        }
+
+        @Override
+        public long getFileStoreBlockSize(Path path) {
+            throw fail();
+        }
+
+        @Override
+        public boolean isFileStoreReadOnly(Path path) {
             throw fail();
         }
 

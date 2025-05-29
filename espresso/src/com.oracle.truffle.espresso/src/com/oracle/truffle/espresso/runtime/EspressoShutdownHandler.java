@@ -277,7 +277,7 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
             }
         }
 
-        getContext().getTimers().report(getContext().getLogger());
+        getContext().getTimers().report(getContext().getLogger()::info);
     }
 
     /**

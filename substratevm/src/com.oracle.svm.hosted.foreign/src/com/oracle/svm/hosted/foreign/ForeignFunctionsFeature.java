@@ -40,7 +40,6 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -67,7 +66,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ConfigurationParser;
-import com.oracle.svm.core.LinkToNativeSupport;
+import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -78,7 +77,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.foreign.AbiUtils;
 import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;
 import com.oracle.svm.core.foreign.JavaEntryPointInfo;
-import com.oracle.svm.core.foreign.LinkToNativeSupportImpl;
 import com.oracle.svm.core.foreign.NativeEntryPointInfo;
 import com.oracle.svm.core.foreign.RuntimeSystemLookup;
 import com.oracle.svm.core.foreign.SubstrateMappedMemoryUtils;
@@ -111,6 +109,7 @@ import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.AbstractLinker;
 import jdk.internal.foreign.abi.LinkerOptions;
+import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.misc.ScopedMemoryAccess.ScopedAccessError;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -195,7 +194,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
             checkNotSealed();
             try {
                 LinkerOptions linkerOptions = LinkerOptions.forDowncall(desc, options);
-                registerConditionalConfiguration(condition, (cnd) -> registeredDowncalls.add(new SharedDesc(desc, linkerOptions)));
+                registerConditionalConfiguration(condition, _ -> registeredDowncalls.add(new SharedDesc(desc, linkerOptions)));
             } catch (IllegalArgumentException e) {
                 throw UserError.abort(e, "Could not register downcall");
             }
@@ -206,7 +205,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
             checkNotSealed();
             try {
                 LinkerOptions linkerOptions = LinkerOptions.forUpcall(desc, options);
-                registerConditionalConfiguration(condition, (ignored) -> registeredUpcalls.add(new SharedDesc(desc, linkerOptions)));
+                registerConditionalConfiguration(condition, _ -> registeredUpcalls.add(new SharedDesc(desc, linkerOptions)));
             } catch (IllegalArgumentException e) {
                 throw UserError.abort(e, "Could not register upcall");
             }
@@ -229,7 +228,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
             Executable method = implLookup.revealDirect(Objects.requireNonNull(target)).reflectAs(Executable.class, implLookup);
             try {
                 LinkerOptions linkerOptions = LinkerOptions.forUpcall(desc, options);
-                registerConditionalConfiguration(condition, (ignored) -> {
+                registerConditionalConfiguration(condition, _ -> {
                     RuntimeReflection.register(method);
                     registeredDirectUpcalls.add(new DirectUpcallDesc(target, directMethodHandleDesc, desc, linkerOptions));
                 });
@@ -280,13 +279,19 @@ public class ForeignFunctionsFeature implements InternalFeature {
     }
 
     @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        AbiUtils abiUtils = AbiUtils.create();
+        ForeignFunctionsRuntime foreignFunctionsRuntime = new ForeignFunctionsRuntime(abiUtils);
+
+        ImageSingletons.add(AbiUtils.class, abiUtils);
+        ImageSingletons.add(ForeignSupport.class, foreignFunctionsRuntime);
+        ImageSingletons.add(ForeignFunctionsRuntime.class, foreignFunctionsRuntime);
+    }
+
+    @Override
     public void duringSetup(DuringSetupAccess a) {
         var access = (FeatureImpl.DuringSetupAccessImpl) a;
-        AbiUtils abiUtils = AbiUtils.create();
-        ImageSingletons.add(AbiUtils.class, abiUtils);
-        ImageSingletons.add(ForeignFunctionsRuntime.class, new ForeignFunctionsRuntime());
         ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
-        ImageSingletons.add(LinkToNativeSupport.class, new LinkToNativeSupportImpl());
         ImageSingletons.add(SharedArenaSupport.class, new SharedArenaSupportImpl());
 
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
@@ -388,6 +393,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         private final AnalysisUniverse universe;
         private final MetaAccessProvider metaAccessProvider;
         private final Method arrangeUpcallMethod;
+        private final Method adaptUpcallForIMRMethod;
         private final Set<SharedDesc> registeredUpcalls;
 
         DirectUpcallStubFactory(AnalysisUniverse universe, MetaAccessProvider metaAccessProvider, Set<SharedDesc> registeredUpcalls) {
@@ -395,12 +401,16 @@ public class ForeignFunctionsFeature implements InternalFeature {
             this.metaAccessProvider = metaAccessProvider;
             this.registeredUpcalls = registeredUpcalls;
             this.arrangeUpcallMethod = ReflectionUtil.lookupMethod(LINKER.getClass(), "arrangeUpcall", MethodType.class, FunctionDescriptor.class, LinkerOptions.class);
+            this.adaptUpcallForIMRMethod = ReflectionUtil.lookupMethod(SharedUtils.class, "adaptUpcallForIMR", MethodHandle.class, boolean.class);
         }
 
         @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+25/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L117-L135")
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+25/src/java.base/share/classes/jdk/internal/foreign/abi/UpcallLinker.java#L64-L112")
+        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/SharedUtils.java#L191-L210")
         @Override
         public DirectUpcall createKey(DirectUpcallDesc desc) {
+            AbiUtils abiUtils = AbiUtils.singleton();
+            MethodHandle target = desc.mh();
+
             /*
              * For each unique link request, 'AbstractLinker.upcallStub' calls
              * 'AbstractLinker.arrangeUpcall' which produces an upcall stub factory. This factory is
@@ -409,12 +419,22 @@ public class ForeignFunctionsFeature implements InternalFeature {
              * applied to the user-provided method handle. We then re-create a method handle that is
              * equal to the one created in 'UpcallLinker.makeFactory'. This MH is then invoked from
              * the specialized upcall stub.
+             *
+             * Additionally, if the return type requires an in-memory return (e.g. in case of a
+             * struct that doesn't fit into registers) the upcall stub factory is decorated (in
+             * 'SharedUtils.arrangeUpcallHelper') with another factory that preprocesses the
+             * user-provided method handle.
              */
+            boolean inMemoryReturn = abiUtils.isInMemoryReturn(desc.fd().returnLayout());
+            if (inMemoryReturn) {
+                target = ReflectionUtil.invokeMethod(adaptUpcallForIMRMethod, null, target, abiUtils.dropReturn());
+            }
             AbstractLinker.UpcallStubFactory upcallStubFactory = ReflectionUtil.invokeMethod(arrangeUpcallMethod, LINKER, desc.fd().toMethodType(), desc.fd(), desc.options());
-            UnaryOperator<MethodHandle> doBindingsMaker = lookupAndReadUnaryOperatorField(upcallStubFactory);
-            MethodHandle doBindings = doBindingsMaker.apply(desc.mh());
+            UnaryOperator<MethodHandle> doBindingsMaker = lookupAndReadUnaryOperatorField(upcallStubFactory, inMemoryReturn);
+            MethodHandle doBindings = doBindingsMaker.apply(target);
             doBindings = insertArguments(exactInvoker(doBindings.type()), 0, doBindings);
-            JavaEntryPointInfo jepi = AbiUtils.singleton().makeJavaEntryPoint(desc.fd(), desc.options());
+
+            JavaEntryPointInfo jepi = abiUtils.makeJavaEntryPoint(desc.fd(), desc.options());
             registeredUpcalls.add(desc.toSharedDesc());
             return new DirectUpcall(desc.mhDesc(), doBindings, jepi);
         }
@@ -426,29 +446,55 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
         @Override
         public void registerStub(DirectUpcall stubDescriptor, CFunctionPointer stubPointer) {
-            ForeignFunctionsRuntime.singleton().addDirectUpcallStubPointer(stubDescriptor.targetDesc(), stubPointer);
+            ForeignFunctionsRuntime.singleton().addDirectUpcallStubPointer(stubDescriptor.targetDesc(), stubDescriptor.jep(), stubPointer);
         }
 
         /**
          * Looks up a field of type {@link UnaryOperator}, reads its value and returns it. There
          * must be exactly one such field that is readable. Otherwise, an Error is thrown.
          */
-        private static UnaryOperator<MethodHandle> lookupAndReadUnaryOperatorField(AbstractLinker.UpcallStubFactory upcallStubFactory) {
-            Class<? extends AbstractLinker.UpcallStubFactory> upcallStubFactoryClass = upcallStubFactory.getClass();
-            List<Field> list = Arrays.stream(upcallStubFactoryClass.getDeclaredFields())
-                            .filter(field -> UnaryOperator.class.isAssignableFrom(field.getType())).toList();
-            if (list.size() != 1) {
-                throw VMError.shouldNotReachHere(COULD_NOT_EXTRACT_METHOD_HANDLE_FOR_UPCALL);
-            }
-            Field candidate = list.getFirst();
-            assert candidate != null;
+        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/UpcallLinker.java#L62-L110")
+        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/SharedUtils.java#L201-L207")
+        private static UnaryOperator<MethodHandle> lookupAndReadUnaryOperatorField(AbstractLinker.UpcallStubFactory outerFactory, boolean inMemoryReturn) {
+            AbstractLinker.UpcallStubFactory upcallStubFactory = outerFactory;
 
-            UnaryOperator<MethodHandle> value = ReflectionUtil.readField(upcallStubFactoryClass, candidate.getName(), upcallStubFactory);
+            /*
+             * The upcall stub factory created in 'UpcallLinker.makeFactory' may be decorated in
+             * 'SharedUtils.arrangeUpcallHelper' if an in-memory return is necessary. We need to
+             * extract the original factory first.
+             */
+            if (inMemoryReturn) {
+                Class<? extends AbstractLinker.UpcallStubFactory> outerFactoryClass = outerFactory.getClass();
+                Field upcallStubFactoryField = findSingleFieldOfType(AbstractLinker.UpcallStubFactory.class, outerFactoryClass.getDeclaredFields());
+                upcallStubFactory = ReflectionUtil.readField(outerFactoryClass, upcallStubFactoryField.getName(), outerFactory);
+            }
+
+            Class<? extends AbstractLinker.UpcallStubFactory> upcallStubFactoryClass = upcallStubFactory.getClass();
+            Field unaryOperatorField = findSingleFieldOfType(UnaryOperator.class, upcallStubFactoryClass.getDeclaredFields());
+            UnaryOperator<MethodHandle> value = ReflectionUtil.readField(upcallStubFactoryClass, unaryOperatorField.getName(), upcallStubFactory);
             if (value == null) {
                 throw VMError.shouldNotReachHere(COULD_NOT_EXTRACT_METHOD_HANDLE_FOR_UPCALL);
             }
 
             return value;
+        }
+
+        private static Field findSingleFieldOfType(Class<?> expectedFieldType, Field[] declaredFields) {
+            Field candidate = null;
+            for (Field field : declaredFields) {
+                if (expectedFieldType.isAssignableFrom(field.getType())) {
+                    if (candidate != null) {
+                        // found a second field of type 'expectedFieldType' -> fail
+                        throw VMError.shouldNotReachHere(COULD_NOT_EXTRACT_METHOD_HANDLE_FOR_UPCALL);
+                    }
+                    candidate = field;
+                }
+            }
+            if (candidate == null) {
+                // did not find any field of type 'expectedFieldType' -> fail
+                throw VMError.shouldNotReachHere(COULD_NOT_EXTRACT_METHOD_HANDLE_FOR_UPCALL);
+            }
+            return candidate;
         }
     }
 
@@ -491,7 +537,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         return created;
     }
 
-    private static final String JLI_PREFIX = "java.lang.invoke.";
+    private static final String JLI_PACKAGE = "java.lang.invoke";
 
     /**
      * List of (generated) classes that provide accessor methods for memory segments. Those methods
@@ -512,8 +558,8 @@ public class ForeignFunctionsFeature implements InternalFeature {
                     "VarHandleSegmentAsFloats",
                     "VarHandleSegmentAsDoubles");
 
-    private static void registerVarHandleMethodsForReflection(FeatureAccess access, Class<?> subtype) {
-        assert subtype.getPackage().getName().equals(JLI_PREFIX.substring(0, JLI_PREFIX.length() - 1));
+    private static void registerVarHandleMethodsForReflection(@SuppressWarnings("unused") FeatureAccess access, Class<?> subtype) {
+        assert JLI_PACKAGE.equals(subtype.getPackage().getName());
         RuntimeReflection.register(subtype.getDeclaredMethods());
     }
 
@@ -529,7 +575,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         AbiUtils.singleton().checkLibrarySupport();
 
         for (String simpleName : VAR_HANDLE_SEGMENT_ACCESSORS) {
-            Class<?> varHandleSegmentAsXClass = ReflectionUtil.lookupClass(JLI_PREFIX + simpleName);
+            Class<?> varHandleSegmentAsXClass = ReflectionUtil.lookupClass(JLI_PACKAGE + '.' + simpleName);
             access.registerSubtypeReachabilityHandler(ForeignFunctionsFeature::registerVarHandleMethodsForReflection, varHandleSegmentAsXClass);
         }
 
@@ -618,6 +664,10 @@ public class ForeignFunctionsFeature implements InternalFeature {
         registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(mappedMemoryUtils, "isLoaded", long.class, boolean.class, long.class));
         registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(mappedMemoryUtils, "unload", long.class, boolean.class, long.class));
         registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(SubstrateMappedMemoryUtils.class, "load", long.class, boolean.class, long.class));
+
+        // the actual method checking a valid session state (if not inlined) is also safe as this
+        // one would yield the error
+        registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(MemorySessionImpl.class, "checkValidStateRaw"));
     }
 
     protected void registerSafeArenaAccessorClass(MetaAccessProvider metaAccess, Class<?> klass) {
