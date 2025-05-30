@@ -90,7 +90,7 @@ final class TrustStoreManagerFeature implements InternalFeature {
          */
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         rci.initializeAtBuildTime("sun.security.util.UntrustedCertificates", "Required for TrustStoreManager");
-        if (FutureDefaultsOptions.isJDKInitializedAtBuildTime()) {
+        if (!FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
             /*
              * All security providers must be registered (and initialized) at buildtime (see
              * SecuritySubstitutions.java). XMLDSigRI is used for validating XML Signatures from

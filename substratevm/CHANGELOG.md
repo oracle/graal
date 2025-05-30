@@ -29,6 +29,8 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-64619) Missing registration errors are now subclasses of `LinkageError`
 * (GR-63591) Resource bundle registration is now included as part of the `"resources"` section of _reachability-metadata.json_. When this is the case, the bundle name is specified using the `"bundle"` field.
 * (GR-57827) Move the initialization of security providers from build time to runtime.
+* (GR-57827) Security providers can now be initialized at run time (instead of build time) when using the option `--future-defaults=all` or `--future-defaults=run-time-initialized-jdk`.
+Run-time initialization of security providers helps reduce image heap size by avoiding unnecessary objects inclusion.
 
 ## GraalVM for JDK 24 (Internal Version 24.2.0)
 * (GR-59717) Added `DuringSetupAccess.registerObjectReachabilityHandler` to allow registering a callback that is executed when an object of a specified type is marked as reachable during heap scanning.

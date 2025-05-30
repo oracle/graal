@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.svm.core.FutureDefaultsOptions;
@@ -60,7 +61,7 @@ public class SecurityServiceTest {
 
         @Override
         public void duringSetup(final DuringSetupAccess access) {
-            if (FutureDefaultsOptions.isJDKInitializedAtBuildTime()) {
+            if (!FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
                 // we use these (application) classes during Native image build
                 RuntimeClassInitialization.initializeAtBuildTime(NoOpService.class);
                 RuntimeClassInitialization.initializeAtBuildTime(NoOpProvider.class);
@@ -79,13 +80,7 @@ public class SecurityServiceTest {
      */
     @Test
     public void testSecurityProviderRuntimeRegistration() {
-        if (FutureDefaultsOptions.isJDKInitializedAtBuildTime()) {
-            /*
-             * The test only makes sense if we are using the new (run time) provider initialization
-             * policy.
-             */
-            return;
-        }
+        Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.isJDKInitializedAtRunTime());
         Provider notRegistered = Security.getProvider("no-op-provider");
         Assert.assertNull("Provider is registered.", notRegistered);
 

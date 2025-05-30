@@ -149,7 +149,7 @@ public class ServiceLoaderFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (FutureDefaultsOptions.isJDKInitializedAtBuildTime()) {
+        if (!FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
             servicesToSkip.add(java.security.Provider.class.getName());
         }
         servicesToSkip.addAll(Options.ServiceLoaderFeatureExcludeServices.getValue().values());
@@ -190,17 +190,11 @@ public class ServiceLoaderFeature implements InternalFeature {
             if (serviceProvidersToSkip.contains(provider)) {
                 continue;
             }
-            if (serviceProvider.equals(java.security.Provider.class)) {
-                SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
-                /* Only register the security providers that are requested. */
-                if (support.isUserRequestedSecurityProvider(provider)) {
-                    registerProviderForRuntimeReflectionAccess(access, provider, registeredProviders);
-                } else {
-                    support.markSecurityProviderAsNotLoaded(provider);
-                }
-                continue;
+            if (serviceProvider.equals(java.security.Provider.class) && !SecurityProvidersSupport.singleton().isUserRequestedSecurityProvider(provider)) {
+                SecurityProvidersSupport.singleton().markSecurityProviderAsNotLoaded(provider);
+            } else {
+                registerProviderForRuntimeReflectionAccess(access, provider, registeredProviders);
             }
-            registerProviderForRuntimeReflectionAccess(access, provider, registeredProviders);
         }
         registerProviderForRuntimeResourceAccess(access.getApplicationClassLoader().getUnnamedModule(), serviceProvider.getName(), registeredProviders);
     }

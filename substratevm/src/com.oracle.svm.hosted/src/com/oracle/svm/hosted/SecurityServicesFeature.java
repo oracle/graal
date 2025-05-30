@@ -121,6 +121,33 @@ import sun.security.jca.ProviderList;
 import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
 
+/**
+ * <p>
+ * This feature automatically registers security providers and their services for reflection and JNI
+ * access, ensuring they are available at run time.
+ *
+ * <p>
+ * The feature distinguishes between providers that are initialized at build time and those that are
+ * initialized at run time. This distinction is essential because certain providers may perform
+ * sensitive operations. Right now, all providers are initialized build-time by default, but that
+ * can be changed using --future-defaults=all or --future-defaults=run-time-initialized-jdk
+ *
+ * <p>
+ * The initialization strategy is:
+ * <ul>
+ * <li>Build-time Initialization: Most cryptographic infrastructure is initialized at build-time.
+ * This includes reflection metadata and service registration.</li>
+ * <li>Run-time Initialization: Classes that rely on system resources (e.g., {@code /dev/urandom},
+ * keystore passwords, or native Windows libraries) are marked for runtime initialization or the
+ * providers (if --future-defaults is used).</li>
+ * </ul>
+ *
+ * <p>
+ * This feature is automatically registered, but it can be controlled via the
+ * {@code EnableSecurityServicesFeature} option. For debugging or detailed inspection, tracing can
+ * be enabled via the {@code TraceSecurityServices} option.
+ */
+
 @AutomaticallyRegisteredFeature
 public class SecurityServicesFeature extends JNIRegistrationUtil implements InternalFeature {
 
@@ -161,7 +188,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static final String JKS = "JKS";
     private static final String X509 = "X.509";
     private static final String[] emptyStringArray = new String[0];
-    private static final String SECURITY_PROVIDERS_INITIALIZATION = "Initialize security provider at run time.";
 
     /** The list of known service classes defined by the JCA. */
     private static final List<Class<?>> knownServices;
@@ -238,35 +264,33 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        if (FutureDefaultsOptions.isJDKInitializedAtBuildTime()) {
+        RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        oidTableField = access.findField("sun.security.util.ObjectIdentifier", "oidTable");
+        oidMapField = access.findField(OIDMap.class, "oidMap");
+        if (!FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
             addManuallyConfiguredUsedProviders(a);
-
             verificationResultsField = access.findField("javax.crypto.JceSecurity", "verificationResults");
             providerListField = access.findField("sun.security.jca.Providers", "providerList");
             classCacheField = access.findField(Service.class, "classCache");
             constructorCacheField = access.findField(Service.class, "constructorCache");
-        }
-        oidTableField = access.findField("sun.security.util.ObjectIdentifier", "oidTable");
-        oidMapField = access.findField(OIDMap.class, "oidMap");
-
-        RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
-        if (FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+        } else {
+            SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, SecuritySubstitutions.class, false, "java.base", "sun.security.ec");
             Constructor<?> sunECConstructor = constructor(a, "sun.security.ec.SunEC");
-            SecurityProvidersSupport.singleton().setSunECConstructor(sunECConstructor);
+            support.setSunECConstructor(sunECConstructor);
 
             Properties securityProperties = SharedSecrets.getJavaSecurityPropertiesAccess().getInitialProperties();
-            SecurityProvidersSupport.singleton().setSavedInitialSecurityProperties(securityProperties);
+            support.setSavedInitialSecurityProperties(securityProperties);
 
             /*
-             * Security providers will be initialized at run time because the class initialization
-             * simulation will determine that automatically. For the three classes below, however,
-             * we need to handle this explicitly because their packages are already marked for
-             * initialization at build time by JdkInitializationFeature#afterRegistration.
+             * For the three providers below, their packages are explicitly initialized at build
+             * time in JdkInitializationFeature#afterRegistration. This unnecessarily includes them
+             * in the build-time initialization, so we need to mark them explicitly for run-time
+             * initialization instead.
              */
-            rci.initializeAtRunTime("java.security.Security", SECURITY_PROVIDERS_INITIALIZATION);
-            rci.initializeAtRunTime("sun.security.jca.Providers", SECURITY_PROVIDERS_INITIALIZATION);
-            rci.initializeAtRunTime("sun.security.provider.certpath.ldap.JdkLDAP", SECURITY_PROVIDERS_INITIALIZATION);
+            rci.initializeAtRunTime("java.security.Security", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("sun.security.jca.Providers", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("sun.security.provider.certpath.ldap.JdkLDAP", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
         }
 
         /*
@@ -311,7 +335,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         rci.initializeAtRunTime(clazz(access, "sun.security.ssl.SSLContextImpl$DefaultManagersHolder"), "for reading properties at run time");
 
         /*
-         * SSL debug logging enabled by javax.net.debug system property is setup during the class
+         * SSL debug logging enabled by javax.net.debug system property is set up during the class
          * initialization.
          */
         rci.initializeAtRunTime(clazz(access, "sun.security.ssl.SSLLogger"), "for reading properties at run time");
@@ -366,7 +390,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
         }
 
-        if (FutureDefaultsOptions.isJDKInitializedAtBuildTime()) {
+        if (!FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
             substitutionProcessor = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
 
             access.registerFieldValueTransformer(providerListField, new FieldValueTransformerWithAvailability() {
@@ -636,7 +660,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         /*
          * SPI classes, i.e., base classes for concrete service implementations, such as
          * java.security.MessageDigestSpi, can be dynamically loaded to double-check the base type
-         * of a newly allocated SPI object. This only applies to SPIs in the java.security package,
+         * of newly allocated SPI object. This only applies to SPIs in the java.security package,
          * but not any of its sub-packages. See java.security.Security.getSpiClass().
          */
         String serviceType = getServiceType(serviceClass);
@@ -725,7 +749,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         Field consParamClassField = ReflectionUtil.lookupField(clazz, "constructorParameterClass");
 
         /*
-         * The returned lambda captures the value of the Provider.knownEngines map retrieved above
+         * The returned lambda captures the value of the Provider.knownEngines map retrieved above,
          * and it uses it to find the parameterClass corresponding to the serviceType parameter.
          */
         return (serviceType) -> {
@@ -858,7 +882,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     /**
      * Register the default JavaKeyStore, JKS, for reflection. It is not registered as a key store
-     * implementation in any provider but it is registered as a primary key store for
+     * implementation in any provider, but it is registered as a primary key store for
      * JavaKeyStore$DualFormatJKS, i.e., the KeyStore.JKS implementation class in the SUN provider,
      * and dynamically allocated by sun.security.provider.KeyStoreDelegator.engineLoad().
      */
@@ -895,12 +919,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        if (FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
-            access.rescanRoot(oidTableField);
-        } else {
+        access.rescanRoot(oidTableField);
+        if (!FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
             maybeScanVerificationResultsField(access);
             maybeScanProvidersField(access);
-            access.rescanRoot(oidTableField);
             if (cachedProviders != null) {
                 for (Provider provider : cachedProviders.providers()) {
                     for (Service service : provider.getServices()) {
