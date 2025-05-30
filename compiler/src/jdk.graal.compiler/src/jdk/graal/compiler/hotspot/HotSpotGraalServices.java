@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import java.util.Objects;
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotObjectConstantScope;
+import jdk.vm.ci.hotspot.HotSpotProfilingInfo;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.hotspot.VMIntrinsicMethod;
@@ -48,9 +49,6 @@ import jdk.vm.ci.meta.SpeculationLog;
 public class HotSpotGraalServices {
 
     private static final Method methodGetOopMapAt;
-    private static final Class<?> hotspotProfilingInfoClass;
-    private static final Method getDecompileCountMethod;
-    private static final Field methodDataField;
 
     static {
         Method getOopMapAt = null;
@@ -61,18 +59,6 @@ public class HotSpotGraalServices {
         }
 
         methodGetOopMapAt = getOopMapAt;
-
-        try {
-            @SuppressWarnings("unchecked")
-            Class<?> hotspotMethodData = Class.forName("jdk.vm.ci.hotspot.HotSpotMethodData");
-            hotspotProfilingInfoClass = Class.forName("jdk.vm.ci.hotspot.HotSpotProfilingInfo");
-            methodDataField = hotspotProfilingInfoClass.getDeclaredField("methodData");
-            methodDataField.setAccessible(true);
-            getDecompileCountMethod = hotspotMethodData.getDeclaredMethod("getDecompileCount");
-            getDecompileCountMethod.setAccessible(true);
-        } catch (ClassNotFoundException | NoSuchMethodException | NoSuchFieldException e) {
-            throw new InternalError("decompile count isn't available", e);
-        }
     }
 
     /**
@@ -108,13 +94,8 @@ public class HotSpotGraalServices {
      */
     public static int getDecompileCount(ResolvedJavaMethod method) {
         ProfilingInfo info = method.getProfilingInfo();
-        if (hotspotProfilingInfoClass.isAssignableFrom(info.getClass())) {
-            try {
-                Object methodData = methodDataField.get(info);
-                return (int) getDecompileCountMethod.invoke(methodData);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new RuntimeException(info.toString(), e);
-            }
+        if (info instanceof HotSpotProfilingInfo hotSpotProfilingInfo) {
+            return hotSpotProfilingInfo.getDecompileCount();
         }
         return -1;
     }
