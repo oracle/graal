@@ -112,18 +112,42 @@ public class AMD64HotSpotShenandoahLoadRefBarrierOp extends AMD64LIRInstruction 
 
     private final HotSpotProviders providers;
     private final GraalHotSpotVMConfig config;
+
+    /**
+     * The slow-path entry for the load-reference-barrier.
+     */
     private final ForeignCallLinkage callTarget;
+
+    /**
+     * Strength (strong, weak, phantom) of incoming object reference. This
+     * affects whether or not the barrier needs to be active in the weak-roots
+     * phase, and whether or not we need to check for the object to be in
+     * the collection set.
+     */
     private final ShenandoahLoadRefBarrierNode.ReferenceStrength strength;
+
+    /**
+     * If we know that the incoming object is not null, then we don't need to emit a null-check.
+     */
     private final boolean notNull;
 
     @Temp({REG}) private AllocatableValue tmp;
 
     @Temp({REG}) private AllocatableValue tmp2;
 
+    /**
+     * The output of the LRB. Passes the canonicalized reference to the consumer.
+     */
     @Def({REG}) private AllocatableValue result;
 
+    /**
+     * The input of the LRB. This is typically a reference that has just been loaded.
+     */
     @Alive({REG}) private AllocatableValue object;
 
+    /**
+     * The address from where the reference has been loaded, if any.
+     */
     @Alive({COMPOSITE}) private AMD64AddressValue loadAddress;
 
     public AMD64HotSpotShenandoahLoadRefBarrierOp(GraalHotSpotVMConfig config, HotSpotProviders providers,

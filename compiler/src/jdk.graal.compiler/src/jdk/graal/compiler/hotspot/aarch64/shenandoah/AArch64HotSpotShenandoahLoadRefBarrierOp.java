@@ -65,7 +65,7 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
         // Heap is under evacuation: needs LRB barriers. (Set together with HAS_FORWARDED)
         EVACUATION_BITPOS(2),
 
-        // Heap is under updating: needs no additional barriers.
+        // Heap is under updating: no additional barriers needed.
         UPDATE_REFS_BITPOS(3),
 
         // Heap is under weak-reference/roots processing: needs weak-LRB barriers.
@@ -111,14 +111,38 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
     private final HotSpotProviders providers;
     private final GraalHotSpotVMConfig config;
 
-    @Def({REG}) protected AllocatableValue result;
-    @Use({REG}) protected AllocatableValue object;
-    @Alive({COMPOSITE}) protected AArch64AddressValue loadAddress;
+    /**
+     * The slow-path entry for the load-reference-barrier.
+     */
+    private final ForeignCallLinkage callTarget;
 
-    protected final ForeignCallLinkage callTarget;
+    /**
+     * Strength (strong, weak, phantom) of incoming object reference. This
+     * affects whether or not the barrier needs to be active in the weak-roots
+     * phase, and whether or not we need to check for the object to be in
+     * the collection set.
+     */
+    private final ShenandoahLoadRefBarrierNode.ReferenceStrength strength;
 
-    ShenandoahLoadRefBarrierNode.ReferenceStrength strength;
-    boolean notNull;
+    /**
+     * If we know that the incoming object is not null, then we don't need to emit a null-check.
+     */
+    private final boolean notNull;
+
+    /**
+     * The output of the LRB. Passes the canonicalized reference to the consumer.
+     */
+    @Def({REG}) private AllocatableValue result;
+
+    /**
+     * The input of the LRB. This is typically a reference that has just been loaded.
+     */
+    @Use({REG}) private AllocatableValue object;
+
+    /**
+     * The address from where the reference has been loaded, if any.
+     */
+    @Alive({COMPOSITE}) private AArch64AddressValue loadAddress;
 
     public AArch64HotSpotShenandoahLoadRefBarrierOp(GraalHotSpotVMConfig config, HotSpotProviders providers,
                     AllocatableValue result, AllocatableValue object, AArch64AddressValue loadAddress,

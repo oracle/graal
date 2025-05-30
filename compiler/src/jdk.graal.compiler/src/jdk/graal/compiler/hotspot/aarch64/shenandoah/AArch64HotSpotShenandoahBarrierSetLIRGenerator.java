@@ -79,7 +79,7 @@ public class AArch64HotSpotShenandoahBarrierSetLIRGenerator implements Shenandoa
     @Override
     public void emitPreWriteBarrier(LIRGeneratorTool lirTool, Value address, AllocatableValue expectedObject, boolean nonNull) {
         AllocatableValue temp = lirTool.newVariable(LIRKind.value(AArch64Kind.QWORD));
-        // If the assembly must load the value then it's needs a temporary to store it
+        // If the assembly must load the value then it needs a temporary to store it.
         AllocatableValue temp2 = expectedObject.equals(Value.ILLEGAL) ? lirTool.newVariable(LIRKind.value(AArch64Kind.QWORD)) : Value.ILLEGAL;
 
         // Load the address into a register

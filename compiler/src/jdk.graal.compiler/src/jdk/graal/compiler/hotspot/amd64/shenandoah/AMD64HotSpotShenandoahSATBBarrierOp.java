@@ -56,13 +56,28 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
  */
 public class AMD64HotSpotShenandoahSATBBarrierOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64HotSpotShenandoahSATBBarrierOp> TYPE = LIRInstructionClass.create(AMD64HotSpotShenandoahSATBBarrierOp.class);
+
     private final GraalHotSpotVMConfig config;
     private final HotSpotProviders providers;
+
+    /**
+     * The SATB slow-path runtime entry.
+     */
     private final ForeignCallLinkage callTarget;
+
+    /**
+     * If we know that the previous value is not null, then we don't need to emit a null-check.
+     */
     private final boolean nonNull;
 
+    /**
+     * The store address.
+     */
     @Alive private Value address;
 
+    /**
+     * The pre-loaded previous value, if any.
+     */
     @Alive({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value expectedObject;
 
     @Temp private Value temp;

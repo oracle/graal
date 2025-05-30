@@ -436,14 +436,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int g1CardQueueBufferOffset = getConstant("G1ThreadLocalData::dirty_card_queue_buffer_offset", Integer.class, -1, !g1LowLatencyPostWriteBarrierSupport);
     public final int g1CardTableBaseOffset = getConstant("G1ThreadLocalData::card_table_base_offset", Integer.class, -1, g1LowLatencyPostWriteBarrierSupport);
 
-    public final boolean hasShenandoahGC = getStore().getConstants().containsKey("INCLUDE_SHENANDOAHGC") && getConstant("INCLUDE_SHENANDOAHGC", Boolean.class);
-    public final int shenandoahGCStateOffset = getConstant("ShenandoahThreadLocalData::gc_state_offset", Integer.class, -1, hasShenandoahGC);
-    public final int shenandoahSATBIndexOffset = getConstant("ShenandoahThreadLocalData::satb_mark_queue_index_offset", Integer.class, -1, hasShenandoahGC);
-    public final int shenandoahSATBBufferOffset = getConstant("ShenandoahThreadLocalData::satb_mark_queue_buffer_offset", Integer.class, -1, hasShenandoahGC);
-    public final int shenandoahCardTableOffset = getConstant("ShenandoahThreadLocalData::card_table_offset", Integer.class, -1, hasShenandoahGC);
-    public final int shenandoahGCRegionSizeBytesShift = getFieldValue("CompilerToVM::Data::shenandoah_region_size_bytes_shift", Integer.class, "int", -1, hasShenandoahGC);
-    public final long shenandoahGCCSetFastTestAddress = getFieldValue("CompilerToVM::Data::shenandoah_in_cset_fast_test_addr", Long.class, "address", -1L, hasShenandoahGC);
-
     public final int klassOffset = getFieldValue("java_lang_Class::_klass_offset", Integer.class, "int");
     public final int arrayKlassOffset = getFieldValue("java_lang_Class::_array_klass_offset", Integer.class, "int");
 
@@ -627,6 +619,28 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long zBarrierSetRuntimeLoadBarrierOnOopArray = getZGCAddressField("ZBarrierSetRuntime::load_barrier_on_oop_array");
     public final int zPointerLoadShift = getConstant("ZPointerLoadShift", Integer.class, -1, osArch.equals("aarch64") && zgcSupport);
 
+    /*
+     * Shenandoah GC support.
+     */
+    /**
+     * Indicates whether or not the HotSpot VM has been built with Shenandoah support.
+     * If not, then we don't expect the Shenandoah symbols to be present in JVMCI.
+     */
+    public final boolean hasShenandoahGC = getStore().getConstants().containsKey("INCLUDE_SHENANDOAHGC") && getConstant("INCLUDE_SHENANDOAHGC", Boolean.class);
+
+    /*
+     * Various Shenandoah GC constants.
+     */
+    public final int shenandoahGCStateOffset = getConstant("ShenandoahThreadLocalData::gc_state_offset", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahSATBIndexOffset = getConstant("ShenandoahThreadLocalData::satb_mark_queue_index_offset", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahSATBBufferOffset = getConstant("ShenandoahThreadLocalData::satb_mark_queue_buffer_offset", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahCardTableOffset = getConstant("ShenandoahThreadLocalData::card_table_offset", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahGCRegionSizeBytesShift = getFieldValue("CompilerToVM::Data::shenandoah_region_size_bytes_shift", Integer.class, "int", -1, hasShenandoahGC);
+    public final long shenandoahGCCSetFastTestAddress = getFieldValue("CompilerToVM::Data::shenandoah_in_cset_fast_test_addr", Long.class, "address", -1L, hasShenandoahGC);
+
+    /*
+     * Shenandoah barrier slow-paths.
+     */
     public final long shenandoahLoadBarrierStrong = getAddress("ShenandoahRuntime::load_reference_barrier_strong", -1L, hasShenandoahGC);
     public final long shenandoahLoadBarrierStrongNarrow = getAddress("ShenandoahRuntime::load_reference_barrier_strong_narrow", -1L, hasShenandoahGC);
     public final long shenandoahLoadBarrierWeak = getAddress("ShenandoahRuntime::load_reference_barrier_weak", -1L, hasShenandoahGC);

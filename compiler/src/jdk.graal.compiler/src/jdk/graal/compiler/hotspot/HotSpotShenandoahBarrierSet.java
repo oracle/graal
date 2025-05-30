@@ -44,7 +44,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * locations and compressed references.
  */
 public class HotSpotShenandoahBarrierSet extends ShenandoahBarrierSet {
-    private CompressEncoding oopEncoding;
+    private final CompressEncoding oopEncoding;
 
     public HotSpotShenandoahBarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField, GraalHotSpotVMConfig config) {
         super(objectArrayType, referentField);

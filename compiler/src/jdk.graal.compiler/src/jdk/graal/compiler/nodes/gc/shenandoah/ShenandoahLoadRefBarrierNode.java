@@ -58,11 +58,25 @@ public final class ShenandoahLoadRefBarrierNode extends ValueNode implements LIR
         PHANTOM;
     }
 
+    /**
+     * The input value. Typically this is a reference that has just been loaded.
+     * The barrier output represents the canonicalized reference.
+     */
     @Input private ValueNode value;
 
+    /**
+     * The address from which the input value has been loaded, if any/known.
+     */
     @Input(InputType.Association) private AddressNode address;
 
+    /**
+     * The strength of the loaded reference.
+     */
     private final ReferenceStrength strength;
+
+    /**
+     * Whether the reference is compressed.
+     */
     private final boolean narrow;
 
     private static ReferenceStrength getReferenceStrength(BarrierType barrierType) {

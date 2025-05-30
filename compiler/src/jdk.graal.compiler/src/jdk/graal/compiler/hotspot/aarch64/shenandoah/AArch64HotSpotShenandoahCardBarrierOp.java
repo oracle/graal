@@ -51,8 +51,12 @@ public class AArch64HotSpotShenandoahCardBarrierOp extends AArch64LIRInstruction
     private final GraalHotSpotVMConfig config;
     private final HotSpotProviders providers;
 
-    @Alive({COMPOSITE}) protected AArch64AddressValue address;
-    @Temp({REG}) protected AllocatableValue tmp;
+    /**
+     * The store address.
+     */
+    @Alive({COMPOSITE}) private AArch64AddressValue address;
+
+    @Temp({REG}) private AllocatableValue tmp;
 
     protected AArch64HotSpotShenandoahCardBarrierOp(GraalHotSpotVMConfig config, HotSpotProviders providers, AArch64AddressValue addr, AllocatableValue tmp) {
         super(TYPE);

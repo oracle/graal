@@ -56,19 +56,33 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
  */
 public class AArch64HotSpotShenandoahSATBBarrierOp extends AArch64LIRInstruction {
     public static final LIRInstructionClass<AArch64HotSpotShenandoahSATBBarrierOp> TYPE = LIRInstructionClass.create(AArch64HotSpotShenandoahSATBBarrierOp.class);
+
     private final GraalHotSpotVMConfig config;
     private final HotSpotProviders providers;
 
+    /**
+     * The SATB slow-path runtime entry.
+     */
+    private final ForeignCallLinkage callTarget;
+
+    /**
+     * If we know that the previous value is not null, then we don't need to emit a null-check.
+     */
+    private final boolean nonNull;
+
+    /**
+     * The store address.
+     */
     @Alive private Value address;
 
+    /**
+     * The pre-loaded previous value, if any.
+     */
     @Alive({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value expectedObject;
 
     @Temp private Value temp;
 
     @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value temp2;
-
-    private final ForeignCallLinkage callTarget;
-    private final boolean nonNull;
 
     public AArch64HotSpotShenandoahSATBBarrierOp(GraalHotSpotVMConfig config, HotSpotProviders providers,
                     AllocatableValue address, AllocatableValue expectedObject, AllocatableValue temp, AllocatableValue temp2, ForeignCallLinkage callTarget, boolean nonNull) {
