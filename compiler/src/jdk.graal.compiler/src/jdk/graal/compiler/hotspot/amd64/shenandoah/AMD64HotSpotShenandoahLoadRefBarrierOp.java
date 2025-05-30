@@ -57,60 +57,6 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 public class AMD64HotSpotShenandoahLoadRefBarrierOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64HotSpotShenandoahLoadRefBarrierOp> TYPE = LIRInstructionClass.create(AMD64HotSpotShenandoahLoadRefBarrierOp.class);
 
-    enum GCStateBitPos {
-        // Heap has forwarded objects: needs LRB barriers.
-        HAS_FORWARDED_BITPOS(0),
-
-        // Heap is under marking: needs SATB barriers.
-        // For generational mode, it means either young or old marking, or both.
-        MARKING_BITPOS(1),
-
-        // Heap is under evacuation: needs LRB barriers. (Set together with HAS_FORWARDED)
-        EVACUATION_BITPOS(2),
-
-        // Heap is under updating: needs no additional barriers.
-        UPDATE_REFS_BITPOS(3),
-
-        // Heap is under weak-reference/roots processing: needs weak-LRB barriers.
-        WEAK_ROOTS_BITPOS(4),
-
-        // Young regions are under marking, need SATB barriers.
-        YOUNG_MARKING_BITPOS(5),
-
-        // Old regions are under marking, need SATB barriers.
-        OLD_MARKING_BITPOS(6);
-
-        private final int value;
-
-        GCStateBitPos(int val) {
-            this.value = val;
-        }
-
-        public int getValue() {
-            return this.value;
-        }
-    }
-
-    enum GCState {
-        HAS_FORWARDED(1 << GCStateBitPos.HAS_FORWARDED_BITPOS.value),
-        MARKING(1 << GCStateBitPos.MARKING_BITPOS.value),
-        EVACUATION(1 << GCStateBitPos.EVACUATION_BITPOS.value),
-        UPDATE_REFS(1 << GCStateBitPos.UPDATE_REFS_BITPOS.value),
-        WEAK_ROOTS(1 << GCStateBitPos.WEAK_ROOTS_BITPOS.value),
-        YOUNG_MARKING(1 << GCStateBitPos.YOUNG_MARKING_BITPOS.value),
-        OLD_MARKING(1 << GCStateBitPos.OLD_MARKING_BITPOS.value);
-
-        private final int value;
-
-        GCState(int val) {
-            this.value = val;
-        }
-
-        public int getValue() {
-            return this.value;
-        }
-    }
-
     private final HotSpotProviders providers;
     private final GraalHotSpotVMConfig config;
 
@@ -201,9 +147,9 @@ public class AMD64HotSpotShenandoahLoadRefBarrierOp extends AMD64LIRInstruction 
             // weak-roots phase but no evacuation/update-refs phase, and during that,
             // we need to take the LRB to report null for unreachable weak-refs.
             // This is true even for non-cset objects.
-            masm.testlAndJcc(rtmp1, GCState.HAS_FORWARDED.getValue() | GCState.WEAK_ROOTS.getValue(), AMD64Assembler.ConditionFlag.NotZero, slowPath, false);
+            masm.testlAndJcc(rtmp1, config.shenandoahGCStateHasForwarded | config.shenandoahGCStateWeakRoots, AMD64Assembler.ConditionFlag.NotZero, slowPath, false);
         } else {
-            masm.testlAndJcc(rtmp1, GCState.HAS_FORWARDED.getValue(), AMD64Assembler.ConditionFlag.NotZero, csetCheck, false);
+            masm.testlAndJcc(rtmp1, config.shenandoahGCStateHasForwarded, AMD64Assembler.ConditionFlag.NotZero, csetCheck, false);
         }
         masm.bind(done);
 

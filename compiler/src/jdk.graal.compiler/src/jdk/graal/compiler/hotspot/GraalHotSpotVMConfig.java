@@ -641,6 +641,14 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int shenandoahGCRegionSizeBytesShift = getFieldValue("CompilerToVM::Data::shenandoah_region_size_bytes_shift", Integer.class, "int", -1, hasShenandoahGC);
     public final long shenandoahGCCSetFastTestAddress = getFieldValue("CompilerToVM::Data::shenandoah_in_cset_fast_test_addr", Long.class, "address", -1L, hasShenandoahGC);
 
+    public final int shenandoahGCStateHasForwarded = getConstant("ShenandoahHeap::HAS_FORWARDED", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahGCStateMarking = getConstant("ShenandoahHeap::MARKING", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahGCStateEvacuation = getConstant("ShenandoahHeap::EVACUATION", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahGCStateUpdateRefs = getConstant("ShenandoahHeap::UPDATE_REFS", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahGCStateWeakRoots = getConstant("ShenandoahHeap::WEAK_ROOTS", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahGCStateYoungMarking = getConstant("ShenandoahHeap::YOUNG_MARKING", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahGCStateOldMarking = getConstant("ShenandoahHeap::OLD_MARKING", Integer.class, -1, hasShenandoahGC);
+
     /*
      * Shenandoah barrier slow-paths.
      */
