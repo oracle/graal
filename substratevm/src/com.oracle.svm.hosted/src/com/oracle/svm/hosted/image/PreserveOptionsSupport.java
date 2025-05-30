@@ -32,9 +32,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -143,7 +141,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
     }
 
     public static void registerPreservedClasses(NativeImageClassLoaderSupport classLoaderSupport) {
-        var classesOrPackagesToIgnore = ignoredClassesOrPackagesForPreserve();
+        var classesOrPackagesToIgnore = SubstrateOptions.IgnorePreserveForClasses.getValue().valuesAsSet();
         var classesToPreserve = classLoaderSupport.getClassesToPreserve()
                         .filter(ClassInclusionPolicy::isClassIncludedBase)
                         .filter(c -> !(classesOrPackagesToIgnore.contains(c.getPackageName()) || classesOrPackagesToIgnore.contains(c.getName())))
@@ -223,12 +221,5 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         for (String className : classLoaderSupport.getClassNamesToPreserve()) {
             reflection.registerClassLookup(always, className);
         }
-    }
-
-    private static Set<String> ignoredClassesOrPackagesForPreserve() {
-        Set<String> ignoredClassesOrPackages = new HashSet<>(SubstrateOptions.IgnorePreserveForClasses.getValue().valuesAsSet());
-        // GR-63360: Parsing of constant_ lambda forms fails
-        ignoredClassesOrPackages.add("java.lang.invoke.LambdaForm$Holder");
-        return Collections.unmodifiableSet(ignoredClassesOrPackages);
     }
 }
