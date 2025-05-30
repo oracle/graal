@@ -139,9 +139,6 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
      */
     @Use({REG}) private AllocatableValue object;
 
-    /**
-     * The address from where the reference has been loaded, if any.
-     */
     @Alive({COMPOSITE}) private AArch64AddressValue loadAddress;
 
     public AArch64HotSpotShenandoahLoadRefBarrierOp(GraalHotSpotVMConfig config, HotSpotProviders providers,
@@ -163,7 +160,6 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         try (AArch64MacroAssembler.ScratchRegister sc1 = masm.getScratchRegister()) {
-            // System.out.println("Emitting Shenandoah load reference barrier");
             Register rscratch1 = sc1.getRegister();
             Register objectRegister = asRegister(object);
             AArch64Address loadAddr = loadAddress.toAddress();
