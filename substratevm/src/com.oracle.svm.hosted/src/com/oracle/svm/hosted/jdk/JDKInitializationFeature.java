@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -141,6 +141,34 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("java.awt.font.TextAttribute", "Required for sun.text.bidi.BidiBase.NumericShapings");
         rci.initializeAtBuildTime("java.awt.font.NumericShaper", "Required for sun.text.bidi.BidiBase.NumericShapings");
         rci.initializeAtBuildTime("java.awt.font.JavaAWTFontAccessImpl", "Required for sun.text.bidi.BidiBase.NumericShapings");
+
+        /* FileSystemProviders related */
+        if (FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+            rci.initializeAtRunTime("java.nio.file.spi", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("sun.nio.fs", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+
+            rci.initializeAtRunTime("java.nio.file.FileSystems", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("java.nio.file.FileSystems$DefaultFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+
+            rci.initializeAtRunTime("java.util.zip.ZipFile$Source", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("java.util.zip.ZipFile$Source", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+
+            rci.initializeAtRunTime("java.io.FileSystem", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("java.io.FileSystem$CurrentWorkingDirectoryHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("java.io.UnixFileSystem", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("java.io.WindowsFileSystem", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+
+            rci.initializeAtBuildTime("java.io.File", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtBuildTime("sun.nio.fs.UnixPath", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtBuildTime("sun.nio.fs.WindowsPath", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+
+            // holder for the default file system
+            rci.initializeAtRunTime("com.oracle.svm.core.jdk.runtimeinit.DefaultFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("com.oracle.svm.core.jdk.runtimeinit.SunNioFsDefaultFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+
+            // JrtFS support
+            rci.initializeAtBuildTime("jdk.internal.jrtfs.SystemImage", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+        }
 
         /* XML-related */
         if (FutureDefaultsOptions.isJDKInitializedAtRunTime()) {

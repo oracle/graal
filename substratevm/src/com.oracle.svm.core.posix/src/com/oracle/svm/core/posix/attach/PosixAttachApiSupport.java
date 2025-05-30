@@ -26,7 +26,7 @@
 
 package com.oracle.svm.core.posix.attach;
 
-import java.nio.file.Paths;
+import java.nio.file.FileSystems;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -181,7 +181,7 @@ public class PosixAttachApiSupport implements AttachApiSupport {
         if (cachedSocketFilePath == null) {
             long pid = ProcessHandle.current().pid();
             String tempDir = Target_jdk_internal_vm_VMSupport.getVMTemporaryDirectory();
-            cachedSocketFilePath = Paths.get(tempDir, ".java_pid" + pid).toString();
+            cachedSocketFilePath = tempDir + FileSystems.getDefault().getSeparator() + ".java_pid" + pid;
         }
         return cachedSocketFilePath;
     }
