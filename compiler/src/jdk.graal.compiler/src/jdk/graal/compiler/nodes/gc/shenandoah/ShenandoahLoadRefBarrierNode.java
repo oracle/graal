@@ -52,6 +52,9 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
 public final class ShenandoahLoadRefBarrierNode extends ValueNode implements LIRLowerable {
     public static final NodeClass<ShenandoahLoadRefBarrierNode> TYPE = NodeClass.create(ShenandoahLoadRefBarrierNode.class);
 
+    /**
+     * Strength of the input reference, determines generated code and slow-path call.
+     */
     public enum ReferenceStrength {
         STRONG,
         WEAK,
