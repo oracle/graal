@@ -32,6 +32,7 @@ import java.util.Queue;
 import java.util.TreeMap;
 
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.image.ImageHeapLayingOutControl;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 
@@ -72,40 +73,42 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         objects.add(obj);
     }
 
-    void layout(ChunkedImageHeapAllocator allocator) {
+    void layout(ChunkedImageHeapAllocator allocator, ImageHeapLayingOutControl control) {
         if (hugeObjects) {
-            layoutInUnalignedChunks(allocator);
+            layoutInUnalignedChunks(allocator, control);
         } else {
-            layoutInAlignedChunks(allocator);
+            layoutInAlignedChunks(allocator, control);
         }
     }
 
-    private void layoutInUnalignedChunks(ChunkedImageHeapAllocator allocator) {
+    private void layoutInUnalignedChunks(ChunkedImageHeapAllocator allocator, ImageHeapLayingOutControl control) {
         allocator.finishAlignedChunk();
         allocator.alignBetweenChunks(getStartAlignment());
         startOffset = allocator.getPosition();
 
         for (ImageHeapObject info : objects) { // No need to sort by size
             appendAllocatedObject(info, allocator.allocateUnalignedChunkForObject(info, isWritable()));
+            control.heartbeat();
         }
 
         allocator.alignBetweenChunks(getEndAlignment());
         endOffset = allocator.getPosition();
     }
 
-    private void layoutInAlignedChunks(ChunkedImageHeapAllocator allocator) {
+    private void layoutInAlignedChunks(ChunkedImageHeapAllocator allocator, ImageHeapLayingOutControl control) {
         allocator.maybeStartAlignedChunk();
         allocator.alignInAlignedChunk(getStartAlignment());
         startOffset = allocator.getPosition();
 
-        allocateObjectsInAlignedChunks(allocator);
+        allocateObjectsInAlignedChunks(allocator, control);
 
         allocator.alignInAlignedChunk(getEndAlignment());
         endOffset = allocator.getPosition();
     }
 
-    private void allocateObjectsInAlignedChunks(ChunkedImageHeapAllocator allocator) {
+    private void allocateObjectsInAlignedChunks(ChunkedImageHeapAllocator allocator, ImageHeapLayingOutControl control) {
         NavigableMap<Long, Queue<ImageHeapObject>> sortedObjects = createSortedObjectsMap();
+        control.heartbeat();
         while (!sortedObjects.isEmpty()) {
             ImageHeapObject info = dequeueBestFit(sortedObjects, allocator.getRemainingBytesInAlignedChunk());
             if (info == null) {
@@ -113,6 +116,7 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
             } else {
                 appendAllocatedObject(info, allocator.allocateObjectInAlignedChunk(info, isWritable()));
             }
+            control.heartbeat();
         }
     }
 
