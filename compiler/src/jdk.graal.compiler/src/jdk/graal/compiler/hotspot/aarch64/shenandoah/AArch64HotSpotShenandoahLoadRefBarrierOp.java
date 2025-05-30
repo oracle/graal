@@ -34,6 +34,7 @@ import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.aarch64.AArch64AddressValue;
 import jdk.graal.compiler.lir.aarch64.AArch64Call;
 import jdk.graal.compiler.lir.aarch64.AArch64LIRInstruction;
@@ -158,6 +159,10 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
     }
 
     @Override
+    // @formatter:off
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/a2743bab4fd203b0791cf47e617c1a95b05ab3cc/src/hotspot/cpu/aarch64/gc/shenandoah/shenandoahBarrierSetAssembler_aarch64.cpp#L232-L309",
+              sha1 = "4ed44f985dfdca39bf93c6d306a378be4bf88fe7")
+    // @formatter:on
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         try (AArch64MacroAssembler.ScratchRegister sc1 = masm.getScratchRegister()) {
             Register rscratch1 = sc1.getRegister();

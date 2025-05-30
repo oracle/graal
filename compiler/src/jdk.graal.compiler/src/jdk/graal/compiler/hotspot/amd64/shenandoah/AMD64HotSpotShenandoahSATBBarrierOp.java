@@ -37,6 +37,7 @@ import jdk.graal.compiler.hotspot.amd64.AMD64HotSpotMacroAssembler;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.amd64.AMD64Call;
 import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
 import jdk.graal.compiler.lir.amd64.AMD64Move;
@@ -115,6 +116,10 @@ public class AMD64HotSpotShenandoahSATBBarrierOp extends AMD64LIRInstruction {
     }
 
     @Override
+    // @formatter:off
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/a2743bab4fd203b0791cf47e617c1a95b05ab3cc/src/hotspot/cpu/x86/gc/shenandoah/shenandoahBarrierSetAssembler_x86.cpp#L189-L294",
+              sha1 = "8fb9ab816c4ee89723e0cf3efb15dcea87128044")
+    // @formatter:on
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         Register storeAddress = asRegister(address);
         Register thread = providers.getRegisters().getThreadRegister();

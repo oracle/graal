@@ -33,6 +33,7 @@ import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
 import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
@@ -71,6 +72,10 @@ public class AMD64HotSpotShenandoahCardBarrierOp extends AMD64LIRInstruction {
     }
 
     @Override
+    // @formatter:off
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/a2743bab4fd203b0791cf47e617c1a95b05ab3cc/src/hotspot/cpu/x86/gc/shenandoah/shenandoahBarrierSetAssembler_x86.cpp#L509-L535",
+              sha1 = "ad163e79b0707221700bb3b2230581fb711ded61")
+    // @formatter:on
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         Register rtmp1 = asRegister(tmp);
         Register rtmp2 = asRegister(tmp2);
