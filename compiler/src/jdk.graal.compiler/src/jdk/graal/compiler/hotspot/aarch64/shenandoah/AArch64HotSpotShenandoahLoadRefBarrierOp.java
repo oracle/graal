@@ -161,7 +161,7 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
                         masm.mov(rtmp1, HotSpotReplacementsUtil.shenandoahGCCSetFastTestAddr(config));
                         masm.lsr(64, rtmp2, objectRegister, HotSpotReplacementsUtil.shenandoahGCRegionSizeBytesShift(config));
                         masm.ldr(8, rtmp2, AArch64Address.createRegisterOffsetAddress(8, rtmp1, rtmp2, false));
-                        masm.cbnz(8, rtmp2, slowPath);
+                        masm.cbnz(32, rtmp2, slowPath);
                         masm.jmp(done);
                     }
                 });

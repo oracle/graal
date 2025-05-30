@@ -189,7 +189,7 @@ public class ShenandoahBarrierSet implements BarrierSet {
             case WriteNode write -> addWriteBarriers(write, write.value(), null);
             case LoweredAtomicReadAndWriteNode atomic -> {
                 if (useCASBarrier) {
-                    addWriteBarriers(atomic, atomic.getNewValue(), atomic);
+                    addWriteBarriers(atomic, atomic.getNewValue(), null);
                     addReadNodeBarriers(atomic);
                 }
             }
