@@ -4,6 +4,7 @@
 # Note that using a os-arch mixin like linux_amd64 mixin is required for using common.deps.
 
 local common_json = import "../common.json";
+local std_get = (import "ci_common/common-utils.libsonnet").std_get;
 
 {
   # JDK definitions
@@ -286,9 +287,8 @@ local common_json = import "../common.json";
         if (self.os == "linux" && self.arch == "amd64") then {
           readline: '==6.3',
           pcre2: '==10.37',
-          curl: '==7.50.1',
           gnur: '==4.0.3-gcc4.8.5-pcre2',
-        }
+        } + if (std_get(self, 'os_distro', '') == 'ol' && std_get(self, 'os_distro_version', '') == '9') then {curl: '==7.78.0'} else {curl: '==7.50.1'}
         else if (self.os == "darwin" && self.arch == "amd64") then {
           'pcre2': '==10.37',
         } else {},
