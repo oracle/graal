@@ -76,7 +76,7 @@ public class AArch64HotSpotShenandoahSATBBarrierOp extends AArch64LIRInstruction
         this.config = config;
         this.providers = providers;
         this.address = address;
-        assert expectedObject.equals(Value.ILLEGAL) ^ temp2.equals(Value.ILLEGAL) : "only one register is necessary";
+        GraalError.guarantee(expectedObject.equals(Value.ILLEGAL) ^ temp2.equals(Value.ILLEGAL), "only one register is necessary");
         this.expectedObject = expectedObject;
         this.temp = temp;
         this.temp2 = temp2;

@@ -79,7 +79,7 @@ public class AMD64HotSpotShenandoahSATBBarrierOp extends AMD64LIRInstruction {
         this.config = config;
         this.providers = providers;
         this.address = address;
-        assert expectedObject.equals(Value.ILLEGAL) ^ temp2.equals(Value.ILLEGAL) : "only one register is necessary";
+        GraalError.guarantee(expectedObject.equals(Value.ILLEGAL) ^ temp2.equals(Value.ILLEGAL), "only one register is necessary");
         this.expectedObject = expectedObject;
         this.temp = temp;
         this.temp2 = temp2;
@@ -160,7 +160,7 @@ public class AMD64HotSpotShenandoahSATBBarrierOp extends AMD64LIRInstruction {
         crb.getLIR().addSlowPath(this, () -> {
             masm.bind(runtime);
             CallingConvention cc = callTarget.getOutgoingCallingConvention();
-            assert cc.getArgumentCount() == 1 : "Expecting callTarget to have only 1 parameters. It has " + cc.getArgumentCount();
+            GraalError.guarantee(cc.getArgumentCount() == 1, "Expecting callTarget to have only 1 parameters. It has " + cc.getArgumentCount());
 
             AMD64Address cArg0 = (AMD64Address) crb.asAddress(cc.getArgument(0));
             masm.movq(cArg0, previousValue);

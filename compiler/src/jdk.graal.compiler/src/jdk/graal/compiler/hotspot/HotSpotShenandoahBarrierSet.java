@@ -25,6 +25,7 @@
 package jdk.graal.compiler.hotspot;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.nodes.HotSpotCompressionNode;
 import org.graalvm.word.LocationIdentity;
 
@@ -65,7 +66,7 @@ public class HotSpotShenandoahBarrierSet extends ShenandoahBarrierSet {
     @Override
     public BarrierType readBarrierType(LocationIdentity location, ValueNode address, Stamp loadStamp) {
         if (location instanceof HotSpotReplacementsUtil.OopHandleLocationIdentity) {
-            assert loadStamp instanceof AbstractObjectStamp : loadStamp;
+            GraalError.guarantee(loadStamp instanceof AbstractObjectStamp, "expect object, got: " + loadStamp);
             return BarrierType.READ;
         }
         return super.readBarrierType(location, address, loadStamp);

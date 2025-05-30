@@ -30,6 +30,7 @@ import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
@@ -198,7 +199,7 @@ public class AMD64HotSpotShenandoahLoadRefBarrierOp extends AMD64LIRInstruction 
         crb.getLIR().addSlowPath(this, () -> {
             masm.bind(slowPath);
             CallingConvention cc = callTarget.getOutgoingCallingConvention();
-            assert cc.getArgumentCount() == 2 : "Expecting callTarget to have only 2 parameters. It has " + cc.getArgumentCount();
+            GraalError.guarantee(cc.getArgumentCount() == 2,"Expecting callTarget to have only 2 parameters. It has " + cc.getArgumentCount());
 
             AMD64Address cArg0 = (AMD64Address) crb.asAddress(cc.getArgument(0));
             AMD64Address cArg1 = (AMD64Address) crb.asAddress(cc.getArgument(1));

@@ -29,6 +29,7 @@ import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
@@ -201,7 +202,7 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
                     Register rtmp2 = tmp2.getRegister();
                     masm.bind(slowPath);
                     CallingConvention cc = callTarget.getOutgoingCallingConvention();
-                    assert cc.getArgumentCount() == 2 : "Expecting callTarget to have only 2 parameters. It has " + cc.getArgumentCount();
+                    GraalError.guarantee(cc.getArgumentCount() == 2, "Expecting callTarget to have only 2 parameters. It has " + cc.getArgumentCount());
 
                     // Store first argument
                     AArch64Address cArg0 = (AArch64Address) crb.asAddress(cc.getArgument(0));
