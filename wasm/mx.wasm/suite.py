@@ -277,6 +277,10 @@ suite = {
         ],
         "exports" : [
           "* to org.graalvm.wasm.test",
+          # Export internals to official test runner
+          "* to com.oracle.truffle.wasm.closedtestcases",
+          # Export internals to debug tests
+          "* to com.oracle.truffle.wasm.debugtests",
         ]
       },
       "subDir" : "src",
@@ -341,8 +345,11 @@ suite = {
         "exports" : [
           # Export everything to junit and dependent test distributions.
           "org.graalvm.wasm.test*",
+          # Export utils to JMH benchmarks
+          "org.graalvm.wasm.utils*",
         ],
-        "requires": [
+        "requires" : [
+          "org.graalvm.polyglot",
           "org.graalvm.collections",
           "org.graalvm.truffle",
         ],
@@ -365,6 +372,17 @@ suite = {
     },
 
     "WASM_TESTCASES" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.wasm.testcases",
+        "exports" : [
+          # Export everything to junit
+          "org.graalvm.wasm.testcases* to junit",
+        ],
+        "opens" : [
+          "test.c",
+          "test.wat",
+        ],
+      },
       "description" : "Tests compiled from the source code.",
       "dependencies" : [
         "org.graalvm.wasm.testcases",
@@ -378,11 +396,18 @@ suite = {
       ],
       "defaultBuild" : False,
       "maven" : False,
+      "useModulePath" : True,
       "testDistribution" : True,
       "unittestConfig": "wasm",
     },
 
     "WASM_BENCHMARKS" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.wasm.benchmark",
+        "requires" : [
+          "java.compiler",
+        ],
+      },
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.wasm.benchmark",
@@ -395,6 +420,7 @@ suite = {
         "WASM_TESTS",
       ],
       "maven" : False,
+      "useModulePath": True,
       "testDistribution" : True,
     },
 
