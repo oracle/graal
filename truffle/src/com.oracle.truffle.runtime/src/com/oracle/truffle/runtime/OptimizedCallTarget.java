@@ -1173,6 +1173,11 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     }
 
     @Override
+    public int getSuccessfulCompilationCount() {
+        return successfulCompilationsCount;
+    }
+
+    @Override
     public final boolean onInvalidate(Object source, CharSequence reason, boolean wasActive) {
         cachedNonTrivialNodeCount = -1;
         if (wasActive) {

@@ -584,7 +584,9 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
      * There is an SIB byte: In that case, X extends SIB.index and B extends SIB.base.
      */
     protected static int getRXB(Register reg, AMD64Address rm) {
-        assert !isInvalidEncoding(reg);
+        GraalError.guarantee(!isInvalidEncoding(reg), "invalid encoding %s", reg);
+        GraalError.guarantee(rm.getBase() == null || rm.getBase().encoding < 16, "APX register used in %s not yet supported", rm);
+        GraalError.guarantee(rm.getIndex() == null || rm.getIndex().encoding < 16, "APX register used in %s not yet supported", rm);
         int rxb = (reg == null ? 0 : reg.encoding & 0x08) >> 1;
         if (!isInvalidEncoding(rm.getIndex())) {
             rxb |= (rm.getIndex().encoding & 0x08) >> 2;

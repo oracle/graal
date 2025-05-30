@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -648,29 +648,50 @@ public final class LLVMContext {
 
     public Object getFreeGlobalsBlockFunction() {
         if (freeGlobalsBlockFunction == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            NativeContextExtension nativeContextExtension = getContextExtensionOrNull(NativeContextExtension.class);
-            freeGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_free_globals_block", "(POINTER, UINT64):VOID");
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            initFreeGlobalsBlockFunction();
         }
         return freeGlobalsBlockFunction;
     }
 
+    @TruffleBoundary
+    private void initFreeGlobalsBlockFunction() {
+        NativeContextExtension nativeContextExtension = getContextExtensionOrNull(NativeContextExtension.class);
+        freeGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_free_globals_block", "(POINTER, UINT64):VOID");
+    }
+
     public Object getProtectReadOnlyGlobalsBlockFunction() {
         if (protectGlobalsBlockFunction == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            NativeContextExtension nativeContextExtension = getContextExtensionOrNull(NativeContextExtension.class);
-            protectGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_protect_readonly_globals_block", "(POINTER, UINT64):VOID");
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            initProtectReadOnlyGlobalsBlockFunction();
         }
         return protectGlobalsBlockFunction;
     }
 
+    @TruffleBoundary
+    private void initProtectReadOnlyGlobalsBlockFunction() {
+        NativeContextExtension nativeContextExtension = getContextExtensionOrNull(NativeContextExtension.class);
+        protectGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_protect_readonly_globals_block", "(POINTER, UINT64):VOID");
+    }
+
     public Object getAllocateGlobalsBlockFunction() {
         if (allocateGlobalsBlockFunction == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            NativeContextExtension nativeContextExtension = getContextExtensionOrNull(NativeContextExtension.class);
-            allocateGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_allocate_globals_block", "(UINT64):POINTER");
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            initAllocateGlobalsBlockFunction();
         }
         return allocateGlobalsBlockFunction;
+    }
+
+    @TruffleBoundary
+    private void initAllocateGlobalsBlockFunction() {
+        NativeContextExtension nativeContextExtension = getContextExtensionOrNull(NativeContextExtension.class);
+        allocateGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_allocate_globals_block", "(UINT64):POINTER");
     }
 
     /**

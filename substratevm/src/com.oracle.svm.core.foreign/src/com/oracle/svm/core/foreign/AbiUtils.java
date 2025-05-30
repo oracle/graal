@@ -931,7 +931,7 @@ class ABIs {
                 storages[i++] = switch (move.type()) {
                     case X86_64Architecture.StorageType.PLACEHOLDER -> AssignedLocation.placeholder();
                     case X86_64Architecture.StorageType.INTEGER -> {
-                        Register reg = AMD64.cpuRegisters[move.indexOrOffset()];
+                        Register reg = AMD64.cpuRegisters.get(move.indexOrOffset());
                         assert reg.name.equals(move.debugName());
                         assert reg.getRegisterCategory().equals(AMD64.CPU);
                         yield AssignedLocation.forRegister(reg, JavaKind.Long);
@@ -941,7 +941,7 @@ class ABIs {
                          * Only the first four xmm registers should ever be used; in particular,
                          * this means we never need to index in xmmRegistersAVX512
                          */
-                        Register reg = AMD64.xmmRegistersSSE[move.indexOrOffset()];
+                        Register reg = AMD64.xmmRegistersSSE.get(move.indexOrOffset());
                         assert reg.name.equals(move.debugName());
                         assert reg.getRegisterCategory().equals(AMD64.XMM);
                         yield AssignedLocation.forRegister(reg, JavaKind.Double);

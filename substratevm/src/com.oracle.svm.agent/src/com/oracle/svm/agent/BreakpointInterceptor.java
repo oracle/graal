@@ -185,6 +185,10 @@ final class BreakpointInterceptor {
         traceBreakpoint(env, "serialization", nullHandle(), nullHandle(), nullHandle(), function, result, stackTrace, args);
     }
 
+    private static void traceForeignBreakpoint(JNIEnvironment env, String function, Object result, JNIMethodId[] stackTrace, Object... args) {
+        traceBreakpoint(env, "foreign", nullHandle(), nullHandle(), nullHandle(), function, result, stackTrace, args);
+    }
+
     private static void traceBreakpoint(JNIEnvironment env, String context, JNIObjectHandle clazz, JNIObjectHandle declaringClass, JNIObjectHandle callerClass, String function, Object result,
                     JNIMethodId[] stackTrace, Object[] args) {
         if (tracer != null) {
@@ -347,6 +351,54 @@ final class BreakpointInterceptor {
             }
         }
         traceReflectBreakpoint(jni, self, declaring, callerClass, bp.specification.methodName, name.notEqual(nullHandle()), state.getFullStackTraceOrNull(), fromJniString(jni, name));
+        return true;
+    }
+
+    private static boolean downcallHandle0(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle receiver = getReceiver(thread);
+        JNIObjectHandle function = getObjectArgument(thread, 1);
+        JNIObjectHandle options = getObjectArgument(thread, 2);
+
+        JNIObjectHandle result = Support.callObjectMethodLL(jni, receiver, bp.method, function, options);
+        boolean isValidResult = !clearException(jni) && nullHandle().notEqual(result);
+
+        String returnLayoutString = Tracer.UNKNOWN_VALUE;
+        Object argumentLayoutStrings = Tracer.UNKNOWN_VALUE;
+        Object optionsStrings = Tracer.UNKNOWN_VALUE;
+        if (isValidResult) {
+            NativeImageAgentJNIHandleSet handles = agent.handles();
+            returnLayoutString = ForeignUtil.getReturnLayoutString(jni, handles, function);
+            argumentLayoutStrings = ForeignUtil.getArgumentLayoutStrings(jni, handles, function);
+            optionsStrings = ForeignUtil.getOptionsStrings(jni, handles, options);
+        }
+
+        traceForeignBreakpoint(jni, bp.specification.methodName, isValidResult, state.getFullStackTraceOrNull(), returnLayoutString, argumentLayoutStrings, optionsStrings);
+        return true;
+    }
+
+    private static boolean upcallStub(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle receiver = getReceiver(thread);
+        JNIObjectHandle target = getObjectArgument(thread, 1);
+        JNIObjectHandle function = getObjectArgument(thread, 2);
+        JNIObjectHandle arena = getObjectArgument(thread, 3);
+        JNIObjectHandle options = getObjectArgument(thread, 4);
+
+        JNIObjectHandle result = Support.callObjectMethodLLLL(jni, receiver, bp.method, target, function, arena, options);
+        boolean isValidResult = !clearException(jni) && nullHandle().notEqual(result);
+
+        String returnLayoutString = Tracer.UNKNOWN_VALUE;
+        Object argumentLayoutStrings = Tracer.UNKNOWN_VALUE;
+        Object optionsStrings = Tracer.UNKNOWN_VALUE;
+        Object targetString = Tracer.UNKNOWN_VALUE;
+        if (isValidResult) {
+            NativeImageAgentJNIHandleSet handles = agent.handles();
+            returnLayoutString = ForeignUtil.getReturnLayoutString(jni, handles, function);
+            argumentLayoutStrings = ForeignUtil.getArgumentLayoutStrings(jni, handles, function);
+            optionsStrings = ForeignUtil.getOptionsStrings(jni, handles, options);
+            targetString = ForeignUtil.getTargetString(jni, handles, target);
+        }
+
+        traceForeignBreakpoint(jni, bp.specification.methodName, isValidResult, state.getFullStackTraceOrNull(), returnLayoutString, argumentLayoutStrings, optionsStrings, targetString);
         return true;
     }
 
@@ -1713,7 +1765,15 @@ final class BreakpointInterceptor {
                     optionalBrk("java/lang/Class", "getNestMembers", "()[Ljava/lang/Class;",
                                     BreakpointInterceptor::getNestMembers),
                     optionalBrk("java/lang/Class", "getSigners", "()[Ljava/lang/Object;",
-                                    BreakpointInterceptor::getSigners)
+                                    BreakpointInterceptor::getSigners),
+
+                    /* FFM API was introduced in Java 22 */
+                    brk("jdk/internal/foreign/abi/AbstractLinker", "downcallHandle0",
+                                    "(Ljava/lang/foreign/FunctionDescriptor;[Ljava/lang/foreign/Linker$Option;)Ljava/lang/invoke/MethodHandle;",
+                                    BreakpointInterceptor::downcallHandle0),
+                    brk("jdk/internal/foreign/abi/AbstractLinker", "upcallStub",
+                                    "(Ljava/lang/invoke/MethodHandle;Ljava/lang/foreign/FunctionDescriptor;Ljava/lang/foreign/Arena;[Ljava/lang/foreign/Linker$Option;)Ljava/lang/foreign/MemorySegment;",
+                                    BreakpointInterceptor::upcallStub)
     };
 
     private static boolean allocateInstance(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {

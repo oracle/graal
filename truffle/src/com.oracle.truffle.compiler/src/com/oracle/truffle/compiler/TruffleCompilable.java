@@ -214,4 +214,11 @@ public interface TruffleCompilable {
      */
     Map<String, String> getCompilerOptions();
 
+    /**
+     * Returns the number of successful compilations of this compilable. All compilation tiers are
+     * counted together.
+     */
+    default int getSuccessfulCompilationCount() {
+        return 0;
+    }
 }

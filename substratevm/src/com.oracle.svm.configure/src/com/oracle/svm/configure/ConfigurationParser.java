@@ -65,6 +65,7 @@ public abstract class ConfigurationParser {
     public static final String PROXY_KEY = "proxy";
     public static final String REFLECTION_KEY = "reflection";
     public static final String JNI_KEY = "jni";
+    public static final String FOREIGN_KEY = "foreign";
     public static final String SERIALIZATION_KEY = "serialization";
     public static final String RESOURCES_KEY = "resources";
     public static final String BUNDLES_KEY = "bundles";

@@ -26,7 +26,9 @@ package com.oracle.svm.hosted.webimage.codegen.oop;
 
 import static com.oracle.svm.hosted.webimage.codegen.RuntimeConstants.RUNTIME_SYMBOL;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -35,6 +37,7 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSObject;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -55,6 +58,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hightiercodegen.CodeBuffer;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 
@@ -190,6 +194,17 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
     }
 
     /**
+     * Public and protected fields in {@link JSObject} subclasses are represented in the JavaScript
+     * mirror.
+     * <p>
+     * Accesses to those fields must be intercepted. The fields also do not appear in the Java
+     * object.
+     */
+    public static boolean isFieldRepresentedInJavaScript(ResolvedJavaField field) {
+        return !field.isStatic() && isJSObjectSubtype(OriginalClassProvider.getJavaClass(field.getDeclaringClass()));
+    }
+
+    /**
      * An imported Javascript class needs extern file for Closure compiler if the source code is not
      * included.
      */
@@ -203,6 +218,18 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
 
     public static boolean isJSObjectSubtype(Class<?> cls) {
         return JSObject.class.isAssignableFrom(cls);
+    }
+
+    public static List<HostedField> getOwnFieldOnJSSide(HostedType type) {
+        List<HostedField> fields = new ArrayList<>();
+
+        for (HostedField instanceField : type.getInstanceFields(false)) {
+            if (isFieldRepresentedInJavaScript(instanceField)) {
+                fields.add(instanceField);
+            }
+        }
+
+        return fields;
     }
 
     @Override
@@ -228,7 +255,7 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
 
             if (needExternDeclaration()) {
                 // We need to mark the fields in the externs file.
-                for (HostedField field : type.getInstanceFields(false)) {
+                for (HostedField field : getOwnFieldOnJSSide(type)) {
                     externClassDescriptor.addProperty(field.getName());
                 }
             }
@@ -302,7 +329,7 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
         }
 
         // Initialize properties.
-        for (HostedField field : type.getInstanceFields(false)) {
+        for (HostedField field : getOwnFieldOnJSSide(type)) {
             tool.genResolvedVarDeclThisPrefix(field.getName());
             genDefaultValue(tool, buffer, field);
             tool.genResolvedVarDeclPostfix(null);

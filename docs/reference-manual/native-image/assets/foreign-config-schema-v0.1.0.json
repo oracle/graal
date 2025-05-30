@@ -28,7 +28,7 @@
                 "title": "Specifies if a call state should be captured. Which states to capture is determined at run time. See also: 'java.lang.foreign.Linker.Option.captureCallState'"
               },
               "critical": {
-                "type": ["boolean", "object"],
+                "type": "object",
                 "title": "see 'java.lang.foreign.Linker.Option.critical'",
                 "properties": {
                   "allowHeapAccess": {

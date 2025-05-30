@@ -242,6 +242,10 @@ final class TruffleFromLibGraalEntryPoints {
         return ((TruffleCompilable) compilable).prepareForCompilation(rootCompilation, tier, lastTier);
     }
 
+    static int getSuccessfulCompilationCount(Object compilable) {
+        return ((TruffleCompilable) compilable).getSuccessfulCompilationCount();
+    }
+
     @TruffleFromLibGraal(GetURI)
     static String getURI(Object position) {
         URI uri = ((TruffleSourceLanguagePosition) position).getURI();

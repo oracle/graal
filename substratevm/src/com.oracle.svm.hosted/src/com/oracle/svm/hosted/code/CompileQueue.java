@@ -270,7 +270,13 @@ public class CompileQueue {
             this.universe = universe;
         }
 
-        public abstract void beforeEncode(HostedMethod method, StructuredGraph graph, HighTierContext context);
+        @SuppressWarnings("unused")
+        public void beforeEncode(HostedMethod method, StructuredGraph graph, HighTierContext context) {
+        }
+
+        @SuppressWarnings("unused")
+        public void afterMethodCompile(HostedMethod method, StructuredGraph graph) {
+        }
 
         public void afterCompile() {
         }
@@ -1361,12 +1367,20 @@ public class CompileQueue {
                     result.setTargetCode(Arrays.copyOf(result.getTargetCode(), result.getTargetCodeSize()), result.getTargetCodeSize());
                 }
 
+                notifyAfterMethodCompile(method, graph);
+
                 return result;
             }
         } catch (Throwable ex) {
             GraalError error = ex instanceof GraalError ? (GraalError) ex : new GraalError(ex);
             error.addContext("method: " + method.format("%r %H.%n(%p)") + "  [" + reason + "]");
             throw error;
+        }
+    }
+
+    private void notifyAfterMethodCompile(HostedMethod method, StructuredGraph graph) {
+        for (Policy policy : this.policies) {
+            policy.afterMethodCompile(method, graph);
         }
     }
 

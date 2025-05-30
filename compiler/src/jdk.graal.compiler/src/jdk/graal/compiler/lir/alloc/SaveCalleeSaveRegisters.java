@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package jdk.graal.compiler.lir.alloc;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
@@ -40,7 +41,6 @@ import jdk.graal.compiler.lir.phases.PreAllocationOptimizationPhase;
 import jdk.graal.compiler.lir.util.RegisterMap;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.PlatformKind;
@@ -49,7 +49,7 @@ public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PreAllocationOptimizationContext context) {
-        RegisterArray calleeSaveRegisters = lirGenRes.getRegisterConfig().getCalleeSaveRegisters();
+        List<Register> calleeSaveRegisters = lirGenRes.getRegisterConfig().getCalleeSaveRegisters();
         if (calleeSaveRegisters == null || calleeSaveRegisters.size() == 0) {
             return;
         }
@@ -67,7 +67,7 @@ public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
         }
     }
 
-    private static RegisterMap<Variable> saveAtEntry(LIR lir, LIRGeneratorTool lirGen, LIRGenerationResult lirGenRes, RegisterArray calleeSaveRegisters, Architecture arch) {
+    private static RegisterMap<Variable> saveAtEntry(LIR lir, LIRGeneratorTool lirGen, LIRGenerationResult lirGenRes, List<Register> calleeSaveRegisters, Architecture arch) {
         BasicBlock<?> startBlock = lir.getControlFlowGraph().getStartBlock();
         ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(startBlock);
         int insertionIndex = lirGenRes.getFirstInsertPosition();

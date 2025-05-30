@@ -3,5 +3,4 @@ DYNAMIC_IMPORTS=/vm-enterprise,/substratevm-enterprise,/truffle-enterprise,/tool
 COMPONENTS=cmp,cmpee,gvm,jipher,lg,ni,nic,niee,nil,sdkni,svm,svmjdwp,svmt,svmee,svmte,svmsl,tflc,tflsm
 NATIVE_IMAGES=lib:jvmcicompiler
 NON_REBUILDABLE_IMAGES=lib:jvmcicompiler
-DISABLE_INSTALLABLES=true
 JVM_STANDALONE_WITH_LLVM=false

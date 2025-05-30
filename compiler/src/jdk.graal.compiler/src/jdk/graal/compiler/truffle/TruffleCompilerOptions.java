@@ -272,6 +272,14 @@ public class TruffleCompilerOptions implements OptionsContainer {
     @Option(help = "Enable node source positions in truffle partial evaluations.", type = OptionType.Debug) //
     public static final OptionKey<Boolean> NodeSourcePositions = new OptionKey<>(false);
 
+    @Option(help = "Threshold for enabling deopt cycle detection for a call target. When the number of successful compilation of the call target reaches the threshold, " + //
+            "deopt cycle detection is enabled for the call target. (negative integer means the detection is never enabled, default: 15)")
+    public static final OptionKey<Integer> DeoptCycleDetectionThreshold = new OptionKey<>(15);
+
+    @Option(help = "Maximum allowed repeats of the same compiled code for the same compilable. " + //
+            "Works only if the detection of repeated compilation is enabled after DeoptCycleDetectionThreshold has been reached for the compilable. (negative integer means 0, default: 0)", type = OptionType.Debug) //
+    public static final OptionKey<Integer> DeoptCycleDetectionAllowedRepeats = new OptionKey<>(0);
+
     @Option(help = "Allow assumptions during parsing of seed graphs for partial evaluation. Disables the persistent encoded graph cache 'engine.EncodedGraphCache'. (default: false).", type = OptionType.Debug) //
     public static final OptionKey<Boolean> ParsePEGraphsWithAssumptions = new OptionKey<>(false);
 

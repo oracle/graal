@@ -1,0 +1,71 @@
+/*
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package jdk.graal.compiler.truffle.phases;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
+
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.phases.common.ForceDeoptSpeculationPhase;
+import jdk.graal.compiler.truffle.TruffleCompilation;
+import jdk.graal.compiler.truffle.TruffleCompilerOptions;
+
+public class TruffleForceDeoptSpeculationPhase extends ForceDeoptSpeculationPhase {
+    public TruffleForceDeoptSpeculationPhase(ForeignCallDescriptor deoptimizeCallDescriptor) {
+        super(0, deoptimizeCallDescriptor);
+    }
+
+    @Override
+    protected void run(StructuredGraph graph, CoreProviders context) {
+        TruffleCompilable truffleCompilable = TruffleCompilation.lookupCompilable(graph);
+        int deoptCycleDetectionThreshold = TruffleCompilerOptions.DeoptCycleDetectionThreshold.getValue(graph.getOptions());
+        if (deoptCycleDetectionThreshold >= 0 && truffleCompilable.getSuccessfulCompilationCount() >= deoptCycleDetectionThreshold) {
+            super.run(graph, context);
+        }
+    }
+
+    @Override
+    protected int getMaximumDeoptCount(StructuredGraph graph) {
+        return Math.max(0, TruffleCompilerOptions.DeoptCycleDetectionAllowedRepeats.getValue(graph.getOptions())) + 1;
+    }
+
+    @Override
+    protected GraalError reportTooManySpeculationFailures(ValueNode deopt) {
+        StackTraceElement[] elements = GraphUtil.approxSourceStackTraceElement(deopt);
+        String additionalMessage = "";
+        if (elements.length == 0 && !TruffleCompilerOptions.NodeSourcePositions.getValue(deopt.graph().getOptions()) &&
+                        !GraalOptions.TrackNodeSourcePosition.getValue(deopt.graph().getOptions())) {
+            additionalMessage = " Please set the option 'compiler.NodeSourcePositions' to 'true' to get the stacktrace for the location of the deopt.";
+        }
+        throw GraphUtil.createBailoutException(
+                        "Deopt taken too many times: " + deopt + ". This could indicate a deopt cycle, which typically hints at a bug in the language implementation or Truffle." + additionalMessage,
+                        null, elements);
+    }
+}

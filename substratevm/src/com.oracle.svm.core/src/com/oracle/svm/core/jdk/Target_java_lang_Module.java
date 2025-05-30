@@ -24,11 +24,15 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.util.Objects;
+import java.util.Set;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
 /**
@@ -53,6 +57,17 @@ public final class Target_java_lang_Module {
     @RecomputeFieldValue(isFinal = false, kind = RecomputeFieldValue.Kind.None)
     // @Stable (no effect currently GR-60154)
     private ModuleLayer layer;
+
+    /**
+     * Creating an {@link Alias} directly for {@code ALL_UNNAMED_MODULE} and {@code EVERYONE_MODULE}
+     * makes {@code java.util.regex.Pattern} reachable, which increases the size of the binary.
+     */
+    // Checkstyle: stop
+    @Alias //
+    private static Set<Module> ALL_UNNAMED_MODULE_SET;
+    @Alias //
+    private static Set<Module> EVERYONE_SET;
+    // Checkstyle: resume
 
     @Substitute
     @TargetElement(onlyWith = ForeignDisabled.class)
@@ -92,5 +107,36 @@ public final class Target_java_lang_Module {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L869-L918")
     private static void addExportsToAllUnnamed0(Module from, String pn) {
         ModuleNative.addExportsToAllUnnamed(from, pn);
+    }
+
+    @Substitute
+    @SuppressWarnings("static-method")
+    private boolean allows(Set<Module> targets, Module module) {
+        if (targets != null) {
+            Module everyoneModule = EVERYONE_SET.stream().findFirst().get();
+            if (targets.contains(everyoneModule)) {
+                return true;
+            }
+            if (module != everyoneModule) {
+                if (targets.contains(module)) {
+                    return true;
+                }
+                if (!module.isNamed() && targets.contains(ALL_UNNAMED_MODULE_SET.stream().findFirst().get())) {
+                    return true;
+                }
+                if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                    for (var m : targets) {
+                        /*
+                         * This is based on the assumption that in Layered Image, all modules have
+                         * different names. This is ensured in LayeredModuleSingleton.setPackages.
+                         */
+                        if (Objects.equals(m.getName(), module.getName())) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,9 @@
  */
 int test(t)
 int t;
-{ return t + 1; }
+{
+    return t + 1;
+}
 
 int main() {
     return test(3);

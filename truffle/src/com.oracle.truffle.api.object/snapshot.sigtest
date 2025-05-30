@@ -116,7 +116,6 @@ CLSS protected abstract interface static !annotation com.oracle.truffle.api.obje
 intf java.lang.annotation.Annotation
 
 CLSS public abstract com.oracle.truffle.api.object.DynamicObjectLibrary
-cons protected init()
 meth public abstract boolean containsKey(com.oracle.truffle.api.object.DynamicObject,java.lang.Object)
 meth public abstract boolean isShared(com.oracle.truffle.api.object.DynamicObject)
 meth public abstract boolean putIfPresent(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object)

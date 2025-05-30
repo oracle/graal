@@ -166,6 +166,11 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
         return options;
     }
 
+    @Override
+    public int getSuccessfulCompilationCount() {
+        return getSuccessfulCompilationCount0(IsolatedCompileContext.get().getClient(), handle);
+    }
+
     @CEntryPoint(exceptionHandler = IsolatedCompileClient.WordExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static ClientHandle<SpeculationLog> getCompilationSpeculationLog0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle) {
@@ -292,6 +297,13 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
                     CompilerHandle<Map<String, String>> targetPropertiesHandle) {
         Map<String, String> targetProperties = IsolatedCompileContext.get().unhand(targetPropertiesHandle);
         readCompilerOptions(targetProperties, BinaryInput.create(buffer, bufferLength));
+    }
+
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.IntExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
+    private static int getSuccessfulCompilationCount0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
+        SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(handle);
+        return compilable.getSuccessfulCompilationCount();
     }
 
     private static Map<String, String> readCompilerOptions(Map<String, String> map, BinaryInput in) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,6 +34,6 @@ struct test {
 
 int main() {
     struct test t;
-    t = (struct test){ 4 + 5, 2 };
+    t = (struct test) { 4 + 5, 2 };
     return t.a + t.b;
 }

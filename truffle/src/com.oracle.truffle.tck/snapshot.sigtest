@@ -93,6 +93,7 @@ supr java.lang.Object
 CLSS public final com.oracle.truffle.tck.DebuggerTester
 cons public init()
 cons public init(org.graalvm.polyglot.Context$Builder)
+cons public init(org.graalvm.polyglot.Engine,org.graalvm.polyglot.Context$Builder)
 innr public abstract interface static PositionPredicate
 intf java.lang.AutoCloseable
 meth public !varargs com.oracle.truffle.api.debug.DebuggerSession startSession(com.oracle.truffle.api.debug.SourceElement[])

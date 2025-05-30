@@ -2,4 +2,3 @@
 DYNAMIC_IMPORTS=/substratevm,/tools,/regex
 COMPONENTS=cmp,gvm,lg,ni,nic,nil,sdkni,svm,svmjdwp,svmt,svmsl,tflc,tflsm
 NATIVE_IMAGES=lib:javavm
-DISABLE_INSTALLABLES=true

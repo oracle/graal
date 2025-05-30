@@ -40,6 +40,7 @@ suite = {
         "read" : "https://github.com/oracle/graal.git",
         "write" : "git@github.com:oracle/graal.git",
     },
+    "ignore_suite_commit_info": True,
 
     # ------------- licenses
 

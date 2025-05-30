@@ -38,28 +38,29 @@ import org.graalvm.webimage.api.JSValue;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.webimage.JSObjectAccessFeature;
 import com.oracle.svm.hosted.webimage.codegen.node.InterceptJSInvokeNode;
 import com.oracle.svm.hosted.webimage.codegen.oop.ClassWithMirrorLowerer;
+import com.oracle.svm.hosted.webimage.js.JSObjectAccessMethodSupport;
 import com.oracle.svm.hosted.webimage.util.ReflectUtil;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.webimage.api.Nothing;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
-import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
@@ -124,7 +125,7 @@ public final class JSBodyFeature implements InternalFeature {
 
             @Override
             public boolean handleLoadField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field) {
-                if (ClassWithMirrorLowerer.isJSObjectSubtype(((AnalysisType) field.getDeclaringClass()).getJavaClass())) {
+                if (ClassWithMirrorLowerer.isFieldRepresentedInJavaScript(field)) {
                     genJSObjectFieldAccess(b, object, field, null);
                     return true;
                 }
@@ -133,44 +134,55 @@ public final class JSBodyFeature implements InternalFeature {
 
             @Override
             public boolean handleStoreField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field, ValueNode value) {
-                if (ClassWithMirrorLowerer.isJSObjectSubtype(((AnalysisType) field.getDeclaringClass()).getJavaClass())) {
+                if (ClassWithMirrorLowerer.isFieldRepresentedInJavaScript(field)) {
                     genJSObjectFieldAccess(b, object, field, value);
                     return true;
                 }
                 return false;
             }
 
-            private void genJSObjectFieldAccess(GraphBuilderContext b, ValueNode object, ResolvedJavaField field, ValueNode valueForStore) {
-                ResolvedJavaType fieldType = field.getType().resolve(null);
-                JavaKind fieldKind = fieldType.getJavaKind();
-                ConstantNode fieldNameNode = ConstantNode.forConstant(b.getConstantReflection().forString(field.getName()), b.getMetaAccess(), b.getGraph());
+            /**
+             * Replaces an access to {@link JSObject} fields with a call to an
+             * {@link com.oracle.svm.hosted.webimage.js.JSObjectAccessMethod accessor method} that
+             * performs the access on the underlying JavaScript object.
+             *
+             * @param valueForStore If {@code null} is this a load. Otherwise, the value to be
+             *            written into the field.
+             * @see JSObjectAccessMethodSupport
+             */
+            private static void genJSObjectFieldAccess(GraphBuilderContext b, ValueNode object, ResolvedJavaField field, ValueNode valueForStore) {
+                AnalysisMetaAccess metaAccess = (AnalysisMetaAccess) b.getMetaAccess();
+                AnalysisField analysisField = (AnalysisField) field;
 
                 boolean isLoad = valueForStore == null;
 
-                ForeignCallDescriptor bridgeMethod;
+                AnalysisMethod accessMethod;
                 ValueNode[] arguments;
                 if (isLoad) {
-                    // This is a load access.
-                    bridgeMethod = JSObjectAccessFeature.GETTERS.get(fieldKind);
-                    arguments = new ValueNode[]{object, fieldNameNode};
+                    accessMethod = JSObjectAccessMethodSupport.singleton().lookupLoadMethod(metaAccess, analysisField);
+                    arguments = new ValueNode[]{object};
                 } else {
-                    // This is a store access.
-                    bridgeMethod = JSObjectAccessFeature.SETTERS.get(fieldKind);
-                    arguments = new ValueNode[]{object, fieldNameNode, valueForStore};
+                    accessMethod = JSObjectAccessMethodSupport.singleton().lookupStoreMethod(metaAccess, analysisField);
+                    arguments = new ValueNode[]{object, valueForStore};
                 }
-                ValueNode access = new ForeignCallNode(bridgeMethod, arguments);
+
+                JavaKind returnKind = accessMethod.getSignature().getReturnType().getJavaKind();
+                StampPair returnStamp = StampPair.createSingle(StampFactory.forKind(returnKind));
+
+                SubstrateMethodCallTargetNode callTarget = new SubstrateMethodCallTargetNode(CallTargetNode.InvokeKind.Static, accessMethod, arguments, returnStamp);
+                /*
+                 * Just use a null exception edge. The GraphBuilderContext takes care of wiring it
+                 * up correctly. The exception edge is needed because the access may produce an
+                 * exception during conversions, especially loads, which can cause a
+                 * ClassCastException if JavaScript code stored a value with the wrong type in the
+                 * field.
+                 */
+                InvokeWithExceptionNode invoke = new InvokeWithExceptionNode(callTarget, null, b.bci());
+
                 if (isLoad) {
-                    b.addPush(fieldKind, access);
-                    // A checkcast is necessary to guard against invalid assignments in JavaScript
-                    // code.
-                    if (fieldKind.isObject()) {
-                        b.pop(fieldKind);
-                        Stamp classStamp = StampFactory.forDeclaredType(null, b.getMetaAccess().lookupJavaType(Class.class), true).getTrustedStamp();
-                        ConstantNode classConstant = b.add(new ConstantNode(b.getConstantReflection().asObjectHub(fieldType.resolve(null)), classStamp));
-                        b.genCheckcastDynamic(access, classConstant);
-                    }
+                    b.addPush(returnKind, invoke);
                 } else {
-                    b.add(access);
+                    b.add(invoke);
                 }
             }
         });

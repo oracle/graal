@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
@@ -119,6 +120,7 @@ import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
+import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -188,6 +190,11 @@ import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.AddressLoweringByNodePhase;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.amd64.AMD64IntrinsicStubs;
+import jdk.graal.compiler.vector.lir.amd64.AMD64SimdLIRKindTool;
+import jdk.graal.compiler.vector.lir.amd64.AMD64VectorArithmeticLIRGenerator;
+import jdk.graal.compiler.vector.lir.amd64.AMD64VectorMoveFactory;
+import jdk.graal.compiler.vector.lir.amd64.AMD64VectorNodeMatchRules;
+import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -197,7 +204,6 @@ import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
@@ -210,6 +216,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
@@ -1714,7 +1721,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     }
 
     private static boolean isCalleeSaved(Register register, RegisterConfig config, SharedMethod method) {
-        RegisterAttributes registerAttributes = config.getAttributesMap()[register.number];
+        RegisterAttributes registerAttributes = config.getAttributesMap().get(register.number);
         return registerAttributes.isCalleeSave() || registerAttributes.isAllocatable() && method.hasCalleeSavedRegisters();
     }
 
@@ -1741,16 +1748,28 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         return lirGenerationResult;
     }
 
+    protected static boolean isVectorizationTarget() {
+        return ((AMD64) ConfigurationValues.getTarget().arch).getFeatures().contains(AMD64.CPUFeature.AVX);
+    }
+
     protected AMD64ArithmeticLIRGenerator createArithmeticLIRGen(RegisterValue nullRegisterValue) {
-        return new AMD64ArithmeticLIRGenerator(nullRegisterValue);
+        if (isVectorizationTarget()) {
+            return AMD64VectorArithmeticLIRGenerator.create(nullRegisterValue, ConfigurationValues.getTarget().arch);
+        } else {
+            return new AMD64ArithmeticLIRGenerator(nullRegisterValue);
+        }
     }
 
     protected AMD64MoveFactoryBase createMoveFactory(LIRGenerationResult lirGenRes, BackupSlotProvider backupSlotProvider) {
         SharedMethod method = ((SubstrateLIRGenerationResult) lirGenRes).getMethod();
-        return new SubstrateAMD64MoveFactory(backupSlotProvider, method, createLirKindTool());
+        AMD64MoveFactoryBase factory = new SubstrateAMD64MoveFactory(backupSlotProvider, method, createLirKindTool());
+        if (isVectorizationTarget()) {
+            factory = new AMD64VectorMoveFactory(factory, backupSlotProvider, AMD64Assembler.AMD64SIMDInstructionEncoding.forFeatures(((AMD64) ConfigurationValues.getTarget().arch).getFeatures()));
+        }
+        return factory;
     }
 
-    protected static class SubstrateAMD64LIRKindTool extends AMD64LIRKindTool {
+    protected static class SubstrateAMD64LIRKindTool extends AMD64LIRKindTool implements AMD64SimdLIRKindTool {
         @Override
         public LIRKind getNarrowOopKind() {
             return LIRKind.compressedReference(AMD64Kind.QWORD);
@@ -1766,17 +1785,76 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         return new SubstrateAMD64LIRKindTool();
     }
 
+    protected class SubstrateAMD64VectorLIRGenerator extends SubstrateAMD64LIRGenerator {
+        public SubstrateAMD64VectorLIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers,
+                        LIRGenerationResult lirGenRes) {
+            super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
+        }
+
+        @Override
+        public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
+            if (arithmeticLIRGen instanceof AMD64VectorArithmeticLIRGenerator vectorGen) {
+                Variable vectorResult = vectorGen.emitVectorIntegerTestMove(left, right, trueValue, falseValue);
+                if (vectorResult != null) {
+                    return vectorResult;
+                }
+            }
+            return super.emitIntegerTestMove(left, right, trueValue, falseValue);
+        }
+
+        @Override
+        public Variable emitConditionalMove(PlatformKind cmpKind, Value left, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
+            if (arithmeticLIRGen instanceof AMD64VectorArithmeticLIRGenerator vectorGen) {
+                Variable vectorResult = vectorGen.emitVectorConditionalMove(cmpKind, left, right, cond, unorderedIsTrue, trueValue, falseValue);
+                if (vectorResult != null) {
+                    return vectorResult;
+                }
+            }
+            return super.emitConditionalMove(cmpKind, left, right, cond, unorderedIsTrue, trueValue, falseValue);
+        }
+
+        @Override
+        public Value emitConstant(LIRKind kind, Constant constant) {
+            int length = kind.getPlatformKind().getVectorLength();
+            if (length == 1) {
+                return super.emitConstant(kind, constant);
+            } else if (constant instanceof SimdConstant) {
+                assert ((SimdConstant) constant).getVectorLength() == length;
+                return super.emitConstant(kind, constant);
+            } else {
+                return super.emitConstant(kind, SimdConstant.broadcast(constant, length));
+            }
+        }
+
+        @Override
+        public Variable emitReverseBytes(Value input) {
+            AMD64Kind kind = (AMD64Kind) input.getPlatformKind();
+            if (kind.getVectorLength() == 1) {
+                return super.emitReverseBytes(input);
+            }
+            return ((AMD64VectorArithmeticLIRGenerator) getArithmetic()).emitReverseBytes(input);
+        }
+    }
+
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
         RegisterValue nullRegisterValue = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister().asValue() : null;
         AMD64ArithmeticLIRGenerator arithmeticLIRGen = createArithmeticLIRGen(nullRegisterValue);
         BackupSlotProvider backupSlotProvider = new BackupSlotProvider(lirGenRes.getFrameMapBuilder());
         AMD64MoveFactoryBase moveFactory = createMoveFactory(lirGenRes, backupSlotProvider);
-        return new SubstrateAMD64LIRGenerator(createLirKindTool(), arithmeticLIRGen, moveFactory, getProviders(), lirGenRes);
+        if (isVectorizationTarget()) {
+            return new SubstrateAMD64VectorLIRGenerator(createLirKindTool(), arithmeticLIRGen, moveFactory, getProviders(), lirGenRes);
+        } else {
+            return new SubstrateAMD64LIRGenerator(createLirKindTool(), arithmeticLIRGen, moveFactory, getProviders(), lirGenRes);
+        }
     }
 
     protected AMD64NodeMatchRules createMatchRules(LIRGeneratorTool lirGen) {
-        return new AMD64NodeMatchRules(lirGen);
+        if (isVectorizationTarget()) {
+            return new AMD64VectorNodeMatchRules(lirGen);
+        } else {
+            return new AMD64NodeMatchRules(lirGen);
+        }
     }
 
     @Override
@@ -1943,12 +2021,12 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         private boolean initialized;
 
         @Override
-        protected RegisterArray initAllocatable(RegisterArray registers) {
+        protected List<Register> initAllocatable(List<Register> registers) {
             initialized = true;
             if (preserveFramePointer) {
-                var allocatableRegisters = new ArrayList<>(registers.asList());
+                var allocatableRegisters = new ArrayList<>(registers);
                 allocatableRegisters.remove(rbp);
-                return super.initAllocatable(new RegisterArray(allocatableRegisters));
+                return super.initAllocatable(List.copyOf(allocatableRegisters));
             }
             return super.initAllocatable(registers);
         }

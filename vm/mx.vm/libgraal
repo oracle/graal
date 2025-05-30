@@ -1,4 +1,3 @@
 DYNAMIC_IMPORTS=/substratevm
 COMPONENTS=lg,cmp
 NATIVE_IMAGES=lib:jvmcicompiler
-DISABLE_INSTALLABLES=true

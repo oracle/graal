@@ -232,8 +232,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         }
 
         protected boolean checkOperands(AMD64Op op, OperandSize size, Register resultReg, Register inputReg) {
-            assert resultReg == null || resultCategory.equals(resultReg.getRegisterCategory()) : "invalid result register " + resultReg + " used in " + op;
-            assert inputReg == null || inputCategory.equals(inputReg.getRegisterCategory()) : "invalid input register " + inputReg + " used in " + op;
+            GraalError.guarantee(resultReg == null || resultCategory.equals(resultReg.getRegisterCategory()), "invalid result register %s used in %s ", resultReg, op);
+            GraalError.guarantee(inputReg == null || inputCategory.equals(inputReg.getRegisterCategory()), "invalid input register %s used in %s ", inputReg, op);
+            GraalError.guarantee(resultReg == null || !inRC(CPU, resultReg) || (resultReg.encoding < 16), "APX register %s used in %s is not yet supported", resultReg, op);
+            GraalError.guarantee(inputReg == null || !inRC(CPU, inputReg) || (inputReg.encoding < 16), "APX register %s used in %s is not yet supported", inputReg, op);
 
             for (OperandSize s : allowedSizes) {
                 if (size == s) {

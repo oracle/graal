@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
 
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -72,5 +73,10 @@ public final class HostedTruffleConstantFieldProvider implements ConstantFieldPr
     @Override
     public boolean maybeFinal(ResolvedJavaField field) {
         return wrappedConstantFieldProvider.maybeFinal(field);
+    }
+
+    @Override
+    public boolean isTrustedFinal(CanonicalizerTool tool, ResolvedJavaField field) {
+        return wrappedConstantFieldProvider.isTrustedFinal(tool, field);
     }
 }

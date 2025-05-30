@@ -143,6 +143,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import com.oracle.truffle.tck.tests.ValueAssert;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
@@ -172,8 +173,16 @@ public class ValueAPITest {
 
     @BeforeClass
     public static void setUp() {
-        context = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
-        secondaryContext = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
+        Context.Builder builder = Context.newBuilder().allowHostAccess(HostAccess.ALL);
+        if (TruffleTestAssumptions.isOptimizingRuntime()) {
+            // TODO GR-65179
+            builder.allowExperimentalOptions(true).option("engine.MaximumCompilations", "-1");
+            if (TruffleTestAssumptions.isDeoptLoopDetectionAvailable()) {
+                builder.option("compiler.DeoptCycleDetectionThreshold", "-1");
+            }
+        }
+        context = builder.build();
+        secondaryContext = builder.build();
     }
 
     @AfterClass

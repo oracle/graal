@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,8 @@ import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Value;
 
+import java.util.List;
+
 /**
  * Mark all live references for a frame state. The frame state uses this information to build the
  * {@link ReferenceMap}s.
@@ -56,7 +58,7 @@ public final class LocationMarkerPhase extends FinalCodeAnalysisPhase {
 
     static final class Marker extends LocationMarker<RegStackValueSet> {
 
-        private final RegisterAttributes[] registerAttributes;
+        private final List<RegisterAttributes> registerAttributes;
 
         private Marker(LIR lir, FrameMap frameMap) {
             super(lir, frameMap);
@@ -104,7 +106,7 @@ public final class LocationMarkerPhase extends FinalCodeAnalysisPhase {
          * configuration.
          */
         private RegisterAttributes attributes(Register reg) {
-            return registerAttributes[reg.number];
+            return registerAttributes.get(reg.number);
         }
 
     }

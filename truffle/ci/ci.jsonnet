@@ -163,7 +163,8 @@
     linux_amd64  + graalVMCELatest + simple_tool_maven_project_gate,
     # Truffle JVM gate
     linux_amd64  + common.graalvmee21 + truffle_jvm_gate,
-    linux_amd64  + common.oraclejdk23 + truffle_jvm_gate,
+    # GR-65191
+    # linux_amd64  + common.oraclejdk24 + truffle_jvm_gate,
     linux_amd64  + graalVMCELatest + truffle_jvm_gate,
     # Truffle Native gate
     linux_amd64     + common.graalvmee21 + truffle_native_gate,

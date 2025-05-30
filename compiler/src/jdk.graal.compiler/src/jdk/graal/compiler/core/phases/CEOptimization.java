@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,6 +52,8 @@ import jdk.graal.compiler.phases.common.ReassociationPhase;
 import jdk.graal.compiler.phases.common.UseTrappingNullChecksPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIExpansionPhase;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIIntrinsics;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationPhase;
 
@@ -310,7 +312,16 @@ public enum CEOptimization {
      *
      * This phase is enabled by default.
      */
-    BoxNodeOptimization(null, BoxNodeOptimizationPhase.class);
+    BoxNodeOptimization(null, BoxNodeOptimizationPhase.class),
+
+    /**
+     * {@link VectorAPIExpansionPhase} lowers Java Vector API (JEP 338) operations to corresponding
+     * SIMD code for more efficent execution.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIIntrinsics.Options#OptimizeVectorAPI}.
+     */
+    VectorAPIOptimization(VectorAPIIntrinsics.Options.OptimizeVectorAPI, VectorAPIExpansionPhase.class);
 
     private final OptionKey<?> option;
     private final Class<? extends BasePhase<?>> optimization;

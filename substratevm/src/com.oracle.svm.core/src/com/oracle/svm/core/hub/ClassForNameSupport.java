@@ -339,18 +339,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
             result = PredefinedClassesSupport.getLoadedForNameOrNull(className, classLoader);
         }
         if (result == null && !ClassNameSupport.isValidReflectionName(className)) {
-            if (result == null && ClassNameSupport.isValidJNIName(className)) {
-                var jniAlias = knownClasses.get(ClassNameSupport.jniNameToReflectionName(className));
-                if (jniAlias != null && jniAlias.getValue() != null) {
-                    result = NEGATIVE_QUERY;
-                }
-            }
-            if (result == null && ClassNameSupport.isValidTypeName(className)) {
-                var typeAlias = knownClasses.get(ClassNameSupport.typeNameToReflectionName(className));
-                if (typeAlias != null && typeAlias.getValue() != null) {
-                    result = NEGATIVE_QUERY;
-                }
-            }
+            result = NEGATIVE_QUERY;
         }
         return result == NEGATIVE_QUERY ? new ClassNotFoundException(className) : result;
     }

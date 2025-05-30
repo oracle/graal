@@ -102,6 +102,7 @@ import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
+import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -163,6 +164,11 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.AddressLoweringByUsePhase;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.vector.lir.aarch64.AArch64SimdLIRKindTool;
+import jdk.graal.compiler.vector.lir.aarch64.AArch64VectorArithmeticLIRGenerator;
+import jdk.graal.compiler.vector.lir.aarch64.AArch64VectorMoveFactory;
+import jdk.graal.compiler.vector.lir.aarch64.AArch64VectorNodeMatchRules;
+import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
@@ -181,6 +187,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
@@ -1337,16 +1344,28 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         return new SubstrateAArch64FrameContext(method);
     }
 
+    protected static boolean isVectorizationTarget() {
+        return ((AArch64) ConfigurationValues.getTarget().arch).getFeatures().contains(AArch64.CPUFeature.ASIMD);
+    }
+
     protected AArch64ArithmeticLIRGenerator createArithmeticLIRGen(AllocatableValue nullRegisterValue) {
-        return new AArch64ArithmeticLIRGenerator(nullRegisterValue);
+        if (isVectorizationTarget()) {
+            return new AArch64VectorArithmeticLIRGenerator(nullRegisterValue);
+        } else {
+            return new AArch64ArithmeticLIRGenerator(nullRegisterValue);
+        }
     }
 
     protected AArch64MoveFactory createMoveFactory(LIRGenerationResult lirGenRes) {
         SharedMethod method = ((SubstrateLIRGenerationResult) lirGenRes).getMethod();
-        return new SubstrateAArch64MoveFactory(method, createLirKindTool());
+        AArch64MoveFactory factory = new SubstrateAArch64MoveFactory(method, createLirKindTool());
+        if (isVectorizationTarget()) {
+            factory = new AArch64VectorMoveFactory(factory, new MoveFactory.BackupSlotProvider(lirGenRes.getFrameMapBuilder()));
+        }
+        return factory;
     }
 
-    protected static class SubstrateAArch64LIRKindTool extends AArch64LIRKindTool {
+    protected static class SubstrateAArch64LIRKindTool extends AArch64LIRKindTool implements AArch64SimdLIRKindTool {
         @Override
         public LIRKind getNarrowOopKind() {
             return LIRKind.compressedReference(AArch64Kind.QWORD);
@@ -1362,16 +1381,75 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         return new SubstrateAArch64LIRKindTool();
     }
 
+    protected class SubstrateAArch64VectorLIRGenerator extends SubstrateAArch64LIRGenerator {
+        public SubstrateAArch64VectorLIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers,
+                        LIRGenerationResult lirGenRes) {
+            super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
+        }
+
+        @Override
+        public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
+            AArch64VectorArithmeticLIRGenerator vectorGen = (AArch64VectorArithmeticLIRGenerator) arithmeticLIRGen;
+            Variable vectorResult = vectorGen.emitVectorIntegerTestMove(left, right, trueValue, falseValue);
+            if (vectorResult != null) {
+                return vectorResult;
+            }
+            return super.emitIntegerTestMove(left, right, trueValue, falseValue);
+        }
+
+        @Override
+        public Variable emitConditionalMove(PlatformKind cmpKind, Value left, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
+            AArch64VectorArithmeticLIRGenerator vectorGen = (AArch64VectorArithmeticLIRGenerator) arithmeticLIRGen;
+            Variable vectorResult = vectorGen.emitVectorConditionalMove(cmpKind, left, right, cond, unorderedIsTrue, trueValue, falseValue);
+            if (vectorResult != null) {
+                return vectorResult;
+            }
+            return super.emitConditionalMove(cmpKind, left, right, cond, unorderedIsTrue, trueValue, falseValue);
+        }
+
+        @Override
+        public Value emitConstant(LIRKind kind, Constant constant) {
+            int length = kind.getPlatformKind().getVectorLength();
+            if (length == 1) {
+                return super.emitConstant(kind, constant);
+            } else if (constant instanceof SimdConstant) {
+                assert ((SimdConstant) constant).getVectorLength() == length;
+                return super.emitConstant(kind, constant);
+            } else {
+                return super.emitConstant(kind, SimdConstant.broadcast(constant, length));
+            }
+        }
+
+        @Override
+        public Variable emitReverseBytes(Value input) {
+            AArch64VectorArithmeticLIRGenerator vectorGen = (AArch64VectorArithmeticLIRGenerator) arithmeticLIRGen;
+            Variable vectorResult = vectorGen.emitVectorByteSwap(input);
+            if (vectorResult != null) {
+                return vectorResult;
+            }
+            return super.emitReverseBytes(input);
+        }
+
+    }
+
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
         RegisterValue nullRegisterValue = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister().asValue(LIRKind.unknownReference(AArch64Kind.QWORD)) : null;
         AArch64ArithmeticLIRGenerator arithmeticLIRGen = createArithmeticLIRGen(nullRegisterValue);
         AArch64MoveFactory moveFactory = createMoveFactory(lirGenRes);
-        return new SubstrateAArch64LIRGenerator(createLirKindTool(), arithmeticLIRGen, moveFactory, getProviders(), lirGenRes);
+        if (isVectorizationTarget()) {
+            return new SubstrateAArch64VectorLIRGenerator(createLirKindTool(), arithmeticLIRGen, moveFactory, getProviders(), lirGenRes);
+        } else {
+            return new SubstrateAArch64LIRGenerator(createLirKindTool(), arithmeticLIRGen, moveFactory, getProviders(), lirGenRes);
+        }
     }
 
     protected AArch64NodeMatchRules createMatchRules(LIRGeneratorTool lirGen) {
-        return new AArch64NodeMatchRules(lirGen);
+        if (isVectorizationTarget()) {
+            return new AArch64VectorNodeMatchRules(lirGen);
+        } else {
+            return new AArch64NodeMatchRules(lirGen);
+        }
     }
 
     @Override

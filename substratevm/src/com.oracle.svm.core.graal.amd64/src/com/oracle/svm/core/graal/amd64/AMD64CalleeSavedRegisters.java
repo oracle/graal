@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -90,7 +90,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         SubstrateRegisterConfig registerConfig = new SubstrateAMD64RegisterConfig(SubstrateRegisterConfig.ConfigKind.NORMAL, null, target, SubstrateOptions.PreserveFramePointer.getValue());
 
         Register frameRegister = registerConfig.getFrameRegister();
-        List<Register> calleeSavedRegisters = new ArrayList<>(registerConfig.getAllocatableRegisters().asList());
+        List<Register> calleeSavedRegisters = new ArrayList<>(registerConfig.getAllocatableRegisters());
         List<Register> calleeSavedXMMRegisters = new ArrayList<>();
         List<Register> calleeSavedMaskRegisters = new ArrayList<>();
 

@@ -50,14 +50,12 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TreeMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -75,7 +73,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
 
     private record MethodsByAccessKind(Map<DynamicAccessDetectionPhase.DynamicAccessKind, CallLocationsByMethod> methodsByAccessKind) {
         MethodsByAccessKind() {
-            this(new TreeMap<>());
+            this(new ConcurrentSkipListMap<>());
         }
 
         public Set<DynamicAccessDetectionPhase.DynamicAccessKind> getAccessKinds() {
@@ -87,17 +85,17 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         }
     }
 
-    private record CallLocationsByMethod(Map<String, List<String>> callLocationsByMethod) {
+    private record CallLocationsByMethod(Map<String, ConcurrentLinkedQueue<String>> callLocationsByMethod) {
         CallLocationsByMethod() {
-            this(new TreeMap<>());
+            this(new ConcurrentSkipListMap<>());
         }
 
         public Set<String> getMethods() {
             return callLocationsByMethod.keySet();
         }
 
-        public List<String> getMethodCallLocations(String methodName) {
-            return callLocationsByMethod.getOrDefault(methodName, new ArrayList<>());
+        public ConcurrentLinkedQueue<String> getMethodCallLocations(String methodName) {
+            return callLocationsByMethod.getOrDefault(methodName, new ConcurrentLinkedQueue<>());
         }
     }
 
@@ -136,12 +134,12 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
     public void addCall(String entry, DynamicAccessDetectionPhase.DynamicAccessKind accessKind, String call, String callLocation) {
         MethodsByAccessKind entryContent = callsBySourceEntry.computeIfAbsent(entry, k -> new MethodsByAccessKind());
         CallLocationsByMethod methodCallLocations = entryContent.methodsByAccessKind().computeIfAbsent(accessKind, k -> new CallLocationsByMethod());
-        List<String> callLocations = methodCallLocations.callLocationsByMethod().computeIfAbsent(call, k -> new ArrayList<>());
+        ConcurrentLinkedQueue<String> callLocations = methodCallLocations.callLocationsByMethod().computeIfAbsent(call, k -> new ConcurrentLinkedQueue<>());
         callLocations.add(callLocation);
     }
 
     public MethodsByAccessKind getMethodsByAccessKind(String entry) {
-        return callsBySourceEntry.getOrDefault(entry, new MethodsByAccessKind());
+        return callsBySourceEntry.computeIfAbsent(entry, k -> new MethodsByAccessKind());
     }
 
     public UnmodifiableEconomicSet<String> getSourceEntries() {

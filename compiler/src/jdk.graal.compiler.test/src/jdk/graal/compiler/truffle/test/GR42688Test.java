@@ -165,7 +165,7 @@ public class GR42688Test {
     }
 
     @Test
-    public void testDeoptLoopStoppedByMaximumCompilations() {
+    public void testDeoptLoopDetected() {
         Assume.assumeTrue(Truffle.getRuntime() instanceof OptimizedTruffleRuntime);
         OptimizedTruffleRuntime optimizedTruffleRuntime = (OptimizedTruffleRuntime) Truffle.getRuntime();
         AtomicReference<OptimizedCallTarget> calleeRef = new AtomicReference<>();
@@ -194,7 +194,7 @@ public class GR42688Test {
 
             @Override
             public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
-                if (target == callerRef.get() && "Maximum compilation count 100 reached.".equals(reason)) {
+                if (target == callerRef.get() && reason != null && reason.contains("Deopt taken too many times")) {
                     intCallerCompilationFailed.set(true);
                 }
             }
@@ -234,9 +234,9 @@ public class GR42688Test {
              * which is not valid for integer and calling the compiled callee results in an
              * immediate deopt, but the deopt lands outside the callee AST, which means the compiled
              * callee is used again without the AST getting a chance to respecialize. Therefore, the
-             * deopts of the intCaller are repeated until the MaximumRepeatedCompilations limit
-             * kicks in and marks the intCaller call target as permanent opt fail which means no
-             * further compilations of it are attempted.
+             * deopts of the intCaller are repeated until the deopt cycle detection kicks in and
+             * marks the intCaller call target as permanent opt fail which means no further
+             * compilations of it are attempted.
              */
             for (int i = 0; i < 1000000000 && !intCallerCompilationFailed.get(); i++) {
                 intCaller.call(42, Integer.class);

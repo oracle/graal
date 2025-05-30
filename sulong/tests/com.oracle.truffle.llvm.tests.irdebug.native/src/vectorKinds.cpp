@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,10 +45,10 @@ template <typename T> void doReceive(T toInspect) {
 }
 
 __attribute__((constructor)) void test() {
-    doReceive((v9sb){ '0', '1', '2', '3', '4', '5', '6', '7', '8' });
-    doReceive((v8ss){ 0, 1, 2, 3, 4, 5, 6, 7 });
-    doReceive((v7si){ 0, 1, 2, 3, 4, 5, 6 });
-    doReceive((v6sl){ 0L, 1L, 2L, 3L, 4L, 5L });
-    doReceive((v5flt){ 0.0f, 1.1f, 2.2f, 3.3f, 4.4f });
-    doReceive((v4dbl){ 0.0, 1.1, 2.2, 3.3 });
+    doReceive((v9sb) { '0', '1', '2', '3', '4', '5', '6', '7', '8' });
+    doReceive((v8ss) { 0, 1, 2, 3, 4, 5, 6, 7 });
+    doReceive((v7si) { 0, 1, 2, 3, 4, 5, 6 });
+    doReceive((v6sl) { 0L, 1L, 2L, 3L, 4L, 5L });
+    doReceive((v5flt) { 0.0f, 1.1f, 2.2f, 3.3f, 4.4f });
+    doReceive((v4dbl) { 0.0, 1.1, 2.2, 3.3 });
 }

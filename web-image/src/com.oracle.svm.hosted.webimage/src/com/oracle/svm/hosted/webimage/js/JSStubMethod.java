@@ -26,6 +26,7 @@
 package com.oracle.svm.hosted.webimage.js;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.webimage.api.JS;
@@ -103,8 +104,29 @@ public class JSStubMethod extends CustomSubstitutionMethod {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
-        boolean rawCall = AnnotationAccess.isAnnotationPresent(method, JSRawCall.class);
-        boolean coercion = AnnotationAccess.isAnnotationPresent(method, JS.Coerce.class);
+        boolean rawCall;
+        boolean coercion;
+        JSBody.JSCode jsCode;
+        if (getOriginal() instanceof JSObjectAccessMethod jsObjectAccessMethod) {
+            rawCall = false;
+            /*
+             * Only the load return value should be coerced. For stores, only regular conversion
+             * should be applied.
+             *
+             * TODO GR-65036 We should coerce in both directions
+             */
+            coercion = jsObjectAccessMethod.isLoad();
+            jsCode = jsObjectAccessMethod.getJSCode();
+        } else {
+            rawCall = AnnotationAccess.isAnnotationPresent(method, JSRawCall.class);
+            coercion = AnnotationAccess.isAnnotationPresent(method, JS.Coerce.class);
+            JS js = Objects.requireNonNull(AnnotationAccess.getAnnotation(method, JS.class));
+            jsCode = new JSBody.JSCode(js, method);
+        }
+        return buildGraph(debug, method, providers, purpose, jsCode, coercion, rawCall);
+    }
+
+    private static StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose, JSBody.JSCode jsCode, boolean coercion, boolean rawCall) {
         if (rawCall && coercion) {
             throw JVMCIError.shouldNotReachHere("Cannot use JS.Coerce and JSRawCall annotation simultaneously: " + method.format("%H.%n"));
         }
@@ -135,13 +157,6 @@ public class JSStubMethod extends CustomSubstitutionMethod {
 
         // Step 2: insert the JS body representation node.
         int bci = kit.bci();
-        JSBody.JSCode jsCode;
-        JS js = AnnotationAccess.getAnnotation(method, JS.class);
-        if (js != null) {
-            jsCode = new JSBody.JSCode(js, method);
-        } else {
-            throw JVMCIError.shouldNotReachHere();
-        }
 
         Stamp jsBodyStamp = rawCall ? returnStamp(method.getSignature()) : StampFactory.object();
         AnalysisMethod exceptionHandler;

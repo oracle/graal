@@ -179,13 +179,13 @@ suite = {
         },
         "LLVM_LLD_STANDALONE": {
             "license" : "Apache-2.0-LLVM",
-            "version" : "18.1.3-4-gd3f23e9e73-bg3b8289d0a4",
+            "version" : "20.1.4-1-ga7183f5a17-bg217527b869",
             "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
             "os_arch": {
                 "darwin": {
                     "aarch64": {
                         "urls" : ["{host}/llvm-lldonly-llvmorg-{version}-darwin-aarch64.tar.gz"],
-                        "digest" : "sha512:63afa451eab51699bd0ba0643645ca0170f4ee1c901fa2fcc1144566a2354c6c79ae95c218f1326fabc0f666a8949ced4af6172b89950d8f3a0c5a30b2246bbc",
+                        "digest" : "sha512:b4d99953e4d3cc947555da92f4f195cf37e0156a09c04ad97ef67042632768c144d86a3d11fda67dd55a7c6321e6db3cd449d719f7a5af842cd285d27d98fc22",
                     },
                     "<others>": {
                         "optional": True,

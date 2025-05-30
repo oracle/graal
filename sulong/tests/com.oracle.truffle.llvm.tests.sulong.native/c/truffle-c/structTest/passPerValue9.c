@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -53,7 +53,7 @@ int func(struct test t) {
 }
 
 int main() {
-    struct test t = { { 1, 2, 3 }, &(struct point){ 4, 5 } };
+    struct test t = { { 1, 2, 3 }, &(struct point) { 4, 5 } };
     int ret = func(t) + func(t);
     return ret + t.a[0] + t.a[1] + t.a[2] + t.p->x + t.p->y;
 }

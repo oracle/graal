@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,10 @@
  */
 package jdk.graal.compiler.truffle;
 
-import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
-
 import com.oracle.truffle.compiler.ConstantFieldInfo;
 
+import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -97,6 +97,11 @@ final class TruffleConstantFieldProvider implements ConstantFieldProvider {
     @Override
     public boolean maybeFinal(ResolvedJavaField field) {
         return delegate.maybeFinal(field);
+    }
+
+    @Override
+    public boolean isTrustedFinal(CanonicalizerTool tool, ResolvedJavaField field) {
+        return delegate.isTrustedFinal(tool, field);
     }
 
     private JavaConstant verifyFieldValue(ResolvedJavaField field, JavaConstant constant, ConstantFieldInfo info) {

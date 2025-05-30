@@ -77,13 +77,21 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
 
     private final Stamp uncheckedStamp;
 
+    /**
+     * Records the injection of the property that this is a load from a trusted final field.
+     *
+     * @see ConstantFieldProvider#isTrustedFinal(CanonicalizerTool, ResolvedJavaField)
+     */
+    private final boolean trustInjected;
+
     protected LoadFieldNode(StampPair stamp, ValueNode object, ResolvedJavaField field, boolean immutable) {
-        this(stamp, object, field, MemoryOrderMode.getMemoryOrder(field), immutable);
+        this(stamp, object, field, MemoryOrderMode.getMemoryOrder(field), immutable, false);
     }
 
-    protected LoadFieldNode(StampPair stamp, ValueNode object, ResolvedJavaField field, MemoryOrderMode memoryOrder, boolean immutable) {
+    protected LoadFieldNode(StampPair stamp, ValueNode object, ResolvedJavaField field, MemoryOrderMode memoryOrder, boolean immutable, boolean trustInjected) {
         super(TYPE, stamp.getTrustedStamp(), object, field, memoryOrder, immutable);
         this.uncheckedStamp = stamp.getUncheckedStamp();
+        this.trustInjected = trustInjected;
     }
 
     public static LoadFieldNode create(Assumptions assumptions, ValueNode object, ResolvedJavaField field) {
@@ -91,7 +99,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     }
 
     public static LoadFieldNode create(Assumptions assumptions, ValueNode object, ResolvedJavaField field, MemoryOrderMode memoryOrder) {
-        return new LoadFieldNode(StampFactory.forDeclaredType(assumptions, field.getType(), false), object, field, memoryOrder, false);
+        return new LoadFieldNode(StampFactory.forDeclaredType(assumptions, field.getType(), false), object, field, memoryOrder, false, false);
     }
 
     public static ValueNode create(ConstantFieldProvider constantFields, ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess,
@@ -111,6 +119,20 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     public static ValueNode createOverrideStamp(ConstantFieldProvider constantFields, ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess,
                     OptionValues options, StampPair stamp, ValueNode object, ResolvedJavaField field, boolean canonicalizeReads, boolean allUsagesAvailable, NodeSourcePosition position) {
         return canonical(null, stamp, object, field, constantFields, constantReflection, options, metaAccess, canonicalizeReads, allUsagesAvailable, false, position);
+    }
+
+    /**
+     * Returns a node that is the same as this node but is injected with the property that it is a
+     * load from a trusted final field. May return this node if the injection is unnecessary or has
+     * already been done.
+     *
+     * @see ConstantFieldProvider#isTrustedFinal(CanonicalizerTool, ResolvedJavaField)
+     */
+    public LoadFieldNode withTrustInjected() {
+        if (getLocationIdentity().isImmutable() || trustInjected) {
+            return this;
+        }
+        return new LoadFieldNode(StampPair.create(stamp, uncheckedStamp), object(), field(), getMemoryOrder(), false, true);
     }
 
     @Override
@@ -236,5 +258,15 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
             return CYCLES_2;
         }
         return super.estimatedNodeCycles();
+    }
+
+    /**
+     * Returns {@code true} if this node is injected with the property that it is a load from a
+     * trusted final field.
+     *
+     * @see ConstantFieldProvider#isTrustedFinal(CanonicalizerTool, ResolvedJavaField)
+     */
+    public boolean trustInjected() {
+        return trustInjected;
     }
 }

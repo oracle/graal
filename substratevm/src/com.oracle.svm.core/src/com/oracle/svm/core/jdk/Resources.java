@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -147,6 +148,9 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
 
     private GlobTrieNode<ConditionWithOrigin> resourcesTrieRoot;
 
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private Function<Module, Module> hostedToRuntimeModuleMapper;
+
     Resources() {
     }
 
@@ -194,10 +198,15 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
         Module m = module != null && module.isNamed() ? module : null;
         if (ImageInfo.inImageBuildtimeCode()) {
             if (m != null) {
-                m = RuntimeModuleSupport.instance().getRuntimeModuleForHostedModule(m);
+                m = currentLayer().hostedToRuntimeModuleMapper.apply(m);
             }
         }
         return new ModuleResourceKey(m, resourceName);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    public void setHostedToRuntimeModuleMapper(Function<Module, Module> hostedToRuntimeModuleMapper) {
+        this.hostedToRuntimeModuleMapper = hostedToRuntimeModuleMapper;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -472,7 +481,7 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
              * If module is not specified or is an unnamed module and entry was not found as
              * classpath-resource we have to search for the resource in all modules in the image.
              */
-            for (Module m : RuntimeModuleSupport.instance().getBootLayer().modules()) {
+            for (Module m : RuntimeModuleSupport.singleton().getBootLayer().modules()) {
                 entry = getAtRuntime(m, resourceName, false);
                 if (entry != MISSING_METADATA_MARKER) {
                     isInMetadata = true;
@@ -510,7 +519,7 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
 
         /* If moduleName was unspecified we have to consider all modules in the image */
         if (moduleName(module) == null) {
-            for (Module m : RuntimeModuleSupport.instance().getBootLayer().modules()) {
+            for (Module m : RuntimeModuleSupport.singleton().getBootLayer().modules()) {
                 ResourceStorageEntryBase entry = getAtRuntime(m, resourceName, false);
                 if (entry == MISSING_METADATA_MARKER) {
                     continue;

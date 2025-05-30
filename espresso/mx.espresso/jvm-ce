@@ -3,5 +3,4 @@ DYNAMIC_IMPORTS=/vm,/substratevm,/tools,/regex
 COMPONENTS=cmp,gvm,lg,ni,nic,nil,sdkni,svm,svmjdwp,svmt,svmsl,tflc,tflsm
 NATIVE_IMAGES=lib:jvmcicompiler
 NON_REBUILDABLE_IMAGES=lib:jvmcicompiler
-DISABLE_INSTALLABLES=true
 JVM_STANDALONE_WITH_LLVM=false

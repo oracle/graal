@@ -25,10 +25,6 @@
 
 package com.oracle.svm.hosted.webimage.codegen;
 
-import static com.oracle.svm.hosted.webimage.codegen.Runtime.BoxIfNeeded;
-import static com.oracle.svm.hosted.webimage.codegen.Runtime.JavaScriptToJava;
-import static com.oracle.svm.hosted.webimage.codegen.Runtime.JavaToJavaScript;
-import static com.oracle.svm.hosted.webimage.codegen.Runtime.UnboxIfNeeded;
 import static jdk.graal.compiler.core.common.calc.CanonicalCondition.BT;
 
 import java.lang.reflect.Method;
@@ -36,7 +32,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -78,13 +73,10 @@ import com.oracle.svm.hosted.webimage.codegen.type.InvokeLoweringUtil;
 import com.oracle.svm.hosted.webimage.codegen.value.ResolvedVarLowerer;
 import com.oracle.svm.hosted.webimage.codegen.wrappers.JSEmitter;
 import com.oracle.svm.hosted.webimage.js.JSBody;
-import com.oracle.svm.hosted.webimage.js.JSStaticMethodDefinition;
 import com.oracle.svm.hosted.webimage.snippets.JSSnippets;
 import com.oracle.svm.webimage.JSKeyword;
-import com.oracle.svm.webimage.api.JSObjectAccess;
 import com.oracle.svm.webimage.functionintrinsics.ImplicitExceptions;
 import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
-import com.oracle.svm.webimage.functionintrinsics.JSConversion;
 import com.oracle.svm.webimage.functionintrinsics.JSFunctionDefinition;
 import com.oracle.svm.webimage.functionintrinsics.JSSystemFunction;
 import com.oracle.svm.webimage.type.TypeControl;
@@ -245,22 +237,12 @@ public class WebImageJSNodeLowerer extends NodeLowerer {
     public WebImageJSNodeLowerer(JSCodeGenTool codeGenTool) {
         super(codeGenTool);
         this.codeGenTool = codeGenTool;
-        ResolvedJavaMethod coerceJavaScriptToJava = null;
-        try {
-            Method coerceMethod = JSConversion.class.getDeclaredMethod("coerceJavaScriptToJava", Object.class, Class.class);
-            coerceJavaScriptToJava = codeGenTool.getProviders().getMetaAccess().lookupJavaMethod(coerceMethod);
-        } catch (NoSuchMethodException ex) {
-            VMError.shouldNotReachHere(ex);
-        }
-        this.coerceJavaScriptToJavaMethodDef = new JSStaticMethodDefinition(coerceJavaScriptToJava);
     }
 
     // ============================================================================
     // region [Common definitions]
 
     public static final boolean INT_PALADIN = true;
-
-    private final JSStaticMethodDefinition coerceJavaScriptToJavaMethodDef;
 
     /** Denotes nodes that do not need to be lowered. */
     public static final Set<Class<?>> IGNORED_NODE_TYPES = new HashSet<>(Arrays.asList(
@@ -1510,72 +1492,7 @@ public class WebImageJSNodeLowerer extends NodeLowerer {
             SnippetRuntime.SubstrateForeignCallDescriptor substrateDescriptor = (SnippetRuntime.SubstrateForeignCallDescriptor) descriptor;
             ResolvedJavaMethod method = substrateDescriptor.findMethod(codeGenTool.getProviders().getMetaAccess());
 
-            if (substrateDescriptor.getDeclaringClass() == JSObjectAccess.class) {
-                assert node.getArguments().size() == 2 || node.getArguments().size() == 3 : "Only expect 2 or 3 arguments, found = " + node.getArguments().size();
-                assert node.getArguments().get(1) instanceof ConstantNode : "Field name should be a constant";
-
-                ValueNode receiverNode = node.getArguments().get(0);
-                JavaConstant fieldConst = (JavaConstant) ((ConstantNode) node.getArguments().get(1)).getValue();
-                String field = Objects.requireNonNull(codeGenTool.getProviders().getSnippetReflection().asObject(String.class, fieldConst));
-                IEmitter receiverJS = tool -> JavaToJavaScript.emitCall(tool, Emitter.of(receiverNode));
-                IEmitter receiverSelect = tool -> tool.genPropertyAccess(receiverJS, Emitter.of(field));
-
-                /*
-                 * Intrinsify JSObjectAccess calls for performance & simplify the job of Closure
-                 * compiler.
-                 *
-                 * Otherwise, we will have to generate extern files to prevent Closure compiler from
-                 * renaming fields of imported classes. Those fields are accessed via field names in
-                 * JSObjectAccess in the form of `o['f']`.
-                 *
-                 * This also ensures that the user can use Closure compiler to compress the
-                 * generated JS file in their own workflow without worrying about extern files and
-                 * renaming.
-                 */
-                if (node.getArguments().size() == 2) {
-                    // javaScriptToJava(javaToJavaScript(arg0).arg1)
-                    IEmitter javaValueBeforeCoerce = tool -> JavaScriptToJava.emitCall(tool, receiverSelect);
-
-                    // coerce result
-                    ResolvedJavaMethod target = substrateDescriptor.findMethod(codeGenTool.getProviders().getMetaAccess());
-                    JavaKind returnKind = target.getSignature().getReturnKind();
-                    Class<?> clazz = switch (returnKind) {
-                        case Boolean -> Boolean.class;
-                        case Byte -> Byte.class;
-                        case Short -> Short.class;
-                        case Char -> Character.class;
-                        case Int -> Integer.class;
-                        case Float -> Float.class;
-                        case Long -> Long.class;
-                        case Double -> Double.class;
-                        case Object -> Object.class;
-                        default -> throw VMError.shouldNotReachHere("Unexpected return type void");
-                    };
-
-                    TypeControl typeControl = codeGenTool.getJSProviders().typeControl();
-                    String hubName = typeControl.requestHubName(codeGenTool.getProviders().getMetaAccess().lookupJavaType(clazz));
-                    IEmitter coercedJavaValue = tool -> coerceJavaScriptToJavaMethodDef.emitCall(tool, javaValueBeforeCoerce, Emitter.of(hubName));
-
-                    /*
-                     * Unbox return value.
-                     *
-                     * Note that coercion and unboxing are two different steps: The former addresses
-                     * the problem of interoperability between Java and JavaScript, while the latter
-                     * adapts boxed and primitive types needed for Java semantics.
-                     */
-                    UnboxIfNeeded.emitCall(codeGenTool, coercedJavaValue, Emitter.of(returnKind.ordinal()));
-                } else if (node.getArguments().size() == 3) {
-                    ValueNode rhsNode = node.getArguments().last();
-
-                    // Box of the 3rd argument if necessary
-                    IEmitter rhs = tool -> BoxIfNeeded.emitCall(tool, Emitter.of(rhsNode), Emitter.of(rhsNode.getStackKind().ordinal()));
-
-                    // javaToJavaScript(arg0).arg1 = javaToJavaScript(arg2)
-                    receiverSelect.lower(codeGenTool);
-                    codeGenTool.genAssignment();
-                    JavaToJavaScript.emitCall(codeGenTool, rhs);
-                }
-            } else if (method.isStatic()) {
+            if (method.isStatic()) {
                 codeGenTool.genStaticCall(method, Emitter.of(node.getArguments()));
             } else {
                 throw GraalError.unimplemented("ForeignCallNode for non-static methods not implemented: " + node);

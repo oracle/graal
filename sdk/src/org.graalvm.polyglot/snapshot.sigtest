@@ -707,12 +707,17 @@ meth public abstract java.nio.file.Path parsePath(java.lang.String)
 meth public abstract java.nio.file.Path parsePath(java.net.URI)
 meth public abstract java.nio.file.Path toAbsolutePath(java.nio.file.Path)
 meth public abstract void delete(java.nio.file.Path) throws java.io.IOException
+meth public boolean isFileStoreReadOnly(java.nio.file.Path) throws java.io.IOException
 meth public java.lang.String getMimeType(java.nio.file.Path)
 meth public java.lang.String getPathSeparator()
 meth public java.lang.String getSeparator()
 meth public java.nio.charset.Charset getEncoding(java.nio.file.Path)
 meth public java.nio.file.Path getTempDirectory()
 meth public java.nio.file.Path readSymbolicLink(java.nio.file.Path) throws java.io.IOException
+meth public long getFileStoreBlockSize(java.nio.file.Path) throws java.io.IOException
+meth public long getFileStoreTotalSpace(java.nio.file.Path) throws java.io.IOException
+meth public long getFileStoreUnallocatedSpace(java.nio.file.Path) throws java.io.IOException
+meth public long getFileStoreUsableSpace(java.nio.file.Path) throws java.io.IOException
 meth public static org.graalvm.polyglot.io.FileSystem allowInternalResourceAccess(org.graalvm.polyglot.io.FileSystem)
 meth public static org.graalvm.polyglot.io.FileSystem allowLanguageHomeAccess(org.graalvm.polyglot.io.FileSystem)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")

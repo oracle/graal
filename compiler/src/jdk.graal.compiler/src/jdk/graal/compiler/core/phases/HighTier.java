@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,6 +48,8 @@ import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningPhase;
 import jdk.graal.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIExpansionPhase;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIIntrinsics;
 import jdk.graal.compiler.virtual.phases.ea.FinalPartialEscapePhase;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationPhase;
 
@@ -106,6 +108,10 @@ public class HighTier extends BaseTier<HighTierContext> {
 
         if (GraalOptions.PartialEscapeAnalysis.getValue(options)) {
             appendPhase(new FinalPartialEscapePhase(true, canonicalizer, null, options));
+        }
+
+        if (VectorAPIIntrinsics.intrinsificationSupported(options)) {
+            appendPhase(new VectorAPIExpansionPhase(canonicalizer));
         }
 
         if (GraalOptions.OptReadElimination.getValue(options)) {

@@ -32,8 +32,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.shaded.org.capnproto.ReaderOptions;
-import com.oracle.svm.shaded.org.capnproto.Serialize;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -55,6 +53,8 @@ import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
 import com.oracle.svm.hosted.driver.LayerOptionsSupport.LayerOption;
+import com.oracle.svm.shaded.org.capnproto.ReaderOptions;
+import com.oracle.svm.shaded.org.capnproto.Serialize;
 import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -189,6 +189,12 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             }
             SubstrateOptions.UseContainerSupport.update(values, false);
             enableConservativeUnsafeAccess(values);
+            /*
+             * Module needs to be initialized in the application layer because of ALL_UNNAMED_MODULE
+             * and EVERYONE_MODULE. This allows to have a consistent hash code for those modules at
+             * run time and build time.
+             */
+            SubstrateOptions.ApplicationLayerInitializedClasses.update(values, Module.class.getName());
         }
 
         if (isLayerUseOptionEnabled(hostedOptions)) {
@@ -198,6 +204,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                 SubstrateOptions.imageLayerEnabledHandler.onOptionEnabled(values);
             }
             enableConservativeUnsafeAccess(values);
+            SubstrateOptions.ApplicationLayerInitializedClasses.update(values, Module.class.getName());
         }
     }
 

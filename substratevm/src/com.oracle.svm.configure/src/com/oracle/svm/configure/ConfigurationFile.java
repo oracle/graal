@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.configure;
 
+import static com.oracle.svm.configure.ConfigurationParser.FOREIGN_KEY;
 import static com.oracle.svm.configure.ConfigurationParser.JNI_KEY;
 import static com.oracle.svm.configure.ConfigurationParser.REFLECTION_KEY;
 import static com.oracle.svm.configure.ConfigurationParser.RESOURCES_KEY;
@@ -43,7 +44,7 @@ public enum ConfigurationFile {
     DYNAMIC_PROXY("proxy", null, true, false),
     PREDEFINED_CLASSES_NAME("predefined-classes", null, true, false),
     /* Non-metadata categories */
-    FOREIGN("foreign", null, false, false),
+    FOREIGN("foreign", FOREIGN_KEY, true, false),
     SERIALIZATION_DENY("serialization-deny", null, false, false);
 
     public static final String LEGACY_FILE_NAME_SUFFIX = "-config.json";

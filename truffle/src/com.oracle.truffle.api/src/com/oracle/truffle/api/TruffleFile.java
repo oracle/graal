@@ -2024,6 +2024,19 @@ public final class TruffleFile {
     }
 
     /**
+     * Returns information about the file store that contains this file. The returned
+     * {@link FileStoreInfo} object provides access to disk-related metadata such as total size,
+     * usable space, and unallocated space.
+     *
+     * @see FileStoreInfo
+     * @since 25.0.0
+     */
+    @TruffleBoundary
+    public FileStoreInfo getFileStoreInfo() {
+        return new FileStoreInfo();
+    }
+
+    /**
      * A detector for finding {@link TruffleFile file}'s MIME type and encoding.
      *
      * <p>
@@ -2064,6 +2077,140 @@ public final class TruffleFile {
          * @since 19.0
          */
         Charset findEncoding(TruffleFile file) throws IOException;
+    }
+
+    /**
+     * Provides information about the file store. This class offers access to storage-related
+     * metrics, such as the total size of the file store, unallocated space, and the usable space
+     * available to the current Java virtual machine.
+     *
+     * @see TruffleFile#getFileStoreInfo()
+     * @since 25.0.0
+     */
+    public final class FileStoreInfo {
+
+        private FileStoreInfo() {
+        }
+
+        /**
+         * Returns the size, in bytes, of the file store. If the file store's size exceeds
+         * {@link Long#MAX_VALUE}, {@code Long.MAX_VALUE} is returned.
+         *
+         * @return the size of the file store in bytes
+         * @throws UnsupportedOperationException if the file system does not support retrieving file
+         *             store information
+         * @throws IOException if an I/O error occurs while accessing the file store
+         * @throws SecurityException if the {@link FileSystem} implementation denied the operation
+         * @since 25.0.0
+         */
+        @TruffleBoundary
+        public long getTotalSpace() throws IOException {
+            try {
+                return fileSystemContext.fileSystem.getFileStoreTotalSpace(normalizedPath);
+            } catch (IOException | SecurityException | UnsupportedOperationException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw wrapHostException(t);
+            }
+        }
+
+        /**
+         * Returns the number of unallocated bytes in the file store. The returned value represents
+         * the raw free space on the storage device, regardless of access permissions or user
+         * quotas. If the number of unallocated bytes exceeds {@link Long#MAX_VALUE},
+         * {@code Long.MAX_VALUE} is returned. Note that the value may be imprecise, as it can
+         * change at any time due to external I/O operations, including those performed outside this
+         * virtual machine.
+         *
+         * @return the number of unallocated bytes
+         * @throws UnsupportedOperationException if the file system does not support retrieving file
+         *             store information
+         * @throws IOException if an I/O error occurs while accessing the file store
+         * @throws SecurityException if the {@link FileSystem} implementation denied the operation
+         * @since 25.0.0
+         */
+        @TruffleBoundary
+        public long getUnallocatedSpace() throws IOException {
+            try {
+                return fileSystemContext.fileSystem.getFileStoreUnallocatedSpace(normalizedPath);
+            } catch (IOException | SecurityException | UnsupportedOperationException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw wrapHostException(t);
+            }
+        }
+
+        /**
+         * Returns the number of bytes available to this Java virtual machine on the file store.
+         * Unlike {@link #getUnallocatedSpace()}, this method accounts for operating system-level
+         * restrictions, user quotas, and file system permissions, and therefore may return a
+         * smaller value. If the available space exceeds {@link Long#MAX_VALUE},
+         * {@code Long.MAX_VALUE} is returned. Note that the returned value may be imprecise, as it
+         * can change at any time due to external I/O activity, including operations performed
+         * outside this virtual machine.
+         *
+         * @return the number of usable bytes available to this Java virtual machine
+         * @throws UnsupportedOperationException if the file system does not support retrieving file
+         *             store information
+         * @throws IOException if an I/O error occurs while accessing the file store
+         * @throws SecurityException if the {@link FileSystem} implementation denied the operation
+         * @since 25.0.0
+         */
+        @TruffleBoundary
+        public long getUsableSpace() throws IOException {
+            try {
+                return fileSystemContext.fileSystem.getFileStoreUsableSpace(normalizedPath);
+            } catch (IOException | SecurityException | UnsupportedOperationException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw wrapHostException(t);
+            }
+        }
+
+        /**
+         * Returns the number of bytes per block in the file store.
+         *
+         * @return the block size
+         * @throws UnsupportedOperationException if the file system does not support retrieving file
+         *             store information
+         * @throws IOException if an I/O error occurs while accessing the file store
+         * @throws SecurityException if the {@link FileSystem} implementation denied the operation
+         * @since 25.0.0
+         */
+        @TruffleBoundary
+        public long getBlockSize() throws IOException {
+            try {
+                return fileSystemContext.fileSystem.getFileStoreBlockSize(normalizedPath);
+            } catch (IOException | SecurityException | UnsupportedOperationException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw wrapHostException(t);
+            }
+        }
+
+        /**
+         * Determines whether the file store is read-only.
+         * <p>
+         * Note that even if the file store is not read-only, individual write operations may still
+         * be denied due to restrictions imposed by the {@link FileSystem} implementation, operating
+         * system level policies, user quotas, or file system permissions.
+         *
+         * @throws UnsupportedOperationException if the file system does not support retrieving file
+         *             store information
+         * @throws IOException if an I/O error occurs while accessing the file store
+         * @throws SecurityException if the {@link FileSystem} implementation denied the operation
+         * @since 25.0.0
+         */
+        @TruffleBoundary
+        public boolean isReadOnly() throws IOException {
+            try {
+                return fileSystemContext.fileSystem.isFileStoreReadOnly(normalizedPath);
+            } catch (IOException | SecurityException | UnsupportedOperationException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw wrapHostException(t);
+            }
+        }
     }
 
     static final class FileSystemContext {

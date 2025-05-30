@@ -199,7 +199,7 @@ public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRG
     }
 
     public RegisterAttributes attributes(Register register) {
-        return getRegisterConfig().getAttributesMap()[register.number];
+        return getRegisterConfig().getAttributesMap().get(register.number);
     }
 
     @Override
@@ -796,7 +796,7 @@ public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRG
 
     @Override
     public LIRInstruction createZapRegisters() {
-        Register[] zappedRegisters = getResult().getFrameMap().getRegisterConfig().getAllocatableRegisters().toArray();
+        Register[] zappedRegisters = getResult().getFrameMap().getRegisterConfig().getAllocatableRegisters().toArray(Register[]::new);
         return createZapRegisters(zappedRegisters);
     }
 

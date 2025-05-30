@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -433,6 +433,96 @@ public interface FileSystem {
             return true;
         }
         return toRealPath(path1, options).equals(toRealPath(path2, options));
+    }
+
+    /**
+     * Returns the size, in bytes, of the file store that contains the given {@code path}. If the
+     * file store's size exceeds {@link Long#MAX_VALUE}, {@code Long.MAX_VALUE} is returned.
+     *
+     * @param path the path whose file store size is to be determined
+     * @return the size of the file store in bytes
+     * @throws UnsupportedOperationException if the file system does not support retrieving file
+     *             store information
+     * @throws IOException if an I/O error occurs while accessing the file store
+     * @throws SecurityException if the {@link FileSystem} implementation denied the operation
+     * @since 25.0.0
+     */
+    default long getFileStoreTotalSpace(Path path) throws IOException {
+        throw new UnsupportedOperationException("GetFileStoreTotalSpace is not supported");
+    }
+
+    /**
+     * Returns the number of unallocated bytes in the file store that contains the given
+     * {@code path}. The returned value represents the raw free space on the storage device,
+     * regardless of access permissions or user quotas. If the number of unallocated bytes exceeds
+     * {@link Long#MAX_VALUE}, {@code Long.MAX_VALUE} is returned. Note that the value may be
+     * imprecise, as it can change at any time due to external I/O operations, including those
+     * performed outside this virtual machine.
+     *
+     * @param path the path whose file store is to be queried
+     * @return the number of unallocated bytes
+     * @throws UnsupportedOperationException if the file system does not support retrieving file
+     *             store information
+     * @throws IOException if an I/O error occurs while accessing the file store
+     * @throws SecurityException if the {@link FileSystem} implementation denied the operation
+     * @since 25.0.0
+     */
+    default long getFileStoreUnallocatedSpace(Path path) throws IOException {
+        throw new UnsupportedOperationException("GetFileStoreUnallocatedSpace is not supported");
+    }
+
+    /**
+     * Returns the number of bytes available to this Java virtual machine on the file store that
+     * contains the given {@code path}. Unlike {@link #getFileStoreUnallocatedSpace(Path)}, this
+     * method accounts for operating system level restrictions, user quotas, and file system
+     * permissions, and therefore may return a smaller value. If the available space exceeds
+     * {@link Long#MAX_VALUE}, {@code Long.MAX_VALUE} is returned. Note that the returned value may
+     * be imprecise, as it can change at any time due to external I/O activity, including operations
+     * performed outside this virtual machine.
+     *
+     * @param path the path whose file store is to be queried
+     * @return the number of usable bytes available to this Java virtual machine
+     * @throws UnsupportedOperationException if the file system does not support retrieving file
+     *             store information
+     * @throws IOException if an I/O error occurs while accessing the file store
+     * @throws SecurityException if the {@link FileSystem} implementation denied the operation
+     * @since 25.0.0
+     */
+    default long getFileStoreUsableSpace(Path path) throws IOException {
+        throw new UnsupportedOperationException("GetFileStoreUsableSpace is not supported");
+    }
+
+    /**
+     * Returns the number of bytes per block in the file store that contains the given {@code path}.
+     *
+     * @param path the path whose file store is to be queried
+     * @return the block size
+     * @throws UnsupportedOperationException if the file system does not support retrieving file
+     *             store information
+     * @throws IOException if an I/O error occurs while accessing the file store
+     * @throws SecurityException if the {@link FileSystem} implementation denied the operation
+     * @since 25.0.0
+     */
+    default long getFileStoreBlockSize(Path path) throws IOException {
+        throw new UnsupportedOperationException("GetFileStoreBlockSize is not supported");
+    }
+
+    /**
+     * Determines whether the file store containing the given {@code path} is read-only.
+     * <p>
+     * Note that even if the file store is not read-only, individual write operations may still be
+     * denied due to restrictions imposed by the {@link FileSystem} implementation, operating system
+     * level policies, user quotas, or file system permissions.
+     *
+     * @param path the path whose file store is to be queried
+     * @throws UnsupportedOperationException if the file system does not support retrieving file
+     *             store information
+     * @throws IOException if an I/O error occurs while accessing the file store
+     * @throws SecurityException if the {@link FileSystem} implementation denied the operation
+     * @since 25.0.0
+     */
+    default boolean isFileStoreReadOnly(Path path) throws IOException {
+        throw new UnsupportedOperationException("IsFileStoreReadOnly is not supported");
     }
 
     /**

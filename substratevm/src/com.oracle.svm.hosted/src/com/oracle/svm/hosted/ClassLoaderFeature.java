@@ -27,21 +27,22 @@ package com.oracle.svm.hosted;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
+
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.ObjectToConstantFieldValueTransformer;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
-import com.oracle.svm.core.fieldvaluetransformer.ObjectToConstantFieldValueTransformer;
 import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
 import com.oracle.svm.util.ReflectionUtil;
 
-import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 import jdk.internal.loader.ClassLoaders;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -94,7 +95,7 @@ public class ClassLoaderFeature implements InternalFeature {
         return replaceCandidate;
     }
 
-    ImageHeapConstant replaceClassLoadersWithLayerConstant(CrossLayerConstantRegistry registry, Object object) {
+    JavaConstant replaceClassLoadersWithLayerConstant(CrossLayerConstantRegistry registry, Object object) {
         if (object instanceof ClassLoader loader) {
             if (replaceWithAppClassLoader(loader) || loader == nativeImageSystemClassLoader.defaultSystemClassLoader) {
                 return registry.getConstant(APP_KEY_NAME);
@@ -136,7 +137,7 @@ public class ClassLoaderFeature implements InternalFeature {
                 });
             }
         } else {
-            config.registerObjectToConstantReplacer(obj -> replaceClassLoadersWithLayerConstant(registry, obj));
+            config.registerObjectToConstantReplacer(obj -> (ImageHeapConstant) replaceClassLoadersWithLayerConstant(registry, obj));
             // relink packages defined in the prior layers
             config.registerObjectToConstantReplacer(packageManager::replaceWithPriorLayerPackage);
         }

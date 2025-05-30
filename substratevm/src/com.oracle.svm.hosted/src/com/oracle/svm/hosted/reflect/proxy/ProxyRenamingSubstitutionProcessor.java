@@ -67,7 +67,7 @@ public class ProxyRenamingSubstitutionProcessor extends SubstitutionProcessor {
      * The code creating the name of dynamic modules can be found in
      * Proxy$ProxyBuilder.getDynamicModule.
      */
-    private static boolean isModuleDynamic(Module module) {
+    public static boolean isModuleDynamic(Module module) {
         return module != null && module.getName() != null && module.getName().matches(DYNAMIC_MODULE_REGEX);
     }
 

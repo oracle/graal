@@ -285,6 +285,10 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
                     WordBase.class, int.class, WordBase.class, int.class);
     public static final HotSpotForeignCallDescriptor KYBER_BARRETT_REDUCE = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_kyberBarrettReduce", int.class,
                     WordBase.class);
+    public static final HotSpotForeignCallDescriptor ARRAY_SORT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "_array_sort", void.class,
+                    WordBase.class, int.class, int.class, int.class);
+    public static final HotSpotForeignCallDescriptor ARRAY_PARTITION = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "_array_partition", void.class,
+                    WordBase.class, int.class, int.class, int.class, WordBase.class, int.class, int.class);
 
     public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START = new HotSpotForeignCallDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, any(),
                     "notify_jvmti_vthread_start", void.class,

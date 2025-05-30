@@ -43,6 +43,7 @@ public class TraceProcessor extends AbstractProcessor {
     private final ReflectionProcessor reflectionProcessor;
     private final SerializationProcessor serializationProcessor;
     private final ClassLoadingProcessor classLoadingProcessor;
+    private final ForeignProcessor foreignProcessor;
 
     public TraceProcessor(AccessAdvisor accessAdvisor) {
         advisor = accessAdvisor;
@@ -50,6 +51,7 @@ public class TraceProcessor extends AbstractProcessor {
         reflectionProcessor = new ReflectionProcessor(this.advisor);
         serializationProcessor = new SerializationProcessor(this.advisor);
         classLoadingProcessor = new ClassLoadingProcessor();
+        foreignProcessor = new ForeignProcessor();
     }
 
     @SuppressWarnings("unchecked")
@@ -95,6 +97,9 @@ public class TraceProcessor extends AbstractProcessor {
                     break;
                 case "classloading":
                     classLoadingProcessor.processEntry(entry, configurationSet);
+                    break;
+                case "foreign":
+                    foreignProcessor.processEntry(entry, configurationSet);
                     break;
                 default:
                     LogUtils.warning("Unknown tracer, ignoring: " + tracer);

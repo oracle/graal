@@ -1380,7 +1380,9 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                 descriptors.add(convertDescriptor(descriptor));
             }
             for (TruffleCompilerOptionDescriptor descriptor : optionsArray) {
-                descriptors.add(convertDescriptorLegacy(descriptor));
+                if (isLegacyOption(convertToLegacyOptionName(descriptor.name()))) {
+                    descriptors.add(convertDescriptorLegacy(descriptor));
+                }
             }
             return descriptors.iterator();
         }

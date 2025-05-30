@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,10 +27,10 @@ package jdk.graal.compiler.hotspot;
 import java.util.BitSet;
 import java.util.List;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
@@ -54,7 +54,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.meta.InvokeTarget;
 
 /**
@@ -290,7 +289,7 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
      * @param killedRegisters see {@link Stub#getDestroyedCallerRegisters()}
      */
     record CodeInfo(long start, EconomicSet<Register> killedRegisters) {
-        public static CodeInfo fromMemory(long memory, RegisterArray allRegisters) {
+        public static CodeInfo fromMemory(long memory, List<Register> allRegisters) {
             Unsafe unsafe = Unsafe.getUnsafe();
             // @formatter:off
             int offset = 0;
@@ -361,7 +360,7 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
                 data.set(codeInfo.toMemory());
                 return codeInfo;
             }
-            RegisterArray allRegisters = backend.getCodeCache().getTarget().arch.getRegisters();
+            List<Register> allRegisters = backend.getCodeCache().getTarget().arch.getRegisters();
             return HotSpotForeignCallLinkageImpl.CodeInfo.fromMemory(codeInfoInMemory, allRegisters);
         }
 

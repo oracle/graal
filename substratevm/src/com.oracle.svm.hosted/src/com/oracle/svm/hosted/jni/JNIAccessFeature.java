@@ -257,10 +257,11 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void registerClassLookup(ConfigurationCondition condition, String jniName) {
+        public void registerClassLookup(ConfigurationCondition condition, String reflectionName) {
             try {
-                register(condition, false, Class.forName(ClassNameSupport.jniNameToReflectionName(jniName)));
+                register(condition, false, Class.forName(reflectionName));
             } catch (ClassNotFoundException e) {
+                String jniName = ClassNameSupport.reflectionNameToJNIName(reflectionName);
                 newNegativeClassLookups.add(jniName);
             }
         }
