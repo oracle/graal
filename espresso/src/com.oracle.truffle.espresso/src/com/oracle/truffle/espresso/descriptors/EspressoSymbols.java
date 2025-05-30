@@ -815,6 +815,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> lock = SYMBOLS.putName("lock");
         public static final Symbol<Name> next = SYMBOLS.putName("next");
         public static final Symbol<Name> NULL = SYMBOLS.putName("NULL");
+        public static final Symbol<Name> NULL_QUEUE = SYMBOLS.putName("NULL_QUEUE");
         public static final Symbol<Name> pending = SYMBOLS.putName("pending");
         public static final Symbol<Name> processPendingLock = SYMBOLS.putName("processPendingLock");
         public static final Symbol<Name> queue = SYMBOLS.putName("queue");

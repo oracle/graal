@@ -752,7 +752,10 @@ public final class Meta extends ContextAccessImpl
         java_lang_ref_Reference_next = java_lang_ref_Reference.requireDeclaredField(Names.next, Types.java_lang_ref_Reference);
         java_lang_ref_Reference_queue = java_lang_ref_Reference.requireDeclaredField(Names.queue, Types.java_lang_ref_ReferenceQueue);
         java_lang_ref_ReferenceQueue = knownKlass(Types.java_lang_ref_ReferenceQueue);
-        java_lang_ref_ReferenceQueue_NULL = java_lang_ref_ReferenceQueue.requireDeclaredField(Names.NULL, Types.java_lang_ref_ReferenceQueue);
+        java_lang_ref_ReferenceQueue_NULL = diff() //
+                        .field(VERSION_24_OR_LOWER, Names.NULL, Types.java_lang_ref_ReferenceQueue) //
+                        .field(VERSION_25_OR_HIGHER, Names.NULL_QUEUE, Types.java_lang_ref_ReferenceQueue) //
+                        .field(java_lang_ref_ReferenceQueue);
 
         java_lang_ref_WeakReference = knownKlass(Types.java_lang_ref_WeakReference);
         java_lang_ref_SoftReference = knownKlass(Types.java_lang_ref_SoftReference);
