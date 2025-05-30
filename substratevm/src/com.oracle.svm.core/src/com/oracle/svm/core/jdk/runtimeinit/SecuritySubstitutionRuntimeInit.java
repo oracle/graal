@@ -38,7 +38,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDKInitializedAtRunTime;
 import com.oracle.svm.core.jdk.SecurityProvidersSupport;
 import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 
@@ -52,32 +51,34 @@ final class Target_java_security_Security {
 @TargetClass(value = java.security.Security.class, innerClass = "SecPropLoader", onlyWith = JDKInitializedAtRunTime.class)
 final class Target_java_security_Security_SecPropLoader {
 
+    /**
+     * On HotSpot, this method loads the properties from the JDK's default location. Since we do not
+     * have a full JDK at run time, we use a snapshot of these values captured at build time from
+     * the host JVM.
+     */
     @Substitute
     private static void loadMaster() {
         Target_java_security_Security.props = SecurityProvidersSupport.singleton().getSavedInitialSecurityProperties();
     }
 }
 
+/**
+ * The {@code javax.crypto.JceSecurity#verificationResults} cache is initialized by the
+ * SecurityServicesFeature at build time, for all registered providers. The cache is used by
+ * {@code javax.crypto.JceSecurity#canUseProvider} at run time to check whether a provider is
+ * properly signed and can be used by JCE. It does that via jar verification which we cannot
+ * support.
+ */
 @TargetClass(className = "javax.crypto.JceSecurity", onlyWith = JDKInitializedAtRunTime.class)
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/javax/crypto/JceSecurity.java.template")
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity {
 
     /*
-     * The JceSecurity.verificationResults cache is initialized by the SecurityServicesFeature at
-     * build time, for all registered providers. The cache is used by JceSecurity.canUseProvider()
-     * at runtime to check whether a provider is properly signed and can be used by JCE. It does
-     * that via jar verification which we cannot support.
+     * Map<Provider, ?> of providers that have already been verified. A value of PROVIDER_VERIFIED
+     * indicates successful verification. Otherwise, the value is the Exception that caused the
+     * verification to fail.
      */
-
-    // Checkstyle: stop
-    @Alias //
-    private static Object PROVIDER_VERIFIED;
-    // Checkstyle: resume
-
-    // Map<Provider,?> of the providers we already have verified
-    // value == PROVIDER_VERIFIED is successfully verified
-    // value is failure cause Exception in error case
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private static Map<Object, Object> verificationResults;
@@ -92,23 +93,23 @@ final class Target_javax_crypto_JceSecurity {
 
     @Substitute
     static Exception getVerificationResult(Provider p) {
-        /* Start code block copied from original method. */
         /* The verification results map key is an identity wrapper object. */
         Object o = SecurityProvidersSupport.singleton().getSecurityProviderVerificationResult(p.getName());
-        if (o == PROVIDER_VERIFIED) {
+        if (o == Boolean.TRUE) {
             return null;
         } else if (o != null) {
             return (Exception) o;
         }
-        /* End code block copied from original method. */
         /*
-         * If the verification result is not found in the verificationResults map JDK proceeds to
-         * verify it. That requires accessing the code base which we don't support. The substitution
-         * for getCodeBase() would be enough to take care of this too, but substituting
-         * getVerificationResult() allows for a better error message.
+         * If the verification result is not found in the verificationResults map, HotSpot will
+         * attempt to verify the provider. This requires accessing the code base, which isn't
+         * supported in Native Image, so we need to fail. We could either fail here or substitute
+         * getCodeBase() and fail there, but handling it here is a cleaner approach.
          */
-        throw VMError.unsupportedFeature("Trying to verify a provider that was not registered at build time: " + p + ". " +
-                        "All providers must be registered and verified in the Native Image builder. ");
+        throw new SecurityException(
+                        "Attempted to verify a provider that was not registered at build time: " + p + ". " +
+                                        "All security providers must be registered and verified during native image generation. " +
+                                        "Try adding the option: -H:AdditionalSecurityProviders=" + p + " and rebuild the image.");
     }
 }
 
@@ -145,84 +146,40 @@ final class Target_sun_security_jca_ProviderConfig {
     @Substitute
     @SuppressFBWarnings(value = "DC_DOUBLECHECK", justification = "This double-check is implemented correctly and is intentional.")
     Provider getProvider() {
-        // volatile variable load
-        Provider p = provider;
-        if (p != null) {
-            return p;
+        if (provider != null) {
+            return provider;
         }
-        // DCL
         synchronized (this) {
-            p = provider;
-            if (p != null) {
-                return p;
+            if (provider != null) {
+                return provider;
             }
             if (!shouldLoad()) {
                 return null;
             }
-
             // Create providers which are in java.base directly
-            SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
-            switch (provName) {
-                case "SUN", "sun.security.provider.Sun": {
-                    p = support.isSecurityProviderExpected("SUN", "sun.security.provider.Sun") ? new sun.security.provider.Sun() : null;
-                    break;
-                }
-                case "SunRsaSign", "sun.security.rsa.SunRsaSign": {
-                    p = support.isSecurityProviderExpected("SunRsaSign", "sun.security.rsa.SunRsaSign") ? new sun.security.rsa.SunRsaSign() : null;
-                    break;
-                }
-                case "SunJCE", "com.sun.crypto.provider.SunJCE": {
-                    p = support.isSecurityProviderExpected("SunJCE", "com.sun.crypto.provider.SunJCE") ? new com.sun.crypto.provider.SunJCE() : null;
-                    break;
-                }
-                case "SunJSSE": {
-                    p = support.isSecurityProviderExpected("SunJSSE", "sun.security.ssl.SunJSSE") ? new sun.security.ssl.SunJSSE() : null;
-                    break;
-                }
-                case "SunEC": {
-                    // Constructor inside method and then allocate. ModuleSupport to open.
-                    p = support.isSecurityProviderExpected("SunEC", "sun.security.ec.SunEC") ? support.allocateSunECProvider() : null;
-                    break;
-                }
-                case "Apple", "apple.security.AppleProvider": {
-                    // need to use reflection since this class only exists on MacOsx
-                    try {
-                        Class<?> c = Class.forName("apple.security.AppleProvider");
-                        if (Provider.class.isAssignableFrom(c)) {
-                            @SuppressWarnings("deprecation")
-                            Object newInstance = c.newInstance();
-                            p = (Provider) newInstance;
-                        }
-                    } catch (Exception ex) {
-                        if (debug != null) {
-                            debug.println("Error loading provider Apple");
-                            ex.printStackTrace();
-                        }
+            if (SecurityProvidersSupport.isBuiltInProvider(provName)) {
+                provider = SecurityProvidersSupport.singleton().loadBuiltInProvider(provName, debug);
+            } else {
+                if (isLoading) {
+                    /*
+                     * This method is synchronized, so this can only happen if there is recursion.
+                     */
+                    if (debug != null) {
+                        debug.println("Recursion loading provider: " + this);
+                        new Exception("Call trace").printStackTrace();
                     }
-                    break;
+                    return null;
                 }
-                default: {
-                    if (isLoading) {
-                        // because this method is synchronized, this can only
-                        // happen if there is recursion.
-                        if (debug != null) {
-                            debug.println("Recursion loading provider: " + this);
-                            new Exception("Call trace").printStackTrace();
-                        }
-                        return null;
-                    }
-                    try {
-                        isLoading = true;
-                        tries++;
-                        p = doLoadProvider();
-                    } finally {
-                        isLoading = false;
-                    }
+                try {
+                    isLoading = true;
+                    tries++;
+                    provider = doLoadProvider();
+                } finally {
+                    isLoading = false;
                 }
             }
-            provider = p;
         }
-        return p;
+        return provider;
     }
 }
 

@@ -227,7 +227,7 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("sun.security.validator", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.x509", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.jndi", JDK_CLASS_REASON);
-        if (FutureDefaultsOptions.isJDKInitializedAtBuildTime()) {
+        if (!FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
             rci.initializeAtBuildTime("sun.security.pkcs11", JDK_CLASS_REASON);
             rci.initializeAtBuildTime("sun.security.smartcardio", JDK_CLASS_REASON);
             rci.initializeAtBuildTime("com.sun.security.sasl", JDK_CLASS_REASON);

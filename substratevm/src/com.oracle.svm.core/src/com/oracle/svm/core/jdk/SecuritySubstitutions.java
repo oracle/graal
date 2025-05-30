@@ -36,7 +36,6 @@ import java.security.Permissions;
 import java.security.Policy;
 import java.security.ProtectionDomain;
 import java.security.Provider;
-import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -244,26 +243,28 @@ class ProviderVerifierJavaHomeAccessors {
     }
 }
 
+/**
+ * The {@code javax.crypto.JceSecurity#verificationResults} cache is initialized by the
+ * SecurityServicesFeature at build time, for all registered providers. The cache is used by
+ * {@code javax.crypto.JceSecurity#canUseProvider} at run time to check whether a provider is
+ * properly signed and can be used by JCE. It does that via jar verification which we cannot
+ * support.
+ */
 @TargetClass(className = "javax.crypto.JceSecurity", onlyWith = JDKInitializedAtBuildTime.class)
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/javax/crypto/JceSecurity.java.template")
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity {
-
-    /*
-     * The JceSecurity.verificationResults cache is initialized by the SecurityServicesFeature at
-     * build time, for all registered providers. The cache is used by JceSecurity.canUseProvider()
-     * at runtime to check whether a provider is properly signed and can be used by JCE. It does
-     * that via jar verification which we cannot support.
-     */
 
     // Checkstyle: stop
     @Alias //
     private static Object PROVIDER_VERIFIED;
     // Checkstyle: resume
 
-    // Map<Provider,?> of the providers we already have verified
-    // value == PROVIDER_VERIFIED is successfully verified
-    // value is failure cause Exception in error case
+    /*
+     * Map<Provider, ?> of providers that have already been verified. A value of PROVIDER_VERIFIED
+     * indicates successful verification. Otherwise, the value is the Exception that caused the
+     * verification to fail.
+     */
     @Alias //
     private static Map<Object, Object> verificationResults;
 
@@ -281,7 +282,6 @@ final class Target_javax_crypto_JceSecurity {
 
     @Substitute
     static Exception getVerificationResult(Provider p) {
-        /* Start code block copied from original method. */
         /* The verification results map key is an identity wrapper object. */
         Object key = new Target_javax_crypto_JceSecurity_WeakIdentityWrapper(p, queue);
         Object o = verificationResults.get(key);
@@ -290,15 +290,16 @@ final class Target_javax_crypto_JceSecurity {
         } else if (o != null) {
             return (Exception) o;
         }
-        /* End code block copied from original method. */
         /*
-         * If the verification result is not found in the verificationResults map JDK proceeds to
-         * verify it. That requires accessing the code base which we don't support. The substitution
-         * for getCodeBase() would be enough to take care of this too, but substituting
-         * getVerificationResult() allows for a better error message.
+         * If the verification result is not found in the verificationResults map, HotSpot will
+         * attempt to verify the provider. This requires accessing the code base, which isn't
+         * supported in Native Image, so we need to fail. We could either fail here or substitute
+         * getCodeBase() and fail there, but handling it here is a cleaner approach.
          */
-        throw VMError.unsupportedFeature("Trying to verify a provider that was not registered at build time: " + p + ". " +
-                        "All providers must be registered and verified in the Native Image builder. ");
+        throw new SecurityException(
+                        "Attempted to verify a provider that was not registered at build time: " + p + ". " +
+                                        "All security providers must be registered and verified during native image generation. " +
+                                        "Try adding the option: -H:AdditionalSecurityProviders=" + p + " and rebuild the image.");
     }
 }
 
@@ -308,31 +309,6 @@ final class Target_javax_crypto_JceSecurity_WeakIdentityWrapper {
 
     @Alias //
     Target_javax_crypto_JceSecurity_WeakIdentityWrapper(Provider obj, ReferenceQueue<Object> queue) {
-    }
-}
-
-class JceSecurityAccessor {
-    private static volatile SecureRandom RANDOM;
-
-    static SecureRandom get() {
-        SecureRandom result = RANDOM;
-        if (result == null) {
-            /* Lazy initialization on first access. */
-            result = initializeOnce();
-        }
-        return result;
-    }
-
-    private static synchronized SecureRandom initializeOnce() {
-        SecureRandom result = RANDOM;
-        if (result != null) {
-            /* Double-checked locking is OK because INSTANCE is volatile. */
-            return result;
-        }
-
-        result = new SecureRandom();
-        RANDOM = result;
-        return result;
     }
 }
 
