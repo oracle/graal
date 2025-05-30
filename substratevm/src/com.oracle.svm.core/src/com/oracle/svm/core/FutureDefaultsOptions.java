@@ -116,4 +116,8 @@ public class FutureDefaultsOptions {
     public static boolean isJDKInitializedAtRunTime() {
         return allFutureDefaults() || getFutureDefaults().contains(RUN_TIME_INITIALIZE_JDK_NAME);
     }
+
+    public static boolean isJDKInitializedAtBuildTime() {
+        return !isJDKInitializedAtRunTime();
+    }
 }

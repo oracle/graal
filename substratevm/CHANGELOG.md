@@ -25,6 +25,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-63268) Reflection and JNI queries do not require metadata entries to throw the expected JDK exception when querying a class that doesn't exist under `--exact-reachability-metadata` if the query cannot possibly be a valid class name
 * (GR-60208) Adds the Tracing Agent support for applications using the Foreign Function & Memory (FFM) API. The agent generates FFM configuration in _foreign-config.json_. Additionally, support for FFM configurations has been added to the `native-image-configure` tool.
 * (GR-47881) Remove the total number of loaded types, fields, and methods from the build output, deprecated these metrics in the build output schema, and removed already deprecated build output metrics.
+* (GR-57827) Move the initialization of security providers from build time to run time and place it behind the `--future-defaults=all` or `--future-defaults=run-time-initialized-jdk` flag.
 
 ## GraalVM for JDK 24 (Internal Version 24.2.0)
 * (GR-59717) Added `DuringSetupAccess.registerObjectReachabilityHandler` to allow registering a callback that is executed when an object of a specified type is marked as reachable during heap scanning.

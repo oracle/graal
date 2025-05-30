@@ -244,7 +244,7 @@ class ProviderVerifierJavaHomeAccessors {
     }
 }
 
-@TargetClass(className = "javax.crypto.JceSecurity")
+@TargetClass(className = "javax.crypto.JceSecurity", onlyWith = JDKInitializedAtBuildTime.class)
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/javax/crypto/JceSecurity.java.template")
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity {
@@ -302,7 +302,7 @@ final class Target_javax_crypto_JceSecurity {
     }
 }
 
-@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "WeakIdentityWrapper")
+@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "WeakIdentityWrapper", onlyWith = JDKInitializedAtBuildTime.class)
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity_WeakIdentityWrapper {
 
@@ -401,7 +401,7 @@ final class AllPermissionsPolicy extends Policy {
     }
 }
 
-@TargetClass(className = "sun.security.jca.ProviderConfig")
+@TargetClass(className = "sun.security.jca.ProviderConfig", onlyWith = JDKInitializedAtBuildTime.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_sun_security_jca_ProviderConfig {
 
