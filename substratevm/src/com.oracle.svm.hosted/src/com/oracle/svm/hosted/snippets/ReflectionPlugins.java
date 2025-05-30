@@ -40,16 +40,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.oracle.svm.core.TrackDynamicAccessEnabled;
 import com.oracle.svm.hosted.DynamicAccessDetectionFeature;
+import com.oracle.svm.hosted.strictconstantanalysis.ConstantExpressionRegistry;
+import com.oracle.svm.hosted.strictconstantanalysis.InferredDynamicAccessLoggingFeature;
+import com.oracle.svm.hosted.strictconstantanalysis.StrictConstantAnalysisFeature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
@@ -172,6 +172,18 @@ public final class ReflectionPlugins {
                     MethodHandle.class, MethodHandles.Lookup.class, MethodType.class,
                     VarHandle.class, VAR_FORM_CLASS, MEMBER_NAME_CLASS,
                     ByteOrder.class);
+
+    private static final Set<String> DYNAMIC_ACCESS_METHOD_NAMES = Set.of(
+                    "forName", "getField", "getDeclaredField", "getConstructor", "getDeclaredConstructor",
+                    "getMethod", "getDeclaredMethod", "getFields", "getDeclaredFields", "getConstructors",
+                    "getDeclaredConstructors", "getMethods", "getDeclaredMethods", "getClasses", "getDeclaredClasses",
+                    "getNestMembers", "getPermittedSubclasses", "getRecordComponents", "getSigners", "findClass",
+                    "findVirtual", "findStatic", "findConstructor", "findGetter", "findStaticGetter", "findSetter",
+                    "findStaticSetter", "findVarHandle", "findStaticVarHandle");
+
+    private static boolean isStrictModeTarget(ResolvedJavaMethod method) {
+        return DYNAMIC_ACCESS_METHOD_NAMES.contains(method.getName());
+    }
 
     private void registerMethodHandlesPlugins(InvocationPlugins plugins) {
         for (Class<?> clazz : List.of(Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class)) {
@@ -331,35 +343,42 @@ public final class ReflectionPlugins {
                 } else {
                     loader = imageClassLoader.getClassLoader();
                 }
-                return processClassForName(b, targetMethod, nameNode, ConstantNode.forBoolean(true), loader);
+
+                Predicate<ConstantExpressionRegistry> strictModeRoutine = (registry) -> {
+                    Object className = getArgumentFromRegistry(registry, b, targetMethod, 0);
+                    return processClassForName(b, targetMethod, className, true, loader);
+                };
+                BooleanSupplier graphModeRoutine = () -> {
+                    Object className = unbox(b, nameNode, JavaKind.Object);
+                    return processClassForName(b, targetMethod, className, true, loader);
+                };
+                return StrictConstantAnalysisFeature.tryToInfer(strictModeRoutine, graphModeRoutine);
             }
         });
         r.register(new RequiredInlineOnlyInvocationPlugin("forName", String.class, boolean.class, ClassLoader.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode nameNode, ValueNode initializeNode, ValueNode classLoaderNode) {
-                ClassLoader loader;
-                if (ClassForNameSupport.respectClassLoader()) {
-                    if (!classLoaderNode.isJavaConstant()) {
-                        return false;
-                    }
-                    loader = (ClassLoader) unboxObjectConstant(b, classLoaderNode.asJavaConstant());
-                    if (loader == ClassLoader.getSystemClassLoader()) {
-                        /*
-                         * The run time's application class loader is the build time's image class
-                         * loader.
-                         */
-                        loader = imageClassLoader.getClassLoader();
-                    }
-                } else {
-                    /*
-                     * When we ignore the ClassLoader parameter, we only intrinsify class names that
-                     * are found by the ImageClassLoader, i.e., the application class loader at run
-                     * time. We assume that every class loader used at run time delegates to the
-                     * application class loader.
-                     */
-                    loader = imageClassLoader.getClassLoader();
-                }
-                return processClassForName(b, targetMethod, nameNode, initializeNode, loader);
+                /*
+                 * For now, we ignore the ClassLoader parameter. We only intrinsify class names that
+                 * are found by the ImageClassLoader, i.e., the application class loader at run
+                 * time. We assume that every class loader used at run time delegates to the
+                 * application class loader.
+                 */
+                Predicate<ConstantExpressionRegistry> strictModeRoutine = (registry) -> {
+                    Object className = getArgumentFromRegistry(registry, b, targetMethod, 0);
+                    Object initialize = getArgumentFromRegistry(registry, b, targetMethod, 1);
+                    Object loader = ClassForNameSupport.respectClassLoader()
+                                    ? getArgumentFromRegistry(registry, b, targetMethod, 2)
+                                    : imageClassLoader.getClassLoader();
+                    return processClassForName(b, targetMethod, className, initialize, loader);
+                };
+                BooleanSupplier graphModeRoutine = () -> {
+                    Object className = unbox(b, nameNode, JavaKind.Object);
+                    Object initialize = unbox(b, initializeNode, JavaKind.Boolean);
+                    Object loader = unboxClassLoader(b, classLoaderNode);
+                    return processClassForName(b, targetMethod, className, initialize, loader);
+                };
+                return StrictConstantAnalysisFeature.tryToInfer(strictModeRoutine, graphModeRoutine);
             }
         });
         r.register(new RequiredInlineOnlyInvocationPlugin("getClassLoader", Receiver.class) {
@@ -368,6 +387,35 @@ public final class ReflectionPlugins {
                 return processClassGetClassLoader(b, targetMethod, receiver);
             }
         });
+    }
+
+    private Object unboxClassLoader(GraphBuilderContext b, ValueNode classLoaderNode) {
+        ClassLoader loader;
+        if (ClassForNameSupport.respectClassLoader()) {
+            if (!classLoaderNode.isJavaConstant()) {
+                return null;
+            }
+            loader = (ClassLoader) unboxObjectConstant(b, classLoaderNode.asJavaConstant());
+            if (loader == ClassLoader.getSystemClassLoader()) {
+                /*
+                 * The run time's application class loader is the build time's image class loader.
+                 */
+                loader = imageClassLoader.getClassLoader();
+            }
+        } else {
+            /*
+             * When we ignore the ClassLoader parameter, we only intrinsify class names that are
+             * found by the ImageClassLoader, i.e., the application class loader at run time. We
+             * assume that every class loader used at run time delegates to the application class
+             * loader.
+             */
+            loader = imageClassLoader.getClassLoader();
+        }
+        /*
+         * It is valid to represent the bootstrap class loader as null. Return a NULL_MARKER in that
+         * case to differentiate between that and a failure.
+         */
+        return loader == null ? NULL_MARKER : loader;
     }
 
     private static final Constructor<MethodHandles.Lookup> LOOKUP_CONSTRUCTOR = ReflectionUtil.lookupConstructor(MethodHandles.Lookup.class, Class.class);
@@ -380,8 +428,6 @@ public final class ReflectionPlugins {
      * the constructor parameter.
      */
     private boolean processMethodHandlesLookup(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
-        Supplier<String> targetParameters = () -> "";
-
         if (StackTraceUtils.ignoredBySecurityStackWalk(b.getMetaAccess(), b.getMethod())) {
             /*
              * If our immediate caller (which is the only method available at the time the
@@ -396,9 +442,9 @@ public final class ReflectionPlugins {
             /* The constructor of Lookup is not public, so we need to invoke it via reflection. */
             lookup = LOOKUP_CONSTRUCTOR.newInstance(callerClass);
         } catch (Throwable ex) {
-            return throwException(b, targetMethod, targetParameters, ex.getClass(), ex.getMessage());
+            return throwException(b, targetMethod, null, new Object[]{}, ex.getClass(), ex.getMessage());
         }
-        return pushConstant(b, targetMethod, targetParameters, JavaKind.Object, lookup, false) != null;
+        return pushConstant(b, targetMethod, null, new Object[]{}, JavaKind.Object, lookup, false) != null;
     }
 
     /**
@@ -406,16 +452,21 @@ public final class ReflectionPlugins {
      * {@link ImageClassLoader} to look up the class name, not the class loader that loaded the
      * native image generator.
      */
-    private boolean processClassForName(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode nameNode, ValueNode initializeNode, ClassLoader loader) {
-        Object classNameValue = unbox(b, nameNode, JavaKind.Object);
-        Object initializeValue = unbox(b, initializeNode, JavaKind.Boolean);
-
-        if (!(classNameValue instanceof String) || !(initializeValue instanceof Boolean)) {
+    private boolean processClassForName(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object classNameValue, Object initializeValue, Object classLoaderValue) {
+        if (!(classNameValue instanceof String) || !(initializeValue instanceof Boolean) || ClassForNameSupport.respectClassLoader() && classLoaderValue == null) {
             return false;
         }
         String className = (String) classNameValue;
         boolean initialize = (Boolean) initializeValue;
-        Supplier<String> targetParameters = () -> className + ", " + initialize;
+        ClassLoader loader = classLoaderValue == NULL_MARKER ? null : (ClassLoader) classLoaderValue;
+        /*
+         * Check which variant of Class.forName was called in order to avoid logging the initialize
+         * argument value for the single parameter version of the call.
+         */
+        Object classLoaderLogArgument = ClassForNameSupport.respectClassLoader()
+                        ? loader
+                        : InferredDynamicAccessLoggingFeature.ignoredArgument();
+        Object[] argValues = targetMethod.getParameters().length == 1 ? new Object[]{className} : new Object[]{className, initialize, classLoaderLogArgument};
 
         TypeResult<Class<?>> typeResult = ImageClassLoader.findClass(className, false, loader);
         if (!typeResult.isPresent()) {
@@ -423,14 +474,14 @@ public final class ReflectionPlugins {
                 return false;
             }
             Throwable e = typeResult.getException();
-            return throwException(b, targetMethod, targetParameters, e.getClass(), e.getMessage());
+            return throwException(b, targetMethod, null, argValues, e.getClass(), e.getMessage());
         }
         Class<?> clazz = typeResult.get();
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return false;
         }
 
-        JavaConstant classConstant = pushConstant(b, targetMethod, targetParameters, JavaKind.Object, clazz, false);
+        JavaConstant classConstant = pushConstant(b, targetMethod, null, argValues, JavaKind.Object, clazz, false);
         if (classConstant == null) {
             return false;
         }
@@ -468,7 +519,7 @@ public final class ReflectionPlugins {
 
         if (result != null) {
             b.addPush(JavaKind.Object, ConstantNode.forConstant(result, b.getMetaAccess()));
-            traceConstant(b, targetMethod, clazz::getName, result);
+            traceConstant(b, targetMethod, clazz, new Object[]{}, result);
             return true;
         }
 
@@ -511,61 +562,98 @@ public final class ReflectionPlugins {
         plugins.register(reflectionMethod.getDeclaringClass(), new RequiredInvocationPlugin(reflectionMethod.getName(), parameterTypes.toArray(new Class<?>[0])) {
             @Override
             public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
-                return foldInvocationUsingReflection(b, targetMethod, reflectionMethod, receiver, args, allowConstantFolding);
+                boolean hasReceiver = targetMethod.hasReceiver();
+                Predicate<ConstantExpressionRegistry> strictModeRoutine = (registry) -> {
+                    Object receiverValue = hasReceiver ? getReceiverFromRegistry(registry, b, targetMethod) : null;
+                    Object[] arguments = getArgumentsFromRegistry(registry, b, targetMethod);
+                    return foldInvocationUsingReflection(b, targetMethod, reflectionMethod, receiverValue, arguments, allowConstantFolding);
+                };
+                BooleanSupplier graphModeRoutine = () -> {
+                    Object receiverValue = hasReceiver ? unboxReceiver(b, receiver) : null;
+                    Object[] arguments = unboxNodeArguments(b, targetMethod, args);
+                    return foldInvocationUsingReflection(b, targetMethod, reflectionMethod, receiverValue, arguments, allowConstantFolding);
+                };
+                return StrictConstantAnalysisFeature.tryToInfer(strictModeRoutine, graphModeRoutine, targetMethod, ReflectionPlugins::isStrictModeTarget);
             }
         });
+    }
+
+    private Object unboxReceiver(GraphBuilderContext b, Receiver receiver) {
+        /*
+         * Calling receiver.get(true) can add a null check guard, i.e., modifying the graph in the
+         * process. It is an error for invocation plugins that do not replace the call to modify the
+         * graph.
+         */
+        return unbox(b, receiver.get(false), JavaKind.Object);
+    }
+
+    private Object[] unboxNodeArguments(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode... args) {
+        Object[] argValues = new Object[args.length];
+        for (int i = 0; i < args.length; i++) {
+            argValues[i] = unbox(b, args[i], targetMethod.getSignature().getParameterKind(i));
+            if (argValues[i] == null) {
+                return null;
+            } else if (argValues[i] == NULL_MARKER) {
+                argValues[i] = null;
+            }
+        }
+        return argValues;
+    }
+
+    private static Object getReceiverFromRegistry(ConstantExpressionRegistry registry, GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
+        Object value = registry.getReceiver(b.getMethod(), b.bci(), targetMethod);
+        if (value != null) {
+            return ConstantExpressionRegistry.isNull(value) ? NULL_MARKER : value;
+        } else {
+            return null;
+        }
+    }
+
+    private static Object getArgumentFromRegistry(ConstantExpressionRegistry registry, GraphBuilderContext b, ResolvedJavaMethod targetMethod, int index) {
+        Object value = registry.getArgument(b.getMethod(), b.bci(), targetMethod, index);
+        if (value != null) {
+            return ConstantExpressionRegistry.isNull(value) ? NULL_MARKER : value;
+        } else {
+            return null;
+        }
+    }
+
+    private static Object[] getArgumentsFromRegistry(ConstantExpressionRegistry registry, GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
+        Object[] argValues = new Object[targetMethod.getSignature().getParameterCount(false)];
+        for (int i = 0; i < argValues.length; i++) {
+            argValues[i] = getArgumentFromRegistry(registry, b, targetMethod, i);
+            if (argValues[i] == null) {
+                return null;
+            } else if (argValues[i] == NULL_MARKER) {
+                argValues[i] = null;
+            }
+        }
+        return argValues;
     }
 
     private static boolean isAllowedReturnType(Class<?> returnType) {
         return ALLOWED_CONSTANT_CLASSES.contains(returnType) || returnType.isPrimitive();
     }
 
-    private boolean foldInvocationUsingReflection(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Method reflectionMethod, Receiver receiver, ValueNode[] args,
+    private boolean foldInvocationUsingReflection(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Method reflectionMethod, Object receiverValue, Object[] argValues,
                     Predicate<Object[]> allowConstantFolding) {
         assert b.getMetaAccess().lookupJavaMethod(reflectionMethod).equals(targetMethod) : "Fold method mismatch: " + reflectionMethod + " != " + targetMethod;
 
-        Object receiverValue;
-        if (targetMethod.isStatic()) {
-            receiverValue = null;
-        } else {
-            /*
-             * Calling receiver.get(true) can add a null check guard, i.e., modifying the graph in
-             * the process. It is an error for invocation plugins that do not replace the call to
-             * modify the graph.
-             */
-            receiverValue = unbox(b, receiver.get(false), JavaKind.Object);
-            if (receiverValue == null || receiverValue == NULL_MARKER) {
-                return false;
-            }
-        }
-
-        Object[] argValues = new Object[args.length];
-        for (int i = 0; i < args.length; i++) {
-            Object argValue = unbox(b, args[i], targetMethod.getSignature().getParameterKind(i));
-            if (argValue == null) {
-                return false;
-            } else if (argValue == NULL_MARKER) {
-                argValues[i] = null;
-            } else {
-                argValues[i] = argValue;
-            }
-        }
-
-        if (!allowConstantFolding.test(argValues)) {
+        if (targetMethod.hasReceiver() && (receiverValue == null || receiverValue == NULL_MARKER)) {
             return false;
         }
 
-        /* String representation of the parameters for debug printing. */
-        Supplier<String> targetParameters = () -> (receiverValue == null ? "" : receiverValue + "; ") +
-                        Stream.of(argValues).map(arg -> arg instanceof Object[] ? Arrays.toString((Object[]) arg) : Objects.toString(arg)).collect(Collectors.joining(", "));
+        if (argValues == null || !allowConstantFolding.test(argValues)) {
+            return false;
+        }
 
         Object returnValue;
         try {
             returnValue = reflectionMethod.invoke(receiverValue, argValues);
         } catch (InvocationTargetException ex) {
-            return throwException(b, targetMethod, targetParameters, ex.getTargetException().getClass(), ex.getTargetException().getMessage());
+            return throwException(b, targetMethod, receiverValue, argValues, ex.getTargetException().getClass(), ex.getTargetException().getMessage());
         } catch (Throwable ex) {
-            return throwException(b, targetMethod, targetParameters, ex.getClass(), ex.getMessage());
+            return throwException(b, targetMethod, receiverValue, argValues, ex.getClass(), ex.getMessage());
         }
 
         JavaKind returnKind = targetMethod.getSignature().getReturnKind();
@@ -573,11 +661,11 @@ public final class ReflectionPlugins {
             /*
              * The target method is a side-effect free void method that did not throw an exception.
              */
-            traceConstant(b, targetMethod, targetParameters, JavaKind.Void);
+            traceConstant(b, targetMethod, receiverValue, argValues, JavaKind.Void);
             return true;
         }
 
-        return pushConstant(b, targetMethod, targetParameters, returnKind, returnValue, false) != null;
+        return pushConstant(b, targetMethod, receiverValue, argValues, returnKind, returnValue, false) != null;
     }
 
     private <T> void registerBulkInvocationPlugin(InvocationPlugins plugins, Class<T> declaringClass, String methodName, Consumer<T> registrationCallback) {
@@ -590,29 +678,31 @@ public final class ReflectionPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 VMError.guarantee(!targetMethod.isStatic(), "Bulk reflection queries are not static");
-                return registerConstantBulkReflectionQuery(b, receiver, registrationCallback);
+                Predicate<ConstantExpressionRegistry> strictModeRoutine = (registry) -> {
+                    Object receiverValue = getReceiverFromRegistry(registry, b, targetMethod);
+                    return registerConstantBulkReflectionQuery(b, targetMethod, receiverValue, registrationCallback);
+                };
+                BooleanSupplier graphModeRoutine = () -> {
+                    Object receiverValue = unboxReceiver(b, receiver);
+                    return registerConstantBulkReflectionQuery(b, targetMethod, receiverValue, registrationCallback);
+                };
+                return StrictConstantAnalysisFeature.tryToInfer(strictModeRoutine, graphModeRoutine);
             }
         });
     }
 
     @SuppressWarnings("unchecked")
-    private <T> boolean registerConstantBulkReflectionQuery(GraphBuilderContext b, Receiver receiver, Consumer<T> registrationCallback) {
-        /*
-         * Calling receiver.get(true) can add a null check guard, i.e., modifying the graph in the
-         * process. It is an error for invocation plugins that do not replace the call to modify the
-         * graph.
-         */
-        Object receiverValue = unbox(b, receiver.get(false), JavaKind.Object);
+    private <T> boolean registerConstantBulkReflectionQuery(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object receiverValue, Consumer<T> registrationCallback) {
         if (receiverValue == null || receiverValue == NULL_MARKER) {
             return false;
         }
-
         b.add(ReachabilityRegistrationNode.create(() -> {
             registerForRuntimeReflection((T) receiverValue, registrationCallback);
             if (trackDynamicAccess) {
                 dynamicAccessDetectionFeature.addFoldEntry(b.bci(), b.getMethod());
             }
         }, reason));
+        InferredDynamicAccessLoggingFeature.logRegistration(b, reason, targetMethod, receiverValue, new Object[]{});
         return true;
     }
 
@@ -765,7 +855,7 @@ public final class ReflectionPlugins {
         return annotated != null && annotated.isAnnotationPresent(Delete.class);
     }
 
-    private JavaConstant pushConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Supplier<String> targetParameters, JavaKind returnKind, Object returnValue,
+    private JavaConstant pushConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object targetReceiver, Object[] targetArguments, JavaKind returnKind, Object returnValue,
                     boolean allowNullReturnValue) {
         Object intrinsicValue = getIntrinsic(b, returnValue == null && allowNullReturnValue ? NULL_MARKER : returnValue);
         if (intrinsicValue == null) {
@@ -782,11 +872,12 @@ public final class ReflectionPlugins {
         }
 
         b.addPush(returnKind, ConstantNode.forConstant(intrinsicConstant, b.getMetaAccess()));
-        traceConstant(b, targetMethod, targetParameters, intrinsicValue);
+        traceConstant(b, targetMethod, targetReceiver, targetArguments, intrinsicValue);
         return intrinsicConstant;
     }
 
-    private boolean throwException(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Supplier<String> targetParameters, Class<? extends Throwable> exceptionClass, String originalMessage) {
+    private boolean throwException(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object targetCaller, Object[] targetArguments, Class<? extends Throwable> exceptionClass,
+                    String originalMessage) {
         /* Get the exception throwing method that has a message parameter. */
         Method exceptionMethod = ExceptionSynthesizer.throwExceptionMethodOrNull(exceptionClass, String.class);
         if (exceptionMethod == null) {
@@ -797,27 +888,38 @@ public final class ReflectionPlugins {
             return false;
         }
 
+        /*
+         * Because tracing adds a ReachabilityRegistrationNode to the graph, it has to happen before
+         * exception synthesis.
+         */
+        traceException(b, targetMethod, targetCaller, targetArguments, exceptionClass);
+
         String message = originalMessage + ". This exception was synthesized during native image building from a call to " + targetMethod.format("%H.%n(%p)") +
                         " with constant arguments.";
         ExceptionSynthesizer.throwException(b, exceptionMethod, message);
-        traceException(b, targetMethod, targetParameters, exceptionClass);
         return true;
     }
 
-    private static void traceConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Supplier<String> targetParameters, Object value) {
+    private void traceConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object targetReceiver, Object[] targetArguments, Object value) {
+        if (isStrictModeTarget(targetMethod)) {
+            InferredDynamicAccessLoggingFeature.logConstant(b, reason, targetMethod, targetReceiver, targetArguments, value);
+        }
         if (Options.ReflectionPluginTracing.getValue()) {
             System.out.println("Call to " + targetMethod.format("%H.%n(%p)") +
                             " reached in " + b.getMethod().format("%H.%n(%p)") +
-                            " with parameters (" + targetParameters.get() + ")" +
+                            " with parameters (" + Arrays.toString(targetArguments) + ")" +
                             " was reduced to the constant " + value);
         }
     }
 
-    private static void traceException(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Supplier<String> targetParameters, Class<? extends Throwable> exceptionClass) {
+    private void traceException(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object targetReceiver, Object[] targetArguments, Class<? extends Throwable> exceptionClass) {
+        if (isStrictModeTarget(targetMethod)) {
+            InferredDynamicAccessLoggingFeature.logException(b, reason, targetMethod, targetReceiver, targetArguments, exceptionClass);
+        }
         if (Options.ReflectionPluginTracing.getValue()) {
             System.out.println("Call to " + targetMethod.format("%H.%n(%p)") +
                             " reached in " + b.getMethod().format("%H.%n(%p)") +
-                            " with parameters (" + targetParameters.get() + ")" +
+                            " with parameters (" + Arrays.toString(targetArguments) + ")" +
                             " was reduced to a \"throw new " + exceptionClass.getName() + "(...)\"");
         }
     }

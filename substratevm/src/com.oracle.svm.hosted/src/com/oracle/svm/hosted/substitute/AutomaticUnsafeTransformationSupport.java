@@ -41,6 +41,9 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.strictconstantanalysis.ConstantExpressionAnalyzer;
+import com.oracle.svm.hosted.strictconstantanalysis.ConstantExpressionRegistry;
+import com.oracle.svm.hosted.strictconstantanalysis.StrictConstantAnalysisFeature;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -250,6 +253,12 @@ public class AutomaticUnsafeTransformationSupport {
         plugins.appendInlineInvokePlugin(inlineInvokePlugin);
         NoClassInitializationPlugin classInitializationPlugin = new NoClassInitializationPlugin();
         plugins.setClassInitializationPlugin(classInitializationPlugin);
+
+        if (StrictConstantAnalysisFeature.isActive()) {
+            ConstantExpressionRegistry registry = ConstantExpressionRegistry.singleton();
+            ConstantExpressionAnalyzer analyzer = new ConstantExpressionAnalyzer(GraalAccess.getOriginalProviders(), loader);
+            plugins.appendMethodParsingPlugin((method, intrinsicContext) -> registry.analyzeAndStore(analyzer, method, intrinsicContext));
+        }
 
         FallbackFeature fallbackFeature = ImageSingletons.contains(FallbackFeature.class) ? ImageSingletons.lookup(FallbackFeature.class) : null;
         ReflectionPlugins.registerInvocationPlugins(loader, annotationSubstitutions, classInitializationPlugin, plugins.getInvocationPlugins(), null,

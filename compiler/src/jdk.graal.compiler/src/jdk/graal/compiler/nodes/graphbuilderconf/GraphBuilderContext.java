@@ -82,6 +82,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.ArrayList;
+
 /**
  * Used by a {@link GraphBuilderPlugin} to interface with an object that parses the bytecode of a
  * single {@linkplain #getMethod() method} as part of building a {@linkplain #getGraph() graph} .
@@ -279,6 +281,22 @@ public interface GraphBuilderContext extends GraphBuilderTool {
             parent = parent.getParent();
         }
         return result;
+    }
+
+    /**
+     * Gets the inlined call stack for this context. A list with only one element implies that no
+     * inlining has taken place.
+     *
+     * @param ignoreInvocationPluginTarget if set to true, and {@link #isParsingInvocationPlugin()}
+     *            returns true, the resulting call stack does not include the target of the
+     *            invocation plugin.
+     */
+    default List<StackTraceElement> getCallStack(boolean ignoreInvocationPluginTarget) {
+        List<StackTraceElement> callStack = new ArrayList<>();
+        for (GraphBuilderContext cur = this; cur != null; cur = cur.getParent()) {
+            callStack.add(cur.getMethod().asStackTraceElement(cur.bci()));
+        }
+        return callStack;
     }
 
     /**

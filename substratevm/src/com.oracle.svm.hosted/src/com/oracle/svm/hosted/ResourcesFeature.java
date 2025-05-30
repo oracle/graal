@@ -52,9 +52,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.strictconstantanalysis.ConstantExpressionRegistry;
+import com.oracle.svm.hosted.strictconstantanalysis.InferredDynamicAccessLoggingFeature;
+import com.oracle.svm.hosted.strictconstantanalysis.StrictConstantAnalysisFeature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -702,20 +707,33 @@ public class ResourcesFeature implements InternalFeature {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 VMError.guarantee(!sealed, "All bytecode parsing happens before the analysis, i.e., before the registry is sealed");
-                Class<?> clazz = SubstrateGraphBuilderPlugins.asConstantObject(b, Class.class, receiver.get(false));
-                String resource = SubstrateGraphBuilderPlugins.asConstantObject(b, String.class, arg);
-                if (clazz != null && resource != null) {
-                    String resourceName;
-                    try {
-                        resourceName = (String) resolveResourceName.invoke(clazz, resource);
-                    } catch (ReflectiveOperationException e) {
-                        throw VMError.shouldNotReachHere(e);
-                    }
-                    b.add(ReachabilityRegistrationNode.create(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName), reason));
-                    return true;
-                }
-                return false;
+                Predicate<ConstantExpressionRegistry> strictModeRoutine = (registry) -> {
+                    Class<?> clazz = registry.getReceiver(b.getMethod(), b.bci(), targetMethod, Class.class);
+                    String resource = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 0, String.class);
+                    return processInferredResourceAccess(b, targetMethod, reason, resolveResourceName, clazz, resource);
+                };
+                BooleanSupplier graphModeRoutine = () -> {
+                    Class<?> clazz = SubstrateGraphBuilderPlugins.asConstantObject(b, Class.class, receiver.get(false));
+                    String resource = SubstrateGraphBuilderPlugins.asConstantObject(b, String.class, arg);
+                    return processInferredResourceAccess(b, targetMethod, reason, resolveResourceName, clazz, resource);
+                };
+                return StrictConstantAnalysisFeature.tryToInfer(strictModeRoutine, graphModeRoutine);
             }
         });
+    }
+
+    private static boolean processInferredResourceAccess(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ParsingReason reason, Method resolveResourceName, Class<?> clazz, String resource) {
+        if (clazz != null && resource != null) {
+            String resourceName;
+            try {
+                resourceName = (String) resolveResourceName.invoke(clazz, resource);
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+            b.add(ReachabilityRegistrationNode.create(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName), reason));
+            InferredDynamicAccessLoggingFeature.logRegistration(b, reason, targetMethod, clazz, new Object[]{resource});
+            return true;
+        }
+        return false;
     }
 }
