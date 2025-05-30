@@ -36,8 +36,10 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.AbstractRuntimeCodeInstaller.RuntimeCodeInstallerPlatformHelper;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -52,6 +54,10 @@ import jdk.graal.compiler.word.Word;
 final class TrampolineSet {
     private static UnsignedWord allocationSize() {
         return VirtualMemoryProvider.get().getGranularity();
+    }
+
+    private static UnsignedWord alignment() {
+        return Word.unsigned(SubstrateOptions.codeAlignment());
     }
 
     private static int maxTrampolineCount() {
@@ -137,10 +143,9 @@ final class TrampolineSet {
     }
 
     private Pointer prepareTrampolines(PinnedObject mhsArray, PinnedObject stubsArray, AbiUtils.TrampolineTemplate template) {
-        VirtualMemoryProvider memoryProvider = VirtualMemoryProvider.get();
         UnsignedWord pageSize = allocationSize();
         /* We request a specific alignment to guarantee correctness of getAllocationBase */
-        Pointer page = memoryProvider.commit(Word.nullPointer(), pageSize, VirtualMemoryProvider.Access.WRITE | VirtualMemoryProvider.Access.FUTURE_EXECUTE);
+        Pointer page = CommittedMemoryProvider.get().allocateExecutableMemory(pageSize, Word.unsigned(SubstrateOptions.codeAlignment()));
         if (page.isNull()) {
             throw new OutOfMemoryError("Could not allocate memory for trampolines.");
         }
@@ -154,7 +159,7 @@ final class TrampolineSet {
             VMError.guarantee(it.belowOrEqual(end), "Not enough memory was allocated to hold trampolines");
         }
 
-        VMError.guarantee(memoryProvider.protect(page, pageSize, VirtualMemoryProvider.Access.EXECUTE) == 0,
+        VMError.guarantee(VirtualMemoryProvider.get().protect(page, pageSize, VirtualMemoryProvider.Access.EXECUTE) == 0,
                         "Error when making the trampoline allocation executable");
 
         /*
@@ -178,7 +183,7 @@ final class TrampolineSet {
         for (PinnedObject pinned : pins) {
             pinned.close();
         }
-        VirtualMemoryProvider.get().free(trampolines, allocationSize());
+        CommittedMemoryProvider.get().freeExecutableMemory(trampolines, allocationSize(), alignment());
         assigned = FREED;
         if (patchedStubs != null) {
             patchedStubs.clear();
