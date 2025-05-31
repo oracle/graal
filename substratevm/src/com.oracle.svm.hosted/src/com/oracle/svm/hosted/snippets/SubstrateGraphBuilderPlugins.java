@@ -38,6 +38,9 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.encoder.SymbolEncoder;
+import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -107,8 +110,6 @@ import com.oracle.svm.hosted.nodes.ReadReservedRegister;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.core.common.LibGraalSupport;
-import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -1109,6 +1110,7 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerClassPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Class.class);
+        SymbolEncoder encoder = SymbolEncoder.singleton();
         /*
          * The field DynamicHub.name cannot be final, so we ensure early constant folding using an
          * invocation plugin.
@@ -1125,7 +1127,7 @@ public class SubstrateGraphBuilderPlugins {
                          * also ensures we get the same String instance that is stored in
                          * DynamicHub.name without having a dependency on DynamicHub.
                          */
-                        String className = type.toClassName().intern();
+                        String className = encoder.encodeClass(type.toClassName()).intern();
                         b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getConstantReflection().forString(className), b.getMetaAccess()));
                         return true;
                     }

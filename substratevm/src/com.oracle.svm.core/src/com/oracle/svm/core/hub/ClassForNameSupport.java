@@ -29,7 +29,9 @@ import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
 
 import java.lang.reflect.Modifier;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.collections.EconomicMap;
@@ -278,6 +280,16 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
         } catch (ClassNotFoundException e) {
             throw VMError.shouldNotReachHere("ClassForNameSupport#forNameOrNull should not throw", e);
         }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public Set<String> getKnownClassNames() {
+        EconomicMap<String, ?> map = respectClassLoader() ? knownClassNames : knownClasses;
+        Set<String> set = new HashSet<>(map.size());
+        for (String key : map.getKeys()) {
+            set.add(key);
+        }
+        return set;
     }
 
     public static Class<?> forName(String className, ClassLoader classLoader) throws ClassNotFoundException {
