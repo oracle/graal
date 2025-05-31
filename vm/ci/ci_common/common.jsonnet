@@ -544,7 +544,7 @@ local devkits = graal_common.devkits;
     + $.deploy_standalones(self.os, self.tags)
     + (
       if (record_file_sizes) then [
-        $.mx_vm_complete + $.record_file_sizes + ['--', 'standalones'],
+        $.mx_vm_complete + $.record_file_sizes + ['--', '--', 'standalones'],
         $.upload_file_sizes,
       ] else []
     ),
