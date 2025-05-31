@@ -61,6 +61,7 @@ public interface RememberedSet extends BarrierSetProvider {
     UnsignedWord getHeaderSizeOfAlignedChunk();
 
     /** Returns the header size of an unaligned chunk for a given object size. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     UnsignedWord getHeaderSizeOfUnalignedChunk(UnsignedWord objectSize);
 
     /** Sets the object start offset in the unaligned chunk. */
@@ -68,6 +69,7 @@ public interface RememberedSet extends BarrierSetProvider {
     void setObjectStartOffsetOfUnalignedChunk(HostedByteBufferPointer chunk, UnsignedWord objectStartOffset);
 
     /** Sets the object start offset in the unaligned chunk. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void setObjectStartOffsetOfUnalignedChunk(UnalignedHeader chunk, UnsignedWord objectStartOffset);
 
     /**

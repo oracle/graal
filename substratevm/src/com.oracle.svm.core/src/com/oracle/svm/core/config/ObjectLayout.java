@@ -44,6 +44,7 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFla
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.vm.ci.code.CodeUtil;
@@ -305,6 +306,7 @@ public final class ObjectLayout {
         return NumUtil.safeToInt(getArraySize(JavaKind.Byte, 0, true));
     }
 
+    @Fold
     public int getMinImageHeapObjectSize() {
         return Math.min(getMinImageHeapArraySize(), getMinImageHeapInstanceSize());
     }

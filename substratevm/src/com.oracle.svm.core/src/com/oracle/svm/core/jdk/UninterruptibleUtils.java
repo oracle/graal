@@ -427,6 +427,18 @@ public class UninterruptibleUtils {
             return (a >= b) ? a : b;
         }
 
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static double max(double a, double b) {
+            if (a != a) {
+                return a;   // a is NaN
+            }
+            if ((a == 0.0d) && (b == 0.0d) && (Double.doubleToRawLongBits(a) == Double.doubleToRawLongBits(-0.0d))) {
+                // Raw conversion ok since NaN can't map to -0.0.
+                return b;
+            }
+            return (a >= b) ? a : b;
+        }
+
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int clamp(int value, int min, int max) {
             assert min <= max;
@@ -460,6 +472,24 @@ public class UninterruptibleUtils {
             long floor = floorToLong(a);
             return a > floor ? floor + 1 : floor;
         }
+    }
+
+    public static class NumUtil {
+
+        /**
+         * Determines if a given {@code long} value is the range of signed int values.
+         */
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static boolean isInt(long l) {
+            return (int) l == l;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static int safeToInt(long v) {
+            assert isInt(v);
+            return (int) v;
+        }
+
     }
 
     public static class Byte {
