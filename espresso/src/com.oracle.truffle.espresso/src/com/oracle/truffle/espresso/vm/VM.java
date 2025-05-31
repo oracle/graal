@@ -89,6 +89,8 @@ import com.oracle.truffle.espresso.classfile.ClasspathEntry;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.JavaVersion;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
@@ -1370,6 +1372,31 @@ public final class VM extends NativeEnv {
             return klass.getModifiers();
         }
         return klass.getModifiers() & Constants.JVM_ACC_WRITTEN_FLAGS;
+    }
+
+    @VmImpl(isJni = true)
+    public int JVM_GetClassFileVersion(@JavaType(Class.class) StaticObject clazz, @Inject SubstitutionProfiler profiler) {
+        if (StaticObject.isNull(clazz)) {
+            profiler.profile(0);
+            throw getMeta().throwNullPointerException();
+        }
+        /*
+         * From HotSpot:
+         * 
+         * Return the current class's class file version. The low order 16 bits of the returned jint
+         * contain the class's major version. The high order 16 bits contain the class's minor
+         * version.
+         */
+        Klass klass = clazz.getMirrorKlass(getMeta());
+        if (klass instanceof ObjectKlass objKlass) {
+            profiler.profile(1);
+            ParserKlass parser = objKlass.getLinkedKlass().getParserKlass();
+            return ((parser.getMinorVersion() << 16) | (parser.getMajorVersion()));
+        }
+        profiler.profile(2);
+        // For primitives, return latest (Same as HotSpot).
+        // We do the same for arrays. HotSpot just crashes in that case.
+        return JavaVersion.LATEST_SUPPORTED_CLASSFILE;
     }
 
     @VmImpl(isJni = true)
