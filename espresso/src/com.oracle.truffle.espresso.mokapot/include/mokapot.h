@@ -361,10 +361,7 @@ typedef uint64_t julong;
     /* V(JVM_VirtualThreadUnmountEnd) */ \
     /* Java 20 VM methods */ \
     /* V(JVM_VirtualThreadHideFrames) */ \
-    /* V(JVM_GetClassFileVersion) */ \
-    V(JVM_ScopedValueCache) \
-    V(JVM_SetScopedValueCache) \
-    V(JVM_FindScopedValueBindings) \
+    V(JVM_GetClassFileVersion) \
     /* Java 21 VM Methods */ \
     V(JVM_IsForeignLinkerSupported) \
     /* V(JVM_VirtualThreadStart) */ \
@@ -998,6 +995,8 @@ void (*JVM_SetStackWalkContinuation)(JNIEnv *env, jobject stackStream, jlong anc
 void (*JVM_ReportFinalizationComplete)(JNIEnv *env, jobject finalizee);
 
 jboolean (*JVM_IsFinalizationEnabled)(JNIEnv *env);
+
+jint (*JVM_GetClassFileVersion)(JNIEnv* env, jclass clazz);
 
 jboolean (*JVM_IsForeignLinkerSupported)(void);
 

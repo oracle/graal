@@ -636,7 +636,7 @@ public final class ClassfileParser {
         // Ensure there are no trailing bytes
         stream.checkEndOfFile();
 
-        return new ParserKlass(pool, classFlags, thisKlassName, thisKlassType, superKlass, superInterfaces, methods, fields, attributes, thisKlassIndex, -1);
+        return new ParserKlass(pool, classFlags, thisKlassName, thisKlassType, superKlass, superInterfaces, methods, fields, attributes, thisKlassIndex, majorVersion, minorVersion, -1);
     }
 
     public static Symbol<Name> getClassName(ParsingContext parsingContext, byte[] bytes) throws ValidationException {

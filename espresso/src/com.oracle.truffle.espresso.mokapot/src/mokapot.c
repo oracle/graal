@@ -1698,8 +1698,8 @@ JVM_TakeVirtualThreadListToUnblock(JNIEnv* env, jclass ignored) {
 }
 
 JNIEXPORT jint JNICALL JVM_GetClassFileVersion(JNIEnv *env, jclass current) {
-  UNIMPLEMENTED(JVM_GetClassFileVersion);
-  return 0;
+  IMPLEMENTED(JVM_GetClassFileVersion);
+  return (*getEnv())->JVM_GetClassFileVersion(env, current);
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsForeignLinkerSupported(void) {
