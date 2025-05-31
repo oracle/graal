@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
@@ -37,6 +38,7 @@ import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MultiMethod;
 
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.Invoke;
@@ -132,22 +134,28 @@ public final class ReachabilityAnalysisMethod extends AnalysisMethod {
      * Utility method which contains all the steps that have to be taken when parsing methods for
      * the analysis.
      */
+    @SuppressWarnings("try")
     public static StructuredGraph getDecodedGraph(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method) {
         AnalysisParsedGraph analysisParsedGraph = method.ensureGraphParsed(bb);
         if (analysisParsedGraph.isIntrinsic()) {
             method.registerAsIntrinsicMethod("reachability analysis engine");
         }
         AnalysisError.guarantee(analysisParsedGraph.getEncodedGraph() != null, "Cannot provide  a summary for %s.", method.getQualifiedName());
+        StructuredGraph graph = InlineBeforeAnalysis.decodeGraph(bb, method, analysisParsedGraph);
+        try (DebugContext.Scope s = graph.getDebug().scope("ReachabilityAnalysisMethod.getDecodedGraph", graph)) {
+            /* Make sure the same set of optimizations is done before the analysis. */
+            MethodTypeFlowBuilder.optimizeGraphBeforeAnalysis(bb, method, graph);
+        } catch (Throwable ex) {
+            throw graph.getDebug().handle(ex);
+        }
 
-        StructuredGraph decoded = InlineBeforeAnalysis.decodeGraph(bb, method, analysisParsedGraph);
-        AnalysisError.guarantee(decoded != null, "Failed to decode a graph for %s.", method.getQualifiedName());
+        bb.getHostVM().methodBeforeTypeFlowCreationHook(bb, method, graph);
 
-        bb.getHostVM().methodBeforeTypeFlowCreationHook(bb, method, decoded);
+        /* To preserve the graphs for compilation. */
+        method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE));
 
-        // to preserve the graphs for compilation
-        method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(decoded, AnalysisParsedGraph.HOST_ARCHITECTURE));
+        return graph;
 
-        return decoded;
     }
 
     /**
