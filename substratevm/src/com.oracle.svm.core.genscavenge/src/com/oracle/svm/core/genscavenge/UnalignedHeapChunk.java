@@ -100,6 +100,7 @@ public final class UnalignedHeapChunk {
         RememberedSet.get().setObjectStartOffsetOfUnalignedChunk(chunk, objectStartOffset);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void initialize(UnalignedHeader chunk, UnsignedWord chunkSize, UnsignedWord objectSize) {
         assert chunk.isNonNull();
         UnsignedWord objectStartOffset = calculateObjectStartOffset(objectSize);
@@ -116,6 +117,7 @@ public final class UnalignedHeapChunk {
         return HeapChunk.getEndPointer(that);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static UnsignedWord getChunkSizeForObject(UnsignedWord objectSize) {
         UnsignedWord objectStart = RememberedSet.get().getHeaderSizeOfUnalignedChunk(objectSize);
         UnsignedWord alignment = Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
@@ -155,10 +157,12 @@ public final class UnalignedHeapChunk {
         setObjectStartOffset(that, objectStartOffset);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static UnsignedWord calculateObjectStartOffset(UnsignedWord objectSize) {
         return RememberedSet.get().getHeaderSizeOfUnalignedChunk(objectSize);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void setObjectStartOffset(UnalignedHeader that, UnsignedWord objectStartOffset) {
         RememberedSet.get().setObjectStartOffsetOfUnalignedChunk(that, objectStartOffset);
     }

@@ -23,7 +23,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
@@ -33,60 +32,51 @@ import java.util.List;
 import org.junit.Test;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.genscavenge.HeapParameters;
+import com.oracle.svm.core.genscavenge.SerialAndEpsilonGCOptions;
 import com.oracle.svm.core.jfr.JfrEvent;
-import com.oracle.svm.core.util.UnsignedUtils;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 
-public class TestObjectAllocationSampleEvent extends JfrRecordingTest {
+/**
+ * Objects are allocated outside the TLAB if they don't fit into the current TLAB and the remaining
+ * space in the current TLAB is larger than the refill waste limit. Additionally, the objects must
+ * be smaller than the {@link SerialAndEpsilonGCOptions#LargeArrayThreshold}.
+ */
+public class TestObjectAllocationOutsideTLABEvent extends JfrRecordingTest {
+
+    private static final String TEST_THREAD_NAME = "eventTestThread";
+
     @Test
     public void test() throws Throwable {
-        String[] events = new String[]{JfrEvent.ObjectAllocationSample.getName()};
+        String[] events = new String[]{JfrEvent.ObjectAllocationOutsideTLAB.getName()};
         Recording recording = startRecording(events);
 
-        int alignedHeapChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
+        /*
+         * Use a separate thread for allocating the objects, to have better control over the TLAB
+         * and to make sure the objects are actually allocated outside the TLAB.
+         */
+        Thread testThread = new Thread(() -> {
+            final long largeObjectThreshold = SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue();
+            final int arraySize = NumUtil.safeToInt(largeObjectThreshold - 1024);
 
-        // Allocate large arrays (always need a new TLAB).
-        allocateByteArray(2 * alignedHeapChunkSize);
-        allocateCharArray(alignedHeapChunkSize);
+            // Allocate a small object to make sure we have a TLAB.
+            Object o = new Object();
+            GraalDirectives.blackhole(o);
 
-        stopRecording(recording, TestObjectAllocationSampleEvent::validateEvents);
-    }
+            allocateByteArray(arraySize / Byte.BYTES);
+            allocateCharArray(arraySize / Character.BYTES);
+        }, TEST_THREAD_NAME);
 
-    private static void validateEvents(List<RecordedEvent> events) {
-        long alignedHeapChunkSize = HeapParameters.getAlignedHeapChunkSize().rawValue();
+        testThread.start();
+        testThread.join();
 
-        boolean foundByteArray = false;
-        boolean foundCharArray = false;
+        stopRecording(recording, TestObjectAllocationOutsideTLABEvent::validateEvents);
 
-        for (RecordedEvent event : events) {
-            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
-            if (!eventThread.equals("main")) {
-                continue;
-            }
-
-            long allocationSize = event.<Long> getValue("weight");
-            String className = event.<RecordedClass> getValue("objectClass").getName();
-
-            // >= To account for size of reference
-            if (allocationSize >= 2 * alignedHeapChunkSize) {
-                // verify previous owner
-                if (className.equals(char[].class.getName())) {
-                    foundCharArray = true;
-                    checkTopStackFrame(event, "slowPathNewArrayLikeObjectWithoutAllocation0");
-                } else if (className.equals(byte[].class.getName())) {
-                    foundByteArray = true;
-                    checkTopStackFrame(event, "slowPathNewArrayLikeObjectWithoutAllocation0");
-                }
-            }
-        }
-
-        assertTrue(foundCharArray);
-        assertTrue(foundByteArray);
     }
 
     @NeverInline("Prevent escape analysis.")
@@ -98,4 +88,36 @@ public class TestObjectAllocationSampleEvent extends JfrRecordingTest {
     private static char[] allocateCharArray(int length) {
         return new char[length];
     }
+
+    private static void validateEvents(List<RecordedEvent> events) {
+        final long largeObjectThreshold = SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue();
+        final int arrayLength = NumUtil.safeToInt(largeObjectThreshold - 1024);
+
+        boolean foundByteArray = false;
+        boolean foundCharArray = false;
+
+        for (RecordedEvent event : events) {
+            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
+            if (!eventThread.equals(TEST_THREAD_NAME)) {
+                continue;
+            }
+
+            long allocationSize = event.<Long> getValue("allocationSize");
+            String className = event.<RecordedClass> getValue("objectClass").getName();
+
+            if (allocationSize >= arrayLength) {
+                if (className.equals(char[].class.getName())) {
+                    foundCharArray = true;
+                } else if (className.equals(byte[].class.getName())) {
+                    foundByteArray = true;
+                }
+                checkTopStackFrame(event, "slowPathNewArrayLikeObjectWithoutAllocation0");
+            }
+
+        }
+
+        assertTrue(foundByteArray);
+        assertTrue(foundCharArray);
+    }
+
 }

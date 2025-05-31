@@ -58,6 +58,11 @@ public final class ImageHeapList {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class) //
+    public static List<?> createGeneric(Class<?> elementClass) {
+        return create(elementClass, null);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
     public static <E> List<E> create(Class<E> elementClass, Comparator<E> comparator) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to create an ImageHeapList after analysis.");
         return new HostedImageHeapList<>(elementClass, comparator);

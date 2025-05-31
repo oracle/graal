@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge.compacting;
 
+import static com.oracle.svm.core.genscavenge.HeapChunk.CHUNK_HEADER_TOP_IDENTITY;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -141,7 +143,8 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
         assert gapSize.equal(0) || objSeqSize.equal(0);
 
         if (gapSize.notEqual(0)) { // truncate gap at chunk end
-            chunk.setTopOffset(chunk.getTopOffset().subtract(gapSize));
+            UnsignedWord newTopOffset = chunk.getTopOffset(CHUNK_HEADER_TOP_IDENTITY).subtract(gapSize);
+            chunk.setTopOffset(newTopOffset, CHUNK_HEADER_TOP_IDENTITY);
         } else if (objSeqSize.notEqual(0)) {
             Pointer newAddress = sweeping ? objSeq : allocate(objSeqSize);
             ObjectMoveInfo.setNewAddress(objSeq, newAddress);
