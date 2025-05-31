@@ -30,13 +30,13 @@ import java.nio.file.FileSystem;
 import java.nio.file.Files;
 
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.shadowed.com.google.common.jimfs.Configuration;
+import org.graalvm.shadowed.com.google.common.jimfs.Jimfs;
 import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSNumber;
 import org.graalvm.webimage.api.JSObject;
 import org.graalvm.webimage.api.JSString;
 
-import com.google.common.jimfs.Configuration;
-import com.google.common.jimfs.Jimfs;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
