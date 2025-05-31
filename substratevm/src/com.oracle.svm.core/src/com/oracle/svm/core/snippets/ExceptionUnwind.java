@@ -206,8 +206,8 @@ public abstract class ExceptionUnwind {
      * Unwinds the stack to find an exception handler.
      *
      * @param startSP The SP from which to start the stack unwinding.
-     * @param fromMethodWithCalleeSavedRegisters Whether the first frame (identified by callerSP)
-     *            has callee saved registers.
+     * @param fromMethodWithCalleeSavedRegisters Whether the first frame (identified by startSP) has
+     *            callee saved registers.
      * @param skipCaller Whether the first (caller) frame should be skipped. If this is true, then
      *            the value of fromMethodWithCalleeSavedRegisters will be ignored.
      */
@@ -218,8 +218,9 @@ public abstract class ExceptionUnwind {
         boolean skipFrame = skipCaller;
 
         /*
-         * callerSP identifies the caller of the frame that wants to unwind an exception. So we can
-         * start looking for the exception handler in that frame, possibly skipping one frame.
+         * startSP identifies the caller of the frame that wants to unwind an exception. So we can
+         * start looking for the exception handler in that frame, optionally skipping one frame if
+         * requested.
          */
         JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
         JavaStackWalker.initialize(walk, thread, startSP);
