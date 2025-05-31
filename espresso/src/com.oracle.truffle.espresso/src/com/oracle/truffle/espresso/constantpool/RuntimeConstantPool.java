@@ -361,7 +361,7 @@ public final class RuntimeConstantPool extends ConstantPool {
             Symbol<Type> type = context.getTypes().fromClassNameEntry(klassName);
             Klass klass = context.getMeta().resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
             Klass checkedKlass = klass.getElementalType();
-            if (!Klass.checkAccess(checkedKlass, accessingKlass, false)) {
+            if (!Klass.checkAccess(checkedKlass, accessingKlass)) {
                 Meta meta = context.getMeta();
                 context.getLogger().log(Level.FINE,
                                 "Access check of: " + checkedKlass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
@@ -372,13 +372,13 @@ public final class RuntimeConstantPool extends ConstantPool {
                     if (accessingKlass.module() == checkedKlass.module()) {
                         errorMessage.append(checkedKlass.getExternalName());
                         errorMessage.append(" and ");
-                        ClassRegistry.classInModuleOfLoader(accessingKlass, true, errorMessage, meta);
+                        ClassRegistry.classInModuleOfLoader(context.getClassLoadingEnv(), accessingKlass, true, errorMessage, meta);
                     } else {
                         // checkedKlass is not an array type (getElementalType) nor a
                         // primitive type (it would have passed the access checks)
-                        ClassRegistry.classInModuleOfLoader((ObjectKlass) checkedKlass, false, errorMessage, meta);
+                        ClassRegistry.classInModuleOfLoader(context.getClassLoadingEnv(), (ObjectKlass) checkedKlass, false, errorMessage, meta);
                         errorMessage.append("; ");
-                        ClassRegistry.classInModuleOfLoader(accessingKlass, false, errorMessage, meta);
+                        ClassRegistry.classInModuleOfLoader(context.getClassLoadingEnv(), accessingKlass, false, errorMessage, meta);
                     }
                     errorMessage.append(")");
                 }
@@ -479,7 +479,7 @@ public final class RuntimeConstantPool extends ConstantPool {
             return true;
         }
         // MagicAccessorImpl marks internal reflection classes that have access to everything.
-        if (accessingKlass.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass)) {
+        if (accessingKlass.isMagicAccessor()) {
             return true;
         }
 

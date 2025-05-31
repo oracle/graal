@@ -73,7 +73,9 @@ public interface ParserKlassProvider {
                                 parserKlass.getSuperKlass(), parserKlass.getSuperInterfaces(),
                                 parserKlass.getMethods(), parserKlass.getFields(),
                                 parserKlass.getAttributes(),
-                                parserKlass.getThisKlassIndex(), parserKlass.getHiddenKlassId());
+                                parserKlass.getThisKlassIndex(),
+                                parserKlass.getMajorVersion(), parserKlass.getMinorVersion(),
+                                parserKlass.getHiddenKlassId());
             }
 
             return parserKlass;

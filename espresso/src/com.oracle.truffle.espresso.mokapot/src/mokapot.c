@@ -390,8 +390,12 @@ JNIEXPORT void JNICALL JVM_Yield(JNIEnv *env, jclass threadClass) {
 
 JNIEXPORT void JNICALL JVM_Sleep(JNIEnv *env, jclass threadClass, jlong millis) {
   UNIMPLEMENTED(JVM_Sleep);
+}
 
 
+JNIEXPORT void JNICALL
+JVM_SleepNanos(JNIEnv *env, jclass threadClass, jlong nanos) {
+  IMPLEMENTED(JVM_SleepNanos);
 }
 
 JNIEXPORT jobject JNICALL JVM_CurrentCarrierThread(JNIEnv *env, jclass threadClass) {
@@ -1411,6 +1415,13 @@ JNIEXPORT void JNICALL JVM_BeforeHalt() {
   return (*getEnv())->JVM_BeforeHalt();
 }
 
+
+JNIEXPORT void JNICALL
+JVM_ExpandStackFrameInfo(JNIEnv *env, jobject obj) {
+  IMPLEMENTED(JVM_ExpandStackFrameInfo);
+  (*getEnv())->JVM_ExpandStackFrameInfo(env, obj);
+}
+
 JNIEXPORT jobject JNICALL JVM_CallStackWalk(JNIEnv *env, jobject stackStream, jlong mode,
                   jint skip_frames, jint frame_count, jint start_index,
                   jobjectArray frames) {
@@ -1540,6 +1551,12 @@ JNIEXPORT jboolean JNICALL JVM_IsUseContainerSupport(void) {
   return JNI_FALSE;
 }
 
+JNIEXPORT jboolean JNICALL
+JVM_IsContainerized(void) {
+  UNIMPLEMENTED(JVM_IsContainerized);
+  return JNI_FALSE;
+}
+
 JNIEXPORT jobjectArray JNICALL JVM_GetRecordComponents(JNIEnv *env, jclass ofClass) {
     IMPLEMENTED(JVM_GetRecordComponents);
     return (*getEnv())->JVM_GetRecordComponents(env, ofClass);
@@ -1579,6 +1596,16 @@ JNIEXPORT jboolean JNICALL JVM_IsSharingEnabled(JNIEnv* env) {
 JNIEXPORT jboolean JNICALL JVM_IsDumpingClassList(JNIEnv* env) {
   IMPLEMENTED(JVM_IsDumpingClassList);
   return (*getEnv())->JVM_IsDumpingClassList(env);
+}
+
+JNIEXPORT jint JNICALL JVM_GetCDSConfigStatus() {
+  IMPLEMENTED(JVM_GetCDSConfigStatus);
+  return (*getEnv())->JVM_GetCDSConfigStatus();
+}
+
+JNIEXPORT jboolean JNICALL JVM_NeedsClassInitBarrierForCDS(JNIEnv* env, jclass cls) {
+  UNIMPLEMENTED(JVM_NeedsClassInitBarrierForCDS);
+  return 0;
 }
 
 JNIEXPORT jstring JNICALL JVM_GetExtendedNPEMessage(JNIEnv *env, jthrowable throwable) {
@@ -1650,34 +1677,40 @@ JNIEXPORT void JNICALL JVM_DumpDynamicArchive(JNIEnv *env, jstring archiveName) 
   UNIMPLEMENTED(JVM_DumpDynamicArchive);
 }
 
-JNIEXPORT void JNICALL JVM_VirtualThreadMountBegin(JNIEnv* env, jobject vthread, jboolean first_mount) {
-  UNIMPLEMENTED(JVM_VirtualThreadUnmountBegin);
-}
-
-JNIEXPORT void JNICALL JVM_VirtualThreadMountEnd(JNIEnv* env, jobject vthread, jboolean first_mount) {
-  UNIMPLEMENTED(JVM_VirtualThreadUnmountEnd);
-}
-
-JNIEXPORT void JNICALL JVM_VirtualThreadUnmountBegin(JNIEnv* env, jobject vthread, jboolean last_unmount) {
-  UNIMPLEMENTED(JVM_VirtualThreadUnmountBegin);
-}
-
-JNIEXPORT void JNICALL JVM_VirtualThreadUnmountEnd(JNIEnv* env, jobject vthread, jboolean last_unmount) {
-  UNIMPLEMENTED(JVM_VirtualThreadUnmountEnd);
-}
-
 JNIEXPORT void JNICALL JVM_VirtualThreadHideFrames(JNIEnv* env, jobject vthread, jboolean hide) {
   UNIMPLEMENTED(JVM_VirtualThreadHideFrames);
 }
 
+JNIEXPORT void JNICALL
+JVM_VirtualThreadDisableSuspend(JNIEnv* env, jclass clazz, jboolean enter) {
+  UNIMPLEMENTED(JVM_VirtualThreadDisableSuspend);
+}
+
+JNIEXPORT void JNICALL
+JVM_VirtualThreadPinnedEvent(JNIEnv* env, jclass clazz, jstring op) {
+  UNIMPLEMENTED(JVM_VirtualThreadPinnedEvent);
+}
+
+JNIEXPORT jobject JNICALL
+JVM_TakeVirtualThreadListToUnblock(JNIEnv* env, jclass ignored) {
+  UNIMPLEMENTED(JVM_TakeVirtualThreadListToUnblock);
+  return NULL;
+}
+
 JNIEXPORT jint JNICALL JVM_GetClassFileVersion(JNIEnv *env, jclass current) {
-  UNIMPLEMENTED(JVM_GetClassFileVersion);
-  return 0;
+  IMPLEMENTED(JVM_GetClassFileVersion);
+  return (*getEnv())->JVM_GetClassFileVersion(env, current);
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsForeignLinkerSupported(void) {
   IMPLEMENTED(JVM_IsForeignLinkerSupported);
   return (*getEnv())->JVM_IsForeignLinkerSupported();
+}
+
+JNIEXPORT jboolean JNICALL
+JVM_IsStaticallyLinked(void) {
+  UNIMPLEMENTED(JVM_IsStaticallyLinked);
+  return JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL JVM_VirtualThreadStart(JNIEnv* env, jobject vthread) {

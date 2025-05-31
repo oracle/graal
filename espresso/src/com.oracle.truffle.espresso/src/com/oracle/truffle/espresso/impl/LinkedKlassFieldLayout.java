@@ -186,6 +186,9 @@ final class LinkedKlassFieldLayout {
                                         new HiddenField(Names.HIDDEN_VMTARGET),
                                         new HiddenField(Names.HIDDEN_VMINDEX)
                         }),
+                        entry(Types.java_lang_invoke_ResolvedMethodName, new HiddenField[]{
+                                        new HiddenField(Names.HIDDEN_VM_METHOD, Types.java_lang_Object, VersionRange.VERSION_22_OR_HIGHER, NO_ADDITIONAL_FLAGS),
+                        }),
                         entry(Types.java_lang_reflect_Method, new HiddenField[]{
                                         new HiddenField(Names.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS),
                                         new HiddenField(Names.HIDDEN_METHOD_KEY)

@@ -361,10 +361,7 @@ typedef uint64_t julong;
     /* V(JVM_VirtualThreadUnmountEnd) */ \
     /* Java 20 VM methods */ \
     /* V(JVM_VirtualThreadHideFrames) */ \
-    /* V(JVM_GetClassFileVersion) */ \
-    V(JVM_ScopedValueCache) \
-    V(JVM_SetScopedValueCache) \
-    V(JVM_FindScopedValueBindings) \
+    V(JVM_GetClassFileVersion) \
     /* Java 21 VM Methods */ \
     V(JVM_IsForeignLinkerSupported) \
     /* V(JVM_VirtualThreadStart) */ \
@@ -372,6 +369,15 @@ typedef uint64_t julong;
     /* V(JVM_VirtualThreadMount) */ \
     /* V(JVM_VirtualThreadUnmount) */ \
     /* V(JVM_PrintWarningAtDynamicAgentLoad) */ \
+    /* Java 25 VM Methods */ \
+    V(JVM_SleepNanos) \
+    V(JVM_ExpandStackFrameInfo) \
+    V(JVM_IsContainerized) \
+    V(JVM_GetCDSConfigStatus) \
+    V(JVM_VirtualThreadDisableSuspend) \
+    V(JVM_VirtualThreadPinnedEvent) \
+    V(JVM_TakeVirtualThreadListToUnblock) \
+    V(JVM_IsStaticallyLinked) \
 
 #ifdef __cplusplus
 extern "C" {
@@ -990,8 +996,25 @@ void (*JVM_ReportFinalizationComplete)(JNIEnv *env, jobject finalizee);
 
 jboolean (*JVM_IsFinalizationEnabled)(JNIEnv *env);
 
+jint (*JVM_GetClassFileVersion)(JNIEnv* env, jclass clazz);
+
 jboolean (*JVM_IsForeignLinkerSupported)(void);
 
+void (*JVM_SleepNanos)(JNIEnv *env, jclass threadClass, jlong nanos);
+
+void (*JVM_ExpandStackFrameInfo)(JNIEnv *env, jobject obj);
+
+jboolean (*JVM_IsContainerized)(void);
+
+jint (*JVM_GetCDSConfigStatus)();
+
+void (*JVM_VirtualThreadDisableSuspend)(JNIEnv* env, jclass clazz, jboolean enter);
+
+void (*JVM_VirtualThreadPinnedEvent)(JNIEnv* env, jclass clazz, jstring op);
+
+jobject (*JVM_TakeVirtualThreadListToUnblock)(JNIEnv* env, jclass ignored);
+
+jboolean(*JVM_IsStaticallyLinked)(void);
 };
 
 struct MokapotEnv_ {

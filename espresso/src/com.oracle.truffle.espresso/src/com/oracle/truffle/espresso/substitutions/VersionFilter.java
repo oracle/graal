@@ -165,4 +165,40 @@ public interface VersionFilter extends LanguageFilter {
             return version.java21OrLater();
         }
     }
+
+    final class Java22OrLater implements VersionFilter {
+        public static final Java22OrLater INSTANCE = new Java22OrLater();
+
+        private Java22OrLater() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java22OrLater();
+        }
+    }
+
+    final class Java24OrEarlier implements VersionFilter {
+        public static final Java24OrEarlier INSTANCE = new Java24OrEarlier();
+
+        private Java24OrEarlier() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java24OrEarlier();
+        }
+    }
+
+    final class Java25OrLater implements VersionFilter {
+        public static final Java25OrLater INSTANCE = new Java25OrLater();
+
+        private Java25OrLater() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java25OrLater();
+        }
+    }
 }
