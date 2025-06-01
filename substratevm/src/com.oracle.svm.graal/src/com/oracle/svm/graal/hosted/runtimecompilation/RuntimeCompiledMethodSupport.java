@@ -461,7 +461,7 @@ public class RuntimeCompiledMethodSupport {
 
         RuntimeBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext, SVMHost svmHost) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, svmHost, false);
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, svmHost, false, null);
         }
 
         @Override

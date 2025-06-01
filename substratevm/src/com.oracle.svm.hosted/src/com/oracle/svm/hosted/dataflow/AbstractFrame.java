@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.java.dataflow;
+package com.oracle.svm.hosted.dataflow;
 
-import jdk.graal.compiler.debug.GraalError;
+import com.oracle.svm.core.util.VMError;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -173,12 +173,12 @@ public class AbstractFrame<T> {
         }
 
         ValueWithSlots<T> pop() {
-            GraalError.guarantee(!stack.isEmpty(), "Cannot pop from empty stack");
+            VMError.guarantee(!stack.isEmpty(), "Cannot pop from empty stack");
             return stack.removeLast();
         }
 
         ValueWithSlots<T> peek(int depth) {
-            GraalError.guarantee(0 <= depth && depth < size(), "Operand stack doesn't contain enough values");
+            VMError.guarantee(0 <= depth && depth < size(), "Operand stack doesn't contain enough values");
             return stack.get(stack.size() - depth - 1);
         }
 
@@ -191,11 +191,11 @@ public class AbstractFrame<T> {
         }
 
         void mergeWith(OperandStack<T> other, BiFunction<T, T, T> mergeFunction) {
-            GraalError.guarantee(size() == other.size(), "Operand stack size must match upon merging");
+            VMError.guarantee(size() == other.size(), "Operand stack size must match upon merging");
             for (int i = 0; i < stack.size(); i++) {
                 ValueWithSlots<T> thisValue = stack.get(i);
                 ValueWithSlots<T> thatValue = other.stack.get(i);
-                GraalError.guarantee(thisValue.size() == thatValue.size(), "The size of operand stack values must match upon merging");
+                VMError.guarantee(thisValue.size() == thatValue.size(), "The size of operand stack values must match upon merging");
                 ValueWithSlots<T> mergedValue = new ValueWithSlots<>(mergeFunction.apply(thisValue.value(), thatValue.value()), thisValue.size());
                 stack.set(i, mergedValue);
             }
@@ -281,7 +281,7 @@ public class AbstractFrame<T> {
         }
 
         ValueWithSlots<T> get(int index) {
-            GraalError.guarantee(variables.containsKey(index), "Attempted to access non-existent variable in local variable table");
+            VMError.guarantee(variables.containsKey(index), "Attempted to access non-existent variable in local variable table");
             return variables.get(index);
         }
 

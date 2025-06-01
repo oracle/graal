@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.java.dataflow;
+package com.oracle.svm.hosted.dataflow;
 
+import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeLookupSwitch;
 import jdk.graal.compiler.bytecode.BytecodeStream;
 import jdk.graal.compiler.bytecode.BytecodeSwitch;
 import jdk.graal.compiler.bytecode.BytecodeTableSwitch;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
@@ -246,9 +246,6 @@ import static jdk.graal.compiler.bytecode.Bytecodes.SASTORE;
 import static jdk.graal.compiler.bytecode.Bytecodes.SIPUSH;
 import static jdk.graal.compiler.bytecode.Bytecodes.SWAP;
 import static jdk.graal.compiler.bytecode.Bytecodes.TABLESWITCH;
-import static jdk.graal.compiler.java.dataflow.AbstractFrame.ValueWithSlots.Slots.ONE_SLOT;
-import static jdk.graal.compiler.java.dataflow.AbstractFrame.ValueWithSlots.Slots.TWO_SLOTS;
-import static jdk.graal.compiler.java.dataflow.AbstractFrame.ValueWithSlots.wrap;
 
 /**
  * A {@link ForwardDataFlowAnalyzer} where the data flow state is represented by an abstract
@@ -289,7 +286,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
         int variableIndex = 0;
         if (!method.isStatic()) {
             /* The argument position of the receiver is set to -1. */
-            state.localVariableTable().put(variableIndex, wrap(storeMethodArgument(method, -1, variableIndex), ONE_SLOT));
+            state.localVariableTable().put(variableIndex, AbstractFrame.ValueWithSlots.wrap(storeMethodArgument(method, -1, variableIndex), AbstractFrame.ValueWithSlots.Slots.ONE_SLOT));
             variableIndex++;
         }
 
@@ -297,7 +294,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
         int numParameters = signature.getParameterCount(false);
         for (int parameterIndex = 0; parameterIndex < numParameters; parameterIndex++) {
             JavaKind kind = signature.getParameterKind(parameterIndex);
-            AbstractFrame.ValueWithSlots<T> value = wrap(storeMethodArgument(method, parameterIndex, variableIndex), getSizeForKind(kind));
+            AbstractFrame.ValueWithSlots<T> value = AbstractFrame.ValueWithSlots.wrap(storeMethodArgument(method, parameterIndex, variableIndex), getSizeForKind(kind));
             state.localVariableTable().put(variableIndex, value);
             variableIndex += kind.needsTwoSlots() ? 2 : 1;
         }
@@ -314,7 +311,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
         AbstractFrame<T> exceptionPathState = new AbstractFrame<>(inState);
         exceptionPathState.operandStack().clear();
 
-        AbstractFrame.ValueWithSlots<T> exceptionObject = wrap(pushExceptionObject(exceptionTypes), ONE_SLOT);
+        AbstractFrame.ValueWithSlots<T> exceptionObject = AbstractFrame.ValueWithSlots.wrap(pushExceptionObject(exceptionTypes), AbstractFrame.ValueWithSlots.Slots.ONE_SLOT);
         exceptionPathState.operandStack().push(exceptionObject);
         return exceptionPathState;
     }
@@ -344,26 +341,26 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
         // Checkstyle: stop
         switch (opcode) {
             case NOP            : break;
-            case ACONST_NULL    : handleConstant(context, outState, JavaConstant.NULL_POINTER, ONE_SLOT); break;
-            case ICONST_M1      : handleConstant(context, outState, JavaConstant.forInt(-1), ONE_SLOT); break;
+            case ACONST_NULL    : handleConstant(context, outState, JavaConstant.NULL_POINTER, AbstractFrame.ValueWithSlots.Slots.ONE_SLOT); break;
+            case ICONST_M1      : handleConstant(context, outState, JavaConstant.forInt(-1), AbstractFrame.ValueWithSlots.Slots.ONE_SLOT); break;
             case ICONST_0       : // fall through
             case ICONST_1       : // fall through
             case ICONST_2       : // fall through
             case ICONST_3       : // fall through
             case ICONST_4       : // fall through
-            case ICONST_5       : handleConstant(context, outState, JavaConstant.forInt(opcode - ICONST_0), ONE_SLOT); break;
+            case ICONST_5       : handleConstant(context, outState, JavaConstant.forInt(opcode - ICONST_0), AbstractFrame.ValueWithSlots.Slots.ONE_SLOT); break;
             case LCONST_0       : // fall through
-            case LCONST_1       : handleConstant(context, outState, JavaConstant.forLong(opcode - LCONST_0), TWO_SLOTS); break;
+            case LCONST_1       : handleConstant(context, outState, JavaConstant.forLong(opcode - LCONST_0), AbstractFrame.ValueWithSlots.Slots.TWO_SLOTS); break;
             case FCONST_0       : // fall through
             case FCONST_1       : // fall through
-            case FCONST_2       : handleConstant(context, outState, JavaConstant.forFloat(opcode - FCONST_0), ONE_SLOT); break;
+            case FCONST_2       : handleConstant(context, outState, JavaConstant.forFloat(opcode - FCONST_0), AbstractFrame.ValueWithSlots.Slots.ONE_SLOT); break;
             case DCONST_0       : // fall through
-            case DCONST_1       : handleConstant(context, outState, JavaConstant.forDouble(opcode - DCONST_0), TWO_SLOTS); break;
-            case BIPUSH         : handleConstant(context, outState, JavaConstant.forByte(stream.readByte()), ONE_SLOT); break;
-            case SIPUSH         : handleConstant(context, outState, JavaConstant.forShort(stream.readShort()), ONE_SLOT); break;
+            case DCONST_1       : handleConstant(context, outState, JavaConstant.forDouble(opcode - DCONST_0), AbstractFrame.ValueWithSlots.Slots.TWO_SLOTS); break;
+            case BIPUSH         : handleConstant(context, outState, JavaConstant.forByte(stream.readByte()), AbstractFrame.ValueWithSlots.Slots.ONE_SLOT); break;
+            case SIPUSH         : handleConstant(context, outState, JavaConstant.forShort(stream.readShort()), AbstractFrame.ValueWithSlots.Slots.ONE_SLOT); break;
             case LDC            : // fall through
-            case LDC_W          : handleConstant(context, outState, getConstant(code, stream), ONE_SLOT); break;
-            case LDC2_W         : handleConstant(context, outState, getConstant(code, stream), TWO_SLOTS); break;
+            case LDC_W          : handleConstant(context, outState, getConstant(code, stream), AbstractFrame.ValueWithSlots.Slots.ONE_SLOT); break;
+            case LDC2_W         : handleConstant(context, outState, getConstant(code, stream), AbstractFrame.ValueWithSlots.Slots.TWO_SLOTS); break;
             case ILOAD          : // fall through
             case LLOAD          : // fall through
             case FLOAD          : // fall through
@@ -389,14 +386,14 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
             case ALOAD_1        : // fall through
             case ALOAD_2        : // fall through
             case ALOAD_3        : handleVariableLoad(context, outState, opcode - ALOAD_0); break;
-            case IALOAD         : handleArrayElementLoad(context, outState, ONE_SLOT); break;
-            case LALOAD         : handleArrayElementLoad(context, outState, TWO_SLOTS); break;
-            case FALOAD         : handleArrayElementLoad(context, outState, ONE_SLOT); break;
-            case DALOAD         : handleArrayElementLoad(context, outState, TWO_SLOTS); break;
+            case IALOAD         : handleArrayElementLoad(context, outState, AbstractFrame.ValueWithSlots.Slots.ONE_SLOT); break;
+            case LALOAD         : handleArrayElementLoad(context, outState, AbstractFrame.ValueWithSlots.Slots.TWO_SLOTS); break;
+            case FALOAD         : handleArrayElementLoad(context, outState, AbstractFrame.ValueWithSlots.Slots.ONE_SLOT); break;
+            case DALOAD         : handleArrayElementLoad(context, outState, AbstractFrame.ValueWithSlots.Slots.TWO_SLOTS); break;
             case AALOAD         : // fall through
             case BALOAD         : // fall through
             case CALOAD         : // fall through
-            case SALOAD         : handleArrayElementLoad(context, outState, ONE_SLOT); break;
+            case SALOAD         : handleArrayElementLoad(context, outState, AbstractFrame.ValueWithSlots.Slots.ONE_SLOT); break;
             case ISTORE         : // fall through
             case LSTORE         : // fall through
             case FSTORE         : // fall through
@@ -476,21 +473,21 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
             case LOR            : // fall through
             case LXOR           : handleBinaryOperation(context, outState); break;
             case IINC           : handleIncrement(context, outState, stream.readLocalIndex(), stream.readIncrement()); break;
-            case I2F            : handleCast(context, outState, ONE_SLOT); break;
-            case I2D            : handleCast(context, outState, TWO_SLOTS); break;
-            case L2F            : handleCast(context, outState, ONE_SLOT); break;
-            case L2D            : handleCast(context, outState, TWO_SLOTS); break;
-            case F2I            : handleCast(context, outState, ONE_SLOT); break;
+            case I2F            : handleCast(context, outState, AbstractFrame.ValueWithSlots.Slots.ONE_SLOT); break;
+            case I2D            : handleCast(context, outState, AbstractFrame.ValueWithSlots.Slots.TWO_SLOTS); break;
+            case L2F            : handleCast(context, outState, AbstractFrame.ValueWithSlots.Slots.ONE_SLOT); break;
+            case L2D            : handleCast(context, outState, AbstractFrame.ValueWithSlots.Slots.TWO_SLOTS); break;
+            case F2I            : handleCast(context, outState, AbstractFrame.ValueWithSlots.Slots.ONE_SLOT); break;
             case F2L            : // fall through
-            case F2D            : handleCast(context, outState, TWO_SLOTS); break;
-            case D2I            : handleCast(context, outState, ONE_SLOT); break;
-            case D2L            : handleCast(context, outState, TWO_SLOTS); break;
-            case D2F            : handleCast(context, outState, ONE_SLOT); break;
-            case L2I            : handleCast(context, outState, ONE_SLOT); break;
-            case I2L            : handleCast(context, outState, TWO_SLOTS); break;
+            case F2D            : handleCast(context, outState, AbstractFrame.ValueWithSlots.Slots.TWO_SLOTS); break;
+            case D2I            : handleCast(context, outState, AbstractFrame.ValueWithSlots.Slots.ONE_SLOT); break;
+            case D2L            : handleCast(context, outState, AbstractFrame.ValueWithSlots.Slots.TWO_SLOTS); break;
+            case D2F            : handleCast(context, outState, AbstractFrame.ValueWithSlots.Slots.ONE_SLOT); break;
+            case L2I            : handleCast(context, outState, AbstractFrame.ValueWithSlots.Slots.ONE_SLOT); break;
+            case I2L            : handleCast(context, outState, AbstractFrame.ValueWithSlots.Slots.TWO_SLOTS); break;
             case I2B            : // fall through
             case I2S            : // fall through
-            case I2C            : handleCast(context, outState, ONE_SLOT); break;
+            case I2C            : handleCast(context, outState, AbstractFrame.ValueWithSlots.Slots.ONE_SLOT); break;
             case LCMP           : // fall through
             case FCMPL          : // fall through
             case FCMPG          : // fall through
@@ -616,30 +613,30 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
              * The constant is an unresolved JVM_CONSTANT_Dynamic, JVM_CONSTANT_MethodHandle or
              * JVM_CONSTANT_MethodType.
              */
-            state.operandStack().push(wrap(pushConstant(context, state, null), size));
+            state.operandStack().push(AbstractFrame.ValueWithSlots.wrap(pushConstant(context, state, null), size));
         } else {
             if (value instanceof Constant constant) {
-                state.operandStack().push(wrap(pushConstant(context, state, constant), size));
+                state.operandStack().push(AbstractFrame.ValueWithSlots.wrap(pushConstant(context, state, constant), size));
             } else if (value instanceof JavaType type) {
-                state.operandStack().push(wrap(pushType(context, state, type), size));
+                state.operandStack().push(AbstractFrame.ValueWithSlots.wrap(pushType(context, state, type), size));
             }
         }
     }
 
     private void handleVariableLoad(Context context, AbstractFrame<T> state, int variableIndex) {
         AbstractFrame.ValueWithSlots<T> value = state.localVariableTable().get(variableIndex);
-        state.operandStack().push(wrap(loadVariable(context, state, variableIndex, value.value()), value.size()));
+        state.operandStack().push(AbstractFrame.ValueWithSlots.wrap(loadVariable(context, state, variableIndex, value.value()), value.size()));
     }
 
     private void handleArrayElementLoad(Context context, AbstractFrame<T> state, AbstractFrame.ValueWithSlots.Slots size) {
         T index = state.operandStack().pop().value();
         T array = state.operandStack().pop().value();
-        state.operandStack().push(wrap(loadArrayElement(context, state, array, index), size));
+        state.operandStack().push(AbstractFrame.ValueWithSlots.wrap(loadArrayElement(context, state, array, index), size));
     }
 
     private void handleVariableStore(Context context, AbstractFrame<T> state, int variableIndex) {
         AbstractFrame.ValueWithSlots<T> value = state.operandStack().pop();
-        state.localVariableTable().put(variableIndex, wrap(storeVariable(context, state, variableIndex, value.value()), value.size()));
+        state.localVariableTable().put(variableIndex, AbstractFrame.ValueWithSlots.wrap(storeVariable(context, state, variableIndex, value.value()), value.size()));
     }
 
     private void handleArrayElementStore(Context context, AbstractFrame<T> state) {
@@ -655,7 +652,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
 
     private void handlePop2(AbstractFrame<T> state) {
         AbstractFrame.ValueWithSlots<T> value = state.operandStack().pop();
-        if (value.size() == ONE_SLOT) {
+        if (value.size() == AbstractFrame.ValueWithSlots.Slots.ONE_SLOT) {
             state.operandStack().pop();
         }
     }
@@ -672,10 +669,11 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
         state.operandStack().push(first);
     }
 
+    @SuppressWarnings("Duplicates")
     private void handleDupX2(AbstractFrame<T> state) {
         AbstractFrame.ValueWithSlots<T> first = state.operandStack().pop();
         AbstractFrame.ValueWithSlots<T> second = state.operandStack().pop();
-        if (second.size() == ONE_SLOT) {
+        if (second.size() == AbstractFrame.ValueWithSlots.Slots.ONE_SLOT) {
             AbstractFrame.ValueWithSlots<T> third = state.operandStack().pop();
             state.operandStack().push(first);
             state.operandStack().push(third);
@@ -688,7 +686,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
 
     private void handleDup2(AbstractFrame<T> state) {
         AbstractFrame.ValueWithSlots<T> first = state.operandStack().pop();
-        if (first.size() == ONE_SLOT) {
+        if (first.size() == AbstractFrame.ValueWithSlots.Slots.ONE_SLOT) {
             AbstractFrame.ValueWithSlots<T> second = state.operandStack().peek();
             state.operandStack().push(first);
             state.operandStack().push(second);
@@ -702,7 +700,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
     private void handleDup2X1(AbstractFrame<T> state) {
         AbstractFrame.ValueWithSlots<T> first = state.operandStack().pop();
         AbstractFrame.ValueWithSlots<T> second = state.operandStack().pop();
-        if (first.size() == ONE_SLOT) {
+        if (first.size() == AbstractFrame.ValueWithSlots.Slots.ONE_SLOT) {
             AbstractFrame.ValueWithSlots<T> third = state.operandStack().pop();
             state.operandStack().push(second);
             state.operandStack().push(first);
@@ -714,12 +712,13 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
         state.operandStack().push(first);
     }
 
+    @SuppressWarnings("Duplicates")
     private void handleDup2X2(AbstractFrame<T> state) {
         AbstractFrame.ValueWithSlots<T> first = state.operandStack().pop();
         AbstractFrame.ValueWithSlots<T> second = state.operandStack().pop();
-        if (first.size() == ONE_SLOT) {
+        if (first.size() == AbstractFrame.ValueWithSlots.Slots.ONE_SLOT) {
             AbstractFrame.ValueWithSlots<T> third = state.operandStack().pop();
-            if (third.size() == ONE_SLOT) {
+            if (third.size() == AbstractFrame.ValueWithSlots.Slots.ONE_SLOT) {
                 AbstractFrame.ValueWithSlots<T> fourth = state.operandStack().pop();
                 state.operandStack().push(second);
                 state.operandStack().push(first);
@@ -730,7 +729,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
             }
             state.operandStack().push(third);
         } else {
-            if (second.size() == ONE_SLOT) {
+            if (second.size() == AbstractFrame.ValueWithSlots.Slots.ONE_SLOT) {
                 AbstractFrame.ValueWithSlots<T> third = state.operandStack().pop();
                 state.operandStack().push(first);
                 state.operandStack().push(third);
@@ -752,28 +751,28 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
     private void handleBinaryOperation(Context context, AbstractFrame<T> state) {
         AbstractFrame.ValueWithSlots<T> right = state.operandStack().pop();
         AbstractFrame.ValueWithSlots<T> left = state.operandStack().pop();
-        state.operandStack().push(wrap(binaryOperation(context, state, left.value(), right.value()), left.size()));
+        state.operandStack().push(AbstractFrame.ValueWithSlots.wrap(binaryOperation(context, state, left.value(), right.value()), left.size()));
     }
 
     private void handleUnaryOperation(Context context, AbstractFrame<T> state) {
         AbstractFrame.ValueWithSlots<T> value = state.operandStack().pop();
-        state.operandStack().push(wrap(unaryOperation(context, state, value.value()), value.size()));
+        state.operandStack().push(AbstractFrame.ValueWithSlots.wrap(unaryOperation(context, state, value.value()), value.size()));
     }
 
     private void handleIncrement(Context context, AbstractFrame<T> state, int variableIndex, int incrementBy) {
         AbstractFrame.ValueWithSlots<T> value = state.localVariableTable().get(variableIndex);
-        state.localVariableTable().put(variableIndex, wrap(incrementVariable(context, state, variableIndex, incrementBy, value.value()), value.size()));
+        state.localVariableTable().put(variableIndex, AbstractFrame.ValueWithSlots.wrap(incrementVariable(context, state, variableIndex, incrementBy, value.value()), value.size()));
     }
 
     private void handleCast(Context context, AbstractFrame<T> state, AbstractFrame.ValueWithSlots.Slots size) {
         T value = state.operandStack().pop().value();
-        state.operandStack().push(wrap(castOperation(context, state, value), size));
+        state.operandStack().push(AbstractFrame.ValueWithSlots.wrap(castOperation(context, state, value), size));
     }
 
     private void handleCompare(Context context, AbstractFrame<T> state) {
         T right = state.operandStack().pop().value();
         T left = state.operandStack().pop().value();
-        state.operandStack().push(wrap(comparisonOperation(context, state, left, right), ONE_SLOT));
+        state.operandStack().push(AbstractFrame.ValueWithSlots.wrap(comparisonOperation(context, state, left, right), AbstractFrame.ValueWithSlots.Slots.ONE_SLOT));
     }
 
     private void handleUnaryConditionalJump(Context context, AbstractFrame<T> state, int ifDestinationBci, int elseDestinationBci) {
@@ -795,7 +794,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
     private void handleStaticFieldLoad(Context context, AbstractFrame<T> state, JavaField field) {
         JavaKind fieldKind = field.getJavaKind();
         AbstractFrame.ValueWithSlots.Slots size = getSizeForKind(fieldKind);
-        state.operandStack().push(wrap(loadStaticField(context, state, field), size));
+        state.operandStack().push(AbstractFrame.ValueWithSlots.wrap(loadStaticField(context, state, field), size));
     }
 
     private void handleStaticFieldStore(Context context, AbstractFrame<T> state, JavaField field) {
@@ -807,7 +806,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
         JavaKind fieldKind = field.getJavaKind();
         AbstractFrame.ValueWithSlots.Slots size = getSizeForKind(fieldKind);
         T object = state.operandStack().pop().value();
-        state.operandStack().push(wrap(loadField(context, state, field, object), size));
+        state.operandStack().push(AbstractFrame.ValueWithSlots.wrap(loadField(context, state, field, object), size));
     }
 
     private void handleFieldStore(Context context, AbstractFrame<T> state, JavaField field) {
@@ -818,7 +817,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
 
     private void handleInvoke(Context context, AbstractFrame<T> state, JavaMethod method, JavaConstant appendix) {
         if (appendix != null) {
-            state.operandStack().push(wrap(pushAppendix(method, appendix), ONE_SLOT));
+            state.operandStack().push(AbstractFrame.ValueWithSlots.wrap(pushAppendix(method, appendix), AbstractFrame.ValueWithSlots.Slots.ONE_SLOT));
         }
 
         /*
@@ -849,12 +848,12 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
             invokeVoidMethod(context, state, method, operands);
         } else {
             AbstractFrame.ValueWithSlots.Slots size = getSizeForKind(returnKind);
-            state.operandStack().push(wrap(invokeMethod(context, state, method, operands), size));
+            state.operandStack().push(AbstractFrame.ValueWithSlots.wrap(invokeMethod(context, state, method, operands), size));
         }
     }
 
     private void handleNew(Context context, AbstractFrame<T> state, JavaType type) {
-        state.operandStack().push(wrap(newObject(context, state, type), ONE_SLOT));
+        state.operandStack().push(AbstractFrame.ValueWithSlots.wrap(newObject(context, state, type), AbstractFrame.ValueWithSlots.Slots.ONE_SLOT));
     }
 
     private void handleNewArray(Context context, AbstractFrame<T> state, JavaType type, int dimensions) {
@@ -863,7 +862,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
             counts.add(state.operandStack().pop().value());
         }
         counts = counts.reversed();
-        state.operandStack().push(wrap(newArray(context, state, type, counts), ONE_SLOT));
+        state.operandStack().push(AbstractFrame.ValueWithSlots.wrap(newArray(context, state, type, counts), AbstractFrame.ValueWithSlots.Slots.ONE_SLOT));
     }
 
     /**
@@ -891,7 +890,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
         static Class<?> getType(int typeCode) {
             int typeIndex = typeCode - TYPE_CODE_OFFSET;
             if (typeIndex < 0 || typeIndex >= values().length) {
-                throw GraalError.shouldNotReachHere("Unexpected primitive type code: " + typeCode);
+                throw VMError.shouldNotReachHere("Unexpected primitive type code: " + typeCode);
             }
             return values()[typeIndex].typeClass;
         }
@@ -903,16 +902,16 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
 
     private void handleArrayLength(Context context, AbstractFrame<T> state) {
         T array = state.operandStack().pop().value();
-        state.operandStack().push(wrap(arrayLength(context, state, array), ONE_SLOT));
+        state.operandStack().push(AbstractFrame.ValueWithSlots.wrap(arrayLength(context, state, array), AbstractFrame.ValueWithSlots.Slots.ONE_SLOT));
     }
 
     private void handleCastCheck(Context context, AbstractFrame<T> state, JavaType type) {
         T object = state.operandStack().pop().value();
-        state.operandStack().push(wrap(castCheckOperation(context, state, type, object), ONE_SLOT));
+        state.operandStack().push(AbstractFrame.ValueWithSlots.wrap(castCheckOperation(context, state, type, object), AbstractFrame.ValueWithSlots.Slots.ONE_SLOT));
     }
 
     private static AbstractFrame.ValueWithSlots.Slots getSizeForKind(JavaKind kind) {
-        return kind.needsTwoSlots() ? TWO_SLOTS : ONE_SLOT;
+        return kind.needsTwoSlots() ? AbstractFrame.ValueWithSlots.Slots.TWO_SLOTS : AbstractFrame.ValueWithSlots.Slots.ONE_SLOT;
     }
 
     /**

@@ -29,8 +29,8 @@ import com.oracle.svm.util.LogUtils;
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
-import jdk.graal.compiler.java.dataflow.AbstractFrame;
-import jdk.graal.compiler.java.dataflow.DataFlowAnalysisException;
+import com.oracle.svm.hosted.dataflow.AbstractFrame;
+import com.oracle.svm.hosted.dataflow.DataFlowAnalysisException;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -46,6 +46,9 @@ public class ConstantExpressionRegistry {
         return ImageSingletons.lookup(ConstantExpressionRegistry.class);
     }
 
+    /**
+     * Representation of inferred {@code null} values in the registry.
+     */
     private static final Object NULL_MARKER = new Object();
 
     private Map<Pair<ResolvedJavaMethod, Integer>, AbstractFrame<ConstantExpressionAnalyzer.Value>> registry;

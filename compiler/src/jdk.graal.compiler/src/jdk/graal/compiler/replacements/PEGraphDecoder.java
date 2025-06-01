@@ -414,7 +414,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public List<StackTraceElement> getCallStack(boolean ignoreInvocationPluginTarget) {
+        public List<StackTraceElement> getInliningCallStack(boolean ignoreInvocationPluginTarget) {
             StackTraceElement[] callStackArray = methodScope.getCallStack();
             List<StackTraceElement> callStack = new ArrayList<>(callStackArray.length);
             Collections.addAll(callStack, callStackArray);

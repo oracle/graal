@@ -24,16 +24,14 @@
  */
 package com.oracle.svm.hosted.strictconstantanalysis;
 
-import com.oracle.svm.core.ParsingReason;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.PreParseCallbackSupport;
 import com.oracle.svm.util.ReflectionUtil;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -111,18 +109,20 @@ public class StrictConstantAnalysisFeature implements InternalFeature {
         return Options.StrictConstantAnalysis.getValue() != Options.Mode.Disable;
     }
 
-    private ImageClassLoader loader;
-
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess a) {
         return isActive();
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess a) {
-        FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
-        loader = access.getImageClassLoader();
-        ImageSingletons.add(ConstantExpressionRegistry.class, new ConstantExpressionRegistry());
+    public void afterRegistration(AfterRegistrationAccess access) {
+        FeatureImpl.AfterRegistrationAccessImpl accessImpl = (FeatureImpl.AfterRegistrationAccessImpl) access;
+
+        ConstantExpressionRegistry registry = new ConstantExpressionRegistry();
+        ImageSingletons.add(ConstantExpressionRegistry.class, registry);
+
+        ConstantExpressionAnalyzer analyzer = new ConstantExpressionAnalyzer(GraalAccess.getOriginalProviders(), accessImpl.getImageClassLoader());
+        PreParseCallbackSupport.singleton().addCallback((method, intrinsicContext) -> registry.analyzeAndStore(analyzer, method, intrinsicContext));
     }
 
     @Override
@@ -149,13 +149,6 @@ public class StrictConstantAnalysisFeature implements InternalFeature {
             return;
         }
         access.registerReachabilityHandler(a -> RuntimeReflection.register(field), clazz);
-    }
-
-    @Override
-    public void registerGraphBuilderPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        ConstantExpressionRegistry registry = ConstantExpressionRegistry.singleton();
-        ConstantExpressionAnalyzer analyzer = new ConstantExpressionAnalyzer(providers, loader);
-        plugins.appendMethodParsingPlugin((method, intrinsicContext) -> registry.analyzeAndStore(analyzer, method, intrinsicContext));
     }
 
     @Override

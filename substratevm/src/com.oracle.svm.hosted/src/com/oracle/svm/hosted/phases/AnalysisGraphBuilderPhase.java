@@ -33,6 +33,7 @@ import java.util.List;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration;
+import com.oracle.svm.hosted.PreParseCallbackSupport;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.util.ModuleSupport;
@@ -92,7 +93,7 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
 
     @Override
     protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-        return new AnalysisBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext, hostVM, true);
+        return new AnalysisBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext, hostVM, true, PreParseCallbackSupport.singleton());
     }
 
     public static class AnalysisBytecodeParser extends SharedBytecodeParser {
@@ -101,8 +102,8 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
 
         @SuppressWarnings("this-escape")
         protected AnalysisBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                        IntrinsicContext intrinsicContext, SVMHost hostVM, boolean explicitExceptionEdges) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges);
+                        IntrinsicContext intrinsicContext, SVMHost hostVM, boolean explicitExceptionEdges, PreParseCallbackSupport preParseCallbacks) {
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges, preParseCallbacks);
             this.hostVM = hostVM;
         }
 
