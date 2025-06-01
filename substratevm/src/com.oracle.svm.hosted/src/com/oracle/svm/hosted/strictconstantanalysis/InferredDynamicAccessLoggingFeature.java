@@ -181,7 +181,7 @@ public class InferredDynamicAccessLoggingFeature implements InternalFeature {
             VMError.guarantee(targetMethod.hasReceiver() == (targetReceiver != null), "Inferred receiver does not match with target method signature");
             VMError.guarantee(targetMethod.getSignature().getParameterCount(false) == targetArguments.length, "Inferred arguments do not match with target method signature");
             this.callLocation = Pair.create(b.getMethod(), b.bci());
-            this.callStack = b.getCallStack(true);
+            this.callStack = b.getInliningCallStack(true);
             this.targetMethod = targetMethod;
             this.targetReceiver = targetReceiver;
             this.targetArguments = targetArguments;

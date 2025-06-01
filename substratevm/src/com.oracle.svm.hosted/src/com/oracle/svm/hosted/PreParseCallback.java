@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.nodes.graphbuilderconf;
+package com.oracle.svm.hosted;
 
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Plugin for accessing the method currently being parsed. These plugins are executed before
- * invocation and other types of bytecode parser plugins and can be used for collecting certain
- * information from the parsed method that the other plugins may rely on.
+ * Callback executed at the start of method parsing. It is executed before any bytecode parser
+ * invocation plugin, and can as such be used to collect information from the method that the
+ * plugins may rely on.
  */
-public interface MethodParsingPlugin extends GraphBuilderPlugin {
+public interface PreParseCallback {
 
+    /**
+     * Execute the callback for {@code method}. {@code IntrinsicContext} is null if no intrinsic is
+     * currently being processed.
+     */
     void execute(ResolvedJavaMethod method, IntrinsicContext intrinsicContext);
 }

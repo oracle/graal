@@ -291,7 +291,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      *            returns true, the resulting call stack does not include the target of the
      *            invocation plugin.
      */
-    default List<StackTraceElement> getCallStack(boolean ignoreInvocationPluginTarget) {
+    default List<StackTraceElement> getInliningCallStack(boolean ignoreInvocationPluginTarget) {
         List<StackTraceElement> callStack = new ArrayList<>();
         for (GraphBuilderContext cur = this; cur != null; cur = cur.getParent()) {
             callStack.add(cur.getMethod().asStackTraceElement(cur.bci()));
