@@ -1342,8 +1342,9 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     }
 
     /**
-     * Generates the prolog of a
-     * {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#EagerEntryStub} method.
+     * Generates the prologue of a
+     * {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#EagerEntryStub} or
+     * {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#LazyEntryStub} method.
      */
     protected static class DeoptEntryStubContext extends SubstrateAMD64FrameContext {
         protected DeoptEntryStubContext(SharedMethod method, CallingConvention callingConvention) {
@@ -1357,28 +1358,35 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             Register gpReturnReg = registerConfig.getReturnRegister(JavaKind.Long);
             Register fpReturnReg = registerConfig.getReturnRegister(JavaKind.Double);
 
-            /* Move the DeoptimizedFrame into the first calling convention register. */
-            Register deoptimizedFrame = ValueUtil.asRegister(callingConvention.getArgument(0));
-            assert !deoptimizedFrame.equals(gpReturnReg) : "overwriting return reg";
+            Register firstArgument = ValueUtil.asRegister(callingConvention.getArgument(0));
+            assert !firstArgument.equals(gpReturnReg) : "overwriting return register";
             /*
              * Since this is the target for all deoptimizations we must mark the start of this
              * routine as an indirect target.
              */
             asm.maybeEmitIndirectTargetMarker();
-            asm.movq(deoptimizedFrame, registerConfig.getFrameRegister());
+
+            /* Pass the address of the frame to deoptimize as first argument. */
+            asm.movq(firstArgument, registerConfig.getFrameRegister());
 
             /* Copy the original return registers values into the argument registers. */
             asm.movq(ValueUtil.asRegister(callingConvention.getArgument(1)), gpReturnReg);
             asm.movdq(ValueUtil.asRegister(callingConvention.getArgument(2)), fpReturnReg);
 
-            /* Add a dummy return address to the stack so that RSP is properly aligned. */
+            /*
+             * Keep the return address slot. This keeps the stack walkable, which is crucial for the
+             * interruptible phase of lazy deoptimization. (The return address points to the deopt
+             * stub, while the original return address is stored in the deopt slot.)
+             *
+             * This also ensures that the stack pointer is aligned properly.
+             */
             asm.subq(registerConfig.getFrameRegister(), FrameAccess.returnAddressSize());
             super.enter(tasm);
         }
     }
 
     /**
-     * Generates the epilog of a {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#ExitStub}
+     * Generates the epilogue of a {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#ExitStub}
      * method.
      *
      * Note no special handling is necessary for CFI as this will be a direct call from the

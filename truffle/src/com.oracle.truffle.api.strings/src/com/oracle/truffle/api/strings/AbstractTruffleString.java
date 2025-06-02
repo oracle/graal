@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,8 +63,6 @@ import java.lang.ref.Reference;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
 /**
@@ -131,7 +129,9 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
      */
     int hashCode;
 
-    AbstractTruffleString(Object data, int offset, int length, int stride, Encoding encoding, int flags, int codePointLength, int codeRange) {
+    static final int MASKED_ZERO_HASH_CODE = -1;
+
+    AbstractTruffleString(Object data, int offset, int length, int stride, Encoding encoding, int flags, int codePointLength, int codeRange, int hashCode) {
         validateData(data, offset, length, stride);
         assert isByte(stride);
         assert isByte(flags);
@@ -145,6 +145,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         this.flags = (byte) flags;
         this.codeRange = (byte) codeRange;
         this.codePointLength = codePointLength;
+        this.hashCode = hashCode;
     }
 
     static boolean isByte(int i) {
@@ -1289,10 +1290,9 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof AbstractTruffleString)) {
+        if (!(obj instanceof AbstractTruffleString b)) {
             return false;
         }
-        AbstractTruffleString b = (AbstractTruffleString) obj;
         int enc = encoding();
         if (enc != b.encoding()) {
             if (!b.isLooselyCompatibleTo(enc, TruffleString.Encoding.getMaxCompatibleCodeRange(enc), b.codeRange())) {
@@ -1302,14 +1302,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
                 return false;
             }
         }
-        return TruffleString.EqualNode.checkContentEquals(TruffleString.EqualNode.getUncached(), this, b,
-                        InlinedConditionProfile.getUncached(),
-                        InlinedConditionProfile.getUncached(),
-                        InlinedConditionProfile.getUncached(),
-                        InlinedConditionProfile.getUncached(),
-                        InlinedConditionProfile.getUncached(),
-                        InlinedBranchProfile.getUncached(),
-                        InlinedConditionProfile.getUncached());
+        return TruffleString.EqualNode.checkContentEqualsUncached(this, b);
     }
 
     /**

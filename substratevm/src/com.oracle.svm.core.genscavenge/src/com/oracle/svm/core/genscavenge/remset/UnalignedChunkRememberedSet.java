@@ -65,6 +65,7 @@ final class UnalignedChunkRememberedSet {
     private UnalignedChunkRememberedSet() {
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static UnsignedWord getHeaderSize(UnsignedWord objectSize) {
         UnsignedWord headerSize = getCardTableLimitOffset(objectSize);
         headerSize = headerSize.add(sizeOfObjectStartOffsetField());
@@ -78,6 +79,7 @@ final class UnalignedChunkRememberedSet {
         chunk.writeWord(objectStartOffset.subtract(sizeOfObjectStartOffsetField()), objectStartOffset);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void setObjectStartOffset(UnalignedHeader chunk, UnsignedWord objectStartOffset) {
         HeapChunk.asPointer(chunk).writeWord(objectStartOffset.subtract(sizeOfObjectStartOffsetField()), objectStartOffset);
         assert getObjectStartOffset(chunk).equal(objectStartOffset);
@@ -385,6 +387,7 @@ final class UnalignedChunkRememberedSet {
         return getOffsetForObject(obj).subtract(sizeOfObjectStartOffsetField()).subtract(getCardTableStartOffset());
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static UnsignedWord getCardTableLimitOffset(UnsignedWord objectSize) {
         UnsignedWord tableStart = getCardTableStartOffset();
         UnsignedWord tableSize = getCardTableSize(objectSize);

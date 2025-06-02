@@ -25,6 +25,8 @@
 
 package com.oracle.svm.webimage.fs;
 
+import org.graalvm.shadowed.com.google.common.jimfs.Jimfs;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -45,8 +47,6 @@ import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Map;
 import java.util.Set;
-
-import com.google.common.jimfs.Jimfs;
 
 /**
  * Implementation for the default Java NIO {@link FileSystemProvider} for the {@code file} scheme.

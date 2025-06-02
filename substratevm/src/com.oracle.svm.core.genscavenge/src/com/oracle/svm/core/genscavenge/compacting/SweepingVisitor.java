@@ -24,43 +24,18 @@
  */
 package com.oracle.svm.core.genscavenge.compacting;
 
-import static jdk.graal.compiler.replacements.AllocationSnippets.FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED;
-
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
+import com.oracle.svm.core.genscavenge.FillerObjectUtil;
 import com.oracle.svm.core.genscavenge.HeapChunk;
-import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
-import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
-import com.oracle.svm.core.heap.FillerArray;
-import com.oracle.svm.core.heap.FillerObject;
-import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.util.UnsignedUtils;
-
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Overwrites dead objects with filler objects so that heap walks or scans that use card tables
  * cannot encounter them (and their broken references).
  */
 public final class SweepingVisitor implements ObjectMoveInfo.Visitor {
-    private static final Class<?> ARRAY_CLASS = FillerArray.class;
-    private static final JavaKind ARRAY_ELEMENT_KIND = JavaKind.Int;
-    private static final int ARRAY_ELEMENT_SIZE = ARRAY_ELEMENT_KIND.getByteCount();
-
-    @Fold
-    static int arrayMinSize() {
-        return NumUtil.safeToInt(ConfigurationValues.getObjectLayout().getArraySize(ARRAY_ELEMENT_KIND, 0, false));
-    }
-
-    @Fold
-    static int arrayBaseOffset() {
-        return ConfigurationValues.getObjectLayout().getArrayBaseOffset(ARRAY_ELEMENT_KIND);
-    }
 
     @Override
     public boolean visit(Pointer objSeq, UnsignedWord size, Pointer newAddress, Pointer nextObjSeq) {
@@ -68,23 +43,12 @@ public final class SweepingVisitor implements ObjectMoveInfo.Visitor {
         if (nextObjSeq.isNonNull()) {
             Pointer gapStart = objSeq.add(size);
             assert gapStart.belowThan(nextObjSeq);
-            writeFillerObjectAt(gapStart, nextObjSeq.subtract(gapStart));
+            FillerObjectUtil.writeFillerObjectAt(gapStart, nextObjSeq.subtract(gapStart));
             // Note that we have already added first object table entries for fillers during fixup.
         } else {
             AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(objSeq);
             assert objSeq.add(size).equal(HeapChunk.getTopPointer(chunk));
         }
         return true;
-    }
-
-    private static void writeFillerObjectAt(Pointer p, UnsignedWord size) {
-        assert size.aboveThan(0);
-        if (size.aboveOrEqual(arrayMinSize())) {
-            int length = UnsignedUtils.safeToInt(size.subtract(arrayBaseOffset()).unsignedDivide(ARRAY_ELEMENT_SIZE));
-            FormatArrayNode.formatArray(p, ARRAY_CLASS, length, true, false, WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false);
-        } else {
-            FormatObjectNode.formatObject(p, FillerObject.class, true, WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false);
-        }
-        assert LayoutEncoding.getSizeFromObjectInGC(p.toObject()).equal(size);
     }
 }

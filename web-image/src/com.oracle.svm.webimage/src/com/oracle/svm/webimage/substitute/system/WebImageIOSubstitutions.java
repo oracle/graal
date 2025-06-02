@@ -72,8 +72,8 @@ public class WebImageIOSubstitutions {
  * That code is never executed (unless we explicitly request that path normalization), but still
  * makes ICU4J reachable in the analysis.
  */
-@TargetClass(className = "com.google.common.jimfs.PathNormalization$4")
-final class Target_com_google_common_jimfs_PathNormalization_4 {
+@TargetClass(className = "org.graalvm.shadowed.com.google.common.jimfs.PathNormalization$4")
+final class Target_org_graalvm_shadowed_com_google_common_jimfs_PathNormalization_4 {
 
     @SuppressWarnings({"static-method", "unused"})
     @Substitute
@@ -82,8 +82,8 @@ final class Target_com_google_common_jimfs_PathNormalization_4 {
     }
 }
 
-@TargetClass(className = "com.google.common.jimfs.JimfsPath")
-final class Target_com_google_common_jimfs_JimfsPath {
+@TargetClass(className = "org.graalvm.shadowed.com.google.common.jimfs.JimfsPath")
+final class Target_org_graalvm_shadowed_com_google_common_jimfs_JimfsPath {
 
     @SuppressWarnings({"static-method", "unused"})
     @Substitute

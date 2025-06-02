@@ -184,7 +184,7 @@ public class MethodTypeFlowBuilder {
     protected StructuredGraph graph;
     private NodeBitMap processedNodes;
     private Map<PhiNode, TypeFlowBuilder<?>> loopPhiFlows;
-    private final MethodFlowsGraph.GraphKind graphKind;
+    private final GraphKind graphKind;
     private boolean processed = false;
     private final boolean newFlowsGraph;
 
@@ -240,28 +240,7 @@ public class MethodTypeFlowBuilder {
         graph = InlineBeforeAnalysis.decodeGraph(bb, method, analysisParsedGraph);
 
         try (DebugContext.Scope s = graph.getDebug().scope("MethodTypeFlowBuilder", graph)) {
-            CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
-            canonicalizerPhase.apply(graph, bb.getProviders(method));
-            if (PointstoOptions.ConditionalEliminationBeforeAnalysis.getValue(bb.getOptions())) {
-                /*
-                 * Removing unnecessary conditions before the static analysis runs reduces the size
-                 * of the type flow graph. For example, this removes redundant null checks: the
-                 * bytecode parser emits explicit null checks before e.g., all method calls, field
-                 * access, array accesses; many of those dominate each other.
-                 */
-                new IterativeConditionalEliminationPhase(canonicalizerPhase, false).apply(graph, bb.getProviders(method));
-            }
-            if (PointstoOptions.EscapeAnalysisBeforeAnalysis.getValue(bb.getOptions())) {
-                if (method.isOriginalMethod()) {
-                    /*
-                     * Deoptimization Targets cannot have virtual objects in frame states.
-                     *
-                     * Also, more work is needed to enable PEA in Runtime Compiled Methods.
-                     */
-                    new BoxNodeIdentityPhase().apply(graph, bb.getProviders(method));
-                    new PartialEscapePhase(false, canonicalizerPhase, bb.getOptions()).apply(graph, bb.getProviders(method));
-                }
-            }
+            optimizeGraphBeforeAnalysis(bb, method, graph);
 
             if (!bb.getUniverse().hostVM().validateGraph(bb, graph)) {
                 graph = null;
@@ -277,8 +256,33 @@ public class MethodTypeFlowBuilder {
         }
     }
 
-    public static void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph, boolean usePredicates) {
-        PointsToAnalysisMethod method = (PointsToAnalysisMethod) graph.method();
+    public static void optimizeGraphBeforeAnalysis(AbstractAnalysisEngine bb, AnalysisMethod method, StructuredGraph graph) {
+        CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
+        canonicalizerPhase.apply(graph, bb.getProviders(method));
+        if (PointstoOptions.ConditionalEliminationBeforeAnalysis.getValue(bb.getOptions())) {
+            /*
+             * Removing unnecessary conditions before the static analysis runs reduces the size of
+             * the type flow graph. For example, this removes redundant null checks: the bytecode
+             * parser emits explicit null checks before e.g., all method calls, field access, array
+             * accesses; many of those dominate each other.
+             */
+            new IterativeConditionalEliminationPhase(canonicalizerPhase, false).apply(graph, bb.getProviders(method));
+        }
+        if (PointstoOptions.EscapeAnalysisBeforeAnalysis.getValue(bb.getOptions())) {
+            if (method.isOriginalMethod()) {
+                /*
+                 * Deoptimization Targets cannot have virtual objects in frame states.
+                 *
+                 * Also, more work is needed to enable PEA in Runtime Compiled Methods.
+                 */
+                new BoxNodeIdentityPhase().apply(graph, bb.getProviders(method));
+                new PartialEscapePhase(false, canonicalizerPhase, bb.getOptions()).apply(graph, bb.getProviders(method));
+            }
+        }
+    }
+
+    public static void registerUsedElements(AbstractAnalysisEngine bb, StructuredGraph graph, boolean usePredicates) {
+        var method = (AnalysisMethod) graph.method();
         HostedProviders providers = bb.getProviders(method);
         for (Node n : graph.getNodes()) {
             if (n instanceof InstanceOfNode) {
@@ -295,7 +299,8 @@ public class MethodTypeFlowBuilder {
                     type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
                     for (var f : type.getInstanceFields(true)) {
                         var field = (AnalysisField) f;
-                        field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(bb, field.getStorageKind()));
+                        PointsToAnalysis pta = (PointsToAnalysis) bb;
+                        field.getInitialFlow().addState(pta, TypeState.defaultValueForKind(pta, field.getStorageKind()));
                     }
                 }
 
@@ -416,7 +421,7 @@ public class MethodTypeFlowBuilder {
      * {@link FrameState} are only used for debugging. We do not want to have larger images just so
      * that users can see a constant value in the debugger.
      */
-    protected static boolean ignoreConstant(PointsToAnalysis bb, ConstantNode node) {
+    protected static boolean ignoreConstant(AbstractAnalysisEngine bb, ConstantNode node) {
         for (var u : node.usages()) {
             if (u instanceof ClassIsAssignableFromNode usage) {
                 if (!bb.getHostVM().isClosedTypeWorld() || usage.getOtherClass() == node || usage.getThisClass() != node) {
@@ -472,7 +477,7 @@ public class MethodTypeFlowBuilder {
      * later. Therefore, we must mark the instanceof checked type as reachable. Moreover, stamp
      * strengthening based on reachability status of types must be disabled.
      */
-    protected static boolean ignoreInstanceOfType(PointsToAnalysis bb, AnalysisType type) {
+    protected static boolean ignoreInstanceOfType(AbstractAnalysisEngine bb, AnalysisType type) {
         if (bb.getHostVM().ignoreInstanceOfTypeDisallowed()) {
             return false;
         }
@@ -493,11 +498,11 @@ public class MethodTypeFlowBuilder {
         return true;
     }
 
-    private static void registerEmbeddedRoot(PointsToAnalysis bb, ConstantNode cn) {
+    private static void registerEmbeddedRoot(AbstractAnalysisEngine bb, ConstantNode cn) {
         bb.getUniverse().registerEmbeddedRoot(cn.asJavaConstant(), AbstractAnalysisEngine.sourcePosition(cn));
     }
 
-    private static void registerForeignCall(PointsToAnalysis bb, ForeignCallsProvider foreignCallsProvider, ForeignCallDescriptor foreignCallDescriptor, ResolvedJavaMethod from) {
+    private static void registerForeignCall(AbstractAnalysisEngine bb, ForeignCallsProvider foreignCallsProvider, ForeignCallDescriptor foreignCallDescriptor, ResolvedJavaMethod from) {
         Optional<AnalysisMethod> targetMethod = bb.getHostVM().handleForeignCall(foreignCallDescriptor, foreignCallsProvider);
         targetMethod.ifPresent(analysisMethod -> bb.addRootMethod(analysisMethod, true, from));
     }
@@ -725,7 +730,7 @@ public class MethodTypeFlowBuilder {
         }
 
         boolean insertPlaceholderFlows = bb.getHostVM().getMultiMethodAnalysisPolicy().insertPlaceholderParamAndReturnFlows(method.getMultiMethodKey());
-        if (graphKind == MethodFlowsGraph.GraphKind.STUB) {
+        if (graphKind == GraphKind.STUB) {
             AnalysisError.guarantee(insertPlaceholderFlows, "placeholder flows must be enabled for STUB graphkinds.");
             insertPlaceholderParamAndReturnFlows();
             return;
