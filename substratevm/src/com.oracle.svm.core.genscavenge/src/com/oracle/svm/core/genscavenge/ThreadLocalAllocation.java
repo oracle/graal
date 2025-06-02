@@ -371,7 +371,7 @@ public final class ThreadLocalAllocation {
         return allocateRawMemoryOutsideTlab(size, allocatedOutsideTlab);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+8/src/hotspot/share/gc/shared/memAllocator.cpp#L256-L318")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+25/src/hotspot/share/gc/shared/memAllocator.cpp#L257-L329")
     @Uninterruptible(reason = "Holds uninitialized memory.")
     private static Pointer allocateRawMemoryInTlabSlow(UnsignedWord size) {
         ThreadLocalAllocation.Descriptor tlab = getTlab();
@@ -416,7 +416,7 @@ public final class ThreadLocalAllocation {
         return memory;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/shared/memAllocator.cpp#L240-L251")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+25/src/hotspot/share/gc/shared/memAllocator.cpp#L239-L251")
     @Uninterruptible(reason = "Holds uninitialized memory.")
     private static Pointer allocateRawMemoryOutsideTlab(UnsignedWord size, BooleanPointer allocatedOutsideTlab) {
         allocatedOutsideTlab.write(true);
