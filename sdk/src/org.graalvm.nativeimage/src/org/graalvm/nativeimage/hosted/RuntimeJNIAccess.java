@@ -46,75 +46,29 @@ import java.lang.reflect.Field;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 
 /**
- * This interface is used to register classes, methods, and fields for JNI access at runtime. An
- * instance of this interface is acquired via
- * {@link Feature.AfterRegistrationAccess#getRuntimeJNIAccess()}.
- *
- * All methods in {@link RuntimeJNIAccess} require a {@link AccessCondition} as their first
- * parameter. A class and its members will be registered for JNI access only if the specified
- * condition is satisfied.
- *
- * <h3>How to use</h3>
- *
- * {@link RuntimeJNIAccess} should only be used during {@link Feature#afterRegistration}. Any
- * attempt to register metadata in any other phase will result in an error.
- * <p>
- * <strong>Example:</strong>
- *
- * <pre>{@code @Override
- * public void afterRegistration(AfterRegistrationAccess access) {
- *     RuntimeJNIAccess jniAccess = access.getRuntimeJNIAccess();
- *     AccessCondition condition = AccessCondition.typeReached(Condition.class);
- *     jniAccess.register(condition, Foo.class);
- *     jniAccess.register(condition, Foo.class.getMethod("method"));
- *     jniAccess.register(condition, Foo.class.getField("field"));
- * }
- * }</pre>
- *
- * @see <a href=https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html>Java docs -
- *      JNI functions</a>
+ * This class provides methods that can be called during native image generation to register
+ * classes, methods, and fields for JNI access at run time.
  *
  * @since 22.3
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-public interface RuntimeJNIAccess {
-
-    /**
-     * Registers the provided classes for JNI access at runtime, if the {@code condition} is
-     * satisfied.
-     *
-     * @since 25.0
-     */
-    void register(AccessCondition condition, Class<?>... classes);
-
-    /**
-     * Registers the provided methods for JNI access at runtime, if the {@code condition} is
-     * satisfied.
-     *
-     * @since 25.0
-     */
-    void register(AccessCondition condition, Executable... methods);
-
-    /**
-     * Registers the provided fields for JNI access at runtime, if the {@code condition} is
-     * satisfied.
-     *
-     * @since 25.0
-     */
-    void register(AccessCondition condition, Field... fields);
+public final class RuntimeJNIAccess {
 
     /**
      * Makes the provided classes available for JNI access at run time. Needed when native code
      * looks up Java classes via <a href=
      * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#findclass">FindClass</a>.
+     * <p>
+     * This API is deprecated; use {@link JNIAccess} instead.
      *
      * @since 22.3
      */
-    static void register(Class<?>... classes) {
+    public static void register(Class<?>... classes) {
         ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), classes);
     }
 
@@ -124,10 +78,12 @@ public interface RuntimeJNIAccess {
      * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#getmethodid">GetMethodID</a>
      * or <a href=
      * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#getstaticmethodid">GetStaticMethodID</a>.
+     * <p>
+     * This API is deprecated; use {@link JNIAccess} instead.
      *
      * @since 22.3
      */
-    static void register(Executable... methods) {
+    public static void register(Executable... methods) {
         ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), false, methods);
     }
 
@@ -137,10 +93,15 @@ public interface RuntimeJNIAccess {
      * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#getfieldid">GetFieldID</a>
      * or <a href=
      * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#getstaticfieldid">GetStaticFieldID</a>.
+     * <p>
+     * This API is deprecated; use {@link JNIAccess} instead.
      *
      * @since 22.3
      */
-    static void register(Field... fields) {
+    public static void register(Field... fields) {
         ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), false, fields);
+    }
+
+    private RuntimeJNIAccess() {
     }
 }
