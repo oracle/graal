@@ -1749,7 +1749,7 @@ suite = {
       "noMavenJavadoc": True,
     },
 
-    "LLVM_NATIVE_COMMUNITY": {
+    "LLVM_NATIVE_POM": {
       "type": "pom",
       "runtimeDependencies": [
         "SULONG_CORE",
@@ -1759,23 +1759,36 @@ suite = {
         "truffle:TRUFFLE_RUNTIME",
       ],
       "maven": {
-        "artifactId": "llvm-native-community",
+        "artifactId": "llvm-native",
         "tag": ["default", "public"],
       },
       "description": "Graal native LLVM engine.",
       "license": "BSD-new",
     },
-
-    "LLVM_COMMUNITY": {
+    # GR-64088: Remove when changes in language repositories are merged
+    "LLVM_NATIVE_COMMUNITY": {
       "type": "pom",
       "runtimeDependencies": [
-        "LLVM_NATIVE_COMMUNITY",
+        "LLVM_NATIVE_POM",
+      ],
+      "maven": {
+        "artifactId": "llvm-native-transient",
+        "tag": ["default", "public"],
+      },
+      "description": "Temporary module to overcome cross-repository merge.",
+      "license": "BSD-new",
+    },
+
+    "LLVM_POM": {
+      "type": "pom",
+      "runtimeDependencies": [
+        "LLVM_NATIVE_POM",
       ],
       "maven": {
         "artifactId": "llvm-community",
         "tag": ["default", "public"],
       },
-      "description": "Graal LLVM engine.",
+      "description": "Deprecated: Please use the \'llvm-native\' Maven artifact instead.",
       "license": "BSD-new",
     },
 
