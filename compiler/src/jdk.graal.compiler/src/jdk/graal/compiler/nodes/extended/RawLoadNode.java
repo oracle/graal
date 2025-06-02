@@ -27,7 +27,6 @@ package jdk.graal.compiler.nodes.extended;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -56,6 +55,7 @@ import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
+import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -192,8 +192,7 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
                              * Expand the value to 32 bits again and perform boolean coercion if
                              * necessary.
                              */
-                            ValueNode extended = DefaultJavaLoweringProvider.implicitPrimitiveLoadConvert(kind, narrowed);
-                            replacement = DefaultJavaLoweringProvider.performBooleanCoercionIfNecessary(extended, kind, graph(), false);
+                            replacement = DefaultJavaLoweringProvider.implicitUnsafePrimitiveLoadConvert(kind, narrowed);
                         }
 
                         tool.ensureAdded(replacement);

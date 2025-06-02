@@ -348,7 +348,6 @@ public class UnsafeEATest extends EATestBase {
         return x;
     }
 
-
     static final int VALUE = 0xF0F0F0F0;
 
     public static boolean getBoolean() {

@@ -41,8 +41,6 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
-import jdk.graal.compiler.nodes.calc.AndNode;
-import jdk.graal.compiler.nodes.calc.OrNode;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
@@ -82,6 +80,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
@@ -91,6 +90,7 @@ import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
+import jdk.graal.compiler.nodes.calc.OrNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
 import jdk.graal.compiler.nodes.calc.RightShiftNode;
 import jdk.graal.compiler.nodes.calc.SignExtendNode;
@@ -831,7 +831,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         } else {
             memoryRead.setGuard(guard);
         }
-        ValueNode readValue = performBooleanCoercionIfNecessary(implicitLoadConvert(graph, readKind, memoryRead, compressible), readKind);
+        ValueNode readValue = implicitUnsafeLoadConvert(graph, readKind, memoryRead, compressible);
         load.replaceAtUsages(readValue);
         return memoryRead;
     }
@@ -846,26 +846,18 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         // An unsafe read must not float otherwise it may float above
         // a test guaranteeing the read is safe.
         memoryRead.setForceFixed(true);
-        ValueNode readValue = performBooleanCoercionIfNecessary(implicitLoadConvert(graph, readKind, memoryRead, false), readKind);
+        ValueNode readValue = implicitUnsafeLoadConvert(graph, readKind, memoryRead, false);
         load.replaceAtUsages(readValue);
         graph.replaceFixedWithFixed(load, memoryRead);
     }
 
-    private static ValueNode performBooleanCoercionIfNecessary(ValueNode readValue, JavaKind readKind) {
-        StructuredGraph graph = readValue.graph();
-        return performBooleanCoercionIfNecessary(readValue, readKind, graph, true);
-    }
-
-    public static ValueNode performBooleanCoercionIfNecessary(ValueNode readValue, JavaKind readKind, StructuredGraph graph, boolean withGraphAdd) {
-        if (readKind == JavaKind.Boolean) {
-            IntegerEqualsNode eq = new IntegerEqualsNode(readValue, ConstantNode.forInt(0, graph));
-            ValueNode result = new ConditionalNode(eq, ConstantNode.forBoolean(false, graph), ConstantNode.forBoolean(true, graph));
-            if (withGraphAdd) {
-                result = graph.addOrUniqueWithInputs(result);
-            }
-            return result;
-        }
-        return readValue;
+    /**
+     * Coerce integer values into a boolean 0 or 1 to match Java semantics. The returned nodes have
+     * not been added to the graph.
+     */
+    private static ValueNode performBooleanCoercion(ValueNode readValue) {
+        IntegerEqualsNode eq = new IntegerEqualsNode(readValue, ConstantNode.forInt(0));
+        return new ConditionalNode(eq, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true));
     }
 
     protected void lowerUnsafeStoreNode(RawStoreNode store) {
@@ -1278,45 +1270,66 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return stamp;
     }
 
-    public final ValueNode implicitLoadConvertWithBooleanCoercionIfNecessary(StructuredGraph graph, JavaKind kind, ValueNode value) {
-        return performBooleanCoercionIfNecessary(implicitLoadConvert(graph, kind, value), kind);
+    protected abstract ValueNode newCompressionNode(CompressionOp op, ValueNode value);
+
+    /**
+     * Perform sign or zero extensions for subword types, and convert potentially unsafe 8 bit
+     * boolean values into 0 or 1. The nodes have already been added to the graph.
+     */
+    public final ValueNode implicitUnsafeLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value, boolean compressible) {
+        if (compressible && kind.isObject()) {
+            return implicitLoadConvert(graph, kind, value, compressible);
+        } else {
+            ValueNode ret = implicitUnsafePrimitiveLoadConvert(kind, value);
+            if (!ret.isAlive()) {
+                ret = graph.addOrUniqueWithInputs(ret);
+            }
+            return ret;
+        }
     }
 
     public final ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value) {
         return implicitLoadConvert(graph, kind, value, true);
     }
 
-    public ValueNode implicitLoadConvert(JavaKind kind, ValueNode value) {
-        return implicitLoadConvert(kind, value, true);
-    }
-
+    /**
+     * Perform sign or zero extensions for subword types and add the nodes to the graph.
+     */
     protected final ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value, boolean compressible) {
-        ValueNode ret = implicitLoadConvert(kind, value, compressible);
+        ValueNode ret;
+        if (useCompressedOops(kind, compressible)) {
+            ret = newCompressionNode(CompressionOp.Uncompress, value);
+        } else {
+            ret = implicitPrimitiveLoadConvert(kind, value);
+        }
+
         if (!ret.isAlive()) {
-            ret = graph.addOrUnique(ret);
+            ret = graph.addOrUniqueWithInputs(ret);
         }
         return ret;
     }
 
-    protected abstract ValueNode newCompressionNode(CompressionOp op, ValueNode value);
-
     /**
-     * @param compressible whether the convert should be compressible
+     * Perform sign or zero extensions for subword types. The caller is expected to add an resulting
+     * nodes to the graph.
      */
-    protected ValueNode implicitLoadConvert(JavaKind kind, ValueNode value, boolean compressible) {
-        if (useCompressedOops(kind, compressible)) {
-            return newCompressionNode(CompressionOp.Uncompress, value);
-        }
-
-        return implicitPrimitiveLoadConvert(kind, value);
-    }
-
     public static ValueNode implicitPrimitiveLoadConvert(JavaKind kind, ValueNode value) {
         return switch (kind) {
             case Byte, Short -> new SignExtendNode(value, 32);
             case Boolean, Char -> new ZeroExtendNode(value, 32);
             default -> value;
         };
+    }
+
+    /**
+     * Perform sign or zero extensions for subword types, and convert potentially unsafe 8 bit
+     * boolean values into 0 or 1. The caller is expected to add an resulting * nodes to the graph.
+     */
+    public static ValueNode implicitUnsafePrimitiveLoadConvert(JavaKind kind, ValueNode value) {
+        if (kind == JavaKind.Boolean) {
+            return performBooleanCoercion(new ZeroExtendNode(value, 32));
+        }
+        return implicitPrimitiveLoadConvert(kind, value);
     }
 
     public ValueNode arrayImplicitStoreConvert(StructuredGraph graph,
