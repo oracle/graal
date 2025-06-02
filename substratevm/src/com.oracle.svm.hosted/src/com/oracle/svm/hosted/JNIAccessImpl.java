@@ -29,27 +29,41 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.AccessCondition;
-import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
+import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
 
-public final class RuntimeJNIAccessImpl implements RuntimeJNIAccess {
+public final class JNIAccessImpl implements JNIAccess {
+
+    private final RuntimeJNIAccessSupport jniInstance;
+    private static JNIAccessImpl instance;
+
+    private JNIAccessImpl() {
+        jniInstance = ImageSingletons.lookup(RuntimeJNIAccessSupport.class);
+    }
+
+    public static JNIAccessImpl singleton() {
+        if (instance == null) {
+            instance = new JNIAccessImpl();
+        }
+        return instance;
+    }
 
     @Override
     public void register(AccessCondition condition, Class<?>... classes) {
-        DynamicAccessSupport.printUserError("following classes for JNI access: " + Arrays.toString(classes));
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(condition, classes);
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, "following classes for JNI access: " + Arrays.toString(classes));
+        jniInstance.register(condition, classes);
     }
 
     @Override
     public void register(AccessCondition condition, Executable... methods) {
-        DynamicAccessSupport.printUserError("following methods for JNI access: " + Arrays.toString(methods));
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(condition, false, methods);
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, "following methods for JNI access: " + Arrays.toString(methods));
+        jniInstance.register(condition, false, methods);
     }
 
     @Override
     public void register(AccessCondition condition, Field... fields) {
-        DynamicAccessSupport.printUserError("following fields for JNI access: " + Arrays.toString(fields));
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(condition, false, fields);
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, "following fields for JNI access: " + Arrays.toString(fields));
+        jniInstance.register(condition, false, fields);
     }
 }
