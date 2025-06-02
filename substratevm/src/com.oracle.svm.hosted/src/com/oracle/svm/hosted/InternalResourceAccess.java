@@ -24,27 +24,35 @@
  */
 package com.oracle.svm.hosted;
 
-import org.graalvm.nativeimage.hosted.AccessCondition;
-import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
+import java.util.Objects;
 
-public final class RuntimeResourceAccessImpl implements RuntimeResourceAccess {
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 
-    private final InternalRuntimeResourceAccess rdaInstance;
+public final class InternalResourceAccess implements ResourceAccess {
 
-    RuntimeResourceAccessImpl() {
-        rdaInstance = new InternalRuntimeResourceAccess();
+    private final RuntimeResourceSupport<AccessCondition> rrsInstance;
+
+    InternalResourceAccess() {
+        rrsInstance = RuntimeResourceSupport.singleton();
     }
 
     @Override
     public void register(AccessCondition condition, Module module, String pattern) {
-        DynamicAccessSupport.printUserError(pattern);
-        rdaInstance.register(condition, module, pattern);
+        Objects.requireNonNull(pattern);
+        if (pattern.replace("\\*", "").contains("*")) {
+            String moduleName = module == null ? null : module.getName();
+            rrsInstance.addGlob(condition, moduleName, pattern, "Registered from API");
+        } else {
+            rrsInstance.addResource(condition, module, pattern.replace("\\*", "*"), "Registered from API");
+        }
     }
 
     @Override
     public void registerResourceBundle(AccessCondition condition, Module module, String bundleName) {
-        DynamicAccessSupport.printUserError(bundleName);
-        rdaInstance.registerResourceBundle(condition, module, bundleName);
+        Objects.requireNonNull(bundleName);
+        String finalBundleName = (module != null && module.isNamed()) ? module.getName() + ":" + bundleName : bundleName;
+        rrsInstance.addResourceBundles(condition, finalBundleName);
     }
-
 }

@@ -24,60 +24,68 @@
  */
 package com.oracle.svm.hosted;
 
-import org.graalvm.nativeimage.hosted.AccessCondition;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
-public final class RuntimeReflectionImpl implements RuntimeReflection {
+public final class ReflectiveAccessImpl implements ReflectiveAccess {
 
-    private final InternalRuntimeReflection rdaInstance;
+    private final InternalReflectiveAccess rdaInstance;
+    private static ReflectiveAccessImpl instance;
 
-    public RuntimeReflectionImpl() {
-        rdaInstance = new InternalRuntimeReflection();
+    private ReflectiveAccessImpl() {
+        rdaInstance = new InternalReflectiveAccess();
+    }
+
+    public static ReflectiveAccessImpl getReflectionAccessImpl() {
+        if (instance == null) {
+            instance = new ReflectiveAccessImpl();
+        }
+        return instance;
     }
 
     @Override
     public void register(AccessCondition condition, Class<?>... classes) {
-        DynamicAccessSupport.printUserError("following classes for reflection: " + Arrays.toString(classes));
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, "following classes for reflection: " + Arrays.toString(classes));
         rdaInstance.register(condition, classes);
     }
 
     @Override
     public void registerClassLookup(AccessCondition condition, String className) {
-        DynamicAccessSupport.printUserError("following classes for lookup: " + className);
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, "following classes for lookup: " + className);
         rdaInstance.registerClassLookup(condition, className);
     }
 
     @Override
     public void registerUnsafeAllocation(AccessCondition condition, Class<?>... classes) {
-        DynamicAccessSupport.printUserError("following classes for reflection and unsafe allocation: " + Arrays.toString(classes));
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, "following classes for reflection and unsafe allocation: " + Arrays.toString(classes));
         rdaInstance.registerUnsafeAllocation(condition, classes);
     }
 
     @Override
     public void register(AccessCondition condition, Executable... methods) {
-        DynamicAccessSupport.printUserError("following methods for reflection: " + Arrays.toString(methods));
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, "following methods for reflection: " + Arrays.toString(methods));
         rdaInstance.register(condition, methods);
     }
 
     @Override
     public void register(AccessCondition condition, Field... fields) {
-        DynamicAccessSupport.printUserError("following fields for reflection: " + Arrays.toString(fields));
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, "following fields for reflection: " + Arrays.toString(fields));
         rdaInstance.register(condition, fields);
     }
 
     @Override
     public void registerForSerialization(AccessCondition condition, Class<?>... classes) {
-        DynamicAccessSupport.printUserError("following classes for serialization: " + Arrays.toString(classes));
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, "following classes for serialization: " + Arrays.toString(classes));
         rdaInstance.registerForSerialization(condition, classes);
     }
 
     @Override
     public Class<?> registerProxy(AccessCondition condition, Class<?>... interfaces) {
-        DynamicAccessSupport.printUserError("following interfaces that define a dynamic proxy class: " + Arrays.toString(interfaces));
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, "following interfaces that define a dynamic proxy class: " + Arrays.toString(interfaces));
         return rdaInstance.registerProxy(condition, interfaces);
     }
 }

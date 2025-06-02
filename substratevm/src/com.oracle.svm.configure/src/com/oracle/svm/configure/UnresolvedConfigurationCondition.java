@@ -29,8 +29,8 @@ import java.util.Objects;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 /**
- * Represents a {@link AccessCondition} during parsing before it is resolved in a context of
- * the classpath.
+ * Represents a {@link AccessCondition} during parsing before it is resolved in a context of the
+ * classpath.
  */
 public final class UnresolvedConfigurationCondition implements Comparable<UnresolvedConfigurationCondition> {
     private static final UnresolvedConfigurationCondition JAVA_LANG_OBJECT_REACHED = new UnresolvedConfigurationCondition(
