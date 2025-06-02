@@ -1236,7 +1236,6 @@ svm = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='SubstrateVM',
     short_name='svm',
-    installable_id='native-image',
     license_files=[],
     third_party_license_files=[],
     # Use short name for Truffle Runtime SVM to select by priority
@@ -1255,7 +1254,6 @@ svm = mx_sdk_vm.GraalVmJreComponent(
     extra_native_targets=['linux-default-glibc', 'linux-default-musl'] if mx.is_linux() and not mx.get_arch() == 'riscv64' else None,
     stability="earlyadopter",
     jlink=False,
-    installable=False,
 )
 mx_sdk_vm.register_graalvm_component(svm)
 
@@ -1264,14 +1262,12 @@ svm_nfi = mx_sdk_vm.GraalVmLanguage(
     name='SVM Truffle NFI Support',
     short_name='svmnfi',
     dir_name='nfi',
-    installable_id='native-image',
     license_files=[],
     third_party_license_files=[],
     dependencies=['SubstrateVM', 'Truffle NFI'],
     truffle_jars=[],
     builder_jar_distributions=[],
     support_distributions=['substratevm:SVM_NFI_GRAALVM_SUPPORT'],
-    installable=False,
 )
 mx_sdk_vm.register_graalvm_component(svm_nfi)
 
@@ -1280,11 +1276,9 @@ svm_static_libs = mx_sdk_vm.GraalVmJreComponent(
     name='SubstrateVM Static Libraries',
     short_name='svmsl',
     dir_name=False,
-    installable_id='native-image',
     license_files=[],
     third_party_license_files=[],
     support_distributions=['substratevm:SVM_STATIC_LIBRARIES_SUPPORT'],
-    installable=False,
 )
 mx_sdk_vm.register_graalvm_component(svm_static_libs)
 
@@ -1330,7 +1324,6 @@ native_image = mx_sdk_vm.GraalVmJreComponent(
     name='Native Image',
     short_name='ni',
     dir_name='svm',
-    installable_id='native-image',
     license_files=[],
     third_party_license_files=[],
     dependencies=['SubstrateVM', 'nil'] + additional_ni_dependencies,
@@ -1382,7 +1375,6 @@ native_image = mx_sdk_vm.GraalVmJreComponent(
             home_finder=False,
         ),
     ],
-    installable=True,
     stability="earlyadopter",
     jlink=False,
 )
@@ -1393,12 +1385,10 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     name='Native Image licence files',
     short_name='nil',
     dir_name='svm',
-    installable_id='native-image',
     license_files=['LICENSE_NATIVEIMAGE.txt'],
     third_party_license_files=[],
     dependencies=[],
     support_distributions=['substratevm:NATIVE_IMAGE_LICENSE_GRAALVM_SUPPORT'],
-    installable=False,
     priority=1,
     stability="earlyadopter",
     jlink=False,
@@ -1409,7 +1399,6 @@ ce_llvm_backend = mx_sdk_vm.GraalVmJreComponent(
     name='Native Image LLVM Backend',
     short_name='svml',
     dir_name='svm',
-    installable_id='native-image-llvm-backend',
     license_files=[],
     third_party_license_files=[],
     dependencies=[
@@ -1424,8 +1413,6 @@ ce_llvm_backend = mx_sdk_vm.GraalVmJreComponent(
         'substratevm:JAVACPP_PLATFORM_SPECIFIC_SHADOWED',
     ],
     stability="experimental-earlyadopter",
-    installable=True,
-    extra_installable_qualifiers=['ce'],
     jlink=False,
 )
 # GR-34811
@@ -1696,8 +1683,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         )
     ],
     jlink=False,
-    installable_id='native-image',
-    installable=False,
     priority=10,
 ))
 

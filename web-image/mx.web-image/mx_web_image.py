@@ -766,7 +766,6 @@ web_image_macro = mx_sdk_vm.GraalVmSvmTool(
     name="Web Image",
     short_name=web_image_component,
     dir_name="web-image",
-    installable_id="web-image",
     license_files=[],
     third_party_license_files=[],
     dependencies=["ni"],
@@ -785,7 +784,6 @@ web_image_macro = mx_sdk_vm.GraalVmSvmTool(
             build_args=[],
         ),
     ],
-    installable=True,
     jlink=False,
 )
 mx_sdk_vm.register_graalvm_component(web_image_macro)
