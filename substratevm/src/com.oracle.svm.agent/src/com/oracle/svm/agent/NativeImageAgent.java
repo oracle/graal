@@ -47,9 +47,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.ConcurrentModificationException;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -57,6 +55,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -109,7 +108,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     private Path configOutputDirPath;
     private Path configOutputLockFilePath;
     private FileTime expectedConfigModifiedBefore;
-    Set<String> classPathEntries;
+    EconomicSet<String> classPathEntries;
 
     private static String getTokenValue(String token) {
         return token.substring(token.indexOf('=') + 1);
@@ -287,7 +286,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             return error(USAGE_ERROR, "The agent can generate conditional configuration either for the current run or in the partial mode but not both at the same time.");
         }
 
-        classPathEntries = new HashSet<>(Arrays.asList(getClasspathEntries(jvmti)));
+        classPathEntries = EconomicSet.create(Arrays.asList(getClasspathEntries(jvmti)));
 
         boolean isConditionalConfigurationRun = !conditionalConfigUserPackageFilterFiles.isEmpty() || conditionalConfigPartialRun;
         boolean shouldTraceOriginInformation = configurationWithOrigins || isConditionalConfigurationRun;

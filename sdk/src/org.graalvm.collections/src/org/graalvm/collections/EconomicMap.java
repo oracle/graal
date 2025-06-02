@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package org.graalvm.collections;
 
 import java.util.Map;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * Memory efficient map data structure that dynamically changes its representation depending on the
@@ -281,4 +282,21 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
         map.put(key2, value2);
         return map;
     }
+
+    /**
+     * If the specified key is not already associated with a value (or is mapped to {@code null}),
+     * attempts to compute its value using the given mapping function and enters it into this map
+     * unless {@code null}.
+     *
+     * @since 25.1
+     */
+    default V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
+        V value = get(key);
+        if (value == null) {
+            value = mappingFunction.apply(key);
+            put(key, value);
+        }
+        return value;
+    }
+
 }
