@@ -82,7 +82,7 @@ public abstract class WasmBenchmarkSuiteBase {
 
         @Setup(Level.Trial)
         public void setup() throws IOException, InterruptedException {
-            benchmarkCase = WasmCase.loadBenchmarkCase(benchmarkResource());
+            benchmarkCase = WasmCase.loadBenchmarkCase(getClass(), benchmarkResource());
             System.out.println("...::: Benchmark " + benchmarkCase.name() + " :::...");
 
             final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);

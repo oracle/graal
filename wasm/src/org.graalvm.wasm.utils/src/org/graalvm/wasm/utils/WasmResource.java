@@ -46,8 +46,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 public class WasmResource {
-    public static String getResourceAsString(String resourceName, boolean fail) throws IOException {
-        byte[] contents = getResourceAsBytes(resourceName, fail);
+    public static String getResourceAsString(Class<?> klass, String resourceName, boolean fail) throws IOException {
+        byte[] contents = getResourceAsBytes(klass, resourceName, fail);
         if (contents != null) {
             return new String(contents, StandardCharsets.UTF_8);
         } else {
@@ -56,8 +56,8 @@ public class WasmResource {
         }
     }
 
-    public static byte[] getResourceAsBytes(String resourceName, boolean fail) throws IOException {
-        InputStream stream = WasmResource.class.getResourceAsStream(resourceName);
+    public static byte[] getResourceAsBytes(Class<?> klass, String resourceName, boolean fail) throws IOException {
+        InputStream stream = klass.getResourceAsStream(resourceName);
         if (stream == null) {
             if (fail) {
                 throw new RuntimeException(String.format("Could not find resource: %s", resourceName));
@@ -75,12 +75,12 @@ public class WasmResource {
         return contents;
     }
 
-    public static Object getResourceAsTest(String baseName, boolean fail) throws IOException {
-        final byte[] bytes = getResourceAsBytes(baseName + ".wasm", false);
+    public static Object getResourceAsTest(Class<?> klass, String baseName, boolean fail) throws IOException {
+        final byte[] bytes = getResourceAsBytes(klass, baseName + ".wasm", false);
         if (bytes != null) {
             return bytes;
         }
-        final String text = getResourceAsString(baseName + ".wat", false);
+        final String text = getResourceAsString(klass, baseName + ".wat", false);
         if (text != null) {
             return text;
         }
@@ -90,7 +90,7 @@ public class WasmResource {
         return null;
     }
 
-    public static String getResourceIndex(String resourcePath) throws IOException {
-        return WasmResource.getResourceAsString(resourcePath + "/" + "wasm_test_index", true);
+    public static String getResourceIndex(Class<?> klass, String resourcePath) throws IOException {
+        return WasmResource.getResourceAsString(klass, resourcePath + "/" + "wasm_test_index", true);
     }
 }
