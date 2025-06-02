@@ -25,25 +25,33 @@
 package com.oracle.svm.hosted;
 
 import org.graalvm.nativeimage.hosted.RegistrationCondition;
-import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 
-public final class RuntimeResourceAccessImpl implements RuntimeResourceAccess {
+public final class ResourceAccessImpl implements ResourceAccess {
 
-    private final InternalRuntimeResourceAccess rdaInstance;
+    private final InternalResourceAccess rdaInstance;
+    private static ResourceAccessImpl instance;
 
-    RuntimeResourceAccessImpl() {
-        rdaInstance = new InternalRuntimeResourceAccess();
+    private ResourceAccessImpl() {
+        rdaInstance = new InternalResourceAccess();
+    }
+
+    public static ResourceAccessImpl getResourceAccessImpl() {
+        if (instance == null) {
+            instance = new ResourceAccessImpl();
+        }
+        return instance;
     }
 
     @Override
     public void register(RegistrationCondition condition, Module module, String pattern) {
-        DynamicAccessSupport.printUserError(pattern);
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, pattern);
         rdaInstance.register(condition, module, pattern);
     }
 
     @Override
     public void registerResourceBundle(RegistrationCondition condition, Module module, String bundleName) {
-        DynamicAccessSupport.printUserError(bundleName);
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, bundleName);
         rdaInstance.registerResourceBundle(condition, module, bundleName);
     }
 

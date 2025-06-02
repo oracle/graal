@@ -48,139 +48,29 @@ import java.lang.reflect.Modifier;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 //Checkstyle: allow reflection
 
 /**
- * This interface is used to register classes, methods, and fields for use with the
- * {@link java.lang.reflect} API at runtime, and for serialization at runtime. An instance of this
- * interface is acquired via {@link Feature.AfterRegistrationAccess#getRuntimeReflection()}.
- * <p>
- * All methods in {@link RuntimeReflection} require a {@link RegistrationCondition} as their first
- * parameter. A class and its members will be registered for dynamic access only if the specified
- * condition is satisfied.
- *
- * <h3>How to use</h3>
- *
- * {@link RuntimeReflection} should only be used during {@link Feature#afterRegistration}. Any
- * attempt to register metadata in any other phase will result in an error.
- * <p>
- * <strong>Example:</strong>
- * 
- * <pre>{@code @Override
- * public void afterRegistration(AfterRegistrationAccess access) {
- *     RuntimeReflection reflection = access.getRuntimeReflection();
- *     RegistrationCondition condition = RegistrationCondition.typeReached(Condition.class);
- *     reflection.register(condition, Foo.class, Bar.class);
- *     reflection.register(RegistrationCondition.always(), Foo.class.getMethod("method"));
- *     reflection.registerUnsafeAllocation(condition, Foo.class);
- *     Class<?> proxyClass = reflection.registerProxy(condition, Interface1.class, Interface2.class);
- *     reflection.registerForSerialization(RegistrationCondition.always(), proxyClass);
- * }
- * }</pre>
+ * This class provides methods that can be called during native image generation to register
+ * classes, methods, and fields for reflection at run time.
  *
  * @since 19.0
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-public interface RuntimeReflection {
-
-    /**
-     * Registers the provided classes for reflection at runtime, if the {@code condition} is
-     * satisfied. This means all reflection methods defined by {@link java.lang.Class} are
-     * accessible at runtime for those classes.
-     * <p>
-     * If a class is not registered for reflection at runtime, {@link Class#forName} will throw
-     * {@link ClassNotFoundException}.
-     *
-     * @since 25.0
-     */
-    void register(RegistrationCondition condition, Class<?>... classes);
-
-    /**
-     * Registers a class with the provided {@code className} for reflection at runtime, if the
-     * {@code condition} is satisfied. This method should be used when
-     * {@code --exact-reachability-metadata} is set: it makes calls to
-     * {@code Class.forName(className)} throw {@link ClassNotFoundException} instead of throwing
-     * {@link org.graalvm.nativeimage.MissingReflectionRegistrationError} when the class is not on
-     * the classpath. If the class already exists on the classpath, this call is equivalent to the
-     * {@link #register(RegistrationCondition, Class...)}.
-     *
-     * @since 25.0
-     */
-    void registerClassLookup(RegistrationCondition condition, String className);
-
-    /**
-     * Registers the provided {@code classes} for unsafe allocation at runtime, if the
-     * {@code condition} is satisfied. Unsafe allocation can happen via
-     * {@link sun.misc.Unsafe#allocateInstance(Class)} or from native code via
-     * {@code AllocObject(jClass)}.
-     *
-     * @since 25.0
-     */
-    void registerUnsafeAllocation(RegistrationCondition condition, Class<?>... classes);
-
-    /**
-     * Registers the provided {@code methods} for reflective invocation at runtime, if the
-     * {@code condition} is satisfied. This method also registers the declaring classes of the
-     * provided methods for reflection at runtime. The methods will be invocable at runtime via
-     * {@link java.lang.reflect.Method#invoke(java.lang.Object, java.lang.Object...)}.
-     *
-     * @since 25.0
-     */
-    void register(RegistrationCondition condition, Executable... methods);
-
-    /**
-     * Registers the provided {@code fields} for reflective access at runtime, if the
-     * {@code condition} is satisfied. This method also registers the declaring classes of the
-     * provided fields for reflection at runtime. The fields will be accessible at runtime via
-     * {@link java.lang.reflect.Field#set(java.lang.Object, java.lang.Object)} and
-     * {@link java.lang.reflect.Field#get(Object)}.
-     *
-     * @since 25.0
-     */
-    void register(RegistrationCondition condition, Field... fields);
-
-    /**
-     * Registers the provided classes for serialization at runtime, if the {@code condition} is
-     * satisfied. This method also registers the provided classes for reflection at runtime.
-     *
-     * @since 25.0
-     */
-    void registerForSerialization(RegistrationCondition condition, Class<?>... classes);
-
-    /**
-     * Registers a {@link java.lang.reflect.Proxy} class in the system classloader that implements
-     * the specified {@code interfaces}, if the {@code condition} is satisfied. The proxy class is
-     * fully specified by the interfaces it implements, and proxy instances matching that
-     * specification can be created at runtime. The returned proxy class can be used in registration
-     * for reflection and serialization at runtime.
-     * <p>
-     * <strong>NOTE:</strong> The order of the interfaces provided in the {@code interfaces}
-     * parameter is significant; different orderings will produce distinct proxy classes.
-     * <p>
-     * <strong>Example</strong>:
-     * 
-     * <pre>{@code
-     * Class<?> proxyClass = reflection.registerProxy(RegistrationCondition.always(), Interface1.class, Interface2.class);
-     * reflection.register(RegistrationCondition.always(), proxyClass);
-     * reflection.registerForSerialization(RegistrationCondition.always(), proxyClass);
-     * }</pre>
-     *
-     * @return Proxy class defined by the provided interfaces, or {@code null} if no such proxy
-     *         class can be created with the given interfaces
-     *
-     * @since 25.0
-     */
-    Class<?> registerProxy(RegistrationCondition condition, Class<?>... interfaces);
+public final class RuntimeReflection {
 
     /**
      * Makes the provided classes available for reflection at run time. A call to
      * {@link Class#forName} for the names of the classes will return the classes at run time.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 19.0
      */
-    static void register(Class<?>... classes) {
+    public static void register(Class<?>... classes) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).register(RegistrationCondition.always(), classes);
     }
 
@@ -188,10 +78,12 @@ public interface RuntimeReflection {
      * Makes the provided class available for reflection at run time. A call to
      * {@link Class#forName} for the name of the class will return the class (if it exists) or a
      * {@link ClassNotFoundException} at run time.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
-    static void registerClassLookup(String className) {
+    public static void registerClassLookup(String className) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(RegistrationCondition.always(), className);
     }
 
@@ -199,10 +91,12 @@ public interface RuntimeReflection {
      * Makes the provided methods available for reflection at run time. The methods will be returned
      * by {@link Class#getMethod}, {@link Class#getDeclaredMethod(String, Class[])}, and all the
      * other methods on {@link Class} that return a single method.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 19.0
      */
-    static void register(Executable... methods) {
+    public static void register(Executable... methods) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).register(RegistrationCondition.always(), false, methods);
     }
 
@@ -211,10 +105,12 @@ public interface RuntimeReflection {
      * returned by {@link Class#getMethod}, {@link Class#getDeclaredMethod(String, Class[])}, and
      * all the other methods on {@link Class} that return a single method, but will not be invocable
      * and will not be considered reachable.
-     *
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
+     * 
      * @since 21.3
      */
-    static void registerAsQueried(Executable... methods) {
+    public static void registerAsQueried(Executable... methods) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).register(RegistrationCondition.always(), true, methods);
     }
 
@@ -224,10 +120,12 @@ public interface RuntimeReflection {
      * all the other methods on {@link Class} that return a single method, but will not be invocable
      * and will not be considered reachable. If the method doesn't exist a
      * {@link NoSuchMethodException} will be thrown when calling these methods at run-time.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
-    static void registerMethodLookup(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
+    public static void registerMethodLookup(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(RegistrationCondition.always(), declaringClass, methodName, parameterTypes);
     }
 
@@ -238,10 +136,12 @@ public interface RuntimeReflection {
      * that return a single constructor, but will not be invocable and will not be considered
      * reachable. If the constructor doesn't exist a {@link NoSuchMethodException} will be thrown
      * when calling these methods at run-time.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
-    static void registerConstructorLookup(Class<?> declaringClass, Class<?>... parameterTypes) {
+    public static void registerConstructorLookup(Class<?> declaringClass, Class<?>... parameterTypes) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerConstructorLookup(RegistrationCondition.always(), declaringClass, parameterTypes);
     }
 
@@ -249,10 +149,12 @@ public interface RuntimeReflection {
      * Makes the provided fields available for reflection at run time. The fields will be returned
      * by {@link Class#getField}, {@link Class#getDeclaredField(String)},and all the other methods
      * on {@link Class} that return a single field.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 19.0
      */
-    static void register(Field... fields) {
+    public static void register(Field... fields) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).register(RegistrationCondition.always(), false, fields);
     }
 
@@ -261,124 +163,150 @@ public interface RuntimeReflection {
      * {@link Class#getField}, {@link Class#getDeclaredField(String)}, and all the other methods on
      * {@link Class} that return a single field. If the field doesn't exist a
      * {@link NoSuchFieldException} will be thrown when calling these methods at run-time.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 19.0
      */
-    static void registerFieldLookup(Class<?> declaringClass, String fieldName) {
+    public static void registerFieldLookup(Class<?> declaringClass, String fieldName) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerFieldLookup(RegistrationCondition.always(), declaringClass, fieldName);
     }
 
     /**
      * Allows calling {@link Class#getClasses()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
-    static void registerAllClasses(Class<?> declaringClass) {
+    public static void registerAllClasses(Class<?> declaringClass) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllClassesQuery(RegistrationCondition.always(), declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getDeclaredClasses()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
-    static void registerAllDeclaredClasses(Class<?> declaringClass) {
+    public static void registerAllDeclaredClasses(Class<?> declaringClass) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredClassesQuery(RegistrationCondition.always(), declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getMethods()} on the provided class at run time. The methods will
      * also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
-    static void registerAllMethods(Class<?> declaringClass) {
+    public static void registerAllMethods(Class<?> declaringClass) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllMethodsQuery(RegistrationCondition.always(), true, declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getDeclaredMethods()} on the provided class at run time. The
      * methods will also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
-    static void registerAllDeclaredMethods(Class<?> declaringClass) {
+    public static void registerAllDeclaredMethods(Class<?> declaringClass) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredMethodsQuery(RegistrationCondition.always(), true, declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getConstructors()} on the provided class at run time. The
      * constructors will also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
-    static void registerAllConstructors(Class<?> declaringClass) {
+    public static void registerAllConstructors(Class<?> declaringClass) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllConstructorsQuery(RegistrationCondition.always(), true, declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getDeclaredConstructors()} on the provided class at run time. The
      * constructors will also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
-    static void registerAllDeclaredConstructors(Class<?> declaringClass) {
+    public static void registerAllDeclaredConstructors(Class<?> declaringClass) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(RegistrationCondition.always(), true, declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getFields()} on the provided class at run time. The fields will
      * also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
-    static void registerAllFields(Class<?> declaringClass) {
+    public static void registerAllFields(Class<?> declaringClass) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllFields(RegistrationCondition.always(), declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getDeclaredFields()} on the provided class at run time. The
      * fields will also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
-    static void registerAllDeclaredFields(Class<?> declaringClass) {
+    public static void registerAllDeclaredFields(Class<?> declaringClass) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredFields(RegistrationCondition.always(), declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getNestMembers()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
-    static void registerAllNestMembers(Class<?> declaringClass) {
+    public static void registerAllNestMembers(Class<?> declaringClass) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllNestMembersQuery(RegistrationCondition.always(), declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getPermittedSubclasses()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
-    static void registerAllPermittedSubclasses(Class<?> declaringClass) {
+    public static void registerAllPermittedSubclasses(Class<?> declaringClass) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllPermittedSubclassesQuery(RegistrationCondition.always(), declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getRecordComponents()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
-    static void registerAllRecordComponents(Class<?> declaringClass) {
+    public static void registerAllRecordComponents(Class<?> declaringClass) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllRecordComponentsQuery(RegistrationCondition.always(), declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getSigners()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
-    static void registerAllSigners(Class<?> declaringClass) {
+    public static void registerAllSigners(Class<?> declaringClass) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllSignersQuery(RegistrationCondition.always(), declaringClass);
     }
 
@@ -389,7 +317,7 @@ public interface RuntimeReflection {
      */
     @SuppressWarnings("unused")
     @Deprecated(since = "21.1")
-    static void register(boolean finalIsWritable, Field... fields) {
+    public static void register(boolean finalIsWritable, Field... fields) {
         register(fields);
     }
 
@@ -400,7 +328,7 @@ public interface RuntimeReflection {
      */
     @SuppressWarnings("unused")
     @Deprecated(since = "21.1")
-    static void register(boolean finalIsWritable, boolean allowUnsafeAccess, Field... fields) {
+    public static void register(boolean finalIsWritable, boolean allowUnsafeAccess, Field... fields) {
         register(fields);
     }
 
@@ -408,10 +336,12 @@ public interface RuntimeReflection {
      * Makes the provided classes available for reflective instantiation by
      * {@link Class#newInstance}. This is equivalent to registering the nullary constructors of the
      * classes.
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
      *
      * @since 19.0
      */
-    static void registerForReflectiveInstantiation(Class<?>... classes) {
+    public static void registerForReflectiveInstantiation(Class<?>... classes) {
         for (Class<?> clazz : classes) {
             if (clazz.isArray() || clazz.isInterface() || Modifier.isAbstract(clazz.getModifiers())) {
                 throw new IllegalArgumentException("Class " + clazz.getTypeName() + " cannot be instantiated reflectively. It must be a non-abstract instance type.");
@@ -426,5 +356,8 @@ public interface RuntimeReflection {
 
             register(nullaryConstructor);
         }
+    }
+
+    private RuntimeReflection() {
     }
 }

@@ -27,29 +27,43 @@ package com.oracle.svm.hosted;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RegistrationCondition;
-import org.graalvm.nativeimage.hosted.RuntimeForeignAccess;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
+import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
 
 import java.lang.invoke.MethodHandle;
 import java.util.Arrays;
 
-public final class RuntimeForeignAccessImpl implements RuntimeForeignAccess {
+public final class ForeignAccessImpl implements ForeignAccess {
+
+    private final RuntimeForeignAccessSupport foreignInstance;
+    private static ForeignAccessImpl instance;
+
+    private ForeignAccessImpl() {
+        foreignInstance = ImageSingletons.lookup(RuntimeForeignAccessSupport.class);
+    }
+
+    public static ForeignAccessImpl getForeignAccessImpl() {
+        if (instance == null) {
+            instance = new ForeignAccessImpl();
+        }
+        return instance;
+    }
 
     @Override
     public void registerForDowncall(RegistrationCondition condition, Object desc, Object... options) {
-        DynamicAccessSupport.printUserError("following descriptor and options pair for downcalls into foreign code: " + desc.toString() + Arrays.toString(options));
-        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDowncall(condition, desc, options);
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, "following descriptor and options pair for downcalls into foreign code: " + desc.toString() + Arrays.toString(options));
+        foreignInstance.registerForDowncall(condition, desc, options);
     }
 
     @Override
     public void registerForUpcall(RegistrationCondition condition, Object desc, Object... options) {
-        DynamicAccessSupport.printUserError("following descriptor and options pair for upcalls from foreign code: " + desc.toString() + Arrays.toString(options));
-        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForUpcall(condition, desc, options);
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, "following descriptor and options pair for upcalls from foreign code: " + desc.toString() + Arrays.toString(options));
+        foreignInstance.registerForUpcall(condition, desc, options);
     }
 
     @Override
     public void registerForDirectUpcall(RegistrationCondition condition, MethodHandle target, Object desc, Object... options) {
-        DynamicAccessSupport.printUserError("following method handle as a fast upcall target: " + target);
-        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDirectUpcall(condition, target, desc, options);
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, "following method handle as a fast upcall target: " + target);
+        foreignInstance.registerForDirectUpcall(condition, target, desc, options);
     }
 }

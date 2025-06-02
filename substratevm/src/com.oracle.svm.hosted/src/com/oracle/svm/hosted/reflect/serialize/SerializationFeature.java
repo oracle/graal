@@ -408,6 +408,11 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     public void register(RegistrationCondition condition, Class<?> serializationTargetClass) {
         abortIfSealed();
         registerConditionalConfiguration(condition, (cnd) -> {
+            /*
+             * Register class for reflection as it is needed when the class-value itself is
+             * serialized.
+             */
+            ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, serializationTargetClass);
 
             if (!Serializable.class.isAssignableFrom(serializationTargetClass)) {
                 return;

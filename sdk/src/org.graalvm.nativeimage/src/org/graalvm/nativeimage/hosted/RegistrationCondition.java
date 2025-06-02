@@ -41,11 +41,22 @@
 package org.graalvm.nativeimage.hosted;
 
 import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
+import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
+import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
+import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 
 /**
  * A condition that must be satisfied to register elements for dynamic access (e.g., reflection,
- * serialization, JNI access, resource access, and foreign access at runtime). Conditions prevent
- * unnecessary growth of the native binary size.
+ * serialization, JNI access, resource access, and foreign access at runtime).
+ * {@link RegistrationCondition} is used for programmatic metadata registration in conjunction with:
+ * <ul>
+ * <li>{@link ReflectiveAccess}</li>
+ * <li>{@link ResourceAccess}</li>
+ * <li>{@link JNIAccess}</li>
+ * <li>{@link ForeignAccess}</li>
+ * </ul>
+ * Conditions prevent unnecessary growth of the native binary size.
  * <p>
  * There are currently two types of conditions:
  * <ul>

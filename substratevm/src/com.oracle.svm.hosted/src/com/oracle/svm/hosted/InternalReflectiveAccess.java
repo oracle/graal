@@ -29,16 +29,16 @@ import java.lang.reflect.Field;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RegistrationCondition;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
+import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
 
-public final class InternalRuntimeReflection implements RuntimeReflection {
+public final class InternalReflectiveAccess implements ReflectiveAccess {
 
     private final RuntimeReflectionSupport rrsInstance;
 
-    InternalRuntimeReflection() {
+    InternalReflectiveAccess() {
         rrsInstance = ImageSingletons.lookup(RuntimeReflectionSupport.class);
     }
 
@@ -54,10 +54,10 @@ public final class InternalRuntimeReflection implements RuntimeReflection {
     public void registerClassLookup(RegistrationCondition condition, String className) {
         try {
             Class<?> clazz = Class.forName(className, false, ClassLoader.getSystemClassLoader());
-            registerClassMembers(condition, clazz);
+            register(condition, clazz);
         } catch (Throwable t) {
+            rrsInstance.registerClassLookup(condition, className);
         }
-        rrsInstance.registerClassLookup(condition, className);
     }
 
     @Override
@@ -88,13 +88,15 @@ public final class InternalRuntimeReflection implements RuntimeReflection {
 
     @Override
     public void registerForSerialization(RegistrationCondition condition, Class<?>... classes) {
-        register(condition, classes);
+        for (Class<?> clazz : classes) {
+            registerClassMembers(condition, clazz);
+        }
         RuntimeSerializationSupport.singleton().register(condition, classes);
     }
 
     @Override
     public Class<?> registerProxy(RegistrationCondition condition, Class<?>... interfaces) {
-        return ImageSingletons.lookup(RuntimeProxyCreationSupport.class).addProxyClass(RegistrationCondition.always(), interfaces);
+        return ImageSingletons.lookup(RuntimeProxyCreationSupport.class).addProxyClass(condition, interfaces);
     }
 
     private void registerClassMembers(RegistrationCondition condition, Class<?> clazz) {

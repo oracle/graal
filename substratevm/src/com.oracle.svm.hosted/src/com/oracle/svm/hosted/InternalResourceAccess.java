@@ -24,32 +24,35 @@
  */
 package com.oracle.svm.hosted;
 
-import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
-import java.util.Arrays;
+import java.util.Objects;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RegistrationCondition;
-import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
-import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
+import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 
-public final class RuntimeJNIAccessImpl implements RuntimeJNIAccess {
+public final class InternalResourceAccess implements ResourceAccess {
 
-    @Override
-    public void register(RegistrationCondition condition, Class<?>... classes) {
-        DynamicAccessSupport.printUserError("following classes for JNI access: " + Arrays.toString(classes));
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(condition, classes);
+    private final RuntimeResourceSupport<RegistrationCondition> rrsInstance;
+
+    InternalResourceAccess() {
+        rrsInstance = RuntimeResourceSupport.singleton();
     }
 
     @Override
-    public void register(RegistrationCondition condition, Executable... methods) {
-        DynamicAccessSupport.printUserError("following methods for JNI access: " + Arrays.toString(methods));
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(condition, false, methods);
+    public void register(RegistrationCondition condition, Module module, String pattern) {
+        Objects.requireNonNull(pattern);
+        if (pattern.replace("\\*", "").contains("*")) {
+            String moduleName = module == null ? null : module.getName();
+            rrsInstance.addGlob(condition, moduleName, pattern, "Registered from API");
+        } else {
+            rrsInstance.addResource(condition, module, pattern.replace("\\*", "*"), "Registered from API");
+        }
     }
 
     @Override
-    public void register(RegistrationCondition condition, Field... fields) {
-        DynamicAccessSupport.printUserError("following fields for JNI access: " + Arrays.toString(fields));
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(condition, false, fields);
+    public void registerResourceBundle(RegistrationCondition condition, Module module, String bundleName) {
+        Objects.requireNonNull(bundleName);
+        String finalBundleName = (module != null && module.isNamed()) ? module.getName() + ":" + bundleName : bundleName;
+        rrsInstance.addResourceBundles(condition, finalBundleName);
     }
 }

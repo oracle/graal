@@ -42,6 +42,7 @@ package org.graalvm.nativeimage.hosted;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 /**
@@ -66,7 +67,9 @@ public final class RuntimeSerialization {
      * Another limitation is the specified {@code clazz} must have no subclasses (effectively
      * final). Otherwise, the actual serialization target class could be any subclass of the
      * specified class at runtime.
-     *
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
+     * 
      * @param clazz the serialization target class
      * @since 21.3
      */
@@ -76,7 +79,9 @@ public final class RuntimeSerialization {
 
     /**
      * Makes the provided classes available for serialization at runtime.
-     *
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
+     * 
      * @since 21.3
      */
     public static void register(Class<?>... classes) {
@@ -109,7 +114,9 @@ public final class RuntimeSerialization {
      * Makes a class available for serialization at runtime that is created for the lambda
      * expressions (a class that has a $deserializeLambda$ method) specified by the
      * lambdaCapturingClass.
-     *
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
+     * 
      * @since 22.3
      */
     public static void registerLambdaCapturingClass(Class<?> lambdaCapturingClass) {
@@ -120,7 +127,9 @@ public final class RuntimeSerialization {
      * Makes a dynamic proxy class (class that extends {@link java.lang.reflect.Proxy}) available
      * for serialization at runtime that is specified by the given interfaces the proxy class
      * implements.
-     *
+     * <p>
+     * This API is deprecated; use {@link ReflectiveAccess} instead.
+     * 
      * @since 22.3
      */
     public static void registerProxyClass(Class<?>... implementedInterfaces) {
