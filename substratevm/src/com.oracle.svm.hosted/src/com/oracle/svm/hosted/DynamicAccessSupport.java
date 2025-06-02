@@ -25,15 +25,22 @@
 package com.oracle.svm.hosted;
 
 import com.oracle.svm.core.util.UserError;
+import org.graalvm.nativeimage.hosted.AccessCondition;
+import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 
 public final class DynamicAccessSupport {
-    private static boolean afterRegistrationFinished = false;
+    private static boolean sealed = false;
 
-    static void setAfterRegistrationFinished() {
-        afterRegistrationFinished = true;
+    static void setRegistrationSealed() {
+        sealed = true;
     }
 
-    public static void printUserError(String registrationEntry) {
-        UserError.guarantee(!afterRegistrationFinished, "Registration for runtime access after Feature#afterRegistration is not allowed. You tried to register %s", registrationEntry);
+    public static void printErrorIfSealedOrInvalidCondition(AccessCondition condition, String registrationEntry) {
+        if (!(condition instanceof TypeReachabilityCondition)) {
+            UserError.abort(new IllegalStateException(), "Condition you registered %s is not valid. Condition must be either alwaysTrue or typeReached. %s", condition);
+        }
+        if (sealed) {
+            UserError.abort(new IllegalStateException(), "Registration for runtime access after Feature#afterRegistration is not allowed. You tried to register %s", registrationEntry);
+        }
     }
 }
