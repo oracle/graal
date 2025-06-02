@@ -109,7 +109,7 @@ import com.oracle.svm.core.jni.headers.JNINativeMethod;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.jni.headers.JNIValue;
-import com.oracle.svm.core.jni.headers.JNIVersionJDKLatest;
+import com.oracle.svm.core.jni.headers.JNIVersion;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -168,7 +168,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class)
     @Uninterruptible(reason = "No need to enter the isolate and also no way to report errors if unable to.")
     static int GetVersion(JNIEnvironment env) {
-        return JNIVersionJDKLatest.JNI_VERSION_LATEST();
+        return JNIVersion.JNI_VERSION_LATEST();
     }
 
     /*
@@ -1621,6 +1621,17 @@ public final class JNIFunctions {
     static void SetStaticDoubleField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, double value) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
         U.putDouble(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset, value);
+    }
+
+    /*
+     * jlong GetStringUTFLengthAsLong(JNIEnv *env, jstring string);
+     */
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnMinusOne.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnMinusOneLong.class)
+    static long GetStringUTFLengthAsLong(JNIEnvironment env, JNIObjectHandle hstr) {
+        String str = JNIObjectHandles.getObject(hstr);
+        return Utf8.utf8LengthAsLong(str);
     }
 
     // Checkstyle: resume

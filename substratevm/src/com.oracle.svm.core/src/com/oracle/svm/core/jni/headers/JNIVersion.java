@@ -28,13 +28,14 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
 @CContext(JNIHeaderDirectives.class)
 public final class JNIVersion {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isSupported(int version, boolean builtInLibrary) {
-        if (version == JNIVersionJDKLatest.JNI_VERSION_LATEST() || version == JNI_VERSION_21() || version == JNI_VERSION_20() || version == JNI_VERSION_19() || version == JNI_VERSION_10() ||
-                        version == JNI_VERSION_9() || version == JNI_VERSION_1_8()) {
+        if (version == JNI_VERSION_LATEST() || version == JNI_VERSION_24() || version == JNI_VERSION_21() || version == JNI_VERSION_20() || version == JNI_VERSION_19() ||
+                        version == JNI_VERSION_10() || version == JNI_VERSION_9() || version == JNI_VERSION_1_8()) {
             return true;
         }
         if (builtInLibrary) {
@@ -75,6 +76,17 @@ public final class JNIVersion {
 
     @CConstant
     public static native int JNI_VERSION_21();
+
+    @CConstant
+    public static native int JNI_VERSION_24();
+
+    /*
+     * GR-50948: there is not yet a JNI_VERSION_XX constant defined for JDK latest. As soon as it
+     * gets available, the "value" property of the CConstant annotation below must be removed.
+     */
+    @CConstant(value = "JNI_VERSION_24")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/java.base/share/native/include/jni.h#L1994-L2006")
+    public static native int JNI_VERSION_LATEST();
 
     // Checkstyle: resume
 

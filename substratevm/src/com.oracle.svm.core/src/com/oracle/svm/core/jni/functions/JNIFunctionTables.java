@@ -44,7 +44,6 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jni.headers.JNIInvokeInterface;
 import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.jni.headers.JNINativeInterface;
-import com.oracle.svm.core.jni.headers.JNINativeInterfaceJDKLatest;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.word.Word;
@@ -74,7 +73,7 @@ public final class JNIFunctionTables {
     private final CIsolateData<JNIJavaVM> jniJavaVM = CIsolateDataFactory.createStruct("jniJavaVM", JNIJavaVM.class);
 
     private static int getFunctionTableSize() {
-        return SizeOf.get(JNINativeInterfaceJDKLatest.class);
+        return SizeOf.get(JNINativeInterface.class);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
