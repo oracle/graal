@@ -64,8 +64,8 @@ import jdk.graal.compiler.util.json.JsonParserException;
 public final class ConfigurationParserUtils {
 
     public static ReflectionConfigurationParser<AccessCondition, Class<?>> create(ConfigurationFile configurationKind, boolean combinedFileSchema,
-                                                                                  ConfigurationConditionResolver<AccessCondition> conditionResolver, ReflectionRegistry registry, RuntimeProxyCreationSupport proxyRegistry,
-                                                                                  RuntimeSerializationSupport<AccessCondition> serializationSupport, RuntimeJNIAccessSupport jniSupport, ImageClassLoader imageClassLoader) {
+                    ConfigurationConditionResolver<AccessCondition> conditionResolver, ReflectionRegistry registry, RuntimeProxyCreationSupport proxyRegistry,
+                    RuntimeSerializationSupport<AccessCondition> serializationSupport, RuntimeJNIAccessSupport jniSupport, ImageClassLoader imageClassLoader) {
         var additionalParserOptions = configurationKind == ConfigurationFile.JNI ? EnumSet.of(JNI_PARSER) : null;
         return ReflectionConfigurationParser.create(combinedFileSchema, conditionResolver, RegistryAdapter.create(registry, proxyRegistry, serializationSupport, jniSupport, imageClassLoader),
                         ConfigurationFiles.Options.getConfigurationParserOptions(additionalParserOptions, null));

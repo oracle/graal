@@ -47,12 +47,14 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
+import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
+import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
-import org.graalvm.nativeimage.hosted.RuntimeForeignAccess;
-import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -99,7 +101,6 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
 @SuppressWarnings("deprecation")
 public class FeatureImpl {
@@ -195,23 +196,23 @@ public class FeatureImpl {
         }
 
         @Override
-        public RuntimeReflection getRuntimeReflection() {
-            return new RuntimeReflectionImpl();
+        public ReflectiveAccess getReflectiveAccess() {
+            return ReflectiveAccessImpl.getReflectionAccessImpl();
         }
 
         @Override
-        public RuntimeResourceAccess getRuntimeResourceAccess() {
-            return new RuntimeResourceAccessImpl();
+        public ResourceAccess getResourceAccess() {
+            return ResourceAccessImpl.getResourceAccessImpl();
         }
 
         @Override
-        public RuntimeJNIAccess getRuntimeJNIAccess() {
-            return new RuntimeJNIAccessImpl();
+        public JNIAccess getJNIAccess() {
+            return JNIAccessImpl.getJNIAccessImpl();
         }
 
         @Override
-        public RuntimeForeignAccess getRuntimeForeignAccess() {
-            return new RuntimeForeignAccessImpl();
+        public ForeignAccess getForeignAccess() {
+            return ForeignAccessImpl.getForeignAccessImpl();
         }
     }
 
