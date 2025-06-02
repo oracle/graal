@@ -121,14 +121,10 @@ public class WasmInstanceExports implements TruffleObject {
     @TruffleBoundary
     boolean isMemberReadable(String member) {
         final SymbolTable symbolTable = instance.symbolTable();
-        try {
-            return symbolTable.exportedFunctions().containsKey(member) ||
-                            symbolTable.exportedMemories().containsKey(member) ||
-                            symbolTable.exportedTables().containsKey(member) ||
-                            symbolTable.exportedGlobals().containsKey(member);
-        } catch (NumberFormatException exc) {
-            return false;
-        }
+        return symbolTable.exportedFunctions().containsKey(member) ||
+                        symbolTable.exportedMemories().containsKey(member) ||
+                        symbolTable.exportedTables().containsKey(member) ||
+                        symbolTable.exportedGlobals().containsKey(member);
     }
 
     @ExportMessage
@@ -170,11 +166,7 @@ public class WasmInstanceExports implements TruffleObject {
     @TruffleBoundary
     boolean isMemberInvocable(String member) {
         final SymbolTable symbolTable = instance.symbolTable();
-        try {
-            return symbolTable.exportedFunctions().containsKey(member);
-        } catch (NumberFormatException exc) {
-            return false;
-        }
+        return symbolTable.exportedFunctions().containsKey(member);
     }
 
     @ExportMessage

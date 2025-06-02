@@ -221,10 +221,11 @@ public final class WasmStore implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     Object readMember(String member) throws UnknownIdentifierException {
-        if (!isMemberReadable(member)) {
+        WasmInstance result = moduleInstances.get(member);
+        if (result == null) {
             throw UnknownIdentifierException.create(member);
         }
-        return moduleInstances.get(member);
+        return result;
     }
 
     @ExportMessage

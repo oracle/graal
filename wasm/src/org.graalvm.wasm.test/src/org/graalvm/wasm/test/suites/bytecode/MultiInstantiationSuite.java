@@ -43,6 +43,7 @@ package org.graalvm.wasm.test.suites.bytecode;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -100,11 +101,11 @@ public class MultiInstantiationSuite {
             run.execute(new GuestCode(c -> {
                 WebAssembly wasm = new WebAssembly(c);
                 WasmModule module = wasm.moduleDecode(testSource);
-                WasmInstance instance1 = wasm.moduleInstantiate(module, importFun.apply(wasm));
+                WasmInstance instance1 = wasm.moduleInstantiate(module, Objects.requireNonNullElse(importFun.apply(wasm), WasmConstant.NULL));
                 Value v1 = Value.asValue(instance1);
                 // link module
                 v1.getMember("main");
-                WasmInstance instance2 = wasm.moduleInstantiate(module, importFun.apply(wasm));
+                WasmInstance instance2 = wasm.moduleInstantiate(module, Objects.requireNonNullElse(importFun.apply(wasm), WasmConstant.NULL));
                 Value v2 = Value.asValue(instance2);
                 // link module
                 v2.getMember("main");
