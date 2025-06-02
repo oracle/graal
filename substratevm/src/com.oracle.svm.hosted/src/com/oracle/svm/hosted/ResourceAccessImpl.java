@@ -24,27 +24,38 @@
  */
 package com.oracle.svm.hosted;
 
-import org.graalvm.nativeimage.hosted.AccessCondition;
-import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 
-public final class RuntimeResourceAccessImpl implements RuntimeResourceAccess {
+import java.util.ResourceBundle;
 
-    private final InternalRuntimeResourceAccess rdaInstance;
+public final class ResourceAccessImpl implements ResourceAccess {
 
-    RuntimeResourceAccessImpl() {
-        rdaInstance = new InternalRuntimeResourceAccess();
+    private final InternalResourceAccess rdaInstance;
+    private static ResourceAccessImpl instance;
+
+    private ResourceAccessImpl() {
+        rdaInstance = InternalResourceAccess.singleton();
+    }
+
+    public static ResourceAccessImpl singleton() {
+        if (instance == null) {
+            instance = new ResourceAccessImpl();
+        }
+        return instance;
     }
 
     @Override
     public void register(AccessCondition condition, Module module, String pattern) {
-        DynamicAccessSupport.printUserError(pattern);
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, pattern);
         rdaInstance.register(condition, module, pattern);
     }
 
     @Override
-    public void registerResourceBundle(AccessCondition condition, Module module, String bundleName) {
-        DynamicAccessSupport.printUserError(bundleName);
-        rdaInstance.registerResourceBundle(condition, module, bundleName);
+    public void registerResourceBundle(AccessCondition condition, ResourceBundle... bundles) {
+        for (ResourceBundle bundle : bundles) {
+            DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, bundle.getBaseBundleName());
+            rdaInstance.registerResourceBundle(condition, bundle);
+        }
     }
-
 }
