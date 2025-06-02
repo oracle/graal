@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,11 +59,9 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         testGraph("mathSin");
         testGraph("mathSqrt");
         testGraph("mathTan");
+        testGraph("mathTanh");
+        testGraph("mathCbrt");
         testGraph("mathAll");
-
-        if (getReplacements().hasSubstitution(getResolvedJavaMethod(Math.class, "tanh"), getInitialOptions())) {
-            testGraph("mathTanh");
-        }
 
         test("mathCos", value);
         test("mathLog", value);
@@ -72,6 +70,7 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         test("mathSqrt", value);
         test("mathTan", value);
         test("mathTanh", value);
+        test("mathCbrt", value);
         test("mathAll", value);
     }
 
@@ -141,8 +140,12 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         return Math.tanh(value);
     }
 
+    public static double mathCbrt(double value) {
+        return Math.cbrt(value);
+    }
+
     public static double mathAll(double value) {
-        return Math.sqrt(value) + Math.log(value) + Math.log10(value) + Math.sin(value) + Math.cos(value) + Math.tan(value);
+        return Math.sqrt(value) + Math.log(value) + Math.log10(value) + Math.sin(value) + Math.cos(value) + Math.tan(value) + Math.tanh(value) + Math.cbrt(value);
     }
 
     public void testSubstitution(String testMethodName, Class<?> holder, String methodName, boolean optional, Object[] args, Class<?>... intrinsicClasses) {
