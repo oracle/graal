@@ -1479,4 +1479,12 @@ public interface JNINativeInterface extends PointerBase {
 
     @CField
     void setIsVirtualThread(CFunctionPointer p);
+
+    // JNI_VERSION_24
+
+    @CField
+    CFunctionPointer getGetStringUTFLengthAsLong();
+
+    @CField
+    void setGetStringUTFLengthAsLong(CFunctionPointer p);
 }

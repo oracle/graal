@@ -40,6 +40,7 @@ import mx_gate
 import mx_sdk_vm_impl
 import mx_subst
 import mx_sdk_vm
+import mx_sdk_vm_ng
 import mx_benchmark
 import mx_sulong_benchmarks
 import mx_sulong_fuzz #pylint: disable=unused-import
@@ -109,12 +110,10 @@ mx_subst.results_substitutions.register_with_arg('sulong_prefix', sulong_prefix_
 def has_suite(name):
     return mx.suite(name, fatalIfMissing=False)
 
-def is_ee():
-    return has_suite('sulong-managed')
-
 def sulong_standalone_deps():
-    deps = mx_truffle.resolve_truffle_dist_names()
-    if is_ee():
+    include_truffle_runtime = not mx.env_var_to_bool("EXCLUDE_TRUFFLE_RUNTIME")
+    deps = mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=include_truffle_runtime)
+    if has_suite('sulong-managed'):
         # SULONG_ENTERPRISE and SULONG_MANAGED do not belong in the EE standalone of SULONG_NATIVE, but we want a single definition of libllvmvm.
         # So we compromise here by including them. We do not use or distribute the EE standalone of SULONG_NATIVE so it does not matter.
         # See also the comments in suite.py, in SULONG_*_STANDALONE_RELEASE_ARCHIVE.
@@ -126,11 +125,15 @@ def sulong_standalone_deps():
     return deps
 
 def libllvmvm_build_args():
-    if is_ee() and not mx.is_windows():
-        return [
+    if mx_sdk_vm_ng.is_nativeimage_ee() and not mx.is_windows():
+        image_build_args = [
             '-H:+AuxiliaryEngineCache',
             '-H:ReservedAuxiliaryImageBytes=2145482548',
         ]
+        # GR-64948: On GraalVM 21 some Native Image stable options are incorrectly detected as experimental
+        if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25"):
+            image_build_args = ['-H:+UnlockExperimentalVMOptions', *image_build_args, '-H:-UnlockExperimentalVMOptions']
+        return image_build_args
     else:
         return []
 
@@ -313,7 +316,7 @@ def get_lli_path(fatalIfMissing=True):
             useJvm = False
         else:
             mx.abort(f"Unknown standalone type {standaloneMode}.")
-        if is_ee():
+        if has_suite('sulong-managed'):
             dist = "SULONG_MANAGED_JVM_STANDALONE" if useJvm else "SULONG_MANAGED_NATIVE_STANDALONE"
         else:
             dist = "SULONG_JVM_STANDALONE" if useJvm else "SULONG_NATIVE_STANDALONE"
@@ -586,8 +589,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     support_distributions=[
         'sulong:SULONG_GRAALVM_LICENSES',
     ],
-    installable=True,
-    standalone=False,
     has_relative_home=False,
     stability='experimental' if mx.get_os() == 'windows' else 'supported',
     priority=1,  # this component is part of the llvm installable but it's not the main one
@@ -607,8 +608,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         'sulong:SULONG_CORE_HOME',
         'sulong:SULONG_GRAALVM_DOCS',
     ],
-    installable=True,
-    standalone=False,
     stability='experimental' if mx.get_os() == 'windows' else 'supported',
     priority=1,  # this component is part of the llvm installable but it's not the main one
 ))
@@ -628,17 +627,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         'sulong:SULONG_NATIVE_HOME',
     ],
     launcher_configs=_suite.toolchain.get_launcher_configs(),
-    installable=True,
-    standalone=False,
     priority=1,  # this component is part of the llvm installable but it's not the main one
 ))
-
-
-standalone_dependencies_common = {
-    'LLVM Runtime Core': ('lib/sulong', []),
-    'LLVM Runtime Native': ('lib/sulong', []),
-    'LLVM.org toolchain': ('lib/llvm-toolchain', []),
-}
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
@@ -646,23 +636,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     name='LLVM Runtime Launcher',
     short_name='llrl',
     dir_name='llvm',
-    standalone_dir_name='llvm-community-<version>-<graalvm_os>-<arch>',
-    standalone_dir_name_enterprise='llvm-<version>-<graalvm_os>-<arch>',
     license_files=[],
     third_party_license_files=[],
     dependencies=['ANTLR4', 'Truffle', 'Truffle NFI', 'Truffle NFI LIBFFI', 'LLVM Runtime Core'],
-    standalone_dependencies={**standalone_dependencies_common, **{
-        'LLVM Runtime License Files': ('', []),
-    }},
-    standalone_dependencies_enterprise={**standalone_dependencies_common, **{
-        'LLVM Runtime Enterprise': ('lib/sulong', []),
-        'LLVM Runtime Native Enterprise': ('lib/sulong', []),
-        **({} if mx.is_windows() else {
-            'LLVM Runtime Managed': ('lib/sulong', []),
-        }),
-        'LLVM Runtime License Files EE': ('', []),
-        'GraalVM enterprise license files': ('', ['LICENSE.txt', 'GRAALVM-README.md']),
-    }},
     truffle_jars=[],
     support_distributions=[],
     library_configs=[
@@ -677,12 +653,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             ] if not mx.is_windows() else [],
             language='llvm',
             # When building a GraalVM, we do not need to set a default relative home path.
-            # When building a Standalone, it would be wrong to set it since the default
-            # value (`..`) is overridden by the standalone dependency (`./sulong`).
             set_default_relative_home_path=False,
         )
     ],
-    installable=True,
-    standalone=True,
     priority=0,  # this is the main component of the llvm installable and standalone
 ))
