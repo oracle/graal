@@ -425,7 +425,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (isParsingInvocationPlugin() && ignoreInvocationPluginTarget) {
                 callStack.removeFirst();
             }
-            return callStack;
+            return Collections.unmodifiableList(callStack);
         }
 
         @Override

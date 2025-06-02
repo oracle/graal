@@ -26,6 +26,9 @@ package jdk.graal.compiler.replacements;
 
 import static jdk.vm.ci.code.BytecodeFrame.AFTER_BCI;
 
+import java.util.Collections;
+import java.util.List;
+
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -75,9 +78,6 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Implementation of {@link GraphBuilderContext} used to produce a graph for a method based on an
@@ -330,7 +330,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
     @Override
     public List<StackTraceElement> getInliningCallStack(boolean ignoreInvocationPluginTarget) {
-        return new ArrayList<>();
+        return Collections.emptyList();
     }
 
     @Override

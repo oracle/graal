@@ -24,6 +24,16 @@
  */
 package com.oracle.svm.hosted.dataflow;
 
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.graalvm.collections.Pair;
+
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeStream;
 import jdk.graal.compiler.debug.DebugContext;
@@ -33,15 +43,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.collections.Pair;
-
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Abstract bytecode forward data-flow analyzer. Abstract program states, represented by {@code S},

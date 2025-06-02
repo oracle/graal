@@ -22,25 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.strictconstantanalysis;
-
-import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.PreParseCallbackSupport;
-import com.oracle.svm.util.ReflectionUtil;
-import jdk.graal.compiler.options.Option;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
+package com.oracle.svm.hosted.dynamicaccessinference;
 
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
+
+import com.oracle.svm.core.ParsingReason;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
+
+import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Feature which enables a graph IR optimization independent analysis of compile-time inferrable
@@ -86,7 +89,7 @@ import java.util.function.Predicate;
  * </ul>
  */
 @AutomaticallyRegisteredFeature
-public class StrictConstantAnalysisFeature implements InternalFeature {
+public class StrictDynamicAccessInferenceFeature implements InternalFeature {
 
     public static class Options {
 
@@ -97,20 +100,20 @@ public class StrictConstantAnalysisFeature implements InternalFeature {
         }
 
         @Option(help = """
-                        Select the mode for the strict, build-time analysis for calls requiring dynamic access.
+                        Select the mode for the strict, build-time inference for calls requiring dynamic access.
                         Possible values are:
-                         "Disable" (default): Disable the strict mode and fall back to the optimization dependent analysis for inferrable dynamic calls;
-                         "Warn": Fold both the calls inferred with the strict mode analysis and the optimization dependant analysis, but print a warning for non-strict call folding;
-                         "Enforce": Fold only the calls inferred by the strict analysis mode.""")//
-        public static final HostedOptionKey<Mode> StrictConstantAnalysis = new HostedOptionKey<>(Mode.Disable);
+                         "Disable" (default): Disable the strict mode and fall back to the optimization dependent inference for dynamic calls;
+                         "Warn": Fold both the calls inferred in the strict mode and the optimization dependent mode, but print a warning for non-strict call folding;
+                         "Enforce": Fold only the calls inferred in the strict inference mode.""", stability = OptionStability.EXPERIMENTAL)//
+        public static final HostedOptionKey<Mode> StrictDynamicAccessInference = new HostedOptionKey<>(Mode.Disable);
     }
 
     public static boolean isActive() {
-        return Options.StrictConstantAnalysis.getValue() != Options.Mode.Disable;
+        return Options.StrictDynamicAccessInference.getValue() != Options.Mode.Disable;
     }
 
     @Override
-    public boolean isInConfiguration(IsInConfigurationAccess a) {
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
         return isActive();
     }
 
@@ -118,19 +121,24 @@ public class StrictConstantAnalysisFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess access) {
         FeatureImpl.AfterRegistrationAccessImpl accessImpl = (FeatureImpl.AfterRegistrationAccessImpl) access;
 
-        ConstantExpressionRegistry registry = new ConstantExpressionRegistry();
-        ImageSingletons.add(ConstantExpressionRegistry.class, registry);
-
         ConstantExpressionAnalyzer analyzer = new ConstantExpressionAnalyzer(GraalAccess.getOriginalProviders(), accessImpl.getImageClassLoader());
-        PreParseCallbackSupport.singleton().addCallback((method, intrinsicContext) -> registry.analyzeAndStore(analyzer, method, intrinsicContext));
+        ConstantExpressionRegistry registry = new ConstantExpressionRegistry();
+        StrictDynamicAccessInferenceSupport support = new StrictDynamicAccessInferenceSupport(analyzer, registry);
+
+        ImageSingletons.add(ConstantExpressionRegistry.class, registry);
+        ImageSingletons.add(StrictDynamicAccessInferenceSupport.class, support);
+
+        cacheMode(Options.StrictDynamicAccessInference.getValue());
+        cacheRegistry(registry);
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         /*
-         * The strict analysis mode disables constant folding through method inlining, which leads
-         * to <clinit> of sun.nio.ch.DatagramChannelImpl throwing a missing reflection registration
-         * error. This is a temporary fix until annotation guided analysis is implemented.
+         * The strict dynamic access inference mode disables constant folding through method
+         * inlining, which leads to <clinit> of sun.nio.ch.DatagramChannelImpl throwing a missing
+         * reflection registration error. This is a temporary fix until annotation guided analysis
+         * is implemented.
          *
          * An alternative to this approach would be creating invocation plugins for the methods
          * defined in jdk.internal.invoke.MhUtil.
@@ -160,21 +168,36 @@ public class StrictConstantAnalysisFeature implements InternalFeature {
         ConstantExpressionRegistry.singleton().seal();
     }
 
+    private static void cacheMode(Options.Mode mode) {
+        cachedMode = mode;
+    }
+
+    private static void cacheRegistry(ConstantExpressionRegistry registry) {
+        cachedRegistry = registry;
+    }
+
+    private static Options.Mode cachedMode = Options.Mode.Disable;
+    private static ConstantExpressionRegistry cachedRegistry = null;
+
     /**
      * Utility method which attempts to infer {@code targetMethod} according to the {@code Disable},
      * {@code Warn} and {@code Enforce} options of {@code StrictConstantAnalysis}.
      */
-    public static boolean tryToInfer(Predicate<ConstantExpressionRegistry> strictModeRoutine, BooleanSupplier graphModeRoutine, ResolvedJavaMethod targetMethod,
+    public static boolean tryToInfer(ParsingReason reason, Predicate<ConstantExpressionRegistry> strictModeRoutine, BooleanSupplier graphModeRoutine, ResolvedJavaMethod targetMethod,
                     Predicate<ResolvedJavaMethod> strictModeTarget) {
-        Options.Mode analysisMode = Options.StrictConstantAnalysis.getValue();
+        /*
+         * Do not restrict the folding of reflective calls if not building graphs for the analysis.
+         */
+        if (!reason.duringAnalysis() || reason == ParsingReason.JITCompilation) {
+            return graphModeRoutine.getAsBoolean();
+        }
         boolean isTarget = strictModeTarget.test(targetMethod);
-        if (analysisMode != Options.Mode.Disable && isTarget) {
-            ConstantExpressionRegistry registry = ConstantExpressionRegistry.singleton();
-            if (strictModeRoutine.test(registry)) {
+        if (cachedMode != Options.Mode.Disable && isTarget) {
+            if (strictModeRoutine.test(cachedRegistry)) {
                 return true;
             }
         }
-        if (analysisMode != Options.Mode.Enforce || !isTarget) {
+        if (cachedMode != Options.Mode.Enforce || !isTarget) {
             return graphModeRoutine.getAsBoolean();
         }
         return false;
@@ -184,7 +207,7 @@ public class StrictConstantAnalysisFeature implements InternalFeature {
      * Utility method which attempts to infer {@code targetMethod} according to the {@code Disable},
      * {@code Warn} and {@code Enforce} options of {@code StrictConstantAnalysis}.
      */
-    public static boolean tryToInfer(Predicate<ConstantExpressionRegistry> strictModeRoutine, BooleanSupplier graphModeRoutine) {
-        return tryToInfer(strictModeRoutine, graphModeRoutine, null, (method) -> true);
+    public static boolean tryToInfer(ParsingReason reason, Predicate<ConstantExpressionRegistry> strictModeRoutine, BooleanSupplier graphModeRoutine) {
+        return tryToInfer(reason, strictModeRoutine, graphModeRoutine, null, (method) -> true);
     }
 }

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.dataflow;
 
-import com.oracle.svm.core.util.VMError;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -34,6 +32,8 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
+
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Abstract representation of a bytecode execution frame, i.e., its
@@ -277,6 +277,16 @@ public class AbstractFrame<T> {
         }
 
         void put(int index, ValueWithSlots<T> value) {
+            VMError.guarantee(index >= 0, "Local variable table index cannot be negative");
+            ValueWithSlots<T> previousInTable = variables.get(index - 1);
+            if (previousInTable != null && previousInTable.size == ValueWithSlots.Slots.TWO_SLOTS) {
+                /*
+                 * Store operations into a local variable slot occupied by the second half of a two
+                 * slot value is a legal operation, but it invalidates the variable previously
+                 * occupying two slots.
+                 */
+                variables.remove(index - 1);
+            }
             variables.put(index, value);
         }
 

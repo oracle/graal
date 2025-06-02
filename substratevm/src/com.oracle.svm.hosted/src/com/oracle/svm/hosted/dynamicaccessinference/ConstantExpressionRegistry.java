@@ -22,24 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.strictconstantanalysis;
-
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.LogUtils;
-import jdk.graal.compiler.bytecode.Bytecode;
-import jdk.graal.compiler.bytecode.BytecodeProvider;
-import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
-import com.oracle.svm.hosted.dataflow.AbstractFrame;
-import com.oracle.svm.hosted.dataflow.DataFlowAnalysisException;
-import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.ImageSingletons;
+package com.oracle.svm.hosted.dynamicaccessinference;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.collections.Pair;
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.hosted.dataflow.AbstractFrame;
+import com.oracle.svm.hosted.dataflow.DataFlowAnalysisException;
+
+import jdk.graal.compiler.bytecode.Bytecode;
+import jdk.graal.compiler.bytecode.BytecodeProvider;
+import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
+/**
+ * Holds information on constant expressions as inferred by {@link ConstantExpressionAnalyzer}.
+ */
 public class ConstantExpressionRegistry {
 
     public static ConstantExpressionRegistry singleton() {
@@ -51,6 +56,10 @@ public class ConstantExpressionRegistry {
      */
     private static final Object NULL_MARKER = new Object();
 
+    /**
+     * Maps method and BCI pairs into abstract frames which represent the execution frame right
+     * before the corresponding bytecode instruction.
+     */
     private Map<Pair<ResolvedJavaMethod, Integer>, AbstractFrame<ConstantExpressionAnalyzer.Value>> registry;
     private boolean isSealed;
 

@@ -941,7 +941,6 @@ public class NativeImageGenerator {
                 ImageSingletons.add(ClassLoaderSupport.class, classLoaderSupport);
                 ImageSingletons.add(LinkAtBuildTimeSupport.class, new LinkAtBuildTimeSupport(loader, classLoaderSupport));
                 ImageSingletons.add(ObservableImageHeapMapProvider.class, new ObservableImageHeapMapProviderImpl());
-                ImageSingletons.add(PreParseCallbackSupport.class, new PreParseCallbackSupport());
 
                 ClassInitializationSupport classInitializationSupport = new ClassInitializationSupport(originalMetaAccess, loader);
                 ImageSingletons.add(RuntimeClassInitializationSupport.class, classInitializationSupport);
