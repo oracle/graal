@@ -85,9 +85,10 @@ public class WasmMemoryLeakSuite {
                 var strongInstances = new ArrayList<>();
                 for (int iter = 0; iter < 16; iter++) {
                     var instance = wasm.moduleInstantiate(module, importObject);
-                    Object mem = lib.readMember(instance, "mem");
-                    Object fun = lib.readMember(instance, "fun");
-                    Object tab = lib.readMember(instance, "tab");
+                    Object exports = lib.readMember(instance, "exports");
+                    Object mem = lib.readMember(exports, "mem");
+                    Object fun = lib.readMember(exports, "fun");
+                    Object tab = lib.readMember(exports, "tab");
 
                     weakStores.add(new WeakReference<>(instance.store()));
                     weakInstances.add(new WeakReference<>(instance));
@@ -113,7 +114,8 @@ public class WasmMemoryLeakSuite {
                     switch (i % 4) {
                         case 0 -> {
                             // WasmInstance
-                            Assert.assertTrue(lib.isMemberReadable(instance, "fun"));
+                            Object exports = lib.readMember(instance, "exports");
+                            Assert.assertTrue(lib.isMemberReadable(exports, "fun"));
                         }
                         case 1 -> {
                             // WasmFunction
