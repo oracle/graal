@@ -507,6 +507,17 @@ public final class GraalServices {
     }
 
     /**
+     * Returns a scope which tracks time spent in garbage collection if the Java virtual machine
+     * supports it.
+     */
+    public static JMXService.GCTimeStatistics getGCTimeStatistics() {
+        if (jmx == null) {
+            return null;
+        }
+        return jmx.getGCTimeStatistics();
+    }
+
+    /**
      * Returns the fused multiply add of the three arguments; that is, returns the exact product of
      * the first two arguments summed with the third argument and then rounded once to the nearest
      * {@code float}.
