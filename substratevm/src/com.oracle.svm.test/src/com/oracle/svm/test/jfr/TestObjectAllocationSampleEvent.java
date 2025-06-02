@@ -77,10 +77,10 @@ public class TestObjectAllocationSampleEvent extends JfrRecordingTest {
                 // verify previous owner
                 if (className.equals(char[].class.getName())) {
                     foundCharArray = true;
-                    checkTopStackFrame(event, "slowPathNewArrayLikeObject0");
+                    checkTopStackFrame(event, "slowPathNewArrayLikeObjectWithoutAllocation0");
                 } else if (className.equals(byte[].class.getName())) {
                     foundByteArray = true;
-                    checkTopStackFrame(event, "slowPathNewArrayLikeObject0");
+                    checkTopStackFrame(event, "slowPathNewArrayLikeObjectWithoutAllocation0");
                 }
             }
         }

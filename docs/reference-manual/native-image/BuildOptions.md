@@ -59,7 +59,6 @@ Run `native-image --help` for help on build options.
 * `--gc=<value>`: select a Native Image garbage collector implementation. Allowed options for `<value>` are: `G1` for G1 garbage collector (not available in GraalVM Community Edition); `epsilon` for Epsilon garbage collector; `serial` for Serial garbage collector (default).
 * `--initialize-at-build-time`: a comma-separated list of packages and classes (and implicitly all of their superclasses) that are initialized during generation of a native executable. An empty string designates all packages.
 * `--initialize-at-run-time`: a comma-separated list of packages and classes (and implicitly all of their subclasses) that must be initialized at run time and not during generation. An empty string is currently not supported.
-* `--install-exit-handlers`: provide `java.lang.Terminator` exit handlers
 * `--libc`: select the `libc` implementation to use. Available implementations are `glibc`, `musl`, `bionic`.
 * `--link-at-build-time`: require types to be fully defined at native executable build time. If used without arguments, all classes in scope of the option are required to be fully defined.
 * `--link-at-build-time-paths`: require all types in given class or module path entries to be fully defined at native executable build time

@@ -26,9 +26,7 @@ package jdk.graal.compiler.debug;
 
 import java.util.Arrays;
 
-import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.nodeinfo.Verbosity;
-import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.options.Option;
@@ -77,7 +75,7 @@ public class Assertions {
         for (int i = 0; i < args.length; i += 2) {
             Object val = args[i + 1];
             sb.append(args[i]).append("=");
-            formatObjectContext(sb, val);
+            sb.append(decorateObjectErrorContext(val));
             if (++entriesDone < entries) {
                 sb.append(";");
             }
@@ -85,33 +83,51 @@ public class Assertions {
         return sb.toString();
     }
 
-    private static void formatObjectContext(StringBuilder sb, Object val) {
+    /**
+     * Returns a string representation of the given object, enhancing it with additional contextual
+     * information if such data is available.
+     */
+    public static Object decorateObjectErrorContext(Object o) {
         try {
-            if (val instanceof HIRBlock b) {
-                sb.append(b.toString(Verbosity.All));
-            } else if (val instanceof ValueNode v) {
-                sb.append(v.toString(Verbosity.All));
-                sb.append("/");
-                Stamp stamp = v.stamp(NodeView.DEFAULT);
-                sb.append(stamp).append(" ");
-                sb.append(v.getStackKind());
-                sb.append("\\");
+            if (o instanceof HIRBlock b) {
+                return b.toString(Verbosity.All);
+            } else if (o instanceof ValueNode v) {
+                return v.toString(Verbosity.All);
             } else {
-                sb.append(val);
+                return o;
             }
         } catch (Throwable e) {
-            sb.append("Error calling toString on object ").append(e.getMessage());
+            return "Error calling toString on object " + e.getMessage();
         }
     }
 
+    /**
+     * Returns an enhanced error message for the supplied string and object. It considers arguments
+     * one by one. Each argument is represented by its {@code toString} representation enhanced with
+     * {@code decorateObjectErrorContext(arg[i])}. It uses
+     * {@link #decorateObjectErrorContext(Object)} for the {@code toString} of the values.
+     *
+     * For example the following code
+     *
+     * <pre>
+     * LoopBeginNode loopBegin = getLoopBegin();
+     * Assertions.errorMessage("Message", loopBeginNode);
+     * </pre>
+     *
+     * would be formatted to (for an arbitrary loop begin node with {@code id=6}, output is cropped
+     * for brevity):
+     *
+     * {@code [0]=Message;[1]=6|LoopBegin { guestLoopEndsSafepointState...}}.
+     *
+     */
     public static String errorMessage(Object... args) {
         StringBuilder sb = new StringBuilder();
-        int entries = args.length;
+        final int entries = args.length;
         int entriesDone = 0;
         for (int i = 0; i < args.length; i++) {
             Object val = args[i];
             sb.append("[").append(i).append("]=");
-            formatObjectContext(sb, val);
+            sb.append(decorateObjectErrorContext(val));
             if (++entriesDone < entries) {
                 sb.append(";");
             }
@@ -119,30 +135,68 @@ public class Assertions {
         return sb.toString();
     }
 
+    /**
+     * Returns an enhanced error message for the supplied string and object. It considers arguments
+     * pair wise in a key - value fashion. Each pair is then represented in its {@code toString}
+     * representation of the form {@code key=decorateObjectErrorContext(value)}. It uses
+     * {@link #decorateObjectErrorContext(Object)} for the {@code toString} of the values.
+     *
+     * For example the following code
+     *
+     * <pre>
+     * LoopBeginNode loopBegin = getLoopBegin();
+     * Assertions.errorMessageContext("Message", loopBeginNode);
+     * </pre>
+     *
+     * would be formatted to (for an arbitrary loop begin node with {@code id=6}, output is cropped
+     * for brevity):
+     *
+     * {@code Message=6|LoopBegin { guestLoopEndsSafepointState=ENABLED, splits=0,
+     * cloneFromNodeId=-1}...}.
+     *
+     */
     public static String errorMessageContext(String s1, Object o1) {
         return formatAssertionContextArgV(s1, o1);
     }
 
+    /**
+     * See {@link #errorMessageContext(String, Object)}.
+     */
     public static String errorMessageContext(String s1, Object o1, String s2, Object o2) {
         return formatAssertionContextArgV(s1, o1, s2, o2);
     }
 
+    /**
+     * See {@link #errorMessageContext(String, Object)}.
+     */
     public static String errorMessageContext(String s1, Object o1, String s2, Object o2, String s3, Object o3) {
         return formatAssertionContextArgV(s1, o1, s2, o2, s3, o3);
     }
 
+    /**
+     * See {@link #errorMessageContext(String, Object)}.
+     */
     public static String errorMessageContext(String s1, Object o1, String s2, Object o2, String s3, Object o3, String s4, Object o4) {
         return formatAssertionContextArgV(s1, o1, s2, o2, s3, o3, s4, o4);
     }
 
+    /**
+     * See {@link #errorMessageContext(String, Object)}.
+     */
     public static String errorMessageContext(String s1, Object o1, String s2, Object o2, String s3, Object o3, String s4, Object o4, String s5, Object o5) {
         return formatAssertionContextArgV(s1, o1, s2, o2, s3, o3, s4, o4, s5, o5);
     }
 
+    /**
+     * See {@link #errorMessageContext(String, Object)}.
+     */
     public static String errorMessageContext(String s1, Object o1, String s2, Object o2, String s3, Object o3, String s4, Object o4, String s5, Object o5, String s6, Object o6) {
         return formatAssertionContextArgV(s1, o1, s2, o2, s3, o3, s4, o4, s5, o5, s6, o6);
     }
 
+    /**
+     * See {@link #errorMessageContext(String, Object)}.
+     */
     public static String errorMessageContext(String s1, Object o1, String s2, Object o2, String s3, Object o3, String s4, Object o4, String s5, Object o5, String s6, Object o6, String s7,
                     Object o7) {
         return formatAssertionContextArgV(s1, o1, s2, o2, s3, o3, s4, o4, s5, o5, s6, o6, s7, o7);

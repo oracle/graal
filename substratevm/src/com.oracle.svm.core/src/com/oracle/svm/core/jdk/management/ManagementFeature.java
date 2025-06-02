@@ -100,6 +100,9 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
         RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory$IdentityMapping");
         RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.DescriptorCache");
         RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.remote.util.ClassLogger");
+
+        RuntimeClassInitialization.initializeAtRunTime("sun.management.MemoryImpl");
+        RuntimeClassInitialization.initializeAtRunTime("com.sun.management.internal.PlatformMBeanProviderImpl");
     }
 
     /**

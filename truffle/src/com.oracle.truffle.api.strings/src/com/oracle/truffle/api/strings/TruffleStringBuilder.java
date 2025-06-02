@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -712,7 +712,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
             if (len == 1) {
                 sb.buf[sb.length] = (byte) ('0' + value);
             } else {
-                NumberConversion.writeIntToBytes(this, value, sb.buf, 0, sb.length, len);
+                NumberConversion.writeIntToBytes(value, sb.buf, 0, sb.length, len);
             }
             sb.length += len;
             sb.codePointLength += len;
@@ -729,9 +729,9 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 sb.buf[sb.length] = (byte) ('0' + value);
             } else {
                 if (stride0Profile.profile(this, sb.stride == 0)) {
-                    NumberConversion.writeIntToBytes(this, value, sb.buf, 0, sb.length, len);
+                    NumberConversion.writeIntToBytes(value, sb.buf, 0, sb.length, len);
                 } else {
-                    NumberConversion.writeIntToBytes(this, value, sb.buf, 1, sb.length, len);
+                    NumberConversion.writeIntToBytes(value, sb.buf, 1, sb.length, len);
                 }
             }
             sb.length += len;
@@ -750,11 +750,11 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 sb.buf[sb.length] = (byte) ('0' + value);
             } else {
                 if (stride0Profile.profile(this, sb.stride == 0)) {
-                    NumberConversion.writeIntToBytes(this, value, sb.buf, 0, sb.length, len);
+                    NumberConversion.writeIntToBytes(value, sb.buf, 0, sb.length, len);
                 } else if (stride1Profile.profile(this, sb.stride == 1)) {
-                    NumberConversion.writeIntToBytes(this, value, sb.buf, 1, sb.length, len);
+                    NumberConversion.writeIntToBytes(value, sb.buf, 1, sb.length, len);
                 } else {
-                    NumberConversion.writeIntToBytes(this, value, sb.buf, 2, sb.length, len);
+                    NumberConversion.writeIntToBytes(value, sb.buf, 2, sb.length, len);
                 }
             }
             sb.length += len;
@@ -769,7 +769,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
             }
             int len = NumberConversion.stringLengthInt(value);
             sb.ensureCapacityS0(this, len, bufferGrowProfile, errorProfile);
-            NumberConversion.writeIntToBytes(this, value, sb.buf, 0, sb.length, len);
+            NumberConversion.writeIntToBytes(value, sb.buf, 0, sb.length, len);
             sb.appendLength(len);
         }
 
@@ -831,7 +831,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
             if (len == 1) {
                 sb.buf[sb.length] = (byte) ('0' + value);
             } else {
-                NumberConversion.writeLongToBytes(this, value, sb.buf, 0, sb.length, len);
+                NumberConversion.writeLongToBytes(value, sb.buf, 0, sb.length, len);
             }
             sb.length += len;
             sb.codePointLength += len;
@@ -848,9 +848,9 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 sb.buf[sb.length] = (byte) ('0' + value);
             } else {
                 if (stride0Profile.profile(this, sb.stride == 0)) {
-                    NumberConversion.writeLongToBytes(this, value, sb.buf, 0, sb.length, len);
+                    NumberConversion.writeLongToBytes(value, sb.buf, 0, sb.length, len);
                 } else {
-                    NumberConversion.writeLongToBytes(this, value, sb.buf, 1, sb.length, len);
+                    NumberConversion.writeLongToBytes(value, sb.buf, 1, sb.length, len);
                 }
             }
             sb.length += len;
@@ -869,11 +869,11 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 sb.buf[sb.length] = (byte) ('0' + value);
             } else {
                 if (stride0Profile.profile(this, sb.stride == 0)) {
-                    NumberConversion.writeLongToBytes(this, value, sb.buf, 0, sb.length, len);
+                    NumberConversion.writeLongToBytes(value, sb.buf, 0, sb.length, len);
                 } else if (stride1Profile.profile(this, sb.stride == 1)) {
-                    NumberConversion.writeLongToBytes(this, value, sb.buf, 1, sb.length, len);
+                    NumberConversion.writeLongToBytes(value, sb.buf, 1, sb.length, len);
                 } else {
-                    NumberConversion.writeLongToBytes(this, value, sb.buf, 2, sb.length, len);
+                    NumberConversion.writeLongToBytes(value, sb.buf, 2, sb.length, len);
                 }
             }
             sb.length += len;
@@ -888,7 +888,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
             }
             int len = NumberConversion.stringLengthLong(value);
             sb.ensureCapacityS0(this, len, bufferGrowProfile, errorProfile);
-            NumberConversion.writeLongToBytes(this, value, sb.buf, 0, sb.length, len);
+            NumberConversion.writeLongToBytes(value, sb.buf, 0, sb.length, len);
             sb.appendLength(len);
         }
 

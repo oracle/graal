@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,6 +66,7 @@ public class ConfigurationFileCollection {
     private final Set<URI> resourceConfigPaths = new LinkedHashSet<>();
     private final Set<URI> serializationConfigPaths = new LinkedHashSet<>();
     private final Set<URI> predefinedClassesConfigPaths = new LinkedHashSet<>();
+    private final Set<URI> foreignConfigPaths = new LinkedHashSet<>();
     private Set<URI> lockFilePaths;
 
     public void addDirectory(Path path) {
@@ -76,6 +77,7 @@ public class ConfigurationFileCollection {
         resourceConfigPaths.add(path.resolve(ConfigurationFile.RESOURCES.getFileName()).toUri());
         serializationConfigPaths.add(path.resolve(ConfigurationFile.SERIALIZATION.getFileName()).toUri());
         predefinedClassesConfigPaths.add(path.resolve(ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName()).toUri());
+        foreignConfigPaths.add(path.resolve(ConfigurationFile.FOREIGN.getFileName()).toUri());
         detectAgentLock(path.resolve(ConfigurationFile.LOCK_FILE_NAME), Files::exists, Path::toUri);
     }
 
@@ -96,6 +98,7 @@ public class ConfigurationFileCollection {
         addFile(resourceConfigPaths, fileResolver, ConfigurationFile.RESOURCES);
         addFile(serializationConfigPaths, fileResolver, ConfigurationFile.SERIALIZATION);
         addFile(predefinedClassesConfigPaths, fileResolver, ConfigurationFile.PREDEFINED_CLASSES_NAME);
+        addFile(foreignConfigPaths, fileResolver, ConfigurationFile.FOREIGN);
         detectAgentLock(fileResolver.apply(ConfigurationFile.LOCK_FILE_NAME), Objects::nonNull, Function.identity());
     }
 
@@ -125,6 +128,7 @@ public class ConfigurationFileCollection {
             case REFLECTION -> uris = getReflectConfigPaths();
             case SERIALIZATION -> uris = getSerializationConfigPaths();
             case PREDEFINED_CLASSES_NAME -> uris = getPredefinedClassesConfigPaths();
+            case FOREIGN -> uris = getForeignConfigPaths();
             default -> throw new IllegalArgumentException("Cannot get paths for configuration file " + configurationFile);
         }
         return uris.stream().map(Paths::get).collect(Collectors.toSet());
@@ -158,6 +162,10 @@ public class ConfigurationFileCollection {
         return predefinedClassesConfigPaths;
     }
 
+    public Set<URI> getForeignConfigPaths() {
+        return foreignConfigPaths;
+    }
+
     public TypeConfiguration loadReflectConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         TypeConfiguration reflectConfig = loadTypeConfig(ConfigurationFile.REFLECTION, reflectConfigPaths, exceptionHandler);
         TypeConfiguration jniConfig = loadTypeConfig(ConfigurationFile.JNI, jniConfigPaths, exceptionHandler);
@@ -175,6 +183,12 @@ public class ConfigurationFileCollection {
         PredefinedClassesConfiguration predefinedClassesConfiguration = new PredefinedClassesConfiguration(classDestinationDirs, shouldExcludeClassesWithHash);
         loadConfig(predefinedClassesConfigPaths, predefinedClassesConfiguration.createParser(false, parserOptions), exceptionHandler);
         return predefinedClassesConfiguration;
+    }
+
+    public ForeignConfiguration loadForeignConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
+        ForeignConfiguration foreignConfiguration = new ForeignConfiguration();
+        loadConfig(foreignConfigPaths, foreignConfiguration.createParser(false, parserOptions), exceptionHandler);
+        return foreignConfiguration;
     }
 
     public ResourceConfiguration loadResourceConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
@@ -195,7 +209,7 @@ public class ConfigurationFileCollection {
                     Predicate<String> predefinedConfigClassWithHashExclusionPredicate) throws Exception {
         return new ConfigurationSet(loadReflectConfig(exceptionHandler), loadResourceConfig(exceptionHandler), loadProxyConfig(exceptionHandler),
                         loadSerializationConfig(exceptionHandler),
-                        loadPredefinedClassesConfig(predefinedConfigClassDestinationDirs, predefinedConfigClassWithHashExclusionPredicate, exceptionHandler));
+                        loadPredefinedClassesConfig(predefinedConfigClassDestinationDirs, predefinedConfigClassWithHashExclusionPredicate, exceptionHandler), loadForeignConfig(exceptionHandler));
     }
 
     private TypeConfiguration loadTypeConfig(ConfigurationFile configurationKind, Collection<URI> uris, Function<IOException, Exception> exceptionHandler) throws Exception {

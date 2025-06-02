@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -248,6 +248,23 @@ public class TBitSetTest {
         checkSetRange(30, 150);
         checkSubtract(setOracle(0, 5, 29, 30, 111, 150, 180, 255));
         reset();
+    }
+
+    @Test
+    public void testEquals() {
+        TBitSet small = new TBitSet(128);
+        TBitSet large = new TBitSet(256);
+        Assert.assertTrue(small.equals(large));
+        Assert.assertTrue(large.equals(small));
+        small.set(42);
+        Assert.assertFalse(small.equals(large));
+        Assert.assertFalse(large.equals(small));
+        large.set(42);
+        Assert.assertTrue(small.equals(large));
+        Assert.assertTrue(large.equals(small));
+        large.set(211);
+        Assert.assertFalse(small.equals(large));
+        Assert.assertFalse(large.equals(small));
     }
 
     private void checkSet(int i) {

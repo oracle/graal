@@ -390,6 +390,10 @@ public final class Support {
         return jniFunctions().getCallBooleanMethodA().invoke(env, obj, method, args);
     }
 
+    public static long callLongMethod(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method) {
+        return jniFunctions().getCallLongMethodA().invoke(env, obj, method, nullPointer());
+    }
+
     public static long callLongMethodL(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method, JNIObjectHandle l0) {
         JNIValue args = StackValue.get(1, JNIValue.class);
         args.addressOf(0).setObject(l0);
@@ -401,6 +405,10 @@ public final class Support {
         args.addressOf(0).setObject(l0);
         args.addressOf(1).setObject(l1);
         return jniFunctions().getCallLongMethodA().invoke(env, obj, method, args);
+    }
+
+    public static int callIntMethod(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method) {
+        return jniFunctions().getCallIntMethodA().invoke(env, obj, method, nullPointer());
     }
 
     public static int callIntMethodL(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method, JNIObjectHandle l0) {

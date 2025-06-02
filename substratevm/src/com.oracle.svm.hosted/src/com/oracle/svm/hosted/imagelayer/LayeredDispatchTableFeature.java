@@ -46,14 +46,12 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.meta.MethodPointer;
@@ -67,7 +65,6 @@ import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
-import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.VTableBuilder;
 
 import jdk.graal.compiler.code.CompilationResult;
@@ -133,6 +130,7 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
                 config.registerAsRoot(aMethod, false, "in prior layer dispatch table");
             });
         }
+        LayeredImageHooks.registerDynamicHubWrittenCallback(this::onDynamicHubWritten);
     }
 
     @Override
@@ -395,12 +393,13 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
     /*
      * Recording a hub was written to the heap
      */
-    public void registerWrittenDynamicHub(DynamicHub hub, AnalysisUniverse aUniverse, HostedUniverse hUniverse, Object vTable) {
-        AnalysisType aType = ((SVMHost) aUniverse.hostVM()).lookupType(hub);
-        HostedType hType = hUniverse.lookup(aType);
+    public void onDynamicHubWritten(LayeredImageHooks.WrittenDynamicHubInfo hubInfo) {
+        AnalysisType aType = ((SVMHost) hubInfo.aUniverse().hostVM()).lookupType(hubInfo.hub());
+        HostedType hType = hubInfo.hUniverse().lookup(aType);
 
         assert hType.getWrapped().isReachable() : "All installed hubs should be reachable " + hType;
 
+        Object vTable = hubInfo.vTable();
         int vtableLength = Array.getLength(vTable);
         if (VTableBuilder.hasEmptyDispatchTable(hType)) {
             assert vtableLength == 0 : hType;
