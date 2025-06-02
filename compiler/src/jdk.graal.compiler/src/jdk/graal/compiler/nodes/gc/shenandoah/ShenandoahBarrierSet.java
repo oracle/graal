@@ -104,7 +104,7 @@ public class ShenandoahBarrierSet implements BarrierSet {
     public BarrierType readBarrierType(LocationIdentity location, ValueNode address, Stamp loadStamp) {
         if (location.equals(OFF_HEAP_LOCATION)) {
             // Off heap locations are never expected to contain objects
-            assert !loadStamp.isObjectStamp() : location;
+            GraalError.guarantee(!loadStamp.isObjectStamp(), "off-heap location not expected to be object: " + location);
             return BarrierType.NONE;
         }
 
@@ -159,7 +159,7 @@ public class ShenandoahBarrierSet implements BarrierSet {
 
     @Override
     public BarrierType readWriteBarrier(ValueNode object, ValueNode value) {
-        if (value.getStackKind() == JavaKind.Object && object.getStackKind() == JavaKind.Object) {
+        if (value.stamp(NodeView.DEFAULT).isObjectStamp()) {
             ResolvedJavaType type = StampTool.typeOrNull(object);
             if (type != null && type.isArray()) {
                 return BarrierType.ARRAY;

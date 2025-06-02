@@ -24,9 +24,11 @@
  */
 package jdk.graal.compiler.truffle.hotspot;
 
+import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER;
 import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.Z_LOAD_BARRIER;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.hotspot.meta.HotSpotRegistersProvider;
@@ -63,6 +65,10 @@ public abstract class TruffleEntryPointDecorator implements EntryPointDecorator 
     public void initialize(CoreProviders providers, LIRGenerationResult lirGenRes) {
         if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
             ForeignCallLinkage callTarget = providers.getForeignCalls().lookupForeignCall(Z_LOAD_BARRIER);
+            lirGenRes.getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
+        }
+        if (config.gc == HotSpotGraalRuntime.HotSpotGC.Shenandoah) {
+            ForeignCallLinkage callTarget = providers.getForeignCalls().lookupForeignCall(SHENANDOAH_LOAD_BARRIER);
             lirGenRes.getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
         }
     }

@@ -33,6 +33,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
+import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.aarch64.AArch64AddressValue;
@@ -105,29 +106,29 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
     }
 
     @Override
+    public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+        Register thread = providers.getRegisters().getThreadRegister();
+        emitCode(config, crb, masm, this, thread, asRegister(result), asRegister(object), loadAddress.toAddress(), callTarget, strength, notNull);
+    }
+
     // @formatter:off
     @SyncPort(from = "https://github.com/openjdk/jdk/blob/a2743bab4fd203b0791cf47e617c1a95b05ab3cc/src/hotspot/cpu/aarch64/gc/shenandoah/shenandoahBarrierSetAssembler_aarch64.cpp#L232-L309",
               sha1 = "4ed44f985dfdca39bf93c6d306a378be4bf88fe7")
     // @formatter:on
-    public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+    public static void emitCode(GraalHotSpotVMConfig config, CompilationResultBuilder crb, AArch64MacroAssembler masm, LIRInstruction op, Register thread, Register result, Register object, AArch64Address loadAddress, ForeignCallLinkage callTarget, ShenandoahLoadRefBarrierNode.ReferenceStrength strength, boolean notNull) {
         try (AArch64MacroAssembler.ScratchRegister sc1 = masm.getScratchRegister()) {
             Register rscratch1 = sc1.getRegister();
-            Register objectRegister = asRegister(object);
-            AArch64Address loadAddr = loadAddress.toAddress();
-            Register resultRegister = asRegister(result);
-
-            Register thread = providers.getRegisters().getThreadRegister();
 
             Label done = new Label();
             Label csetCheck = new Label();
             Label slowPath = new Label();
 
             // Move object to result, in case the heap is stable and no barrier needs to be called.
-            masm.mov(64, resultRegister, objectRegister);
+            masm.mov(64, result, object);
 
             if (!notNull) {
                 // Check for object being null.
-                masm.cbz(64, resultRegister, done);
+                masm.cbz(64, result, done);
             }
 
             // Check for heap stability
@@ -153,13 +154,13 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
 
             // Check for object in collection set in an out-of-line mid-path.
             if (strength == ShenandoahLoadRefBarrierNode.ReferenceStrength.STRONG) {
-                crb.getLIR().addSlowPath(this, () -> {
+                crb.getLIR().addSlowPath(op, () -> {
                     try (AArch64MacroAssembler.ScratchRegister tmp1 = masm.getScratchRegister(); AArch64MacroAssembler.ScratchRegister tmp2 = masm.getScratchRegister()) {
                         Register rtmp1 = tmp1.getRegister();
                         Register rtmp2 = tmp2.getRegister();
                         masm.bind(csetCheck);
                         masm.mov(rtmp1, HotSpotReplacementsUtil.shenandoahGCCSetFastTestAddr(config));
-                        masm.lsr(64, rtmp2, objectRegister, HotSpotReplacementsUtil.shenandoahGCRegionSizeBytesShift(config));
+                        masm.lsr(64, rtmp2, object, HotSpotReplacementsUtil.shenandoahGCRegionSizeBytesShift(config));
                         masm.ldr(8, rtmp2, AArch64Address.createRegisterOffsetAddress(8, rtmp1, rtmp2, false));
                         masm.cbnz(32, rtmp2, slowPath);
                         masm.jmp(done);
@@ -167,7 +168,7 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
                 });
             }
             // Call runtime slow-path LRB in out-of-line slow-path.
-            crb.getLIR().addSlowPath(this, () -> {
+            crb.getLIR().addSlowPath(op, () -> {
                 try (AArch64MacroAssembler.ScratchRegister tmp1 = masm.getScratchRegister(); AArch64MacroAssembler.ScratchRegister tmp2 = masm.getScratchRegister()) {
                     Register rtmp1 = tmp1.getRegister();
                     Register rtmp2 = tmp2.getRegister();
@@ -177,16 +178,16 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
 
                     // Store first argument
                     AArch64Address cArg0 = (AArch64Address) crb.asAddress(cc.getArgument(0));
-                    masm.str(64, objectRegister, cArg0);
+                    masm.str(64, object, cArg0);
 
                     // Store second argument
                     Register addressReg;
-                    if (loadAddr.isBaseRegisterOnly()) {
+                    if (loadAddress.isBaseRegisterOnly()) {
                         // Can directly use the base register as the address
-                        addressReg = loadAddr.getBase();
+                        addressReg = loadAddress.getBase();
                     } else {
                         addressReg = rtmp1;
-                        masm.loadAddress(addressReg, loadAddr);
+                        masm.loadAddress(addressReg, loadAddress);
                     }
                     AArch64Address cArg1 = (AArch64Address) crb.asAddress(cc.getArgument(1));
                     masm.str(64, addressReg, cArg1);
@@ -196,7 +197,7 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
 
                     // Retrieve result and move to the result register.
                     AArch64Address cRet = (AArch64Address) crb.asAddress(cc.getReturn());
-                    masm.ldr(64, resultRegister, cRet);
+                    masm.ldr(64, result, cRet);
                     masm.jmp(done);
                 }
             });
