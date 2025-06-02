@@ -41,14 +41,10 @@
 package org.graalvm.nativeimage.dynamicaccess;
 
 import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
-import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
-import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
-import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
-import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 
 /**
  * A condition that must be satisfied to register elements for dynamic access (i.e., reflection,
- * serialization, JNI access, resource access, and foreign access at runtime).
+ * serialization, JNI access, resource access, and foreign access at run time).
  * {@link AccessCondition} is used for programmatic metadata registration in conjunction with:
  * <ul>
  * <li>{@link ReflectiveAccess}</li>
@@ -67,7 +63,12 @@ import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
  * </ul>
  * <p>
  * Conditions can only be created via the {@link #unconditional} and {@link #typeReached} factory
- * methods.
+ * methods. These methods are best used with static import methods. For example:
+ *
+ * <pre>{@code
+ * reflection.register(unconditional(), ReflectivelyAccessed.class);
+ * reflection.register(typeReached(ConditionType.class), ConditionallyAccessed.class)
+ * }</pre>
  *
  * @since 25.0
  */
@@ -86,46 +87,47 @@ public interface AccessCondition {
     }
 
     /**
-     * Creates the {@code typeReached} condition that is satisfied when the type is reached at
-     * runtime. A type is reached at runtime, right before the class-initialization routine starts
-     * for that type, or any of the type's subtypes are reached. Metadata predicated with this
-     * condition is only included if the condition is satisfied.
+     * Creates the {@code typeReached} condition that is satisfied when the type is reached at run
+     * time. A type is reached at run time, right before the class-initialization routine starts for
+     * that type, or any of the type's subtypes are reached. Elements predicated with this condition
+     * will be included in the image only if the type is <em>reachable</em> at build time, but will
+     * be accessible when the type is <em>reached</em> at run time.
      * <p>
      * <strong>Example:</strong>
      * 
      * <pre>{@code
      * class SuperType {
      *     static {
-     *         // ConditionType reached (subtype reached) => metadata is available
+     *         // ConditionType reached (subtype reached) => element access allowed
      *     }
      * }
      * 
      * class ConditionType extends SuperType {
      *     static {
-     *         // ConditionType reached (before static initializer) => metadata is available
+     *         // ConditionType reached (before static initializer) => element access allowed
      *     }
      * 
      *     static ConditionType singleton() {
-     *         // ConditionType reached (already initialized) => metadata is available
+     *         // ConditionType reached (already initialized) => element access allowed
      *     }
      * }
      * 
      * public class App {
      *     public static void main(String[] args) {
-     *         // ConditionType not reached => metadata is not available
+     *         // ConditionType not reached => element access not allowed
      *         Class<?> clazz = ConditionType.class;
      *         // ConditionType not reached (ConditionType.class doesn't start class initialization)
-     *         // => metadata is not available
+     *         // => element access not allowed
      *         ConditionType.singleton();
-     *         // ConditionType reached (already initialized) => metadata is available
+     *         // ConditionType reached (already initialized) => element access allowed
      *     }
      * }
      * }</pre>
      * <p>
      * Type is also reached, if it is marked as {@code --initialize-at-build-time} or any of its
      * subtypes are marked as {@code --initialize-at-build-time} and they exist on the classpath.
-     * Array types are never marked as reached and therefore cannot be used as the type in a
-     * condition.
+     * Array types (e.g., <code>int[]</code>) are never marked as reached and therefore cannot be
+     * used as the <code>type</code> in a condition.
      *
      * @param type the type that has to be reached for this condition to be satisfied, must not be
      *            {@code null}

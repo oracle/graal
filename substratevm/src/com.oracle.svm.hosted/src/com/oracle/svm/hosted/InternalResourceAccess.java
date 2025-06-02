@@ -24,23 +24,35 @@
  */
 package com.oracle.svm.hosted;
 
+import java.lang.reflect.Method;
 import java.util.Objects;
+import java.util.ResourceBundle;
 
-import org.graalvm.nativeimage.hosted.AccessCondition;
-import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.util.ReflectionUtil;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 
-public final class InternalRuntimeResourceAccess implements RuntimeResourceAccess {
+public final class InternalResourceAccess implements ResourceAccess {
 
     private final RuntimeResourceSupport<AccessCondition> rrsInstance;
+    private static InternalResourceAccess instance;
 
-    InternalRuntimeResourceAccess() {
+    private InternalResourceAccess() {
         rrsInstance = RuntimeResourceSupport.singleton();
+    }
+
+    public static InternalResourceAccess singleton() {
+        if (instance == null) {
+            instance = new InternalResourceAccess();
+        }
+        return instance;
     }
 
     @Override
     public void register(AccessCondition condition, Module module, String pattern) {
-        Objects.requireNonNull(pattern);
+        Objects.requireNonNull(pattern, "Resource pattern cannot be null. Please ensure that all values you register are not null.");
         if (pattern.replace("\\*", "").contains("*")) {
             String moduleName = module == null ? null : module.getName();
             rrsInstance.addGlob(condition, moduleName, pattern, "Registered from API");
@@ -50,9 +62,22 @@ public final class InternalRuntimeResourceAccess implements RuntimeResourceAcces
     }
 
     @Override
-    public void registerResourceBundle(AccessCondition condition, Module module, String bundleName) {
-        Objects.requireNonNull(bundleName);
-        String finalBundleName = (module != null && module.isNamed()) ? module.getName() + ":" + bundleName : bundleName;
-        rrsInstance.addResourceBundles(condition, finalBundleName);
+    public void registerResourceBundle(AccessCondition condition, ResourceBundle... bundles) {
+        for (ResourceBundle bundle : bundles) {
+            Objects.requireNonNull(bundle, "ResourceBundle value cannot be null. Please ensure that all values you register are not null.");
+            var cache = ReflectionUtil.readField(ResourceBundle.class, "cacheKey", bundle);
+            if (cache == null) {
+                UserError.abort(new IllegalStateException(), "ResourceBundle instances must be obtained via ResourceBundle#getBundle.");
+            }
+
+            Method m = ReflectionUtil.lookupMethod(cache.getClass(), "getModule");
+            Module modul = ReflectionUtil.invokeMethod(m, cache);
+
+            Method m2 = ReflectionUtil.lookupMethod(cache.getClass(), "getName");
+            String name = ReflectionUtil.invokeMethod(m2, cache);
+
+            String finalBundleName = (modul != null && modul.isNamed()) ? modul.getName() + ":" + name : name;
+            rrsInstance.addResourceBundles(condition, finalBundleName);
+        }
     }
 }
