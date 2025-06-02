@@ -656,7 +656,9 @@ public class Vector128Ops {
     }
 
     private static ByteVector bitselect(ByteVector x, ByteVector y, ByteVector mask) {
-        return y.bitwiseBlend(x, mask);
+        // y.bitwiseBlend(x, mask) would work too, but it doesn't play nice with native image
+        // and ends up expanding to the bottom pattern anyway
+        return y.lanewise(VectorOperators.XOR, y.lanewise(VectorOperators.XOR, x).lanewise(VectorOperators.AND, mask));
     }
 
     private static ByteVector f32x4_ternop(ByteVector xBytes, ByteVector yBytes, ByteVector zBytes, int vectorOpcode) {
