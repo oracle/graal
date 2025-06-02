@@ -109,7 +109,8 @@ public class WasmInstanceExports implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
         final boolean mutable = symbolTable.globalMutability(index) == GlobalModifier.MUTABLE;
-        if (instance.module().isParsed() && !mutable) {
+        assert instance.module().isParsed() : instance;
+        if (!mutable) {
             // Constant variables cannot be modified after linking.
             throw UnsupportedMessageException.create();
         }
@@ -121,14 +122,10 @@ public class WasmInstanceExports implements TruffleObject {
     @TruffleBoundary
     boolean isMemberReadable(String member) {
         final SymbolTable symbolTable = instance.symbolTable();
-        try {
-            return symbolTable.exportedFunctions().containsKey(member) ||
-                            symbolTable.exportedMemories().containsKey(member) ||
-                            symbolTable.exportedTables().containsKey(member) ||
-                            symbolTable.exportedGlobals().containsKey(member);
-        } catch (NumberFormatException exc) {
-            return false;
-        }
+        return symbolTable.exportedFunctions().containsKey(member) ||
+                        symbolTable.exportedMemories().containsKey(member) ||
+                        symbolTable.exportedTables().containsKey(member) ||
+                        symbolTable.exportedGlobals().containsKey(member);
     }
 
     @ExportMessage
@@ -170,11 +167,7 @@ public class WasmInstanceExports implements TruffleObject {
     @TruffleBoundary
     boolean isMemberInvocable(String member) {
         final SymbolTable symbolTable = instance.symbolTable();
-        try {
-            return symbolTable.exportedFunctions().containsKey(member);
-        } catch (NumberFormatException exc) {
-            return false;
-        }
+        return symbolTable.exportedFunctions().containsKey(member);
     }
 
     @ExportMessage
@@ -213,5 +206,10 @@ public class WasmInstanceExports implements TruffleObject {
             exportNames.add(globalName);
         }
         return new Sequence<>(exportNames);
+    }
+
+    @Override
+    public String toString() {
+        return "wasm-instance-exports(" + instance.name() + ")";
     }
 }

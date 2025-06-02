@@ -165,21 +165,20 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
             throw ArityException.create(1, -1, arguments.length);
         }
         ensureLinked();
-        if (arguments[0] instanceof WasmModule mainModule) {
-            final WasmStore store = store();
-            final WasmInstance mainInstance = store.readInstance(mainModule);
-            for (int i = 1; i < arguments.length; i++) {
-                if (arguments[i] instanceof WasmModule module) {
-                    store.readInstance(module);
-                } else {
-                    throw ExceptionProviders.PolyglotExceptionProvider.createTypeError("Arguments must be modules");
+        final WasmStore store = store();
+        WasmInstance mainInstance = null;
+        for (int i = 0; i < arguments.length; i++) {
+            if (arguments[i] instanceof WasmModule module) {
+                WasmInstance instance = store.readInstance(module);
+                if (i == 0) {
+                    mainInstance = instance;
                 }
+            } else {
+                throw ExceptionProviders.PolyglotExceptionProvider.createTypeError("Arguments must be modules");
             }
-            store.linker().tryLink(mainInstance);
-            return mainInstance;
-        } else {
-            throw ExceptionProviders.PolyglotExceptionProvider.createTypeError("Arguments must be modules");
         }
+        store.linker().tryLink(mainInstance);
+        return mainInstance;
     }
 
     @ExportMessage
