@@ -52,7 +52,7 @@ public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
     public static class SubstrateBytecodeParser extends SharedBytecodeParser {
         public SubstrateBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext, boolean explicitExceptionEdges) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges, null);
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges);
         }
 
         @Override

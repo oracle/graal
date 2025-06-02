@@ -28,6 +28,8 @@ import static jdk.graal.compiler.core.common.GraalOptions.StrictDeoptInsertionCh
 import static jdk.graal.compiler.core.common.type.StampFactory.objectNonNull;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import jdk.graal.compiler.bytecode.Bytecode;
@@ -81,8 +83,6 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import java.util.ArrayList;
 
 /**
  * Used by a {@link GraphBuilderPlugin} to interface with an object that parses the bytecode of a
@@ -296,7 +296,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
         for (GraphBuilderContext cur = this; cur != null; cur = cur.getParent()) {
             callStack.add(cur.getMethod().asStackTraceElement(cur.bci()));
         }
-        return callStack;
+        return Collections.unmodifiableList(callStack);
     }
 
     /**

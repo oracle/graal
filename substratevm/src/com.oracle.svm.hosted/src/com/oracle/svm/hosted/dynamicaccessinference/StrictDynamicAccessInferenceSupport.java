@@ -22,21 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package com.oracle.svm.hosted.dynamicaccessinference;
+
+import org.graalvm.nativeimage.ImageSingletons;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-/**
- * Callback executed at the start of method parsing. It is executed before any bytecode parser
- * invocation plugin, and can as such be used to collect information from the method that the
- * plugins may rely on.
- */
-public interface PreParseCallback {
+public class StrictDynamicAccessInferenceSupport {
 
-    /**
-     * Execute the callback for {@code method}. {@code IntrinsicContext} is null if no intrinsic is
-     * currently being processed.
-     */
-    void execute(ResolvedJavaMethod method, IntrinsicContext intrinsicContext);
+    public static StrictDynamicAccessInferenceSupport singleton() {
+        if (StrictDynamicAccessInferenceFeature.isActive()) {
+            return ImageSingletons.lookup(StrictDynamicAccessInferenceSupport.class);
+        } else {
+            return null;
+        }
+    }
+
+    private final ConstantExpressionAnalyzer analyzer;
+    private final ConstantExpressionRegistry registry;
+
+    public StrictDynamicAccessInferenceSupport(ConstantExpressionAnalyzer analyzer, ConstantExpressionRegistry registry) {
+        this.analyzer = analyzer;
+        this.registry = registry;
+    }
+
+    public void analyze(ResolvedJavaMethod method, IntrinsicContext intrinsicContext) {
+        registry.analyzeAndStore(analyzer, method, intrinsicContext);
+    }
 }

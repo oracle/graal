@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
-import com.oracle.svm.hosted.PreParseCallbackSupport;
 import com.oracle.svm.hosted.phases.SharedGraphBuilderPhase;
 
 import jdk.graal.compiler.java.BytecodeParser;
@@ -74,7 +73,7 @@ public class ClassInitializerGraphBuilderPhase extends SharedGraphBuilderPhase {
     static class ClassInitializerBytecodeParser extends SharedBytecodeParser {
         ClassInitializerBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, true, false, PreParseCallbackSupport.singleton());
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, true, false);
         }
     }
 }

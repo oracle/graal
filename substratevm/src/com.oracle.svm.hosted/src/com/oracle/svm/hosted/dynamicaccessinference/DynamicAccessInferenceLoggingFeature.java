@@ -22,22 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.strictconstantanalysis;
-
-import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ReachabilityRegistrationNode;
-import com.oracle.svm.util.LogUtils;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.util.json.JsonBuilder;
-import jdk.graal.compiler.util.json.JsonPrettyWriter;
-import jdk.graal.compiler.util.json.JsonWriter;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.collections.Pair;
+package com.oracle.svm.hosted.dynamicaccessinference;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -50,12 +35,30 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.Pair;
+
+import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ReachabilityRegistrationNode;
+import com.oracle.svm.util.LogUtils;
+
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.util.json.JsonBuilder;
+import jdk.graal.compiler.util.json.JsonPrettyWriter;
+import jdk.graal.compiler.util.json.JsonWriter;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 @AutomaticallyRegisteredFeature
-public class InferredDynamicAccessLoggingFeature implements InternalFeature {
+public class DynamicAccessInferenceLoggingFeature implements InternalFeature {
 
     static class Options {
-        @Option(help = "Specify the .json log file location for inferred dynamic accesses.")//
-        static final HostedOptionKey<String> InferredDynamicAccessLog = new HostedOptionKey<>(null);
+        @Option(help = "Specify the .json log file location for inferred dynamic accesses.", stability = OptionStability.EXPERIMENTAL)//
+        static final HostedOptionKey<String> DynamicAccessInferenceLog = new HostedOptionKey<>(null);
     }
 
     private static Queue<LogEntry> log = new ConcurrentLinkedQueue<>();
@@ -82,7 +85,7 @@ public class InferredDynamicAccessLoggingFeature implements InternalFeature {
     }
 
     private static boolean isEnabled() {
-        return Options.InferredDynamicAccessLog.getValue() != null || shouldWarnForNonStrictFolding();
+        return Options.DynamicAccessInferenceLog.getValue() != null || shouldWarnForNonStrictFolding();
     }
 
     @Override
@@ -92,7 +95,7 @@ public class InferredDynamicAccessLoggingFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        String logLocation = Options.InferredDynamicAccessLog.getValue();
+        String logLocation = Options.DynamicAccessInferenceLog.getValue();
         if (logLocation != null) {
             dump(logLocation);
         }
@@ -121,7 +124,7 @@ public class InferredDynamicAccessLoggingFeature implements InternalFeature {
     }
 
     private static boolean shouldWarnForNonStrictFolding() {
-        return StrictConstantAnalysisFeature.Options.StrictConstantAnalysis.getValue() == StrictConstantAnalysisFeature.Options.Mode.Warn;
+        return StrictDynamicAccessInferenceFeature.Options.StrictDynamicAccessInference.getValue() == StrictDynamicAccessInferenceFeature.Options.Mode.Warn;
     }
 
     private static void warnForNonStrictFolding() {

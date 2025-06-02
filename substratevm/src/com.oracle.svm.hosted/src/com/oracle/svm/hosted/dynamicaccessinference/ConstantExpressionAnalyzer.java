@@ -22,27 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.strictconstantanalysis;
-
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
-import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
-import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
-import com.oracle.svm.core.hub.ClassForNameSupport;
-import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.util.ReflectionUtil;
-import com.oracle.svm.util.TypeResult;
-import com.oracle.svm.hosted.dataflow.AbstractFrame;
-import com.oracle.svm.hosted.dataflow.AbstractInterpreter;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaField;
-import jdk.vm.ci.meta.JavaMethod;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
+package com.oracle.svm.hosted.dynamicaccessinference;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -58,22 +38,43 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
+import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
+import com.oracle.svm.core.hub.ClassForNameSupport;
+import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.TypeResult;
+import com.oracle.svm.hosted.dataflow.AbstractFrame;
+import com.oracle.svm.hosted.dataflow.AbstractInterpreter;
+
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaField;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
 import static jdk.graal.compiler.bytecode.Bytecodes.ACONST_NULL;
 import static jdk.graal.compiler.bytecode.Bytecodes.ANEWARRAY;
 import static jdk.graal.compiler.bytecode.Bytecodes.CHECKCAST;
 
 /**
  * A bytecode-level constant expression analyzer for use in contexts which can affect native image
- * execution semantics, such as build-time folding of reflective calls
- * {@link StrictConstantAnalysisFeature}.
+ * execution semantics, such as build-time inferring of reflective calls as done by
+ * {@link StrictDynamicAccessInferenceFeature}.
  * <p>
  * The analyzer builds {@link AbstractFrame abstract frames} for each bytecode instruction of the
- * analyzed method. The {@link ConstantExpressionAnalyzer.Value abstract values} in stored in the
+ * analyzed method. The {@link ConstantExpressionAnalyzer.Value abstract values} stored in the
  * abstract frames can be either:
  * <ul>
  * <li>{@link NotACompileTimeConstant} - represents a value which cannot be inferred by the
- * analysis</li>
- * <li>{@link CompileTimeConstant} - a value inferrable by the analysis</li>
+ * analyzer</li>
+ * <li>{@link CompileTimeConstant} - a value inferrable by the analyzer</li>
  * </ul>
  * Furthermore, the inferrable values can be either:
  * <ul>
@@ -270,9 +271,10 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
 
     /**
      * To prevent escaping of array references and their modification through fields interfering
-     * with the analysis, having a PUTSTATIC instruction with a {@link CompileTimeArrayConstant
-     * compile-time array constant} operand marks all the corresponding compile-time constant arrays
-     * in the abstract frame as {@link NotACompileTimeConstant not a compile time constant}.
+     * with the constant inference, having a PUTSTATIC instruction with a
+     * {@link CompileTimeArrayConstant compile-time array constant} operand marks all the
+     * corresponding compile-time constant arrays in the abstract frame as
+     * {@link NotACompileTimeConstant not a compile time constant}.
      */
     @Override
     protected void storeStaticField(Context context, AbstractFrame<Value> state, JavaField field, Value value) {
@@ -283,9 +285,10 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
 
     /**
      * To prevent escaping of array references and their modification through fields interfering
-     * with the analysis, having a PUTFIELD instruction with a {@link CompileTimeArrayConstant
-     * compile-time array constant} operand marks all the corresponding compile-time constant arrays
-     * in the abstract frame as {@link NotACompileTimeConstant not a compile time constant}.
+     * with the constant inference, having a PUTFIELD instruction with a
+     * {@link CompileTimeArrayConstant compile-time array constant} operand marks all the
+     * corresponding compile-time constant arrays in the abstract frame as
+     * {@link NotACompileTimeConstant not a compile time constant}.
      */
     @Override
     protected void storeField(Context context, AbstractFrame<Value> state, JavaField field, Value object, Value value) {
@@ -301,7 +304,7 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
      * {@link ConstantExpressionAnalyzer#propagatingMethods}.
      * <p>
      * To prevent escaping of array references and their modification in different methods
-     * interfering with the analysis, having a method invocation instruction
+     * interfering with the constant inference, having a method invocation instruction
      * {@link CompileTimeArrayConstant compile-time array constant} operand marks all the
      * corresponding compile-time constant arrays in the abstract frame as
      * {@link NotACompileTimeConstant not a compile time constant}.
@@ -328,7 +331,7 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
 
     /**
      * To prevent escaping of array references and their modification in different methods
-     * interfering with the analysis, having a method invocation instruction
+     * interfering with the constant inference, having a method invocation instruction
      * {@link CompileTimeArrayConstant compile-time array constant} operand marks all the
      * corresponding compile-time constant arrays in the abstract frame as
      * {@link NotACompileTimeConstant not a compile time constant}.
@@ -548,7 +551,7 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
 
     /**
      * Marker interface for abstract values obtained during bytecode-level constant expression
-     * analysis.
+     * inference.
      */
     public interface Value {
 

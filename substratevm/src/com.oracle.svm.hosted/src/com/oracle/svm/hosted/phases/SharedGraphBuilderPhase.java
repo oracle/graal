@@ -42,7 +42,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import com.oracle.svm.hosted.PreParseCallbackSupport;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
 import org.graalvm.nativeimage.AnnotationAccess;
 
@@ -202,21 +201,17 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         private final boolean linkAtBuildTime;
         protected final BootstrapMethodHandler bootstrapMethodHandler;
 
-        private final PreParseCallbackSupport preParseCallbacks;
-
         protected SharedBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                        IntrinsicContext intrinsicContext, boolean explicitExceptionEdges, PreParseCallbackSupport preParseCallbacks) {
-            this(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges, LinkAtBuildTimeSupport.singleton().linkAtBuildTime(method.getDeclaringClass()),
-                            preParseCallbacks);
+                        IntrinsicContext intrinsicContext, boolean explicitExceptionEdges) {
+            this(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges, LinkAtBuildTimeSupport.singleton().linkAtBuildTime(method.getDeclaringClass()));
         }
 
         protected SharedBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                        IntrinsicContext intrinsicContext, boolean explicitExceptionEdges, boolean linkAtBuildTime, PreParseCallbackSupport preParseCallbacks) {
+                        IntrinsicContext intrinsicContext, boolean explicitExceptionEdges, boolean linkAtBuildTime) {
             super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
             this.explicitExceptionEdges = explicitExceptionEdges;
             this.linkAtBuildTime = linkAtBuildTime;
             this.bootstrapMethodHandler = new BootstrapMethodHandler();
-            this.preParseCallbacks = preParseCallbacks;
         }
 
         @Override
@@ -241,10 +236,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         protected void build(FixedWithNextNode startInstruction, FrameStateBuilder startFrameState) {
             if (!shouldVerifyFrameStates()) {
                 startFrameState.disableStateVerification();
-            }
-
-            if (preParseCallbacks != null) {
-                preParseCallbacks.executeCallbacks(method, intrinsicContext);
             }
 
             super.build(startInstruction, startFrameState);
