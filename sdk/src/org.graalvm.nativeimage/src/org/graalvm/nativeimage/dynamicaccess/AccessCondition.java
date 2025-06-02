@@ -41,10 +41,6 @@
 package org.graalvm.nativeimage.dynamicaccess;
 
 import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
-import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
-import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
-import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
-import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 
 /**
  * A condition that must be satisfied to register elements for dynamic access (i.e., reflection,
