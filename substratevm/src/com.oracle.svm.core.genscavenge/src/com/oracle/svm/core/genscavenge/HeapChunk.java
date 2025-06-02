@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import java.util.function.IntUnaryOperator;
 
 import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawFieldAddress;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
@@ -44,8 +45,10 @@ import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.word.Word;
 
 /**
@@ -78,6 +81,9 @@ import jdk.graal.compiler.word.Word;
  * allocated within the HeapChunk are examined by the collector.
  */
 public final class HeapChunk {
+
+    public static final LocationIdentity CHUNK_HEADER_TOP_IDENTITY = NamedLocationIdentity.mutable("ChunkHeader.top");
+
     private HeapChunk() { // all static
     }
 
@@ -106,12 +112,16 @@ public final class HeapChunk {
          * in the chunk.
          */
         @RawField
-        @UniqueLocationIdentity
-        UnsignedWord getTopOffset();
+        UnsignedWord getTopOffset(LocationIdentity topIdentity);
 
         @RawField
-        @UniqueLocationIdentity
-        void setTopOffset(UnsignedWord newTop);
+        void setTopOffset(UnsignedWord newTop, LocationIdentity topIdentity);
+
+        @RawFieldOffset
+        static int offsetOfTopOffset() {
+            // replaced
+            throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
+        }
 
         /** Offset of the limit of memory available for allocation. */
         @RawField
@@ -194,18 +204,18 @@ public final class HeapChunk {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getTopOffset(Header<?> that) {
         assert getTopPointer(that).isNonNull() : "Not safe: top currently points to NULL.";
-        return that.getTopOffset();
+        return that.getTopOffset(CHUNK_HEADER_TOP_IDENTITY);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getTopPointer(Header<?> that) {
-        return asPointer(that).add(that.getTopOffset());
+        return asPointer(that).add(that.getTopOffset(CHUNK_HEADER_TOP_IDENTITY));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setTopPointer(Header<?> that, Pointer newTop) {
         // Note that the address arithmetic also works for newTop == NULL, e.g. in TLAB allocation
-        that.setTopOffset(newTop.subtract(asPointer(that)));
+        that.setTopOffset(newTop.subtract(asPointer(that)), CHUNK_HEADER_TOP_IDENTITY);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -324,7 +334,7 @@ public final class HeapChunk {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord availableObjectMemory(Header<?> that) {
-        return that.getEndOffset().subtract(that.getTopOffset());
+        return that.getEndOffset().subtract(that.getTopOffset(CHUNK_HEADER_TOP_IDENTITY));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

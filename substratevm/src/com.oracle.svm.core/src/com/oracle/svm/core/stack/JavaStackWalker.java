@@ -474,7 +474,7 @@ public final class JavaStackWalker {
 
             DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkEagerDeoptimized(frame);
             if (deoptimizedFrame != null) {
-                if (!vistDeoptimizedFrame(sp, ip, deoptimizedFrame, visitor, data)) {
+                if (!visitDeoptimizedFrame(sp, ip, deoptimizedFrame, visitor, data)) {
                     return false;
                 }
             } else {
@@ -508,7 +508,7 @@ public final class JavaStackWalker {
 
     @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
     @RestrictHeapAccess(reason = "Whitelisted because some StackFrameVisitor implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED)
-    private static boolean vistDeoptimizedFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, ParameterizedStackFrameVisitor visitor, Object data) {
+    private static boolean visitDeoptimizedFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, ParameterizedStackFrameVisitor visitor, Object data) {
         return visitor.visitDeoptimizedFrame(sp, ip, deoptimizedFrame, data);
     }
 

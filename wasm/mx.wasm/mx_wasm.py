@@ -89,7 +89,8 @@ def get_jdk(forBuild=False):
 
 # Called from suite.py
 def graalwasm_standalone_deps():
-    return mx_truffle.resolve_truffle_dist_names()
+    include_truffle_runtime = not mx.env_var_to_bool("EXCLUDE_TRUFFLE_RUNTIME")
+    return mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=include_truffle_runtime)
 
 #
 # Gate runners.
@@ -540,15 +541,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     name="GraalWasm",
     short_name="gwa",
     dir_name="wasm",
-    standalone_dir_name='graalwasm-community-<version>-<graalvm_os>-<arch>',
-    standalone_dir_name_enterprise='graalwasm-<version>-<graalvm_os>-<arch>',
-    standalone_dependencies={
-        'gwal': ('', []), # GraalWasm license files
-    },
-    standalone_dependencies_enterprise={
-        'gwal': ('', []), # GraalWasm license files
-        'GraalVM enterprise license files': ('', ['LICENSE.txt', 'GRAALVM-README.md']),
-    },
     license_files=[],
     third_party_license_files=[],
     dependencies=[
@@ -566,7 +558,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             language="wasm",
         ),
     ],
-    installable=True,
     stability="experimental",
 ))
 
@@ -581,7 +572,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     truffle_jars=[],
     support_distributions=["wasm:WASM_GRAALVM_LICENSES"],
     priority=5,
-    installable=True,
     stability="experimental",
 ))
 

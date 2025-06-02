@@ -1033,8 +1033,9 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     }
 
     /**
-     * Generates the prolog of a
-     * {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#EagerEntryStub} method.
+     * Generates the prologue of a
+     * {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#EagerEntryStub} or
+     * {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#LazyEntryStub} method.
      */
     protected static class DeoptEntryStubContext extends SubstrateAArch64FrameContext {
         protected final CallingConvention callingConvention;
@@ -1059,8 +1060,8 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             masm.fmov(64, thirdParameter, fpReturnReg);
 
             /*
-             * Load DeoptimizedFrame. Perform this operation last, because the first argument
-             * register may overlap with the object return register.
+             * Pass the address of the frame to deoptimize as first argument. Do this last, because
+             * the first argument register may overlap with the object return register.
              */
             Register firstParameter = ValueUtil.asRegister(callingConvention.getArgument(0));
             masm.mov(64, firstParameter, registerConfig.getFrameRegister());
@@ -1070,7 +1071,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     }
 
     /**
-     * Generates the epilog of a {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#ExitStub}
+     * Generates the epilogue of a {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#ExitStub}
      * method.
      */
     protected static class DeoptExitStubContext extends SubstrateAArch64FrameContext {

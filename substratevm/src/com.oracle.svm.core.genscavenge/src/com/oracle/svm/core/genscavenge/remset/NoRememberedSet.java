@@ -70,6 +70,7 @@ public final class NoRememberedSet implements RememberedSet {
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public UnsignedWord getHeaderSizeOfUnalignedChunk(UnsignedWord objectSize) {
         return getHeaderSizeOfUnalignedChunk();
     }
@@ -88,6 +89,7 @@ public final class NoRememberedSet implements RememberedSet {
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void setObjectStartOffsetOfUnalignedChunk(UnalignedHeader chunk, UnsignedWord objectStartOffset) {
         assert objectStartOffset.equal(getHeaderSizeOfUnalignedChunk());
     }

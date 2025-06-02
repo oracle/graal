@@ -23,6 +23,8 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-53985) Add experimental option `ClassForNameRespectsClassLoader` that makes `Class.forName(...)` respect the class loader hierarchy.
 * (GR-59869) Implemented initial optimization of Java Vector API (JEP 338) operations in native images. See the compiler changelog for more details.
 * (GR-63268) Reflection and JNI queries do not require metadata entries to throw the expected JDK exception when querying a class that doesn't exist under `--exact-reachability-metadata` if the query cannot possibly be a valid class name
+* (GR-60208) Adds the Tracing Agent support for applications using the Foreign Function & Memory (FFM) API. The agent generates FFM configuration in _foreign-config.json_. Additionally, support for FFM configurations has been added to the `native-image-configure` tool.
+* (GR-64787) Enable `--install-exit-handlers` by default for executables and deprecate the option. If shared libraries were using this flag, the same functionality can be restored by using `-H:+InstallJavaExitHandlersForSharedLibrary`. 
 * (GR-47881) Remove the total number of loaded types, fields, and methods from the build output, deprecated these metrics in the build output schema, and removed already deprecated build output metrics.
 
 ## GraalVM for JDK 24 (Internal Version 24.2.0)

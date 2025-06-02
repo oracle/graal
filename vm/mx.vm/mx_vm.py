@@ -113,7 +113,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dependencies=['Truffle', 'PolyBench Launcher'],
     truffle_jars=['vm:PMH'],
     support_distributions=['vm:PMH_SUPPORT'],
-    installable=False,
 ))
 
 if mx.suite('tools', fatalIfMissing=False) is not None and mx.suite('graal-js', fatalIfMissing=False) is not None:
@@ -127,8 +126,6 @@ if mx.suite('tools', fatalIfMissing=False) is not None and mx.suite('graal-js', 
         dependencies=['Graal.js'],
         support_distributions=['tools:VISUALVM_GRAALVM_SUPPORT'],
         provided_executables=[('tools:VISUALVM_PLATFORM_SPECIFIC', './bin/<exe:jvisualvm>')],
-        installable=True,
-        extra_installable_qualifiers=['ce'],
         stability="supported",
     ))
 

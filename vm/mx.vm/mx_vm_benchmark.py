@@ -362,10 +362,11 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         def get_size_message(image_name, image_location):
             return FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(image_name, getsize(image_location), image_location)
 
-        bmSuiteArgs = bmSuiteArgs or ['base']
+        runArgs = self.runArgs(bmSuiteArgs)
+        runArgs = runArgs or ['base']
         out = ""
 
-        for arg in bmSuiteArgs:
+        for arg in runArgs:
             if arg == 'standalones':
                 # Standalones
                 for project in mx.projects():
@@ -383,7 +384,7 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                     launcher_name = mx_sdk_vm_impl.remove_exe_suffix(basename(location))
                     out += get_size_message(launcher_name, os.path.join(output_root, location))
             else:
-                mx.abort("FileSizeBenchmarkSuite expects 'base' or 'standalones' in bench suite arguments but got " + arg)
+                mx.abort("FileSizeBenchmarkSuite expects 'base' (default) or 'standalones' in runArgs but got " + arg)
 
         if out:
             mx.log(out, end='')

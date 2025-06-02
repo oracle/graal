@@ -82,6 +82,7 @@ public class CardTableBasedRememberedSet implements RememberedSet {
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public UnsignedWord getHeaderSizeOfUnalignedChunk(UnsignedWord objectSize) {
         return UnalignedChunkRememberedSet.getHeaderSize(objectSize);
     }
@@ -93,6 +94,7 @@ public class CardTableBasedRememberedSet implements RememberedSet {
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void setObjectStartOffsetOfUnalignedChunk(UnalignedHeader chunk, UnsignedWord objectStartOffset) {
         UnalignedChunkRememberedSet.setObjectStartOffset(chunk, objectStartOffset);
     }

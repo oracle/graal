@@ -71,7 +71,7 @@ import urllib.request
 import mx_sdk_vm
 import mx_sdk_vm_impl
 import mx_util
-from mx_benchmark import DataPoints, DataPoint, BenchmarkSuite
+from mx_benchmark import DataPoints, DataPoint, BenchmarkSuite, Vm, SingleBenchmarkExecutionContext
 from mx_sdk_vm_impl import svm_experimental_options
 
 _suite = mx.suite('sdk')
@@ -1482,7 +1482,6 @@ class NativeImageVM(GraalVm):
                     mx.abort(
                         f"Profile file {self.config.profile_path} does not exist "
                         f"even though the instrument run terminated successfully with exit code 0. "
-                        f"Try adding the '--install-exit-handlers' build option if it is not present."
                     )
                 print(f"Profile file {self.config.profile_path} sha1 is {mx.sha1OfFile(self.config.profile_path)}")
                 self._ensureSamplesAreInProfile(self.config.profile_path)
@@ -2815,16 +2814,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             custom_harness_command = BaristaBenchmarkSuite.BaristaCommand()
         super().__init__(custom_harness_command)
         self._version = None
-        self._context = None
         self._extra_run_options = []
-
-    @property
-    def context(self):
-        return self._context
-
-    @context.setter
-    def context(self, value):
-        self._context = value
 
     def readBaristaVersionFromPyproject(self):
         # tomllib was included in python standard library with version 3.11
@@ -2857,6 +2847,9 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
     def subgroup(self):
         return "graal-compiler"
+
+    def benchmarkName(self):
+        return self.execution_context.benchmark
 
     def benchmarkList(self, bmSuiteArgs):
         exclude = []
@@ -2892,14 +2885,17 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
         return self.baristaFilePath("barista")
 
     def baristaHarnessBenchmarkName(self):
-        return _baristaConfig["benchmarks"][self.context.benchmark].get("barista-bench-name", self.context.benchmark)
+        return _baristaConfig["benchmarks"][self.benchmarkName()].get("barista-bench-name", self.benchmarkName())
 
     def baristaHarnessBenchmarkWorkload(self):
-        return _baristaConfig["benchmarks"][self.context.benchmark].get("workload")
+        return _baristaConfig["benchmarks"][self.benchmarkName()].get("workload")
 
     def validateEnvironment(self):
         self.baristaProjectConfigurationPath()
         self.baristaHarnessPath()
+
+    def new_execution_context(self, vm: Vm, benchmarks: List[str], bmSuiteArgs: List[str]) -> SingleBenchmarkExecutionContext:
+        return SingleBenchmarkExecutionContext(self, vm, benchmarks, bmSuiteArgs)
 
     def register_tracker(self, name, tracker_type):
         if tracker_type in _baristaConfig["disable_trackers"]:
@@ -2934,7 +2930,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
         # Startup
         all_rules.append(mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
-            "benchmark": self.context.benchmark,
+            "benchmark": self.benchmarkName(),
             "metric.name": "request-time",
             "metric.type": "numeric",
             "metric.unit": "ms",
@@ -2947,7 +2943,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
         # Warmup
         all_rules.append(mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
-            "benchmark": self.context.benchmark,
+            "benchmark": self.benchmarkName(),
             "metric.name": "warmup",
             "metric.type": "numeric",
             "metric.unit": "op/s",
@@ -2960,7 +2956,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
         # Throughput
         all_rules.append(mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
-            "benchmark": self.context.benchmark,
+            "benchmark": self.benchmarkName(),
             "metric.name": "throughput",
             "metric.type": "numeric",
             "metric.unit": "op/s",
@@ -2973,7 +2969,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
         # Latency
         all_rules += [mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
-            "benchmark": self.context.benchmark,
+            "benchmark": self.benchmarkName(),
             "metric.name": "latency",
             "metric.type": "numeric",
             "metric.unit": "ms",
@@ -2992,7 +2988,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
         # Resource Usage
         all_rules += [mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
-            "benchmark": self.context.benchmark,
+            "benchmark": self.benchmarkName(),
             "metric.name": "rss",
             "metric.type": "numeric",
             "metric.unit": "MB",
@@ -3082,17 +3078,6 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
                 del datapoint["load-tester.command"]
         return datapoints
 
-    def _vmRun(self, vm, workdir, command, benchmarks, bmSuiteArgs):
-        self.enforce_single_benchmark(benchmarks)
-        self.context = BaristaBenchmarkSuite.RuntimeContext(self, vm, benchmarks[0], bmSuiteArgs)
-        return super()._vmRun(vm, workdir, command, benchmarks, bmSuiteArgs)
-
-    def enforce_single_benchmark(self, benchmarks):
-        if not isinstance(benchmarks, list):
-            raise TypeError(f"{self.__class__.__name__} expects to receive a list of benchmarks to run, instead got an instance of {benchmarks.__class__.__name__}! Please specify a single benchmark!")
-        if len(benchmarks) != 1:
-            raise ValueError(f"You have requested {benchmarks} to be run but {self.__class__.__name__} can only run a single benchmark at a time! Please specify a single benchmark!")
-
     class BaristaCommand(mx_benchmark.CustomHarnessCommand):
         """Maps a JVM command into a command tailored for the Barista harness.
         """
@@ -3151,7 +3136,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             jvm_vm_options = jvm_cmd[index_of_java_exe + 1:]
 
             # Verify that the run arguments don't already contain a "--mode" option
-            run_args = suite.runArgs(suite.context.bmSuiteArgs) + suite._extra_run_options
+            run_args = suite.runArgs(suite.execution_context.bmSuiteArgs) + suite._extra_run_options
             mode_pattern = r"^(?:-m|--mode)(=.*)?$"
             mode_match = self._regexFindInCommand(run_args, mode_pattern)
             if mode_match:
@@ -3174,37 +3159,6 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             barista_cmd += ["--mode", "jvm"]
             barista_cmd.append(barista_bench_name)
             return barista_cmd
-
-    class RuntimeContext():
-        """Container class for the runtime context of BaristaBenchmarkSuite.
-        """
-        def __init__(self, suite, vm, benchmark, bmSuiteArgs):
-            if not isinstance(suite, BaristaBenchmarkSuite):
-                raise TypeError(f"Expected an instance of {BaristaBenchmarkSuite.__name__}, instead got an instance of {suite.__class__.__name__}")
-            self._suite = suite
-            self._vm = vm
-            self._benchmark = benchmark
-            self._bmSuiteArgs = bmSuiteArgs
-
-        @property
-        def suite(self):
-            return self._suite
-
-        @property
-        def vm(self):
-            return self._vm
-
-        @property
-        def benchmark(self):
-            """The currently running benchmark.
-
-            Corresponds to `benchmarks[0]` in a suite method that has a `benchmarks` argument.
-            """
-            return self._benchmark
-
-        @property
-        def bmSuiteArgs(self):
-            return self._bmSuiteArgs
 
 
 mx_benchmark.add_bm_suite(BaristaBenchmarkSuite())
@@ -3959,24 +3913,25 @@ class NativeImageBenchmarkMixin(object):
         fallback_reason = self.fallback_mode_reason(bm_suite_args)
 
         vm = self.get_vm_registry().get_vm_from_suite_args(bm_suite_args)
-        effective_stages, complete_stage_list = vm.prepare_stages(self, bm_suite_args)
-        self.stages_info = StagesInfo(effective_stages, complete_stage_list, vm, bool(fallback_reason))
+        with self.new_execution_context(vm, benchmarks, bm_suite_args):
+            effective_stages, complete_stage_list = vm.prepare_stages(self, bm_suite_args)
+            self.stages_info = StagesInfo(effective_stages, complete_stage_list, vm, bool(fallback_reason))
 
-        if self.stages_info.fallback_mode:
-            # In fallback mode, all stages are run at once. There is matching code in `NativeImageVM.run_java` for this.
-            mx.log(f"Running benchmark in fallback mode (reason: {fallback_reason})")
-            datapoints += super_delegate.run(benchmarks, bm_suite_args)
-        else:
-            while self.stages_info.has_next_stage():
-                stage = self.stages_info.next_stage()
-                # Start the actual benchmark execution. The stages_info attribute will be used by the NativeImageVM to
-                # determine which stage to run this time.
-                stage_dps = super_delegate.run(benchmarks, bm_suite_args)
-                NativeImageBenchmarkMixin._inject_stage_keys(stage_dps, stage)
-                datapoints += stage_dps
+            if self.stages_info.fallback_mode:
+                # In fallback mode, all stages are run at once. There is matching code in `NativeImageVM.run_java` for this.
+                mx.log(f"Running benchmark in fallback mode (reason: {fallback_reason})")
+                datapoints += super_delegate.run(benchmarks, bm_suite_args)
+            else:
+                while self.stages_info.has_next_stage():
+                    stage = self.stages_info.next_stage()
+                    # Start the actual benchmark execution. The stages_info attribute will be used by the NativeImageVM to
+                    # determine which stage to run this time.
+                    stage_dps = super_delegate.run(benchmarks, bm_suite_args)
+                    NativeImageBenchmarkMixin._inject_stage_keys(stage_dps, stage)
+                    datapoints += stage_dps
 
-        self.stages_info = None
-        return datapoints
+            self.stages_info = None
+            return datapoints
 
     @staticmethod
     def _inject_stage_keys(dps: DataPoints, stage: Stage) -> None:

@@ -34,8 +34,8 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -55,9 +55,11 @@ import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.util.ImageHeapList;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Parses a small subset of the runtime arguments before the image heap is mapped and before the
@@ -68,16 +70,8 @@ import jdk.graal.compiler.api.replacements.Fold;
  */
 @AutomaticallyRegisteredImageSingleton
 public class IsolateArgumentParser {
-    private static final RuntimeOptionKey<?>[] OPTIONS = {
-                    SubstrateGCOptions.MinHeapSize,
-                    SubstrateGCOptions.MaxHeapSize,
-                    SubstrateGCOptions.MaxNewSize,
-                    SubstrateGCOptions.ReservedAddressSpaceSize,
-                    SubstrateOptions.ActiveProcessorCount,
-                    SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling,
-                    SubstrateOptions.ConcealedOptions.UsePerfData,
-                    SubstrateOptions.ConcealedOptions.MaxRAM
-    };
+    @SuppressWarnings("unchecked")//
+    private final List<RuntimeOptionKey<?>> options = (List<RuntimeOptionKey<?>>) ImageHeapList.createGeneric(RuntimeOptionKey.class);
     private static final CGlobalData<CCharPointer> OPTION_NAMES = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNames);
     private static final CGlobalData<CIntPointer> OPTION_NAME_POSITIONS = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNamePosition);
     private static final CGlobalData<CCharPointer> OPTION_TYPES = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionTypes);
@@ -86,11 +80,8 @@ public class IsolateArgumentParser {
     /**
      * All values (regardless of their type) are stored as 8 byte values. See
      * {@link IsolateArguments#setParsedArgs(CLongPointer)} for more information.
-     *
-     * For directly initializing this array, no method depending on
-     * {@link IsolateArgumentParser#singleton()} may be used.
      */
-    private final long[] parsedOptionValues = new long[getOptions0().length];
+    private long[] parsedOptionValues;
 
     private static final long K = 1024;
     private static final long M = K * K;
@@ -109,10 +100,23 @@ public class IsolateArgumentParser {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    public synchronized void register(RuntimeOptionKey<?> optionKey) {
+        assert optionKey != null;
+        assert singleton().parsedOptionValues == null;
+
+        singleton().options.add(optionKey);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public synchronized void sealOptions() {
+        singleton().parsedOptionValues = new long[getOptionCount()];
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static byte[] createOptionNames() {
         StringBuilder optionNames = new StringBuilder();
         for (int i = 0; i < getOptionCount(); i++) {
-            optionNames.append(getOptions()[i].getName());
+            optionNames.append(getOptions().get(i).getName());
             optionNames.append("\0");
         }
         return optionNames.toString().getBytes(StandardCharsets.ISO_8859_1);
@@ -138,7 +142,7 @@ public class IsolateArgumentParser {
         byte[] result = new byte[Byte.BYTES * getOptionCount()];
         ByteBuffer buffer = ByteBuffer.wrap(result).order(ByteOrder.nativeOrder());
         for (int i = 0; i < getOptionCount(); i++) {
-            Class<?> optionValueType = getOptions()[i].getDescriptor().getOptionValueType();
+            Class<?> optionValueType = getOptions().get(i).getDescriptor().getOptionValueType();
             buffer.put(OptionValueType.fromClass(optionValueType));
         }
         return result;
@@ -149,7 +153,7 @@ public class IsolateArgumentParser {
         byte[] result = new byte[Long.BYTES * getOptionCount()];
         ByteBuffer buffer = ByteBuffer.wrap(result).order(ByteOrder.nativeOrder());
         for (int i = 0; i < getOptionCount(); i++) {
-            RuntimeOptionKey<?> option = getOptions()[i];
+            RuntimeOptionKey<?> option = getOptions().get(i);
             VMError.guarantee(option.isIsolateCreationOnly(), "Options parsed by IsolateArgumentParser should all have the IsolateCreationOnly flag. %s doesn't", option);
             long value = toLong(option.getHostedValue(), option.getDescriptor().getOptionValueType());
             buffer.putLong(value);
@@ -173,18 +177,13 @@ public class IsolateArgumentParser {
     }
 
     @Fold
-    protected static RuntimeOptionKey<?>[] getOptions() {
-        return singleton().getOptions0();
-    }
-
-    @Fold
-    protected RuntimeOptionKey<?>[] getOptions0() {
-        return OPTIONS;
+    protected static List<RuntimeOptionKey<?>> getOptions() {
+        return singleton().options;
     }
 
     @Fold
     protected static int getOptionCount() {
-        return getOptions().length;
+        return getOptions().size();
     }
 
     @Uninterruptible(reason = "Still being initialized.")
@@ -296,7 +295,7 @@ public class IsolateArgumentParser {
 
     public void verifyOptionValues() {
         for (int i = 0; i < getOptionCount(); i++) {
-            RuntimeOptionKey<?> option = getOptions()[i];
+            RuntimeOptionKey<?> option = getOptions().get(i);
             if (shouldValidate(option)) {
                 validate(option, getOptionValue(i));
             }
@@ -336,7 +335,7 @@ public class IsolateArgumentParser {
     }
 
     protected Object getOptionValue(int index) {
-        Class<?> optionValueType = getOptions()[index].getDescriptor().getOptionValueType();
+        Class<?> optionValueType = getOptions().get(index).getDescriptor().getOptionValueType();
         long value = parsedOptionValues[index];
         if (optionValueType == Boolean.class) {
             assert value == 0L || value == 1L : value;
@@ -553,9 +552,9 @@ public class IsolateArgumentParser {
 
     @Fold
     public static int getOptionIndex(RuntimeOptionKey<?> key) {
-        RuntimeOptionKey<?>[] options = getOptions();
-        for (int i = 0; i < options.length; i++) {
-            if (options[i] == key) {
+        List<RuntimeOptionKey<?>> options = getOptions();
+        for (int i = 0; i < options.size(); i++) {
+            if (options.get(i) == key) {
                 return i;
             }
         }

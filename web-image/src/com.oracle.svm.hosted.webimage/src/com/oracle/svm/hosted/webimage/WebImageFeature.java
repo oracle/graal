@@ -172,7 +172,7 @@ public class WebImageFeature implements InternalFeature {
         }
 
         // SystemJimfsFileSystemProvider uses reflection to look up and call this method
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass("com.google.common.jimfs.JimfsFileSystem"), "toPath", URI.class));
+        RuntimeReflection.register(ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass("org.graalvm.shadowed.com.google.common.jimfs.JimfsFileSystem"), "toPath", URI.class));
 
         /*
          * The constructors of these classes are package-private to prevent user code from creating
@@ -281,17 +281,17 @@ public class WebImageFeature implements InternalFeature {
 
         // This class gets initialized, causing the "unintentionally initialized at build time"
         // error. The initializer is simple and does not depend on other classes, so just allow it.
-        rci.initializeAtBuildTime("com.google.common.jimfs.SystemJimfsFileSystemProvider", "service provider");
-        rci.initializeAtBuildTime("com.google.common.collect.MapMakerInternalMap", "service provider");
-        rci.initializeAtBuildTime("com.google.common.collect.MapMakerInternalMap$1", "service provider");
-        rci.initializeAtBuildTime("com.google.common.collect.MapMakerInternalMap$EntrySet", "service provider");
-        rci.initializeAtBuildTime("com.google.common.collect.MapMakerInternalMap$StrongKeyWeakValueSegment", "service provider");
-        rci.initializeAtBuildTime("com.google.common.collect.MapMakerInternalMap$StrongKeyWeakValueEntry$Helper", "service provider");
-        rci.initializeAtBuildTime("com.google.common.base.Equivalence$Equals", "service provider");
+        rci.initializeAtBuildTime("org.graalvm.shadowed.com.google.common.jimfs.SystemJimfsFileSystemProvider", "service provider");
+        rci.initializeAtBuildTime("org.graalvm.shadowed.com.google.common.collect.MapMakerInternalMap", "service provider");
+        rci.initializeAtBuildTime("org.graalvm.shadowed.com.google.common.collect.MapMakerInternalMap$1", "service provider");
+        rci.initializeAtBuildTime("org.graalvm.shadowed.com.google.common.collect.MapMakerInternalMap$EntrySet", "service provider");
+        rci.initializeAtBuildTime("org.graalvm.shadowed.com.google.common.collect.MapMakerInternalMap$StrongKeyWeakValueSegment", "service provider");
+        rci.initializeAtBuildTime("org.graalvm.shadowed.com.google.common.collect.MapMakerInternalMap$StrongKeyWeakValueEntry$Helper", "service provider");
+        rci.initializeAtBuildTime("org.graalvm.shadowed.com.google.common.base.Equivalence$Equals", "service provider");
 
         // Initializing this class at build-time helps in determining the type of its static field
         // "systemProvider", which is necessary to compile some reflective accesses to the object.
-        rci.initializeAtBuildTime("com.google.common.jimfs.Jimfs", "looks for service provider");
+        rci.initializeAtBuildTime("org.graalvm.shadowed.com.google.common.jimfs.Jimfs", "looks for service provider");
 
         rci.initializeAtRunTime(WebImageTempFileHelper.class, "instances of Random are not allowed in the image heap");
         rci.initializeAtRunTime(WebImageFileSystem.class, "Static fields need to read system properties at runtime");

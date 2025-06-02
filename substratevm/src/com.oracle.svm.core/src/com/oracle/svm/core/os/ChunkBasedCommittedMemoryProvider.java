@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.os;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -60,6 +62,7 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
     }
 
     /** Returns a non-null value or throws a pre-allocated exception. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public Pointer allocateUnalignedChunk(UnsignedWord nbytes) {
         Pointer result = allocate(nbytes, getAlignmentForUnalignedChunks(), false, NmtCategory.JavaHeap);
         if (result.isNull()) {
@@ -72,6 +75,7 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
      * This method returns {@code true} if the memory returned by {@link #allocateUnalignedChunk} is
      * guaranteed to be zeroed.
      */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean areUnalignedChunksZeroed() {
         return false;
     }
