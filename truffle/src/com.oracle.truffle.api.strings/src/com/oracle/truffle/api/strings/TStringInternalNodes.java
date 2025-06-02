@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2009,7 +2009,8 @@ final class TStringInternalNodes {
                     TStringOps.arraycopyWithStride(node, arrayJS, offsetJS + byteArrayBaseOffset(), 0, 0, array, offset + byteArrayBaseOffset(), 0, 0, length << stride);
                 }
             }
-            TruffleString ret = TruffleString.createFromByteArray(array, offset, length, stride, Encoding.UTF_16, codePointLength, codeRange, true);
+            int hash = TStringUnsafe.getJavaStringHashMasked(javaString);
+            TruffleString ret = TruffleString.createFromByteArray(array, offset, length, stride, Encoding.UTF_16, codePointLength, codeRange, hash, true);
             if (length == javaString.length()) {
                 assert charOffset == 0;
                 TruffleString wrapped = TruffleString.createWrapJavaString(javaString, codePointLength, codeRange);
@@ -2039,7 +2040,12 @@ final class TStringInternalNodes {
                                 arrayA, offsetA, a.stride(), 0,
                                 bytes, byteArrayBaseOffset(), stride, 0, a.length());
             }
-            return TStringUnsafe.createJavaString(bytes, stride);
+            int javaStringHash = a.hashCode;
+            if (javaStringHash == AbstractTruffleString.MASKED_ZERO_HASH_CODE) {
+                // hash code could be 0 or -1, treat the hash code as uninitialized
+                javaStringHash = 0;
+            }
+            return TStringUnsafe.createJavaString(bytes, stride, javaStringHash);
         }
     }
 
@@ -2223,7 +2229,7 @@ final class TStringInternalNodes {
             CompilerAsserts.partialEvaluationConstant(errorHandler);
             if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS && a.isImmutable() && TSCodeRange.isMoreRestrictiveThan(codeRangeA, targetEncoding.maxCompatibleCodeRange)) {
                 if (a.stride() == 0) {
-                    return TruffleString.createFromArray(arrayA, a.offset(), a.length(), 0, targetEncoding, codePointLengthA, codeRangeA, false);
+                    return TruffleString.createFromByteArray(arrayA, a.offset(), a.length(), 0, targetEncoding, codePointLengthA, codeRangeA, false);
                 }
                 int targetStride = Stride.fromCodeRange(codeRangeA, targetEncoding);
                 byte[] array = TStringOps.arraycopyOfWithStride(node, arrayA, offsetA, a.length(), a.stride(), a.length(), targetStride);

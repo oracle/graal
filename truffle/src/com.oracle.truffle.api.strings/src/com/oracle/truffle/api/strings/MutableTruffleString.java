@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,7 +71,7 @@ import com.oracle.truffle.api.strings.TruffleString.Encoding;
 public final class MutableTruffleString extends AbstractTruffleString {
 
     private MutableTruffleString(Object data, int offset, int length, int stride, int codePointLength, Encoding encoding) {
-        super(data, offset, length, stride, encoding, 0, codePointLength, TSCodeRange.getUnknownCodeRangeForEncoding(encoding.id));
+        super(data, offset, length, stride, encoding, 0, codePointLength, TSCodeRange.getUnknownCodeRangeForEncoding(encoding.id), 0);
         assert data instanceof byte[] || data instanceof NativePointer;
     }
 
