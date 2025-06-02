@@ -1070,6 +1070,23 @@ public class SubstrateOptions {
     @Option(help = "Emit debuginfo debug.svm.imagebuild.* sections with detailed image-build options.")//
     public static final HostedOptionKey<Boolean> UseImagebuildDebugSections = new HostedOptionKey<>(true);
 
+    @APIOption(name = "install-exit-handlers", deprecated = "--install-exit-handlers is enabled by default for executables and it can likely be removed. To use this option for the shared libraries, please use -H:+InstallExitHandlers.")//
+    @Option(help = "Provide java.lang.Terminator exit handlers. Default value is true for executables and false for shared libraries because this option installs signal handlers.", type = Expert, stability = OptionStability.EXPERIMENTAL)//
+    protected static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(null) {
+        @Override
+        public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+            if (values.containsKey(this)) {
+                return (Boolean) values.get(this);
+            }
+            return ImageInfo.isExecutable();
+        }
+
+        @Override
+        public Boolean getValue(OptionValues values) {
+            return getValueOrDefault(values.getMap());
+        }
+    };
+
     @Fold
     public static boolean supportCompileInIsolates() {
         UserError.guarantee(!ConcealedOptions.SupportCompileInIsolates.getValue() || SpawnIsolates.getValue(),
@@ -1141,11 +1158,6 @@ public class SubstrateOptions {
         @Option(help = "The largest page size of machines that can run the image. The default of 0 automatically selects a typically suitable value.")//
         protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
 
-        /** Use {@link SubstrateOptions#needsExitHandlers()} instead. */
-        @APIOption(name = "install-exit-handlers")//
-        @Option(help = "Provide java.lang.Terminator exit handlers", type = User)//
-        protected static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
-
         @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
         public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);
 
@@ -1168,11 +1180,6 @@ public class SubstrateOptions {
                 throw UserError.invalidOptionValue(key, key.getValue(), "Dumping runtime compiled code is not supported on Windows.");
             }
         });
-    }
-
-    @Fold
-    public static boolean needsExitHandlers() {
-        return ConcealedOptions.InstallExitHandlers.getValue() || VMInspectionOptions.hasJfrSupport() || VMInspectionOptions.hasNativeMemoryTrackingSupport();
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//

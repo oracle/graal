@@ -25,6 +25,8 @@
 package jdk.graal.compiler.debug;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 
 import jdk.vm.ci.code.Architecture;
@@ -255,8 +257,10 @@ public class GraalError extends Error {
      * @param args parameters to String.format - parameters that implement {@link Iterable} will be
      *            expanded into a [x, x, ...] representation.
      */
+    @SuppressWarnings("this-escape")
     public GraalError(String msg, Object... args) {
         super(format(msg, args));
+        potentiallyAddContext(args);
     }
 
     /**
@@ -272,8 +276,42 @@ public class GraalError extends Error {
      * This constructor creates a {@link GraalError} for a given causing Throwable instance with
      * detailed error message.
      */
+    @SuppressWarnings("this-escape")
     public GraalError(Throwable cause, String msg, Object... args) {
         super(format(msg, args), cause);
+        potentiallyAddContext(args);
+    }
+
+    private void potentiallyAddContext(Object[] args) {
+        if (args != null) {
+            List<String> betterContext = new ArrayList<>();
+            for (int i = 0; i < args.length; i++) {
+                if (args[i] instanceof Iterable<?>) {
+                    for (Object o : (Iterable<?>) args[i]) {
+                        String potentialBetterString = potentialBetterString(o);
+                        if (potentialBetterString != null) {
+                            betterContext.add(potentialBetterString);
+                        }
+                    }
+                } else {
+                    String potentialBetterString = potentialBetterString(args[i]);
+                    if (potentialBetterString != null) {
+                        betterContext.add(potentialBetterString);
+                    }
+                }
+            }
+            if (!betterContext.isEmpty()) {
+                addContext(Arrays.toString(betterContext.toArray()));
+            }
+        }
+    }
+
+    private static String potentialBetterString(Object o) {
+        Object potentialBetterString = Assertions.decorateObjectErrorContext(o);
+        if (!potentialBetterString.toString().equals(o.toString())) {
+            return potentialBetterString.toString();
+        }
+        return null;
     }
 
     /**
@@ -296,10 +334,7 @@ public class GraalError extends Error {
 
     @Override
     public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append(super.toString());
-        str.append(context());
-        return str.toString();
+        return super.toString() + context();
     }
 
     public String context() {

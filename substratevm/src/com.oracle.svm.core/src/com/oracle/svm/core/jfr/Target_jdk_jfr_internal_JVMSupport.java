@@ -24,12 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
-import java.lang.reflect.Method;
-import java.time.Duration;
 import java.time.LocalDateTime;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
@@ -39,40 +35,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.jfr.Recording;
-import jdk.jfr.internal.JVMSupport;
-
-/**
- * Compatibility class to handle incompatible changes between JDK 21 and JDK 22. Once support for
- * JDKs prior to 22 is dropped, these the methods can be called directly and the substitutions can
- * go away.
- */
-@SuppressWarnings("unused")
-public final class JfrJdkCompatibility {
-    private JfrJdkCompatibility() {
-    }
-
-    public static String makeFilename(Recording recording) {
-        return Target_jdk_jfr_internal_JVMSupport.makeFilename(recording);
-    }
-
-    public static String formatTimespan(Duration dValue, String separation) {
-        return Target_jdk_jfr_internal_util_ValueFormatter.formatTimespan(dValue, separation);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void createNativeJFR() {
-        try {
-            Method createJFR = ReflectionUtil.lookupMethod(JVMSupport.class, "createJFR");
-            createJFR.invoke(null);
-        } catch (ReflectiveOperationException | ClassCastException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
-}
 
 @TargetClass(className = "jdk.jfr.internal.JVMSupport")
 final class Target_jdk_jfr_internal_JVMSupport {
@@ -82,7 +46,12 @@ final class Target_jdk_jfr_internal_JVMSupport {
 
     @Substitute
     public static String makeFilename(Recording recording) {
-        return JfrFilenameUtil.makeFilename(recording);
+        long pid = ProcessProperties.getProcessID();
+        LocalDateTime now = LocalDateTime.now();
+        String date = Target_jdk_jfr_internal_util_ValueFormatter.formatDateTime(now);
+        String idText = recording == null ? "" : "-id-" + recording.getId();
+        String imageName = SubstrateOptions.Name.getValue();
+        return imageName + "-pid-" + pid + idText + "-" + date + ".jfr";
     }
 }
 
@@ -96,23 +65,5 @@ final class JfrNotAvailableTransformer implements FieldValueTransformer {
 @TargetClass(className = "jdk.jfr.internal.util.ValueFormatter", onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_util_ValueFormatter {
     @Alias
-    public static native String formatTimespan(Duration dValue, String separation);
-
-    @Alias
     public static native String formatDateTime(LocalDateTime time);
-}
-
-final class JfrFilenameUtil {
-    public static String makeFilename(Recording recording) {
-        long pid = ProcessProperties.getProcessID();
-        String date = getFormatDateTime();
-        String idText = recording == null ? "" : "-id-" + recording.getId();
-        String imageName = SubstrateOptions.Name.getValue();
-        return imageName + "-pid-" + pid + idText + "-" + date + ".jfr";
-    }
-
-    private static String getFormatDateTime() {
-        LocalDateTime now = LocalDateTime.now();
-        return Target_jdk_jfr_internal_util_ValueFormatter.formatDateTime(now);
-    }
 }
