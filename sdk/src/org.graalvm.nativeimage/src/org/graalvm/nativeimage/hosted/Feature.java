@@ -54,6 +54,10 @@ import java.util.function.Predicate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
+import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
+import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
+import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
 
 /**
  * Features allow clients to intercept the native image generation and run custom initialization
@@ -177,26 +181,26 @@ public interface Feature {
          * reflection at runtime. All registrations should happen in
          * {@link Feature#afterRegistration}.
          */
-        RuntimeReflection getRuntimeReflection();
+        ReflectiveAccess getReflectiveAccess();
 
         /**
          * Returns the instance of {@link RuntimeResourceAccess} used to register resources for
          * runtime access. All registrations should happen in {@link Feature#afterRegistration}.
          */
-        RuntimeResourceAccess getRuntimeResourceAccess();
+        ResourceAccess getResourceAccess();
 
         /**
          * Returns the instance of {@link RuntimeJNIAccess} used to register elements for JNI access
          * at runtime. All registrations should happen in {@link Feature#afterRegistration}.
          */
-        RuntimeJNIAccess getRuntimeJNIAccess();
+        JNIAccess getJNIAccess();
 
         /**
          * Returns the instance of {@link RuntimeForeignAccess} used to register elements for
          * foreign access at runtime. All registrations should happen in
          * {@link Feature#afterRegistration}.
          */
-        RuntimeForeignAccess getRuntimeForeignAccess();
+        ForeignAccess getForeignAccess();
     }
 
     /**
