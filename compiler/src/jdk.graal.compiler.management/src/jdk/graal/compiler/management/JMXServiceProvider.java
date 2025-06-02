@@ -27,18 +27,20 @@ package jdk.graal.compiler.management;
 import static jdk.graal.compiler.serviceprovider.GraalServices.getCurrentThreadId;
 
 import java.io.IOException;
+import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-
-import com.sun.management.HotSpotDiagnosticMXBean;
-import jdk.graal.compiler.serviceprovider.JMXService;
-import jdk.graal.compiler.serviceprovider.ServiceProvider;
-
-import com.sun.management.ThreadMXBean;
+import java.util.concurrent.TimeUnit;
 
 import javax.management.MBeanServer;
+
+import com.sun.management.HotSpotDiagnosticMXBean;
+import com.sun.management.ThreadMXBean;
+
+import jdk.graal.compiler.serviceprovider.JMXService;
+import jdk.graal.compiler.serviceprovider.ServiceProvider;
 
 /**
  * Implementation of {@link JMXService}.
@@ -94,6 +96,62 @@ public class JMXServiceProvider extends JMXService {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Reports information about time in the garbage collector.
+     */
+    static class GCTimeStatisticsImpl implements GCTimeStatistics {
+
+        private final List<GarbageCollectorMXBean> gcs;
+        private final long startTimeNanos;
+        private final long beforeCount;
+        private final long beforeMillis;
+
+        GCTimeStatisticsImpl(List<GarbageCollectorMXBean> gcs) {
+            this.gcs = gcs;
+            long totalCount = 0;
+            long totalMillis = 0;
+            for (GarbageCollectorMXBean gc : gcs) {
+                totalCount += gc.getCollectionCount();
+                totalMillis += gc.getCollectionTime();
+            }
+            beforeCount = totalCount;
+            beforeMillis = totalMillis;
+            startTimeNanos = System.nanoTime();
+        }
+
+        @Override
+        public long getGCTimeMills() {
+            long afterMillis = 0;
+            for (GarbageCollectorMXBean gc : gcs) {
+                afterMillis += gc.getCollectionTime();
+            }
+            return afterMillis - beforeMillis;
+        }
+
+        @Override
+        public long getGCCount() {
+            long afterCount = 0;
+            for (GarbageCollectorMXBean gc : gcs) {
+                afterCount += gc.getCollectionCount();
+            }
+            return afterCount - beforeCount;
+        }
+
+        @Override
+        public long getElapsedTimeMillis() {
+            return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTimeNanos);
+        }
+    }
+
+    @Override
+    protected GCTimeStatistics getGCTimeStatistics() {
+        List<GarbageCollectorMXBean> gcs = ManagementFactory.getGarbageCollectorMXBeans();
+        if (gcs != null) {
+            return new GCTimeStatisticsImpl(gcs);
+        }
+        return null;
     }
 
     private void initHotSpotMXBean() {

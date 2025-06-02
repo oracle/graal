@@ -206,32 +206,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         // @formatter:on
     }
 
-    /**
-     * Records time spent in {@link #apply(StructuredGraph, Object, boolean)}.
-     */
-    private final TimerKey timer;
-
-    /**
-     * Counts calls to {@link #apply(StructuredGraph, Object, boolean)}.
-     */
-    private final CounterKey executionCount;
-
-    /**
-     * Accumulates the {@linkplain Graph#getNodeCount() live node count} of all graphs sent to
-     * {@link #apply(StructuredGraph, Object, boolean)}.
-     */
-    private final CounterKey inputNodesCount;
-
-    /**
-     * Captures the change in {@linkplain Graph#getEdgeModificationCount() edges modified} of all
-     * graphs sent to {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
-     */
-    private final CounterKey edgeModificationCount;
-
-    /**
-     * Records memory usage within {@link #apply(StructuredGraph, Object, boolean)}.
-     */
-    private final MemUseTrackerKey memUseTracker;
+    private final BasePhaseStatistics statistics;
 
     public static class BasePhaseStatistics {
         /**
@@ -268,6 +243,27 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             inputNodesCount = DebugContext.counter("PhaseNodes_%s", clazz).doc("Number of nodes input to phase.");
             edgeModificationCount = DebugContext.counter("PhaseEdgeModification_%s", clazz).doc("Graphs edges modified by a phase.");
         }
+
+        public DebugCloseable start(StructuredGraph graph, DebugContext debug) {
+            if (debug.isTimeEnabled() || debug.isCountEnabled() || debug.isMemUseTrackingEnabled()) {
+                return new DebugCloseable() {
+                    final int edgesBefore = graph.getEdgeModificationCount();
+                    final DebugCloseable t = timer.start(debug);
+                    final DebugCloseable m = memUseTracker.start(debug);
+                    final int nodeCount = graph.getNodeCount();
+
+                    @Override
+                    public void close() {
+                        inputNodesCount.add(debug, nodeCount);
+                        executionCount.increment(debug);
+                        edgeModificationCount.add(debug, graph.getEdgeModificationCount() - edgesBefore);
+                        t.close();
+                        m.close();
+                    }
+                };
+            }
+            return null;
+        }
     }
 
     private static final ClassValue<BasePhaseStatistics> statisticsClassValue = new ClassValue<>() {
@@ -282,12 +278,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     }
 
     protected BasePhase() {
-        BasePhaseStatistics statistics = getBasePhaseStatistics(getClass());
-        timer = statistics.timer;
-        executionCount = statistics.executionCount;
-        memUseTracker = statistics.memUseTracker;
-        inputNodesCount = statistics.inputNodesCount;
-        edgeModificationCount = statistics.edgeModificationCount;
+        this.statistics = getBasePhaseStatistics(getClass());
     }
 
     /**
@@ -442,8 +433,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         try (DebugContext.Scope s = debug.scope(getName(), this);
                         CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName(), graph) : null;
                         DebugCloseable l = graph.getOptimizationLog().enterPhase(getName());
-                        DebugCloseable a = timer.start(debug);
-                        DebugCloseable c = memUseTracker.start(debug)) {
+                        DebugCloseable a = statistics.start(graph, debug)) {
 
             int sizeBefore = 0;
             int edgesBefore = graph.getEdgeModificationCount();
@@ -458,7 +448,6 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             if (dumpGraph && debug.areScopesEnabled()) {
                 dumpedBefore = dumpBefore(graph, context, isTopLevel, true);
             }
-            inputNodesCount.add(debug, graph.getNodeCount());
 
             // This is a manual version of a try/resource pattern since the close operation might
             // want to know whether the run call completed with an exception or not.
@@ -476,8 +465,6 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 }
             }
 
-            executionCount.increment(debug);
-            edgeModificationCount.add(debug, graph.getEdgeModificationCount() - edgesBefore);
             if (verifySizeContract) {
                 if (!before.isCurrent()) {
                     int sizeAfter = NodeCostUtil.computeGraphSize(graph);
