@@ -154,6 +154,8 @@ public final class UnimplementedGraalIntrinsics {
             // HotSpot runtime does not implement C2Compiler::is_intrinsic_supported for the
             // following intrinsics properly
             add(ignore,
+                            // JDK-8355644
+                            "java/lang/Math.cbrt(D)D",
                             // JDK-8338694
                             "java/lang/Math.tanh(D)D",
                             // JDK-8309130
