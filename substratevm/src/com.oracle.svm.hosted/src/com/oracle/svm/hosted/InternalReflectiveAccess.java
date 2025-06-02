@@ -27,26 +27,27 @@ package com.oracle.svm.hosted;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
+import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.AccessCondition;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
+import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
 
-public final class InternalRuntimeReflection implements RuntimeReflection {
+public final class InternalReflectiveAccess implements ReflectiveAccess {
 
-    private final RuntimeReflectionSupport rrsInstance;
+    private final ReflectionDataBuilder rrsInstance;
 
-    InternalRuntimeReflection() {
-        rrsInstance = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+    public InternalReflectiveAccess() {
+        rrsInstance = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
     }
 
     @Override
     public void register(AccessCondition condition, Class<?>... classes) {
         for (Class<?> clazz : classes) {
             rrsInstance.register(condition, clazz);
-            registerClassMembers(condition, clazz);
+            rrsInstance.registerClassMetadata(condition, clazz);
         }
     }
 
@@ -54,10 +55,10 @@ public final class InternalRuntimeReflection implements RuntimeReflection {
     public void registerClassLookup(AccessCondition condition, String className) {
         try {
             Class<?> clazz = Class.forName(className, false, ClassLoader.getSystemClassLoader());
-            registerClassMembers(condition, clazz);
+            rrsInstance.registerClassMetadata(condition, clazz);
         } catch (Throwable t) {
+            rrsInstance.registerClassLookup(condition, className);
         }
-        rrsInstance.registerClassLookup(condition, className);
     }
 
     @Override
@@ -88,27 +89,14 @@ public final class InternalRuntimeReflection implements RuntimeReflection {
 
     @Override
     public void registerForSerialization(AccessCondition condition, Class<?>... classes) {
-        register(condition, classes);
+        for (Class<?> clazz : classes) {
+            rrsInstance.registerClassMetadata(condition, clazz);
+        }
         RuntimeSerializationSupport.singleton().register(condition, classes);
     }
 
     @Override
     public Class<?> registerProxy(AccessCondition condition, Class<?>... interfaces) {
-        return ImageSingletons.lookup(RuntimeProxyCreationSupport.class).addProxyClass(AccessCondition.always(), interfaces);
-    }
-
-    private void registerClassMembers(AccessCondition condition, Class<?> clazz) {
-        rrsInstance.registerAllClassesQuery(condition, clazz);
-        rrsInstance.registerAllDeclaredClassesQuery(condition, clazz);
-        rrsInstance.registerAllDeclaredMethodsQuery(condition, true, clazz);
-        rrsInstance.registerAllMethodsQuery(condition, true, clazz);
-        rrsInstance.registerAllDeclaredConstructorsQuery(condition, true, clazz);
-        rrsInstance.registerAllConstructorsQuery(condition, true, clazz);
-        rrsInstance.registerAllFieldsQuery(condition, true, clazz);
-        rrsInstance.registerAllDeclaredFieldsQuery(condition, true, clazz);
-        rrsInstance.registerAllNestMembersQuery(condition, clazz);
-        rrsInstance.registerAllPermittedSubclassesQuery(condition, clazz);
-        rrsInstance.registerAllRecordComponentsQuery(condition, clazz);
-        rrsInstance.registerAllSignersQuery(condition, clazz);
+        return ImageSingletons.lookup(RuntimeProxyCreationSupport.class).addProxyClass(condition, interfaces);
     }
 }

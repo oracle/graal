@@ -228,7 +228,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
-    void registerClassMetadata(AccessCondition condition, Class<?> clazz) {
+    public void registerClassMetadata(AccessCondition condition, Class<?> clazz) {
         registerAllDeclaredFieldsQuery(condition, true, clazz);
         registerAllFieldsQuery(condition, true, clazz);
         registerAllDeclaredMethodsQuery(condition, true, clazz);
