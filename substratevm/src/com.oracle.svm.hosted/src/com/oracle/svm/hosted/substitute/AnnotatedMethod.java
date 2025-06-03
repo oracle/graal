@@ -150,6 +150,11 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
     }
 
     @Override
+    public boolean isDeclared() {
+        return original.isClassInitializer();
+    }
+
+    @Override
     public boolean isClassInitializer() {
         return original.isClassInitializer();
     }

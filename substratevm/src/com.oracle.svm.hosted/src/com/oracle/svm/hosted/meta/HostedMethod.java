@@ -463,6 +463,11 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
+    public boolean isDeclared() {
+        return wrapped.isDeclared();
+    }
+
+    @Override
     public boolean isClassInitializer() {
         return wrapped.isClassInitializer();
     }
