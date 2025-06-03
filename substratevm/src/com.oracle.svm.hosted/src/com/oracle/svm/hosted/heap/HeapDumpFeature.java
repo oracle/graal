@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 
+import com.oracle.svm.core.encoder.SymbolEncoder;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -144,12 +145,13 @@ public class HeapDumpFeature implements InternalFeature {
         /* Write the class and field information. */
         int totalFieldCount = 0;
         int classCount = 0;
+        SymbolEncoder symbolEncoder = SymbolEncoder.singleton();
         EconomicMap<String, Integer> fieldNames = EconomicMap.create();
         for (SharedType type : types) {
             if (type.isInstanceClass()) {
                 ArrayList<SharedField> instanceFields = collectFields(type.getInstanceFields(false));
                 ArrayList<SharedField> staticFields = collectFields(type.getStaticFields());
-                if (instanceFields.size() == 0 && staticFields.size() == 0) {
+                if (instanceFields.isEmpty() && staticFields.isEmpty()) {
                     continue;
                 }
 
@@ -162,12 +164,12 @@ public class HeapDumpFeature implements InternalFeature {
 
                 /* Write direct instance fields. */
                 for (SharedField field : instanceFields) {
-                    encodeField(field, output, fieldNames);
+                    encodeField(field, output, fieldNames, symbolEncoder);
                 }
 
                 /* Write static fields. */
                 for (SharedField field : staticFields) {
-                    encodeField(field, output, fieldNames);
+                    encodeField(field, output, fieldNames, symbolEncoder);
                 }
             }
         }
@@ -207,11 +209,12 @@ public class HeapDumpFeature implements InternalFeature {
         return result;
     }
 
-    private static void encodeField(SharedField field, UnsafeArrayTypeWriter output, EconomicMap<String, Integer> fieldNames) {
+    private static void encodeField(SharedField field, UnsafeArrayTypeWriter output, EconomicMap<String, Integer> fieldNames, SymbolEncoder symbolEncoder) {
         int location = field.getLocation();
         assert location >= 0;
         output.putU1(getType(field).ordinal());
-        output.putUV(addFieldName(field.getName(), fieldNames));
+        String encodedFieldName = symbolEncoder.encodeField(field.getName(), field.getDeclaringClass().getClass());
+        output.putUV(addFieldName(encodedFieldName, fieldNames));
         output.putUV(location);
     }
 

@@ -86,6 +86,7 @@ import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import com.oracle.svm.core.code.RuntimeMetadataEncoding;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -159,6 +160,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     private final CodeInfoEncoder.Encoders encoders;
     private final ReflectionDataAccessors accessors;
     private final ReflectionDataBuilder dataBuilder;
+    private final SymbolEncoder symbolEncoder = SymbolEncoder.singleton();
     private TreeSet<HostedType> sortedTypes = new TreeSet<>(Comparator.comparingLong(t -> t.getHub().getTypeID()));
     private Map<HostedType, ClassMetadata> classData = new HashMap<>();
     private Map<HostedType, Map<Object, FieldMetadata>> fieldData = new HashMap<>();
@@ -342,9 +344,14 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
     private static final Method getEnclosingMethod0 = ReflectionUtil.lookupMethod(Class.class, "getEnclosingMethod0");
 
-    private static Object getEnclosingMethodInfo(Class<?> clazz) {
+    private Object getEnclosingMethodInfo(Class<?> clazz) {
         try {
-            return getEnclosingMethod0.invoke(clazz);
+            Object[] enclosingMethod = (Object[]) getEnclosingMethod0.invoke(clazz);
+            if (enclosingMethod == null || enclosingMethod[1] == null) {
+                return enclosingMethod;
+            }
+            enclosingMethod[1] = symbolEncoder.encodeMethod((String) enclosingMethod[1], clazz);
+            return enclosingMethod;
         } catch (InvocationTargetException e) {
             if (e.getCause() instanceof LinkageError) {
                 return e.getCause(); /* It's rethrown at run time. */

@@ -59,6 +59,7 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -82,6 +83,7 @@ import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.FallbackExecutor.Options;
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.OS;
+import com.oracle.svm.core.SharedConstants;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VM;
@@ -131,6 +133,16 @@ public class NativeImage {
     static final String graalvmVendorVersion = VM.getVendorVersion();
     private static final String ALL_UNNAMED = "ALL-UNNAMED";
     static final String graalvmVersion = System.getProperty("org.graalvm.version", "dev");
+
+    /**
+     * The path to a temporary directory that is available during the process lifetime of the
+     * driver. The builder process can retrieve the directory path through the environment variable
+     * {@link SharedConstants#DRIVER_TEMP_DIR_ENV_VARIABLE}. The directory is created via
+     * {@link ArchiveSupport#createTempDir} and is therefore removed by the
+     * {@link Runtime#addShutdownHook shutdown hook}.
+     */
+    private final Path driverTempDir;
+    private static final String DRIVER_TEMP_DIR_PREFIX = "driverRoot-";
 
     private static Map<String, String[]> getCompilerFlags() {
         Map<String, String[]> result = new HashMap<>();
@@ -353,6 +365,7 @@ public class NativeImage {
         protected final List<String> args;
 
         private HostFlags hostFlags;
+        private Path driverTempDir;
 
         BuildConfiguration(BuildConfiguration original) {
             modulePathBuild = original.modulePathBuild;
@@ -362,6 +375,7 @@ public class NativeImage {
             libJvmciDir = original.libJvmciDir;
             args = original.args;
             hostFlags = original.hostFlags;
+            driverTempDir = original.driverTempDir;
         }
 
         protected BuildConfiguration(List<String> args) {
@@ -509,6 +523,12 @@ public class NativeImage {
 
         protected List<Path> getImageProvidedJars() {
             return getJars(rootDir.resolve(Paths.get("lib", "svm")));
+        }
+
+        protected void setDriverTempDir(Path tempDir) {
+            Objects.requireNonNull(tempDir);
+            VMError.guarantee(Files.isDirectory(tempDir));
+            this.driverTempDir = tempDir;
         }
 
         public HostFlags getHostFlags() {
@@ -913,6 +933,9 @@ public class NativeImage {
         apiOptionHandler = new APIOptionHandler(this);
         registerOptionHandler(apiOptionHandler);
         registerOptionHandler(new MacroOptionHandler(this));
+
+        this.driverTempDir = config.driverTempDir != null ? config.driverTempDir : archiveSupport.createTempDir(DRIVER_TEMP_DIR_PREFIX, new AtomicBoolean(true));
+        config.setDriverTempDir(this.driverTempDir);
     }
 
     void addMacroOptionRoot(Path configDir) {
@@ -1602,7 +1625,7 @@ public class NativeImage {
 
     protected Path createVMInvocationArgumentFile(List<String> arguments) {
         try {
-            Path argsFile = Files.createTempFile("vminvocation", ".args");
+            Path argsFile = createFileInTempDir("vminvocation.args");
             StringJoiner joiner = new StringJoiner("\n");
             for (String arg : arguments) {
                 // Options in @argfile need to be properly quoted as
@@ -1620,7 +1643,6 @@ public class NativeImage {
             }
             String joinedOptions = joiner.toString();
             Files.write(argsFile, joinedOptions.getBytes());
-            argsFile.toFile().deleteOnExit();
             return argsFile;
         } catch (IOException e) {
             throw showError(e.getMessage());
@@ -1629,10 +1651,9 @@ public class NativeImage {
 
     protected Path createImageBuilderArgumentFile(List<String> imageBuilderArguments) {
         try {
-            Path argsFile = Files.createTempFile("native-image", ".args");
+            Path argsFile = createFileInTempDir("native-image.args");
             String joinedOptions = String.join("\0", imageBuilderArguments);
             Files.write(argsFile, joinedOptions.getBytes());
-            argsFile.toFile().deleteOnExit();
             return argsFile;
         } catch (IOException e) {
             throw showError(e.getMessage());
@@ -1717,12 +1738,7 @@ public class NativeImage {
              */
             keepAliveFile = Path.of("/proc/" + ProcessHandle.current().pid() + "/comm");
         } else {
-            try {
-                keepAliveFile = Files.createTempFile(".native_image", "alive");
-                keepAliveFile.toFile().deleteOnExit();
-            } catch (IOException e) {
-                throw showError("Temporary keep-alive file could not be created");
-            }
+            keepAliveFile = createFileInTempDir(".native_image.alive");
         }
 
         boolean useContainer = useBundle() && bundleSupport.useContainer;
@@ -1807,6 +1823,7 @@ public class NativeImage {
             WindowsBuildEnvironmentUtil.propagateEnv(environment);
         }
         environment.put(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM, Boolean.toString(config.modulePathBuild));
+        environment.put(SharedConstants.DRIVER_TEMP_DIR_ENV_VARIABLE, config.driverTempDir.toString());
         if (!config.modulePathBuild) {
             /**
              * The old mode of running the image generator on the class path, which was deprecated
@@ -1850,6 +1867,28 @@ public class NativeImage {
             if (p != null) {
                 p.destroy();
             }
+        }
+    }
+
+    /**
+     * Creates a file with name 'fileName' in the {@link NativeImage#driverTempDir temporary
+     * directory} and returns the path to the newly created file. Note: the file will be deleted if
+     * it already exists.
+     *
+     * @param fileName the name of file to create in the temporary directory.
+     * @return the path to the newly created file.
+     */
+    private Path createFileInTempDir(String fileName) {
+        Objects.requireNonNull(fileName);
+        try {
+            Path path = driverTempDir.resolve(fileName);
+            Files.deleteIfExists(path);
+            Files.createFile(path);
+            return path;
+        } catch (InvalidPathException e) {
+            throw showError("Invalid path for file in temp directory: " + e.getMessage());
+        } catch (IOException e) {
+            throw showError("Unable to create file in temp directory: " + e.getMessage());
         }
     }
 
@@ -2048,6 +2087,13 @@ public class NativeImage {
                         build(new FallbackBuildConfiguration(nativeImage), nativeImageProvider);
                         LogUtils.warning("Image '" + nativeImage.imageName + "' is a fallback image that requires a JDK for execution (use --" + SubstrateOptions.OptionNameNoFallback +
                                         " to suppress fallback image generation and to print more detailed information why a fallback image was necessary).");
+                        break;
+                    case REBUILD_AFTER_ANALYSIS:
+                        build(config, buildConfig -> {
+                            NativeImage rebuildNativeImage = nativeImageProvider.apply(buildConfig);
+                            rebuildNativeImage.addImageBuilderJavaArgs(String.format("-D%s=true", SharedConstants.REBUILD_AFTER_ANALYSIS_MARKER));
+                            return rebuildNativeImage;
+                        });
                         break;
                     case OUT_OF_MEMORY, OUT_OF_MEMORY_KILLED:
                         nativeImage.showOutOfMemoryWarning();

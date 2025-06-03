@@ -193,9 +193,9 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
     }
 
     @Override
-    protected void reportEpilog(String imageName, ProgressReporter reporter, ImageClassLoader classLoader, boolean wasSuccessfulBuild, Throwable vmError, OptionValues parsedHostedOptions) {
-        super.reportEpilog(imageName, reporter, classLoader, wasSuccessfulBuild, vmError, parsedHostedOptions);
-        if (wasSuccessfulBuild) {
+    protected void reportEpilog(String imageName, ProgressReporter reporter, ImageClassLoader classLoader, BuildOutcome buildOutcome, Throwable vmError, OptionValues parsedHostedOptions) {
+        super.reportEpilog(imageName, reporter, classLoader, buildOutcome, vmError, parsedHostedOptions);
+        if (buildOutcome.successful()) {
             BenchmarkLogger.printBuildTime((int) TimerCollection.singleton().get(TimerCollection.Registry.TOTAL).getTotalTime(), parsedHostedOptions);
         }
     }
