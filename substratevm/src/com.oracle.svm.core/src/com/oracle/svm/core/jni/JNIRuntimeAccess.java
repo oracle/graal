@@ -30,8 +30,8 @@ import java.lang.reflect.Field;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 
 /**
@@ -56,6 +56,6 @@ public final class JNIRuntimeAccess {
     }
 
     public static void register(boolean finalIsWritable, Field... fields) {
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(ConfigurationCondition.alwaysTrue(), finalIsWritable, fields);
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), finalIsWritable, fields);
     }
 }

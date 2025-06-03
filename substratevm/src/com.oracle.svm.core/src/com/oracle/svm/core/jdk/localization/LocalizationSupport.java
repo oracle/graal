@@ -48,8 +48,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
@@ -182,7 +182,7 @@ public class LocalizationSupport {
             if (i > 0) {
                 String name = baseName.substring(i + 1) + "Provider";
                 String providerName = baseName.substring(0, i) + ".spi." + name;
-                ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(ConfigurationCondition.alwaysTrue(), providerName);
+                ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(AccessCondition.unconditional(), providerName);
             }
         }
 
@@ -283,7 +283,7 @@ public class LocalizationSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerBundleLookup(ConfigurationCondition condition, String baseName) {
+    public void registerBundleLookup(AccessCondition condition, String baseName) {
         RuntimeConditionSet conditionSet = RuntimeConditionSet.emptySet();
         var registered = registeredBundles.putIfAbsent(baseName, conditionSet);
         (registered == null ? conditionSet : registered).addCondition(condition);

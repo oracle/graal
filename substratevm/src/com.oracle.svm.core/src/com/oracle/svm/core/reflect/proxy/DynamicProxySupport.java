@@ -33,9 +33,10 @@ import java.util.regex.Pattern;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
@@ -105,8 +106,8 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    public synchronized void addProxyClass(ConfigurationCondition condition, Class<?>... interfaces) {
-        VMError.guarantee(condition.isRuntimeChecked(), "The condition used must be a runtime condition.");
+    public synchronized void addProxyClass(AccessCondition condition, Class<?>... interfaces) {
+        VMError.guarantee(condition instanceof TypeReachabilityCondition && ((TypeReachabilityCondition) condition).isRuntimeChecked(), "The condition used must be a runtime condition.");
         /*
          * Make a defensive copy of the interfaces array to protect against the caller modifying the
          * array.
