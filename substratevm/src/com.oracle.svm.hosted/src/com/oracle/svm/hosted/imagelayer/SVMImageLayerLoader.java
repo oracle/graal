@@ -54,6 +54,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -187,9 +188,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private final Map<ResolvedJavaMethod, Boolean> methodHandleCallers = new ConcurrentHashMap<>();
 
     /** Map from {@link SVMImageLayerSnapshotUtil#getTypeDescriptor} to base layer type ids. */
-    private final Map<String, Integer> typeDescriptorToBaseLayerId = new HashMap<>();
+    private EconomicMap<String, Integer> typeDescriptorToBaseLayerId;
     /** Map from {@link SVMImageLayerSnapshotUtil#getMethodDescriptor} to base layer method ids. */
-    private final Map<String, Integer> methodDescriptorToBaseLayerId = new HashMap<>();
+    private EconomicMap<String, Integer> methodDescriptorToBaseLayerId;
 
     protected AnalysisUniverse universe;
     protected AnalysisMetaAccess metaAccess;
@@ -261,12 +262,16 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         universe.setStartFieldId(snapshot.getNextFieldId());
         ImageHeapConstant.setCurrentId(snapshot.getNextConstantId());
 
-        for (PersistedAnalysisType.Reader typeData : snapshot.getTypes()) {
+        StructList.Reader<PersistedAnalysisType.Reader> typesReader = snapshot.getTypes();
+        typeDescriptorToBaseLayerId = EconomicMap.create(typesReader.size());
+        for (PersistedAnalysisType.Reader typeData : typesReader) {
             String descriptor = typeData.getDescriptor().toString();
             typeDescriptorToBaseLayerId.put(descriptor, typeData.getId());
         }
 
-        for (PersistedAnalysisMethod.Reader methodData : snapshot.getMethods()) {
+        StructList.Reader<PersistedAnalysisMethod.Reader> methodsReader = snapshot.getMethods();
+        methodDescriptorToBaseLayerId = EconomicMap.create(methodsReader.size());
+        for (PersistedAnalysisMethod.Reader methodData : methodsReader) {
             String descriptor = methodData.getDescriptor().toString();
             methodDescriptorToBaseLayerId.put(descriptor, methodData.getId());
         }
@@ -397,7 +402,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         guarantee(types.containsKey(tid), "Type with id %d was not correctly loaded.", tid);
         /*
          * The type needs to be looked up because it ensures the type is completely created, as the
-         * types Map is populated before the type is created.
+         * types map is populated before the type is created.
          */
         return universe.lookup(types.get(tid).getWrapped());
     }
@@ -406,6 +411,20 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         return binarySearchUnique(tid, snapshot.getTypes(), PersistedAnalysisType.Reader::getId);
     }
 
+    /**
+     * Load the host VM type corresponding to the serialized type data.
+     * <p>
+     * First, find the corresponding host VM {@link Class} object by name using
+     * {@link #lookupBaseLayerTypeInHostVM(String)}.
+     * <p>
+     * Then, lookup the hosted {@link Class} in the {@link AnalysisMetaAccess} which will trigger
+     * creation of the corresponding {@link AnalysisType} object.
+     * <p>
+     * The {@link AnalysisType} constructor calls {@link #lookupHostedTypeInBaseLayer(AnalysisType)}
+     * to check if the newly created type already exists in the base layer. If that's the case, the
+     * {@link AnalysisType} object takes the same {@code id} as the corresponding base layer type
+     * and this mapping is also registered in the {@link #types} map.
+     */
     private void loadType(PersistedAnalysisType.Reader typeData) {
         int tid = typeData.getId();
 
@@ -413,22 +432,14 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             return;
         }
 
-        String name = typeData.getClassJavaName().toString();
-        Class<?> clazz = lookupBaseLayerTypeInHostVM(name);
+        Class<?> clazz = lookupBaseLayerTypeInHostVM(typeData.getClassJavaName().toString());
 
         ResolvedJavaType superClass = getResolvedJavaTypeForBaseLayerId(typeData.getSuperClassTypeId());
-
         ResolvedJavaType[] interfaces = streamInts(typeData.getInterfaces())
                         .mapToObj(this::getResolvedJavaTypeForBaseLayerId).toArray(ResolvedJavaType[]::new);
 
         if (clazz != null) {
-            /*
-             * When looking up the class by name, the host VM will create the corresponding
-             * AnalysisType. During this process, the method lookupHostedTypeInBaseLayer will be
-             * called to see if the type already exists in the base layer. If it is the case, the id
-             * from the base layer will be reused and the ImageLayerLoader#types map will be
-             * populated.
-             */
+            /* Lookup the host VM type and create the analysis type. */
             metaAccess.lookupJavaType(clazz);
         }
 
@@ -567,7 +578,6 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             return null;
         }
         while (arrayType > 0) {
-            assert clazz != null;
             clazz = clazz.arrayType();
             arrayType--;
         }
@@ -664,7 +674,18 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     @Override
     public int lookupHostedTypeInBaseLayer(AnalysisType type) {
-        int id = getBaseLayerTypeId(type);
+        /* Assume that the type was not reachable in the base image. */
+        int id = -1;
+        if (type.getWrapped() instanceof BaseLayerType baseLayerType) {
+            id = baseLayerType.getBaseLayerId();
+        } else {
+            String typeDescriptor = imageLayerSnapshotUtil.getTypeDescriptor(type);
+            Integer typeId = typeDescriptorToBaseLayerId.get(typeDescriptor);
+            if (typeId != null) {
+                id = typeId;
+                initializeBaseLayerTypeBeforePublishing(type, findType(typeId));
+            }
+        }
         if (id == -1 || types.putIfAbsent(id, type) != null) {
             /* A complete type is treated as a different type than its incomplete version */
             return -1;
@@ -672,31 +693,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         return id;
     }
 
-    private int getBaseLayerTypeId(AnalysisType type) {
+    private static int getBaseLayerTypeId(AnalysisType type) {
+        VMError.guarantee(type.isInBaseLayer());
         if (type.getWrapped() instanceof BaseLayerType baseLayerType) {
             return baseLayerType.getBaseLayerId();
         }
-        PersistedAnalysisType.Reader typeData = findBaseLayerType(type);
-        if (typeData == null) {
-            /* The type was not reachable in the base image */
-            return -1;
-        }
-        initializeBaseLayerTypeBeforePublishing(type, typeData);
-        int id = typeData.getId();
-        int hubIdentityHashCode = typeData.getHubIdentityHashCode();
-        typeToHubIdentityHashCode.put(id, hubIdentityHashCode);
-        return id;
-    }
-
-    protected PersistedAnalysisType.Reader findBaseLayerType(AnalysisType type) {
-        assert !(type.getWrapped() instanceof BaseLayerType);
-        String typeDescriptor = imageLayerSnapshotUtil.getTypeDescriptor(type);
-        Integer typeId = typeDescriptorToBaseLayerId.get(typeDescriptor);
-        if (typeId == null) {
-            /* The type was not reachable in the base image */
-            return null;
-        }
-        return findType(typeId);
+        return type.getId();
     }
 
     /**
@@ -726,6 +728,10 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         } else {
             classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtRunTime(clazz, "computed in a previous layer"));
         }
+
+        /* Extract and record the base layer identity hashcode for this type. */
+        int hubIdentityHashCode = typeData.getHubIdentityHashCode();
+        typeToHubIdentityHashCode.put(typeData.getId(), hubIdentityHashCode);
     }
 
     /**
@@ -734,11 +740,8 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
      */
     @Override
     public void initializeBaseLayerType(AnalysisType type) {
-        int id = getBaseLayerTypeId(type);
-        if (id == -1) {
-            return;
-        }
-        PersistedAnalysisType.Reader td = findType(id);
+        VMError.guarantee(type.isInBaseLayer());
+        PersistedAnalysisType.Reader td = findType(getBaseLayerTypeId(type));
         registerFlag(td.getIsInstantiated(), debug -> type.registerAsInstantiated(PERSISTED));
         registerFlag(td.getIsUnsafeAllocated(), debug -> type.registerAsUnsafeAllocated(PERSISTED));
         registerFlag(td.getIsReachable(), debug -> type.registerAsReachable(PERSISTED));
@@ -1782,9 +1785,8 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     public ClassInitializationInfo getClassInitializationInfo(AnalysisType type) {
-        PersistedAnalysisType.Reader typeMap = findType(type.getId());
-
-        var initInfo = typeMap.getClassInitializationInfo();
+        PersistedAnalysisType.Reader typeData = findType(type.getId());
+        var initInfo = typeData.getClassInitializationInfo();
         if (initInfo.getIsNoInitializerNoTracking()) {
             return ClassInitializationInfo.forNoInitializerInfo(false);
         } else if (initInfo.getIsInitializedNoTracking()) {

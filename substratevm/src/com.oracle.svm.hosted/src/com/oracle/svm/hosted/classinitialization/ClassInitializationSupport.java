@@ -411,7 +411,7 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
         InitKind initKind = ensureClassInitialized(clazz, allowInitializationErrors);
         if (initKind == InitKind.RUN_TIME) {
             assert allowInitializationErrors || !LinkAtBuildTimeSupport.singleton().linkAtBuildTime(clazz);
-            if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
+            if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
                 /*
                  * Special case for application layer building. If a base layer class was configured
                  * with --initialize-at-build-time but its initialization failed, then the computed
