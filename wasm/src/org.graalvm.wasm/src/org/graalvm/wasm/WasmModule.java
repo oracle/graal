@@ -293,19 +293,33 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     @TruffleBoundary
     Object instantiate(Object... arguments) {
         final WasmContext context = WasmContext.get(null);
-        final WasmStore store = new WasmStore(context, context.language());
-        Object importObject = null;
+        Object importObjectOrNull = null;
+        List<WasmModule> otherModules = null;
         for (Object argument : arguments) {
             if (argument instanceof WasmModule module) {
-                store.readInstance(module);
+                if (otherModules == null) {
+                    otherModules = new ArrayList<>();
+                }
+                otherModules.add(module);
             } else {
-                if (importObject != null) {
+                if (importObjectOrNull != null) {
                     throw ExceptionProviders.PolyglotExceptionProvider.createTypeError("Can only provide a single import object. Other arguments must be modules.");
                 }
-                importObject = argument;
+                importObjectOrNull = argument;
             }
         }
-        return createInstance(store, Objects.requireNonNullElse(importObject, WasmConstant.NULL), ExceptionProviders.PolyglotExceptionProvider, false);
+        final WasmStore store = new WasmStore(context, context.language());
+        final WasmInstance instance = store.readInstance(this);
+        Object importObject = Objects.requireNonNullElse(importObjectOrNull, WasmConstant.NULL);
+        var imports = resolveModuleImports(importObject, ExceptionProviders.PolyglotExceptionProvider, false);
+        if (otherModules != null) {
+            for (WasmModule module : otherModules) {
+                store.readInstance(module);
+                imports = imports.andThen(module.resolveModuleImports(importObject, ExceptionProviders.PolyglotExceptionProvider, false));
+            }
+        }
+        store.linker().tryLink(instance, imports);
+        return instance;
     }
 
     public WasmInstance createInstance(WasmStore store, Object importObject, ExceptionProvider exceptionProvider, boolean importsOnlyInImportObject) {
@@ -317,6 +331,7 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
 
     private ImportValueSupplier resolveModuleImports(Object importObject, ExceptionProvider exceptionProvider, boolean importsOnlyInImportObject) {
         CompilerAsserts.neverPartOfCompilation();
+        Objects.requireNonNull(importObject);
         List<Object> resolvedImports = new ArrayList<>(numImportedSymbols());
 
         if (!importedSymbols().isEmpty()) {
@@ -325,7 +340,7 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
                     throw exceptionProvider.createTypeError("Module requires imports, but import object is undefined.");
                 } else {
                     // imports could be provided by another source, such as a module.
-                    return null;
+                    return ImportValueSupplier.none();
                 }
             }
         }
@@ -334,7 +349,13 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
             final int listIndex = resolvedImports.size();
             assert listIndex == descriptor.importedSymbolIndex();
 
-            final Object member = getImportObjectMember(importObject, descriptor, exceptionProvider);
+            final Object member = getImportObjectMember(importObject, descriptor, exceptionProvider, importsOnlyInImportObject);
+            if (member == null) {
+                // import could be provided by another source, such as a module.
+                assert !importsOnlyInImportObject;
+                resolvedImports.add(null);
+                continue;
+            }
 
             resolvedImports.add(switch (descriptor.identifier()) {
                 case ImportIdentifier.FUNCTION -> requireCallable(member, descriptor, exceptionProvider);
@@ -361,10 +382,14 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         return !interop.isNull(importObject) && interop.hasMembers(importObject);
     }
 
-    private static Object getImportObjectMember(Object importObject, ImportDescriptor descriptor, ExceptionProvider exceptionProvider) {
+    private static Object getImportObjectMember(Object importObject, ImportDescriptor descriptor, ExceptionProvider exceptionProvider, boolean importsOnlyInImportObject) {
         try {
             final InteropLibrary importObjectInterop = InteropLibrary.getUncached(importObject);
             if (!importObjectInterop.isMemberReadable(importObject, descriptor.moduleName())) {
+                // import could be provided by another source, such as a module.
+                if (!importsOnlyInImportObject) {
+                    return null;
+                }
                 throw exceptionProvider.formatTypeError("Import object does not contain module \"%s\".", descriptor.moduleName());
             }
             final Object importedModuleObject = importObjectInterop.readMember(importObject, descriptor.moduleName());
