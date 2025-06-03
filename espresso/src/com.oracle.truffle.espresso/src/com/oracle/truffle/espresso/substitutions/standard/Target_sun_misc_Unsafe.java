@@ -122,7 +122,7 @@ public final class Target_sun_misc_Unsafe {
 
         byte[] bytes = data.unwrap(language);
         ObjectKlass hostKlass = (ObjectKlass) hostClass.getMirrorKlass(meta);
-        StaticObject pd = (StaticObject) meta.HIDDEN_PROTECTION_DOMAIN.getHiddenObject(hostClass);
+        StaticObject pd = meta.HIDDEN_PROTECTION_DOMAIN.getMaybeHiddenObject(hostClass);
         StaticObject[] patches = StaticObject.isNull(constantPoolPatches) ? null : constantPoolPatches.unwrap(language);
         // Inherit host class's protection domain.
         ClassRegistry.ClassDefinitionInfo info = new ClassRegistry.ClassDefinitionInfo(pd, hostKlass, patches);

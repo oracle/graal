@@ -503,8 +503,10 @@ public final class EspressoContext
                                     Types.java_lang_invoke_MethodHandle,
                                     Types.java_lang_invoke_MemberName,
                                     Types.java_lang_invoke_MethodHandleNatives)) {
-                        // Types.java_lang_invoke_ResolvedMethodName is not used atm
                         initializeKnownClass(type);
+                    }
+                    if (getJavaVersion().java25OrLater()) {
+                        initializeKnownClass(Types.java_lang_invoke_ResolvedMethodName);
                     }
                     int e = (int) meta.java_lang_System_initPhase2.invokeDirectStatic(false, logger.isLoggable(Level.FINE));
                     if (e != 0) {

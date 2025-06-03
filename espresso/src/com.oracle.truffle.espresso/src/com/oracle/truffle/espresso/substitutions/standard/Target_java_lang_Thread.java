@@ -265,6 +265,11 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution
+    public static void sleepNanos0(long amount, @Inject Meta meta, @Inject SubstitutionProfiler location) {
+        sleep0(amount, meta, location);
+    }
+
+    @Substitution
     public static long getNextThreadIdOffset() {
         // value should never be used, because we substitute ThreadIdentifiers::next
         return 0x13371337;

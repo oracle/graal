@@ -64,6 +64,9 @@ public record VMStorage(byte type,
     }
 
     public static VMStorage fromGuest(StaticObject guestVmStorage, Meta meta) {
+        if (StaticObject.isNull(guestVmStorage)) {
+            return null;
+        }
         return new VMStorage(
                 meta.jdk_internal_foreign_abi_VMStorage_type.getByte(guestVmStorage),
                 meta.jdk_internal_foreign_abi_VMStorage_segmentMaskOrSize.getShort(guestVmStorage),
