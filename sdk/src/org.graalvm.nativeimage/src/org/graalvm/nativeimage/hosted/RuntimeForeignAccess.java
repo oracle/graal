@@ -46,7 +46,7 @@ import java.lang.invoke.MethodType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -69,7 +69,7 @@ public final class RuntimeForeignAccess {
      * @since 23.1
      */
     public static void registerForDowncall(Object desc, Object... options) {
-        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDowncall(ConfigurationCondition.alwaysTrue(), desc, options);
+        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDowncall(AccessCondition.unconditional(), desc, options);
     }
 
     /**
@@ -87,7 +87,7 @@ public final class RuntimeForeignAccess {
      * @since 24.1
      */
     public static void registerForUpcall(Object desc, Object... options) {
-        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForUpcall(ConfigurationCondition.alwaysTrue(), desc, options);
+        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForUpcall(AccessCondition.unconditional(), desc, options);
     }
 
     /**
@@ -115,7 +115,7 @@ public final class RuntimeForeignAccess {
      * @since 24.2
      */
     public static void registerForDirectUpcall(MethodHandle target, Object desc, Object... options) {
-        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDirectUpcall(ConfigurationCondition.alwaysTrue(), target, desc, options);
+        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDirectUpcall(AccessCondition.unconditional(), target, desc, options);
     }
 
     private RuntimeForeignAccess() {

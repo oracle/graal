@@ -47,7 +47,7 @@ import java.util.Objects;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 /**
@@ -84,7 +84,7 @@ public final class RuntimeResourceAccess {
         Objects.requireNonNull(resourcePath);
         Objects.requireNonNull(resourceContent);
         ImageSingletons.lookup(RuntimeResourceSupport.class).injectResource(module, resourcePath, resourceContent, "Manually added via RuntimeResourceAccess");
-        ImageSingletons.lookup(RuntimeResourceSupport.class).addCondition(ConfigurationCondition.alwaysTrue(), module, resourcePath);
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addCondition(AccessCondition.unconditional(), module, resourcePath);
     }
 
     /**
@@ -96,7 +96,7 @@ public final class RuntimeResourceAccess {
      */
     public static void addResourceBundle(Module module, String baseBundleName, Locale[] locales) {
         Objects.requireNonNull(locales);
-        RuntimeResourceSupport.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(),
+        RuntimeResourceSupport.singleton().addResourceBundles(AccessCondition.unconditional(),
                         withModuleName(module, baseBundleName), Arrays.asList(locales));
     }
 
@@ -108,7 +108,7 @@ public final class RuntimeResourceAccess {
      * @since 22.3
      */
     public static void addResourceBundle(Module module, String bundleName) {
-        RuntimeResourceSupport.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(),
+        RuntimeResourceSupport.singleton().addResourceBundles(AccessCondition.unconditional(),
                         withModuleName(module, bundleName));
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,7 @@ package org.graalvm.nativeimage.hosted;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 /**
@@ -72,7 +72,7 @@ public final class RuntimeSerialization {
      * @since 21.3
      */
     public static void registerIncludingAssociatedClasses(Class<?> clazz) {
-        RuntimeSerializationSupport.singleton().registerIncludingAssociatedClasses(ConfigurationCondition.alwaysTrue(), clazz);
+        RuntimeSerializationSupport.singleton().registerIncludingAssociatedClasses(AccessCondition.unconditional(), clazz);
     }
 
     /**
@@ -82,7 +82,7 @@ public final class RuntimeSerialization {
      */
     public static void register(Class<?>... classes) {
         for (Class<?> clazz : classes) {
-            RuntimeSerializationSupport.singleton().register(ConfigurationCondition.alwaysTrue(), clazz);
+            RuntimeSerializationSupport.singleton().register(AccessCondition.unconditional(), clazz);
         }
     }
 
@@ -103,7 +103,7 @@ public final class RuntimeSerialization {
     @Deprecated(since = "24.2")
     @SuppressWarnings("unused")
     public static void registerWithTargetConstructorClass(Class<?> clazz, Class<?> customTargetConstructorClazz) {
-        RuntimeSerializationSupport.singleton().register(ConfigurationCondition.alwaysTrue(), clazz);
+        RuntimeSerializationSupport.singleton().register(AccessCondition.unconditional(), clazz);
     }
 
     /**
@@ -114,7 +114,7 @@ public final class RuntimeSerialization {
      * @since 22.3
      */
     public static void registerLambdaCapturingClass(Class<?> lambdaCapturingClass) {
-        RuntimeSerializationSupport.singleton().registerLambdaCapturingClass(ConfigurationCondition.alwaysTrue(), lambdaCapturingClass);
+        RuntimeSerializationSupport.singleton().registerLambdaCapturingClass(AccessCondition.unconditional(), lambdaCapturingClass);
     }
 
     /**
@@ -125,7 +125,7 @@ public final class RuntimeSerialization {
      * @since 22.3
      */
     public static void registerProxyClass(Class<?>... implementedInterfaces) {
-        RuntimeSerializationSupport.singleton().registerProxyClass(ConfigurationCondition.alwaysTrue(), implementedInterfaces);
+        RuntimeSerializationSupport.singleton().registerProxyClass(AccessCondition.unconditional(), implementedInterfaces);
     }
 
     private RuntimeSerialization() {

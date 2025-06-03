@@ -35,7 +35,8 @@ import java.util.function.Consumer;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -48,10 +49,10 @@ public abstract class ConditionalConfigurationRegistry {
     private final Map<Class<?>, Collection<Runnable>> pendingReachabilityHandlers = new ConcurrentHashMap<>();
     private final Set<ConditionalTask> pendingConditionalTasks = ConcurrentHashMap.newKeySet();
 
-    record ConditionalTask(ConfigurationCondition condition, Consumer<ConfigurationCondition> task) {
+    record ConditionalTask(AccessCondition condition, Consumer<AccessCondition> task) {
     }
 
-    protected void runConditionalTask(ConfigurationCondition condition, Consumer<ConfigurationCondition> task) {
+    protected void runConditionalTask(AccessCondition condition, Consumer<AccessCondition> task) {
         if (universe != null) {
             registerConditionalConfiguration(condition, (cnd) -> universe.getBigbang().postTask(_ -> task.accept(cnd)));
         } else {
@@ -68,32 +69,34 @@ public abstract class ConditionalConfigurationRegistry {
         pendingConditionalTasks.clear();
     }
 
-    protected void registerConditionalConfiguration(ConfigurationCondition condition, Consumer<ConfigurationCondition> consumer) {
+    protected void registerConditionalConfiguration(AccessCondition condition, Consumer<AccessCondition> consumer) {
         Objects.requireNonNull(condition, "Cannot use null value as condition for conditional configuration. Please ensure that you register a non-null condition.");
         Objects.requireNonNull(consumer, "Cannot use null value as runnable for conditional configuration. Please ensure that you register a non-null runnable.");
-        if (condition.isRuntimeChecked() && !condition.isAlwaysTrue()) {
+        VMError.guarantee(condition instanceof TypeReachabilityCondition, "Condition must be TypeReachabilityCondition.");
+        TypeReachabilityCondition reachabilityCondition = (TypeReachabilityCondition) condition;
+        if (reachabilityCondition.isRuntimeChecked() && !reachabilityCondition.isAlwaysTrue()) {
             /*
              * We do this before the type is reached as the handler runs during analysis when it is
              * too late to register types for reached tracking. If the type is never reached, there
              * is no damage as subtypes will also never be reached.
              */
-            ClassInitializationSupport.singleton().addForTypeReachedTracking(condition.getType());
+            ClassInitializationSupport.singleton().addForTypeReachedTracking(reachabilityCondition.getType());
         }
-        if (ConfigurationCondition.alwaysTrue().equals(condition)) {
+        if (reachabilityCondition.isAlwaysTrue()) {
             /* analysis optimization to include new types as early as possible */
-            consumer.accept(ConfigurationCondition.alwaysTrue());
+            consumer.accept(AccessCondition.unconditional());
         } else {
-            ConfigurationCondition runtimeCondition;
-            if (condition.isRuntimeChecked()) {
+            AccessCondition runtimeCondition;
+            if (reachabilityCondition.isRuntimeChecked()) {
                 runtimeCondition = condition;
             } else {
-                runtimeCondition = ConfigurationCondition.alwaysTrue();
+                runtimeCondition = AccessCondition.unconditional();
             }
             if (beforeAnalysisAccess == null) {
-                Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getType(), _ -> new ConcurrentLinkedQueue<>());
+                Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(reachabilityCondition.getType(), _ -> new ConcurrentLinkedQueue<>());
                 handlers.add(() -> consumer.accept(runtimeCondition));
             } else {
-                beforeAnalysisAccess.registerReachabilityHandler(_ -> consumer.accept(runtimeCondition), condition.getType());
+                beforeAnalysisAccess.registerReachabilityHandler(_ -> consumer.accept(runtimeCondition), reachabilityCondition.getType());
             }
 
         }
