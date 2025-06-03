@@ -257,7 +257,7 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
          * frame states but not to other macros. We don't want to lose these usages.
          */
         for (Node node : flood) {
-            if (node instanceof VectorAPIMacroNode || node instanceof ValuePhiNode || node instanceof ValueProxyNode) {
+            if ((node instanceof VectorAPIMacroNode && !(node instanceof VectorAPISinkNode)) || node instanceof ValuePhiNode || node instanceof ValueProxyNode) {
                 for (Node usage : node.usages()) {
                     if (usage instanceof ValuePhiNode || usage instanceof ValueProxyNode) {
                         unionFind.union(node, usage);
