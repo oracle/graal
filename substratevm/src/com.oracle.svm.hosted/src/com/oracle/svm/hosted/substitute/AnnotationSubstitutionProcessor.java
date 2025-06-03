@@ -396,7 +396,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private void handleMethodInAliasClass(Executable annotatedMethod, Class<?> originalClass) {
-        if (skipExcludedPlatform(annotatedMethod)) {
+        if (skipExcludedPlatform(annotatedMethod) || annotatedMethod.isSynthetic()) {
             return;
         }
 
@@ -482,7 +482,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private void handleFieldInAliasClass(Field annotatedField, Class<?> originalClass) {
-        if (skipExcludedPlatform(annotatedField)) {
+        if (skipExcludedPlatform(annotatedField) || annotatedField.isSynthetic()) {
             return;
         }
 
