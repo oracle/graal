@@ -25,13 +25,17 @@
 package jdk.graal.compiler.hotspot.aarch64.shenandoah;
 
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
+import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.core.aarch64.AArch64LIRGenerator;
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
+import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.aarch64.AArch64AddressValue;
+import jdk.graal.compiler.lir.aarch64.AArch64ControlFlow;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.ShenandoahBarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.nodes.gc.shenandoah.ShenandoahLoadRefBarrierNode;
@@ -39,6 +43,8 @@ import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
+
+import static jdk.graal.compiler.lir.LIRValueUtil.isIntConstant;
 
 /**
  * Lowers Shenandoah barriers to AArch64 LIR.
@@ -96,5 +102,31 @@ public class AArch64HotSpotShenandoahBarrierSetLIRGenerator implements Shenandoa
         AArch64AddressValue addr = ((AArch64LIRGenerator) lirTool).asAddressValue(address, AArch64Address.ANY_SIZE);
         AllocatableValue tmp = lirTool.newVariable(LIRKind.value(AArch64Kind.QWORD));
         lirTool.append(new AArch64HotSpotShenandoahCardBarrierOp(config, providers, addr, tmp));
+    }
+
+    private Variable emitCompareAndSwap(LIRGeneratorTool tool, boolean isLogicVariant, LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
+        AArch64Kind memKind = (AArch64Kind) accessKind.getPlatformKind();
+        Variable result = tool.newVariable(tool.toRegisterKind(accessKind));
+        AllocatableValue allocatableExpectedValue = tool.asAllocatable(expectedValue);
+        AllocatableValue allocatableNewValue = tool.asAllocatable(newValue);
+        AllocatableValue tmp1 = tool.newVariable(LIRKind.value(AArch64Kind.QWORD));
+        AllocatableValue tmp2 = tool.newVariable(LIRKind.value(AArch64Kind.QWORD));
+        tool.append(new AArch64HotSpotShenandoahCompareAndSwapOp(config, providers, memKind, memoryOrder, isLogicVariant, result, allocatableExpectedValue, allocatableNewValue, tool.asAllocatable(address), tmp1, tmp2));
+        return isLogicVariant ? null : result;
+    }
+
+    @Override
+    public Value emitLogicCompareAndSwap(LIRGeneratorTool tool, LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder) {
+        emitCompareAndSwap(tool, true, accessKind, address, expectedValue, newValue, memoryOrder);
+        assert trueValue.getValueKind().equals(falseValue.getValueKind());
+        assert isIntConstant(trueValue, 1) && isIntConstant(falseValue, 0) : trueValue + " " + falseValue;
+        Variable result = tool.newVariable(LIRKind.combine(trueValue, falseValue));
+        tool.append(new AArch64ControlFlow.CondSetOp(result, AArch64Assembler.ConditionFlag.EQ));
+        return result;
+    }
+
+    @Override
+    public Value emitValueCompareAndSwap(LIRGeneratorTool tool, LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
+        return emitCompareAndSwap(tool, false, accessKind, address, expectedValue, newValue, memoryOrder);
     }
 }

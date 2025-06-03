@@ -26,7 +26,9 @@ package jdk.graal.compiler.hotspot.amd64.shenandoah;
 
 import jdk.graal.compiler.core.amd64.AMD64LIRGenerator;
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
@@ -96,5 +98,17 @@ public class AMD64HotSpotShenandoahBarrierSetLIRGenerator implements ShenandoahB
         AllocatableValue tmp = lirTool.newVariable(LIRKind.value(AMD64Kind.QWORD));
         AllocatableValue tmp2 = lirTool.newVariable(LIRKind.value(AMD64Kind.QWORD));
         lirTool.append(new AMD64HotSpotShenandoahCardBarrierOp(config, providers, addr, tmp, tmp2));
+    }
+
+    @Override
+    public Value emitLogicCompareAndSwap(LIRGeneratorTool lirTool, LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder) {
+        GraalError.unimplemented("emitLogicCompareAndSwap");
+        return null;
+    }
+
+    @Override
+    public Value emitValueCompareAndSwap(LIRGeneratorTool lirTool, LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
+        GraalError.unimplemented("emitValueCompareAndSwap");
+        return null;
     }
 }

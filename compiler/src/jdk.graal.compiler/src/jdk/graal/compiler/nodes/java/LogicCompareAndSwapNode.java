@@ -50,11 +50,15 @@ import jdk.vm.ci.meta.Value;
  * This version returns a boolean indicating is the CAS was successful or not.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8)
-public final class LogicCompareAndSwapNode extends AbstractCompareAndSwapNode {
+public class LogicCompareAndSwapNode extends AbstractCompareAndSwapNode {
     public static final NodeClass<LogicCompareAndSwapNode> TYPE = NodeClass.create(LogicCompareAndSwapNode.class);
 
     public LogicCompareAndSwapNode(AddressNode address, ValueNode expectedValue, ValueNode newValue, LocationIdentity location, BarrierType barrierType, MemoryOrderMode memoryOrder) {
-        this(TYPE, address, expectedValue, newValue, location, barrierType, memoryOrder, true);
+        this(TYPE, address, expectedValue, newValue, location, barrierType, memoryOrder);
+    }
+
+    protected LogicCompareAndSwapNode(NodeClass<? extends LogicCompareAndSwapNode> c, AddressNode address, ValueNode expectedValue, ValueNode newValue, LocationIdentity location, BarrierType barrierType, MemoryOrderMode memoryOrder) {
+        this(c, address, expectedValue, newValue, location, barrierType, memoryOrder, true);
     }
 
     private LogicCompareAndSwapNode(NodeClass<? extends LogicCompareAndSwapNode> type, AddressNode address, ValueNode expectedValue, ValueNode newValue, LocationIdentity location,

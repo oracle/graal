@@ -30,6 +30,7 @@ import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.extended.ArrayRangeWrite;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
+import jdk.graal.compiler.nodes.java.LogicCompareAndSwapNode;
 import jdk.graal.compiler.nodes.java.ValueCompareAndSwapNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.type.NarrowOopStamp;
@@ -195,9 +196,20 @@ public class ShenandoahBarrierSet implements BarrierSet {
             }
             case AbstractCompareAndSwapNode cmpSwap -> {
                 if (useCASBarrier) {
-                    addWriteBarriers(cmpSwap, cmpSwap.getNewValue(), cmpSwap.getExpectedValue());
-                    if (cmpSwap instanceof ValueCompareAndSwapNode) {
-                        addReadNodeBarriers(cmpSwap);
+                    if (cmpSwap.getBarrierType() != BarrierType.NONE) {
+                        StructuredGraph graph = cmpSwap.graph();
+                        if (cmpSwap instanceof ValueCompareAndSwapNode) {
+                            ShenandoahValueCompareAndSwapNode newCmpXChg = new ShenandoahValueCompareAndSwapNode(cmpSwap.getAddress(), cmpSwap.getExpectedValue(), cmpSwap.getNewValue(), cmpSwap.getLocationIdentity(), cmpSwap.getBarrierType(), cmpSwap.getMemoryOrder());
+                            graph.add(newCmpXChg);
+                            graph.replaceFixedWithFixed(cmpSwap, newCmpXChg);
+                            addWriteBarriers(newCmpXChg, newCmpXChg.getNewValue(), newCmpXChg.getExpectedValue());
+                            addReadNodeBarriers(newCmpXChg);
+                        } else if (cmpSwap instanceof LogicCompareAndSwapNode) {
+                            ShenandoahLogicCompareAndSwapNode newCmpXChg = new ShenandoahLogicCompareAndSwapNode(cmpSwap.getAddress(), cmpSwap.getExpectedValue(), cmpSwap.getNewValue(), cmpSwap.getLocationIdentity(), cmpSwap.getBarrierType(), cmpSwap.getMemoryOrder());
+                            graph.add(newCmpXChg);
+                            graph.replaceFixedWithFixed(cmpSwap, newCmpXChg);
+                            addWriteBarriers(newCmpXChg, newCmpXChg.getNewValue(), newCmpXChg.getExpectedValue());
+                        }
                     }
                 }
             }
