@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.meta;
 
 import java.lang.annotation.Annotation;
+import java.util.List;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -248,6 +249,11 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     @Override
     public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
         return new ResolvedJavaMethod[0];
+    }
+
+    @Override
+    public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
+        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
     }
 
     @Override
