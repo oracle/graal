@@ -47,6 +47,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
+import org.graalvm.nativeimage.impl.APIDeprecationSupport;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 
@@ -59,6 +60,8 @@ import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class RuntimeJNIAccess {
 
+    private static final APIDeprecationSupport deprecationFlag = ImageSingletons.lookup(APIDeprecationSupport.class);
+
     /**
      * Makes the provided classes available for JNI access at run time. Needed when native code
      * looks up Java classes via <a href=
@@ -69,6 +72,7 @@ public final class RuntimeJNIAccess {
      * @since 22.3
      */
     public static void register(Class<?>... classes) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), classes);
     }
 
@@ -84,6 +88,7 @@ public final class RuntimeJNIAccess {
      * @since 22.3
      */
     public static void register(Executable... methods) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), false, false, methods);
     }
 
@@ -99,6 +104,7 @@ public final class RuntimeJNIAccess {
      * @since 22.3
      */
     public static void register(Field... fields) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), false, false, fields);
     }
 

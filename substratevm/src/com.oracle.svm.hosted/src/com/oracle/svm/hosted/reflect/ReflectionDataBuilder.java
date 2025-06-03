@@ -265,7 +265,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             setQueryFlag(clazz, ALL_DECLARED_CLASSES_FLAG);
             try {
                 for (Class<?> innerClass : clazz.getDeclaredClasses()) {
-                    innerClasses.computeIfAbsent(clazz, c -> ConcurrentHashMap.newKeySet()).add(innerClass);
+                    innerClasses.computeIfAbsent(clazz, _ -> ConcurrentHashMap.newKeySet()).add(innerClass);
                     registerClass(cnd, innerClass, !MissingRegistrationUtils.throwMissingRegistrationErrors(), preserved);
                 }
             } catch (LinkageError e) {
@@ -341,7 +341,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public void registerAllRecordComponentsQuery(AccessCondition condition, Class<?> clazz) {
-        runConditionalInAnalysisTask(condition, (cnd) -> {
+        runConditionalInAnalysisTask(condition, _ -> {
             setQueryFlag(clazz, ALL_RECORD_COMPONENTS_FLAG);
             registerRecordComponents(clazz);
         });
@@ -365,7 +365,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             setQueryFlag(clazz, ALL_NEST_MEMBERS_FLAG);
             for (Class<?> nestMember : clazz.getNestMembers()) {
                 if (nestMember != clazz) {
-                    registerClass(condition, nestMember, false, preserved);
+                    registerClass(cnd, nestMember, false, preserved);
                 }
             }
         });

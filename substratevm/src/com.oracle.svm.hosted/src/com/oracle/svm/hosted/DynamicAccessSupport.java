@@ -25,7 +25,7 @@
 package com.oracle.svm.hosted;
 
 import com.oracle.svm.core.util.UserError;
-import org.graalvm.nativeimage.hosted.AccessCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 
 public final class DynamicAccessSupport {

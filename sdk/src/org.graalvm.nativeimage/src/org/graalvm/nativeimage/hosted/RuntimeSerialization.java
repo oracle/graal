@@ -40,9 +40,11 @@
  */
 package org.graalvm.nativeimage.hosted;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
+import org.graalvm.nativeimage.impl.APIDeprecationSupport;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
@@ -54,6 +56,8 @@ import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class RuntimeSerialization {
+
+    private static final APIDeprecationSupport deprecationFlag = ImageSingletons.lookup(APIDeprecationSupport.class);
 
     /**
      * Register the specified serialization target class itself and all associated classes.
@@ -75,6 +79,7 @@ public final class RuntimeSerialization {
      * @since 21.3
      */
     public static void registerIncludingAssociatedClasses(Class<?> clazz) {
+        deprecationFlag.printDeprecationWarning();
         RuntimeSerializationSupport.singleton().registerIncludingAssociatedClasses(AccessCondition.unconditional(), clazz);
     }
 
@@ -86,6 +91,7 @@ public final class RuntimeSerialization {
      * @since 21.3
      */
     public static void register(Class<?>... classes) {
+        deprecationFlag.printDeprecationWarning();
         for (Class<?> clazz : classes) {
             RuntimeSerializationSupport.singleton().register(AccessCondition.unconditional(), false, clazz);
         }
@@ -121,6 +127,7 @@ public final class RuntimeSerialization {
      * @since 22.3
      */
     public static void registerLambdaCapturingClass(Class<?> lambdaCapturingClass) {
+        deprecationFlag.printDeprecationWarning();
         RuntimeSerializationSupport.singleton().registerLambdaCapturingClass(AccessCondition.unconditional(), lambdaCapturingClass);
     }
 
@@ -134,6 +141,7 @@ public final class RuntimeSerialization {
      * @since 22.3
      */
     public static void registerProxyClass(Class<?>... implementedInterfaces) {
+        deprecationFlag.printDeprecationWarning();
         RuntimeSerializationSupport.singleton().registerProxyClass(AccessCondition.unconditional(), implementedInterfaces);
     }
 

@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
+import org.graalvm.nativeimage.impl.APIDeprecationSupport;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
@@ -58,6 +59,8 @@ import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class RuntimeResourceAccess {
 
+    private static final APIDeprecationSupport deprecationFlag = ImageSingletons.lookup(APIDeprecationSupport.class);
+
     /**
      * Make Java resource {@code resourcePath} from {@code module} available at run time. If the
      * given {@code module} is unnamed, the resource is looked up on the classpath instead.
@@ -67,6 +70,7 @@ public final class RuntimeResourceAccess {
      * @since 22.3
      */
     public static void addResource(Module module, String resourcePath) {
+        deprecationFlag.printDeprecationWarning();
         Objects.requireNonNull(module);
         Objects.requireNonNull(resourcePath);
         ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, resourcePath, "Manually added via RuntimeResourceAccess");
@@ -83,6 +87,7 @@ public final class RuntimeResourceAccess {
      * @since 22.3
      */
     public static void addResource(Module module, String resourcePath, byte[] resourceContent) {
+        deprecationFlag.printDeprecationWarning();
         Objects.requireNonNull(module);
         Objects.requireNonNull(resourcePath);
         Objects.requireNonNull(resourceContent);
@@ -100,6 +105,7 @@ public final class RuntimeResourceAccess {
      * @since 22.3
      */
     public static void addResourceBundle(Module module, String baseBundleName, Locale[] locales) {
+        deprecationFlag.printDeprecationWarning();
         Objects.requireNonNull(locales);
         RuntimeResourceSupport.singleton().addResourceBundles(AccessCondition.unconditional(),
                         withModuleName(module, baseBundleName), Arrays.asList(locales));
@@ -115,6 +121,7 @@ public final class RuntimeResourceAccess {
      * @since 22.3
      */
     public static void addResourceBundle(Module module, String bundleName) {
+        deprecationFlag.printDeprecationWarning();
         RuntimeResourceSupport.singleton().addResourceBundles(AccessCondition.unconditional(),
                         false, withModuleName(module, bundleName));
     }

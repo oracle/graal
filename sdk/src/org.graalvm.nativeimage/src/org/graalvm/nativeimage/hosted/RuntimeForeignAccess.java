@@ -47,12 +47,15 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
+import org.graalvm.nativeimage.impl.APIDeprecationSupport;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 @SuppressWarnings("all")
 public final class RuntimeForeignAccess {
+
+    private static final APIDeprecationSupport deprecationFlag = ImageSingletons.lookup(APIDeprecationSupport.class);
 
     /**
      * Registers the provided function descriptor and options pair at image build time for downcalls
@@ -72,6 +75,7 @@ public final class RuntimeForeignAccess {
      * @since 23.1
      */
     public static void registerForDowncall(Object desc, Object... options) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDowncall(AccessCondition.unconditional(), desc, options);
     }
 
@@ -92,6 +96,7 @@ public final class RuntimeForeignAccess {
      * @since 24.1
      */
     public static void registerForUpcall(Object desc, Object... options) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForUpcall(AccessCondition.unconditional(), desc, options);
     }
 
@@ -122,6 +127,7 @@ public final class RuntimeForeignAccess {
      * @since 24.2
      */
     public static void registerForDirectUpcall(MethodHandle target, Object desc, Object... options) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDirectUpcall(AccessCondition.unconditional(), target, desc, options);
     }
 

@@ -45,6 +45,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.impl.APIDeprecationSupport;
 import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 
 /**
@@ -54,6 +55,8 @@ import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class RuntimeProxyCreation {
+
+    private static final APIDeprecationSupport deprecationFlag = ImageSingletons.lookup(APIDeprecationSupport.class);
 
     /**
      * Enables registering specifications of {@link java.lang.reflect.Proxy} classes during the
@@ -65,6 +68,7 @@ public final class RuntimeProxyCreation {
      * @since 22.3
      */
     public static void register(Class<?>... interfaces) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeProxyRegistrySupport.class).registerProxy(AccessCondition.unconditional(), false, interfaces);
     }
 

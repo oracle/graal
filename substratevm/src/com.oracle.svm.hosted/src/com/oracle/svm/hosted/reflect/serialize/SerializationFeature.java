@@ -423,7 +423,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
              * Making this class reachable as it will end up in the image heap without the analysis
              * knowing.
              */
-            ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, preserved, java.io.ObjectOutputStream.class);
+            ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, preserved, java.io.ObjectOutputStream.class);
 
             if (denyRegistry.isAllowed(serializationTargetClass)) {
                 addOrQueueConstructorAccessors(cnd, serializationTargetClass, preserved);
@@ -445,7 +445,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     private void addOrQueueConstructorAccessors(AccessCondition cnd, Class<?> serializationTargetClass, boolean preserved) {
         if (pendingConstructorRegistrations != null) {
             // cannot yet create constructor accessor -> add to pending
-            pendingConstructorRegistrations.add(() -> registerConstructorAccessors(cnd, serializationTargetClass,  getHostVM().dynamicHub(serializationTargetClass), preserved));
+            pendingConstructorRegistrations.add(() -> registerConstructorAccessors(cnd, serializationTargetClass, getHostVM().dynamicHub(serializationTargetClass), preserved));
         } else {
             // can already run the registration
             registerConstructorAccessors(cnd, serializationTargetClass, getHostVM().dynamicHub(serializationTargetClass), preserved);
