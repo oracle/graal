@@ -64,6 +64,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
@@ -1657,4 +1658,23 @@ final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
         }
     }
 
+}
+
+@TargetClass(className = "jdk.incubator.vector.AbstractVector", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_AbstractVector {
+
+}
+
+@TargetClass(className = "jdk.incubator.vector.AbstractSpecies", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_AbstractSpecies {
+    @Alias private Target_jdk_incubator_vector_AbstractVector dummyVector;
+
+    @Substitute
+    public Target_jdk_incubator_vector_AbstractVector dummyVector() {
+        return dummyVector;
+    }
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native ClassCastException checkFailed(Object what, Object required);
 }

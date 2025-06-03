@@ -170,18 +170,3 @@ final class Target_jdk_incubator_vector_DoubleVector {
     @TargetElement(name = "ARRAY_BASE") //
     private static long arrayBase;
 }
-
-@TargetClass(className = "jdk.incubator.vector.AbstractVector", onlyWith = VectorAPIEnabled.class)
-final class Target_jdk_incubator_vector_AbstractVector {
-
-}
-
-@TargetClass(className = "jdk.incubator.vector.AbstractSpecies", onlyWith = VectorAPIEnabled.class)
-final class Target_jdk_incubator_vector_AbstractSpecies {
-    @Alias private Target_jdk_incubator_vector_AbstractVector dummyVector;
-
-    @Substitute
-    public Target_jdk_incubator_vector_AbstractVector dummyVector() {
-        return dummyVector;
-    }
-}
