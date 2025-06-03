@@ -221,7 +221,7 @@ public class Vector128Ops {
     public static final long DOUBLE_SIGNIF_BIT_MASK = (1L << (DOUBLE_SIGNIFICAND_WIDTH - 1)) - 1;
 
     private static LongVector getExponent(DoubleVector x) {
-        return x.viewAsIntegralLanes().and(DOUBLE_EXP_BIT_MASK).lanewise(VectorOperators.ASHR, DOUBLE_SIGNIFICAND_WIDTH - 1).sub(DOUBLE_EXP_BIAS);
+        return x.viewAsIntegralLanes().and(DOUBLE_EXP_BIT_MASK).lanewise(VectorOperators.LSHR, DOUBLE_SIGNIFICAND_WIDTH - 1).sub(DOUBLE_EXP_BIAS);
     }
 
     private static ByteVector f64x2_floorOrCeil(ByteVector xBytes, double negativeBoundary, double positiveBoundary, double sign) {
@@ -234,7 +234,7 @@ public class Vector128Ops {
         VectorMask<Double> isHighExponent = exponent.compare(VectorOperators.GE, 52).cast(F64X2.species());
         DoubleVector highExponentResult = x;
         LongVector doppel = x.viewAsIntegralLanes();
-        Vector<Long> mask = I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK).lanewise(VectorOperators.ASHR, exponent);
+        Vector<Long> mask = I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK).lanewise(VectorOperators.LSHR, exponent);
         VectorMask<Double> isIntegral = doppel.and(mask).eq(0).cast(F64X2.species());
         DoubleVector integralResult = x;
         DoubleVector fractional = doppel.and(mask.neg()).viewAsFloatingLanes();
