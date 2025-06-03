@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,43 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.util;
+package com.oracle.svm.core.encoder;
 
-/** Exit status codes to be used at build time (in driver and builder). */
-public enum ExitStatus {
-    OK(0),
-    BUILDER_ERROR(1),
-    FALLBACK_IMAGE(2),
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-    // 3 used by `-XX:+ExitOnOutOfMemoryError` (see src/hotspot/share/utilities/debug.cpp)
-    OUT_OF_MEMORY(3),
-    // Used by OOMKilled in containers
-    OUT_OF_MEMORY_KILLED(137),
+import jdk.graal.compiler.api.replacements.Fold;
 
-    BUILDER_INTERRUPT_WITHOUT_REASON(4),
-    DRIVER_ERROR(20),
-    DRIVER_TO_BUILDER_ERROR(21),
-    WATCHDOG_EXIT(30),
-    REBUILD_AFTER_ANALYSIS(40),
-    MISSING_METADATA(172),
-    UNKNOWN(255);
+/**
+ * This interface provides hooks to encode the names of modules, packages, classes, source files,
+ * methods, and fields. Encoding these symbols allows an implementation to control which names are
+ * present in the image, as well as those included in stack traces and heap dumps.
+ */
+@Platforms(Platform.HOSTED_ONLY.class)
+public interface SymbolEncoder {
+    String encodeModule(String moduleName);
 
-    public static ExitStatus of(int status) {
-        for (ExitStatus s : values()) {
-            if (s.getValue() == status) {
-                return s;
-            }
-        }
-        return UNKNOWN;
-    }
+    String encodePackage(String packageName);
 
-    private final int code;
+    String encodeClass(String className);
 
-    ExitStatus(int code) {
-        this.code = code;
-    }
+    String encodeSourceFile(String sourceFileName, Class<?> clazz);
 
-    public int getValue() {
-        return code;
+    String encodeMethod(String methodName, Class<?> clazz);
+
+    String encodeField(String fieldName, Class<?> clazz);
+
+    @Fold
+    static SymbolEncoder singleton() {
+        return ImageSingletons.lookup(SymbolEncoder.class);
     }
 }

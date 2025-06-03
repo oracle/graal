@@ -48,8 +48,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import com.oracle.graal.pointsto.meta.AnalysisElement;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
@@ -479,32 +482,17 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
 
     private void printAnalysisStatistics(AnalysisUniverse universe, Collection<String> libraries) {
         String typesFieldsMethodFormat = "%,9d types, %,7d fields, and %,7d methods ";
-        long reachableTypes;
-        if (universe.hostVM().useBaseLayer()) {
-            reachableTypes = universe.getTypes().stream().filter(AnalysisType::isReachable).filter(t -> !t.isInBaseLayer()).count();
-        } else {
-            reachableTypes = universe.getTypes().stream().filter(AnalysisType::isReachable).count();
-        }
+        long reachableTypes = reportedReachableTypes(universe).size();
         long totalTypes = universe.getTypes().size();
         recordJsonMetric(AnalysisResults.DEPRECATED_TYPES_TOTAL, totalTypes);
         recordJsonMetric(AnalysisResults.TYPES_REACHABLE, reachableTypes);
         Collection<AnalysisField> fields = universe.getFields();
-        long reachableFields;
-        if (universe.hostVM().useBaseLayer()) {
-            reachableFields = fields.stream().filter(AnalysisField::isAccessed).filter(f -> !f.isInBaseLayer()).count();
-        } else {
-            reachableFields = fields.stream().filter(AnalysisField::isAccessed).count();
-        }
+        long reachableFields = reportedReachableFields(universe).size();
         int totalFields = fields.size();
         recordJsonMetric(AnalysisResults.DEPRECATED_FIELD_TOTAL, totalFields);
         recordJsonMetric(AnalysisResults.FIELD_REACHABLE, reachableFields);
         Collection<AnalysisMethod> methods = universe.getMethods();
-        long reachableMethods;
-        if (universe.hostVM().useBaseLayer()) {
-            reachableMethods = methods.stream().filter(AnalysisMethod::isReachable).filter(m -> !m.isInBaseLayer()).count();
-        } else {
-            reachableMethods = methods.stream().filter(AnalysisMethod::isReachable).count();
-        }
+        long reachableMethods = reportedReachableMethods(universe).size();
         int totalMethods = methods.size();
         recordJsonMetric(AnalysisResults.DEPRECATED_METHOD_TOTAL, totalMethods);
         recordJsonMetric(AnalysisResults.METHOD_REACHABLE, reachableMethods);
@@ -543,6 +531,23 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
             l().a("%,9d ", numRuntimeCompiledMethods).doclink("runtime compiled methods", "#glossary-runtime-methods")
                             .a(" (%.1f%% of all reachable methods)", Utils.toPercentage(numRuntimeCompiledMethods, reachableMethods), reachableMethods).println();
         }
+    }
+
+    public static List<AnalysisType> reportedReachableTypes(AnalysisUniverse universe) {
+        return reportedElements(universe, universe.getTypes(), AnalysisType::isReachable, t -> !t.isInBaseLayer());
+    }
+
+    public static List<AnalysisField> reportedReachableFields(AnalysisUniverse universe) {
+        return reportedElements(universe, universe.getFields(), AnalysisField::isAccessed, f -> !f.isInBaseLayer());
+    }
+
+    public static List<AnalysisMethod> reportedReachableMethods(AnalysisUniverse universe) {
+        return reportedElements(universe, universe.getMethods(), AnalysisMethod::isReachable, m -> !m.isInBaseLayer());
+    }
+
+    private static <T extends AnalysisElement> List<T> reportedElements(AnalysisUniverse universe, Collection<T> elements, Predicate<T> elementsFilter, Predicate<T> baseLayerFilter) {
+        Stream<T> reachableElements = elements.stream().filter(elementsFilter);
+        return universe.hostVM().useBaseLayer() ? reachableElements.filter(baseLayerFilter).toList() : reachableElements.toList();
     }
 
     public ReporterClosable printUniverse() {
@@ -703,7 +708,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         }
     }
 
-    public void printEpilog(Optional<String> optionalImageName, Optional<NativeImageGenerator> optionalGenerator, ImageClassLoader classLoader, boolean wasSuccessfulBuild,
+    public void printEpilog(Optional<String> optionalImageName, Optional<NativeImageGenerator> optionalGenerator, ImageClassLoader classLoader, NativeImageGeneratorRunner.BuildOutcome buildOutcome,
                     Optional<Throwable> optionalUnhandledThrowable, OptionValues parsedHostedOptions) {
         executor.shutdown();
 
@@ -734,7 +739,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         double totalSeconds = Utils.millisToSeconds(getTimer(TimerCollection.Registry.TOTAL).getTotalTime());
         recordJsonMetric(ResourceUsageKey.TOTAL_SECS, totalSeconds);
 
-        createAdditionalArtifacts(imageName, generator, wasSuccessfulBuild, parsedHostedOptions);
+        createAdditionalArtifacts(imageName, generator, buildOutcome.successful(), parsedHostedOptions);
         printArtifacts(BuildArtifacts.singleton());
 
         l().printHeadlineSeparator();
@@ -745,10 +750,18 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         } else {
             timeStats = String.format("%dm %ds", (int) totalSeconds / 60, (int) totalSeconds % 60);
         }
-        l().a(wasSuccessfulBuild ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
-                        .a(wasSuccessfulBuild ? "in" : "after").a(" ").a(timeStats).a(".").println();
+        l().a(outcomePrefix(buildOutcome)).a(" generating '").bold().a(imageName).reset().a("' ")
+                        .a(buildOutcome.successful() ? "in" : "after").a(" ").a(timeStats).a(".").println();
 
         printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions);
+    }
+
+    private static String outcomePrefix(NativeImageGeneratorRunner.BuildOutcome buildOutcome) {
+        return switch (buildOutcome) {
+            case SUCCESSFUL -> "Finished";
+            case FAILED -> "Failed";
+            case STOPPED -> "Stopped";
+        };
     }
 
     private void printErrorMessage(Optional<Throwable> optionalUnhandledThrowable, OptionValues parsedHostedOptions) {

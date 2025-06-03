@@ -92,6 +92,16 @@ public class NativeImageGeneratorRunner {
     private volatile NativeImageGenerator generator;
     public static final String IMAGE_BUILDER_ARG_FILE_OPTION = "--image-args-file=";
 
+    public enum BuildOutcome {
+        SUCCESSFUL,
+        FAILED,
+        STOPPED;
+
+        public boolean successful() {
+            return this.equals(SUCCESSFUL);
+        }
+    }
+
     public static void main(String[] args) {
         List<NativeImageGeneratorRunnerProvider> providers = new ArrayList<>();
         ServiceLoader.load(NativeImageGeneratorRunnerProvider.class).forEach(providers::add);
@@ -155,10 +165,11 @@ public class NativeImageGeneratorRunner {
             exitStatus = ExitStatus.BUILDER_ERROR.getValue();
         } catch (InterruptImageBuilding e) {
             if (e.getReason().isPresent()) {
-                if (!e.getReason().get().isEmpty()) {
-                    LogUtils.info(e.getReason().get());
+                exitStatus = e.getExitStatus().orElse(ExitStatus.OK).getValue();
+                String reason = e.getReason().get();
+                if (!reason.isEmpty()) {
+                    LogUtils.info(reason);
                 }
-                exitStatus = ExitStatus.OK.getValue();
             } else {
                 exitStatus = ExitStatus.BUILDER_INTERRUPT_WITHOUT_REASON.getValue();
             }
@@ -394,7 +405,7 @@ public class NativeImageGeneratorRunner {
 
         ProgressReporter reporter = new ProgressReporter(parsedHostedOptions);
         Throwable unhandledThrowable = null;
-        boolean wasSuccessfulBuild = false;
+        BuildOutcome buildOutcome = BuildOutcome.FAILED;
         try (StopTimer ignored = totalTimer.start()) {
             Timer classlistTimer = timerCollection.get(TimerCollection.Registry.CLASSLIST);
             try (StopTimer ignored1 = classlistTimer.start()) {
@@ -544,13 +555,19 @@ public class NativeImageGeneratorRunner {
 
                 generator = createImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
                 generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY, optionParser.getRuntimeOptionNames(), timerCollection);
-                wasSuccessfulBuild = true;
+                buildOutcome = BuildOutcome.SUCCESSFUL;
             } finally {
-                if (!wasSuccessfulBuild) {
+                if (!buildOutcome.successful()) {
                     reporter.printUnsuccessfulInitializeEnd();
                 }
             }
         } catch (InterruptImageBuilding e) {
+            Optional<ExitStatus> exitStatus = e.getExitStatus();
+            if (exitStatus.isPresent()) {
+                if (exitStatus.get().equals(ExitStatus.REBUILD_AFTER_ANALYSIS)) {
+                    buildOutcome = BuildOutcome.STOPPED;
+                }
+            }
             throw e;
         } catch (FallbackFeature.FallbackImageRequest e) {
             if (FallbackExecutor.class.getName().equals(SubstrateOptions.Class.getValue())) {
@@ -594,7 +611,7 @@ public class NativeImageGeneratorRunner {
             unhandledThrowable = e;
             return ExitStatus.BUILDER_ERROR.getValue();
         } finally {
-            reportEpilog(imageName, reporter, classLoader, wasSuccessfulBuild, unhandledThrowable, parsedHostedOptions);
+            reportEpilog(imageName, reporter, classLoader, buildOutcome, unhandledThrowable, parsedHostedOptions);
             NativeImageGenerator.clearSystemPropertiesForImage();
             ImageSingletonsSupportImpl.HostedManagement.clear();
         }
@@ -605,8 +622,8 @@ public class NativeImageGeneratorRunner {
         throw UserError.abort("Cannot pass both options: %s and %s", SubstrateOptionsParser.commandArgument(o1, "+"), SubstrateOptionsParser.commandArgument(o2, "+"));
     }
 
-    protected void reportEpilog(String imageName, ProgressReporter reporter, ImageClassLoader classLoader, boolean wasSuccessfulBuild, Throwable unhandledThrowable, OptionValues parsedHostedOptions) {
-        reporter.printEpilog(Optional.ofNullable(imageName), Optional.ofNullable(generator), classLoader, wasSuccessfulBuild, Optional.ofNullable(unhandledThrowable), parsedHostedOptions);
+    protected void reportEpilog(String imageName, ProgressReporter reporter, ImageClassLoader classLoader, BuildOutcome buildOutcome, Throwable unhandledThrowable, OptionValues parsedHostedOptions) {
+        reporter.printEpilog(Optional.ofNullable(imageName), Optional.ofNullable(generator), classLoader, buildOutcome, Optional.ofNullable(unhandledThrowable), parsedHostedOptions);
     }
 
     protected NativeImageGenerator createImageGenerator(ImageClassLoader classLoader, HostedOptionParser optionParser, Pair<Method, CEntryPointData> mainEntryPointData, ProgressReporter reporter) {
