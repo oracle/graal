@@ -150,12 +150,15 @@ implementation("org.graalvm.polyglot:wasm:{{ site.language_version }}")
                       <div class="language__example-subtitle">
             <h4>2. Create a WebAssembly module, for example with <a href="https://webassembly.github.io/wabt/demo/wat2wasm/" target="_blank">wat2wasm</a></h4>
           </div>
-              {%- highlight javascript -%}
-  (module
-    (func (export "addTwo") (param i32 i32) (result i32)
-      local.get 0
-      local.get 1
-      i32.add))
+              {%- highlight wat -%}
+;; wat2wasm add-two.wat -o add-two.wasm
+(module
+  (func (export "addTwo") (param i32 i32) (result i32)
+    local.get 0
+    local.get 1
+    i32.add
+  )
+)
               {%- endhighlight -%}
             </div>
             <div class="example-logo-box">
@@ -167,10 +170,34 @@ implementation("org.graalvm.polyglot:wasm:{{ site.language_version }}")
           </div>
           <div class="languages__example-box">
             <div class="languages__snippet">
-                      <div class="language__example-subtitle">
-            <h4>3. Embed the Wasm module in Java</h4>
-          </div>
-              {%- highlight java -%}
+              <div class="language__example-subtitle">
+                <h4>3. Embed the Wasm module in Java</h4>
+              </div>
+              <div class="tabs-container">
+                <ul class="nav nav-tabs">
+                  <li><a href="#" data-bs-toggle="tab" data-bs-target="#version25" class="nav-link active">≥ 25.0</a></li>
+                  <li><a href="#" data-bs-toggle="tab" data-bs-target="#version24" class="nav-link">≤ 24.2</a></li>
+                </ul>
+                <div class="tab-content">
+                  <div id="version25" class="tab-pane fade show active">
+{% highlight java %}
+import java.net.URL;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+
+try (Context context = Context.create()) {
+    URL wasmFile = Main.class.getResource("add-two.wasm");
+    Value mainModule = context.eval(Source.newBuilder("wasm", wasmFile).build());
+    Value mainInstance = mainModule.newInstance();
+    Value addTwo = mainInstance.getMember("exports").getMember("addTwo");
+    System.out.println("addTwo(40, 2) = " + addTwo.execute(40, 2));
+}
+{% endhighlight %}
+                  </div>
+                  <div id="version24" class="tab-pane fade">
+{% highlight java %}
 import java.net.URL;
 
 import org.graalvm.polyglot.Context;
@@ -184,8 +211,11 @@ try (Context context = Context.create()) {
     Value addTwo = context.getBindings("wasm").getMember(moduleName).getMember("addTwo");
     System.out.println("addTwo(40, 2) = " + addTwo.execute(40, 2));
 }
-              {%- endhighlight -%}
-            </div>
+{% endhighlight %}
+                  </div>
+                </div>
+              </div>
+            </div><!-- languages__snippet -->
             <div class="example-logo-box">
               <img alt="Java icon" src='{{ "/assets/img/logos/java-logo.svg" | relative_url }}' class="languages__example-logo">
             </div>
