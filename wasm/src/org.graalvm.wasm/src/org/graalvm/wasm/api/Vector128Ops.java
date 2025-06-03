@@ -722,17 +722,17 @@ public class Vector128Ops {
 
     private static ByteVector i32x4_relaxed_dot_i8x16_i7x16_add_s(ByteVector x, ByteVector y, ByteVector zBytes) {
         IntVector z = zBytes.reinterpretAsInts();
-        Vector<Short> xEvens = x.compress(evens(I8X16)).convert(VectorOperators.B2S, 0);
-        Vector<Short> xOdds = x.compress(odds(I8X16)).convert(VectorOperators.B2S, 0);
-        Vector<Short> yEvens = y.compress(evens(I8X16)).convert(VectorOperators.B2S, 0);
-        Vector<Short> yOdds = y.compress(odds(I8X16)).convert(VectorOperators.B2S, 0);
-        Vector<Short> xMulYEvens = xEvens.mul(yEvens);
-        Vector<Short> xMulYOdds = xOdds.mul(yOdds);
-        Vector<Short> dot = xMulYEvens.lanewise(VectorOperators.SADD, xMulYOdds);
-        Vector<Integer> dotEvens = dot.compress(evens(I16X8)).convert(VectorOperators.S2I, 0);
-        Vector<Integer> dotOdds = dot.compress(odds(I16X8)).convert(VectorOperators.S2I, 0);
-        Vector<Integer> dots = dotEvens.add(dotOdds);
-        Vector<Integer> result = dots.add(z);
+        ShortVector xEvens = castShort128(x.compress(evens(I8X16)).convert(VectorOperators.B2S, 0));
+        ShortVector xOdds = castShort128(x.compress(odds(I8X16)).convert(VectorOperators.B2S, 0));
+        ShortVector yEvens = castShort128(y.compress(evens(I8X16)).convert(VectorOperators.B2S, 0));
+        ShortVector yOdds = castShort128(y.compress(odds(I8X16)).convert(VectorOperators.B2S, 0));
+        ShortVector xMulYEvens = xEvens.mul(yEvens);
+        ShortVector xMulYOdds = xOdds.mul(yOdds);
+        ShortVector dot = xMulYEvens.lanewise(VectorOperators.SADD, xMulYOdds);
+        IntVector dotEvens = castInt128(dot.compress(evens(I16X8)).convert(VectorOperators.S2I, 0));
+        IntVector dotOdds = castInt128(dot.compress(odds(I16X8)).convert(VectorOperators.S2I, 0));
+        IntVector dots = dotEvens.add(dotOdds);
+        IntVector result = dots.add(z);
         return result.reinterpretAsBytes();
     }
 
@@ -767,9 +767,34 @@ public class Vector128Ops {
     // Checkstyle: resume method name check
 
     private static final Class<? extends ByteVector> BYTE_128_CLASS = ByteVector.zero(I8X16.species()).getClass();
+    private static final Class<? extends ShortVector> SHORT_128_CLASS = ShortVector.zero(I16X8.species()).getClass();
+    private static final Class<? extends IntVector> INT_128_CLASS = IntVector.zero(I32X4.species()).getClass();
+    private static final Class<? extends LongVector> LONG_128_CLASS = LongVector.zero(I64X2.species()).getClass();
+    private static final Class<? extends FloatVector> FLOAT_128_CLASS = FloatVector.zero(F32X4.species()).getClass();
+    private static final Class<? extends DoubleVector> DOUBLE_128_CLASS = DoubleVector.zero(F64X2.species()).getClass();
 
-    public static final ByteVector cast(ByteVector vec) {
+    public static final ByteVector castByte128(Vector<Byte> vec) {
         return BYTE_128_CLASS.cast(vec);
+    }
+
+    private static final ShortVector castShort128(Vector<Short> vec) {
+        return SHORT_128_CLASS.cast(vec);
+    }
+
+    private static final IntVector castInt128(Vector<Integer> vec) {
+        return INT_128_CLASS.cast(vec);
+    }
+
+    private static final LongVector castLong128(Vector<Long> vec) {
+        return LONG_128_CLASS.cast(vec);
+    }
+
+    private static final FloatVector castFloat128(Vector<Float> vec) {
+        return FLOAT_128_CLASS.cast(vec);
+    }
+
+    private static final DoubleVector castDouble128(Vector<Double> vec) {
+        return DOUBLE_128_CLASS.cast(vec);
     }
 
     private static <E> Vector<E> sat(Vector<E> vec, long min, long max) {

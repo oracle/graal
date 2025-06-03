@@ -142,11 +142,11 @@ public abstract class WasmFrame {
     public static ByteVector popVector128(VirtualFrame frame, int slot) {
         ByteVector result = (ByteVector) frame.getObjectStatic(slot);
         frame.clearObjectStatic(slot);
-        return Vector128Ops.cast(result);
+        return Vector128Ops.castByte128(result);
     }
 
     public static void pushVector128(VirtualFrame frame, int slot, ByteVector value) {
-        frame.setObjectStatic(slot, Vector128Ops.cast(value));
+        frame.setObjectStatic(slot, Vector128Ops.castByte128(value));
     }
 
     public static Object popReference(VirtualFrame frame, int slot) {
