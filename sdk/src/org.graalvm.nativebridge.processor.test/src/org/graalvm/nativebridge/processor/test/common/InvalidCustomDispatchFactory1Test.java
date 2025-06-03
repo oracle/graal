@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,13 +43,19 @@ package org.graalvm.nativebridge.processor.test.common;
 import org.graalvm.nativebridge.CustomDispatchAccessor;
 import org.graalvm.nativebridge.CustomDispatchFactory;
 import org.graalvm.nativebridge.CustomReceiverAccessor;
+import org.graalvm.nativebridge.ForeignObject;
+import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
 import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
+import org.graalvm.nativebridge.GenerateNativeToNativeBridge;
+import org.graalvm.nativebridge.GenerateProcessToProcessBridge;
 import org.graalvm.nativebridge.processor.test.CustomReceiverService;
 import org.graalvm.nativebridge.processor.test.ExpectError;
 import org.graalvm.nativebridge.processor.test.ServiceAPI;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
-@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
+@GenerateProcessToProcessBridge(factory = ForeignServiceFactory.class)
+@GenerateHotSpotToNativeBridge(factory = ForeignServiceFactory.class)
+@GenerateNativeToNativeBridge(factory = ForeignServiceFactory.class)
+@GenerateNativeToHotSpotBridge(factory = ForeignServiceFactory.class)
 abstract class InvalidCustomDispatchFactory1Test extends CustomReceiverService {
 
     @CustomDispatchAccessor
@@ -63,14 +69,14 @@ abstract class InvalidCustomDispatchFactory1Test extends CustomReceiverService {
     }
 
     @CustomDispatchFactory
-    static ServiceAPI create1(Object receiver) {
+    static ServiceAPI create1(ForeignObject receiver) {
         return new ServiceAPI(null, receiver);
     }
 
     @CustomDispatchFactory
     @ExpectError("Only a single method can be annotated by the `CustomDispatchFactory`.%n" +
-                    "Fix the ambiguity by removing the `static ServiceAPI create1(Object receiver)` method or the `static ServiceAPI create2(Object receiver)` method.")
-    static ServiceAPI create2(Object receiver) {
+                    "Fix the ambiguity by removing the `static ServiceAPI create1(ForeignObject receiver)` method or the `static ServiceAPI create2(ForeignObject receiver)` method.")
+    static ServiceAPI create2(ForeignObject receiver) {
         return new ServiceAPI(null, receiver);
     }
 }
