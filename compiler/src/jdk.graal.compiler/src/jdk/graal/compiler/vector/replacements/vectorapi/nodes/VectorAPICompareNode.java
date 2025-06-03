@@ -30,14 +30,10 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 
-import jdk.graal.compiler.vector.architecture.VectorArchitecture;
-import jdk.graal.compiler.vector.nodes.simd.SimdPrimitiveCompareNode;
-import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIOperations;
-import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIUtils;
-
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.calc.Condition.CanonicalizedCondition;
+import jdk.graal.compiler.core.common.type.ArithmeticStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.Node;
@@ -52,7 +48,11 @@ import jdk.graal.compiler.nodes.calc.NotNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.vector.architecture.VectorArchitecture;
+import jdk.graal.compiler.vector.nodes.simd.SimdPrimitiveCompareNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIOperations;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIUtils;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -170,12 +170,13 @@ public class VectorAPICompareNode extends VectorAPIMacroNode implements Canonica
             return false;
         }
 
-        /*
-         * Strictly speaking, if the canonicalized condition requires a negation, we should also
-         * check if negation of logic vectors is supported by the architecture. There is no
-         * convenient way to do this, and also every realistic architecture allows negation.
-         * Therefore, only check for support of the actual comparison.
-         */
+        if (canonicalizedCondition.mustNegate()) {
+            SimdStamp resultStamp = this.vectorStamp();
+            ArithmeticStamp resultElementStamp = (ArithmeticStamp) resultStamp.getComponent(0);
+            if (vectorArch.getSupportedVectorArithmeticLength(resultElementStamp, length, resultElementStamp.getOps().getNot()) != length) {
+                return false;
+            }
+        }
         return vectorArch.getSupportedVectorComparisonLength(elementStamp, canonicalizedCondition.getCanonicalCondition(), length) == length;
     }
 

@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.vector.lir.amd64;
 
-import static jdk.graal.compiler.vector.lir.amd64.AMD64VectorNodeMatchRules.getRegisterSize;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64SIMDInstructionEncoding.EVEX;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.EvexGatherOp.EVGATHERDPD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.EvexGatherOp.EVGATHERDPS;
@@ -200,6 +199,7 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexShiftOp.EVPSRAW;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexShiftOp.EVPSRLD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexShiftOp.EVPSRLQ;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexShiftOp.EVPSRLW;
+import static jdk.graal.compiler.vector.lir.amd64.AMD64VectorNodeMatchRules.getRegisterSize;
 
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -1848,12 +1848,22 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
         Variable result = getLIRGen().newVariable(resultKind);
 
         NormalizedMaskedOp normalizedOp = NormalizedMaskedOp.make(getMaskedOpcode(getArchitecture(), meta, eKind, srcEKind), avxSize, src1, src2);
+        Value normalizedSrc2 = normalizedOp.src2;
+        if (normalizedOp.opcode == EVPERMILPD) {
+            /*
+             * EVPERMILPD uses the SECOND bit in each element as the index. See also
+             * AMD64VectorShuffle.
+             */
+            Variable tmp = getLIRGen().newVariable(normalizedOp.src2.getValueKind());
+            getLIRGen().append(new AMD64VectorBinary.AVXBinaryConstOp(EVPSLLQ, getRegisterSize(tmp), tmp, asAllocatable(src2), 1));
+            normalizedSrc2 = tmp;
+        }
         AVX512MaskedOp.AVX512MaskedMergeOp lirOp;
-        if (normalizedOp.src2() == null) {
+        if (normalizedSrc2 == null) {
             lirOp = new AVX512MaskedOp.AVX512MaskedMergeOp(normalizedOp.opcode(), avxSize, result, asAllocatable(background), asAllocatable(mask), Value.ILLEGAL, asAllocatable(normalizedOp.src1()));
         } else {
             lirOp = new AVX512MaskedOp.AVX512MaskedMergeOp(normalizedOp.opcode(), avxSize, result, asAllocatable(background), asAllocatable(mask), asAllocatable(normalizedOp.src1()),
-                            asAllocatable(normalizedOp.src2()));
+                            asAllocatable(normalizedSrc2));
         }
         getLIRGen().append(lirOp);
         return result;
@@ -1883,12 +1893,22 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
             GraalError.guarantee(predicate != null, "%s", meta);
         }
 
+        Value normalizedSrc2 = normalizedOp.src2;
+        if (normalizedOp.opcode == EVPERMILPD) {
+            /*
+             * EVPERMILPD uses the SECOND bit in each element as the index. See also
+             * AMD64VectorShuffle.
+             */
+            Variable tmp = getLIRGen().newVariable(normalizedOp.src2.getValueKind());
+            getLIRGen().append(new AMD64VectorBinary.AVXBinaryConstOp(EVPSLLQ, getRegisterSize(tmp), tmp, asAllocatable(src2), 1));
+            normalizedSrc2 = tmp;
+        }
         AVX512MaskedOp.AVX512MaskedZeroOp lirOp;
-        if (normalizedOp.src2() == null) {
+        if (normalizedSrc2 == null) {
             lirOp = new AVX512MaskedOp.AVX512MaskedZeroOp(normalizedOp.opcode(), predicate, avxSize, result, asAllocatable(mask), Value.ILLEGAL, asAllocatable(normalizedOp.src1()));
         } else {
             lirOp = new AVX512MaskedOp.AVX512MaskedZeroOp(normalizedOp.opcode(), predicate, avxSize, result, asAllocatable(mask), asAllocatable(normalizedOp.src1()),
-                            asAllocatable(normalizedOp.src2()));
+                            asAllocatable(normalizedSrc2));
         }
         getLIRGen().append(lirOp);
         return result;

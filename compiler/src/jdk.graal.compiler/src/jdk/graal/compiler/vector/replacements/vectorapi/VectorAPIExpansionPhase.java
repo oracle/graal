@@ -382,15 +382,6 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                          * deoptimization, this will materialize the SIMD value as a vector object
                          * on the heap.
                          */
-                        if (node instanceof ValueNode valueNode) {
-                            ResolvedJavaType javaType = valueNode.stamp(NodeView.DEFAULT).javaType(context.getMetaAccess());
-                            VectorAPIType vectorType = VectorAPIType.ofType(javaType, context.getProviders());
-                            if (vectorType == null || (vectorType.isMask && !VectorAPIBoxingUtils.canConvertLogicToBooleans(vectorType.stamp, VectorAPIUtils.vectorArchitecture(context)))) {
-                                graph.getDebug().log(DebugContext.DETAILED_LEVEL, "bad (mask) type %s at %s: %s", vectorType, valueNode, valueNode.stamp(NodeView.DEFAULT));
-                                component.canExpand = false;
-                                break;
-                            }
-                        }
                         continue;
                     } else {
                         /*
