@@ -31,11 +31,13 @@ import java.util.EnumSet;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
@@ -149,14 +151,14 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
              * InvocationHandler)`, is registered for reflection so that dynamic proxy instances can
              * be allocated at run time.
              */
-            RuntimeReflection.register(ReflectionUtil.lookupConstructor(clazz, InvocationHandler.class));
+            ImageSingletons.lookup(RuntimeReflectionSupport.class).register(RegistrationCondition.always(), false, ReflectionUtil.lookupConstructor(clazz, InvocationHandler.class));
 
             /*
              * The proxy class reflectively looks up the methods of the interfaces it implements to
              * pass a Method object to InvocationHandler.
              */
             for (Class<?> intf : interfaces) {
-                RuntimeReflection.register(intf.getMethods());
+                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(RegistrationCondition.always(), false, intf.getMethods());
             }
             return clazz;
         } catch (Throwable t) {
