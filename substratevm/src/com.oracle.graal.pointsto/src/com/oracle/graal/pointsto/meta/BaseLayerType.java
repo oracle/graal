@@ -56,7 +56,6 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     private final boolean isInterface;
     private final boolean isEnum;
     private final boolean isInitialized;
-    private final boolean isInitializedAtBuildTime;
     private final boolean isLinked;
     private final String sourceFileName;
     private final ResolvedJavaType enclosingType;
@@ -67,7 +66,7 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     private ResolvedJavaField[] instanceFields;
     private ResolvedJavaField[] instanceFieldsWithSuper;
 
-    public BaseLayerType(String name, int baseLayerId, int modifiers, boolean isInterface, boolean isEnum, boolean isInitialized, boolean initializedAtBuildTime, boolean isLinked,
+    public BaseLayerType(String name, int baseLayerId, int modifiers, boolean isInterface, boolean isEnum, boolean isInitialized, boolean isLinked,
                     String sourceFileName, ResolvedJavaType enclosingType, ResolvedJavaType componentType, ResolvedJavaType superClass, ResolvedJavaType[] interfaces, ResolvedJavaType objectType,
                     Annotation[] annotations) {
         super(annotations);
@@ -77,7 +76,6 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
         this.isInterface = isInterface;
         this.isEnum = isEnum;
         this.isInitialized = isInitialized;
-        this.isInitializedAtBuildTime = initializedAtBuildTime;
         this.isLinked = isLinked;
         this.sourceFileName = sourceFileName;
         this.enclosingType = enclosingType;
@@ -340,9 +338,5 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
 
     public int getBaseLayerId() {
         return baseLayerId;
-    }
-
-    public boolean initializedAtBuildTime() {
-        return isInitializedAtBuildTime;
     }
 }

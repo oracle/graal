@@ -35,6 +35,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Maintains user and system configuration for class initialization in Native Image.
@@ -52,12 +53,47 @@ import com.oracle.svm.core.util.UserError;
  *
  * Every node tracks a list of reasons for the set configuration. This list helps the users debug
  * conflicts in the configuration.
+ * 
+ * A {@code strict} configuration, as specified by {@link InitializationNode#strict}, defines
+ * whether an initialization kind, as specified by {@link InitializationNode#kind}, was explicitly
+ * configured for the corresponding type. A {@code non-strict} configuration is a configuration
+ * inherited from a parent package configuration.
  */
 final class ClassInitializationConfiguration {
     private static final String ROOT_QUALIFIER = "";
     private static final int MAX_NUMBER_OF_REASONS = 10;
 
-    private InitializationNode root = new InitializationNode("", null, null, false);
+    private final InitializationNode root = new InitializationNode("", null, null, false);
+
+    synchronized void updateStrict(String classOrPackage, InitKind expectedKind, InitKind newKind, String reason) {
+        updateStrictRec(root, qualifierList(classOrPackage), expectedKind, newKind, reason);
+    }
+
+    private void updateStrictRec(InitializationNode node, List<String> classOrPackage, InitKind expectedKind, InitKind newKind, String reason) {
+        assert !classOrPackage.isEmpty();
+        assert node.qualifier.equals(classOrPackage.getFirst());
+        if (classOrPackage.size() == 1) {
+            VMError.guarantee(node.strict, "Expected a strict initialization policy for %s.", qualifiedName(node), newKind);
+            VMError.guarantee(newKind != expectedKind, "The initialization policy for %s is already %s.", qualifiedName(node), newKind);
+            VMError.guarantee(node.kind == expectedKind, "Found unexpected initialization policy for %s: expected %s, found %s.", qualifiedName(node), expectedKind, node.kind);
+            updateReason(node, reason);
+            node.kind = newKind;
+        } else {
+            List<String> tail = new ArrayList<>(classOrPackage);
+            tail.removeFirst();
+            String nextQualifier = tail.getFirst();
+            VMError.guarantee(node.children.containsKey(nextQualifier), "Expected that initialization node for %s already contains a child for %s.", qualifiedName(node), nextQualifier);
+            updateStrictRec(node.children.get(nextQualifier), tail, expectedKind, newKind, reason);
+        }
+    }
+
+    private static void updateReason(InitializationNode node, String reason) {
+        if (node.reasons.size() < MAX_NUMBER_OF_REASONS) {
+            node.reasons.add(reason);
+        } else if (node.reasons.size() == MAX_NUMBER_OF_REASONS) {
+            node.reasons.add("others");
+        }
+    }
 
     public synchronized void insert(String classOrPackage, InitKind kind, String reason, boolean strict) {
         assert kind != null;
@@ -93,11 +129,7 @@ final class ClassInitializationConfiguration {
                 node.strict = strict;
                 node.reasons.add(reason);
             } else if (node.kind == kind) {
-                if (node.reasons.size() < MAX_NUMBER_OF_REASONS) {
-                    node.reasons.add(reason);
-                } else if (node.reasons.size() == MAX_NUMBER_OF_REASONS) {
-                    node.reasons.add("others");
-                }
+                updateReason(node, reason);
             } else {
                 if (node.strict) {
                     throw UserError.abort("Incompatible change of initialization policy for %s: trying to change %s %s to %s %s",
