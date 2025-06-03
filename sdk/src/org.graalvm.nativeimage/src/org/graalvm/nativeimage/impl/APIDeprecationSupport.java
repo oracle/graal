@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,40 +38,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage.hosted;
-
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
-import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
-import org.graalvm.nativeimage.impl.APIDeprecationSupport;
-import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
+package org.graalvm.nativeimage.impl;
 
 /**
- * This class can be used to make creating dynamic proxy classes at run time valid.
- *
- * @since 22.3
+ * A class that stores and manages a flag value used within the SDK. The flag determines if warnings
+ * are printed when calling APIs that are currently in the deprecation process.
  */
-@Platforms(Platform.HOSTED_ONLY.class)
-public final class RuntimeProxyCreation {
+public class APIDeprecationSupport {
+    private final boolean flagValue;
+    private boolean userEnabledFeaturesStarted = false;
 
-    private static final APIDeprecationSupport deprecationFlag = ImageSingletons.lookup(APIDeprecationSupport.class);
-
-    /**
-     * Enables registering specifications of {@link java.lang.reflect.Proxy} classes during the
-     * image build so that matching proxy objects can be created at runtime. The proxy class is
-     * fully specified by the interfaces it implements.
-     * <p>
-     * This API is deprecated; use {@link ReflectiveAccess} instead.
-     *
-     * @since 22.3
-     */
-    public static void register(Class<?>... interfaces) {
-        deprecationFlag.printDeprecationWarning();
-        ImageSingletons.lookup(RuntimeProxyCreationSupport.class).addProxyClass(AccessCondition.alwaysTrue(), interfaces);
+    public APIDeprecationSupport(boolean flagValue) {
+        this.flagValue = flagValue;
     }
 
-    private RuntimeProxyCreation() {
+    public boolean isUserEnabledFeaturesStarted() {
+        return userEnabledFeaturesStarted;
+    }
+
+    public void setUserEnabledFeaturesStarted(boolean started) {
+        userEnabledFeaturesStarted = started;
+    }
+
+    public void printDeprecationWarning() {
+        if (flagValue && userEnabledFeaturesStarted) {
+            System.err.println("Warning: You are using an outdated metadata registration API. Please migrate to the new API located in the 'dynamicaccess' package.");
+        }
     }
 }
