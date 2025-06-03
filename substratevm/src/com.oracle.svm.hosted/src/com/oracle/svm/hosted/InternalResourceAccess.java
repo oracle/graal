@@ -40,7 +40,7 @@ public final class InternalResourceAccess implements ResourceAccess {
 
     @Override
     public void register(AccessCondition condition, Module module, String pattern) {
-        Objects.requireNonNull(pattern);
+        Objects.requireNonNull(pattern, "Resource pattern cannot be null. Please ensure that all values you register are not null.");
         if (pattern.replace("\\*", "").contains("*")) {
             String moduleName = module == null ? null : module.getName();
             rrsInstance.addGlob(condition, moduleName, pattern, "Registered from API");
@@ -51,7 +51,7 @@ public final class InternalResourceAccess implements ResourceAccess {
 
     @Override
     public void registerResourceBundle(AccessCondition condition, Module module, String bundleName) {
-        Objects.requireNonNull(bundleName);
+        Objects.requireNonNull(bundleName, "Bundle path cannot be null. Please ensure that all values you register are not null.");
         String finalBundleName = (module != null && module.isNamed()) ? module.getName() + ":" + bundleName : bundleName;
         rrsInstance.addResourceBundles(condition, finalBundleName);
     }
