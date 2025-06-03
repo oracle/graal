@@ -154,6 +154,16 @@ public final class EspressoOptions {
                     usageSyntax = "<module>" + PATH_SEPARATOR_INSERT + "<module>" + PATH_SEPARATOR_INSERT + "...") //
     public static final OptionKey<List<String>> EnableNativeAccess = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
 
+    @Option(help = "Allow or deny access to code and data outside the Java runtime " +
+                    "by code in modules for which native access is not explicitly enabled. " +
+                    "<value> is one of `deny`, `warn` or `allow`. The default value is `warn`. " +
+                    "This option will be removed in a future release." +
+                    "\\nEquivalent to '--illegal-native-access=<value>'", //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.STABLE, //
+                    usageSyntax = "warn|deny|allow") //
+    public static final OptionKey<String> IllegalNativeAccess = new OptionKey<>("");
+
     @Option(help = "Installation directory for Java Runtime Environment (JRE).", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.STABLE, //
@@ -653,17 +663,16 @@ public final class EspressoOptions {
         JAVA,
     }
 
-    private static final OptionType<JImageMode> JIMAGE_MODE_OPTION_TYPE = new OptionType<>("JImageMode",
-                    new Function<String, JImageMode>() {
-                        @Override
-                        public JImageMode apply(String s) {
-                            try {
-                                return JImageMode.valueOf(s.toUpperCase(Locale.ROOT));
-                            } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException("JImage: Mode can be 'native', 'java'.");
-                            }
-                        }
-                    });
+    private static final OptionType<JImageMode> JIMAGE_MODE_OPTION_TYPE = new OptionType<>("JImageMode", new Function<String, JImageMode>() {
+        @Override
+        public JImageMode apply(String s) {
+            try {
+                return JImageMode.valueOf(s.toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("JImage: Mode can be 'native', 'java'.");
+            }
+        }
+    });
 
     @Option(help = "Selects the jimage reader.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //

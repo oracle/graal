@@ -151,22 +151,33 @@ public final class GuestAllocator implements LanguageAccess {
     public StaticObject createClass(Klass klass) {
         assert klass != null;
         CompilerAsserts.neverPartOfCompilation();
-        ObjectKlass guestClass = klass.getMeta().java_lang_Class;
+        EspressoContext ctx = klass.getContext();
+        Meta meta = ctx.getMeta();
+        EspressoLanguage lang = ctx.getLanguage();
+
+        ObjectKlass guestClass = meta.java_lang_Class;
         StaticObject newObj = guestClass.getLinkedKlass().getShape(false).getFactory().create(guestClass);
+
         initInstanceFields(newObj, guestClass);
 
-        klass.getMeta().java_lang_Class_classLoader.setObject(newObj, klass.getDefiningClassLoader());
-        if (klass.getContext().getJavaVersion().modulesEnabled()) {
+        meta.java_lang_Class_classLoader.setObject(newObj, klass.getDefiningClassLoader());
+        if (ctx.getJavaVersion().modulesEnabled()) {
             setModule(newObj, klass);
         }
         // The Class.componentType field is only available on 9+.
-        if (klass.isArray() && klass.getMeta().java_lang_Class_componentType != null) {
-            klass.getMeta().java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().initializeEspressoClass());
+        if (klass.isArray() && meta.java_lang_Class_componentType != null) {
+            meta.java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().initializeEspressoClass());
         }
         // Will be overriden if necessary, but should be initialized to non-host null.
-        klass.getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(newObj, StaticObject.NULL);
+        meta.HIDDEN_PROTECTION_DOMAIN.setMaybeHiddenObject(newObj, StaticObject.NULL);
         // Final hidden field assignment
-        klass.getMeta().HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);
+        meta.HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);
+
+        if (lang.getJavaVersion().java25OrLater()) {
+            assert meta.java_lang_Class_modifiers != null && meta.java_lang_Class_primitive != null;
+            meta.java_lang_Class_modifiers.setChar(newObj, (char) klass.getClassModifiers());
+            meta.java_lang_Class_primitive.setBoolean(newObj, klass.isPrimitive());
+        }
         return trackAllocation(klass, newObj);
     }
 
