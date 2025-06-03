@@ -69,6 +69,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLCodeGenerator;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLBuiltins;
@@ -244,6 +245,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.variadicStackLimit = ElementUtils.getAnnotationValue(String.class, generateBytecodeMirror, "variadicStackLimit", true);
         boolean enableBytecodeDebugListener = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableBytecodeDebugListener");
         model.bytecodeDebugListener = (!enableBytecodeDebugListener || types.BytecodeDebugListener == null) ? false : ElementUtils.isAssignable(typeElement.asType(), types.BytecodeDebugListener);
+        model.additionalAssertions = TruffleProcessorOptions.additionalAssertions(processingEnv) ||
+                        ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "additionalAssertions", true);
 
         BytecodeDSLBuiltins.addBuiltins(model, types, context);
 
