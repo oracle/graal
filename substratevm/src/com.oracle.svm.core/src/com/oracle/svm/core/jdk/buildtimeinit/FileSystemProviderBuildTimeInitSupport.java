@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -129,6 +130,11 @@ public final class FileSystemProviderBuildTimeInitSupport {
 
 @AutomaticallyRegisteredFeature
 final class FileSystemProviderBuildTimeInitFeature implements InternalFeature {
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return !FutureDefaultsOptions.isJDKInitializedAtRunTime();
+    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
