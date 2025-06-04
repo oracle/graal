@@ -247,6 +247,14 @@ class CVTypeSectionBuilder {
             fieldListBuilder.addField(btype);
         }
 
+        if (typeEntry.isHeader()) {
+            FieldEntry hubField = ((HeaderTypeEntry)typeEntry).getHubField();
+            log("field %s attr=(%s) offset=%d size=%d valuetype=%s", hubField.fieldName(), hubField.getModifiersString(), hubField.getOffset(), hubField.getSize(), hubField.getValueType().getTypeName());
+            CVTypeRecord.FieldRecord fieldRecord = buildField(hubField);
+            log("field %s", fieldRecord);
+            fieldListBuilder.addField(fieldRecord);
+        }
+
         /* Only define manifested fields. */
         typeEntry.fields().filter(CVTypeSectionBuilder::isManifestedField).forEach(f -> {
             log("field %s attr=(%s) offset=%d size=%d valuetype=%s", f.fieldName(), f.getModifiersString(), f.getOffset(), f.getSize(), f.getValueType().getTypeName());
