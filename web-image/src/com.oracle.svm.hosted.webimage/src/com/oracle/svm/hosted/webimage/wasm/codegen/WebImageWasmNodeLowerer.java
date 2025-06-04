@@ -942,6 +942,7 @@ public abstract class WebImageWasmNodeLowerer extends NodeLowerer {
             case TAN -> WasmImports.F64Tan;
             case TANH -> WasmImports.F64Tanh;
             case EXP -> WasmImports.F64Exp;
+            case CBRT -> WasmImports.F64Cbrt;
         };
 
         return new Call(masm.idFactory.forFunctionImport(imported), lowerExpression(node.getValue()));
