@@ -2674,6 +2674,7 @@ suite = {
       "distDependencies": [
         "TRUFFLE_API",
         "TRUFFLE_NFI_LIBFFI",
+        "TRUFFLE_NFI_PANAMA",
       ],
       "maven": False,
       "graalCompilerSourceEdition": "ignore",
@@ -2687,6 +2688,17 @@ suite = {
         ],
       },
       "graalCompilerSourceEdition": "ignore",
+    },
+    "NFI_POLYBENCH_BENCHMARKS": {
+      "description": "Distribution for NFI polybench benchmarks",
+      "layout": {
+        "./nfi/": [
+          "file:benchmarks/nfi/*.pmh",
+        ],
+        "./nfi/panama/": [
+          "file:benchmarks/nfi/panama/*.pmh",
+        ]
+      },
     },
     "SL_BENCHMARKS": {
       "description": "Distribution for SL polybench benchmarks",

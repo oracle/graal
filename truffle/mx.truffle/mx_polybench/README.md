@@ -66,6 +66,7 @@ The registration defines the Java distributions, native distributions, etc. requ
 ```
 # Register a language.
 mx_polybench.register_polybench_language(
+    mx_suite=_suite,
     language="sl",
     distributions=["TRUFFLE_SL"],
 )
@@ -78,11 +79,11 @@ mx_polybench.register_polybench_language(
 ```
 # Register a suite of benchmarks.
 mx_polybench.register_polybench_benchmark_suite(
+    mx_suite=_suite,
     name="sl",
     languages=["sl"],
     benchmark_distribution="SL_BENCHMARKS",
     benchmark_file_filter=".*sl",
-    mx_suite=_suite,
 )
 ```
 
