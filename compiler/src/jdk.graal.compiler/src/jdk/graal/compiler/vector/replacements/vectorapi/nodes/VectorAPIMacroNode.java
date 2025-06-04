@@ -150,7 +150,7 @@ public abstract class VectorAPIMacroNode extends MacroWithExceptionNode implemen
             GraalError.guarantee(providers != null, "must only be called with non-null providers unless isSimdConstant(node)");
             if (node.isJavaConstant()) {
                 ValueNode readConstant = VectorAPIBoxingUtils.tryReadSimdConstant(node.asJavaConstant(), providers);
-                if (readConstant.isConstant() && readConstant.asConstant() instanceof SimdConstant simdConstant) {
+                if (readConstant != null && readConstant.isConstant() && readConstant.asConstant() instanceof SimdConstant simdConstant) {
                     return simdConstant;
                 }
             }

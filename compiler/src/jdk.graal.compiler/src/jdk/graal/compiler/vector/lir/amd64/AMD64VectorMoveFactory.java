@@ -43,6 +43,7 @@ import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 public class AMD64VectorMoveFactory extends AMD64MoveFactoryBase {
@@ -117,13 +118,24 @@ public class AMD64VectorMoveFactory extends AMD64MoveFactoryBase {
 
             SimdConstant simd = (SimdConstant) constant;
             AMD64Kind kind = (AMD64Kind) result.getPlatformKind();
-            GraalError.guarantee(kind.getVectorLength() <= simd.getVectorLength(), "vector length mismatch: %s vs. %s", kind, simd);
+
+            /*
+             * JVMCI doesn't have a 16-bit vector kind. Two-byte constants are assigned a 32-bit
+             * kind instead. If we construct the constant value in a register (for all zeros or all
+             * ones), this doesn't matter. If we emit a load from the constant area, we make sure to
+             * pad two-byte constants to four bytes and load them with a four-byte load.
+             */
+            boolean specialCaseTwoBytes = kind.equals(AMD64Kind.V32_BYTE) && simd.getSerializedSize() == 2;
+            GraalError.guarantee(specialCaseTwoBytes || kind.getVectorLength() <= simd.getVectorLength(), "vector length mismatch: %s vs. %s", kind, simd);
 
             if (simd.isDefaultForKind()) {
                 return new AVXClearVectorConstant(result, simd, encoding);
             } else if (SimdConstant.isAllOnes(simd)) {
                 return new AVXAllOnesOp(result, simd);
             } else {
+                if (specialCaseTwoBytes) {
+                    simd = padTwoByteConstant(simd);
+                }
                 return new AVXLoadConstantVectorOp(result, simd, kind.getScalar(), encoding);
             }
         } else if (constant instanceof JavaConstant) {
@@ -138,6 +150,16 @@ public class AMD64VectorMoveFactory extends AMD64MoveFactoryBase {
         }
 
         return null;
+    }
+
+    /**
+     * Pad the given constant, which must have a size of two bytes, to four bytes by appending
+     * bytes. The values of the padding bytes are irrelevant, as they should never be used.
+     */
+    private static SimdConstant padTwoByteConstant(SimdConstant simd) {
+        GraalError.guarantee(simd.getVectorLength() == 2 && simd.getValue(0) instanceof JavaConstant javaConstant && javaConstant.getJavaKind() == JavaKind.Byte, "expected exactly two bytes: %s",
+                        simd);
+        return new SimdConstant(new Constant[]{simd.getValue(0), simd.getValue(1), JavaConstant.forByte((byte) 0xc0), JavaConstant.forByte((byte) 0xfe)});
     }
 
     @Override

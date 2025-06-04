@@ -37,6 +37,7 @@ import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.MoveFactory;
 import jdk.graal.compiler.vector.lir.aarch64.AArch64VectorArithmeticLIRGenerator;
 import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
+import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.PlatformKind;
@@ -79,9 +80,14 @@ public class AArch64HotSpotVectorLIRGenerator extends AArch64HotSpotLIRGenerator
         int length = kind.getPlatformKind().getVectorLength();
         if (length == 1) {
             return super.emitConstant(kind, constant);
-        } else if (constant instanceof SimdConstant) {
-            assert ((SimdConstant) constant).getVectorLength() == length : constant + " " + length;
-            return super.emitConstant(kind, constant);
+        } else if (constant instanceof SimdConstant simd) {
+            /*
+             * JVMCI doesn't have a 16-bit vector kind. Two-byte constants are assigned a 32-bit
+             * kind instead.
+             */
+            boolean specialCaseTwoBytes = kind.getPlatformKind().equals(AArch64Kind.V32_BYTE) && simd.getSerializedSize() == 2;
+            assert specialCaseTwoBytes || simd.getVectorLength() == length : constant + " " + length;
+            return super.emitConstant(kind, simd);
         } else {
             return super.emitConstant(kind, SimdConstant.broadcast(constant, length));
         }
