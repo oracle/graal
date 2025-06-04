@@ -286,9 +286,8 @@ local common_json = import "../common.json";
         if (self.os == "linux" && self.arch == "amd64") then {
           readline: '==6.3',
           pcre2: '==10.37',
-          curl: '==7.50.1',
           gnur: '==4.0.3-gcc4.8.5-pcre2',
-        }
+        } + if (std.objectHasAll(self, 'os_distro') && self['os_distro'] == 'ol' && std.objectHasAll(self, 'os_distro_version') && self['os_distro_version'] == '9') then {curl: '==7.78.0'} else {curl: '==7.50.1'}
         else if (self.os == "darwin" && self.arch == "amd64") then {
           'pcre2': '==10.37',
         } else {},
@@ -451,18 +450,21 @@ local common_json = import "../common.json";
     local aarch64 = { arch:: "aarch64", capabilities+: [self.arch] },
 
     local ol_distro = { os_distro:: "ol" },
+    local ol7_distro = ol_distro + { os_distro_version:: "7" },
+    local ol8_distro = ol_distro + { os_distro_version:: "8" },
+    local ol9_distro = ol_distro + { os_distro_version:: "9" },
 
     linux_amd64: self.linux_amd64_ol7,
-    linux_amd64_ol7: linux + amd64 + ol7 + ol_distro,
-    linux_amd64_ol8: linux + amd64 + ol8 + ol_distro,
-    linux_amd64_ol9: linux + amd64 + ol9 + ol_distro,
+    linux_amd64_ol7: linux + amd64 + ol7 + ol7_distro,
+    linux_amd64_ol8: linux + amd64 + ol8 + ol8_distro,
+    linux_amd64_ol9: linux + amd64 + ol9 + ol9_distro,
 
     linux_aarch64: self.linux_aarch64_ol7,
-    linux_aarch64_ol7: linux + aarch64 + ol7 + ol_distro,
-    linux_aarch64_ol8: linux + aarch64 + ol8 + ol_distro,
-    linux_aarch64_ol9: linux + aarch64 + ol9 + ol_distro,
+    linux_aarch64_ol7: linux + aarch64 + ol7 + ol7_distro,
+    linux_aarch64_ol8: linux + aarch64 + ol8 + ol8_distro,
+    linux_aarch64_ol9: linux + aarch64 + ol9 + ol9_distro,
 
-    linux_amd64_ubuntu: linux + amd64 + ubuntu22 + { os_distro:: "ubuntu" },
+    linux_amd64_ubuntu: linux + amd64 + ubuntu22 + { os_distro:: "ubuntu", os_distro_version:: "22" },
 
     darwin_amd64: darwin + amd64,
     darwin_aarch64: darwin + aarch64,
