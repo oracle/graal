@@ -54,7 +54,7 @@ import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.util.ClasspathUtils;
@@ -72,7 +72,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final Map<String, Set<Module>> packageToModules;
 
-    private record ConditionalResource(ConfigurationCondition condition, String resourceName, Object origin) {
+    private record ConditionalResource(RegistrationCondition condition, String resourceName, Object origin) {
     }
 
     public ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
@@ -220,13 +220,13 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
-    private static void includeResource(ResourceCollector collector, Module module, String name, ConfigurationCondition condition, Object origin) {
+    private static void includeResource(ResourceCollector collector, Module module, String name, RegistrationCondition condition, Object origin) {
         collector.addResourceConditionally(module, name, condition, origin);
     }
 
     private static List<ConditionWithOrigin> shouldIncludeEntry(Module module, ResourceCollector collector, String fileName, URI uri, boolean includeCurrent) {
         if (includeCurrent && !(fileName.endsWith(".class") || fileName.endsWith(".jar"))) {
-            return Collections.singletonList(new ConditionWithOrigin(ConfigurationCondition.alwaysTrue(), "Include all"));
+            return Collections.singletonList(new ConditionWithOrigin(RegistrationCondition.always(), "Include all"));
         }
 
         return collector.isIncluded(module, fileName, uri);

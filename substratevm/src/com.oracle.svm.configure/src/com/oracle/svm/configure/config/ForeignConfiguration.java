@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.ConfigurationParser;
@@ -337,13 +337,13 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
         }
 
         @Override
-        protected void registerDowncall(ConfigurationCondition configurationCondition, ConfigurationFunctionDescriptor descriptor, Map<String, Object> options) {
+        protected void registerDowncall(RegistrationCondition configurationCondition, ConfigurationFunctionDescriptor descriptor, Map<String, Object> options) {
             ForeignConfiguration.this.addDowncall(descriptor, options);
 
         }
 
         @Override
-        protected void registerUpcall(ConfigurationCondition configurationCondition, ConfigurationFunctionDescriptor descriptor, Map<String, Object> options) {
+        protected void registerUpcall(RegistrationCondition configurationCondition, ConfigurationFunctionDescriptor descriptor, Map<String, Object> options) {
             ForeignConfiguration.this.addUpcall(descriptor, options);
         }
 

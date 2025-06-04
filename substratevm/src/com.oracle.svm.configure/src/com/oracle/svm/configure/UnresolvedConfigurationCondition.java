@@ -26,10 +26,10 @@ package com.oracle.svm.configure;
 
 import java.util.Objects;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 
 /**
- * Represents a {@link ConfigurationCondition} during parsing before it is resolved in a context of
+ * Represents a {@link RegistrationCondition} during parsing before it is resolved in a context of
  * the classpath.
  */
 public final class UnresolvedConfigurationCondition implements Comparable<UnresolvedConfigurationCondition> {
