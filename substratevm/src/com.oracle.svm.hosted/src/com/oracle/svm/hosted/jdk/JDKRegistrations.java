@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,6 +65,7 @@ class JDKRegistrations extends JNIRegistrationUtil implements InternalFeature {
          * a `Random` object and the temporary directory in a static final field.
          */
         initializeAtRunTime(a, "sun.nio.ch.UnixDomainSockets");
+        initializeAtRunTime(a, "sun.nio.ch.UnixDomainSockets$UnnamedHolder");
 
         initializeAtRunTime(a, "java.util.concurrent.ThreadLocalRandom$ThreadLocalRandomProxy");
 
