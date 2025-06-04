@@ -162,7 +162,7 @@ graalvm_sdk_native_image_component = mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=['sdkc'],
     jar_distributions=[],
-    boot_jars=['sdk:NATIVEIMAGE', 'sdk:NATIVEIMAGE_LIBGRAAL'],
+    boot_jars=['sdk:NATIVEIMAGE', 'sdk:NATIVEIMAGE_LIBGRAAL', 'sdk:WEBIMAGE_PREVIEW'],
     stability="supported",
 )
 mx_sdk_vm.register_graalvm_component(graalvm_sdk_native_image_component)

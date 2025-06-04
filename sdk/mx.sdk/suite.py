@@ -456,6 +456,16 @@ suite = {
       "javaCompliance" : "21+"
     },
 
+    "org.graalvm.webimage.api": {
+        "subDir": "src",
+        "sourceDirs": ["src"],
+        "dependencies": [],
+        "javaCompliance": "21+",
+        "spotbugs": "true",
+        "workingSets": "SDK",
+        "checkstyle": "org.graalvm.word",
+    },
+
     "com.oracle.svm.core.annotate" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -947,6 +957,25 @@ suite = {
         # coordinates stable in case of the (unlikely) event that the distribution
         # is renamed.
         "artifactId": "nativeimage-libgraal",
+        "tag": ["default", "public"],
+      },
+    },
+
+    "WEBIMAGE_PREVIEW": {
+      "subDir": "src",
+      "dependencies": [
+        "org.graalvm.webimage.api",
+      ],
+      "distDependencies": [],
+      "moduleInfo": {
+        "name": "org.graalvm.webimage.api",
+        "exports": [
+          "org.graalvm.webimage.api",
+        ],
+      },
+      "description": "The JavaScript interoperability API for GraalVM Web Image. This API is currently in preview and subject to change at any time.",
+      "maven": {
+        "artifactId": "webimage-preview",
         "tag": ["default", "public"],
       },
     },
