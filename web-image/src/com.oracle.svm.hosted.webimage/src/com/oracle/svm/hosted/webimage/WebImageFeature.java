@@ -70,10 +70,10 @@ import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
-import com.oracle.svm.core.jdk.FileSystemProviderSupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.SystemInOutErrSupport;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
+import com.oracle.svm.core.jdk.buildtimeinit.FileSystemProviderBuildTimeInitSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
@@ -323,7 +323,7 @@ public class WebImageFeature implements InternalFeature {
          * Registers our own file system provider, which replaces the default provider for the
          * 'file' scheme.
          */
-        FileSystemProviderSupport.register(WebImageNIOFileSystemProvider.INSTANCE);
+        FileSystemProviderBuildTimeInitSupport.register(WebImageNIOFileSystemProvider.INSTANCE);
     }
 
     @Override

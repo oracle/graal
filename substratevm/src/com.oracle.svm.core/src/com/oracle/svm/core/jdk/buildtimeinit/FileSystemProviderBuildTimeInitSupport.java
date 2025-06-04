@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk.buildtimeinit;
 
 import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayList;
@@ -45,6 +45,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.JDKInitializedAtBuildTime;
+import com.oracle.svm.core.jdk.JRTSupport;
+import com.oracle.svm.core.jdk.SystemPropertiesSupport;
+import com.oracle.svm.core.jdk.UserSystemProperty;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
@@ -52,7 +56,16 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.options.Option;
 import jdk.internal.util.StaticProperty;
 
-public final class FileSystemProviderSupport {
+/**
+ * This file contains substitutions that are required for initializing {@link FileSystemProvider} at
+ * image {@linkplain JDKInitializedAtBuildTime build time}. Other related functionality (general and
+ * run-time initialization) can be found in
+ * {@link com.oracle.svm.core.jdk.runtimeinit.FileSystemProviderRuntimeInitSupport}.
+ *
+ * @see JDKInitializedAtBuildTime
+ * @see com.oracle.svm.core.jdk.runtimeinit.FileSystemProviderRuntimeInitSupport
+ */
+public final class FileSystemProviderBuildTimeInitSupport {
 
     public static class Options {
         @Option(help = "Make all supported providers returned by FileSystemProvider.installedProviders() available at run time.")//
@@ -63,7 +76,7 @@ public final class FileSystemProviderSupport {
     final List<FileSystemProvider> installedProvidersImmutable;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    FileSystemProviderSupport(List<FileSystemProvider> installedProviders) {
+    FileSystemProviderBuildTimeInitSupport(List<FileSystemProvider> installedProviders) {
         this.installedProvidersMutable = installedProviders;
         this.installedProvidersImmutable = Collections.unmodifiableList(installedProviders);
     }
@@ -75,7 +88,7 @@ public final class FileSystemProviderSupport {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void register(FileSystemProvider provider) {
-        List<FileSystemProvider> installedProviders = ImageSingletons.lookup(FileSystemProviderSupport.class).installedProvidersMutable;
+        List<FileSystemProvider> installedProviders = ImageSingletons.lookup(FileSystemProviderBuildTimeInitSupport.class).installedProvidersMutable;
 
         String scheme = provider.getScheme();
         for (int i = 0; i < installedProviders.size(); i++) {
@@ -98,7 +111,7 @@ public final class FileSystemProviderSupport {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void remove(String scheme) {
-        List<FileSystemProvider> installedProviders = ImageSingletons.lookup(FileSystemProviderSupport.class).installedProvidersMutable;
+        List<FileSystemProvider> installedProviders = ImageSingletons.lookup(FileSystemProviderBuildTimeInitSupport.class).installedProvidersMutable;
 
         for (int i = 0; i < installedProviders.size(); i++) {
             /*
@@ -115,12 +128,12 @@ public final class FileSystemProviderSupport {
 }
 
 @AutomaticallyRegisteredFeature
-final class FileSystemProviderFeature implements InternalFeature {
+final class FileSystemProviderBuildTimeInitFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         List<FileSystemProvider> installedProviders = new ArrayList<>();
-        if (FileSystemProviderSupport.Options.AddAllFileSystemProviders.getValue()) {
+        if (FileSystemProviderBuildTimeInitSupport.Options.AddAllFileSystemProviders.getValue()) {
             /*
              * The first invocation of FileSystemProvider.installedProviders() causes the default
              * provider to be initialized (if not already initialized) and loads any other installed
@@ -133,11 +146,11 @@ final class FileSystemProviderFeature implements InternalFeature {
              */
             installedProviders.addAll(FileSystemProvider.installedProviders());
         }
-        ImageSingletons.add(FileSystemProviderSupport.class, new FileSystemProviderSupport(installedProviders));
+        ImageSingletons.add(FileSystemProviderBuildTimeInitSupport.class, new FileSystemProviderBuildTimeInitSupport(installedProviders));
 
         /* Access to Java modules (jimage/jrtfs access) in images is experimental. */
         if (!JRTSupport.Options.AllowJRTFileSystem.getValue()) {
-            FileSystemProviderSupport.remove("jrt");
+            FileSystemProviderBuildTimeInitSupport.remove("jrt");
         }
     }
 }
@@ -146,7 +159,7 @@ final class FileSystemProviderFeature implements InternalFeature {
 final class Target_java_nio_file_spi_FileSystemProvider {
     @Substitute
     public static List<FileSystemProvider> installedProviders() {
-        return ImageSingletons.lookup(FileSystemProviderSupport.class).installedProvidersImmutable;
+        return ImageSingletons.lookup(FileSystemProviderBuildTimeInitSupport.class).installedProvidersImmutable;
     }
 }
 
@@ -160,7 +173,8 @@ final class Target_java_nio_file_spi_FileSystemProvider {
  *
  * a) Disallow UnixFileSystem and UnixFileSystemProvider in the image heap, i.e., create all
  * instances at run time. This is undesirable because then all file system providers need to be
- * loaded at run time, i.e., the caching in {@link FileSystemProviderSupport} would no longer work.
+ * loaded at run time, i.e., the caching in {@link FileSystemProviderBuildTimeInitSupport} would no
+ * longer work.
  *
  * b) Disallow UnixFileSystem in the image heap, but have the UnixFileSystemProvider instance in the
  * image heap. This requires a recomputation of the field UnixFileSystemProvider.theFileSystem at
