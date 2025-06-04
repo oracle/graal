@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,17 +54,20 @@ final class ExpectError {
     private ExpectError() {
     }
 
-    static boolean assertNoErrorExpected(AbstractBridgeParser parser, Element element) {
-        DeclaredType expectErrorAnnotation = parser.typeCache.expectError;
+    static void assertNoErrorExpected(Iterable<? extends AbstractBridgeGenerator> generators) {
+        DeclaredType expectErrorAnnotation = generators.iterator().next().getTypeCache().expectError;
         if (expectErrorAnnotation != null) {
-            for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
-                if (parser.types.isSameType(mirror.getAnnotationType(), expectErrorAnnotation)) {
-                    parser.processor.env().getMessager().printMessage(Diagnostic.Kind.ERROR, "Expected an error, but none found!", element);
-                    return false;
+            for (AbstractBridgeGenerator generator : generators) {
+                AbstractBridgeParser parser = generator.getParser();
+                for (Element element : generator.getDefinition().getVerifiedElements()) {
+                    for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
+                        if (parser.types.isSameType(mirror.getAnnotationType(), expectErrorAnnotation)) {
+                            parser.processor.env().getMessager().printMessage(Diagnostic.Kind.ERROR, "Expected an error, but none found!", element);
+                        }
+                    }
                 }
             }
         }
-        return true;
     }
 
     static boolean isExpectedError(AbstractBridgeParser parser, Element element, String actualText) {
@@ -85,9 +88,9 @@ final class ExpectError {
             return Collections.emptyList();
         }
         List<String> expectedErrors = new ArrayList<>();
-        if (parser.typeCache.expectError != null) {
+        if (parser.getTypeCache().expectError != null) {
             for (AnnotationMirror am : element.getAnnotationMirrors()) {
-                if (parser.types.isSameType(am.getAnnotationType(), parser.typeCache.expectError)) {
+                if (parser.types.isSameType(am.getAnnotationType(), parser.getTypeCache().expectError)) {
                     List<?> values = (List<?>) AbstractBridgeParser.getAnnotationValue(am, "value");
                     for (Object value : values) {
                         if (value instanceof AnnotationValue) {

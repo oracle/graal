@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,13 +52,13 @@ final class NullableBinaryMarshaller<T> implements BinaryMarshaller<T> {
     }
 
     @Override
-    public T read(BinaryInput input) {
+    public T read(Isolate<?> isolate, BinaryInput input) {
         byte nullStatus = input.readByte();
         switch (nullStatus) {
             case NULL:
                 return null;
             case NON_NULL:
-                return delegate.read(input);
+                return delegate.read(isolate, input);
             default:
                 throw new IllegalArgumentException("Unexpected input " + nullStatus);
         }
@@ -75,7 +75,7 @@ final class NullableBinaryMarshaller<T> implements BinaryMarshaller<T> {
     }
 
     @Override
-    public void readUpdate(BinaryInput input, T object) {
+    public void readUpdate(Isolate<?> isolate, BinaryInput input, T object) {
         byte nullStatus = input.readByte();
         switch (nullStatus) {
             case NULL:
@@ -83,7 +83,7 @@ final class NullableBinaryMarshaller<T> implements BinaryMarshaller<T> {
                 break;
             case NON_NULL:
                 assert object != null;
-                delegate.readUpdate(input, object);
+                delegate.readUpdate(isolate, input, object);
                 break;
             default:
                 throw new IllegalArgumentException("Unexpected input " + nullStatus);

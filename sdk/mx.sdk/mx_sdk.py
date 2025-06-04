@@ -50,7 +50,10 @@ import mx_sdk_vm_ng
 import pathlib
 import mx_sdk_benchmark # pylint: disable=unused-import
 import mx_sdk_clangformat # pylint: disable=unused-import
+import argparse
 import datetime
+import shutil
+import tempfile
 from mx_bisect import define_bisect_default_build_steps
 from mx_bisect_strategy import BuildStepsGraalVMStrategy
 
@@ -371,3 +374,49 @@ def maven_deploy_public(args, licenses=None, deploy_snapshots=True):
     mx.maven_deploy(deploy_args)
     mx.log(f'Deployed Maven artefacts to {path}')
     return path
+
+@mx.command(_suite.name, 'nativebridge-benchmark')
+def nativebridge_benchmark(args):
+    parser = argparse.ArgumentParser(prog='mx nativebridge-benchmark', description='Executes nativebridge benchmarks',
+                            usage='mx nativebridge-benchmark [--target-folder <folder> | --isolate-library <isolate-library> | mode+]')
+    parser.add_argument('--target-folder', help='Folder where the benchmark isolate library will be generated.', default=None)
+    parser.add_argument('--isolate-library', help='Use the given isolate library.', default=None)
+    parsed_args, args = parser.parse_known_args(args)
+
+    jdk = mx.get_jdk(tag='graalvm')
+    benchmark_dist = mx.distribution('NATIVEBRIDGE_BENCHMARK')
+    isolate_library = parsed_args.isolate_library if parsed_args.isolate_library else None
+    try:
+        if not isolate_library:
+            native_image_path = jdk.exe_path('native-image')
+            if not os.path.exists(native_image_path):
+                native_image_path = os.path.join(jdk.home, 'bin', mx.cmd_suffix('native-image'))
+            if not os.path.exists(native_image_path):
+                mx.abort(f"No native-image installed in GraalVM {jdk.home}. Switch to an environment that has an installed native-image command.")
+
+            target_dir = parsed_args.target_folder if parsed_args.target_folder else tempfile.mkdtemp()
+            target = os.path.join(target_dir, "bench")
+            native_image_args = mx.get_runtime_jvm_args(benchmark_dist, jdk=jdk) + [
+                '--shared',
+                '-o',
+                target
+            ]
+            mx.run([native_image_path] + native_image_args)
+            for n in os.listdir(target_dir):
+                _, ext = os.path.splitext(n)
+                if ext in ('.so', '.dylib', '.dll'):
+                    isolate_library = os.path.join(target_dir, n)
+                    break
+
+        launcher_project = mx.project('org.graalvm.nativebridge.launcher')
+        launcher = next(launcher_project.getArchivableResults(single=True))[0]
+        java_args = mx.get_runtime_jvm_args(benchmark_dist, jdk=jdk) + [
+            '--enable-native-access=ALL-UNNAMED',
+            'org.graalvm.nativebridge.benchmark.Main',
+            launcher,
+            isolate_library
+        ] + args
+        mx.run_java(java_args, jdk=jdk)
+    finally:
+        if not parsed_args.isolate_library and not parsed_args.target_folder:
+            shutil.rmtree(target_dir)
