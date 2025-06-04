@@ -1419,6 +1419,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 build_args += [
                     '--enable-monitoring=jvmstat,heapdump,jfr,threaddump',
                 ] + svm_experimental_options([
+                    '-H:+InstallExitHandlers',
                     '-H:+DumpRuntimeCompilationOnSignal',
                     '-H:+ReportExceptionStackTraces',
                 ])
