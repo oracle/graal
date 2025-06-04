@@ -156,7 +156,7 @@ final class FileSystemProviderBuildTimeInitFeature implements InternalFeature {
 }
 
 @TargetClass(value = java.nio.file.spi.FileSystemProvider.class, onlyWith = JDKInitializedAtBuildTime.class)
-final class Target_java_nio_file_spi_FileSystemProvider {
+final class Target_java_nio_file_spi_FileSystemProvider_BuildTime {
     @Substitute
     public static List<FileSystemProvider> installedProviders() {
         return ImageSingletons.lookup(FileSystemProviderBuildTimeInitSupport.class).installedProvidersImmutable;
@@ -187,10 +187,10 @@ final class Target_java_nio_file_spi_FileSystemProvider {
  */
 @TargetClass(className = "sun.nio.fs.UnixFileSystem", onlyWith = JDKInitializedAtBuildTime.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-final class Target_sun_nio_fs_UnixFileSystem {
+final class Target_sun_nio_fs_UnixFileSystem_BuildTime {
 
     @Alias //
-    Target_sun_nio_fs_UnixFileSystemProvider provider;
+    Target_sun_nio_fs_UnixFileSystemProvider_BuildTime provider;
 
     /*
      * All fields of UnixFileSystem that contain state. At this point, the subclasses
@@ -207,7 +207,7 @@ final class Target_sun_nio_fs_UnixFileSystem {
     private boolean needToResolveAgainstDefaultDirectory;
     @Alias //
     @InjectAccessors(UnixFileSystemAccessors.class) //
-    private Target_sun_nio_fs_UnixPath rootDirectory;
+    private Target_sun_nio_fs_UnixPath_BuildTime rootDirectory;
 
     /**
      * Flag to check if reinitialization at run time is needed. For objects in the image heap, this
@@ -231,21 +231,21 @@ final class Target_sun_nio_fs_UnixFileSystem {
     boolean injectedNeedToResolveAgainstDefaultDirectory;
     @Inject //
     @RecomputeFieldValue(kind = Kind.Reset)//
-    Target_sun_nio_fs_UnixPath injectedRootDirectory;
+    Target_sun_nio_fs_UnixPath_BuildTime injectedRootDirectory;
 
     @Alias
     @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
-    native void originalConstructor(Target_sun_nio_fs_UnixFileSystemProvider p, String dir);
+    native void originalConstructor(Target_sun_nio_fs_UnixFileSystemProvider_BuildTime p, String dir);
 }
 
 @TargetClass(className = "sun.nio.fs.UnixFileSystemProvider", onlyWith = JDKInitializedAtBuildTime.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-final class Target_sun_nio_fs_UnixFileSystemProvider {
+final class Target_sun_nio_fs_UnixFileSystemProvider_BuildTime {
 }
 
 @TargetClass(className = "sun.nio.fs.UnixPath", onlyWith = JDKInitializedAtBuildTime.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-final class Target_sun_nio_fs_UnixPath {
+final class Target_sun_nio_fs_UnixPath_BuildTime {
 }
 
 class NeedsReinitializationProvider implements FieldValueTransformer {
@@ -271,21 +271,21 @@ class UnixFileSystemAccessors {
      * first access of any of the fields.
      */
 
-    static byte[] getDefaultDirectory(Target_sun_nio_fs_UnixFileSystem that) {
+    static byte[] getDefaultDirectory(Target_sun_nio_fs_UnixFileSystem_BuildTime that) {
         if (that.needsReinitialization != NeedsReinitializationProvider.STATUS_REINITIALIZED) {
             reinitialize(that);
         }
         return that.injectedDefaultDirectory;
     }
 
-    static boolean getNeedToResolveAgainstDefaultDirectory(Target_sun_nio_fs_UnixFileSystem that) {
+    static boolean getNeedToResolveAgainstDefaultDirectory(Target_sun_nio_fs_UnixFileSystem_BuildTime that) {
         if (that.needsReinitialization != NeedsReinitializationProvider.STATUS_REINITIALIZED) {
             reinitialize(that);
         }
         return that.injectedNeedToResolveAgainstDefaultDirectory;
     }
 
-    static Target_sun_nio_fs_UnixPath getRootDirectory(Target_sun_nio_fs_UnixFileSystem that) {
+    static Target_sun_nio_fs_UnixPath_BuildTime getRootDirectory(Target_sun_nio_fs_UnixFileSystem_BuildTime that) {
         if (that.needsReinitialization != NeedsReinitializationProvider.STATUS_REINITIALIZED) {
             reinitialize(that);
         }
@@ -298,15 +298,15 @@ class UnixFileSystemAccessors {
      * of the constructor to write to the injected fields directly.
      */
 
-    static void setDefaultDirectory(Target_sun_nio_fs_UnixFileSystem that, byte[] value) {
+    static void setDefaultDirectory(Target_sun_nio_fs_UnixFileSystem_BuildTime that, byte[] value) {
         that.injectedDefaultDirectory = value;
     }
 
-    static void setNeedToResolveAgainstDefaultDirectory(Target_sun_nio_fs_UnixFileSystem that, boolean value) {
+    static void setNeedToResolveAgainstDefaultDirectory(Target_sun_nio_fs_UnixFileSystem_BuildTime that, boolean value) {
         that.injectedNeedToResolveAgainstDefaultDirectory = value;
     }
 
-    static void setRootDirectory(Target_sun_nio_fs_UnixFileSystem that, Target_sun_nio_fs_UnixPath value) {
+    static void setRootDirectory(Target_sun_nio_fs_UnixFileSystem_BuildTime that, Target_sun_nio_fs_UnixPath_BuildTime value) {
         that.injectedRootDirectory = value;
     }
 
@@ -314,7 +314,7 @@ class UnixFileSystemAccessors {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/linux/classes/sun/nio/fs/LinuxFileSystemProvider.java#L45-L47")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/unix/classes/sun/nio/fs/UnixFileSystemProvider.java#L75-L77")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/unix/classes/sun/nio/fs/UnixFileSystem.java#L78-L108")
-    private static synchronized void reinitialize(Target_sun_nio_fs_UnixFileSystem that) {
+    private static synchronized void reinitialize(Target_sun_nio_fs_UnixFileSystem_BuildTime that) {
         if (that.needsReinitialization != NeedsReinitializationProvider.STATUS_NEEDS_REINITIALIZATION) {
             /* Field initialized is volatile, so double-checked locking is OK. */
             return;
@@ -350,10 +350,10 @@ class UnixFileSystemAccessors {
 
 @TargetClass(className = "sun.nio.fs.WindowsFileSystem")
 @Platforms({Platform.WINDOWS.class})
-final class Target_sun_nio_fs_WindowsFileSystem {
+final class Target_sun_nio_fs_WindowsFileSystem_BuildTime {
 
     @Alias //
-    Target_sun_nio_fs_WindowsFileSystemProvider provider;
+    Target_sun_nio_fs_WindowsFileSystemProvider_BuildTime provider;
 
     @Alias //
     @InjectAccessors(WindowsFileSystemAccessors.class) //
@@ -375,39 +375,39 @@ final class Target_sun_nio_fs_WindowsFileSystem {
 
     @Alias
     @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
-    native void originalConstructor(Target_sun_nio_fs_WindowsFileSystemProvider p, String dir);
+    native void originalConstructor(Target_sun_nio_fs_WindowsFileSystemProvider_BuildTime p, String dir);
 }
 
 @TargetClass(className = "sun.nio.fs.WindowsFileSystemProvider")
 @Platforms({Platform.WINDOWS.class})
-final class Target_sun_nio_fs_WindowsFileSystemProvider {
+final class Target_sun_nio_fs_WindowsFileSystemProvider_BuildTime {
 }
 
 @Platforms({Platform.WINDOWS.class})
 class WindowsFileSystemAccessors {
-    static String getDefaultDirectory(Target_sun_nio_fs_WindowsFileSystem that) {
+    static String getDefaultDirectory(Target_sun_nio_fs_WindowsFileSystem_BuildTime that) {
         if (that.needsReinitialization != NeedsReinitializationProvider.STATUS_REINITIALIZED) {
             reinitialize(that);
         }
         return that.injectedDefaultDirectory;
     }
 
-    static String getDefaultRoot(Target_sun_nio_fs_WindowsFileSystem that) {
+    static String getDefaultRoot(Target_sun_nio_fs_WindowsFileSystem_BuildTime that) {
         if (that.needsReinitialization != NeedsReinitializationProvider.STATUS_REINITIALIZED) {
             reinitialize(that);
         }
         return that.injectedDefaultRoot;
     }
 
-    static void setDefaultDirectory(Target_sun_nio_fs_WindowsFileSystem that, String value) {
+    static void setDefaultDirectory(Target_sun_nio_fs_WindowsFileSystem_BuildTime that, String value) {
         that.injectedDefaultDirectory = value;
     }
 
-    static void setDefaultRoot(Target_sun_nio_fs_WindowsFileSystem that, String value) {
+    static void setDefaultRoot(Target_sun_nio_fs_WindowsFileSystem_BuildTime that, String value) {
         that.injectedDefaultRoot = value;
     }
 
-    private static synchronized void reinitialize(Target_sun_nio_fs_WindowsFileSystem that) {
+    private static synchronized void reinitialize(Target_sun_nio_fs_WindowsFileSystem_BuildTime that) {
         if (that.needsReinitialization != NeedsReinitializationProvider.STATUS_NEEDS_REINITIALIZATION) {
             return;
         }
@@ -419,7 +419,7 @@ class WindowsFileSystemAccessors {
 
 @TargetClass(className = "java.io.UnixFileSystem", onlyWith = JDKInitializedAtBuildTime.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-final class Target_java_io_UnixFileSystem {
+final class Target_java_io_UnixFileSystem_BuildTime {
 
     @Alias //
     @InjectAccessors(UserDirAccessors.class) //
@@ -427,7 +427,7 @@ final class Target_java_io_UnixFileSystem {
 }
 
 @TargetClass(className = "java.io.FileSystem", onlyWith = JDKInitializedAtBuildTime.class)
-final class Target_java_io_FileSystem {
+final class Target_java_io_FileSystem_BuildTime {
 
     @Alias
     native String normalize(String path);
@@ -435,7 +435,7 @@ final class Target_java_io_FileSystem {
 
 class UserDirAccessors {
     @SuppressWarnings("unused")
-    static String getUserDir(Target_java_io_FileSystem that) {
+    static String getUserDir(Target_java_io_FileSystem_BuildTime that) {
         if (Platform.includedIn(Platform.WINDOWS.class)) {
             /*
              * Note that on Windows, we normalize the property value (JDK-8198997) and do not use
@@ -447,14 +447,14 @@ class UserDirAccessors {
     }
 
     @SuppressWarnings("unused")
-    static void setUserDir(Target_java_io_FileSystem that, String value) {
+    static void setUserDir(Target_java_io_FileSystem_BuildTime that, String value) {
         throw VMError.shouldNotReachHere("Field userDir is initialized at build time");
     }
 }
 
 @TargetClass(className = "java.io.WinNTFileSystem")
 @Platforms(Platform.WINDOWS.class)
-final class Target_java_io_WinNTFileSystem {
+final class Target_java_io_WinNTFileSystem_BuildTime {
 
     @Alias //
     @InjectAccessors(UserDirAccessors.class) //
