@@ -24,13 +24,8 @@
  */
 package com.oracle.svm.hosted.dynamicaccessinference;
 
-import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationHandler;
-import java.util.function.BooleanSupplier;
-import java.util.function.Predicate;
 
-import com.oracle.svm.core.ParsingReason;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
@@ -43,51 +38,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-/**
- * Feature which enables a graph IR optimization independent analysis of compile-time inferrable
- * method invocations which require dynamic access and would otherwise require a manual reachability
- * registration.
- * <p>
- * The targeted methods are:
- * <ul>
- * <li>{@link java.lang.Class#forName(String)}</li>
- * <li>{@link java.lang.Class#forName(String, boolean, ClassLoader)}</li>
- * <li>{@link java.lang.Class#getField(String)}</li>
- * <li>{@link java.lang.Class#getDeclaredField(String)}</li>
- * <li>{@link java.lang.Class#getConstructor(Class[])}</li>
- * <li>{@link java.lang.Class#getDeclaredConstructor(Class[])}</li>
- * <li>{@link java.lang.Class#getMethod(String, Class[])}</li>
- * <li>{@link java.lang.Class#getDeclaredMethod(String, Class[])}</li>
- * <li>{@link java.lang.Class#getFields()}</li>
- * <li>{@link java.lang.Class#getDeclaredFields()}</li>
- * <li>{@link java.lang.Class#getConstructors()}</li>
- * <li>{@link java.lang.Class#getDeclaredConstructors()}</li>
- * <li>{@link java.lang.Class#getMethods()}</li>
- * <li>{@link java.lang.Class#getDeclaredMethods()}</li>
- * <li>{@link java.lang.Class#getClasses()}</li>
- * <li>{@link java.lang.Class#getDeclaredClasses()}</li>
- * <li>{@link java.lang.Class#getNestMembers()}</li>
- * <li>{@link java.lang.Class#getPermittedSubclasses()}</li>
- * <li>{@link java.lang.Class#getRecordComponents()}</li>
- * <li>{@link java.lang.Class#getSigners()}</li>
- * <li>{@link java.lang.invoke.MethodHandles.Lookup#findClass(String)}}</li>
- * <li>{@link java.lang.invoke.MethodHandles.Lookup#findVirtual(Class, String, MethodType)}}</li>
- * <li>{@link java.lang.invoke.MethodHandles.Lookup#findStatic(Class, String, MethodType)}}</li>
- * <li>{@link java.lang.invoke.MethodHandles.Lookup#findConstructor(Class, MethodType)}}</li>
- * <li>{@link java.lang.invoke.MethodHandles.Lookup#findGetter(Class, String, Class)}}</li>
- * <li>{@link java.lang.invoke.MethodHandles.Lookup#findStaticGetter(Class, String, Class)}}</li>
- * <li>{@link java.lang.invoke.MethodHandles.Lookup#findSetter(Class, String, Class)}}</li>
- * <li>{@link java.lang.invoke.MethodHandles.Lookup#findStaticSetter(Class, String, Class)}}</li>
- * <li>{@link java.lang.invoke.MethodHandles.Lookup#findVarHandle(Class, String, Class)}}</li>
- * <li>{@link java.lang.invoke.MethodHandles.Lookup#findStaticVarHandle(Class, String, Class)}}</li>
- * <li>{@link java.lang.Class#getResource(String)}</li>
- * <li>{@link java.lang.Class#getResourceAsStream(String)}</li>
- * <li>{@link java.io.ObjectInputFilter.Config#createFilter(String)}</li>
- * <li>{@link java.lang.reflect.Proxy#newProxyInstance(ClassLoader, Class[], InvocationHandler)}</li>
- * </ul>
- */
 @AutomaticallyRegisteredFeature
 public class StrictDynamicAccessInferenceFeature implements InternalFeature {
 
@@ -112,6 +63,10 @@ public class StrictDynamicAccessInferenceFeature implements InternalFeature {
         return Options.StrictDynamicAccessInference.getValue() != Options.Mode.Disable;
     }
 
+    public static boolean isEnforced() {
+        return Options.StrictDynamicAccessInference.getValue() == Options.Mode.Enforce;
+    }
+
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return isActive();
@@ -127,9 +82,6 @@ public class StrictDynamicAccessInferenceFeature implements InternalFeature {
 
         ImageSingletons.add(ConstantExpressionRegistry.class, registry);
         ImageSingletons.add(StrictDynamicAccessInferenceSupport.class, support);
-
-        cacheMode(Options.StrictDynamicAccessInference.getValue());
-        cacheRegistry(registry);
     }
 
     @Override
@@ -166,48 +118,5 @@ public class StrictDynamicAccessInferenceFeature implements InternalFeature {
          * registry.
          */
         ConstantExpressionRegistry.singleton().seal();
-    }
-
-    private static void cacheMode(Options.Mode mode) {
-        cachedMode = mode;
-    }
-
-    private static void cacheRegistry(ConstantExpressionRegistry registry) {
-        cachedRegistry = registry;
-    }
-
-    private static Options.Mode cachedMode = Options.Mode.Disable;
-    private static ConstantExpressionRegistry cachedRegistry = null;
-
-    /**
-     * Utility method which attempts to infer {@code targetMethod} according to the {@code Disable},
-     * {@code Warn} and {@code Enforce} options of {@code StrictConstantAnalysis}.
-     */
-    public static boolean tryToInfer(ParsingReason reason, Predicate<ConstantExpressionRegistry> strictModeRoutine, BooleanSupplier graphModeRoutine, ResolvedJavaMethod targetMethod,
-                    Predicate<ResolvedJavaMethod> strictModeTarget) {
-        /*
-         * Do not restrict the folding of reflective calls if not building graphs for the analysis.
-         */
-        if (!reason.duringAnalysis() || reason == ParsingReason.JITCompilation) {
-            return graphModeRoutine.getAsBoolean();
-        }
-        boolean isTarget = strictModeTarget.test(targetMethod);
-        if (cachedMode != Options.Mode.Disable && isTarget) {
-            if (strictModeRoutine.test(cachedRegistry)) {
-                return true;
-            }
-        }
-        if (cachedMode != Options.Mode.Enforce || !isTarget) {
-            return graphModeRoutine.getAsBoolean();
-        }
-        return false;
-    }
-
-    /**
-     * Utility method which attempts to infer {@code targetMethod} according to the {@code Disable},
-     * {@code Warn} and {@code Enforce} options of {@code StrictConstantAnalysis}.
-     */
-    public static boolean tryToInfer(ParsingReason reason, Predicate<ConstantExpressionRegistry> strictModeRoutine, BooleanSupplier graphModeRoutine) {
-        return tryToInfer(reason, strictModeRoutine, graphModeRoutine, null, (method) -> true);
     }
 }

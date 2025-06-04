@@ -51,6 +51,7 @@ import java.util.stream.Stream;
 import com.oracle.svm.core.TrackDynamicAccessEnabled;
 import com.oracle.svm.hosted.DynamicAccessDetectionFeature;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
+import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
@@ -150,6 +151,10 @@ public final class ReflectionPlugins {
         rp.registerClassPlugins(plugins);
     }
 
+    private boolean strictDynamicAccessInferenceIsActive() {
+        return StrictDynamicAccessInferenceFeature.isEnforced() && reason == ParsingReason.PointsToAnalysis;
+    }
+
     private static final Class<?> VAR_FORM_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.VarForm");
     private static final Class<?> MEMBER_NAME_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.MemberName");
 
@@ -186,12 +191,15 @@ public final class ReflectionPlugins {
                         "byteArrayViewVarHandle", "byteBufferViewVarHandle");
 
         registerFoldInvocationPlugins(plugins, MethodHandles.Lookup.class,
-                        "in",
-                        "findStatic", "findVirtual", "findConstructor", "findClass", "accessClass", "findSpecial",
-                        "findGetter", "findSetter", "findVarHandle",
-                        "findStaticGetter", "findStaticSetter",
+                        "in", "accessClass",
                         "unreflect", "unreflectSpecial", "unreflectConstructor",
                         "unreflectGetter", "unreflectSetter");
+
+        if (!strictDynamicAccessInferenceIsActive()) {
+            registerFoldInvocationPlugins(plugins, MethodHandles.Lookup.class,
+                            "findStatic", "findVirtual", "findConstructor", "findClass", "findSpecial",
+                            "findGetter", "findSetter", "findVarHandle", "findStaticGetter", "findStaticSetter");
+        }
 
         registerFoldInvocationPlugins(plugins, MethodType.class,
                         "methodType", "genericMethodType",
@@ -252,24 +260,26 @@ public final class ReflectionPlugins {
      * about the reflection API methods implementation.
      */
     private void registerConditionalFoldInvocationPlugins(InvocationPlugins plugins) {
-        Method methodHandlesLookupFindStaticVarHandle = ReflectionUtil.lookupMethod(MethodHandles.Lookup.class, "findStaticVarHandle", Class.class, String.class, Class.class);
-        registerFoldInvocationPlugin(plugins, methodHandlesLookupFindStaticVarHandle, (args) -> {
-            /* VarHandles.makeFieldHandle() triggers init of receiver class (JDK-8291065). */
-            Object classArg = args[0];
-            if (classArg instanceof Class<?>) {
-                if (!classInitializationSupport.maybeInitializeAtBuildTime((Class<?>) classArg)) {
-                    /* Skip the folding and register the field for run time reflection. */
-                    if (reason.duringAnalysis()) {
-                        Field field = ReflectionUtil.lookupField(true, (Class<?>) args[0], (String) args[1]);
-                        if (field != null) {
-                            RuntimeReflection.register(field);
+        if (!strictDynamicAccessInferenceIsActive()) {
+            Method methodHandlesLookupFindStaticVarHandle = ReflectionUtil.lookupMethod(MethodHandles.Lookup.class, "findStaticVarHandle", Class.class, String.class, Class.class);
+            registerFoldInvocationPlugin(plugins, methodHandlesLookupFindStaticVarHandle, (args) -> {
+                /* VarHandles.makeFieldHandle() triggers init of receiver class (JDK-8291065). */
+                Object classArg = args[0];
+                if (classArg instanceof Class<?>) {
+                    if (!classInitializationSupport.maybeInitializeAtBuildTime((Class<?>) classArg)) {
+                        /* Skip the folding and register the field for run time reflection. */
+                        if (reason.duringAnalysis()) {
+                            Field field = ReflectionUtil.lookupField(true, (Class<?>) args[0], (String) args[1]);
+                            if (field != null) {
+                                RuntimeReflection.register(field);
+                            }
                         }
+                        return false;
                     }
-                    return false;
                 }
-            }
-            return true;
-        });
+                return true;
+            });
+        }
 
         Method methodHandlesLookupUnreflectVarHandle = ReflectionUtil.lookupMethod(MethodHandles.Lookup.class, "unreflectVarHandle", Field.class);
         registerFoldInvocationPlugin(plugins, methodHandlesLookupUnreflectVarHandle, (args) -> {
@@ -293,9 +303,11 @@ public final class ReflectionPlugins {
     }
 
     private void registerClassPlugins(InvocationPlugins plugins) {
-        registerFoldInvocationPlugins(plugins, Class.class,
-                        "getField", "getMethod", "getConstructor",
-                        "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
+        if (!strictDynamicAccessInferenceIsActive()) {
+            registerFoldInvocationPlugins(plugins, Class.class,
+                            "getField", "getMethod", "getConstructor",
+                            "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
+        }
 
         /*
          * The class sun.nio.ch.Reflect contains various reflection lookup methods that then pass
@@ -306,7 +318,7 @@ public final class ReflectionPlugins {
         registerFoldInvocationPlugins(plugins, ReflectionUtil.lookupClass(false, "sun.nio.ch.Reflect"),
                         "lookupConstructor", "lookupMethod", "lookupField");
 
-        if (MissingRegistrationUtils.throwMissingRegistrationErrors() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
+        if (!strictDynamicAccessInferenceIsActive() && MissingRegistrationUtils.throwMissingRegistrationErrors() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
             registerBulkInvocationPlugin(plugins, Class.class, "getClasses", RuntimeReflection::registerAllClasses);
             registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredClasses", RuntimeReflection::registerAllDeclaredClasses);
             registerBulkInvocationPlugin(plugins, Class.class, "getConstructors", RuntimeReflection::registerAllConstructors);
@@ -322,47 +334,49 @@ public final class ReflectionPlugins {
         }
 
         Registration r = new Registration(plugins, Class.class);
-        r.register(new RequiredInlineOnlyInvocationPlugin("forName", String.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode nameNode) {
-                ClassLoader loader;
-                if (ClassForNameSupport.respectClassLoader()) {
-                    Class<?> callerClass = OriginalClassProvider.getJavaClass(b.getMethod().getDeclaringClass());
-                    loader = callerClass.getClassLoader();
-                } else {
-                    loader = imageClassLoader.getClassLoader();
-                }
-                return processClassForName(b, targetMethod, nameNode, ConstantNode.forBoolean(true), loader);
-            }
-        });
-        r.register(new RequiredInlineOnlyInvocationPlugin("forName", String.class, boolean.class, ClassLoader.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode nameNode, ValueNode initializeNode, ValueNode classLoaderNode) {
-                ClassLoader loader;
-                if (ClassForNameSupport.respectClassLoader()) {
-                    if (!classLoaderNode.isJavaConstant()) {
-                        return false;
+        if (!strictDynamicAccessInferenceIsActive()) {
+            r.register(new RequiredInlineOnlyInvocationPlugin("forName", String.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode nameNode) {
+                    ClassLoader loader;
+                    if (ClassForNameSupport.respectClassLoader()) {
+                        Class<?> callerClass = OriginalClassProvider.getJavaClass(b.getMethod().getDeclaringClass());
+                        loader = callerClass.getClassLoader();
+                    } else {
+                        loader = imageClassLoader.getClassLoader();
                     }
-                    loader = (ClassLoader) unboxObjectConstant(b, classLoaderNode.asJavaConstant());
-                    if (loader == NativeImageSystemClassLoader.singleton().defaultSystemClassLoader) {
+                    return processClassForName(b, targetMethod, nameNode, ConstantNode.forBoolean(true), loader);
+                }
+            });
+            r.register(new RequiredInlineOnlyInvocationPlugin("forName", String.class, boolean.class, ClassLoader.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode nameNode, ValueNode initializeNode, ValueNode classLoaderNode) {
+                    ClassLoader loader;
+                    if (ClassForNameSupport.respectClassLoader()) {
+                        if (!classLoaderNode.isJavaConstant()) {
+                            return false;
+                        }
+                        loader = (ClassLoader) unboxObjectConstant(b, classLoaderNode.asJavaConstant());
+                        if (loader == NativeImageSystemClassLoader.singleton().defaultSystemClassLoader) {
+                            /*
+                             * The run time's application class loader is the build time's image
+                             * class loader.
+                             */
+                            loader = imageClassLoader.getClassLoader();
+                        }
+                    } else {
                         /*
-                         * The run time's application class loader is the build time's image class
-                         * loader.
+                         * When we ignore the ClassLoader parameter, we only intrinsify class names
+                         * that are found by the ImageClassLoader, i.e., the application class
+                         * loader at run time. We assume that every class loader used at run time
+                         * delegates to the application class loader.
                          */
                         loader = imageClassLoader.getClassLoader();
                     }
-                } else {
-                    /*
-                     * When we ignore the ClassLoader parameter, we only intrinsify class names that
-                     * are found by the ImageClassLoader, i.e., the application class loader at run
-                     * time. We assume that every class loader used at run time delegates to the
-                     * application class loader.
-                     */
-                    loader = imageClassLoader.getClassLoader();
+                    return processClassForName(b, targetMethod, nameNode, initializeNode, loader);
                 }
-                return processClassForName(b, targetMethod, nameNode, initializeNode, loader);
-            }
-        });
+            });
+        }
         r.register(new RequiredInlineOnlyInvocationPlugin("getClassLoader", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {

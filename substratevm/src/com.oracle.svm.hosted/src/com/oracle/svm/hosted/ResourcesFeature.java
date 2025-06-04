@@ -55,6 +55,7 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -672,7 +673,7 @@ public class ResourcesFeature implements InternalFeature {
 
     @Override
     public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        if (!reason.duringAnalysis() || reason == ParsingReason.JITCompilation) {
+        if (!reason.duringAnalysis() || reason == ParsingReason.JITCompilation || StrictDynamicAccessInferenceFeature.isEnforced()) {
             return;
         }
 

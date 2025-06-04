@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.encoder.SymbolEncoder;
+import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.NativeImageSupport;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -457,6 +458,9 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerProxyPlugins(AnnotationSubstitutionProcessor annotationSubstitutions, InvocationPlugins plugins, ParsingReason reason) {
+        if (StrictDynamicAccessInferenceFeature.isEnforced() && reason == ParsingReason.PointsToAnalysis) {
+            return;
+        }
         Registration proxyRegistration = new Registration(plugins, Proxy.class);
         registerProxyPlugin(proxyRegistration, annotationSubstitutions, reason, "getProxyClass", ClassLoader.class, Class[].class);
         registerProxyPlugin(proxyRegistration, annotationSubstitutions, reason, "newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class);
