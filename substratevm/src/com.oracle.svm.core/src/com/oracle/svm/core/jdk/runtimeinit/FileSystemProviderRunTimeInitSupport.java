@@ -48,13 +48,10 @@ import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * This file contains substitutions that are required for initializing {@link FileSystemProvider} at
- * image {@linkplain JDKInitializedAtRunTime run time}. Other related functionality (general and
- * build time initialization) can be found in {@link FileSystemProviderBuildTimeInitSupport}.
- *
- * @see JDKInitializedAtRunTime
- * @see FileSystemProviderBuildTimeInitSupport
+ * image {@linkplain JDKInitializedAtRunTime run time}. Build-time initialization related
+ * functionality can be found in {@link FileSystemProviderBuildTimeInitSupport}.
  */
-public final class FileSystemProviderRuntimeInitSupport {
+public final class FileSystemProviderRunTimeInitSupport {
 }
 
 @AutomaticallyRegisteredFeature

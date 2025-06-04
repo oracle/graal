@@ -50,6 +50,7 @@ import com.oracle.svm.core.jdk.JDKInitializedAtBuildTime;
 import com.oracle.svm.core.jdk.JRTSupport;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jdk.UserSystemProperty;
+import com.oracle.svm.core.jdk.runtimeinit.FileSystemProviderRunTimeInitSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
@@ -59,12 +60,8 @@ import jdk.internal.util.StaticProperty;
 
 /**
  * This file contains substitutions that are required for initializing {@link FileSystemProvider} at
- * image {@linkplain JDKInitializedAtBuildTime build time}. Other related functionality (general and
- * run-time initialization) can be found in
- * {@link com.oracle.svm.core.jdk.runtimeinit.FileSystemProviderRuntimeInitSupport}.
- *
- * @see JDKInitializedAtBuildTime
- * @see com.oracle.svm.core.jdk.runtimeinit.FileSystemProviderRuntimeInitSupport
+ * image {@linkplain JDKInitializedAtBuildTime build time}. Run-time initialization related
+ * functionality can be found in {@link FileSystemProviderRunTimeInitSupport}.
  */
 public final class FileSystemProviderBuildTimeInitSupport {
 
