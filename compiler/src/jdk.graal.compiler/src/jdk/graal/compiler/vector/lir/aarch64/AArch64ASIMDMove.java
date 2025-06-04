@@ -91,7 +91,8 @@ public class AArch64ASIMDMove {
             int length = result.getPlatformKind().getVectorLength();
             assert length > 0 : length;
             int vectorLength = simdConstant.getVectorLength();
-            assert length <= vectorLength : "length>=" + vectorLength;
+            boolean specialCaseTwoBytes = result.getPlatformKind().equals(AArch64Kind.V32_BYTE) && simdConstant.getSerializedSize() == 2;
+            assert specialCaseTwoBytes || length <= vectorLength : "length>=" + vectorLength;
 
             if (simdConstant.isAllSame()) {
                 ElementSize eSize = ElementSize.fromKind(elementKind);
@@ -143,7 +144,11 @@ public class AArch64ASIMDMove {
                 /* Encode constant in data section. */
                 try (AArch64MacroAssembler.ScratchRegister scr = masm.getScratchRegister()) {
                     Register scratch = scr.getRegister();
-                    DataSection.Data data = crb.dataBuilder.createMultiDataItem(simdConstant.getValues());
+                    SimdConstant constantInMemory = simdConstant;
+                    if (size.bytes() <= ASIMDSize.HalfReg.bytes() && constantInMemory.getSerializedSize() < size.bytes()) {
+                        constantInMemory = padConstant(constantInMemory, size.bytes());
+                    }
+                    DataSection.Data data = crb.dataBuilder.createMultiDataItem(constantInMemory.getValues());
                     crb.dataBuilder.updateAlignment(data, size.bytes());
                     crb.recordDataSectionReference(data);
                     masm.adrpAdd(scratch);
@@ -151,6 +156,20 @@ public class AArch64ASIMDMove {
                 }
             }
 
+        }
+
+        /** Pad the given constant to the given number of bytes. */
+        private static SimdConstant padConstant(SimdConstant simdConstant, int toBytes) {
+            GraalError.guarantee(simdConstant.getSerializedSize() < toBytes, "can't pad %s to %s bytes, it's already big enough", simdConstant, toBytes);
+            Constant[] constants = new Constant[simdConstant.getVectorLength() + (toBytes - simdConstant.getSerializedSize())];
+            int i;
+            for (i = 0; i < simdConstant.getVectorLength(); i++) {
+                constants[i] = simdConstant.getValue(i);
+            }
+            for (; i < constants.length; i++) {
+                constants[i] = JavaConstant.forByte((byte) (i % 2 == 0 ? 0xc0 : 0xfe));
+            }
+            return new SimdConstant(constants);
         }
 
         @Override

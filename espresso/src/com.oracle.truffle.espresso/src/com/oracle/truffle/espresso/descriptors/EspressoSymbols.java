@@ -279,6 +279,7 @@ public class EspressoSymbols {
         // MagicAccessorImpl is not public.
         public static final Symbol<Type> sun_reflect_MagicAccessorImpl = SYMBOLS.putType("Lsun/reflect/MagicAccessorImpl;");
         public static final Symbol<Type> jdk_internal_reflect_MagicAccessorImpl = SYMBOLS.putType("Ljdk/internal/reflect/MagicAccessorImpl;");
+        public static final Symbol<Type> jdk_internal_reflect_SerializationConstructorAccessorImpl = SYMBOLS.putType("Ljdk/internal/reflect/SerializationConstructorAccessorImpl;");
         // DelegatingClassLoader is not public.
         public static final Symbol<Type> sun_reflect_DelegatingClassLoader = SYMBOLS.putType("Lsun/reflect/DelegatingClassLoader;");
         public static final Symbol<Type> jdk_internal_reflect_DelegatingClassLoader = SYMBOLS.putType("Ljdk/internal/reflect/DelegatingClassLoader;");
@@ -379,6 +380,8 @@ public class EspressoSymbols {
         public static final Symbol<Type> java_lang_StackStreamFactory = SYMBOLS.putType("Ljava/lang/StackStreamFactory;");
         public static final Symbol<Type> java_lang_StackStreamFactory_AbstractStackWalker = SYMBOLS.putType("Ljava/lang/StackStreamFactory$AbstractStackWalker;");
         public static final Symbol<Type> java_lang_StackFrameInfo = SYMBOLS.putType("Ljava/lang/StackFrameInfo;");
+        public static final Symbol<Type> java_lang_ClassFrameInfo = SYMBOLS.putType("Ljava/lang/ClassFrameInfo;");
+        public static final Symbol<Type> java_lang_invoke_ResolvedMethodName = SYMBOLS.putType("Ljava/lang/invoke/ResolvedMethodName;");
 
         // Special threads
         public static final Symbol<Type> java_lang_ref_Finalizer$FinalizerThread = SYMBOLS.putType("Ljava/lang/ref/Finalizer$FinalizerThread;");
@@ -572,6 +575,8 @@ public class EspressoSymbols {
 
         public static final Symbol<Name> main = SYMBOLS.putName("main");
         // Reflection
+        public static final Symbol<Name> jdk_internal_reflect = SYMBOLS.putName("jdk/internal/reflect");
+        public static final Symbol<Name> sun_reflect = SYMBOLS.putName("sun/reflect");
         public static final Symbol<Name> clazz = SYMBOLS.putName("clazz");
         public static final Symbol<Name> getParameterTypes = SYMBOLS.putName("getParameterTypes");
         public static final Symbol<Name> override = SYMBOLS.putName("override");
@@ -600,6 +605,10 @@ public class EspressoSymbols {
         public static final Symbol<Name> classLoader = SYMBOLS.putName("classLoader");
         public static final Symbol<Name> classRedefinedCount = SYMBOLS.putName("classRedefinedCount");
         public static final Symbol<Name> componentType = SYMBOLS.putName("componentType");
+        public static final Symbol<Name> protectionDomain = SYMBOLS.putName("protectionDomain");
+        public static final Symbol<Name> modifiers = SYMBOLS.putName("modifiers");
+        public static final Symbol<Name> primitive = SYMBOLS.putName("primitive");
+        public static final Symbol<Name> signers = SYMBOLS.putName("signers");
         // j.l.ClassLoader
         public static final Symbol<Name> addClass = SYMBOLS.putName("addClass");
         public static final Symbol<Name> findNative = SYMBOLS.putName("findNative");
@@ -683,6 +692,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> doStackWalk = SYMBOLS.putName("doStackWalk");
         public static final Symbol<Name> callStackWalk = SYMBOLS.putName("callStackWalk");
         // j.l.StackFrameInfo
+        public static final Symbol<Name> classOrMemberName = SYMBOLS.putName("classOrMemberName");
         public static final Symbol<Name> memberName = SYMBOLS.putName("memberName");
         public static final Symbol<Name> bci = SYMBOLS.putName("bci");
         // io
@@ -762,6 +772,9 @@ public class EspressoSymbols {
         // MemberName
         public static final Symbol<Name> flags = SYMBOLS.putName("flags");
         public static final Symbol<Name> form = SYMBOLS.putName("form");
+        // ResolvedMethodName
+        public static final Symbol<Name> vmholder = SYMBOLS.putName("vmholder");
+        public static final Symbol<Name> HIDDEN_VM_METHOD = SYMBOLS.putName("0HIDDEN_VM_METHOD");
         // MethodHandle
         public static final Symbol<Name> invoke = SYMBOLS.putName("invoke");
         public static final Symbol<Name> invokeExact = SYMBOLS.putName("invokeExact");
@@ -802,6 +815,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> lock = SYMBOLS.putName("lock");
         public static final Symbol<Name> next = SYMBOLS.putName("next");
         public static final Symbol<Name> NULL = SYMBOLS.putName("NULL");
+        public static final Symbol<Name> NULL_QUEUE = SYMBOLS.putName("NULL_QUEUE");
         public static final Symbol<Name> pending = SYMBOLS.putName("pending");
         public static final Symbol<Name> processPendingLock = SYMBOLS.putName("processPendingLock");
         public static final Symbol<Name> queue = SYMBOLS.putName("queue");
@@ -1146,6 +1160,8 @@ public class EspressoSymbols {
         public static final Symbol<Signature> ByteOrder = SYMBOLS.putSignature(Types.java_nio_ByteOrder);
         public static final Symbol<Signature> ByteBuffer_ByteOrder = SYMBOLS.putSignature(Types.java_nio_ByteBuffer, Types.java_nio_ByteOrder);
         public static final Symbol<Signature> _long_ClassLoader_String = SYMBOLS.putSignature(Types._long, Types.java_lang_ClassLoader, Types.java_lang_String);
+        public static final Symbol<Signature> _long_ClassLoader_Class_String_String = SYMBOLS.putSignature(Types._long,
+                        Types.java_lang_ClassLoader, Types.java_lang_Class, Types.java_lang_String, Types.java_lang_String);
         public static final Symbol<Signature> _void_Exception = SYMBOLS.putSignature(Types._void, Types.java_lang_Exception);
         public static final Symbol<Signature> _void_String_String_String_int = SYMBOLS.putSignature(Types._void, Types.java_lang_String, Types.java_lang_String, Types.java_lang_String, Types._int);
         public static final Symbol<Signature> _void_int = SYMBOLS.putSignature(Types._void, Types._int);
@@ -1170,6 +1186,9 @@ public class EspressoSymbols {
         public static final Symbol<Signature> _int_Object_long_Object_long_int_int = SYMBOLS.putSignature(Types._int, Types.java_lang_Object, Types._long, Types.java_lang_Object, Types._long,
                         Types._int, Types._int);
         public static final Symbol<Signature> Object_long_int_ContinuationScope_Continuation_int_int_Object_array = SYMBOLS.putSignature(Types.java_lang_Object, Types._long, Types._int,
+                        Types.jdk_internal_vm_ContinuationScope, Types.jdk_internal_vm_Continuation, Types._int, Types._int,
+                        Types.java_lang_Object_array);
+        public static final Symbol<Signature> Object_int_int_ContinuationScope_Continuation_int_int_Object_array = SYMBOLS.putSignature(Types.java_lang_Object, Types._int, Types._int,
                         Types.jdk_internal_vm_ContinuationScope, Types.jdk_internal_vm_Continuation, Types._int, Types._int,
                         Types.java_lang_Object_array);
         public static final Symbol<Signature> _byte_array_String_Class_array_int = SYMBOLS.putSignature(Types._byte_array, Types.java_lang_String, Types.java_lang_Class_array, Types._int);
@@ -1286,6 +1305,7 @@ public class EspressoSymbols {
                         Types.java_lang_invoke_MethodType,
                         Types.java_lang_Object_array);
         public static final Symbol<Signature> Field_Object_long_Class = SYMBOLS.putSignature(Types.java_lang_reflect_Field, Types.java_lang_Object, Types._long, Types.java_lang_Class);
+        public static final Symbol<Signature> Field_Class_long_Class = SYMBOLS.putSignature(Types.java_lang_reflect_Field, Types.java_lang_Class, Types._long, Types.java_lang_Class);
         public static final Symbol<Signature> Thread$State_int = SYMBOLS.putSignature(Types.java_lang_Thread$State, Types._int);
         public static final Symbol<Signature> _void_ThreadGroup_String = SYMBOLS.putSignature(Types._void, Types.java_lang_ThreadGroup, Types.java_lang_String);
         public static final Symbol<Signature> _void_ThreadGroup_Runnable = SYMBOLS.putSignature(Types._void, Types.java_lang_ThreadGroup, Types.java_lang_Runnable);

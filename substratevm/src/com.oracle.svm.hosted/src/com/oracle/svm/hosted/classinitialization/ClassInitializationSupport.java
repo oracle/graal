@@ -44,18 +44,19 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.core.common.ContextClassLoaderScope;
-import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
+import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
@@ -65,6 +66,7 @@ import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 
+import jdk.graal.compiler.core.common.ContextClassLoaderScope;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -73,6 +75,38 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * The core class for deciding whether a class should be initialized during image building or class
  * initialization should be delayed to runtime.
+ * <p>
+ * The initialization kind for all classes is encoded in the two registries:
+ * {@link #classInitializationConfiguration}, the user-configured initialization state, and
+ * {@link #classInitKinds}, the actual computed initialization state.
+ * <p>
+ * If for example the configured initialization kind, as registered in
+ * {@link #classInitializationConfiguration}, is {@link InitKind#BUILD_TIME} but invoking
+ * {@link #ensureClassInitialized(Class, boolean)} results in an error, e.g., a
+ * {@link NoClassDefFoundError}, then the actual initialization kind registered in
+ * {@link #classInitKinds} may be {@link InitKind#RUN_TIME} depending on the error resolution policy
+ * dictated by {@link LinkAtBuildTimeSupport#linkAtBuildTime(Class)}.
+ * <p>
+ * Classes with a simulated class initializer are neither registered as initialized at
+ * {@link InitKind#RUN_TIME} nor {@link InitKind#BUILD_TIME}. Instead
+ * {@link SimulateClassInitializerSupport} queries their initialization state to decide if
+ * simulation should be tried. If a class has a computed {@link InitKind#BUILD_TIME} initialization
+ * kind, i.e., its {@link AnalysisType#isInitialized()} returns true, simulation is skipped since
+ * the type is already considered as starting out as initialized at image run time (see
+ * {@link SimulateClassInitializerSupport#trySimulateClassInitializer(BigBang, AnalysisType)}). If a
+ * class was explicitly configured as {@link InitKind#RUN_TIME} initialized this will prevent it
+ * from being simulated.
+ * <p>
+ * There are some similarities and differences between simulated and build-time initialized classes.
+ * At image execution time they both start out as initialized: there are no run-time class
+ * initialization checks and the class initializer itself is not even present, it was not AOT
+ * compiled. However, for a simulated class its initialization status in the hosting VM that runs
+ * the image generator does not matter; it may or may not have been initialized. Whereas, a
+ * build-time initialized class is by definition initialized in the hosting VM. Consequently, the
+ * static fields of a simulated class reference image heap values computed by the class initializer
+ * simulation, but they do not correspond to hosted objects. In contrast, static fields of a
+ * build-time initialized class reference image heap values that were copied from the corresponding
+ * fields in the hosting VM.
  */
 public class ClassInitializationSupport implements RuntimeClassInitializationSupport {
 
@@ -125,7 +159,29 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
         this.loader = loader;
     }
 
-    public void setConfigurationSealed(boolean sealed) {
+    /**
+     * Seal the configuration, blocking if another thread is trying to seal the configuration or an
+     * unsealed-configuration window is currently open in another thread.
+     */
+    public synchronized void sealConfiguration() {
+        setConfigurationSealed(true);
+    }
+
+    /**
+     * Run the action in an unsealed-configuration window, blocking if another thread is trying to
+     * seal the configuration or an unsealed-configuration window is currently open in another
+     * thread. The window is reentrant, i.e., it will not block the thread that opened the window
+     * from trying to reenter the window. Note that if the configuration was not sealed when the
+     * window was opened this will not affect the seal status.
+     */
+    public synchronized void withUnsealedConfiguration(Runnable action) {
+        var previouslySealed = configurationSealed;
+        setConfigurationSealed(false);
+        action.run();
+        setConfigurationSealed(previouslySealed);
+    }
+
+    private void setConfigurationSealed(boolean sealed) {
         configurationSealed = sealed;
         if (configurationSealed && ClassInitializationOptions.PrintClassInitialization.getValue()) {
             List<ClassOrPackageConfig> allConfigs = classInitializationConfiguration.allConfigs();
@@ -170,7 +226,7 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
      */
     public boolean maybeInitializeAtBuildTime(ResolvedJavaType type) {
         if (type instanceof AnalysisType analysisType && analysisType.getWrapped() instanceof BaseLayerType baseLayerType) {
-            return baseLayerType.initializedAtBuildTime();
+            return baseLayerType.isInitialized();
         }
         return maybeInitializeAtBuildTime(OriginalClassProvider.getJavaClass(type));
     }
@@ -350,8 +406,26 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
         if (clazz == null) {
             return;
         }
+
         classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.BUILD_TIME, reason, true);
         InitKind initKind = ensureClassInitialized(clazz, allowInitializationErrors);
+        if (initKind == InitKind.RUN_TIME) {
+            assert allowInitializationErrors || !LinkAtBuildTimeSupport.singleton().linkAtBuildTime(clazz);
+            if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                /*
+                 * Special case for application layer building. If a base layer class was configured
+                 * with --initialize-at-build-time but its initialization failed, then the computed
+                 * init kind will be RUN_TIME, different from its configured init kind of
+                 * BUILD_TIME. In the app layer the computed init kind from the previous layer is
+                 * registered as the configured init kind, but if the --initialize-at-build-time was
+                 * already processed for the class then it will already have a conflicting
+                 * configured init kind of BUILD_TIME. Update the configuration registry to allow
+                 * the RUN_TIME registration coming from the base layer. (GR-65405)
+                 */
+                classInitializationConfiguration.updateStrict(clazz.getTypeName(), InitKind.BUILD_TIME, InitKind.RUN_TIME,
+                                "Allow the registration of the computed run time initialization kind from a previous layer for classes whose build time initialization fails.");
+            }
+        }
         classInitKinds.put(clazz, initKind);
 
         forceInitializeHosted(clazz.getSuperclass(), "super type of " + clazz.getTypeName(), allowInitializationErrors);
@@ -369,7 +443,8 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
             if (metaAccess.lookupJavaType(iface).declaresDefaultMethods()) {
                 classInitializationConfiguration.insert(iface.getTypeName(), InitKind.BUILD_TIME, reason, true);
 
-                ensureClassInitialized(iface, false);
+                InitKind initKind = ensureClassInitialized(iface, false);
+                VMError.guarantee(initKind == InitKind.BUILD_TIME, "Initialization of %s failed so all interfaces with default methods must be already initialized.", iface.getTypeName());
                 classInitKinds.put(iface, InitKind.BUILD_TIME);
             }
             forceInitializeInterfaces(iface.getInterfaces(), "super type of " + iface.getTypeName());

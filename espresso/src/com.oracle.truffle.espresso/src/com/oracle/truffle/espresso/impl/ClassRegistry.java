@@ -348,7 +348,7 @@ public abstract class ClassRegistry {
         }
         assert entry != null;
         StaticObject classLoader = getClassLoader();
-        if (!StaticObject.isNull(classLoader)) {
+        if (!StaticObject.isNull(classLoader) && context.getJavaVersion().java23OrEarlier()) {
             entry.checkPackageAccess(env.getMeta(), classLoader, protectionDomain);
         }
         return entry.klass();
@@ -576,9 +576,26 @@ public abstract class ClassRegistry {
         }
 
         if (superKlass != null) {
-            if (!Klass.checkAccess(superKlass, klass, true)) {
+            /*
+             * These checks ensure that only classes defined in the boot or reflection class loader
+             * can declare a superclass in the 'jdk.internal.reflect' package.
+             *
+             * In turn, this ensures that only these classes may be magic accessors.
+             */
+            if (context.getJavaVersion().java23OrEarlier()) {
+                if (!env.loaderIsBoot(getClassLoader()) &&
+                                env.isReflectPackage(superKlass.getRuntimePackage()) &&
+                                !env.loaderIsReflection(getClassLoader())) {
+                    throw EspressoClassLoadingException.illegalAccessError(
+                                    String.format("class %s loaded by %s cannot access reflection superclass %s",
+                                                    klass.getExternalName(),
+                                                    loaderDesc(env, context.getMeta(), getClassLoader()),
+                                                    superKlass.getExternalName()));
+                }
+            }
+            if (!Klass.checkAccess(superKlass, klass)) {
                 StringBuilder sb = new StringBuilder().append("class ").append(klass.getExternalName()).append(" cannot access its superclass ").append(superKlass.getExternalName());
-                superTypeAccessMessage(klass, superKlass, sb, context);
+                superTypeAccessMessage(env, klass, superKlass, sb, context);
                 throw EspressoClassLoadingException.illegalAccessError(sb.toString());
             }
             if (!superKlass.permittedSubclassCheck(klass)) {
@@ -588,9 +605,9 @@ public abstract class ClassRegistry {
 
         for (ObjectKlass interf : superInterfaces) {
             if (interf != null) {
-                if (!Klass.checkAccess(interf, klass, true)) {
+                if (!Klass.checkAccess(interf, klass)) {
                     StringBuilder sb = new StringBuilder().append("class ").append(klass.getExternalName()).append(" cannot access its superinterface ").append(interf.getExternalName());
-                    superTypeAccessMessage(klass, interf, sb, context);
+                    superTypeAccessMessage(env, klass, interf, sb, context);
                     throw EspressoClassLoadingException.illegalAccessError(sb.toString());
                 }
                 if (!interf.permittedSubclassCheck(klass)) {
@@ -602,24 +619,24 @@ public abstract class ClassRegistry {
         return klass;
     }
 
-    private static void superTypeAccessMessage(ObjectKlass sub, ObjectKlass sup, StringBuilder sb, EspressoContext context) {
+    private static void superTypeAccessMessage(ClassLoadingEnv env, ObjectKlass sub, ObjectKlass sup, StringBuilder sb, EspressoContext context) {
         if (context.getJavaVersion().modulesEnabled()) {
             sb.append(" (");
             Meta meta = context.getMeta();
             if (sup.module() == sub.module()) {
                 sb.append(sub.getExternalName());
                 sb.append(" and ");
-                classInModuleOfLoader(sup, true, sb, meta);
+                classInModuleOfLoader(env, sup, true, sb, meta);
             } else {
-                classInModuleOfLoader(sub, false, sb, meta);
+                classInModuleOfLoader(env, sub, false, sb, meta);
                 sb.append("; ");
-                classInModuleOfLoader(sup, false, sb, meta);
+                classInModuleOfLoader(env, sup, false, sb, meta);
             }
             sb.append(")");
         }
     }
 
-    public static void classInModuleOfLoader(ObjectKlass klass, boolean plural, StringBuilder sb, Meta meta) {
+    public static void classInModuleOfLoader(ClassLoadingEnv env, ObjectKlass klass, boolean plural, StringBuilder sb, Meta meta) {
         assert meta.getJavaVersion().modulesEnabled() && meta.java_lang_ClassLoader_nameAndId != null;
         sb.append(klass.getExternalName());
         if (plural) {
@@ -635,16 +652,18 @@ public abstract class ClassRegistry {
             sb.append("unnamed module");
         }
         sb.append(" of loader ");
-        StaticObject loader = klass.getDefiningClassLoader();
-        if (StaticObject.isNull(loader)) {
-            sb.append("bootstrap");
+        sb.append(loaderDesc(env, meta, klass.getDefiningClassLoader()));
+    }
+
+    private static String loaderDesc(ClassLoadingEnv env, Meta meta, StaticObject loader) {
+        if (env.loaderIsBoot(loader)) {
+            return "bootstrap";
+        }
+        StaticObject nameAndId = meta.java_lang_ClassLoader_nameAndId.getObject(loader);
+        if (StaticObject.isNull(nameAndId)) {
+            return loader.getKlass().getExternalName();
         } else {
-            StaticObject nameAndId = meta.java_lang_ClassLoader_nameAndId.getObject(loader);
-            if (StaticObject.isNull(nameAndId)) {
-                sb.append(loader.getKlass().getExternalName());
-            } else {
-                sb.append(meta.toHostString(nameAndId));
-            }
+            return meta.toHostString(nameAndId);
         }
     }
 

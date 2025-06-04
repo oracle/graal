@@ -28,9 +28,11 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
@@ -115,7 +117,12 @@ final class Target_java_util_ResourceBundle {
             if (!ImageSingletons.lookup(LocalizationSupport.class).isRegisteredBundleLookup(baseName, locale, control)) {
                 MissingResourceRegistrationUtils.missingResourceBundle(baseName);
             }
-            return getBundleImpl(callerModule, callerModule, baseName, locale, control);
+            return MissingRegistrationUtils.runIgnoringMissingRegistrations(new Supplier<ResourceBundle>() {
+                @Override
+                public ResourceBundle get() {
+                    return getBundleImpl(callerModule, callerModule, baseName, locale, control);
+                }
+            });
         }
 
         // find resource bundles from unnamed module of given class loader
@@ -129,7 +136,12 @@ final class Target_java_util_ResourceBundle {
         if (!ImageSingletons.lookup(LocalizationSupport.class).isRegisteredBundleLookup(baseName, locale, control)) {
             MissingResourceRegistrationUtils.missingResourceBundle(baseName);
         }
-        return getBundleImpl(callerModule, unnamedModule, baseName, locale, control);
+        return MissingRegistrationUtils.runIgnoringMissingRegistrations(new Supplier<ResourceBundle>() {
+            @Override
+            public ResourceBundle get() {
+                return getBundleImpl(callerModule, unnamedModule, baseName, locale, control);
+            }
+        });
     }
 
     @Alias

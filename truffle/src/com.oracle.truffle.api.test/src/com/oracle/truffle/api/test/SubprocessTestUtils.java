@@ -188,14 +188,14 @@ public final class SubprocessTestUtils {
     }
 
     private static Subprocess execute(Method testMethod, boolean failOnNonZeroExitCode, List<String> prefixVMOptions,
-                    List<String> postfixVmOptions, Duration timeout) throws IOException, InterruptedException {
+                    List<String> postfixVmOptions, Duration timeout, Consumer<ProcessHandle> onStart) throws IOException, InterruptedException {
         String enclosingElement = testMethod.getDeclaringClass().getName();
         String testName = testMethod.getName();
         Subprocess subprocess = javaHelper(
                         configure(getVmArgs(), prefixVMOptions, postfixVmOptions),
                         null, null,
                         List.of("com.oracle.mxtool.junit.MxJUnitWrapper", String.format("%s#%s", enclosingElement, testName)),
-                        timeout);
+                        timeout, onStart);
         if (failOnNonZeroExitCode && subprocess.exitCode != 0) {
             Assert.fail(String.format("Subprocess produced non-0 exit code %d%n%s", subprocess.exitCode, subprocess.preserveArgFile()));
         }
@@ -465,6 +465,7 @@ public final class SubprocessTestUtils {
         private boolean failOnNonZeroExit = true;
         private Duration timeout;
         private Consumer<Subprocess> onExit;
+        private Consumer<ProcessHandle> onStart;
 
         private Builder(Class<?> testClass, Runnable run) {
             this.testClass = testClass;
@@ -525,11 +526,16 @@ public final class SubprocessTestUtils {
             return this;
         }
 
+        public Builder onStart(Consumer<ProcessHandle> start) {
+            this.onStart = start;
+            return this;
+        }
+
         public void run() throws IOException, InterruptedException {
             if (isSubprocess()) {
                 runnable.run();
             } else {
-                Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs, timeout);
+                Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs, timeout, onStart);
                 if (onExit != null) {
                     try {
                         onExit.accept(process);
@@ -702,8 +708,10 @@ public final class SubprocessTestUtils {
      * @param mainClassAndArgs the main class and its arguments
      * @param timeout the duration to wait for the process to finish. If null, the calling thread
      *            waits for the process indefinitely.
+     * @param onStart a callback invoked immediately after the subprocess has successfully started
      */
-    private static Subprocess javaHelper(List<String> vmArgs, Map<String, String> env, File workingDir, List<String> mainClassAndArgs, Duration timeout) throws IOException, InterruptedException {
+    private static Subprocess javaHelper(List<String> vmArgs, Map<String, String> env, File workingDir, List<String> mainClassAndArgs,
+                    Duration timeout, Consumer<ProcessHandle> onStart) throws IOException, InterruptedException {
         List<String> command = new ArrayList<>(vmArgs.size());
         for (String vmArg : vmArgs) {
             if (vmArg == PACKAGE_OPENING_OPTIONS) {
@@ -717,7 +725,7 @@ public final class SubprocessTestUtils {
             System.err.println("The subprocess will wait for a debugger to be attached on port 8000");
         }
         command.addAll(mainClassAndArgs);
-        return process(command, env, workingDir, timeout);
+        return process(command, env, workingDir, timeout, onStart);
     }
 
     /**
@@ -731,8 +739,10 @@ public final class SubprocessTestUtils {
      * @param timeout the duration to wait for the process to finish. When the timeout is reached,
      *            the subprocess is terminated forcefully. If the timeout is null, the calling
      *            thread waits for the process indefinitely.
+     * @param onStart a callback invoked immediately after the subprocess has successfully started
      */
-    private static Subprocess process(List<String> command, Map<String, String> env, File workingDir, Duration timeout) throws IOException, InterruptedException {
+    private static Subprocess process(List<String> command, Map<String, String> env, File workingDir,
+                    Duration timeout, Consumer<ProcessHandle> onStart) throws IOException, InterruptedException {
         Path argfile = makeArgfile(command);
         ProcessBuilder processBuilder = new ProcessBuilder(argfile == null ? command : List.of(command.get(0), "@" + argfile));
         if (workingDir != null) {
@@ -744,6 +754,9 @@ public final class SubprocessTestUtils {
         }
         processBuilder.redirectErrorStream(true);
         Process process = processBuilder.start();
+        if (onStart != null) {
+            onStart.accept(process.toHandle());
+        }
         BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
         List<String> output = new ArrayList<>();
         if (timeout == null) {

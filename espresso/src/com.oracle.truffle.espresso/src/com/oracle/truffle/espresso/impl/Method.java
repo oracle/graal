@@ -403,7 +403,16 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
     private CallTarget lookupJniCallTarget(Meta meta, String[] lookupNames) {
         for (String lookupName : lookupNames) {
-            long handle = (long) meta.java_lang_ClassLoader_findNative.invokeDirectStatic(getDeclaringKlass().getDefiningClassLoader(), meta.toGuestString(lookupName));
+            long handle;
+            if (getJavaVersion().java21OrEarlier()) {
+                handle = (long) meta.java_lang_ClassLoader_findNative.invokeDirectStatic(getDeclaringKlass().getDefiningClassLoader(), meta.toGuestString(lookupName));
+            } else {
+                handle = (long) meta.java_lang_ClassLoader_findNative.invokeDirectStatic(
+                                getDeclaringKlass().getDefiningClassLoader(),
+                                getDeclaringKlass().mirror(),
+                                meta.toGuestString(lookupName),
+                                meta.toGuestString(getName()));
+            }
             if (handle == 0) { // not found
                 continue;
             }

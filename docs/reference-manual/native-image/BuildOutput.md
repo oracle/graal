@@ -279,6 +279,13 @@ To fix this, ensure that proper GAV coordinates (Group ID, Artifact ID, and Vers
 
 For more information, see [Software Bill of Materials](../../security/native-image.md).
 
+#### <a name="glossary-obfuscation"></a>Obfuscation
+This section indicates whether obfuscation was applied and provides related statistics.
+Obfuscation is applied to your application code and third-party dependencies, but not to the JDK or [Substrate VM](https://github.com/oracle/graal/tree/master/substratevm) code.
+The following elements are obfuscated: module, package, and class names; method and source file names in stack traces; and field names in heap dumps.
+The following elements are not obfuscated: symbols affected by registrations in reachability metadata; modules and packages that contain a class which loads a resource; annotations; lambdas; and proxies.
+Use `-H:EnableObfuscation=export-mapping` to export a build artifact containing the mappings from original to obfuscated names.
+
 #### <a name="glossary-backwards-edge-cfi"></a>Backwards-Edge Control-Flow Integrity (CFI)
 Control-Flow Integrity (CFI) can be enforced with the experimental `-H:CFI=HW` option.
 This feature is currently only available for code compiled by Graal for Linux AArch64 and leverages pointer authentication codes (PAC) to ensure integrity of a function's return address.

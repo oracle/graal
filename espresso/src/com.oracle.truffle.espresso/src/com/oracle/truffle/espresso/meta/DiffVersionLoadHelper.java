@@ -83,9 +83,9 @@ final class DiffVersionLoadHelper {
             return null;
         }
         if (klass == null) {
-            return null;
+            throw EspressoError.shouldNotReachHere("Missing klass for method " + name + ":" + signature);
         }
-        return klass.lookupDeclaredMethod(name, signature);
+        return klass.requireDeclaredMethod(name, signature);
     }
 
     DiffVersionLoadHelper field(VersionRange range, Symbol<Name> n, Symbol<Type> t) {
@@ -103,25 +103,24 @@ final class DiffVersionLoadHelper {
         return klass.requireDeclaredField(name, type);
     }
 
-    Field maybeHiddenfield(ObjectKlass klass) {
-        if (name == null || type == null) {
-            return null;
-        }
-        Field f = klass.lookupDeclaredField(name, type);
-        if (f == null) {
-            return klass.lookupHiddenField(name);
-        }
-        return f;
-    }
-
     Field notRequiredField(ObjectKlass klass) {
         if (name == null || type == null) {
             return null;
         }
         if (klass == null) {
-            return null;
+            throw EspressoError.shouldNotReachHere("Missing klass for field " + name + ":" + type);
         }
-        return klass.lookupDeclaredField(name, type);
+        return klass.requireDeclaredField(name, type);
     }
 
+    Field maybeHiddenfield(ObjectKlass klass) {
+        if (name == null || type == null) {
+            return null;
+        }
+        Field f = klass.lookupDeclaredField(name, type);
+        if (f != null) {
+            return f;
+        }
+        return klass.requireHiddenField(name);
+    }
 }

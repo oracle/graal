@@ -176,7 +176,7 @@ public class TlabSupport {
         refillWasteLimit.set(initialRefillWasteLimit());
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/shared/threadLocalAllocBuffer.cpp#L150-L153")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+25/src/hotspot/share/gc/shared/threadLocalAllocBuffer.cpp#L143-L145")
     @Uninterruptible(reason = "Accesses TLAB")
     static void retireTlabBeforeAllocation() {
         long availableTlabMemory = availableTlabMemory(getTlab()).rawValue();
@@ -184,7 +184,7 @@ public class TlabSupport {
         retireCurrentTlab(CurrentIsolate.getCurrentThread(), false);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/shared/threadLocalAllocBuffer.cpp#L137-L148")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+25/src/hotspot/share/gc/shared/threadLocalAllocBuffer.cpp#L131-L141")
     @Uninterruptible(reason = "Accesses TLAB")
     private static void retireCurrentTlab(IsolateThread thread, boolean calculateStats) {
         ThreadLocalAllocation.Descriptor tlab = getTlab(thread);

@@ -39,6 +39,13 @@ cons public init(java.lang.Throwable)
 supr java.lang.Throwable
 hfds serialVersionUID
 
+CLSS public java.lang.LinkageError
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+supr java.lang.Error
+hfds serialVersionUID
+
 CLSS public java.lang.Exception
 cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
 cons public init()
@@ -230,7 +237,7 @@ meth public java.lang.Class<?> getDeclaringClass()
 meth public java.lang.Class<?> getElementType()
 meth public java.lang.String getElementName()
 meth public java.lang.String getSignature()
-supr java.lang.Error
+supr java.lang.LinkageError
 hfds declaringClass,elementName,elementType,serialVersionUID,signature
 
 CLSS public final org.graalvm.nativeimage.MissingReflectionRegistrationError
@@ -239,7 +246,7 @@ meth public java.lang.Class<?> getDeclaringClass()
 meth public java.lang.Class<?> getElementType()
 meth public java.lang.Class<?>[] getParameterTypes()
 meth public java.lang.String getElementName()
-supr java.lang.Error
+supr java.lang.LinkageError
 hfds declaringClass,elementName,elementType,parameterTypes,serialVersionUID
 
 CLSS public abstract interface org.graalvm.nativeimage.ObjectHandle

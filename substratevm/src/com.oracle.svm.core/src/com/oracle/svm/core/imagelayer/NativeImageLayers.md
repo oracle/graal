@@ -201,6 +201,16 @@ native-image --module-path target/AwesomeLib-1.0-SNAPSHOT.jar --shared
 - A shared layer is using the _.so_ extension to conform with the standard OS loader restrictions. However, it is not a
   standard shared library file, and it cannot be used with other applications.
 
+### Class Initialization
+
+With Native Image Layers class initialization needs to be coherent between layers.
+To achieve this we enforce that the initialization state of types in shared layers stays exactly the same in the
+subsequent dependent layers.
+More concretely if a class `A` is initialized at build time in a base layer, then it will be automatically
+initialized at build time in the extension layers. The same holds for run time initialization.
+In the future we plan to relax this restriction and allow run-time initialized types in base layers to be promoted
+into build-time initialized types in the extension layers.
+
 ## Packaging Native Image Layers
 
 At build time a shared layer is stored in a layer archive that contains the following artifacts:

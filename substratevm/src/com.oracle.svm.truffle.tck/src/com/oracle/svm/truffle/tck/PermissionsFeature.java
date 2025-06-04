@@ -55,6 +55,7 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.ToLongBiFunction;
 import java.util.spi.LocaleServiceProvider;
 import java.util.stream.Collectors;
 
@@ -63,6 +64,12 @@ import com.oracle.svm.util.LogUtils;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.vm.ci.meta.JavaConstant;
+import org.graalvm.nativebridge.BinaryMarshaller;
+import org.graalvm.nativebridge.DispatchHandler;
+import org.graalvm.nativebridge.IsolateCreateException;
+import org.graalvm.nativebridge.ProcessIsolate;
+import org.graalvm.nativebridge.ProcessIsolateConfig;
+import org.graalvm.nativebridge.ProcessIsolateThread;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.polyglot.io.FileSystem;
@@ -322,6 +329,8 @@ public class PermissionsFeature implements Feature {
         deniedMethods.addAll(findMethods(bb, Constructor.class, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().length == 1));
         deniedMethods.addAll(findMethods(bb, MethodHandle.class, (m) -> m.getName().startsWith("invoke") && m.isPublic()));
         deniedMethods.addAll(findMethods(bb, Class.class, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().length == 0));
+        // ProcessIsolate entry method
+        deniedMethods.addAll(findMethods(bb, ProcessIsolate.class, (m) -> m.getName().equals("spawnProcessIsolate")));
         if (inlinedUnsafeCall != null) {
             deniedMethods.add(inlinedUnsafeCall);
         }
@@ -1240,5 +1249,25 @@ final class Target_java_lang_System_LoggerFinder {
     @Substitute
     private static System.LoggerFinder getLoggerFinder() {
         return LoggerFinderHolder.LOGGER_FINDER;
+    }
+}
+
+/**
+ * ProcessIsolate brings Java networking classes into the closed-world analysis. The issue arises
+ * from lambda expressions or method references in these classes invoke privileged methods. Since
+ * native-image lacks context during analysis, it includes these implementations at every functional
+ * interface call site. To address this, we exclude the {@code ProcessIsolate} entry point from the
+ * points-to analysis when the permission feature is enabled.
+ */
+@TargetClass(value = ProcessIsolate.class, onlyWith = PermissionsFeature.IsEnabled.class)
+final class Target {
+
+    @SuppressWarnings("unused")
+    @Substitute
+    public static ProcessIsolate spawnProcessIsolate(ProcessIsolateConfig config,
+                    BinaryMarshaller<Throwable> throwableMarshaller,
+                    DispatchHandler[] dispatchHandlers,
+                    ToLongBiFunction<ProcessIsolateThread, Long> releaseObjectHandle) throws IsolateCreateException {
+        throw new IsolateCreateException("Process isolates are disabled by the language permissions feature.");
     }
 }

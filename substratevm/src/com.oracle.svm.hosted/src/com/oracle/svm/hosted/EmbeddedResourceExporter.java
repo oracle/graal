@@ -89,7 +89,7 @@ public class EmbeddedResourceExporter {
         w.appendObjectEnd();
     }
 
-    private static List<ResourceReportEntry> getResourceReportEntryList(ConcurrentHashMap<Resources.ModuleResourceKey, List<SourceAndOrigin>> collection) {
+    public static List<ResourceReportEntry> getResourceReportEntryList(ConcurrentHashMap<Resources.ModuleResourceKey, List<SourceAndOrigin>> collection) {
         if (collection.isEmpty()) {
             LogUtils.warning("Attempting to write information about resources without data being collected. " +
                             "Either the GenerateEmbeddedResourcesFile hosted option is disabled " +
