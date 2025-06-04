@@ -25,6 +25,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-64488 Added `TruffleFile#getFileStoreInfo()` providing access to disk-related metadata such as total size, usable space, unallocated space and block size.
 * GR-43908 Added a deoptimization cycle detection to Truffle. This feature is enabled by default when running optimized on JDK 25 and later. Whenever a deoptimization cycle is detected, the compilation fails with a permanent bailout that contains the Java stack trace of the location. If this error is encountered too frequently it can be disabled by setting `compiler.DeoptCycleDetectionThreshold` to `-1`. For further information, please see the extended [deopt cycle detection](https://github.com/oracle/graal/blob/master/truffle/docs/Optimizing.md#automatic-detection-of-deoptimization-cycles) guide. 
   *  Added `compiler.DeoptCycleDetectionThreshold` and `compiler.DeoptCycleDetectionAllowedRepeats` options which allow to fine-tune the sensitivity of the deoptimization loop detection.
+* GR-65428 JDK specific optimizations when building Truffle languages with native-image are now enabled by default, even if the truffle-enterprise.jar is not provided on the class or module-path.
 
 ## Version 24.2.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.
