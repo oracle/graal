@@ -125,8 +125,12 @@ meth public static double truncate(double)
 meth public static float truncate(float)
 meth public static int multiplyHigh(int,int)
 meth public static int multiplyHighUnsigned(int,int)
+meth public static int truncateToUnsignedInt(double)
+meth public static int truncateToUnsignedInt(float)
 meth public static long multiplyHigh(long,long)
 meth public static long multiplyHighUnsigned(long,long)
+meth public static long truncateToUnsignedLong(double)
+meth public static long truncateToUnsignedLong(float)
 supr java.lang.Object
 
 CLSS public final com.oracle.truffle.api.HostCompilerDirectives
