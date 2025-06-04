@@ -702,7 +702,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         assertEquals("x", x.getName());
         assertNull(x.getTypeProfile());
 
-        // Force cached.
+        // force cached
         outer.getBytecodeNode().setUncachedThreshold(0);
 
         assertEquals(42L, outer.getCallTarget().call(false));

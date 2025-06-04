@@ -119,6 +119,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean enableMaterializedLocalAccesses;
     public boolean storeBciInFrame;
     public boolean bytecodeDebugListener;
+    public boolean additionalAssertions;
     public boolean enableSpecializationIntrospection;
     public boolean enableTagInstrumentation;
     public boolean enableRootTagging;
@@ -505,6 +506,16 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
 
     public Collection<OperationModel> getOperations() {
         return operations.values();
+    }
+
+    public Collection<OperationModel> getOperationsWithChildren() {
+        List<OperationModel> result = new ArrayList<>();
+        for (OperationModel operation : operations.values()) {
+            if (operation.hasChildren()) {
+                result.add(operation);
+            }
+        }
+        return result;
     }
 
     public Collection<OperationModel> getUserOperations() {

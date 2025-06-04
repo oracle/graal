@@ -528,4 +528,13 @@ public @interface GenerateBytecode {
      */
     String variadicStackLimit() default "32";
 
+    /**
+     * Enables additional assertions, that would be otherwise too costly outside testing. The
+     * additional assertions can also be enabled dynamically at build time by passing
+     * <code>-Atruffle.dsl.AdditionalAssertions=true</code> to the Java compiler.
+     *
+     * @since 25.0
+     */
+    boolean additionalAssertions() default false;
+
 }

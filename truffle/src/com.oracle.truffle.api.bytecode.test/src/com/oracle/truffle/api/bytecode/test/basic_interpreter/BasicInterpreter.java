@@ -102,6 +102,7 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 @GenerateBytecodeTestVariants({
                 @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                additionalAssertions = true, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 enableSerialization = true, //
@@ -110,6 +111,7 @@ import com.oracle.truffle.api.source.SourceSection;
                                 allowUnsafe = false, //
                                 variadicStackLimit = "4")),
                 @Variant(suffix = "Unsafe", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                additionalAssertions = true, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 enableSerialization = true, //
@@ -117,6 +119,7 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableSpecializationIntrospection = true, //
                                 variadicStackLimit = "8")),
                 @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                additionalAssertions = true, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 enableSerialization = true, //
@@ -126,6 +129,7 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableSpecializationIntrospection = true, //
                                 variadicStackLimit = "16")),
                 @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                additionalAssertions = true, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 enableSerialization = true, //
@@ -134,6 +138,7 @@ import com.oracle.truffle.api.source.SourceSection;
                                 boxingEliminationTypes = {boolean.class, long.class}, //
                                 variadicStackLimit = "4")),
                 @Variant(suffix = "WithOptimizations", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                additionalAssertions = true, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 enableSerialization = true, //
@@ -142,6 +147,7 @@ import com.oracle.truffle.api.source.SourceSection;
                                 defaultLocalValue = "LOCAL_DEFAULT_VALUE", //
                                 variadicStackLimit = "8")),
                 @Variant(suffix = "WithRootScoping", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                additionalAssertions = true, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 enableSerialization = true, //
@@ -151,6 +157,7 @@ import com.oracle.truffle.api.source.SourceSection;
                                 defaultLocalValue = "LOCAL_DEFAULT_VALUE", //
                                 variadicStackLimit = "16")),
                 @Variant(suffix = "WithStoreBytecodeIndexInFrame", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                additionalAssertions = true, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 enableSerialization = true, //
@@ -163,6 +170,7 @@ import com.oracle.truffle.api.source.SourceSection;
                                 variadicStackLimit = "4")),
                 // A typical "production" configuration with all of the bells and whistles.
                 @Variant(suffix = "ProductionBlockScoping", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                additionalAssertions = true, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 enableSerialization = true, //
@@ -173,6 +181,7 @@ import com.oracle.truffle.api.source.SourceSection;
                                 boxingEliminationTypes = {boolean.class, long.class}, //
                                 variadicStackLimit = "8")),
                 @Variant(suffix = "ProductionRootScoping", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                additionalAssertions = true, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 enableSerialization = true, //

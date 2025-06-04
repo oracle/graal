@@ -217,7 +217,7 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
         b.emitReturn();
     }
 
-    private static BytecodeParser<BytecodeBenchmarkRootNodeBuilder> createBytecodeDSLParser(boolean forceUncached) {
+    public static BytecodeParser<BytecodeBenchmarkRootNodeBuilder> createBytecodeDSLParser(boolean forceUncached) {
         return b -> {
             b.beginRoot();
 
