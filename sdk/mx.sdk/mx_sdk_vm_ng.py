@@ -387,10 +387,12 @@ class LanguageLibraryProject(NativeImageLibraryProject):
             build_args += ['--enable-monitoring=jvmstat,heapdump,jfr,threaddump']
         else:
             build_args += ['--enable-monitoring=jvmstat,heapdump,jfr']
-            build_args += mx_sdk_vm_impl.svm_experimental_options(['-H:+DumpThreadStacksOnSignal', '-H:+DumpRuntimeCompilationOnSignal'])
-            build_args += [
-                '-R:-UsePerfData', # See GR-25329, reduces startup instructions significantly
-            ]
+            build_args += mx_sdk_vm_impl.svm_experimental_options(['-H:+DumpThreadStacksOnSignal'])
+
+        build_args += mx_sdk_vm_impl.svm_experimental_options(['-H:+DumpRuntimeCompilationOnSignal'])
+        build_args += [
+            '-R:-UsePerfData', # See GR-25329, reduces startup instructions significantly
+        ]
 
         return build_args
 
