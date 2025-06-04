@@ -248,8 +248,9 @@ class CVTypeSectionBuilder {
         }
 
         if (typeEntry.isHeader()) {
-            FieldEntry hubField = ((HeaderTypeEntry)typeEntry).getHubField();
-            log("field %s attr=(%s) offset=%d size=%d valuetype=%s", hubField.fieldName(), hubField.getModifiersString(), hubField.getOffset(), hubField.getSize(), hubField.getValueType().getTypeName());
+            FieldEntry hubField = ((HeaderTypeEntry) typeEntry).getHubField();
+            log("field %s attr=(%s) offset=%d size=%d valuetype=%s", hubField.fieldName(), hubField.getModifiersString(), hubField.getOffset(), hubField.getSize(),
+                            hubField.getValueType().getTypeName());
             CVTypeRecord.FieldRecord fieldRecord = buildField(hubField);
             log("field %s", fieldRecord);
             fieldListBuilder.addField(fieldRecord);
