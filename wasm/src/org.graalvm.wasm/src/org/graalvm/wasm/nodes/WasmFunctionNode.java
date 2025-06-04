@@ -4102,7 +4102,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             enterErrorBranch();
             throw WasmException.create(Failure.INT_OVERFLOW);
         }
-        final int result = (int) WasmMath.truncFloatToLong(x);
+        final int result = (int) x;
         pushInt(frame, stackPointer - 1, result);
     }
 
@@ -4128,7 +4128,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             enterErrorBranch();
             throw WasmException.create(Failure.INT_OVERFLOW);
         }
-        final int result = (int) WasmMath.truncDoubleToLong(x);
+        final int result = (int) x;
         pushInt(frame, stackPointer - 1, result);
     }
 
@@ -4147,7 +4147,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private static void i32_trunc_sat_f32_s(VirtualFrame frame, int stackPointer) {
         final float x = popFloat(frame, stackPointer - 1);
-        final int result = (int) ExactMath.truncate(x);
+        final int result = (int) x;
         pushInt(frame, stackPointer - 1, result);
     }
 
@@ -4166,7 +4166,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private static void i32_trunc_sat_f64_s(VirtualFrame frame, int stackPointer) {
         final double x = popDouble(frame, stackPointer - 1);
-        final int result = (int) ExactMath.truncate(x);
+        final int result = (int) x;
         pushInt(frame, stackPointer - 1, result);
     }
 
@@ -4203,7 +4203,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             enterErrorBranch();
             throw WasmException.create(Failure.INT_OVERFLOW);
         }
-        final long result = WasmMath.truncFloatToLong(x);
+        final long result = (long) x;
         pushLong(frame, stackPointer - 1, result);
     }
 
@@ -4229,7 +4229,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             enterErrorBranch();
             throw WasmException.create(Failure.INT_OVERFLOW);
         }
-        final long result = WasmMath.truncDoubleToLong(x);
+        final long result = (long) x;
         pushLong(frame, stackPointer - 1, result);
     }
 
@@ -4248,7 +4248,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private static void i64_trunc_sat_f32_s(VirtualFrame frame, int stackPointer) {
         final float x = popFloat(frame, stackPointer - 1);
-        final long result = (long) ExactMath.truncate(x);
+        final long result = (long) x;
         pushLong(frame, stackPointer - 1, result);
     }
 
@@ -4265,7 +4265,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private static void i64_trunc_sat_f64_s(VirtualFrame frame, int stackPointer) {
         final double x = popDouble(frame, stackPointer - 1);
-        final long result = (long) ExactMath.truncate(x);
+        final long result = (long) x;
         pushLong(frame, stackPointer - 1, result);
     }
 
