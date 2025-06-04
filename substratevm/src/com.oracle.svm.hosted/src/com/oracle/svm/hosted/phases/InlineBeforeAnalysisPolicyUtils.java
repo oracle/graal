@@ -150,7 +150,7 @@ public class InlineBeforeAnalysisPolicyUtils {
     public final int optionScopedAllowedNodes = Options.InlineBeforeAnalysisScopedAllowedNodes.getValue();
     public final int optionScopedAllowedInvokes = Options.InlineBeforeAnalysisScopedAllowedInvokes.getValue();
 
-    public final boolean optionForeignAPISupport = SubstrateOptions.ForeignAPISupport.getValue();
+    public final boolean optionForeignAPISupport = SubstrateOptions.isForeignAPIEnabled();
 
     @SuppressWarnings("unchecked") //
     private static final Class<? extends Annotation> COMPILED_LAMBDA_FORM_ANNOTATION = //

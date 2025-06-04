@@ -33,6 +33,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platform.DARWIN;
 import org.graalvm.nativeimage.Platform.WINDOWS;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -40,7 +42,6 @@ import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.BasedOnJDKClass;
 
@@ -56,7 +57,7 @@ public final class RuntimeSystemLookup {
     static final SymbolLookup INSTANCE = makeSystemLookup();
 
     public static SymbolLookup makeSystemLookup() {
-        if (OS.WINDOWS.isCurrent()) {
+        if (Platform.includedIn(WINDOWS.class)) {
             /*
              * Windows support has some subtleties: one would ideally load ucrtbase.dll, but some
              * old installs might not have it, in which case msvcrt.dll should be loaded instead. If
@@ -93,7 +94,7 @@ public final class RuntimeSystemLookup {
             }
 
             return lookup;
-        } else if (OS.DARWIN.isCurrent()) {
+        } else if (Platform.includedIn(DARWIN.class)) {
             return Util_java_lang_foreign_SymbolLookup.libraryLookup(LookupNativeLibraries::loadLibraryPlatformSpecific, List.of("/usr/lib/libSystem.B.dylib"));
         } else {
             /*
@@ -114,6 +115,7 @@ public final class RuntimeSystemLookup {
     @CFunction(value = "__svm_get_syslookup_func", transition = Transition.NO_TRANSITION)
     public static native Pointer getSyslookupFunc(int i, int nExpected);
 
+    @Platforms(WINDOWS.class)
     private static Pointer getWindowsFallbackSymbol(String name) {
         try {
             assert Target_jdk_internal_foreign_SystemLookup_WindowsFallbackSymbols.class.isEnum();
