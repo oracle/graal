@@ -746,7 +746,7 @@ public class SubstrateJVM {
     }
 
     /** See JfrRecorderService::vm_error_rotation */
-//    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used on OOME for emergency dumps")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used on OOME for emergency dumps")
     public void vmErrorRotation() {
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {

@@ -334,7 +334,6 @@ public class JfrTypeRepository implements JfrRepository {
         if (packageInfoRaw.getNameLength().equal(0)) {
             return false;
         }
-        System.out.println(clazz.getPackageName());
         packageInfoRaw.setHash(getHash(packageInfoRaw));
         if (isPackageVisited(typeInfo, packageInfoRaw)) {
             assert moduleName == (flushedPackages.contains(packageInfoRaw) ? ((PackageInfoRaw)flushedPackages.get(packageInfoRaw)).getModuleName() : ((PackageInfoRaw)typeInfo.packages.get(packageInfoRaw)).getModuleName());

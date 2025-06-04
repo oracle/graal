@@ -1,24 +1,57 @@
+/*
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Red Hat Inc. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
 package com.oracle.svm.core.posix.jfr;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.posix.headers.Dirent;
+import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.posix.headers.Fcntl;
+import com.oracle.svm.core.posix.headers.Unistd;
+import org.graalvm.word.Pointer;
 import jdk.graal.compiler.word.Word;
+import org.graalvm.word.WordFactory;
 //import jdk.jfr.internal.LogLevel;
 //import jdk.jfr.internal.LogTag;
 //import jdk.jfr.internal.Logger;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.handles.PrimitiveArrayView;
+import com.oracle.svm.core.memory.NativeMemory;
+import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
-
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -26,6 +59,7 @@ import java.nio.charset.StandardCharsets;
 
 import static com.oracle.svm.core.posix.headers.Fcntl.O_NOFOLLOW;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_RDONLY;
+
 public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.JfrEmergencyDumpSupport {
     private static final int CHUNK_FILE_HEADER_SIZE = 68;// TODO based on jdk file
     private static final int JVM_MAXPATHLEN = 4096;// TODO based on jdk file
@@ -37,7 +71,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
     private byte[] dumpPathBytes;
     private byte[] repositoryLocationBytes;
     private RawFileDescriptor emergencyFd;
-    private PrimitiveArrayView pathBuffer;
+    private CCharPointer pathBuffer;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public PosixJfrEmergencyDumpSupport() {
@@ -45,21 +79,13 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
 
     public void initialize() {
         pidBytes = String.valueOf(ProcessHandle.current().pid()).getBytes(StandardCharsets.UTF_8);
-        pathBuffer =  PrimitiveArrayView.createForReadingAndWriting(new byte[JVM_MAXPATHLEN]);
-        directory = org.graalvm.word.WordFactory.nullPointer(); // *** maybe not necessary.
+        pathBuffer = NativeMemory.calloc(JVM_MAXPATHLEN, NmtCategory.JFR);
+        directory = WordFactory.nullPointer(); // *** maybe not necessary.
         //TODO need to terminate the string with 0. otherwise length function will not work.
     }
 
     public void setRepositoryLocation(String dirText) {
         repositoryLocationBytes = dirText.getBytes(StandardCharsets.UTF_8);
-    }
-
-    private CCharPointer getRepositoryLocation() {
-        clearPathBuffer();
-        for (int i = 0; i < repositoryLocationBytes.length; i++) {
-            getPathBuffer().write(i, repositoryLocationBytes[i]);
-        }
-        return getPathBuffer();
     }
 
     public void setDumpPath(String dumpPathText) {
@@ -78,7 +104,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         if (openEmergencyDumpFile()) {
             writeEmergencyDumpFile();
             getFileSupport().close(emergencyFd);
-            emergencyFd = Word.nullPointer();
+            emergencyFd = WordFactory.nullPointer();
         }
     }
 
@@ -93,7 +119,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
             dumpPathBytes = null;
             emergencyFd = getFileSupport().create(createEmergencyDumpPath(), FileCreationMode.CREATE, FileAccessMode.READ_WRITE);
         }
-        System.out.println("openEmergencyDumpFile pathBuffer: "+ CTypeConversion.toJavaString(getPathBuffer()));
+//        System.out.println("openEmergencyDumpFile pathBuffer: "+ CTypeConversion.toJavaString(getPathBuffer()));
         return getFileSupport().isValid(emergencyFd);
     }
 
@@ -132,7 +158,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
                 return;
             }
             int blockSize = 1024 * 1024;
-            org.graalvm.word.Pointer copyBlock = com.oracle.svm.core.memory.NullableNativeMemory.malloc(blockSize, NmtCategory.JFR);
+            Pointer copyBlock = NullableNativeMemory.malloc(blockSize, NmtCategory.JFR);
             if (copyBlock.isNull()) {
                     // TODO trouble importing these internal methods
 //                Logger.log(LogTag.JFR_SYSTEM, LogLevel.ERROR, "Emergency dump failed. Could not allocate copy block.");
@@ -143,8 +169,8 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
             while ((entry = Dirent.readdir(directory)).isNonNull()) {
                 RawFileDescriptor chunkFd = filter(entry.d_name());
                 if (getFileSupport().isValid(chunkFd)){
-                    String name = CTypeConversion.toJavaString(entry.d_name());
-                    System.out.println("Filter checks passed. Chunk file name: "+ name);
+//                    String name = CTypeConversion.toJavaString(entry.d_name());
+//                    System.out.println("Filter checks passed. Chunk file name: "+ name);
 
                     // Read it's size
                     long chunkFileSize = getFileSupport().size(chunkFd);
@@ -154,25 +180,25 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
                         // Start at beginning
                         getFileSupport().seek(chunkFd, 0); // seems unneeded. idk why???
                         // Read from chunk file to copy block
-                        long readResult = getFileSupport().read(chunkFd, copyBlock, org.graalvm.word.WordFactory.unsigned(blockSize));// *** i think this already retries until fully read[no just retries until gets a sucessful read]
+                        long readResult = getFileSupport().read(chunkFd, copyBlock, WordFactory.unsigned(blockSize));// *** i think this already retries until fully read[no just retries until gets a sucessful read]
                         if (readResult < 0){ // -1 if read failed
-                            System.out.println("Log ERROR. Read failed.");
+//                            System.out.println("Log ERROR. Read failed.");
                             break;
                         }
                         bytesRead += readResult;
                         assert bytesRead - bytesWritten <= blockSize;
                         // Write from copy block to dump file
-                        if (!getFileSupport().write(emergencyFd, copyBlock, org.graalvm.word.WordFactory.unsigned(bytesRead - bytesWritten))) { // *** may iterate until fully writtem
-                            System.out.println("Log ERROR. Write failed.");
+                        if (!getFileSupport().write(emergencyFd, copyBlock, WordFactory.unsigned(bytesRead - bytesWritten))) { // *** may iterate until fully writtem
+//                            System.out.println("Log ERROR. Write failed.");
                             break;
                         }
                         bytesWritten = bytesRead;
-                        System.out.println("bytesWritten " + bytesWritten);
+//                        System.out.println("bytesWritten " + bytesWritten);
                     }
                     getFileSupport().close(chunkFd);
                 }
             }
-            com.oracle.svm.core.memory.NullableNativeMemory.free(copyBlock);
+            NullableNativeMemory.free(copyBlock);
         }
     }
 
@@ -190,10 +216,18 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
 
         this.directory = Dirent.fdopendir(fd);
         if (directory.isNull()) {
-            com.oracle.svm.core.posix.headers.Unistd.NoTransitions.close(fd);
+            Unistd.NoTransitions.close(fd);
             return false;
         }
         return true;
+    }
+
+    private CCharPointer getRepositoryLocation() {
+        clearPathBuffer();
+        for (int i = 0; i < repositoryLocationBytes.length; i++) {
+            getPathBuffer().write(i, repositoryLocationBytes[i]);
+        }
+        return getPathBuffer();
     }
 
     // *** copied from PosixPerfMemoryProvider
@@ -201,8 +235,8 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
     private static int restartableOpen(CCharPointer directory, int flags, int mode) {
         int result;
         do {
-            result = com.oracle.svm.core.posix.headers.Fcntl.NoTransitions.open(directory, flags, mode);
-        } while (result == -1 && LibC.errno() == com.oracle.svm.core.posix.headers.Errno.EINTR());
+            result = Fcntl.NoTransitions.open(directory, flags, mode);
+        } while (result == -1 && LibC.errno() == Errno.EINTR());
 
         return result;
     }
@@ -213,35 +247,34 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         // check filename extension
         int filenameLength = (int) SubstrateUtil.strlen(fn).rawValue();
         if (filenameLength <= CHUNKFILE_EXTENSION_BYTES.length){
-            return org.graalvm.word.WordFactory.nullPointer();
+            return WordFactory.nullPointer();
         }
 
         // Verify file extension
         for (int i = 0; i < CHUNKFILE_EXTENSION_BYTES.length; i++) {
             int idx1 = CHUNKFILE_EXTENSION_BYTES.length - i - 1;
             int idx2 = filenameLength - i - 1;
-            //System.out.println("expected byte " + chunkfileExtensionBytes[idx1] + " actual byte " + ((org.graalvm.word.Pointer) fn).readByte(idx2));
-            if (CHUNKFILE_EXTENSION_BYTES[idx1] != ((org.graalvm.word.Pointer) fn).readByte(idx2)) {
-                System.out.println("failed extension check");
-                return org.graalvm.word.WordFactory.nullPointer();
+            if (CHUNKFILE_EXTENSION_BYTES[idx1] != ((Pointer) fn).readByte(idx2)) {
+//                System.out.println("failed extension check");
+                return WordFactory.nullPointer();
             }
         }
 
-        String name = CTypeConversion.toJavaString(fullyQualified(fn));
-        System.out.println("fully qualified: "+ name);
+//        String name = CTypeConversion.toJavaString(fullyQualified(fn));
+//        System.out.println("fully qualified: "+ name);
 
         // Verify if you can open it and receive a valid file descriptor
-        RawFileDescriptor chunkFd = getFileSupport().open(fullyQualified(fn) ,FileAccessMode.READ_WRITE);
+        RawFileDescriptor chunkFd = getFileSupport().open(fullyQualified(fn), FileAccessMode.READ_WRITE);
         if (!getFileSupport().isValid(chunkFd)) {
-            System.out.println("failed open check");
-            return org.graalvm.word.WordFactory.nullPointer();
+//            System.out.println("failed open check");
+            return WordFactory.nullPointer();
         }
 
         // Verify file size
         long chunkFileSize = getFileSupport().size(chunkFd);
         if (chunkFileSize < CHUNK_FILE_HEADER_SIZE) {
-            System.out.println("failed size check");
-            return org.graalvm.word.WordFactory.nullPointer();
+//            System.out.println("failed size check");
+            return WordFactory.nullPointer();
         }
 
         return chunkFd;
@@ -271,7 +304,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
     }
 
     private CCharPointer getPathBuffer(){
-        return pathBuffer.addressOfArrayElement(0);
+        return  pathBuffer;
     }
 
     private void clearPathBuffer(){
@@ -286,7 +319,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
     public void teardown() {
         // *** this must survive as long as we need the dump path c pointer.
         Dirent.closedir(directory);
-        pathBuffer.close();
+        NativeMemory.free(pathBuffer);
     }
 }
 
@@ -296,7 +329,7 @@ class PosixJfrEmergencyDumpFeature extends com.oracle.svm.core.jfr.JfrEmergencyD
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         PosixJfrEmergencyDumpSupport support = new PosixJfrEmergencyDumpSupport();
-        org.graalvm.nativeimage.ImageSingletons.add(com.oracle.svm.core.jfr.JfrEmergencyDumpSupport.class, support);
-        org.graalvm.nativeimage.ImageSingletons.add(PosixJfrEmergencyDumpSupport.class, support);
+        ImageSingletons.add(com.oracle.svm.core.jfr.JfrEmergencyDumpSupport.class, support);
+        ImageSingletons.add(PosixJfrEmergencyDumpSupport.class, support);
     }
 }
