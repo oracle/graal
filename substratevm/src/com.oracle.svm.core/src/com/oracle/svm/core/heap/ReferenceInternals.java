@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -219,6 +219,15 @@ public final class ReferenceInternals {
 
                 if (Target_jdk_internal_ref_Cleaner.class.isInstance(ref)) {
                     Target_jdk_internal_ref_Cleaner cleaner = Target_jdk_internal_ref_Cleaner.class.cast(ref);
+                    // Cleaner catches all exceptions, cannot be overridden due to private c'tor
+                    cleaner.clean();
+                    synchronized (processPendingLock) {
+                        // Notify any waiters that progress has been made. This improves latency
+                        // for nio.Bits waiters, which are the only important ones.
+                        processPendingLock.notifyAll();
+                    }
+                } else if (Target_sun_nio_Cleaner.class.isInstance(ref)) {
+                    Target_sun_nio_Cleaner cleaner = Target_sun_nio_Cleaner.class.cast(ref);
                     // Cleaner catches all exceptions, cannot be overridden due to private c'tor
                     cleaner.clean();
                     synchronized (processPendingLock) {
