@@ -27,8 +27,6 @@ package com.oracle.svm.hosted.dataflow;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.core.util.VMError;
-
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeLookupSwitch;
 import jdk.graal.compiler.bytecode.BytecodeStream;
@@ -894,9 +892,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
 
         static Class<?> getType(int typeCode) {
             int typeIndex = typeCode - TYPE_CODE_OFFSET;
-            if (typeIndex < 0 || typeIndex >= values().length) {
-                throw VMError.shouldNotReachHere("Unexpected primitive type code: " + typeCode);
-            }
+            assert typeIndex >= 0 && typeIndex < values().length : "Unexpected primitive type code: " + typeCode;
             return values()[typeIndex].typeClass;
         }
     }

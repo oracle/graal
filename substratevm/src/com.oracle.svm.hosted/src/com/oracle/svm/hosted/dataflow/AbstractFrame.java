@@ -33,8 +33,6 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import com.oracle.svm.core.util.VMError;
-
 /**
  * Abstract representation of a bytecode execution frame, i.e., its
  * {@link AbstractFrame#operandStack operand stack} and {@link AbstractFrame#localVariableTable
@@ -173,12 +171,12 @@ public class AbstractFrame<T> {
         }
 
         ValueWithSlots<T> pop() {
-            VMError.guarantee(!stack.isEmpty(), "Cannot pop from empty stack");
+            assert !stack.isEmpty() : "Cannot pop from empty stack";
             return stack.removeLast();
         }
 
         ValueWithSlots<T> peek(int depth) {
-            VMError.guarantee(0 <= depth && depth < size(), "Operand stack doesn't contain enough values");
+            assert 0 <= depth && depth < size() : "Operand stack doesn't contain enough values";
             return stack.get(stack.size() - depth - 1);
         }
 
@@ -191,11 +189,11 @@ public class AbstractFrame<T> {
         }
 
         void mergeWith(OperandStack<T> other, BiFunction<T, T, T> mergeFunction) {
-            VMError.guarantee(size() == other.size(), "Operand stack size must match upon merging");
+            assert size() == other.size() : "Operand stack size must match upon merging";
             for (int i = 0; i < stack.size(); i++) {
                 ValueWithSlots<T> thisValue = stack.get(i);
                 ValueWithSlots<T> thatValue = other.stack.get(i);
-                VMError.guarantee(thisValue.size() == thatValue.size(), "The size of operand stack values must match upon merging");
+                assert thisValue.size() == thatValue.size() : "The size of operand stack values must match upon merging";
                 ValueWithSlots<T> mergedValue = new ValueWithSlots<>(mergeFunction.apply(thisValue.value(), thatValue.value()), thisValue.size());
                 stack.set(i, mergedValue);
             }
@@ -277,7 +275,7 @@ public class AbstractFrame<T> {
         }
 
         void put(int index, ValueWithSlots<T> value) {
-            VMError.guarantee(index >= 0, "Local variable table index cannot be negative");
+            assert index >= 0 : "Local variable table index cannot be negative";
             ValueWithSlots<T> previousInTable = variables.get(index - 1);
             if (previousInTable != null && previousInTable.size == ValueWithSlots.Slots.TWO_SLOTS) {
                 /*
@@ -291,7 +289,7 @@ public class AbstractFrame<T> {
         }
 
         ValueWithSlots<T> get(int index) {
-            VMError.guarantee(variables.containsKey(index), "Attempted to access non-existent variable in local variable table");
+            assert variables.containsKey(index) : "Attempted to access non-existent variable in local variable table";
             return variables.get(index);
         }
 

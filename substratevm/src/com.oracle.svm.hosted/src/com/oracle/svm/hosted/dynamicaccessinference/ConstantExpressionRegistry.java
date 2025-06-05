@@ -30,7 +30,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.hosted.dataflow.AbstractFrame;
 import com.oracle.svm.hosted.dataflow.DataFlowAnalysisException;
@@ -69,7 +68,7 @@ public class ConstantExpressionRegistry {
     }
 
     public void analyzeAndStore(ConstantExpressionAnalyzer analyzer, ResolvedJavaMethod method, IntrinsicContext intrinsicContext) {
-        VMError.guarantee(!isSealed(), "Registry is already sealed");
+        assert !isSealed() : "Cannot store in registry when it is already sealed";
         Bytecode bytecode = getBytecode(method, intrinsicContext);
         try {
             Map<Integer, AbstractFrame<ConstantExpressionAnalyzer.Value>> abstractFrames = analyzer.analyze(bytecode);
@@ -97,8 +96,8 @@ public class ConstantExpressionRegistry {
      *         {@code null} value is represented by {@link ConstantExpressionRegistry#NULL_MARKER}.
      */
     public Object getReceiver(ResolvedJavaMethod callerMethod, int bci, ResolvedJavaMethod targetMethod) {
-        VMError.guarantee(!isSealed(), "Registry is already sealed");
-        VMError.guarantee(targetMethod.hasReceiver(), "Receiver requested for static method");
+        assert !isSealed() : "Registry is already sealed";
+        assert targetMethod.hasReceiver() : "Method " + targetMethod + " does not have receiver";
         AbstractFrame<ConstantExpressionAnalyzer.Value> frame = registry.get(Pair.create(callerMethod, bci));
         if (frame == null) {
             return null;
@@ -139,9 +138,9 @@ public class ConstantExpressionRegistry {
      *         {@code null} value is represented by {@link ConstantExpressionRegistry#NULL_MARKER}.
      */
     public Object getArgument(ResolvedJavaMethod callerMethod, int bci, ResolvedJavaMethod targetMethod, int index) {
-        VMError.guarantee(!isSealed(), "Registry is already sealed");
+        assert !isSealed() : "Registry is already sealed";
         int numOfParameters = targetMethod.getSignature().getParameterCount(false);
-        VMError.guarantee(0 <= index && index < numOfParameters, "Argument index out of bounds");
+        assert 0 <= index && index < numOfParameters : "Argument index " + index + " out of bounds for " + targetMethod;
         AbstractFrame<ConstantExpressionAnalyzer.Value> frame = registry.get(Pair.create(callerMethod, bci));
         if (frame == null) {
             return null;
