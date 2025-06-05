@@ -537,6 +537,11 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         }
     }
 
+    public void addSelect(int instruction) {
+        add1(instruction);
+        addProfile();
+    }
+
     private void addDataHeader(int mode, int length, byte[] offsetBytecode, long offsetAddress, int memoryIndex) {
         assert offsetBytecode == null || offsetAddress == -1 : "data header does not allow offset bytecode and offset address";
         assert mode == SegmentMode.ACTIVE || mode == SegmentMode.PASSIVE : "invalid segment mode in data header";
