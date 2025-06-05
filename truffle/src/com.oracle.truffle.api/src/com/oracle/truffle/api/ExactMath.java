@@ -236,4 +236,40 @@ public final class ExactMath {
             return (signedResult & ~(signedResult >> 31)); // max(result, 0)
         }
     }
+
+    /**
+     * Converts the given unsigned {@code long} to the closest {@code double} value.
+     *
+     * @param x unsigned integer input, wrapped in a signed integer
+     * @return the {@code double} result
+     * @since 25.0
+     */
+    public static double unsignedToDouble(long x) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, x >= 0)) {
+            return x;
+        } else {
+            // unsigned ceil div by 2, convert to double, and multiply by 2.
+            // the lsb is needed to ensure correct rounding to nearest even.
+            double halfRoundUp = ((x >>> 1) | (x & 1));
+            return halfRoundUp + halfRoundUp;
+        }
+    }
+
+    /**
+     * Converts the given unsigned {@code long} to the closest {@code float} value.
+     *
+     * @param x unsigned integer input, wrapped in a signed integer
+     * @return the {@code float} result
+     * @since 25.0
+     */
+    public static float unsignedToFloat(long x) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, x >= 0)) {
+            return x;
+        } else {
+            // unsigned ceil div by 2, convert to float, and multiply by 2.
+            // the lsb is needed to ensure correct rounding to nearest even.
+            float halfRoundUp = ((x >>> 1) | (x & 1));
+            return halfRoundUp + halfRoundUp;
+        }
+    }
 }
