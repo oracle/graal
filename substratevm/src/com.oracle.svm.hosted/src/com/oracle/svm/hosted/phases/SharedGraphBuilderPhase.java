@@ -42,7 +42,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import com.oracle.svm.hosted.substitute.SubstitutionType;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
@@ -79,6 +78,7 @@ import com.oracle.svm.hosted.SharedArenaSupport;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
+import com.oracle.svm.hosted.substitute.SubstitutionType;
 import com.oracle.svm.shaded.org.objectweb.asm.Opcodes;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -184,13 +184,11 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         private static final Class<?> ABSTRACT_MEMORY_SEGMENT_IMPL_CLASS;
 
         static {
-            SCOPED_SUBSTRATE_ANNOTATION = ReflectionUtil.lookupClass(true, "com.oracle.svm.core.foreign.Target_jdk_internal_misc_ScopedMemoryAccess_Scoped");
-            Class<?> substrateForeignUtilClass = ReflectionUtil.lookupClass(true, "com.oracle.svm.core.foreign.SubstrateForeignUtil");
-            SESSION_EXCEPTION_HANDLER_METHOD = substrateForeignUtilClass != null
-                            ? ReflectionUtil.lookupMethod(substrateForeignUtilClass, "sessionExceptionHandler", MemorySessionImpl.class, Object.class, long.class)
-                            : null;
-            MAPPED_MEMORY_UTILS_PROXY_CLASS = ReflectionUtil.lookupClass(true, "jdk.internal.access.foreign.MappedMemoryUtilsProxy");
-            ABSTRACT_MEMORY_SEGMENT_IMPL_CLASS = ReflectionUtil.lookupClass(true, "jdk.internal.foreign.AbstractMemorySegmentImpl");
+            SCOPED_SUBSTRATE_ANNOTATION = ReflectionUtil.lookupClass("com.oracle.svm.core.foreign.SVMScoped");
+            Class<?> substrateForeignUtilClass = ReflectionUtil.lookupClass("com.oracle.svm.core.foreign.SubstrateForeignUtil");
+            SESSION_EXCEPTION_HANDLER_METHOD = ReflectionUtil.lookupMethod(substrateForeignUtilClass, "sessionExceptionHandler", MemorySessionImpl.class, Object.class, long.class);
+            MAPPED_MEMORY_UTILS_PROXY_CLASS = ReflectionUtil.lookupClass("jdk.internal.access.foreign.MappedMemoryUtilsProxy");
+            ABSTRACT_MEMORY_SEGMENT_IMPL_CLASS = ReflectionUtil.lookupClass("jdk.internal.foreign.AbstractMemorySegmentImpl");
         }
 
         protected List<ValueNode> scopedMemorySessions;
@@ -254,8 +252,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                     if (AnnotationAccess.isAnnotationPresent(method, (Class<? extends Annotation>) SCOPED_SUBSTRATE_ANNOTATION) && SharedArenaSupport.isAvailable()) {
                         // substituted, only add the scoped node
                         introduceScopeNodes();
-                    }
-                    if (AnnotationAccess.isAnnotationPresent(method, SharedArenaSupport.SCOPED_ANNOTATION) && SharedArenaSupport.isAvailable()) {
+                    } else if (AnnotationAccess.isAnnotationPresent(method, SharedArenaSupport.SCOPED_ANNOTATION) && SharedArenaSupport.isAvailable()) {
                         // not substituted, also instrument
                         instrumentScopedMethod();
                     }

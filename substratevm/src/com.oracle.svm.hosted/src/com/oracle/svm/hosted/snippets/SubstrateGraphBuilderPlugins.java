@@ -104,6 +104,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ReachabilityRegistrationNode;
+import com.oracle.svm.hosted.SharedArenaSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.nodes.ReadReservedRegister;
@@ -224,18 +225,21 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerArenaPlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, ArenaIntrinsics.class);
-        r.register(new RequiredInlineOnlyInvocationPlugin("checkArenaValidInScope", MemorySessionImpl.class, Object.class, long.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode session, ValueNode ptrOne, ValueNode ptrTwo) {
-                b.setIsParsingScopedMemoryMethod(session);
-                MemoryArenaValidInScopeNode result = new MemoryArenaValidInScopeNode(session, new FieldLocationIdentity(b.getMetaAccess().lookupJavaField(MemoryArenaValidInScopeNode.STATE_FIELD)));
-                b.addPush(JavaKind.Long, result);
-                result.addScopeAssociatedValue(ptrOne);
-                result.addScopeAssociatedValue(ptrTwo);
-                return true;
-            }
-        });
+        if (SharedArenaSupport.isAvailable()) {
+            Registration r = new Registration(plugins, ArenaIntrinsics.class);
+            r.register(new RequiredInlineOnlyInvocationPlugin("checkArenaValidInScope", MemorySessionImpl.class, Object.class, long.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode session, ValueNode ptrOne, ValueNode ptrTwo) {
+                    b.setIsParsingScopedMemoryMethod(session);
+                    MemoryArenaValidInScopeNode result = new MemoryArenaValidInScopeNode(session,
+                                    new FieldLocationIdentity(b.getMetaAccess().lookupJavaField(MemoryArenaValidInScopeNode.STATE_FIELD)));
+                    b.addPush(JavaKind.Long, result);
+                    result.addScopeAssociatedValue(ptrOne);
+                    result.addScopeAssociatedValue(ptrTwo);
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerSerializationPlugins(ImageClassLoader loader, InvocationPlugins plugins, ParsingReason reason) {

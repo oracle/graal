@@ -118,7 +118,9 @@ public abstract class AbiUtils {
             CaptureBufferAddress
         }
 
+        @Platforms(Platform.HOSTED_ONLY.class)
         public static class Result {
+            @Platforms(Platform.HOSTED_ONLY.class)
             public record FullNativeAdaptation(
                             Map<Extracted, ValueNode> extractedArguments,
                             List<ValueNode> arguments,
@@ -131,10 +133,12 @@ public abstract class AbiUtils {
                 }
             }
 
+            @Platforms(Platform.HOSTED_ONLY.class)
             public record TypeAdaptation(List<AssignedLocation> parametersAssignment, MethodType callType) {
             }
         }
 
+        @Platforms(Platform.HOSTED_ONLY.class)
         public static Result.FullNativeAdaptation adaptToNative(AbiUtils self, List<Adaptation> adaptations, List<ValueNode> originalArguments, NativeEntryPointInfo nep) {
             List<ValueNode> originalUnmodifiableArguments = Collections.unmodifiableList(originalArguments);
 
@@ -175,6 +179,7 @@ public abstract class AbiUtils {
                             MethodType.methodType(nep.methodType().returnType(), argumentTypes), nodesToAppendToGraph);
         }
 
+        @Platforms(Platform.HOSTED_ONLY.class)
         public static Result.TypeAdaptation adaptFromNative(AbiUtils self, List<Adaptation> adaptations, JavaEntryPointInfo jep) {
             AssignedLocation[] originalAssignment = self.toMemoryAssignment(jep.parametersAssignment(), false);
 
@@ -622,6 +627,7 @@ public abstract class AbiUtils {
     }
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/jdk/internal/foreign/abi/x64/sysv/CallArranger.java#L280-L290")
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static void handleCriticalWithHeapAccess(NativeEntryPointInfo nep, int i, List<Adaptation> adaptations, Adaptation adaptation) {
         VMError.guarantee(nep.allowHeapAccess(), "A storage may only be null when the Linker.Option.critical(true) option is passed.");
         VMError.guarantee(
@@ -709,6 +715,7 @@ class ABIs {
         }
 
         @Override
+        @Platforms(Platform.HOSTED_ONLY.class)
         protected List<Adapter.Adaptation> generateAdaptations(NativeEntryPointInfo nep) {
             return fail();
         }
@@ -1017,6 +1024,7 @@ class ABIs {
         }
 
         @Override
+        @Platforms(Platform.HOSTED_ONLY.class)
         protected List<Adapter.Adaptation> generateAdaptations(NativeEntryPointInfo nep) {
             var adaptations = super.generateAdaptations(nep);
             var assignments = nep.parametersAssignment();
@@ -1088,6 +1096,7 @@ class ABIs {
          * assignments of float/double parameters to a cpu register.
          */
         @Override
+        @Platforms(Platform.HOSTED_ONLY.class)
         protected List<Adapter.Adaptation> generateAdaptations(NativeEntryPointInfo nep) {
             List<Adapter.Adaptation> adaptations = super.generateAdaptations(nep);
 

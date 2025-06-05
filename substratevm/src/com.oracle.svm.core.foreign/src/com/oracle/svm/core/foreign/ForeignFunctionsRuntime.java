@@ -98,7 +98,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
     }
 
     public static RuntimeException functionCallsUnsupported() {
-        assert SubstrateOptions.ForeignAPISupport.getValue();
+        assert SubstrateOptions.isForeignAPIEnabled();
         throw VMError.unsupportedFeature("Calling foreign functions is currently not supported on platform: " +
                         (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase(Locale.ROOT));
     }
