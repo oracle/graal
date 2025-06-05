@@ -92,10 +92,6 @@ import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 public class SVMImageLayerSnapshotUtil {
-    public static final String FILE_NAME_PREFIX = "layer-snapshot-";
-    public static final String FILE_EXTENSION = ".lsb";
-    public static final String GRAPHS_FILE_NAME_PREFIX = "layer-snapshot-graphs-";
-    public static final String GRAPHS_FILE_EXTENSION = ".big";
 
     public static final String CONSTRUCTOR_NAME = "<init>";
     public static final String CLASS_INIT_NAME = "<clinit>";
@@ -255,14 +251,6 @@ public class SVMImageLayerSnapshotUtil {
     public void initializeExternalValues() {
         assert externalValues == null : "The external values should be computed only once.";
         externalValues = ObjectCopier.Encoder.gatherExternalValues(externalValueFields);
-    }
-
-    public static String snapshotFileName(String imageName) {
-        return FILE_NAME_PREFIX + imageName + FILE_EXTENSION;
-    }
-
-    public static String snapshotGraphsFileName(String imageName) {
-        return GRAPHS_FILE_NAME_PREFIX + imageName + GRAPHS_FILE_EXTENSION;
     }
 
     public String getTypeDescriptor(AnalysisType type) {
