@@ -42,7 +42,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import com.oracle.svm.hosted.substitute.SubstitutionType;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;

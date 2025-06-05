@@ -140,7 +140,7 @@ public class StrictDynamicAccessInferenceFeature implements InternalFeature {
     }
 
     @SuppressWarnings("SameParameterValue")
-    private void registerFieldForReflectionIfExists(BeforeAnalysisAccess access, String className, String fieldName) {
+    private static void registerFieldForReflectionIfExists(BeforeAnalysisAccess access, String className, String fieldName) {
         Class<?> clazz = ReflectionUtil.lookupClass(true, className);
         if (clazz == null) {
             return;
