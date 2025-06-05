@@ -37,6 +37,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
@@ -386,6 +387,9 @@ final class Target_java_lang_reflect_Array {
     @Substitute
     private static Object newArray(Class<?> componentType, int length)
                     throws NegativeArraySizeException {
+        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+            MetadataTracer.singleton().traceReflectionType(componentType.arrayType().getName());
+        }
         return KnownIntrinsics.unvalidatedNewArray(componentType, length);
     }
 

@@ -129,7 +129,7 @@ final class SubstrateSegfaultHandlerStartupHook implements RuntimeSupport.Hook {
 public abstract class SubstrateSegfaultHandler {
     public static class Options {
         @Option(help = "Install segfault handler that prints register contents and full Java stacktrace. Default: enabled for an executable, disabled for a shared library, disabled when EnableSignalHandling is disabled.")//
-        static final RuntimeOptionKey<Boolean> InstallSegfaultHandler = new RuntimeOptionKey<>(null);
+        public static final RuntimeOptionKey<Boolean> InstallSegfaultHandler = new RuntimeOptionKey<>(null);
     }
 
     private static final long MARKER_VALUE = 0x0123456789ABCDEFL;
