@@ -32,17 +32,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class StrictDynamicAccessInferenceSupport {
 
     public static StrictDynamicAccessInferenceSupport singleton() {
-        if (StrictDynamicAccessInferenceFeature.isActive()) {
-            return ImageSingletons.lookup(StrictDynamicAccessInferenceSupport.class);
-        } else {
-            return null;
-        }
+        return ImageSingletons.lookup(StrictDynamicAccessInferenceSupport.class);
     }
 
     private final ConstantExpressionAnalyzer analyzer;
     private final ConstantExpressionRegistry registry;
 
-    public StrictDynamicAccessInferenceSupport(ConstantExpressionAnalyzer analyzer, ConstantExpressionRegistry registry) {
+    StrictDynamicAccessInferenceSupport(ConstantExpressionAnalyzer analyzer, ConstantExpressionRegistry registry) {
         this.analyzer = analyzer;
         this.registry = registry;
     }

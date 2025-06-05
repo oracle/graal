@@ -930,10 +930,10 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
     }
 
     /**
-     * @return The default abstract value. This value usually represents an over saturated value
+     * @return The default abstract value. This value usually represents an over-saturated value
      *         from which no useful information can be inferred.
      */
-    protected abstract T bottom();
+    protected abstract T defaultValue();
 
     /**
      * Merge two matching operand stack or local variable table values from divergent control flow
@@ -956,7 +956,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return The value to store in the local variable table.
      */
     protected T storeMethodArgument(ResolvedJavaMethod method, int argumentIndex, int variableIndex) {
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -966,7 +966,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return The value representing the exception object pushed on the operand stack.
      */
     protected T pushExceptionObject(List<JavaType> exceptionTypes) {
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -980,7 +980,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return The abstract value to be pushed on the operand stack.
      */
     protected T pushConstant(Context context, AbstractFrame<T> state, Constant constant) {
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -993,7 +993,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return The abstract value to be pushed on the operand stack.
      */
     protected T pushType(Context context, AbstractFrame<T> state, JavaType type) {
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -1021,7 +1021,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return The abstract value representing the loaded element to be pushed on the operand stack.
      */
     protected T loadArrayElement(Context context, AbstractFrame<T> state, T array, T index) {
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -1063,7 +1063,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return The abstract value representing the result of the binary operation.
      */
     protected T binaryOperation(Context context, AbstractFrame<T> state, T left, T right) {
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -1076,7 +1076,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return The abstract value representing the result of the unary operation.
      */
     protected T unaryOperation(Context context, AbstractFrame<T> state, T value) {
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -1091,7 +1091,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return The abstract value of the accessed local variable after incrementing.
      */
     protected T incrementVariable(Context context, AbstractFrame<T> state, int variableIndex, int incrementBy, T value) {
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -1104,7 +1104,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return The abstract value after casting.
      */
     protected T castOperation(Context context, AbstractFrame<T> state, T value) {
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -1118,7 +1118,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return The result of the comparison operation.
      */
     protected T comparisonOperation(Context context, AbstractFrame<T> state, T left, T right) {
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -1204,7 +1204,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return The abstract representation of the accessed field's value.
      */
     protected T loadStaticField(Context context, AbstractFrame<T> state, JavaField field) {
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -1231,7 +1231,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return The abstract representation of the accessed field's value.
      */
     protected T loadField(Context context, AbstractFrame<T> state, JavaField field, T object) {
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -1260,7 +1260,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return The abstract representation of the result of the invocation.
      */
     protected T invokeMethod(Context context, AbstractFrame<T> state, JavaMethod method, List<T> operands) {
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -1287,7 +1287,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return Abstract representation of the appendix.
      */
     protected T pushAppendix(JavaMethod method, JavaConstant appendix) {
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -1300,7 +1300,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return The abstract representation of the object.
      */
     protected T newObject(Context context, AbstractFrame<T> state, JavaType type) {
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -1314,7 +1314,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return The abstract representation of the array.
      */
     protected T newArray(Context context, AbstractFrame<T> state, JavaType type, List<T> counts) {
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -1326,7 +1326,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return The abstract representation of the array's length.
      */
     protected T arrayLength(Context context, AbstractFrame<T> state, T array) {
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -1350,7 +1350,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
      * @return The abstract representation of the instruction's result.
      */
     protected T castCheckOperation(Context context, AbstractFrame<T> state, JavaType type, T object) {
-        return bottom();
+        return defaultValue();
     }
 
     /**

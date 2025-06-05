@@ -100,13 +100,13 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
     }
 
     @Override
-    protected Value bottom() {
+    protected Value defaultValue() {
         return NOT_A_COMPILE_TIME_CONSTANT;
     }
 
     @Override
     protected Value merge(Value left, Value right) {
-        return left.equals(right) ? left : bottom();
+        return left.equals(right) ? left : defaultValue();
     }
 
     /**
@@ -139,7 +139,7 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
                 return new CompileTimeValueConstant<>(context.bci(), javaValue);
             }
         }
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -154,7 +154,7 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
         if (type instanceof ResolvedJavaType resolvedType) {
             return new CompileTimeValueConstant<>(context.bci(), OriginalClassProvider.getJavaClass(resolvedType));
         } else {
-            return bottom();
+            return defaultValue();
         }
     }
 
@@ -173,7 +173,7 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
         if (value instanceof CompileTimeValueConstant<?> constant) {
             return new CompileTimeValueConstant<>(context.bci(), constant.getValue());
         } else {
-            return bottom();
+            return defaultValue();
         }
     }
 
@@ -200,10 +200,10 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
         if (value instanceof CompileTimeValueConstant<?> constant) {
             return new CompileTimeValueConstant<>(context.bci(), constant.getValue());
         } else if (value instanceof CompileTimeArrayConstant<?> constantArray) {
-            state.transform(v -> v.equals(constantArray), v -> bottom());
-            return bottom();
+            state.transform(v -> v.equals(constantArray), v -> defaultValue());
+            return defaultValue();
         } else {
-            return bottom();
+            return defaultValue();
         }
     }
 
@@ -229,10 +229,10 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
                     newConstantArray.setElement(realIndex, constantValue.getValue());
                     state.transform(v -> v.equals(constantArray), v -> newConstantArray);
                 } catch (Exception e) {
-                    state.transform(v -> v.equals(constantArray), v -> bottom());
+                    state.transform(v -> v.equals(constantArray), v -> defaultValue());
                 }
             } else {
-                state.transform(v -> v.equals(constantArray), v -> bottom());
+                state.transform(v -> v.equals(constantArray), v -> defaultValue());
             }
         }
     }
@@ -266,7 +266,7 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
                 return new CompileTimeValueConstant<>(context.bci(), primitiveClass);
             }
         }
-        return bottom();
+        return defaultValue();
     }
 
     /**
@@ -279,7 +279,7 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
     @Override
     protected void storeStaticField(Context context, AbstractFrame<Value> state, JavaField field, Value value) {
         if (value instanceof CompileTimeArrayConstant<?> constantArray) {
-            state.transform(v -> v.equals(constantArray), v -> bottom());
+            state.transform(v -> v.equals(constantArray), v -> defaultValue());
         }
     }
 
@@ -293,7 +293,7 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
     @Override
     protected void storeField(Context context, AbstractFrame<Value> state, JavaField field, Value object, Value value) {
         if (value instanceof CompileTimeArrayConstant<?> constantArray) {
-            state.transform(v -> v.equals(constantArray), v -> bottom());
+            state.transform(v -> v.equals(constantArray), v -> defaultValue());
         }
     }
 
@@ -313,20 +313,20 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
     protected Value invokeMethod(Context context, AbstractFrame<Value> state, JavaMethod method, List<Value> operands) {
         for (Value operand : operands) {
             if (operand instanceof CompileTimeArrayConstant<?> constantArray) {
-                state.transform(v -> v.equals(constantArray), v -> bottom());
+                state.transform(v -> v.equals(constantArray), v -> defaultValue());
             }
         }
 
         Method javaMethod = getJavaMethod(method);
         if (javaMethod == null) {
             /* The method is either unresolved, or is actually a constructor. */
-            return bottom();
+            return defaultValue();
         }
 
         Function<InvocationData, Value> handler = propagatingMethods.get(javaMethod);
         return handler != null
                         ? handler.apply(new InvocationData(javaMethod, context, operands))
-                        : bottom();
+                        : defaultValue();
     }
 
     /**
@@ -340,7 +340,7 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
     protected void invokeVoidMethod(Context context, AbstractFrame<Value> state, JavaMethod method, List<Value> operands) {
         for (Value operand : operands) {
             if (operand instanceof CompileTimeArrayConstant<?> constantArray) {
-                state.transform(v -> v.equals(constantArray), v -> bottom());
+                state.transform(v -> v.equals(constantArray), v -> defaultValue());
             }
         }
     }
@@ -356,7 +356,7 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
             int realSize = ((Number) size.getValue()).intValue();
             return new CompileTimeArrayConstant<>(context.bci(), realSize, OriginalClassProvider.getJavaClass(type));
         } else {
-            return bottom();
+            return defaultValue();
         }
     }
 
@@ -372,7 +372,7 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
         if (context.opcode() == CHECKCAST && object instanceof CompileTimeConstant constant && constant.getValue() == null) {
             return new CompileTimeValueConstant<>(context.bci(), null);
         } else {
-            return bottom();
+            return defaultValue();
         }
     }
 
@@ -436,7 +436,7 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
             if (aReceiver instanceof CompileTimeConstant constant) {
                 receiver = constant.getValue();
             } else {
-                return bottom();
+                return defaultValue();
             }
         }
         Object[] arguments = new Object[invocationData.method.getParameterCount()];
@@ -445,20 +445,20 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
             if (aArgument instanceof CompileTimeConstant constant) {
                 arguments[i] = constant.getValue();
             } else {
-                return bottom();
+                return defaultValue();
             }
         }
         try {
             return new CompileTimeValueConstant<>(invocationData.context.bci(), invocationData.method.invoke(receiver, arguments));
         } catch (Throwable t) {
-            return bottom();
+            return defaultValue();
         }
     }
 
     private Value invokeForNameOne(Context context, List<Value> operands) {
         String className = extractValue(operands.getFirst(), String.class);
         if (className == null) {
-            return bottom();
+            return defaultValue();
         }
         ClassLoader loader = ClassForNameSupport.respectClassLoader()
                         ? OriginalClassProvider.getJavaClass(context.method().getDeclaringClass()).getClassLoader()
@@ -470,14 +470,14 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
         String className = extractValue(operands.getFirst(), String.class);
         Integer initialize = extractValue(operands.get(1), Integer.class);
         if (className == null || initialize == null) {
-            return bottom();
+            return defaultValue();
         }
         ClassLoader loader;
         if (ClassForNameSupport.respectClassLoader()) {
             if (operands.get(2) instanceof CompileTimeValueConstant<?> constant) {
                 loader = (ClassLoader) constant.getValue();
             } else {
-                return bottom();
+                return defaultValue();
             }
         } else {
             loader = classLoader.getClassLoader();
@@ -490,7 +490,7 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
         if (clazz.isPresent()) {
             return new CompileTimeValueConstant<>(context.bci(), clazz.get());
         } else {
-            return bottom();
+            return defaultValue();
         }
     }
 
@@ -502,7 +502,7 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
             MethodHandles.Lookup lookup = LOOKUP_CONSTRUCTOR.newInstance(callerClass);
             return new CompileTimeValueConstant<>(context.bci(), lookup);
         } catch (Throwable t) {
-            return bottom();
+            return defaultValue();
         }
     }
 
