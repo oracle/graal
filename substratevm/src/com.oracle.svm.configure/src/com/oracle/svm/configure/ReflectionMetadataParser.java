@@ -77,59 +77,61 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
          * Even if primitives cannot be queried through Class.forName, they can be registered to
          * allow getDeclaredMethods() and similar bulk queries at run time.
          */
-        TypeResult<T> result = delegate.resolveType(condition, type.get(), true, typeJniAccessible);
+        TypeResult<List<T>> result = delegate.resolveTypes(condition, type.get(), true, typeJniAccessible);
         if (!result.isPresent()) {
             handleMissingElement("Could not resolve " + type.get() + " for reflection configuration.", result.getException());
             return;
         }
 
         C queryCondition = conditionResolver.alwaysTrue();
-        T clazz = result.get();
-        delegate.registerType(conditionResult.get(), clazz);
+        List<T> classes = result.get();
+        for (T clazz : classes) {
+            delegate.registerType(conditionResult.get(), clazz);
 
-        delegate.registerDeclaredClasses(queryCondition, clazz);
-        delegate.registerPublicClasses(queryCondition, clazz);
-        if (!jniParser) {
-            delegate.registerRecordComponents(queryCondition, clazz);
-            delegate.registerPermittedSubclasses(queryCondition, clazz);
-            delegate.registerNestMembers(queryCondition, clazz);
-            delegate.registerSigners(queryCondition, clazz);
-        }
-        delegate.registerDeclaredConstructors(queryCondition, true, jniParser, clazz);
-        delegate.registerPublicConstructors(queryCondition, true, jniParser, clazz);
-        delegate.registerDeclaredMethods(queryCondition, true, jniParser, clazz);
-        delegate.registerPublicMethods(queryCondition, true, jniParser, clazz);
-        delegate.registerDeclaredFields(queryCondition, true, jniParser, clazz);
-        delegate.registerPublicFields(queryCondition, true, jniParser, clazz);
+            delegate.registerDeclaredClasses(queryCondition, clazz);
+            delegate.registerPublicClasses(queryCondition, clazz);
+            if (!jniParser) {
+                delegate.registerRecordComponents(queryCondition, clazz);
+                delegate.registerPermittedSubclasses(queryCondition, clazz);
+                delegate.registerNestMembers(queryCondition, clazz);
+                delegate.registerSigners(queryCondition, clazz);
+            }
+            delegate.registerDeclaredConstructors(queryCondition, true, jniParser, clazz);
+            delegate.registerPublicConstructors(queryCondition, true, jniParser, clazz);
+            delegate.registerDeclaredMethods(queryCondition, true, jniParser, clazz);
+            delegate.registerPublicMethods(queryCondition, true, jniParser, clazz);
+            delegate.registerDeclaredFields(queryCondition, true, jniParser, clazz);
+            delegate.registerPublicFields(queryCondition, true, jniParser, clazz);
 
-        if (!jniParser) {
-            registerIfNotDefault(data, false, clazz, "serializable", () -> delegate.registerAsSerializable(condition, clazz));
-            registerIfNotDefault(data, false, clazz, "jniAccessible", () -> delegate.registerAsJniAccessed(condition, clazz));
-        }
+            if (!jniParser) {
+                registerIfNotDefault(data, false, clazz, "serializable", () -> delegate.registerAsSerializable(condition, clazz));
+                registerIfNotDefault(data, false, clazz, "jniAccessible", () -> delegate.registerAsJniAccessed(condition, clazz));
+            }
 
-        registerIfNotDefault(data, false, clazz, "allDeclaredConstructors", () -> delegate.registerDeclaredConstructors(condition, false, typeJniAccessible, clazz));
-        registerIfNotDefault(data, false, clazz, "allPublicConstructors", () -> delegate.registerPublicConstructors(condition, false, typeJniAccessible, clazz));
-        registerIfNotDefault(data, false, clazz, "allDeclaredMethods", () -> delegate.registerDeclaredMethods(condition, false, typeJniAccessible, clazz));
-        registerIfNotDefault(data, false, clazz, "allPublicMethods", () -> delegate.registerPublicMethods(condition, false, typeJniAccessible, clazz));
-        registerIfNotDefault(data, false, clazz, "allDeclaredFields", () -> delegate.registerDeclaredFields(condition, false, typeJniAccessible, clazz));
-        registerIfNotDefault(data, false, clazz, "allPublicFields", () -> delegate.registerPublicFields(condition, false, typeJniAccessible, clazz));
-        registerIfNotDefault(data, false, clazz, "unsafeAllocated", () -> delegate.registerUnsafeAllocated(condition, clazz));
+            registerIfNotDefault(data, false, clazz, "allDeclaredConstructors", () -> delegate.registerDeclaredConstructors(condition, false, typeJniAccessible, clazz));
+            registerIfNotDefault(data, false, clazz, "allPublicConstructors", () -> delegate.registerPublicConstructors(condition, false, typeJniAccessible, clazz));
+            registerIfNotDefault(data, false, clazz, "allDeclaredMethods", () -> delegate.registerDeclaredMethods(condition, false, typeJniAccessible, clazz));
+            registerIfNotDefault(data, false, clazz, "allPublicMethods", () -> delegate.registerPublicMethods(condition, false, typeJniAccessible, clazz));
+            registerIfNotDefault(data, false, clazz, "allDeclaredFields", () -> delegate.registerDeclaredFields(condition, false, typeJniAccessible, clazz));
+            registerIfNotDefault(data, false, clazz, "allPublicFields", () -> delegate.registerPublicFields(condition, false, typeJniAccessible, clazz));
+            registerIfNotDefault(data, false, clazz, "unsafeAllocated", () -> delegate.registerUnsafeAllocated(condition, clazz));
 
-        MapCursor<String, Object> cursor = data.getEntries();
-        while (cursor.advance()) {
-            String name = cursor.getKey();
-            Object value = cursor.getValue();
-            try {
-                switch (name) {
-                    case "methods":
-                        parseMethods(condition, false, asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz, typeJniAccessible);
-                        break;
-                    case "fields":
-                        parseFields(condition, asList(value, "Attribute 'fields' must be an array of field descriptors"), clazz, typeJniAccessible);
-                        break;
+            MapCursor<String, Object> cursor = data.getEntries();
+            while (cursor.advance()) {
+                String name = cursor.getKey();
+                Object value = cursor.getValue();
+                try {
+                    switch (name) {
+                        case "methods":
+                            parseMethods(condition, false, asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz, typeJniAccessible);
+                            break;
+                        case "fields":
+                            parseFields(condition, asList(value, "Attribute 'fields' must be an array of field descriptors"), clazz, typeJniAccessible);
+                            break;
+                    }
+                } catch (LinkageError e) {
+                    handleMissingElement("Could not register " + delegate.getTypeName(clazz) + ": " + name + " for reflection.", e);
                 }
-            } catch (LinkageError e) {
-                handleMissingElement("Could not register " + delegate.getTypeName(clazz) + ": " + name + " for reflection.", e);
             }
         }
     }
