@@ -61,8 +61,6 @@ import org.graalvm.nativeimage.c.type.CConst;
 import org.graalvm.nativeimage.c.type.CTypedef;
 import org.graalvm.nativeimage.c.type.CUnsigned;
 
-import com.oracle.graal.pointsto.heap.ImageHeapInstance;
-import com.oracle.graal.pointsto.heap.TLABObjectHeaderConstant;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
@@ -93,6 +91,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
+import com.oracle.svm.core.graal.nodes.TLABObjectHeaderConstant;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapPartition;
@@ -749,7 +748,7 @@ public abstract class NativeImage extends AbstractImage {
                 // The value of the hub pointer in the header of an object
                 VMError.guarantee(constant instanceof TLABObjectHeaderConstant, "must be an EncodedHubPointerConstant: %s", constant);
                 TLABObjectHeaderConstant hpc = (TLABObjectHeaderConstant) constant;
-                ImageHeapInstance hub = hpc.hub();
+                JavaConstant hub = hpc.hub();
                 long hubOffsetFromHeapBase = heap.getConstantInfo(hub).getOffset();
                 VMError.guarantee(hubOffsetFromHeapBase != 0, "hub must be non-null: %s", hub);
                 targetValue = Heap.getHeap().getObjectHeader().encodeAsTLABObjectHeader(hubOffsetFromHeapBase);
@@ -762,13 +761,12 @@ public abstract class NativeImage extends AbstractImage {
                 if (info.getRelocationSize() == Long.BYTES) {
                     bufferBytes.putLong(offset, targetValue);
                 } else if (info.getRelocationSize() == Integer.BYTES) {
-                    bufferBytes.putInt(offset, NumUtil.safeToInt(targetValue));
+                    bufferBytes.putInt(offset, NumUtil.safeToUInt(targetValue));
                 } else {
-                    new Exception().printStackTrace();
-                    shouldNotReachHere("Unsupported object reference size: " + info.getRelocationSize());
+                    throw shouldNotReachHere("Unsupported object reference size: " + info.getRelocationSize());
                 }
             } else if (arch instanceof AArch64) {
-                int patchValue = 0;
+                int patchValue;
                 switch (info.getRelocationKind()) {
                     case AARCH64_R_MOVW_UABS_G0:
                     case AARCH64_R_MOVW_UABS_G0_NC:
