@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@ import java.io.FileDescriptor;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.heap.Target_jdk_internal_ref_Cleaner;
+import com.oracle.svm.core.heap.Target_sun_nio_Cleaner;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 
@@ -49,7 +49,7 @@ public final class Target_java_nio_DirectByteBuffer {
      * registered for the buffer by resetting the field {@link #cleaner}.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    Target_jdk_internal_ref_Cleaner cleaner;
+    Target_sun_nio_Cleaner cleaner;
 
     @Alias
     @SuppressWarnings("unused")
