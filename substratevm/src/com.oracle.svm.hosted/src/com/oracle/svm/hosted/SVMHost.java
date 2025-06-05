@@ -221,7 +221,7 @@ public class SVMHost extends HostVM {
     private final boolean buildingImageLayer = ImageLayerBuildingSupport.buildingImageLayer();
     private final LayeredStaticFieldSupport layeredStaticFieldSupport;
 
-    private final StrictDynamicAccessInferenceSupport dynamicAccessInferenceSupport;
+    private final StrictDynamicAccessInferenceSupport strictDynamicAccessInferenceSupport;
 
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -260,7 +260,7 @@ public class SVMHost extends HostVM {
         enableReachableInCurrentLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
         layeredStaticFieldSupport = ImageLayerBuildingSupport.buildingImageLayer() ? LayeredStaticFieldSupport.singleton() : null;
 
-        dynamicAccessInferenceSupport = StrictDynamicAccessInferenceFeature.isDisabled() ? null : StrictDynamicAccessInferenceSupport.singleton();
+        strictDynamicAccessInferenceSupport = StrictDynamicAccessInferenceFeature.isDisabled() ? null : StrictDynamicAccessInferenceSupport.singleton();
     }
 
     /**
@@ -1278,6 +1278,6 @@ public class SVMHost extends HostVM {
     }
 
     public StrictDynamicAccessInferenceSupport getStrictDynamicAccessInferenceSupport() {
-        return dynamicAccessInferenceSupport;
+        return strictDynamicAccessInferenceSupport;
     }
 }

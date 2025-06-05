@@ -38,7 +38,6 @@ import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -69,7 +68,7 @@ public class DynamicAccessInferenceLog {
 
     private void logEntry(GraphBuilderContext b, ParsingReason reason, Supplier<LogEntry> entrySupplier) {
         if (reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
-            VMError.guarantee(!isSealed, "Logging attempt when log is already sealed");
+            assert !isSealed : "Logging attempt when log is already sealed";
             LogEntry entry = entrySupplier.get();
             b.add(ReachabilityRegistrationNode.create(() -> entries.add(entry), reason));
         }
@@ -97,8 +96,8 @@ public class DynamicAccessInferenceLog {
         final Object[] targetArguments;
 
         LogEntry(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object targetReceiver, Object[] targetArguments) {
-            VMError.guarantee(targetMethod.hasReceiver() == (targetReceiver != null), "Inferred receiver does not match with target method signature");
-            VMError.guarantee(targetMethod.getSignature().getParameterCount(false) == targetArguments.length, "Inferred arguments do not match with target method signature");
+            assert targetMethod.hasReceiver() == (targetReceiver != null) : "Inferred receiver does not match with target method signature";
+            assert targetMethod.getSignature().getParameterCount(false) == targetArguments.length : "Inferred arguments do not match with target method signature";
             this.callLocation = Pair.create(b.getMethod(), b.bci());
             this.callStack = b.getInliningCallStack(true);
             this.targetMethod = targetMethod;

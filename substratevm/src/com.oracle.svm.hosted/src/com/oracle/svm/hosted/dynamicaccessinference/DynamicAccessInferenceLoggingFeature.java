@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -83,7 +82,7 @@ public class DynamicAccessInferenceLoggingFeature implements InternalFeature {
     }
 
     private void dump(String location) {
-        VMError.guarantee(!log.isSealed(), "Attempt to access sealed log");
+        assert !log.isSealed() : "Attempt to access sealed log";
         try (JsonWriter out = new JsonPrettyWriter(Path.of(location));
                         JsonBuilder.ArrayBuilder arrayBuilder = out.arrayBuilder()) {
             for (DynamicAccessInferenceLog.LogEntry entry : log.getEntries()) {
@@ -101,7 +100,7 @@ public class DynamicAccessInferenceLoggingFeature implements InternalFeature {
     }
 
     private void warnForNonStrictFolding() {
-        VMError.guarantee(!log.isSealed(), "Attempt to access sealed log");
+        assert !log.isSealed() : "Attempt to access sealed log";
         ConstantExpressionRegistry registry = ConstantExpressionRegistry.singleton();
         List<DynamicAccessInferenceLog.LogEntry> unsafeFoldingEntries = log.getEntries().stream().filter(entry -> !registryContainsConstantOperands(registry, entry)).toList();
         if (!unsafeFoldingEntries.isEmpty()) {
