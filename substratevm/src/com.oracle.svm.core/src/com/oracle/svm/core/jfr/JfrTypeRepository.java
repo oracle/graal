@@ -46,21 +46,29 @@ import com.oracle.svm.core.collections.UninterruptibleEntry;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
+import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.memory.NullableNativeMemory;
+
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 /**
  * Repository that collects and writes used classes, packages, modules, and classloaders.
  */
 public class JfrTypeRepository implements JfrRepository {
     private static final String BOOTSTRAP_NAME = "bootstrap";
-    private final JfrClassInfoTable flushedClasses = new JfrClassInfoTable(); // *** Ordinary objects, so can be in image heap.
-    private final JfrPackageInfoTable flushedPackages = new JfrPackageInfoTable();
-    private final JfrModuleInfoTable flushedModules = new JfrModuleInfoTable();
-    private final JfrClassLoaderInfoTable flushedClassLoaders = new JfrClassLoaderInfoTable();
-    private final TypeInfo typeInfo = new TypeInfo();
+    // The following tables are only used by the flushing/rotating thread
+    private final JfrClassInfoTable flushedClasses;
+    private final JfrPackageInfoTable flushedPackages;
+    private final JfrModuleInfoTable flushedModules;
+    private final JfrClassLoaderInfoTable flushedClassLoaders;
+    private final TypeInfo typeInfo;
+
+    // epochTypeData tables are written to from threads emitting events and read from the flushing/rotating thread
+    private final JfrClassInfoTable epochTypeData0;
+    private final JfrClassInfoTable epochTypeData1;
+
     private final UninterruptibleUtils.CharReplacer dotWithSlash = new ReplaceDotWithSlash();
     private long currentPackageId = 0;
     private long currentModuleId = 0;
@@ -68,6 +76,13 @@ public class JfrTypeRepository implements JfrRepository {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrTypeRepository() {
+        flushedClasses = new JfrClassInfoTable();
+        flushedPackages = new JfrPackageInfoTable();
+        flushedModules = new JfrModuleInfoTable();
+        flushedClassLoaders = new JfrClassLoaderInfoTable();
+        typeInfo = new TypeInfo();
+        epochTypeData0 = new JfrClassInfoTable();
+        epochTypeData1 = new JfrClassInfoTable();
     }
 
     public void teardown() {
@@ -75,8 +90,16 @@ public class JfrTypeRepository implements JfrRepository {
         typeInfo.teardown();
     }
 
+    @Uninterruptible(reason = "Result is only valid until epoch changes.")
+    private JfrClassInfoTable getEpochData(boolean previousEpoch) {
+        boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
+        return epoch ? epochTypeData0 : epochTypeData1;
+    }
+
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getClassId(Class<?> clazz) {
+        addClass(clazz);
+        /* Tagging the traceID epoch bits is not required for this class to serialize types. But we must still do it to support JVM#getTypeId(Class)*/
         return JfrTraceId.load(clazz);
     }
 
@@ -99,31 +122,49 @@ public class JfrTypeRepository implements JfrRepository {
         return count;
     }
 
+    /** Called upon event emission. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void addClass(Class<?> clazz) {
+        JfrClassInfoTable classInfoTable = getEpochData(false);
+        ClassInfoRaw classInfoRaw = StackValue.get(ClassInfoRaw.class);
+        classInfoRaw.setId(JfrTraceId.getTraceId(clazz));
+        classInfoRaw.setHash(getHash(clazz.getName()));
+        classInfoRaw.setName(clazz.getName());
+        classInfoRaw.setInstance(clazz);
+        classInfoTable.putIfAbsent(classInfoRaw);
+    }
+
     /**
      * Visit all used classes, and collect their packages, modules, classloaders and possibly
      * referenced classes.
+     *
+     * This method does not need to be marked uninterruptible since the epoch cannot change while the chunkwriter
+     * lock is held.
+     * Unlike other JFR repositories, locking is not needed to protect a data buffer. Writes to the JfrClassInfoTable
+     * and the read here are allowed to race. There is no risk of separating events from constant data due to
+     * the write order (constants before events during emission, and events before constants during flush).
      */
     private void collectTypeInfo(boolean flushpoint) {
-        Class<?>[] classes = Heap.getHeap().getCachedClasses();
-        if (classes == null) {
-            return;
-        }
-        for (int i = 0; i < classes.length; i++) {
-            Class<?> clazz = classes[i];
-            if (DynamicHub.fromClass(clazz).isLoaded()) {
+        JfrClassInfoTable classInfoTable = getEpochData(!flushpoint);
+        ClassInfoRaw[] table = (ClassInfoRaw[]) classInfoTable.getTable();
+
+        for (int i = 0; i < table.length; i++) {
+            ClassInfoRaw entry = table[i];
+            while (entry.isNonNull()) {
+                Class<?> clazz = entry.getInstance();
+                assert DynamicHub.fromClass(clazz).isLoaded();
                 if (flushpoint) {
-                    if (JfrTraceId.isUsedCurrentEpoch(clazz)) {
-                        visitClass(typeInfo, clazz);
-                    }
+                    assert JfrTraceId.isUsedCurrentEpoch(clazz);
+                    visitClass(typeInfo, clazz);
+
                 } else {
-                    if (JfrTraceId.isUsedPreviousEpoch(clazz)) {
-                        JfrTraceId.clearUsedPreviousEpoch(clazz);
-                        visitClass(typeInfo, clazz);
-                    }
+                    assert JfrTraceId.isUsedPreviousEpoch(clazz);
+                    JfrTraceId.clearUsedPreviousEpoch(clazz);
+                    visitClass(typeInfo, clazz);
                 }
+                entry = entry.getNext();
             }
         }
-
     }
 
     private void visitClass(TypeInfo typeInfo, Class<?> clazz) {
@@ -448,6 +489,7 @@ public class JfrTypeRepository implements JfrRepository {
         currentPackageId = 0;
         currentModuleId = 0;
         currentClassLoaderId = 0;
+        getEpochData(true).clear();
     }
 
     private final class TypeInfo {
@@ -518,6 +560,7 @@ public class JfrTypeRepository implements JfrRepository {
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static int getHash(String imageHeapString) {
         // It's possible the type exists, but has no name.
         if (imageHeapString == null){

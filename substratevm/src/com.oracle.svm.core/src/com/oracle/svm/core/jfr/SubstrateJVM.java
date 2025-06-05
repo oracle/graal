@@ -338,10 +338,6 @@ public class SubstrateJVM {
             return;
         }
 
-        // Cache all classes in preparation for TypeRepository TODO maybe there is a better way
-        Heap.getHeap().visitLoadedClasses(clazz -> {});
-        System.out.println("Cached classes count: " + Heap.getHeap().getCachedClasses().length);
-        System.out.println("Cached classes count: " + Arrays.stream(Heap.getHeap().getCachedClasses()).count());
         JfrEmergencyDumpSupport.singleton().initialize();
 
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();

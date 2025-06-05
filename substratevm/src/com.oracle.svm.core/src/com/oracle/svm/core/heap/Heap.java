@@ -112,10 +112,9 @@ public abstract class Heap {
 
     /** Visits all loaded classes in the heap (see {@link PredefinedClassesSupport}). */
     public void visitLoadedClasses(Consumer<Class<?>> visitor) {
-        Class<?>[] classes = getAllClasses();
-        for (int i = 0; i < classes.length; i++) {
-            if (DynamicHub.fromClass(classes[i]).isLoaded()) {
-                visitor.accept(classes[i]);
+        for (Class<?> clazz : getAllClasses()) {
+            if (DynamicHub.fromClass(clazz).isLoaded()) {
+                visitor.accept(clazz);
             }
         }
     }
@@ -124,9 +123,7 @@ public abstract class Heap {
      * Get all known classes. Intentionally protected to prevent access to classes that have not
      * been "loaded" yet, see {@link PredefinedClassesSupport}.
      */
-    protected abstract Class<?>[] getAllClasses();
-
-    public abstract Class<?>[] getCachedClasses();
+    protected abstract List<Class<?>> getAllClasses();
 
     /**
      * Get the ObjectHeader implementation that this Heap uses.
