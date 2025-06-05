@@ -148,8 +148,28 @@ public final class TruffleString extends AbstractTruffleString {
         super(data, offset, length, stride, encoding, isCacheHead ? FLAG_CACHE_HEAD : 0, codePointLength, codeRange, hashCode);
     }
 
+    private TruffleString(Object data, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, int hashCode, boolean isCacheHead, TruffleString cacheEntry) {
+        this(data, offset, length, stride, encoding, codePointLength, codeRange, hashCode, isCacheHead);
+        if (cacheEntry != null) {
+            assert !cacheEntry.isCacheHead();
+            assert isCacheHead();
+            assert next == null;
+            TruffleString cacheHead = this;
+            cacheEntry.next = cacheHead;
+            cacheHead.next = cacheEntry;
+        }
+    }
+
     private static TruffleString create(Object data, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, int hashCode, boolean isCacheHead) {
         TruffleString string = new TruffleString(data, offset, length, stride, encoding, codePointLength, codeRange, hashCode, isCacheHead);
+        if (AbstractTruffleString.DEBUG_ALWAYS_CREATE_JAVA_STRING) {
+            string.toJavaStringUncached();
+        }
+        return string;
+    }
+
+    private static TruffleString createWithCacheEntry(Object data, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, int hashCode, TruffleString cacheEntry) {
+        TruffleString string = new TruffleString(data, offset, length, stride, encoding, codePointLength, codeRange, hashCode, true, cacheEntry);
         if (AbstractTruffleString.DEBUG_ALWAYS_CREATE_JAVA_STRING) {
             string.toJavaStringUncached();
         }
@@ -194,6 +214,14 @@ public final class TruffleString extends AbstractTruffleString {
             return TruffleString.create(copy, add, length, stride, encoding, codePointLength, codeRange, hashCode, isCacheHead);
         }
         return TruffleString.create(bytes, offset, length, stride, encoding, codePointLength, codeRange, hashCode, isCacheHead);
+    }
+
+    static TruffleString createFromByteArrayWithCacheEntry(byte[] bytes, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, int hashCode,
+                    TruffleString cacheEntry) {
+        assert offset >= 0;
+        assert offset + ((long) length << stride) <= bytes.length;
+        assert attrsAreCorrect(bytes, encoding, offset, length, codePointLength, codeRange, stride);
+        return TruffleString.createWithCacheEntry(bytes, offset, length, stride, encoding, codePointLength, codeRange, hashCode, cacheEntry);
     }
 
     static TruffleString createConstant(byte[] bytes, int length, int stride, Encoding encoding, int codePointLength, int codeRange) {
@@ -296,20 +324,6 @@ public final class TruffleString extends AbstractTruffleString {
             }
             entry.next = cacheHeadNext == null ? cacheHead : cacheHeadNext;
         } while (!setNextAtomic(cacheHead, cacheHeadNext, entry));
-    }
-
-    /*
-     * Simpler and faster insertion for the case `this` and `entry` were just allocated together and
-     * before they are published. The CAS is not needed in that case since we know nobody could
-     * write to `next` fields before us.
-     */
-    void cacheInsertFirstBeforePublished(TruffleString entry) {
-        assert !entry.isCacheHead();
-        assert isCacheHead();
-        assert next == null;
-        TruffleString cacheHead = this;
-        entry.next = cacheHead;
-        cacheHead.next = entry;
     }
 
     private static boolean hasDuplicateEncoding(TruffleString cacheHead, TruffleString start, TruffleString insertEntry) {
