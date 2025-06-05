@@ -124,9 +124,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             '--features=org.graalvm.launcher.PolyglotLauncherFeature',
             '--tool:all',
         ] + svm_experimental_options(['-H:-ParseRuntimeOptions']),
-        extra_jvm_args=[
-            '--enable-native-access=org.graalvm.shadowed.jline',
-        ],
+        # No need to pass --enable-native-access=org.graalvm.shadowed.jline, because the polyglot bash launcher
+        # script adds JLine to class-path, not module-path, so we do not need to enable native access
         is_main_launcher=True,
         default_symlinks=True,
         is_sdk_launcher=True,
