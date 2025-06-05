@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -95,9 +95,9 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
     void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options);
 
     /**
-     * Marks a plugin as conditionally applied. In the contenxt of libgraal conditional plugins
-     * can't be used in during graph encoding for snippets and method substitutions and this is used
-     * to detect violations of this restriction.
+     * Marks a plugin as conditionally applied. In the context of libgraal conditional plugins can't
+     * be used during graph encoding for snippets and in method substitutions, and this is used to
+     * detect violations of this restriction.
      */
     void registerConditionalPlugin(InvocationPlugin plugin);
 
