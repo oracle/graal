@@ -159,10 +159,8 @@ public class LocalizationFeature implements InternalFeature {
 
     private Function<String, Class<?>> findClassByName;
 
-    private Field baseLocaleCacheField;
     private Field localeCacheField;
     private Field candidatesCacheField;
-    private Field localeObjectCacheMapField;
     private Field langAliasesCacheField;
     private Field parentLocalesMapField;
     @Platforms(Platform.HOSTED_ONLY.class) private ImageClassLoader imageClassLoader;
@@ -291,9 +289,7 @@ public class LocalizationFeature implements InternalFeature {
         }
         langAliasesCacheField = access.findField(CLDRLocaleProviderAdapter.class, "langAliasesCache");
         parentLocalesMapField = access.findField(CLDRLocaleProviderAdapter.class, "parentLocalesMap");
-        baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale$1InterningCache", "CACHE");
         localeCacheField = access.findField("java.util.Locale$LocaleCache", "LOCALE_CACHE");
-        localeObjectCacheMapField = null;
         candidatesCacheField = access.findField("java.util.ResourceBundle$Control", "CANDIDATES_CACHE");
 
         String reason = "All ResourceBundleControlProvider that are registered as services end up as objects in the image heap, and are therefore registered to be initialized at image build time";
@@ -346,7 +342,6 @@ public class LocalizationFeature implements InternalFeature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        scanLocaleCache(access, baseLocaleCacheField);
         scanLocaleCache(access, localeCacheField);
         scanLocaleCache(access, candidatesCacheField);
         access.rescanRoot(langAliasesCacheField);
@@ -361,9 +356,6 @@ public class LocalizationFeature implements InternalFeature {
             localeCache = cacheFieldField.get(null);
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere(ex);
-        }
-        if (localeCache != null && localeObjectCacheMapField != null) {
-            access.rescanField(localeCache, localeObjectCacheMapField);
         }
     }
 
