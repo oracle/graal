@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,20 +40,30 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.UnsupportedRegexException;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.TransitionConstraint;
+import com.oracle.truffle.regex.util.TBitSet;
 
 /**
  * At runtime every non-unrolled bounded quantifier is tracked using a data-structure which inherits
- * from {@link CounterTracker}. Depending on the bounds, a different implementation is used. For
- * instance if the bounds are smaller than 65, then the count of a single state can be tracked using
- * a single long value encoding the various counts as a bitset, using {@link CounterTrackerLong}. An
- * important thing to note is that if max = -1 (meaning there is no upperbound) then the trackers
- * will be saturating, meaning that once the minimum is reach, then increment will not influence it
- * anymore. The code is a little convoluted because the data must be separated from the logic, that
- * way partial evaluation is capable of removing all dynamic dispatch, because the logic is
- * constant, while the data (which is mutated at runtime) is kept in {@link TRegexDFAExecutorLocals}
- * as a long[] for data whose size is fixed at compile time and a long[][] for data of dynamic size.
+ * from {@link CounterTracker}. Every {@link CounterTracker} manages a fixed number of integer sets.
+ * The content of one set represent the current possible values of a single quantifier's counter, in
+ * respect to one NFA state contained in the current DFA state. An individual set is stored in a
+ * so-called cell.
+ * 
+ * <p>
+ * Depending on the bounds, a different implementation is used. For instance if the bounds are
+ * smaller than 65, the count of a single state can be tracked using a single long value encoding
+ * the various counts as a bitset, using {@link CounterTrackerLong}. An important thing to note is
+ * that if max = -1 (meaning there is no upperbound) then the trackers will be saturating, meaning
+ * that once the minimum is reach, then increment will not influence it anymore. The code is a
+ * little convoluted because the data must be separated from the logic, that way partial evaluation
+ * is capable of removing all dynamic dispatch, because the logic is constant, while the data (which
+ * is mutated at runtime) is kept in {@link TRegexDFAExecutorLocals} as a long[] for data whose size
+ * is fixed at compile time and a long[][] for data of dynamic size.
  */
 public abstract class CounterTracker {
 
@@ -64,28 +74,42 @@ public abstract class CounterTracker {
      * @param quantifierBounds An array of pairs min, max of all non-unrolled bounded quantifiers.
      * @param trackerSizes An array of the number of cells used by each non-unrolled bounded
      *            quantifier.
-     *
-     * @return A BuildResult containing all CounterTrackers and how much space they require.
+     * @param trivialAlwaysReEnter Bitset marking all quantifiers that can be tracked with
+     *            {@link CounterTrackerTrivialAlwaysReEnter}.
+     * @param trivialNeverReEnter Bitset marking all quantifiers that can be tracked with
+     *            {@link CounterTrackerTrivialNeverReEnter}.
      */
-    public static CounterTracker[] build(int[] quantifierBounds, int[] trackerSizes, CounterTrackerData.Builder dataBuilder, boolean regressionTestMode) {
-        var result = new CounterTracker[trackerSizes.length];
-        for (int i = 0; i < quantifierBounds.length; i += 2) {
-            var min = quantifierBounds[i];
-            var max = quantifierBounds[i + 1];
+    public static CounterTracker[] build(int[] quantifierBounds, int[] trackerSizes, CounterTrackerData.Builder dataBuilder, TBitSet trivialAlwaysReEnter, TBitSet trivialNeverReEnter,
+                    boolean regressionTestMode) {
+        CounterTracker[] result = new CounterTracker[trackerSizes.length];
+        for (int i = 0; i < quantifierBounds.length / 2; i++) {
+            int min = quantifierBounds[i * 2];
+            int max = quantifierBounds[i * 2 + 1];
+            assert max == -1 || max >= 2;
+            int upperBound = Math.max(min, max);
             CounterTracker tracker;
-            int numberOfCells = trackerSizes[i / 2];
+            int numberOfCells = trackerSizes[i];
             if (regressionTestMode) {
-                tracker = new RegressionModeCounterTracker(min, max, numberOfCells, dataBuilder);
-            } else if (Math.max(min, max) <= 64) {
+                tracker = new RegressionModeCounterTracker(min, max, numberOfCells, trivialAlwaysReEnter.get(i), trivialNeverReEnter.get(i), dataBuilder);
+            } else if (trivialAlwaysReEnter.get(i)) {
+                tracker = new CounterTrackerTrivialAlwaysReEnter(min, numberOfCells, dataBuilder);
+            } else if (trivialNeverReEnter.get(i)) {
+                tracker = new CounterTrackerTrivialNeverReEnter(min, max, numberOfCells, dataBuilder);
+            } else if (upperBound <= 64) {
                 tracker = new CounterTrackerLong(min, max, numberOfCells, dataBuilder);
-            } else if (Math.max(min, max) <= 64 * CounterTrackerBitSet.MAX_N) {
-                tracker = new CounterTrackerBitSet(min, max, numberOfCells, dataBuilder);
-            } else if (Math.max(min, max) <= 64 * CounterTrackerDynamicallyMappedBitSet.MAX_N) {
-                tracker = new CounterTrackerDynamicallyMappedBitSet(min, max, numberOfCells, dataBuilder);
+            } else if (upperBound <= 128) {
+                tracker = new CounterTrackerLong2(min, max, numberOfCells, dataBuilder);
+            } else if (upperBound <= 64 * CounterTrackerBitSetWithOffset.MAX_BITSET_SIZE) {
+                tracker = new CounterTrackerBitSetWithOffset(min, max, numberOfCells, dataBuilder);
             } else {
+                long maxMemoryConsumption = (long) numberOfCells * (long) upperBound * 4;
+                if (maxMemoryConsumption > TRegexOptions.TRegexMaxCounterTrackerMemoryConsumptionInForceLinearExecutionMode) {
+                    throw new UnsupportedRegexException(String.format("Bounded quantifier tracking would consume too much memory at match time: up to %d bytes. Limit: %d bytes", maxMemoryConsumption,
+                                    TRegexOptions.TRegexMaxCounterTrackerMemoryConsumptionInForceLinearExecutionMode));
+                }
                 tracker = new CounterTrackerList(min, max, numberOfCells, dataBuilder);
             }
-            result[i / 2] = tracker;
+            result[i] = tracker;
         }
         return result;
     }
@@ -97,14 +121,17 @@ public abstract class CounterTracker {
      */
     public boolean canExecute(long constraint, long[] fixedData, int[][] intArrays) {
         int kind = TransitionConstraint.getKind(constraint);
-        int sId = TransitionConstraint.getStateId(constraint);
+        int sId = TransitionConstraint.getStateID(constraint);
+        CompilerAsserts.partialEvaluationConstant(constraint);
+        CompilerAsserts.partialEvaluationConstant(kind);
+        CompilerAsserts.partialEvaluationConstant(sId);
         return switch (kind) {
-            case TransitionConstraint.existGeMin -> canExit(sId, fixedData, intArrays);
-            case TransitionConstraint.allLtMin -> !canExit(sId, fixedData, intArrays);
-            case TransitionConstraint.existLtMin -> ltMin(sId, fixedData, intArrays);
-            case TransitionConstraint.allGeMin -> !ltMin(sId, fixedData, intArrays);
-            case TransitionConstraint.existLtMax -> canLoop(sId, fixedData, intArrays);
-            case TransitionConstraint.allGeMax -> !canLoop(sId, fixedData, intArrays);
+            case TransitionConstraint.anyGeMin -> anyGeMin(sId, fixedData, intArrays);
+            case TransitionConstraint.allLtMin -> !anyGeMin(sId, fixedData, intArrays);
+            case TransitionConstraint.anyLtMin -> anyLtMin(sId, fixedData, intArrays);
+            case TransitionConstraint.allGeMin -> !anyLtMin(sId, fixedData, intArrays);
+            case TransitionConstraint.anyLtMax -> anyLtMax(sId, fixedData, intArrays);
+            case TransitionConstraint.allGeMax -> !anyLtMax(sId, fixedData, intArrays);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
     }
@@ -112,18 +139,18 @@ public abstract class CounterTracker {
     /**
      * Return true if there is a counter value in the tracker for sId which is less than maximum.
      */
-    protected abstract boolean canLoop(int sId, long[] fixedData, int[][] intArrays);
+    protected abstract boolean anyLtMax(int sId, long[] fixedData, int[][] intArrays);
 
     /**
      * Return true if there is a counter value in the tracker for sId which is less than minimum.
      */
-    protected abstract boolean ltMin(int sId, long[] fixedData, int[][] intArrays);
+    protected abstract boolean anyLtMin(int sId, long[] fixedData, int[][] intArrays);
 
     /**
      * Return true if there is a counter value in the tracker for sId which is greater or equal
      * minimum.
      */
-    protected abstract boolean canExit(int sId, long[] fixedData, int[][] intArrays);
+    protected abstract boolean anyGeMin(int sId, long[] fixedData, int[][] intArrays);
 
     /**
      * Apply the given operation to the counter. Note that this assumes that the operation concerns
@@ -140,4 +167,6 @@ public abstract class CounterTracker {
      * This function returns true if the given operation is supported by the given tracker.
      */
     public abstract boolean support(long operation);
+
+    public abstract String dumpState(int sId, long[] fixedData, int[][] intArrays);
 }

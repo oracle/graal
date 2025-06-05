@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,6 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransitio
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TraceFinderDFAStateNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
-import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
@@ -88,17 +87,6 @@ public class TRegexOptions {
      * {@link TraceFinderDFAStateNode}, with 255 being reserved for "no result"!
      */
     public static final int TRegexTraceFinderMaxNumberOfResults = 254;
-
-    /**
-     * Try to make control flow through DFAs reducible by node splitting (see {@link DFANodeSplit}).
-     * This option will increase performance at the cost of startup time and memory usage.
-     */
-    public static final boolean TRegexEnableNodeSplitter = false;
-
-    /**
-     * Maximum size of a DFA after being altered by {@link DFANodeSplit}.
-     */
-    public static final int TRegexMaxDFASizeAfterNodeSplitting = 4_000;
 
     /**
      * Minimum number of ranges that have the same high byte to convert into a bit set in a
@@ -188,12 +176,12 @@ public class TRegexOptions {
      * The parser will try to unroll bounded quantifiers on single character classes up to this
      * limit.
      */
-    public static final int TRegexQuantifierUnrollThresholdSingleCC = 20;
+    public static final int TRegexQuantifierUnrollLimitSingleCC = 20;
 
     /**
      * The parser will try to unroll bounded quantifiers on groups up to this limit.
      */
-    public static final int TRegexQuantifierUnrollThresholdGroup = 6;
+    public static final int TRegexQuantifierUnrollLimitGroup = 6;
 
     /**
      * Bailout threshold for number of capture groups.
@@ -240,6 +228,14 @@ public class TRegexOptions {
     public static final int TRegexMaxTransitionsInTrivialExecutor = 100;
 
     /**
+     * Maximum combined size (in bytes) of {@code int[]} arrays allocated at match time for
+     * {@link com.oracle.truffle.regex.tregex.nodes.dfa.CounterTrackerList bounded quantifier
+     * tracking} when {@link com.oracle.truffle.regex.RegexOptions#ForceLinearExecution} is set.
+     * Currently set to one 100KB.
+     */
+    public static final int TRegexMaxCounterTrackerMemoryConsumptionInForceLinearExecutionMode = 100 * 1024;
+
+    /**
      * Don't force evaluation of {@link com.oracle.truffle.api.strings.TruffleString.CodeRange} if
      * the input string's byte length is greater than this threshold.
      */
@@ -252,7 +248,6 @@ public class TRegexOptions {
         assert TRegexParserTreeMaxNumberOfTermsInSequence <= Short.MAX_VALUE;
         assert TRegexMaxNFASize <= Short.MAX_VALUE;
         assert TRegexMaxDFASize <= Short.MAX_VALUE;
-        assert TRegexMaxDFASizeAfterNodeSplitting <= Short.MAX_VALUE;
         assert TRegexMaxNumberOfCaptureGroupsForDFA <= 127;
         assert TRegexMaxNumberOfNFAStatesInOneDFATransition <= 255;
         assert TRegexRangeToBitSetConversionThreshold > 1;

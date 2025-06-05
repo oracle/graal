@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.regex.tregex.automaton;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
-
-import java.util.Arrays;
 
 /**
  * Abstract base class for states of an automaton.
@@ -59,7 +59,6 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
     protected static final short FLAG_ANY_INITIAL_STATE = FLAG_ANCHORED_INITIAL_STATE | FLAG_UN_ANCHORED_INITIAL_STATE;
     protected static final short FLAG_ANY_FINAL_STATE = FLAG_ANCHORED_FINAL_STATE | FLAG_UN_ANCHORED_FINAL_STATE;
     protected static final short FLAG_ANY_GUARDED_FINAL_STATE = FLAG_GUARDED_ANCHORED_FINAL_STATE | FLAG_GUARDED_UN_ANCHORED_FINAL_STATE;
-    protected static final short FLAG_ANY_INITIAL_OR_FINAL_STATE = FLAG_ANY_INITIAL_STATE | FLAG_ANY_FINAL_STATE;
     /**
      * Number of flag bits occupied by this class. Child classes may add their own flags with
      * {@code byte NEW_FLAG = 1 << N_FLAGS; byte NEW_FLAG2 = 1 << (N_FLAGS + 1)} etc.
@@ -171,16 +170,16 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
         return getFlag(FLAG_GUARDED_UN_ANCHORED_FINAL_STATE);
     }
 
-    public void setGuardedFinalState() {
-        setFlag(FLAG_GUARDED_UN_ANCHORED_FINAL_STATE);
+    public void setGuardedUnAnchoredFinalState(boolean value) {
+        setFlag(FLAG_GUARDED_UN_ANCHORED_FINAL_STATE, value);
     }
 
     public boolean isGuardedAnchoredFinalState() {
         return getFlag(FLAG_GUARDED_ANCHORED_FINAL_STATE);
     }
 
-    public void setGuardedAnchoredFinalState() {
-        setFlag(FLAG_GUARDED_ANCHORED_FINAL_STATE);
+    public void setGuardedAnchoredFinalState(boolean value) {
+        setFlag(FLAG_GUARDED_ANCHORED_FINAL_STATE, value);
     }
 
     public boolean isAnchoredInitialState(boolean forward) {
@@ -269,6 +268,10 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
      */
     public void incPredecessors() {
         nPredecessors++;
+    }
+
+    public void decPredecessors() {
+        nPredecessors--;
     }
 
     /**

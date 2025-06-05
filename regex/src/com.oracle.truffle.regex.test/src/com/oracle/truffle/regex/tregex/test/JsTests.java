@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import java.util.Collections;
+import java.util.Map;
+
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
@@ -51,11 +54,11 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class JsTests extends RegexTestBase {
 
-    private static final String NEVER_UNROLL_OPT = "QuantifierUnrollThresholdSingleCC=1,QuantifierUnrollThresholdGroup=1";
+    private static final Map<String, String> NEVER_UNROLL_OPT = Map.of("regexDummyLang.QuantifierUnrollLimitSingleCC", "1", "regexDummyLang.QuantifierUnrollLimitGroup", "1");
 
     @Override
-    String getEngineOptions() {
-        return "";
+    Map<String, String> getEngineOptions() {
+        return Collections.emptyMap();
     }
 
     @Override
@@ -288,7 +291,7 @@ public class JsTests extends RegexTestBase {
 
     @Test
     public void boundedQuantifierInNFAMode() {
-        testBoolean("a{3}b", "", "aab", 0, false);
+        testBoolean("a{3}b", "", Collections.emptyMap(), "aab", 0, false);
     }
 
     @Test
@@ -340,6 +343,11 @@ public class JsTests extends RegexTestBase {
     @Test
     public void boundedQuantifierPaperExample3() {
         testBoolean(".*a.{9}.", "y", NEVER_UNROLL_OPT, "aaaaaaaaaaa", 0, true);
+    }
+
+    @Test
+    public void boundedQuantifier4() {
+        testBoolean("ab(?:..){100,600}d", "", NEVER_UNROLL_OPT, "ab" + "bc".repeat(250) + "d", 0, true);
     }
 
     @Test
@@ -421,7 +429,7 @@ public class JsTests extends RegexTestBase {
     public void generatedTests() {
         /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
 
-        // Generated using V8 version 13.0.245.12-rusty
+        // Generated using V8 version 13.7.152.13-rusty
         test("((A|){7,10}?){10,17}", "", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 0, true, 0, 86, 84, 86, 86, 86);
         test("(a{1,30}){1,4}", "", "a", 0, true, 0, 1, 0, 1);
         test("((a|){4,6}){4,6}", "", "aaaaaaa", 0, true, 0, 7, 7, 7, 7, 7);
@@ -561,7 +569,7 @@ public class JsTests extends RegexTestBase {
         test("[\u08bc-\ucf3a]", "iv", "\u03b0", 0, true, 0, 1);
         test("[\u0450-\u6c50]\u7e57\u55ad()\u64e7\\d|", "iu", "\u03b0\u7e57\u55ad\u64e79", 0, true, 0, 5, 3, 3);
         test("a(?:|()\\1){1,2}", "", "a", 0, true, 0, 1, -1, -1);
-        expectSyntaxError("|(?<\\d\\1)\ub7e4", "", "", getTRegexEncoding(), "error", 0, ErrorCode.InvalidNamedGroup);
+        expectSyntaxError("|(?<\\d\\1)\ub7e4", "", "error", 0, ErrorCode.InvalidNamedGroup);
         test("[a-z][a-z\u2028\u2029].|ab(?<=[a-z]w.)", "", "aac", 0, true, 0, 3);
         test("(animation|animation-name)", "", "animation", 0, true, 0, 9, 0, 9);
         test("(a|){7,7}b", "", "aaab", 0, true, 0, 4, 3, 3);
@@ -637,9 +645,10 @@ public class JsTests extends RegexTestBase {
         test("[ab]*?$(?<=[^b][ab][^b])", "", "aaaaaa", 0, true, 0, 6);
         test("a(?<=([ab]+){0,5})", "", "bbbba", 0, true, 4, 5, 0, 5);
         test("([ab]+){0,5}", "", "bbbba", 0, true, 0, 5, 0, 5);
-        expectSyntaxError("[--a]", "v", "", getTRegexEncoding(), "empty", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[--a]", "v", "empty", 0, ErrorCode.InvalidCharacterClass);
         test("(?:^\\1|$){10,11}bc", "", "aaaaaabc", 0, false);
         test("a(?:|[0-9]+?a|[0-9a]){11,13}?[ab]", "", "a372a466a109585878b", 0, true, 0, 5);
+        test("\\1\ud8a7\udc25()", "u", "\ud8a7\udc25", 0, true, 0, 2, 2, 2);
         test("(?<=ab(?:c|$){8,8})", "", "abccccc", 0, true, 7, 7);
         test("(?:^a|$){1,72}a", "", "aaaaaaaa", 0, true, 0, 2);
         test("(?<=a)b|", "", "aaabaaa", 3, true, 3, 4);
@@ -649,6 +658,32 @@ public class JsTests extends RegexTestBase {
         test("[\u7514-\ua3e3\ub107]*(?<=\\S)$", "", "\u76a3\u782b\u782b\ub107\u782b\u9950\u76a3\ub107\u9950\u76a3\u9a36", 3, true, 3, 11);
         test("$(?<=a)", "y", "aaaaa", 5, true, 5, 5);
         test("^abc[^]", "m", "abcdabc", 1, false);
+        test("\ud800\udc00", "u", "\ud800\udc00_\ud800\udc00", 1, true, 0, 2);
+        test("^(?:[a-z]{2}_)?[A-z0-9]{32}$", "", "fx_abcdefghjiklmnopqrstuvwxyz012345", 0, true, 0, 35);
+        test(".{50,}", "", "cpKYAzgh2N-8XnhSj866EciAV1wHFC7lL1na79xjsx68CsiX-Ky4v9ljf-4q6NzI8mMH9G1hCF2r_3JYzZh69w", 0, true, 0, 86);
+        test("[0-9]+-[0-9A-Za-z_]{32}\\.apps\\.googleusercontent\\.com", "", "123456789-0123456789ABCDEFabcdef01234567Aa.apps.googleusercontent.com", 0, true, 0, 69);
+        test("^((\\/.{1})?(\\/.{1,34})?)(\\n)?(.{1,35}(\\n.{1,35}){0,3})$", "", "/X/123456\nname\naddres\naddress2", 0, true, 0, 30, 0, 9, 0, 2, 2, 9, 9, 10, 10, 30, 21, 30);
+        test("^[/](?:([^/]+)[/])?([a-z0-9]{32,})(?:[.]git)?$", "", "/nathan7/53031bbfdf884ba2817a.git", 0, false);
+        test("\\w|([\u9940]\\Zq\\1*?){0,25}?\u930e", "", "VV", 0, true, 0, 1, -1, -1);
+        test("\\D\\w{8,82}|v\\Z", "", "vZvZ", 2, true, 2, 4);
+        test("\\s([a-q]+){16,36}", "", "_ ecqcabaadccbb cc", 1, false);
+        test("a(\\d|){4,20}b", "", "244za48452zba4", 4, false);
+        test("\\D\\z+\\z\\A(?:|\\1\u9369){3,55}?\u94ff\u50c5", "", "zz\u2c33Azz\u0001zz\ufa0azz\u0012zzzzzzzzzzzA\u0001\u9369\u94ff\u50c5zzz\uce72zz\u50c5\ud105\u7de3z\ucc51z\u94ff\u94ff", 11, true,
+                        12, 29);
+        test("\ud644\\Z*\\Z{52,52}\ub7a8\ue512(?=)(?:)\\1(?:)\\Z\\1", "", "\ud644ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ\ub7a8\ue512\u0001Z\u0001\u0001ZZZ\uf89b", 0, true, 0, 63);
+        test("(?=[a-z]{25,28}x)[a-z]", "", "asdfasdfasdfasdfasdfasdfasdfasdfxasdf", 9, false);
+        test("[a-z]{27,27}$|[a-z]", "", "aaaaaa", 5, true, 5, 6);
+        test("(?:b(|a){9,24}c)$", "", "eabaaeabaaaaaaaaaaaacaabaaaeeaaeaae", 6, false);
+        test("ua(|b){15,18}$", "", "uxuuabbbbbbbbbbbbbbbbbbb", 1, false);
+        test("c($|ab){7}", "", "cab_", 0, false);
+        test("\\w(?:\\D|^){5,11}?b", "", "a0aaaab", 0, false);
+        test("\\w\u11ea\\W{5,49}", "", "\u11ea\\\u0014\u11ea``v\u11ea`\\`\u001c`:\u0014\u001c`\u4c57:`\u0014\u0014\u11ea", 5, true, 6, 23);
+        test("(?:a|(?=a)){21,30}b", "", "abaaaaaaaaaaaaaaab", 0, true, 0, 2);
+        test("(?:ab|(?=ab)){21,30}c", "", "abcababababababababc", 0, true, 0, 3);
+        test("[ab]aca{24,}?", "", "bacaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 0, true, 0, 27);
+        test("^block($|(?=__|_))", "", "block_baz", 0, true, 0, 5, 5, 5);
+        test("^foo($|(?=__|_))", "", "foo", 0, true, 0, 3, 3, 3);
+        test("^(.{80})(.*\\s.*)$", "", "1. Currying `operators` and `selectors` by binding the `Store` to them for maximum convenience.", 0, true, 0, 95, 0, 80, 80, 95);
 
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }
@@ -656,5 +691,21 @@ public class JsTests extends RegexTestBase {
     @Test
     public void overlappingBq() {
         testBoolean("(?=a{2,4})[ab]{4,68}c", "", NEVER_UNROLL_OPT, "aabbbbbbbbbbbbbbbbbbbbbbc", 0, true);
+    }
+
+    @Test
+    public void simpleCGUtf8() {
+        test("^block($|(?=__|_))", "", Encodings.UTF_8, "block_baz", 0, true, 0, 5, 5, 5);
+        test("^foo($|(?=__|_))", "", Encodings.UTF_8, "foo", 0, true, 0, 3, 3, 3);
+    }
+
+    @Test
+    public void testForceLinearExecution() {
+        test("(a*)b\\1", "", "_aabaaa_", 0, true, 1, 6, 1, 3);
+        expectUnsupported("(a*)b\\1", "", OPT_FORCE_LINEAR_EXECUTION);
+        test(".*a{1,200000}.*", "", "_aabaaa_", 0, true, 0, 8);
+        expectUnsupported(".*a{1,200000}.*", "", OPT_FORCE_LINEAR_EXECUTION);
+        test(".*b(?!a_)", "", "_aabaaa_", 0, true, 0, 4);
+        expectUnsupported(".*b(?!a_)", "", OPT_FORCE_LINEAR_EXECUTION);
     }
 }

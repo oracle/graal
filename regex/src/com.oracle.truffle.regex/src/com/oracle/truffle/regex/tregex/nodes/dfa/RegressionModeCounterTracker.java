@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,69 +41,81 @@
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import java.util.ArrayList;
-import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.UnsupportedRegexException;
 
 public class RegressionModeCounterTracker extends CounterTracker {
-    private final ArrayList<CounterTracker> trackers = new ArrayList<>(4);
+    private final ArrayList<CounterTracker> trackers = new ArrayList<>(5);
     private final int min;
 
-    public RegressionModeCounterTracker(int min, int max, int numberOfCells, CounterTrackerData.Builder dataBuilder) {
+    public RegressionModeCounterTracker(int min, int max, int numberOfCells, boolean isTrivialAlwaysReEnter, boolean isTrivialNeverReEnter, CounterTrackerData.Builder dataBuilder) {
         this.min = min;
-        if (Math.max(min, max) <= 64) {
+        int upperBound = Math.max(min, max);
+        if (upperBound <= 64) {
             trackers.add(new CounterTrackerLong(min, max, numberOfCells, dataBuilder));
         }
-        if (Math.max(min, max) <= 64 * CounterTrackerBitSet.MAX_N) {
-            trackers.add(new CounterTrackerBitSet(min, max, numberOfCells, dataBuilder));
+        if (upperBound <= 128) {
+            trackers.add(new CounterTrackerLong2(min, max, numberOfCells, dataBuilder));
         }
-        if (Math.max(min, max) <= 64 * CounterTrackerDynamicallyMappedBitSet.MAX_N) {
-            trackers.add(new CounterTrackerDynamicallyMappedBitSet(min, max, numberOfCells, dataBuilder));
+        if (upperBound <= 64 * CounterTrackerBitSetWithOffset.MAX_BITSET_SIZE) {
+            trackers.add(new CounterTrackerBitSetWithOffset(min, max, numberOfCells, dataBuilder));
+        }
+        if (isTrivialAlwaysReEnter) {
+            trackers.add(new CounterTrackerTrivialAlwaysReEnter(min, numberOfCells, dataBuilder));
+        }
+        if (isTrivialNeverReEnter) {
+            trackers.add(new CounterTrackerTrivialNeverReEnter(min, max, numberOfCells, dataBuilder));
         }
         trackers.add(new CounterTrackerList(min, max, numberOfCells, dataBuilder));
     }
 
     @TruffleBoundary
     @Override
-    protected boolean canLoop(int sId, long[] fixedData, int[][] intArrays) {
-        var result = onAll(t -> t.canLoop(sId, fixedData, intArrays));
+    protected boolean anyLtMax(int sId, long[] fixedData, int[][] intArrays) {
+        boolean result = onAll(sId, fixedData, intArrays, CounterTracker::anyLtMax);
         ensureConsistency(sId, fixedData, intArrays);
         return result;
     }
 
     @TruffleBoundary
     @Override
-    protected boolean ltMin(int sId, long[] fixedData, int[][] intArrays) {
-        var result = onAll(t -> t.ltMin(sId, fixedData, intArrays));
+    protected boolean anyLtMin(int sId, long[] fixedData, int[][] intArrays) {
+        boolean result = onAll(sId, fixedData, intArrays, CounterTracker::anyLtMin);
         ensureConsistency(sId, fixedData, intArrays);
         return result;
     }
 
     @TruffleBoundary
     @Override
-    protected boolean canExit(int sId, long[] fixedData, int[][] intArrays) {
-        var result = onAll(t -> t.canExit(sId, fixedData, intArrays));
+    protected boolean anyGeMin(int sId, long[] fixedData, int[][] intArrays) {
+        boolean result = onAll(sId, fixedData, intArrays, CounterTracker::anyGeMin);
         ensureConsistency(sId, fixedData, intArrays);
         return result;
     }
 
-    private boolean onAll(Function<CounterTracker, Boolean> f) {
-        var firstTracker = trackers.get(0);
-        var result = f.apply(firstTracker);
-        for (var tracker : trackers) {
-            if (f.apply(tracker) != result) {
-                throw new UnsupportedRegexException("Inconsistent trackers");
+    @FunctionalInterface
+    interface TrackerGuard {
+        boolean apply(CounterTracker tracker, int sId, long[] fixedData, int[][] intArrays);
+    }
+
+    private boolean onAll(int sId, long[] fixedData, int[][] intArrays, TrackerGuard f) {
+        CounterTracker firstTracker = trackers.get(0);
+        boolean resultFirst = f.apply(firstTracker, sId, fixedData, intArrays);
+        for (CounterTracker tracker : trackers) {
+            boolean resultCur = f.apply(tracker, sId, fixedData, intArrays);
+            if (resultCur != resultFirst) {
+                throw new AssertionError(String.format("Inconsistent tracker results, firstTracker: %b, state: %s cur tracker: %b, state: %s",
+                                resultFirst, firstTracker.dumpState(sId, fixedData, intArrays),
+                                resultCur, tracker.dumpState(sId, fixedData, intArrays)));
             }
         }
-
-        return result;
+        return resultFirst;
     }
 
     @TruffleBoundary
     @Override
     public void apply(long operation, long[] fixedData, int[][] intArrays) {
-        for (var tracker : trackers) {
+        for (CounterTracker tracker : trackers) {
             tracker.apply(operation, fixedData, intArrays);
         }
     }
@@ -117,10 +129,10 @@ public class RegressionModeCounterTracker extends CounterTracker {
     }
 
     private void ensureConsistency(int sId, long[] fixedData, int[][] intArrays) {
-        onAll(t -> t.canLoop(sId, fixedData, intArrays));
+        onAll(sId, fixedData, intArrays, CounterTracker::anyLtMax);
         if (min > 0) {
-            onAll(t -> t.canExit(sId, fixedData, intArrays));
-            onAll(t -> t.ltMin(sId, fixedData, intArrays));
+            onAll(sId, fixedData, intArrays, CounterTracker::anyGeMin);
+            onAll(sId, fixedData, intArrays, CounterTracker::anyLtMin);
         }
     }
 
@@ -129,5 +141,10 @@ public class RegressionModeCounterTracker extends CounterTracker {
     public boolean support(long operation) {
         trackers.removeIf(tracker -> !tracker.support(operation));
         return !trackers.isEmpty();
+    }
+
+    @Override
+    public String dumpState(int sId, long[] fixedData, int[][] intArrays) {
+        throw new UnsupportedOperationException();
     }
 }

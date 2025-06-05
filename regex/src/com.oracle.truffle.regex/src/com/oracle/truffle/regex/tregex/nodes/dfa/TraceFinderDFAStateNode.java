@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
+public class TraceFinderDFAStateNode extends DFAStateNode {
 
     public static final byte NO_PRE_CALC_RESULT = (byte) 0xff;
 
@@ -48,16 +48,10 @@ public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
     private final byte preCalculatedAnchoredResult;
 
     public TraceFinderDFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, Matchers matchers,
-                    byte preCalculatedUnAnchoredResult, byte preCalculatedAnchoredResult, long[][] constraints, long[][] operations, long[][] finalConstraints, long[][] anchoredFinalConstraints) {
-        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, null, constraints, operations, finalConstraints, anchoredFinalConstraints);
+                    byte preCalculatedUnAnchoredResult, byte preCalculatedAnchoredResult) {
+        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers);
         this.preCalculatedUnAnchoredResult = preCalculatedUnAnchoredResult;
         this.preCalculatedAnchoredResult = initPreCalculatedAnchoredResult(preCalculatedUnAnchoredResult, preCalculatedAnchoredResult);
-    }
-
-    private TraceFinderDFAStateNode(TraceFinderDFAStateNode copy, short copyID) {
-        super(copy, copyID);
-        this.preCalculatedUnAnchoredResult = copy.preCalculatedUnAnchoredResult;
-        this.preCalculatedAnchoredResult = copy.preCalculatedAnchoredResult;
     }
 
     private static byte initPreCalculatedAnchoredResult(byte preCalculatedUnAnchoredResult, byte preCalculatedAnchoredResult) {
@@ -66,11 +60,6 @@ public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
             return NO_PRE_CALC_RESULT;
         }
         return preCalculatedAnchoredResult;
-    }
-
-    @Override
-    public DFAStateNode createNodeSplitCopy(short copyID) {
-        return new TraceFinderDFAStateNode(this, copyID);
     }
 
     private boolean hasPreCalculatedUnAnchoredResult() {

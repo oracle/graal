@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.regex.tregex.automaton;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.buffer.LongArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
@@ -57,51 +56,111 @@ public class TransitionConstraint {
      * Kinds. Note that their value is chosen such that the negation of a kind is given by flipping
      * its least significant bit.
      */
-    public static final int existLtMax = 0;
+    public static final int anyLtMax = 0;
     public static final int allGeMax = 1;
-    public static final int existGeMin = 2;
+    public static final int anyGeMin = 2;
     public static final int allLtMin = 3;
-    public static final int existLtMin = 4;
+    public static final int anyLtMin = 4;
     public static final int allGeMin = 5;
 
-    public static long create(int quantId, int stateId, int kind) {
-        assert (stateId & 0x1FFFFFFF) == stateId;
+    private static final byte POSSIBLE_VALUES_ALL = 0b111;
+
+    /**
+     * Lookup table used in {@link MergeResultBuilder#validateAndSimplify(LongArrayBuffer)}. Every
+     * entry represents a set of value ranges allowed to exist by its respective guard, where every
+     * bit of an entry represents a range of values:
+     * <ul>
+     * <li>bit 0b001: all values from 0 (inclusive) to min (exclusive)</li>
+     * <li>bit 0b010: all values from min (inclusive) to max (exclusive)</li>
+     * <li>bit 0b100: all values equal or greater than max</li>
+     * </ul>
+     * Note that any*-guards allow all value ranges, since they just need one satisfying value to
+     * exist in the set.
+     */
+    private static final byte[] POSSIBLE_VALUES = {
+                    0b111, // anyLtMax
+                    0b100, // allGeMax
+                    0b111, // anyGeMin
+                    0b001, // allLtMin
+                    0b111, // anyLtMin
+                    0b110, // allGeMin
+    };
+
+    /**
+     * Lookup table used in {@link MergeResultBuilder#validateAndSimplify(LongArrayBuffer)}. Every
+     * entry represents a set of value ranges that satisfy its respective guard, where every bit of
+     * an entry represents a range of values:
+     * <ul>
+     * <li>bit 0b001: all values from 0 (inclusive) to min (exclusive)</li>
+     * <li>bit 0b010: all values from min (inclusive) to max (exclusive)</li>
+     * <li>bit 0b100: all values equal or greater than max</li>
+     * </ul>
+     * Note that the set of SATISFYING and POSSIBLE values of all*-guards is always equal, since
+     * they always apply to the full set.
+     */
+    private static final byte[] SATISFYING_VALUES = {
+                    0b011, // anyLtMax
+                    0b100, // allGeMax
+                    0b110, // anyGeMin
+                    0b001, // allLtMin
+                    0b001, // anyLtMin
+                    0b110, // allGeMin
+    };
+
+    /**
+     * Field layout of TransitionConstraint instances.
+     * <p>
+     * NOTE: changing the order of these fields will break {@link #getID(long)}, {@link #not(long)}
+     * and the assumptions about sorting order in {@link #create(int, int, int)}!
+     */
+    private static final int MASK_STATE_ID = 0x1FFFFFFF;
+    private static final int MASK_KIND = 0b111;
+    private static final int OFFSET_QUANTIFER_ID = 32;
+    private static final int OFFSET_STATE_ID = 3;
+    private static final int OFFSET_KIND = 0;
+
+    public static long create(int quantID, int stateID, int kind) {
+        assert (stateID & MASK_STATE_ID) == stateID;
         assert kind < 6;
         /*
          * The order of those three fields is important. That way given an array of constraints, if
-         * we sort that array it will automatically sort by first quantifierId, then stateId then by
-         * kind. Meaning that this easily let us group constraints by both their quantifierId and
-         * their stateId.
+         * we sort that array it will automatically sort by first quantifierID, then stateID then by
+         * kind. Meaning that this easily let us group constraints by both their quantifierID and
+         * their stateID.
          */
-        return ((long) quantId << 32) | ((long) stateId << 3) | kind;
+        return ((long) quantID << OFFSET_QUANTIFER_ID) | ((long) stateID << OFFSET_STATE_ID) | ((long) kind << OFFSET_KIND);
+    }
+
+    public static long setStateID(long constraint, int stateID) {
+        return create(getQuantifierID(constraint), stateID, getKind(constraint));
     }
 
     /**
      * See above.
      */
     public static int getKind(long constraint) {
-        return (int) (constraint & 0b111);
+        return (int) ((constraint >> OFFSET_KIND) & MASK_KIND);
     }
 
     /**
      * id of the (normalized) nfa state id associated with the tracker used by this constraint.
      */
-    public static int getStateId(long constraint) {
-        return (int) ((constraint >> 3) & 0x1FFFFFFF);
+    public static int getStateID(long constraint) {
+        return (int) ((constraint >> OFFSET_STATE_ID) & MASK_STATE_ID);
     }
 
     /**
      * id of the quantifier on which this constraint applies.
      */
-    public static int getQuantId(long constraint) {
-        return (int) (constraint >>> 32);
+    public static int getQuantifierID(long constraint) {
+        return (int) (constraint >>> OFFSET_QUANTIFER_ID);
     }
 
     /**
      * Unique id combining both the quantifier id and the state id.
      */
-    public static long getId(long constraint) {
-        return constraint >> 3;
+    public static long getID(long constraint) {
+        return constraint >> OFFSET_STATE_ID;
     }
 
     /**
@@ -118,7 +177,7 @@ public class TransitionConstraint {
      */
     public static boolean isNormalized(long[] constraints) {
         var prev = -1L;
-        for (var constraint : constraints) {
+        for (long constraint : constraints) {
             if (constraint <= prev) {
                 return false;
             }
@@ -132,9 +191,9 @@ public class TransitionConstraint {
      */
     public static long[] normalize(LongArrayBuffer constraints) {
         constraints.sort();
-        var normalized = new LongArrayBuffer();
-        var prev = -1L;
-        for (var constr : constraints) {
+        LongArrayBuffer normalized = new LongArrayBuffer(constraints.length());
+        long prev = -1L;
+        for (long constr : constraints) {
             if (constr != prev) {
                 normalized.add(constr);
                 prev = constr;
@@ -159,7 +218,7 @@ public class TransitionConstraint {
      *  f => lhs && !rhs       | lhs && rhs       | f => !lhs && rhs
      *  -----------------------------------------------------------------
      *  f = (a & b & !c & !d)  | (a & b & !c & d) | f = (!a & !c & d) ||
-     *                         |                  |     (a & !b & !c & d)
+     *                         |                  |     (!b & !c & d)
      * </pre>
      * 
      * Note that the middle always contains one formula, but the two other results can contain
@@ -237,7 +296,21 @@ public class TransitionConstraint {
      *            => cstr2
      */
     public record MergeResult(long[][] lhs, long[] middle, long[][] rhs) {
+
         public static final MergeResult Empty = new MergeResult(new long[0][], new long[0], new long[0][]);
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder("MergeResult[\n  lhs: [\n");
+            for (long[] c : lhs) {
+                sb.append("    [\n      ").append(TransitionConstraint.toString(c, ",\n      ")).append("\n    ],\n");
+            }
+            sb.append("\n  ],\n  middle: [\n    ").append(TransitionConstraint.toString(middle, ",\n    ")).append("\n  ],\n  rhs: [\n");
+            for (long[] c : rhs) {
+                sb.append("    [\n      ").append(TransitionConstraint.toString(c, ",\n      ")).append("\n    ],\n");
+            }
+            return sb.append("\n  ],\n ]").toString();
+        }
     }
 
     private static final class MergeResultBuilder {
@@ -278,19 +351,19 @@ public class TransitionConstraint {
 
         /**
          * Returns true whenever a given set of constraints is satisfiable. If true it also
-         * simplifies the result by removing redundant constraints: for instance allLtMin &&
-         * existLtMax gets simplified to allLtMin. Assumes the input is sorted and without any
-         * duplicate, and that only the last sequence of operation might be invalid. It therefore
-         * needs to be called everytime a new constraints is added to the buffer.
+         * simplifies the result by removing redundant constraints (in-place!): for instance
+         * allLtMin && anyLtMax gets simplified to allLtMin. Assumes the input is sorted and without
+         * any duplicate, and that only the last sequence of operation might be invalid. It
+         * therefore needs to be called every time a new constraint is added to the buffer.
          */
         private static boolean validateAndSimplify(LongArrayBuffer constraints) {
             int length = constraints.length();
             long lastConstraint = constraints.get(length - 1);
             int sequenceLength = 1;
-            long id = getId(lastConstraint);
+            long id = getID(lastConstraint);
             for (int i = length - 2; i >= 0; i--) {
                 long constraint = constraints.get(i);
-                if (getId(constraint) != id) {
+                if (getID(constraint) != id) {
                     break;
                 }
                 sequenceLength++;
@@ -298,62 +371,37 @@ public class TransitionConstraint {
             if (sequenceLength == 1) {
                 return true;
             }
-            if (sequenceLength == 2) {
-                var thisKind = getKind(lastConstraint);
-                var prevConstraint = constraints.get(length - 2);
-                var prevKind = getKind(prevConstraint);
-                if (thisKind == allLtMin && prevKind == allGeMax || thisKind == existLtMin && prevKind == allGeMax || thisKind == allGeMin && prevKind == allLtMin) {
+            int possibleValuesSoFar = POSSIBLE_VALUES_ALL;
+            int iPreserved = length - sequenceLength;
+            for (int i = iPreserved; i < length; i++) {
+                // calculate the set of possible values allowed by all guards except the current one
+                int possibleValues = possibleValuesSoFar;
+                for (int j = i + 1; j < length; j++) {
+                    possibleValues &= POSSIBLE_VALUES[getKind(constraints.get(j))];
+                }
+                long curConstraint = constraints.get(i);
+                int curKind = getKind(curConstraint);
+                int curPossibleValues = POSSIBLE_VALUES[curKind];
+                int curSatisfyingValues = SATISFYING_VALUES[curKind];
+                if ((possibleValues & curSatisfyingValues) == 0) {
+                    // contradiction: none of the allowed values would satisfy the current guard.
+                    // Since the entire list of constraints is a conjunction, one unsatisfiable
+                    // guard renders the entire list unsatisfiable, and we can stop processing
+                    // here.
                     return false;
                 }
-                if (thisKind == allLtMin && prevKind == existLtMax || thisKind == allGeMin && prevKind == existGeMin) {
-                    constraints.set(length - 2, lastConstraint);
-                    constraints.setLength(length - 1);
-
-                } else if (thisKind == existGeMin && prevKind == allGeMax) {
-                    constraints.setLength(length - 1);
-                }
-            } else {
-                assert sequenceLength == 3;
-                var constraint1 = constraints.get(length - 3);
-                var constraint2 = constraints.get(length - 2);
-                var constraint3 = lastConstraint;
-                var kind1 = getKind(constraint1);
-                var kind2 = getKind(constraint2);
-                var kind3 = getKind(constraint3);
-                if (kind1 == existLtMax) {
-                    if (kind2 == existGeMin) {
-                        if (kind3 == existLtMin) {
-                            constraints.set(length - 3, constraint2);
-                            constraints.set(length - 2, constraint3);
-                            constraints.setLength(length - 1);
-                        } else if (kind3 == allGeMin) {
-                            constraints.set(length - 2, constraint3);
-                            constraints.setLength(length - 1);
-                        }
-                    } else if (kind2 == allLtMin) {
-                        if (kind3 == existLtMin) {
-                            constraints.set(length - 3, constraint2);
-                            constraints.setLength(length - 2);
-                        } else if (kind3 == allGeMin) {
-                            return false;
-                        }
-                    }
-                } else if (kind1 == allGeMax) {
-                    if (kind2 == existGeMin) {
-                        if (kind3 == existLtMin) {
-                            return false;
-                        } else if (kind3 == allGeMin) {
-                            constraints.setLength(length - 2);
-                        }
-                    } else if (kind2 == allLtMin) {
-                        if (kind3 == existLtMin || kind3 == allGeMin) {
-                            return false;
-                        } else {
-                            throw CompilerDirectives.shouldNotReachHere();
-                        }
-                    }
+                possibleValuesSoFar &= curPossibleValues;
+                // if the current guard doesn't further restrict the set of possible values (first
+                // condition) and there are no values in the current restricted set that would cause
+                // the guard to fail (second condition), it is redundant and can be dropped.
+                if (!((possibleValues & curPossibleValues) == possibleValues && (possibleValues & ~curSatisfyingValues) == 0)) {
+                    // we are dropping redundant guards by overwriting the list we are currently
+                    // iterating. This is fine, because we don't read from the overwritten slots
+                    // again in this (or the nested) loop.
+                    constraints.set(iPreserved++, curConstraint);
                 }
             }
+            constraints.setLength(iPreserved);
             return true;
         }
 
@@ -361,7 +409,7 @@ public class TransitionConstraint {
          * Add the given constraints to the middle buffer, and returns true whenever it can still be
          * satisfied at runtime.
          */
-        public boolean addToMiddleAndValidate(long constraint) {
+        private boolean addToMiddleAndValidate(long constraint) {
             middle.add(constraint);
             return validateAndSimplify(middle);
         }
@@ -372,16 +420,20 @@ public class TransitionConstraint {
             return result;
         }
 
-        public void duplicateFormulaLeft(long constraint, int leftIndex) {
+        private void duplicateFormulaLeft(long appendConstraint, int leftIndex) {
             LongArrayBuffer newConstraints = copyUntil(originalLhs, leftIndex);
-            newConstraints.add(constraint);
-            lhs.add(newConstraints);
+            newConstraints.add(appendConstraint);
+            if (validateAndSimplify(newConstraints)) {
+                lhs.add(newConstraints);
+            }
         }
 
-        public void duplicateFormulaRight(long appendConstraint, int rightIndex) {
+        private void duplicateFormulaRight(long appendConstraint, int rightIndex) {
             LongArrayBuffer newConstraints = copyUntil(originalRhs, rightIndex);
             newConstraints.add(appendConstraint);
-            rhs.add(newConstraints);
+            if (validateAndSimplify(newConstraints)) {
+                rhs.add(newConstraints);
+            }
         }
 
         private static int countNumberOfValid(ObjectArrayBuffer<LongArrayBuffer> constraintsList) {
@@ -406,25 +458,25 @@ public class TransitionConstraint {
             return result;
         }
 
-        public MergeResult build() {
+        private MergeResult build() {
             return new MergeResult(constraintsListToArray(lhs), middle.toArray(), constraintsListToArray(rhs));
         }
     }
 
     @TruffleBoundary
     public static String toString(long constraint) {
-        int qId = getQuantId(constraint);
-        int stateId = getStateId(constraint);
+        int qID = getQuantifierID(constraint);
+        int stateID = getStateID(constraint);
         int kind = getKind(constraint);
-        StringBuilder b = new StringBuilder("qId: %d, if".formatted(qId));
+        StringBuilder b = new StringBuilder("qID: %d, if".formatted(qID));
         switch (kind) {
             // Checkstyle: stop
-            case existLtMax -> b.append(" ∃c ∈ %d, c < max".formatted(stateId));
-            case allGeMax -> b.append(" ∀c ∈ %d, c ≥ max".formatted(stateId));
-            case existGeMin -> b.append(" ∃c ∈ %d, c ≥ min".formatted(stateId));
-            case allLtMin -> b.append(" ∀c ∈ %d, c < min".formatted(stateId));
-            case existLtMin -> b.append(" ∃c ∈ %d, c < min".formatted(stateId));
-            case allGeMin -> b.append(" ∀c ∈ %d, c >= min".formatted(stateId));
+            case anyLtMax -> b.append(" ∃c ∈ %d, c < max".formatted(stateID));
+            case allGeMax -> b.append(" ∀c ∈ %d, c ≥ max".formatted(stateID));
+            case anyGeMin -> b.append(" ∃c ∈ %d, c ≥ min".formatted(stateID));
+            case allLtMin -> b.append(" ∀c ∈ %d, c < min".formatted(stateID));
+            case anyLtMin -> b.append(" ∃c ∈ %d, c < min".formatted(stateID));
+            case allGeMin -> b.append(" ∀c ∈ %d, c ≥ min".formatted(stateID));
             // Checkstyle: resume
         }
 
@@ -432,8 +484,20 @@ public class TransitionConstraint {
     }
 
     @TruffleBoundary
-    public static JsonValue toJson(long guard) {
-        return Json.val(toString(guard));
+    public static String toString(long[] constraints, String delimiter) {
+        StringBuilder sb = new StringBuilder();
+        for (long constraint : constraints) {
+            if (!sb.isEmpty()) {
+                sb.append(delimiter);
+            }
+            sb.append(toString(constraint));
+        }
+        return sb.toString();
+    }
+
+    @TruffleBoundary
+    public static JsonValue toJson(long constraint) {
+        return Json.val(toString(constraint));
     }
 
     @TruffleBoundary

@@ -753,7 +753,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         }
         if (getProperties().hasLargeBoundedQuantifiers()) {
             sb.add(String.format("regex has large counted repetitions (threshold: %d for single CC, %d for groups)",
-                            TRegexOptions.TRegexQuantifierUnrollThresholdSingleCC, TRegexOptions.TRegexQuantifierUnrollThresholdGroup));
+                            TRegexOptions.TRegexQuantifierUnrollLimitSingleCC, TRegexOptions.TRegexQuantifierUnrollLimitGroup));
         }
         if (getProperties().hasNegativeLookAheadAssertions()) {
             sb.add("regex has negative look-ahead assertions");

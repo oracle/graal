@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,62 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.nodesplitter;
+package com.oracle.truffle.regex.tregex.test;
 
-import java.util.ArrayList;
+import org.junit.Ignore;
+import org.junit.Test;
 
-import com.oracle.truffle.regex.tregex.automaton.StateIndex;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
-/**
- * An abstract graph wrapper used by {@link DFANodeSplit}.
- */
-final class Graph implements StateIndex<GraphNode> {
+import java.util.Map;
 
-    private GraphNode start;
-    private final ArrayList<GraphNode> nodes;
+public class RubyBytesTests extends RegexTestBase {
 
-    Graph(int initialCapacity) {
-        this.nodes = new ArrayList<>(initialCapacity);
-    }
+    private static final Map<String, String> ENGINE_OPTIONS = Map.of("regexDummyLang.Flavor", "Ruby");
 
-    public GraphNode getStart() {
-        return start;
-    }
-
-    public void setStart(GraphNode start) {
-        this.start = start;
-    }
-
-    public ArrayList<GraphNode> getNodes() {
-        return nodes;
-    }
-
-    public GraphNode getNode(int id) {
-        return nodes.get(id);
-    }
-
-    public void addGraphNode(GraphNode graphNode) {
-        assert graphNode.getId() == nodes.size();
-        nodes.add(graphNode);
-        assert graphNode == nodes.get(graphNode.getId());
-    }
-
-    public int size() {
-        return nodes.size();
+    @Override
+    Map<String, String> getEngineOptions() {
+        return ENGINE_OPTIONS;
     }
 
     @Override
-    public int getNumberOfStates() {
-        return size();
+    Encodings.Encoding getTRegexEncoding() {
+        return Encodings.BYTES;
     }
 
-    @Override
-    public int getId(GraphNode state) {
-        return state.getId();
-    }
-
-    @Override
-    public GraphNode getState(int id) {
-        return getNode(id);
+    @Ignore
+    @Test
+    public void nonAscii() {
+        test("[\\x80-\\xff\\r\\n]", "", "\u0080", 0, true, 0, 1);
     }
 }

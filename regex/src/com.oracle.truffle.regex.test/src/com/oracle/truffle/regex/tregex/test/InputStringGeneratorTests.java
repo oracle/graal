@@ -40,28 +40,26 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Random;
 
+import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.analysis.InputStringGenerator;
-import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class InputStringGeneratorTests extends RegexTestBase {
 
-    private final RegexLanguage language = new RegexLanguage();
     private final Random rng = new Random(1234);
 
     @Override
-    String getEngineOptions() {
-        return "";
+    Map<String, String> getEngineOptions() {
+        return Collections.emptyMap();
     }
 
     @Override
@@ -85,31 +83,30 @@ public class InputStringGeneratorTests extends RegexTestBase {
         testInputStringGenerator("(?<=(a))\\1");
     }
 
-    private InputStringGenerator.InputString generateInputString(String pattern, String flags, String options, Encodings.Encoding encoding, long rngSeed) {
-        String sourceString = createSourceString(pattern, flags, options, encoding);
-        Source source = Source.newBuilder("regex", sourceString, "regexSource").build();
-        RegexSource regexSource = RegexLanguage.createRegexSource(source);
-        RegexAST ast = regexSource.getOptions().getFlavor().createParser(language, regexSource, new CompilationBuffer(regexSource.getEncoding())).parse();
-        return InputStringGenerator.generate(ast, rngSeed);
-    }
-
     void testInputStringGenerator(String pattern) {
-        testInputStringGenerator(pattern, "", getEngineOptions(), getTRegexEncoding(), rng.nextLong());
+        testInputStringGenerator(pattern, "", getEngineOptions(), getTRegexEncoding(), rng.nextLong(), compileRegex(pattern, ""));
     }
 
-    void testInputStringGenerator(String pattern, String flags, String options, Encodings.Encoding encoding, long rngSeed) {
-        Value compiledRegex = compileRegex(pattern, flags);
-        testInputStringGenerator(pattern, flags, options, encoding, rngSeed, compiledRegex);
-    }
-
-    private void testInputStringGenerator(String pattern, String flags, String options, Encodings.Encoding encoding, long rngSeed, Value compiledRegex) {
+    private void testInputStringGenerator(String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding, long rngSeed, Value compiledRegex) {
+        Value generator = getGenerator(pattern, flags, options, encoding);
         for (int i = 0; i < 20; i++) {
-            InputStringGenerator.InputString input = generateInputString(pattern, flags, options, encoding, rngSeed + i);
-            Assert.assertNotNull(input);
-            Value result = execRegex(compiledRegex, encoding, input.input(), input.fromIndex());
+            Value input = generator.execute(rngSeed + i);
+            Assert.assertFalse(input.isNull());
+            String inputStr = input.getMember("input").asString();
+            int fromIndex = input.getMember("fromIndex").asInt();
+            Value result = execRegex(compiledRegex, encoding, inputStr, fromIndex);
             if (!result.getMember("isMatch").asBoolean()) {
-                Assert.assertTrue(execRegex(compiledRegex, encoding, input.input(), input.matchStart()).getMember("isMatch").asBoolean());
+                Assert.assertTrue(execRegex(compiledRegex, encoding, inputStr, input.getMember("matchStart").asInt()).getMember("isMatch").asBoolean());
             }
+        }
+    }
+
+    private Value getGenerator(String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding) {
+        Source.Builder builder = sourceBuilder(pattern, flags, options, encoding).option("regexDummyLang.GenerateInput", "true");
+        try {
+            return context.parse(builder.build());
+        } catch (IOException e) {
+            throw CompilerDirectives.shouldNotReachHere();
         }
     }
 }

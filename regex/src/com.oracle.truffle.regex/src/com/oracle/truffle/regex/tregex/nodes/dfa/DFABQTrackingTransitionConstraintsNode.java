@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,11 +38,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.nodesplitter;
+package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-import com.oracle.truffle.api.nodes.SlowPathException;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.regex.tregex.automaton.TransitionConstraint;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public final class DFANodeSplitBailoutException extends SlowPathException {
+public final class DFABQTrackingTransitionConstraintsNode extends DFAAbstractStateNode {
 
-    private static final long serialVersionUID = 29374928364982L;
+    @CompilationFinal(dimensions = 2) public final long[][] constraints;
+
+    public DFABQTrackingTransitionConstraintsNode(short id, short[] successors, long[][] constraints) {
+        super(id, successors);
+        this.constraints = constraints;
+    }
+
+    @ExplodeLoop
+    public static boolean constraintsAreSatisfied(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, long[] constraints) {
+        CompilerAsserts.partialEvaluationConstant(executor);
+        CompilerAsserts.partialEvaluationConstant(constraints);
+        for (long constraint : constraints) {
+            int qId = TransitionConstraint.getQuantifierID(constraint);
+            CompilerAsserts.partialEvaluationConstant(constraint);
+            CompilerAsserts.partialEvaluationConstant(qId);
+            CounterTracker counterTracker = executor.getCounterTrackers()[qId];
+            CompilerAsserts.partialEvaluationConstant(counterTracker);
+            if (!counterTracker.canExecute(constraint, locals.getFixedData(), locals.getIntArrays())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public JsonValue toJson() {
+        return null;
+    }
 }

@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.regex.jmh;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
@@ -56,6 +58,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
 import com.oracle.truffle.regex.test.dummylang.TRegexTestDummyLanguage;
+import com.oracle.truffle.regex.test.dummylang.TRegexTestDummyLanguageOptions;
 
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 public class TRegexVSJavaBenchmarks extends BenchmarkBase {
@@ -71,6 +74,15 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
             this.regex = regex;
             this.flags = flags;
             this.input = input;
+        }
+
+        Source createSource(TRegexTestDummyLanguageOptions.ExecutionMode executionMode) {
+            try {
+                return Source.newBuilder(TRegexTestDummyLanguage.ID, '/' + regex + '/' + flags, name).option(TRegexTestDummyLanguage.ID + ".GenerateDFAImmediately", "true").option(
+                                TRegexTestDummyLanguage.ID + ".Mode", executionMode.name()).build();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -116,7 +128,7 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
                                     "a{10,110}-a{2,10}-a{5,12}",
                                     "",
                                     "b".repeat(100) + "a".repeat(100) + "-aaaaaa-aaaaaabaa"),
-                    new ParameterSet("simple bounded",
+                    new ParameterSet("simple_bounded",
                                     "a{5,10}b",
                                     "",
                                     "a".repeat(200) + "aaaaaab"),
@@ -124,26 +136,34 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
                                     "[ab]{3,5}[bc]{4,5}d",
                                     "",
                                     "aaababbbb-".repeat(10) + "aaababbbbd"),
-                    new ParameterSet("bq large bounds",
+                    new ParameterSet("bq_large_bounds",
                                     "(?:aa){100,200}b",
                                     "",
                                     "aa".repeat(150) + "b"),
-                    new ParameterSet("bq small bounds",
+                    new ParameterSet("bq_small_bounds",
                                     "(?:aa){10,64}b",
                                     "",
                                     "aa".repeat(150) + "b"),
-                    new ParameterSet("bq very large bounds",
+                    new ParameterSet("bq_very_large_bounds",
                                     "(?:aa){100,600}b",
                                     "",
                                     "aa".repeat(150) + "b"),
-                    new ParameterSet("simple bq very large bounds",
+                    new ParameterSet("simple_bq_very_large_bounds",
                                     "a{100,600}b",
                                     "",
                                     "aa".repeat(150) + "b"),
-                    new ParameterSet("simple bq very very large bounds",
+                    new ParameterSet("simple_bq_very_very_large_bounds",
                                     "a{100,2600}b",
                                     "",
                                     "aa".repeat(150) + "b"),
+                    new ParameterSet("alternating_bq_very_large_bounds",
+                                    "a(?:bc){100,600}d",
+                                    "",
+                                    "a" + "bc".repeat(150) + "d"),
+                    new ParameterSet("overlapping_bq_very_large_bounds",
+                                    "ab(?:..){100,600}d",
+                                    "",
+                                    "a" + "bc".repeat(150) + "d"),
                     new ParameterSet("Android",
                                     "Android[\\- ][\\d]+(?:\\.[\\d]+)(?:\\.[\\d]+|); {0,2}[A-Za-z]{2}[_\\-][A-Za-z]{0,2}\\-? {0,2}; {0,2}(.{1,200}?)( Build[/ ]|\\))",
                                     "",
@@ -164,11 +184,16 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
 
         // excluded by default:
         // {"vowels", "date", "ipv4", "ipv6_1", "ipv6_2", "email_no_cg", "email_dfa", "apache_log"}
-        @Param({"ignoreCase", "URL"}) String benchName;
+        // bounded quantifier benchmarks:
+        // @Param({"bounded_quantifier", "simple_bounded",
+        // "complex_transition", "bq_large_bounds",
+        // "bq_small_bounds", "bq_very_large_bounds", "simple_bq_very_large_bounds",
+        // "simple_bq_very_very_large_bounds", "overlapping_bq_very_large_bounds", "Android"})
+        // String benchName;
+        @Param({"ignoreCase", "URL", "email"}) String benchName;
         Context context;
         Pattern javaPattern;
         Value tregexBool;
-        Value tregexBoolNoUnroll;
         Value tregexCG;
         String input;
 
@@ -177,16 +202,13 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
 
         @Setup
         public void setUp() {
-            context = Context.newBuilder(TRegexTestDummyLanguage.ID).build();
+            context = Context.newBuilder(TRegexTestDummyLanguage.ID).allowExperimentalOptions(true).build();
             context.enter();
             ParameterSet p = benchmarks.get(benchName);
             javaPattern = Pattern.compile(p.regex, toJavaFlags(p.flags));
-            tregexBool = context.parse(TRegexTestDummyLanguage.ID,
-                            TRegexTestDummyLanguage.BENCH_PREFIX + "GenerateDFAImmediately=true/" + p.regex + '/' + p.flags);
-            tregexBoolNoUnroll = context.parse(TRegexTestDummyLanguage.ID,
-                            TRegexTestDummyLanguage.BENCH_PREFIX + "QuantifierUnrollThresholdSingleCC=1,QuantifierUnrollThresholdGroup=1,GenerateDFAImmediately=true/" + p.regex + '/' + p.flags);
-            tregexCG = context.parse(TRegexTestDummyLanguage.ID, TRegexTestDummyLanguage.BENCH_CG_PREFIX + "GenerateDFAImmediately=true/" + p.regex + '/' + p.flags);
-            input = p.input;
+            tregexBool = context.parse(p.createSource(TRegexTestDummyLanguageOptions.ExecutionMode.Bench));
+            tregexCG = context.parse(p.createSource(TRegexTestDummyLanguageOptions.ExecutionMode.BenchCG));
+            input = "_".repeat(200) + p.input;
         }
 
         private static int toJavaFlags(String flags) {
@@ -223,11 +245,6 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
     @Benchmark
     public boolean tregex(BenchState state) {
         return state.tregexBool.execute(state.input, 0).asBoolean();
-    }
-
-    @Benchmark
-    public boolean tregexNoUnroll(BenchState state) {
-        return state.tregexBoolNoUnroll.execute(state.input, 0).asBoolean();
     }
 
     @Benchmark

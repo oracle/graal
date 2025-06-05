@@ -302,10 +302,8 @@ public final class NFAGenerator {
                     // Here we assume the transition set to be of size one to gather the guards,
                     // which is true as long as we don't have lookaround, but in that
                     // case we just don't have guards anyway
-                    long[] constraints = Arrays.stream(mergeBuilder.getConstraints()).map(
-                                    (c) -> TransitionConstraint.create(TransitionConstraint.getQuantId(c), sourceState.getId(), TransitionConstraint.getKind(c))).toArray();
-                    long[] operations = Arrays.stream(mergeBuilder.getOperations()).map((o) -> TransitionOp.create(TransitionOp.getQId(o),
-                                    sourceState.getId(), finalState.getId(), TransitionOp.getKind(o))).toArray();
+                    long[] constraints = mapConstraintStateID(mergeBuilder.getConstraints(), sourceState.getId());
+                    long[] operations = mapOpSourceAndTarget(mergeBuilder.getOperations(), sourceState.getId(), finalState.getId());
 
                     if (containsPositionAssertion) {
                         if (stateSetCC == null || allCCInLookBehind) {
@@ -323,7 +321,7 @@ public final class NFAGenerator {
                                 // of those artificially inserted for look-behind merging; in this
                                 // case we must preserve all transitions for the backward DFA.
                                 clearGroupBoundaries();
-                                return transitionsBuffer.toArray(new NFAStateTransition[transitionsBuffer.size()]);
+                                return transitionsBuffer.toArray(NFAStateTransition[]::new);
                             }
                         }
                     } else {
@@ -343,7 +341,7 @@ public final class NFAGenerator {
                 clearGroupBoundaries();
             }
         }
-        return transitionsBuffer.toArray(new NFAStateTransition[transitionsBuffer.size()]);
+        return transitionsBuffer.toArray(NFAStateTransition[]::new);
     }
 
     private void clearGroupBoundaries() {
@@ -352,12 +350,25 @@ public final class NFAGenerator {
         lastGroup = -1;
     }
 
+    private static long[] mapConstraintStateID(long[] constraints, int stateID) {
+        long[] mapped = new long[constraints.length];
+        for (int i = 0; i < constraints.length; i++) {
+            mapped[i] = TransitionConstraint.setStateID(constraints[i], stateID);
+        }
+        return mapped;
+    }
+
+    private static long[] mapOpSourceAndTarget(long[] operations, int newSource, int newTarget) {
+        long[] mapped = new long[operations.length];
+        for (int i = 0; i < operations.length; i++) {
+            mapped[i] = TransitionOp.setSourceAndTarget(operations[i], newSource, newTarget);
+        }
+        return mapped;
+    }
+
     private static void changeOpTarget(long[] operations, int newTarget) {
         for (int i = 0; i < operations.length; i++) {
-            var qId = TransitionOp.getQId(operations[i]);
-            var op = TransitionOp.getKind(operations[i]);
-            var source = TransitionOp.getSource(operations[i]);
-            operations[i] = TransitionOp.create(qId, source, newTarget, op);
+            operations[i] = TransitionOp.setTarget(operations[i], newTarget);
         }
     }
 

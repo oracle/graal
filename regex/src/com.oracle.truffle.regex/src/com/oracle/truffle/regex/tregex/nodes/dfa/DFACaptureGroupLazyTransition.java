@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,9 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
+import java.util.Arrays;
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -56,6 +59,10 @@ public abstract class DFACaptureGroupLazyTransition {
     public final void applyPreFinal(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         apply(locals, executor, true);
+    }
+
+    public boolean isEmpty() {
+        return this == Single.EMPTY;
     }
 
     protected abstract void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean preFinal);
@@ -85,6 +92,19 @@ public abstract class DFACaptureGroupLazyTransition {
         public int getCost() {
             return transition.getCost();
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof Single o)) {
+                return false;
+            }
+            return transition.equals(o.transition);
+        }
+
+        @Override
+        public int hashCode() {
+            return transition.hashCode();
+        }
     }
 
     abstract static class Branches extends DFACaptureGroupLazyTransition {
@@ -112,6 +132,19 @@ public abstract class DFACaptureGroupLazyTransition {
                 cost += t.getCost();
             }
             return cost;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof Branches o)) {
+                return false;
+            }
+            return common.equals(o.common) && Arrays.deepEquals(transitions, o.transitions);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(common, Arrays.hashCode(transitions));
         }
     }
 
@@ -142,6 +175,14 @@ public abstract class DFACaptureGroupLazyTransition {
                 }
             }
             throw CompilerDirectives.shouldNotReachHere();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof BranchesDirect)) {
+                return false;
+            }
+            return super.equals(obj);
         }
     }
 
@@ -176,6 +217,22 @@ public abstract class DFACaptureGroupLazyTransition {
             }
             throw CompilerDirectives.shouldNotReachHere();
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof BranchesIndirect o)) {
+                return false;
+            }
+            if (!super.equals(obj)) {
+                return false;
+            }
+            return Arrays.equals(possibleValues, o.possibleValues);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(super.hashCode(), Arrays.hashCode(possibleValues));
+        }
     }
 
     public static final class BranchesWithLookupTable extends Branches {
@@ -207,6 +264,22 @@ public abstract class DFACaptureGroupLazyTransition {
                 }
             }
             throw CompilerDirectives.shouldNotReachHere();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof BranchesWithLookupTable that)) {
+                return false;
+            }
+            if (!super.equals(o)) {
+                return false;
+            }
+            return Arrays.equals(lookupTable, that.lookupTable);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(super.hashCode(), Arrays.hashCode(lookupTable));
         }
     }
 }

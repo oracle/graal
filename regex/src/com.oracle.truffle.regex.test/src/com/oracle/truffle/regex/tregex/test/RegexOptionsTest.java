@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,32 +38,66 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex;
+package com.oracle.truffle.regex.tregex.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.test.dummylang.TRegexTestDummyLanguage;
 import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.MatchingMode;
-import org.junit.Test;
-
-import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
-public class RegexOptionsTest {
+public class RegexOptionsTest extends RegexTestBase {
+
+    @BeforeClass
+    public static void forceInitialization() throws IOException {
+        // ideally, this should be context.initializeLanguage("regex"), but that doesn't work for
+        // internal languages.
+        context.parse(org.graalvm.polyglot.Source.newBuilder(TRegexTestDummyLanguage.ID, "/./", "test").build());
+    }
 
     private static RegexOptions parse(String options) {
-        String regex = options + "/./";
-        RegexOptions.Builder builder = RegexOptions.builder(Source.newBuilder(RegexLanguage.ID, regex, "test").build(), regex);
+        Source src = Source.newBuilder(RegexLanguage.ID, options + "/./", "test").build();
+        RegexOptions.Builder builder = RegexOptions.builder(src, src.getOptions(RegexLanguage.get(null)));
         builder.parseOptions();
         return builder.build();
+    }
+
+    private static RegexOptions parse(Map<String, String> options) {
+        Source.LiteralBuilder sourceBuilder = Source.newBuilder(RegexLanguage.ID, "/./", "test");
+        for (Map.Entry<String, String> entry : options.entrySet()) {
+            sourceBuilder.option("regex." + entry.getKey(), entry.getValue());
+        }
+        Source src = sourceBuilder.build();
+        RegexOptions.Builder builder = RegexOptions.builder(src, src.getOptions(RegexLanguage.get(null)));
+        builder.parseOptions();
+        return builder.build();
+    }
+
+    @Override
+    Map<String, String> getEngineOptions() {
+        return Collections.emptyMap();
+    }
+
+    @Override
+    Encodings.Encoding getTRegexEncoding() {
+        return Encodings.UTF_16_RAW;
     }
 
     private static String setBool(String... name) {
@@ -102,6 +136,35 @@ public class RegexOptionsTest {
         assertEquals("abc", parse(setVal(RegexOptions.PYTHON_LOCALE_NAME, "abc")).getPythonLocale());
         assertEquals(123, parse(RegexOptions.MAX_DFA_SIZE_NAME + "=123").getMaxDFASize());
         assertEquals(123, parse(RegexOptions.MAX_BACK_TRACKER_SIZE_NAME + "=123").getMaxBackTrackerCompileSize());
+    }
+
+    @Test
+    public void testSourceOptions() {
+        assertTrue(parse(Map.of("AlwaysEager", "true")).isAlwaysEager());
+        assertTrue(parse(Map.of("BooleanMatch", "true")).isBooleanMatch());
+        assertTrue(parse(Map.of("DumpAutomata", "true")).isDumpAutomata());
+        assertTrue(parse(Map.of("GenerateInput", "true")).isGenerateInput());
+        assertTrue(parse(Map.of("MustAdvance", "true")).isMustAdvance());
+        assertTrue(parse(Map.of("RegressionTestMode", "true")).isRegressionTestMode());
+        assertTrue(parse(Map.of("DumpAutomataExecution", "true")).isStepExecution());
+        assertTrue(parse(Map.of("U180EWhitespace", "true")).isU180EWhitespace());
+        assertTrue(parse(Map.of("Validate", "true")).isValidate());
+        assertTrue(parse(Map.of("ForceLinearExecution", "true")).isForceLinearExecution());
+        assertEquals(ECMAScriptFlavor.INSTANCE, parse(Map.of("Flavor", "ECMAScript")).getFlavor());
+        assertEquals(PythonFlavor.INSTANCE, parse(Map.of("Flavor", "Python")).getFlavor());
+        assertEquals(RubyFlavor.INSTANCE, parse(Map.of("Flavor", "Ruby")).getFlavor());
+        RegexOptions opt = parse(setBool("AlwaysEager", "DumpAutomata", "RegressionTestMode"));
+        assertTrue(opt.isAlwaysEager());
+        assertTrue(opt.isDumpAutomata());
+        assertTrue(opt.isRegressionTestMode());
+        assertEquals(MatchingMode.match, parse(Map.of("MatchingMode", "match")).getMatchingMode());
+        assertEquals(MatchingMode.fullmatch, parse(Map.of("MatchingMode", "fullmatch")).getMatchingMode());
+        assertEquals(MatchingMode.search, parse(Map.of("MatchingMode", "search")).getMatchingMode());
+        assertEquals("abc", parse(Map.of("PythonLocale", "abc")).getPythonLocale());
+        assertEquals(123, parse(Map.of("MaxDFASize", "123")).getMaxDFASize());
+        assertEquals(123, parse(Map.of("MaxBackTrackerJITSize", "123")).getMaxBackTrackerCompileSize());
+        assertEquals(123, parse(Map.of("QuantifierUnrollLimitSingleCC", "123")).quantifierUnrollLimitSingleCC);
+        assertEquals(123, parse(Map.of("QuantifierUnrollLimitGroup", "123")).quantifierUnrollLimitGroup);
     }
 
     @Test(expected = RegexSyntaxException.class)

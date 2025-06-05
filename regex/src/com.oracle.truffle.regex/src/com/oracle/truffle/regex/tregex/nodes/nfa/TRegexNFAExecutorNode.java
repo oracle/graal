@@ -251,7 +251,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     }
 
     private static void expandStateAtEnd(TRegexNFAExecutorLocals locals, NFAState state, boolean isLoopBack) {
-        if (state.hasNotGuardedTransitionToFinalState(true)) {
+        if (state.hasUnGuardedTransitionToFinalState(true)) {
             locals.pushResult(state.getFirstTransitionToFinalState(true), !isLoopBack);
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -180,9 +180,9 @@ public final class TRegexCompilationRequest {
                     // This branch is only taken in boolean match mode when not all quantifiers
                     // could be unrolled. Execution of the remaining bounded quantifiers is
                     // supported in DFA mode, but not in NFA mode.
-                    return TRegexExecNode.createWithDFA(ast, TRegexNFAExecutorNode.create(nfa), compileLazyDFAExecutor(new RegexProfile(), true));
+                    return TRegexExecNode.create(ast, nfa, compileLazyDFAExecutor(new RegexProfile(), true));
                 } else {
-                    return TRegexExecNode.createWithNFA(ast, TRegexNFAExecutorNode.create(nfa));
+                    return TRegexExecNode.create(ast, nfa, TRegexExecNode.NFARegexSearchNode.create(language, TRegexNFAExecutorNode.create(nfa)));
                 }
             } catch (UnsupportedRegexException e) {
                 // fall back to backtracking executor
@@ -191,7 +191,10 @@ public final class TRegexCompilationRequest {
         } else {
             Loggers.LOG_MATCHING_STRATEGY.fine(() -> "using back-tracking matcher, reason: " + ast.canTransformToDFAFailureReason());
         }
-        return TRegexExecNode.createWithNFA(ast, compileBacktrackingExecutor());
+        if (source.getOptions().isForceLinearExecution()) {
+            throw new UnsupportedRegexException("regex cannot be executed in linear time", source);
+        }
+        return TRegexExecNode.create(ast, nfa, TRegexExecNode.NFARegexSearchNode.create(language, compileBacktrackingExecutor()));
     }
 
     private static final class StackEntry {

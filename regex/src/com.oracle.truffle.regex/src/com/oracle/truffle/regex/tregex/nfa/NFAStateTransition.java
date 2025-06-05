@@ -104,9 +104,7 @@ public final class NFAStateTransition implements AbstractTransition<NFAState, NF
         return codePointSet;
     }
 
-    public long[] getConstraints(boolean forward) {
-        // For now, we support counters only in boolean match mode (which is always forward)
-        assert forward || constraints.length == 0;
+    public long[] getConstraints() {
         return constraints;
     }
 
@@ -114,9 +112,7 @@ public final class NFAStateTransition implements AbstractTransition<NFAState, NF
         return constraints.length > 0;
     }
 
-    public long[] getOperations(boolean forward) {
-        // For now, we support counters only in boolean match mode (which is always forward)
-        assert forward || operations.length == 0;
+    public long[] getOperations() {
         return operations;
     }
 
@@ -172,6 +168,6 @@ public final class NFAStateTransition implements AbstractTransition<NFAState, NF
                         Json.prop("matcherBuilder", codePointSet.toString()),
                         Json.prop("groupBoundaries", groupBoundaries),
                         Json.prop("sourceSections", groupBoundaries.indexUpdateSourceSectionsToJson(source.getStateSet().getStateIndex())),
-                        Json.prop("guards", TransitionConstraint.combineToJson(getConstraints(forward), getOperations(forward))));
+                        Json.prop("guards", TransitionConstraint.combineToJson(getConstraints(), getOperations())));
     }
 }

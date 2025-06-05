@@ -170,9 +170,9 @@ final class ASTSuccessor implements JsonConvertible {
                         }
                     }
                     if (!mergedConstraints.isEmpty()) {
-                        int firstQid = TransitionConstraint.getQuantId(mergedConstraints.get(0));
+                        int firstQid = TransitionConstraint.getQuantifierID(mergedConstraints.get(0));
                         for (long constraint : mergedConstraints) {
-                            if (TransitionConstraint.getQuantId(constraint) != firstQid) {
+                            if (TransitionConstraint.getQuantifierID(constraint) != firstQid) {
                                 throw new UnsupportedRegexException("Regex with overlapping bounded quantifier (after look-ahead merging)");
                             }
                         }

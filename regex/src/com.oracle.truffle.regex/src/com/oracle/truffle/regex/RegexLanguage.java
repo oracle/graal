@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex;
 
+import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.CallTarget;
@@ -158,7 +159,7 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
 
     @Override
     protected CallTarget parse(ParsingRequest parsingRequest) {
-        RegexSource source = createRegexSource(parsingRequest.getSource());
+        RegexSource source = createRegexSource(parsingRequest);
         if (source.getOptions().isGenerateInput()) {
             RegexFlavor flavor = source.getOptions().getFlavor();
             RegexParser parser = flavor.createParser(this, source, new CompilationBuffer(source.getEncoding()));
@@ -167,12 +168,13 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
         return RootNode.createConstantNode(createRegexObject(source)).getCallTarget();
     }
 
-    public static RegexSource createRegexSource(Source source) {
+    private static RegexSource createRegexSource(ParsingRequest parsingRequest) {
+        Source source = parsingRequest.getSource();
         String srcStr = source.getCharacters().toString();
         if (srcStr.length() < 2) {
             throw CompilerDirectives.shouldNotReachHere("malformed regex");
         }
-        RegexOptions.Builder optBuilder = RegexOptions.builder(source, srcStr);
+        RegexOptions.Builder optBuilder = RegexOptions.builder(parsingRequest);
         int firstSlash = optBuilder.parseOptions();
         int lastSlash = srcStr.lastIndexOf('/');
         assert firstSlash >= 0 && firstSlash <= srcStr.length();
@@ -211,6 +213,11 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     }
 
     @Override
+    protected OptionDescriptors getSourceOptionDescriptors() {
+        return RegexOptions.getDescriptors();
+    }
+
+    @Override
     protected RegexContext createContext(Env env) {
         return new RegexContext(env);
     }
@@ -224,6 +231,12 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     @Override
     protected Object getScope(RegexContext context) {
         return null;
+    }
+
+    private static final LanguageReference<RegexLanguage> REFERENCE = LanguageReference.create(RegexLanguage.class);
+
+    public static RegexLanguage get(Node node) {
+        return REFERENCE.get(node);
     }
 
     /**

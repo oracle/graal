@@ -71,10 +71,6 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFA, NFAState, 
         super(transitionSet, matcherBuilder, constraints, operations);
     }
 
-    public DFAStateTransitionBuilder createNodeSplitCopy() {
-        return new DFAStateTransitionBuilder(getTransitionSet(), getCodePointSet(), getConstraints(), getOperations());
-    }
-
     @Override
     public int getId() {
         return id;
@@ -100,6 +96,10 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFA, NFAState, 
 
     public void setTarget(DFAStateNodeBuilder target) {
         this.target = target;
+    }
+
+    public short getBqSuccessor() {
+        return hasBqTransition() ? getBqTransition().getId() : (short) getTarget().getId();
     }
 
     @TruffleBoundary

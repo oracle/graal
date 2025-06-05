@@ -349,7 +349,7 @@ public final class NFAExport {
             }
             return StateStyle.UN_ANCHORED_INITIAL;
         }
-        if (mergeFinalStates && state.hasNotGuardedTransitionToAnchoredFinalState(forward) && !state.hasUnGuardedTransitionToUnAnchoredFinalState(forward) ||
+        if (mergeFinalStates && state.hasUnGuardedTransitionToAnchoredFinalState(forward) && !state.hasUnGuardedTransitionToUnAnchoredFinalState(forward) ||
                         state.isAnchoredFinalState(forward)) {
             return StateStyle.ANCHORED_FINAL;
         }
