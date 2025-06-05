@@ -25,8 +25,12 @@
 package com.oracle.svm.core.foreign;
 
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SymbolLookup;
 import java.util.Optional;
 
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -37,11 +41,22 @@ import com.oracle.svm.core.annotate.TargetClass;
  */
 @TargetClass(className = "jdk.internal.foreign.SystemLookup", onlyWith = ForeignAPIPredicates.Enabled.class)
 public final class Target_jdk_internal_foreign_SystemLookup {
+    // Checkstyle: stop
+
+    /*
+     * This field must be cleared because on Windows, it references a closure which contains a
+     * native memory segment.
+     */
+    @Alias //
+    @RecomputeFieldValue(isFinal = true, kind = Kind.Reset) //
+    static SymbolLookup SYSTEM_LOOKUP;
+
     @SuppressWarnings("static-method")
     @Substitute
     public Optional<MemorySegment> find(String name) {
         return RuntimeSystemLookup.INSTANCE.find(name);
     }
+    // Checkstyle: resume
 }
 
 /*

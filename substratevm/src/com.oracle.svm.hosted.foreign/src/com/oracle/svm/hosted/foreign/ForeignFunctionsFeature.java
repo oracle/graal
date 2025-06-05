@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,17 +71,21 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.code.FactoryMethodHolder;
+import com.oracle.svm.core.code.FactoryThrowMethodHolder;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.foreign.AbiUtils;
+import com.oracle.svm.core.foreign.ForeignAPIPredicates;
 import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;
 import com.oracle.svm.core.foreign.JavaEntryPointInfo;
 import com.oracle.svm.core.foreign.NativeEntryPointInfo;
 import com.oracle.svm.core.foreign.RuntimeSystemLookup;
 import com.oracle.svm.core.foreign.SubstrateMappedMemoryUtils;
 import com.oracle.svm.core.foreign.Target_java_nio_MappedMemoryUtils;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UserError;
@@ -106,6 +110,7 @@ import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
+import jdk.internal.foreign.AbstractMemorySegmentImpl;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.AbstractLinker;
 import jdk.internal.foreign.abi.LinkerOptions;
@@ -118,6 +123,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.HOSTED_ONLY.class)
 public class ForeignFunctionsFeature implements InternalFeature {
+
     private static final Map<String, String[]> REQUIRES_CONCEALED = Map.of(
                     "jdk.internal.vm.ci", new String[]{"jdk.vm.ci.code", "jdk.vm.ci.meta", "jdk.vm.ci.amd64", "jdk.vm.ci.aarch64"},
                     "java.base", new String[]{
@@ -242,6 +248,10 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
         @Override
         public BasePhase<MidTierContext> createOptimizeSharedArenaAccessPhase() {
+            VMError.guarantee(ForeignAPIPredicates.SharedArenasEnabled.getValue(), "Support for shared arenas must be enabled");
+            VMError.guarantee(!RuntimeCompilation.isEnabled(), "Shared arenas cannot be used together with runtime compilations (GR-65268)");
+            VMError.guarantee(!VectorAPIEnabled.getValue(), "Shared arenas cannot be used together with Vector API support (GR-65162)");
+
             PhaseSuite<MidTierContext> sharedArenaPhases = new PhaseSuite<>();
             sharedArenaPhases.appendPhase(new SubstrateOptimizeSharedArenaAccessPhase(CanonicalizerPhase.create()));
             /*
@@ -255,6 +265,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
         @Override
         public void registerSafeArenaAccessorClass(AnalysisMetaAccess metaAccess, Class<?> klass) {
+            assert ForeignAPIPredicates.SharedArenasEnabled.getValue();
             ForeignFunctionsFeature.this.registerSafeArenaAccessorClass(metaAccess, klass);
         }
     }
@@ -271,7 +282,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        if (!SubstrateOptions.ForeignAPISupport.getValue()) {
+        if (!SubstrateOptions.isForeignAPIEnabled()) {
             return false;
         }
         UserError.guarantee(!SubstrateOptions.useLLVMBackend(), "Support for the Foreign Function and Memory API is not available with the LLVM backend.");
@@ -292,7 +303,10 @@ public class ForeignFunctionsFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess a) {
         var access = (FeatureImpl.DuringSetupAccessImpl) a;
         ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
-        ImageSingletons.add(SharedArenaSupport.class, new SharedArenaSupportImpl());
+        if (SubstrateOptions.SharedArenaSupport.getValue()) {
+            assert ForeignAPIPredicates.SharedArenasEnabled.getValue();
+            ImageSingletons.add(SharedArenaSupport.class, new SharedArenaSupportImpl());
+        }
 
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         ConfigurationParserUtils.parseAndRegisterConfigurations(getConfigurationParser(imageClassLoader), imageClassLoader, "panama foreign",
@@ -641,6 +655,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         MetaAccessProvider metaAccess = access.getMetaAccess();
 
         registerSafeArenaAccessorClass(metaAccess, FactoryMethodHolder.class);
+        registerSafeArenaAccessorClass(metaAccess, FactoryThrowMethodHolder.class);
         registerSafeArenaAccessorClass(metaAccess, LogUtils.class);
 
         /*
@@ -665,9 +680,19 @@ public class ForeignFunctionsFeature implements InternalFeature {
         registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(mappedMemoryUtils, "unload", long.class, boolean.class, long.class));
         registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(SubstrateMappedMemoryUtils.class, "load", long.class, boolean.class, long.class));
 
-        // the actual method checking a valid session state (if not inlined) is also safe as this
-        // one would yield the error
+        /*
+         * The actual method checking a valid session state (if not inlined) is also safe as this
+         * one would yield the error.
+         */
         registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(MemorySessionImpl.class, "checkValidStateRaw"));
+
+        /*
+         * In case of open type world, methods 'ScopedMemoryAccess.(load|store)*MemorySegment*' do
+         * virtual calls to 'AbstractMemorySegmentImpl.unsafeGet(Base|Offset)'. Those cannot be
+         * inlined (since virtual) but we know that those methods do not access native memory.
+         */
+        registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(AbstractMemorySegmentImpl.class, "unsafeGetBase"));
+        registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(AbstractMemorySegmentImpl.class, "unsafeGetOffset"));
     }
 
     protected void registerSafeArenaAccessorClass(MetaAccessProvider metaAccess, Class<?> klass) {

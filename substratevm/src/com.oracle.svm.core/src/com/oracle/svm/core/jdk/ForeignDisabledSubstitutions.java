@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,7 +45,7 @@ import com.oracle.svm.core.util.VMError;
 final class ForeignDisabled implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return !SubstrateOptions.ForeignAPISupport.getValue();
+        return !SubstrateOptions.isForeignAPIEnabled();
     }
 }
 
@@ -173,7 +173,7 @@ final class ForeignDisabledSubstitutions {
     private static final String OPTION_NAME = SubstrateOptionsParser.commandArgument(SubstrateOptions.ForeignAPISupport, "+");
 
     static RuntimeException fail() {
-        assert !SubstrateOptions.ForeignAPISupport.getValue();
+        assert !SubstrateOptions.isForeignAPIEnabled();
         throw VMError.unsupportedFeature("Support for the Java Foreign Function and Memory API is not active: enable with " + OPTION_NAME);
     }
 }

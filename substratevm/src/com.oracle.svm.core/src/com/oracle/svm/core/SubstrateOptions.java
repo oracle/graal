@@ -51,8 +51,10 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
@@ -1421,10 +1423,33 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> UseBaseLayerInclusionPolicy = new HostedOptionKey<>(false);
 
     @Option(help = "Support for calls via the Java Foreign Function and Memory API", type = Expert) //
-    public static final HostedOptionKey<Boolean> ForeignAPISupport = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> ForeignAPISupport = new HostedOptionKey<>(true);
+
+    @Fold
+    public static boolean isForeignAPIEnabled() {
+        /*
+         * FFM API should be enabled by default only if running on a supported and tested platform.
+         * However, if the option is explicitly enabled, we still return 'true'.
+         */
+        return SubstrateOptions.ForeignAPISupport.getValue() &&
+                        (SubstrateOptions.ForeignAPISupport.hasBeenSet() || Platform.includedIn(PLATFORM_JNI.class) && Platform.includedIn(NATIVE_ONLY.class));
+    }
 
     @Option(help = "Support for intrinsics from the Java Vector API", type = Expert) //
     public static final HostedOptionKey<Boolean> VectorAPISupport = new HostedOptionKey<>(false);
+
+    @Option(help = "Enable support for Arena.ofShared ", type = Expert)//
+    public static final HostedOptionKey<Boolean> SharedArenaSupport = new HostedOptionKey<>(false, key -> {
+        if (key.getValue()) {
+            // GR-65268: Shared arenas cannot be used together with runtime compilations
+            UserError.guarantee(!RuntimeCompilation.isEnabled(), "Arena.ofShared is not supported with runtime compilations. " +
+                            "Replace usages of Arena.ofShared with Arena.ofAuto and disable shared arena support.");
+            // GR-65162: Shared arenas cannot be used together with Vector API support
+            UserError.guarantee(!VectorAPIEnabled.getValue(), "Support for Arena.ofShared is not available with Vector API support. " +
+                            "Either disable Vector API support using %s or replace usages of Arena.ofShared with Arena.ofAuto and disable shared arena support.",
+                            SubstrateOptionsParser.commandArgument(VectorAPISupport, "-"));
+        }
+    });
 
     @Option(help = "Assume new types cannot be added after analysis", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> ClosedTypeWorld = new HostedOptionKey<>(true) {
