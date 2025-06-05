@@ -626,22 +626,24 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case Bytecode.SELECT: {
-                    if (popBoolean(frame, stackPointer - 1)) {
+                    if (profileCondition(bytecode, offset, popBoolean(frame, stackPointer - 1))) {
                         drop(frame, stackPointer - 2);
                     } else {
                         WasmFrame.copyPrimitive(frame, stackPointer - 2, stackPointer - 3);
                         dropPrimitive(frame, stackPointer - 2);
                     }
+                    offset += 2;
                     stackPointer -= 2;
                     break;
                 }
                 case Bytecode.SELECT_OBJ: {
-                    if (popBoolean(frame, stackPointer - 1)) {
+                    if (profileCondition(bytecode, offset, popBoolean(frame, stackPointer - 1))) {
                         dropObject(frame, stackPointer - 2);
                     } else {
                         WasmFrame.copyObject(frame, stackPointer - 2, stackPointer - 3);
                         dropObject(frame, stackPointer - 2);
                     }
+                    offset += 2;
                     stackPointer -= 2;
                     break;
                 }
