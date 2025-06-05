@@ -35,6 +35,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
 import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceSupport;
 import com.oracle.svm.util.ModuleSupport;
 
@@ -93,7 +94,10 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
 
     @Override
     protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-        return new AnalysisBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext, hostVM, true, StrictDynamicAccessInferenceSupport.singleton());
+        StrictDynamicAccessInferenceSupport dynamicAccessInferenceSupport = StrictDynamicAccessInferenceFeature.isDisabled()
+                        ? null
+                        : StrictDynamicAccessInferenceSupport.singleton();
+        return new AnalysisBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext, hostVM, true, dynamicAccessInferenceSupport);
     }
 
     public static class AnalysisBytecodeParser extends SharedBytecodeParser {

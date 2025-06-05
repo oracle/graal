@@ -35,10 +35,6 @@ public class DataFlowAnalysisException extends RuntimeException {
 
     @Serial private static final long serialVersionUID = 1L;
 
-    public DataFlowAnalysisException() {
-        super();
-    }
-
     public DataFlowAnalysisException(String message) {
         super(message);
     }

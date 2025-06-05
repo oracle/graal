@@ -55,6 +55,7 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.dynamicaccessinference.DynamicAccessInferenceLog;
 import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
@@ -174,6 +175,8 @@ public class ResourcesFeature implements InternalFeature {
 
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
+
+    private DynamicAccessInferenceLog inferenceLog;
 
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry<ConfigurationCondition> {
         private final ClassInitializationSupport classInitializationSupport = ClassInitializationSupport.singleton();
@@ -393,6 +396,7 @@ public class ResourcesFeature implements InternalFeature {
         ImageSingletons.add(RuntimeResourceSupport.class, resourcesRegistry);
         EmbeddedResourcesInfo embeddedResourcesInfo = new EmbeddedResourcesInfo();
         ImageSingletons.add(EmbeddedResourcesInfo.class, embeddedResourcesInfo);
+        inferenceLog = ImageSingletons.contains(DynamicAccessInferenceLog.class) ? DynamicAccessInferenceLog.singleton() : null;
     }
 
     private static ResourcesRegistryImpl resourceRegistryImpl() {
@@ -713,6 +717,9 @@ public class ResourcesFeature implements InternalFeature {
                         throw VMError.shouldNotReachHere(e);
                     }
                     b.add(ReachabilityRegistrationNode.create(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName), reason));
+                    if (inferenceLog != null) {
+                        inferenceLog.logRegistration(b, reason, targetMethod, clazz, new String[]{resource});
+                    }
                     return true;
                 }
                 return false;

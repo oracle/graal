@@ -40,18 +40,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.oracle.svm.core.TrackDynamicAccessEnabled;
 import com.oracle.svm.hosted.DynamicAccessDetectionFeature;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
-import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
@@ -72,6 +67,8 @@ import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.dynamicaccessinference.DynamicAccessInferenceLog;
+import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.util.ModuleSupport;
@@ -128,6 +125,7 @@ public final class ReflectionPlugins {
     private final ClassInitializationSupport classInitializationSupport;
     private final boolean trackDynamicAccess;
     private final DynamicAccessDetectionFeature dynamicAccessDetectionFeature;
+    private final DynamicAccessInferenceLog inferenceLog;
 
     private ReflectionPlugins(ImageClassLoader imageClassLoader, AnnotationSubstitutionProcessor annotationSubstitutions,
                     ClassInitializationPlugin classInitializationPlugin, AnalysisUniverse aUniverse, ParsingReason reason, FallbackFeature fallbackFeature) {
@@ -142,6 +140,8 @@ public final class ReflectionPlugins {
         dynamicAccessDetectionFeature = trackDynamicAccess ? DynamicAccessDetectionFeature.instance() : null;
 
         this.classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+
+        this.inferenceLog = ImageSingletons.contains(DynamicAccessInferenceLog.class) ? DynamicAccessInferenceLog.singleton() : null;
     }
 
     public static void registerInvocationPlugins(ImageClassLoader imageClassLoader, AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -151,6 +151,10 @@ public final class ReflectionPlugins {
         rp.registerClassPlugins(plugins);
     }
 
+    /**
+     * Used to check if invocation inference should be handled by
+     * {@link StrictDynamicAccessInferenceFeature}.
+     */
     private boolean strictDynamicAccessInferenceIsActive() {
         return StrictDynamicAccessInferenceFeature.isEnforced() && reason == ParsingReason.PointsToAnalysis;
     }
@@ -181,35 +185,35 @@ public final class ReflectionPlugins {
 
     private void registerMethodHandlesPlugins(InvocationPlugins plugins) {
         for (Class<?> clazz : List.of(Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class)) {
-            registerFoldInvocationPlugins(plugins, clazz, "toString", "toBinaryString", "toOctalString", "toHexString");
+            registerFoldInvocationPlugins(plugins, false, clazz, "toString", "toBinaryString", "toOctalString", "toHexString");
         }
-        registerFoldInvocationPlugins(plugins, String.class, "valueOf");
+        registerFoldInvocationPlugins(plugins, false, String.class, "valueOf");
 
-        registerFoldInvocationPlugins(plugins, MethodHandles.class,
+        registerFoldInvocationPlugins(plugins, false, MethodHandles.class,
                         "publicLookup", "privateLookupIn",
                         "arrayConstructor", "arrayLength", "arrayElementGetter", "arrayElementSetter", "arrayElementVarHandle",
                         "byteArrayViewVarHandle", "byteBufferViewVarHandle");
 
-        registerFoldInvocationPlugins(plugins, MethodHandles.Lookup.class,
+        registerFoldInvocationPlugins(plugins, false, MethodHandles.Lookup.class,
                         "in", "accessClass",
                         "unreflect", "unreflectSpecial", "unreflectConstructor",
                         "unreflectGetter", "unreflectSetter");
 
         if (!strictDynamicAccessInferenceIsActive()) {
-            registerFoldInvocationPlugins(plugins, MethodHandles.Lookup.class,
+            registerFoldInvocationPlugins(plugins, true, MethodHandles.Lookup.class,
                             "findStatic", "findVirtual", "findConstructor", "findClass", "findSpecial",
                             "findGetter", "findSetter", "findVarHandle", "findStaticGetter", "findStaticSetter");
         }
 
-        registerFoldInvocationPlugins(plugins, MethodType.class,
+        registerFoldInvocationPlugins(plugins, false, MethodType.class,
                         "methodType", "genericMethodType",
                         "changeParameterType", "insertParameterTypes", "appendParameterTypes", "replaceParameterTypes", "dropParameterTypes",
                         "changeReturnType", "erase", "generic", "wrap", "unwrap",
                         "parameterType", "parameterCount", "returnType", "lastParameterType");
 
-        registerFoldInvocationPlugins(plugins, MethodHandle.class, "asType");
+        registerFoldInvocationPlugins(plugins, false, MethodHandle.class, "asType");
 
-        registerFoldInvocationPlugins(plugins, VAR_FORM_CLASS, "resolveMemberName");
+        registerFoldInvocationPlugins(plugins, false, VAR_FORM_CLASS, "resolveMemberName");
 
         registerConditionalFoldInvocationPlugins(plugins);
 
@@ -278,7 +282,7 @@ public final class ReflectionPlugins {
                     }
                 }
                 return true;
-            });
+            }, true);
         }
 
         Method methodHandlesLookupUnreflectVarHandle = ReflectionUtil.lookupMethod(MethodHandles.Lookup.class, "unreflectVarHandle", Field.class);
@@ -299,12 +303,12 @@ public final class ReflectionPlugins {
                 }
             }
             return true;
-        });
+        }, false);
     }
 
     private void registerClassPlugins(InvocationPlugins plugins) {
         if (!strictDynamicAccessInferenceIsActive()) {
-            registerFoldInvocationPlugins(plugins, Class.class,
+            registerFoldInvocationPlugins(plugins, true, Class.class,
                             "getField", "getMethod", "getConstructor",
                             "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
         }
@@ -315,7 +319,7 @@ public final class ReflectionPlugins {
          * things like calling setAccessible(true), so method inlining before analysis cannot
          * constant-fold them automatically. So we register them manually here for folding too.
          */
-        registerFoldInvocationPlugins(plugins, ReflectionUtil.lookupClass(false, "sun.nio.ch.Reflect"),
+        registerFoldInvocationPlugins(plugins, false, ReflectionUtil.lookupClass(false, "sun.nio.ch.Reflect"),
                         "lookupConstructor", "lookupMethod", "lookupField");
 
         if (!strictDynamicAccessInferenceIsActive() && MissingRegistrationUtils.throwMissingRegistrationErrors() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
@@ -395,8 +399,6 @@ public final class ReflectionPlugins {
      * the constructor parameter.
      */
     private boolean processMethodHandlesLookup(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
-        Supplier<String> targetParameters = () -> "";
-
         if (StackTraceUtils.ignoredBySecurityStackWalk(b.getMetaAccess(), b.getMethod())) {
             /*
              * If our immediate caller (which is the only method available at the time the
@@ -411,9 +413,9 @@ public final class ReflectionPlugins {
             /* The constructor of Lookup is not public, so we need to invoke it via reflection. */
             lookup = LOOKUP_CONSTRUCTOR.newInstance(callerClass);
         } catch (Throwable ex) {
-            return throwException(b, targetMethod, targetParameters, ex.getClass(), ex.getMessage());
+            return throwException(b, targetMethod, null, new Object[]{}, ex.getClass(), ex.getMessage(), false);
         }
-        return pushConstant(b, targetMethod, targetParameters, JavaKind.Object, lookup, false) != null;
+        return pushConstant(b, targetMethod, null, new Object[]{}, JavaKind.Object, lookup, false, false) != null;
     }
 
     /**
@@ -430,7 +432,10 @@ public final class ReflectionPlugins {
         }
         String className = (String) classNameValue;
         boolean initialize = (Boolean) initializeValue;
-        Supplier<String> targetParameters = () -> className + ", " + initialize;
+
+        Object[] arguments = targetMethod.getParameters().length == 1
+                        ? new Object[]{className}
+                        : new Object[]{className, initialize, ClassForNameSupport.respectClassLoader() ? loader : DynamicAccessInferenceLog.ignoreArgument()};
 
         TypeResult<Class<?>> typeResult = ImageClassLoader.findClass(className, false, loader);
         if (!typeResult.isPresent()) {
@@ -438,14 +443,14 @@ public final class ReflectionPlugins {
                 return false;
             }
             Throwable e = typeResult.getException();
-            return throwException(b, targetMethod, targetParameters, e.getClass(), e.getMessage());
+            return throwException(b, targetMethod, null, arguments, e.getClass(), e.getMessage(), true);
         }
         Class<?> clazz = typeResult.get();
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return false;
         }
 
-        JavaConstant classConstant = pushConstant(b, targetMethod, targetParameters, JavaKind.Object, clazz, false);
+        JavaConstant classConstant = pushConstant(b, targetMethod, null, arguments, JavaKind.Object, clazz, false, true);
         if (classConstant == null) {
             return false;
         }
@@ -483,7 +488,7 @@ public final class ReflectionPlugins {
 
         if (result != null) {
             b.addPush(JavaKind.Object, ConstantNode.forConstant(result, b.getMetaAccess()));
-            traceConstant(b, targetMethod, clazz::getName, result);
+            traceConstant(b, targetMethod, clazz, new Object[]{}, result, false);
             return true;
         }
 
@@ -495,23 +500,23 @@ public final class ReflectionPlugins {
      * parameter types. It also simplifies handling of different JDK versions, because methods not
      * yet available in JDK 8 (like VarHandle methods) are silently ignored.
      */
-    private void registerFoldInvocationPlugins(InvocationPlugins plugins, Class<?> declaringClass, String... methodNames) {
+    private void registerFoldInvocationPlugins(InvocationPlugins plugins, boolean logAsInferredDynamicAccess, Class<?> declaringClass, String... methodNames) {
         Set<String> methodNamesSet = new HashSet<>(Arrays.asList(methodNames));
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ReflectionPlugins.class, declaringClass);
         for (Method method : declaringClass.getDeclaredMethods()) {
             if (methodNamesSet.contains(method.getName()) && !method.isSynthetic()) {
-                registerFoldInvocationPlugin(plugins, method);
+                registerFoldInvocationPlugin(plugins, method, logAsInferredDynamicAccess);
             }
         }
     }
 
     private static final Predicate<Object[]> alwaysAllowConstantFolding = args -> true;
 
-    private void registerFoldInvocationPlugin(InvocationPlugins plugins, Method reflectionMethod) {
-        registerFoldInvocationPlugin(plugins, reflectionMethod, alwaysAllowConstantFolding);
+    private void registerFoldInvocationPlugin(InvocationPlugins plugins, Method reflectionMethod, boolean logAsInferredDynamicAccess) {
+        registerFoldInvocationPlugin(plugins, reflectionMethod, alwaysAllowConstantFolding, logAsInferredDynamicAccess);
     }
 
-    private void registerFoldInvocationPlugin(InvocationPlugins plugins, Method reflectionMethod, Predicate<Object[]> allowConstantFolding) {
+    private void registerFoldInvocationPlugin(InvocationPlugins plugins, Method reflectionMethod, Predicate<Object[]> allowConstantFolding, boolean logAsInferredDynamicAccess) {
         if (!isAllowedReturnType(reflectionMethod.getReturnType())) {
             throw VMError.shouldNotReachHere("Return type of method " + reflectionMethod + " is not on the allow-list for types that are immutable");
         }
@@ -526,7 +531,7 @@ public final class ReflectionPlugins {
         plugins.register(reflectionMethod.getDeclaringClass(), new RequiredInvocationPlugin(reflectionMethod.getName(), parameterTypes.toArray(new Class<?>[0])) {
             @Override
             public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
-                return foldInvocationUsingReflection(b, targetMethod, reflectionMethod, receiver, args, allowConstantFolding);
+                return foldInvocationUsingReflection(b, targetMethod, reflectionMethod, receiver, args, allowConstantFolding, logAsInferredDynamicAccess);
             }
         });
     }
@@ -536,7 +541,7 @@ public final class ReflectionPlugins {
     }
 
     private boolean foldInvocationUsingReflection(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Method reflectionMethod, Receiver receiver, ValueNode[] args,
-                    Predicate<Object[]> allowConstantFolding) {
+                    Predicate<Object[]> allowConstantFolding, boolean logAsInferredDynamicAccess) {
         assert b.getMetaAccess().lookupJavaMethod(reflectionMethod).equals(targetMethod) : "Fold method mismatch: " + reflectionMethod + " != " + targetMethod;
 
         Object receiverValue;
@@ -570,17 +575,13 @@ public final class ReflectionPlugins {
             return false;
         }
 
-        /* String representation of the parameters for debug printing. */
-        Supplier<String> targetParameters = () -> (receiverValue == null ? "" : receiverValue + "; ") +
-                        Stream.of(argValues).map(arg -> arg instanceof Object[] ? Arrays.toString((Object[]) arg) : Objects.toString(arg)).collect(Collectors.joining(", "));
-
         Object returnValue;
         try {
             returnValue = reflectionMethod.invoke(receiverValue, argValues);
         } catch (InvocationTargetException ex) {
-            return throwException(b, targetMethod, targetParameters, ex.getTargetException().getClass(), ex.getTargetException().getMessage());
+            return throwException(b, targetMethod, receiverValue, argValues, ex.getTargetException().getClass(), ex.getTargetException().getMessage(), logAsInferredDynamicAccess);
         } catch (Throwable ex) {
-            return throwException(b, targetMethod, targetParameters, ex.getClass(), ex.getMessage());
+            return throwException(b, targetMethod, receiverValue, argValues, ex.getClass(), ex.getMessage(), logAsInferredDynamicAccess);
         }
 
         JavaKind returnKind = targetMethod.getSignature().getReturnKind();
@@ -588,11 +589,11 @@ public final class ReflectionPlugins {
             /*
              * The target method is a side-effect free void method that did not throw an exception.
              */
-            traceConstant(b, targetMethod, targetParameters, JavaKind.Void);
+            traceConstant(b, targetMethod, receiverValue, argValues, JavaKind.Void, logAsInferredDynamicAccess);
             return true;
         }
 
-        return pushConstant(b, targetMethod, targetParameters, returnKind, returnValue, false) != null;
+        return pushConstant(b, targetMethod, receiverValue, argValues, returnKind, returnValue, false, logAsInferredDynamicAccess) != null;
     }
 
     private <T> void registerBulkInvocationPlugin(InvocationPlugins plugins, Class<T> declaringClass, String methodName, Consumer<T> registrationCallback) {
@@ -780,8 +781,8 @@ public final class ReflectionPlugins {
         return annotated != null && annotated.isAnnotationPresent(Delete.class);
     }
 
-    private JavaConstant pushConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Supplier<String> targetParameters, JavaKind returnKind, Object returnValue,
-                    boolean allowNullReturnValue) {
+    private JavaConstant pushConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object receiver, Object[] arguments, JavaKind returnKind, Object returnValue,
+                    boolean allowNullReturnValue, boolean logAsInferredDynamicAccess) {
         Object intrinsicValue = getIntrinsic(b, returnValue == null && allowNullReturnValue ? NULL_MARKER : returnValue);
         if (intrinsicValue == null) {
             return null;
@@ -797,11 +798,12 @@ public final class ReflectionPlugins {
         }
 
         b.addPush(returnKind, ConstantNode.forConstant(intrinsicConstant, b.getMetaAccess()));
-        traceConstant(b, targetMethod, targetParameters, intrinsicValue);
+        traceConstant(b, targetMethod, receiver, arguments, intrinsicValue, logAsInferredDynamicAccess);
         return intrinsicConstant;
     }
 
-    private boolean throwException(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Supplier<String> targetParameters, Class<? extends Throwable> exceptionClass, String originalMessage) {
+    private boolean throwException(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object receiver, Object[] arguments, Class<? extends Throwable> exceptionClass, String originalMessage,
+                    boolean logAsInferredDynamicAccess) {
         /* Get the exception throwing method that has a message parameter. */
         Method exceptionMethod = ExceptionSynthesizer.throwExceptionMethodOrNull(exceptionClass, String.class);
         if (exceptionMethod == null) {
@@ -812,27 +814,39 @@ public final class ReflectionPlugins {
             return false;
         }
 
+        /*
+         * Because tracing can add a ReachabilityRegistrationNode to the graph, it has to happen
+         * before exception synthesis.
+         */
+        traceException(b, targetMethod, receiver, arguments, exceptionClass, logAsInferredDynamicAccess);
+
         String message = originalMessage + ". This exception was synthesized during native image building from a call to " + targetMethod.format("%H.%n(%p)") +
                         " with constant arguments.";
         ExceptionSynthesizer.throwException(b, exceptionMethod, message);
-        traceException(b, targetMethod, targetParameters, exceptionClass);
         return true;
     }
 
-    private static void traceConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Supplier<String> targetParameters, Object value) {
+    private void traceConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object receiver, Object[] arguments, Object value, boolean logAsInferredDynamicAccess) {
+        if (logAsInferredDynamicAccess && inferenceLog != null) {
+            inferenceLog.logConstant(b, reason, targetMethod, receiver, arguments, value);
+        }
         if (Options.ReflectionPluginTracing.getValue()) {
             System.out.println("Call to " + targetMethod.format("%H.%n(%p)") +
                             " reached in " + b.getMethod().format("%H.%n(%p)") +
-                            " with parameters (" + targetParameters.get() + ")" +
+                            " with parameters (" + Arrays.toString(arguments) + ")" +
                             " was reduced to the constant " + value);
         }
     }
 
-    private static void traceException(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Supplier<String> targetParameters, Class<? extends Throwable> exceptionClass) {
+    private void traceException(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object receiver, Object[] arguments, Class<? extends Throwable> exceptionClass,
+                    boolean logAsInferredDynamicAccess) {
+        if (logAsInferredDynamicAccess && inferenceLog != null) {
+            inferenceLog.logException(b, reason, targetMethod, receiver, arguments, exceptionClass);
+        }
         if (Options.ReflectionPluginTracing.getValue()) {
             System.out.println("Call to " + targetMethod.format("%H.%n(%p)") +
                             " reached in " + b.getMethod().format("%H.%n(%p)") +
-                            " with parameters (" + targetParameters.get() + ")" +
+                            " with parameters (" + Arrays.toString(arguments) + ")" +
                             " was reduced to a \"throw new " + exceptionClass.getName() + "(...)\"");
         }
     }
