@@ -29,7 +29,6 @@ import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLA
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_START_IDENTITY;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_TOP_IDENTITY;
 
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -39,7 +38,6 @@ import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
-import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -359,55 +357,11 @@ public final class ThreadLocalAllocation {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/shared/memAllocator.cpp#L333-L341")
     @Uninterruptible(reason = "Holds uninitialized memory.")
     private static Pointer allocateRawMemory(UnsignedWord size, BooleanPointer allocatedOutsideTlab) {
-        Pointer memory = allocateRawMemoryInTlabSlow(size);
+        Pointer memory = TlabSupport.allocateRawMemoryInTlabSlow(size);
         if (memory.isNonNull()) {
             return memory;
         }
         return allocateRawMemoryOutsideTlab(size, allocatedOutsideTlab);
-    }
-
-    // TEMP (chaeubl): move this to TlabSupport and make most TlabSupport methods private
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+25/src/hotspot/share/gc/shared/memAllocator.cpp#L257-L329")
-    @Uninterruptible(reason = "Holds uninitialized memory.")
-    private static Pointer allocateRawMemoryInTlabSlow(UnsignedWord size) {
-        ThreadLocalAllocation.Descriptor tlab = getTlab();
-
-        /*
-         * Retain tlab and allocate object as an heap allocation if the amount free in the tlab is
-         * too large to discard.
-         */
-        if (TlabSupport.shouldRetainTlab(tlab)) {
-            TlabSupport.recordSlowAllocation();
-            return Word.nullPointer();
-        }
-
-        /* Discard tlab and allocate a new one. */
-
-        TlabSupport.recordRefillWaste();
-        TlabSupport.retireTlab(CurrentIsolate.getCurrentThread(), false);
-
-        /* To minimize fragmentation, the last tlab may be smaller than the rest. */
-        UnsignedWord newTlabSize = TlabSupport.computeSizeOfNewTlab(size);
-        if (newTlabSize.equal(0)) {
-            return Word.nullPointer();
-        }
-
-        /*
-         * Allocate a new TLAB requesting newTlabSize. Any size between minimal and newTlabSize is
-         * accepted.
-         */
-        UnsignedWord computedMinSize = TlabSupport.computeMinSizeOfNewTlab(size);
-
-        WordPointer allocatedTlabSize = StackValue.get(WordPointer.class);
-        Pointer memory = YoungGeneration.getHeapAllocation().allocateNewTlab(computedMinSize, newTlabSize, allocatedTlabSize);
-        if (memory.isNull()) {
-            assert Word.unsigned(0).equal(allocatedTlabSize.read()) : "Allocation failed, but actual size was updated.";
-            return Word.nullPointer();
-        }
-        assert Word.unsigned(0).notEqual(allocatedTlabSize.read()) : "Allocation succeeded but actual size not updated.";
-
-        TlabSupport.fillTlab(memory, memory.add(size), allocatedTlabSize);
-        return memory;
     }
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+25/src/hotspot/share/gc/shared/memAllocator.cpp#L239-L251")
