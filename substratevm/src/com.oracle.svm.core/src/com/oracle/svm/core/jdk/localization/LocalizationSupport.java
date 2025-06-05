@@ -57,6 +57,7 @@ import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -293,6 +294,12 @@ public class LocalizationSupport {
             /* Those cases will throw a NullPointerException before any lookup */
             return true;
         }
-        return registeredBundles.containsKey(baseName) && registeredBundles.get(baseName).satisfied();
+        if (registeredBundles.containsKey(baseName)) {
+            if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+                MetadataTracer.singleton().traceResourceBundle(baseName);
+            }
+            return registeredBundles.get(baseName).satisfied();
+        }
+        return false;
     }
 }
