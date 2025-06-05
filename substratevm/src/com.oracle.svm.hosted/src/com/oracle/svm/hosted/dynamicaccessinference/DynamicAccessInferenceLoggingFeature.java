@@ -25,12 +25,13 @@
 package com.oracle.svm.hosted.dynamicaccessinference;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.List;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -47,14 +48,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class DynamicAccessInferenceLoggingFeature implements InternalFeature {
 
     static class Options {
-        @Option(help = "Specify the .json log file location for inferred dynamic accesses.", stability = OptionStability.EXPERIMENTAL)//
-        static final HostedOptionKey<String> LogDynamicAccessInference = new HostedOptionKey<>(null);
+        @Option(help = "Log inferred dynamic access invocations.", stability = OptionStability.EXPERIMENTAL)//
+        static final HostedOptionKey<Boolean> LogDynamicAccessInference = new HostedOptionKey<>(false);
     }
 
     private DynamicAccessInferenceLog log;
 
     private static boolean isEnabled() {
-        return Options.LogDynamicAccessInference.getValue() != null || shouldWarnForNonStrictFolding();
+        return Options.LogDynamicAccessInference.getValue() || shouldWarnForNonStrictFolding();
     }
 
     @Override
@@ -70,9 +71,8 @@ public class DynamicAccessInferenceLoggingFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        String logLocation = Options.LogDynamicAccessInference.getValue();
-        if (logLocation != null) {
-            dump(logLocation);
+        if (Options.LogDynamicAccessInference.getValue()) {
+            dumpLog();
         }
         if (shouldWarnForNonStrictFolding()) {
             warnForNonStrictFolding();
@@ -81,18 +81,21 @@ public class DynamicAccessInferenceLoggingFeature implements InternalFeature {
         log.seal();
     }
 
-    private void dump(String location) {
+    private void dumpLog() {
         assert !log.isSealed() : "Attempt to access sealed log";
-        try (JsonWriter out = new JsonPrettyWriter(Path.of(location));
-                        JsonBuilder.ArrayBuilder arrayBuilder = out.arrayBuilder()) {
-            for (DynamicAccessInferenceLog.LogEntry entry : log.getEntries()) {
-                try (JsonBuilder.ObjectBuilder objectBuilder = arrayBuilder.nextEntry().object()) {
-                    entry.toJson(objectBuilder);
+        String reportsPath = SubstrateOptions.reportsPath();
+        ReportUtils.report("inferred dynamic access invocations", reportsPath, "dynamic_access_inference", "json", (writer) -> {
+            try (JsonWriter out = new JsonPrettyWriter(writer);
+                            JsonBuilder.ArrayBuilder arrayBuilder = out.arrayBuilder()) {
+                for (DynamicAccessInferenceLog.LogEntry entry : log.getEntries()) {
+                    try (JsonBuilder.ObjectBuilder objectBuilder = arrayBuilder.nextEntry().object()) {
+                        entry.toJson(objectBuilder);
+                    }
                 }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        });
     }
 
     private static boolean shouldWarnForNonStrictFolding() {

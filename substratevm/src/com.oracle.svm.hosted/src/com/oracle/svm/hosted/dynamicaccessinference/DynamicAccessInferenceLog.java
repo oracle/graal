@@ -120,9 +120,9 @@ public class DynamicAccessInferenceLog {
         }
 
         public void toJson(JsonBuilder.ObjectBuilder builder) throws IOException {
-            try (JsonBuilder.ArrayBuilder foldContextBuilder = builder.append("foldContext").array()) {
+            try (JsonBuilder.ArrayBuilder inliningContextBuilder = builder.append("inliningContext").array()) {
                 for (StackTraceElement element : callStack) {
-                    foldContextBuilder.append(element);
+                    inliningContextBuilder.append(element);
                 }
             }
             builder.append("targetMethod", targetMethod.format("%H.%n(%p)"));
