@@ -152,11 +152,13 @@ public final class ReflectionPlugins {
     }
 
     /**
-     * Used to check if invocation inference should be handled by
+     * Used to check if invocation inference should not be handled by
      * {@link StrictDynamicAccessInferenceFeature}.
+     *
+     * @return {@code true} if the inference should be unrestricted.
      */
-    private boolean strictDynamicAccessInferenceIsActive() {
-        return StrictDynamicAccessInferenceFeature.isEnforced() && reason == ParsingReason.PointsToAnalysis;
+    private boolean nonStrictDynamicAccessInference() {
+        return !(StrictDynamicAccessInferenceFeature.isEnforced() && reason == ParsingReason.PointsToAnalysis);
     }
 
     private static final Class<?> VAR_FORM_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.VarForm");
@@ -199,7 +201,7 @@ public final class ReflectionPlugins {
                         "unreflect", "unreflectSpecial", "unreflectConstructor",
                         "unreflectGetter", "unreflectSetter");
 
-        if (!strictDynamicAccessInferenceIsActive()) {
+        if (nonStrictDynamicAccessInference()) {
             registerFoldInvocationPlugins(plugins, true, MethodHandles.Lookup.class,
                             "findStatic", "findVirtual", "findConstructor", "findClass", "findSpecial",
                             "findGetter", "findSetter", "findVarHandle", "findStaticGetter", "findStaticSetter");
@@ -264,7 +266,7 @@ public final class ReflectionPlugins {
      * about the reflection API methods implementation.
      */
     private void registerConditionalFoldInvocationPlugins(InvocationPlugins plugins) {
-        if (!strictDynamicAccessInferenceIsActive()) {
+        if (nonStrictDynamicAccessInference()) {
             Method methodHandlesLookupFindStaticVarHandle = ReflectionUtil.lookupMethod(MethodHandles.Lookup.class, "findStaticVarHandle", Class.class, String.class, Class.class);
             registerFoldInvocationPlugin(plugins, methodHandlesLookupFindStaticVarHandle, (args) -> {
                 /* VarHandles.makeFieldHandle() triggers init of receiver class (JDK-8291065). */
@@ -307,7 +309,7 @@ public final class ReflectionPlugins {
     }
 
     private void registerClassPlugins(InvocationPlugins plugins) {
-        if (!strictDynamicAccessInferenceIsActive()) {
+        if (nonStrictDynamicAccessInference()) {
             registerFoldInvocationPlugins(plugins, true, Class.class,
                             "getField", "getMethod", "getConstructor",
                             "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
@@ -322,7 +324,7 @@ public final class ReflectionPlugins {
         registerFoldInvocationPlugins(plugins, false, ReflectionUtil.lookupClass(false, "sun.nio.ch.Reflect"),
                         "lookupConstructor", "lookupMethod", "lookupField");
 
-        if (!strictDynamicAccessInferenceIsActive() && MissingRegistrationUtils.throwMissingRegistrationErrors() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
+        if (nonStrictDynamicAccessInference() && MissingRegistrationUtils.throwMissingRegistrationErrors() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
             registerBulkInvocationPlugin(plugins, Class.class, "getClasses", RuntimeReflection::registerAllClasses);
             registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredClasses", RuntimeReflection::registerAllDeclaredClasses);
             registerBulkInvocationPlugin(plugins, Class.class, "getConstructors", RuntimeReflection::registerAllConstructors);
@@ -338,7 +340,7 @@ public final class ReflectionPlugins {
         }
 
         Registration r = new Registration(plugins, Class.class);
-        if (!strictDynamicAccessInferenceIsActive()) {
+        if (nonStrictDynamicAccessInference()) {
             r.register(new RequiredInlineOnlyInvocationPlugin("forName", String.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode nameNode) {

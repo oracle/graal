@@ -461,7 +461,7 @@ public class RuntimeCompiledMethodSupport {
 
         RuntimeBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext, SVMHost svmHost) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, svmHost, false, null);
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, svmHost, false);
         }
 
         @Override
@@ -476,6 +476,11 @@ public class RuntimeCompiledMethodSupport {
         @Override
         protected boolean shouldVerifyFrameStates() {
             return Options.VerifyRuntimeCompilationFrameStates.getValue();
+        }
+
+        @Override
+        protected boolean strictDynamicAccessInferenceIsApplicable() {
+            return false;
         }
     }
 

@@ -35,7 +35,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
-import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
 import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceSupport;
 import com.oracle.svm.util.ModuleSupport;
 
@@ -94,28 +93,24 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
 
     @Override
     protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-        StrictDynamicAccessInferenceSupport dynamicAccessInferenceSupport = StrictDynamicAccessInferenceFeature.isDisabled()
-                        ? null
-                        : StrictDynamicAccessInferenceSupport.singleton();
-        return new AnalysisBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext, hostVM, true, dynamicAccessInferenceSupport);
+        return new AnalysisBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext, hostVM, true);
     }
 
     public static class AnalysisBytecodeParser extends SharedBytecodeParser {
 
         private final SVMHost hostVM;
-        private final StrictDynamicAccessInferenceSupport dynamicAccessInferenceSupport;
 
         @SuppressWarnings("this-escape")
         protected AnalysisBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                        IntrinsicContext intrinsicContext, SVMHost hostVM, boolean explicitExceptionEdges, StrictDynamicAccessInferenceSupport dynamicAccessInferenceSupport) {
+                        IntrinsicContext intrinsicContext, SVMHost hostVM, boolean explicitExceptionEdges) {
             super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges);
             this.hostVM = hostVM;
-            this.dynamicAccessInferenceSupport = dynamicAccessInferenceSupport;
         }
 
         @Override
         protected void build(FixedWithNextNode startInstruction, FrameStateBuilder startFrameState) {
-            if (dynamicAccessInferenceSupport != null) {
+            StrictDynamicAccessInferenceSupport dynamicAccessInferenceSupport = hostVM.getStrictDynamicAccessInferenceSupport();
+            if (strictDynamicAccessInferenceIsApplicable() && dynamicAccessInferenceSupport != null) {
                 dynamicAccessInferenceSupport.analyze(method, intrinsicContext);
             }
             super.build(startInstruction, startFrameState);
@@ -318,6 +313,10 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
                 clearNonLiveLocals(dispatchState, dispatchBlock, true);
             }
             return dispatchState;
+        }
+
+        protected boolean strictDynamicAccessInferenceIsApplicable() {
+            return true;
         }
     }
 }
