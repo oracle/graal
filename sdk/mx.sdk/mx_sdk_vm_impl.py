@@ -1417,6 +1417,8 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
 
             if isinstance(image_config, mx_sdk.LauncherConfig) or (isinstance(image_config, mx_sdk.LanguageLibraryConfig) and image_config.launchers):
                 build_args += [
+                    '-R:+EnableSignalHandling',
+                    '-R:+InstallSegfaultHandler',
                     '--enable-monitoring=jvmstat,heapdump,jfr,threaddump',
                 ] + svm_experimental_options([
                     '-H:+InstallExitHandlers',

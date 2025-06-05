@@ -376,7 +376,7 @@ class LanguageLibraryProject(NativeImageLibraryProject):
     def get_build_args(self):
         build_args = super().get_build_args()[:]
 
-        # Signals flags, the first 2 are also set in AbstractLanguageLauncher but better to be explicit
+        # Signals flags
         build_args += [
             '-R:+EnableSignalHandling',
             '-R:+InstallSegfaultHandler',

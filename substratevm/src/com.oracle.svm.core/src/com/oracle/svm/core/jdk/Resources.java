@@ -73,6 +73,7 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFla
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.GlobUtils;
@@ -400,6 +401,9 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
             } else {
                 return null;
             }
+        }
+        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+            MetadataTracer.singleton().traceResource(resourceName, moduleName);
         }
         if (!entry.getConditions().satisfied()) {
             return missingMetadata(resourceName, throwOnMissing);

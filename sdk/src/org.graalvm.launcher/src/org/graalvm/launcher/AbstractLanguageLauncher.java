@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
@@ -150,12 +149,6 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
      * @throws Exception if no launcher constructor has been set.
      */
     public static void runLauncher(byte[][] optionVarsArgs, byte[][] args, int argc, long argv, boolean relaunch) throws Exception {
-        if (isAOT()) {
-            // enable signal handling for the launcher
-            RuntimeOptions.set("EnableSignalHandling", true);
-            RuntimeOptions.set("InstallSegfaultHandler", true);
-        }
-
         if (LAUNCHER_CTOR == null) {
             throw new Exception("Launcher constructor has not been set.");
         }
