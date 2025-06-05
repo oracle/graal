@@ -30,6 +30,7 @@ import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.UNDEFIN
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.UNDEFINED_FIELD_INDEX;
 import static com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ClassInitializationInfo.Builder;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -42,6 +43,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -160,7 +162,6 @@ import com.oracle.svm.shaded.org.capnproto.StructList;
 import com.oracle.svm.shaded.org.capnproto.Text;
 import com.oracle.svm.shaded.org.capnproto.TextList;
 import com.oracle.svm.shaded.org.capnproto.Void;
-import com.oracle.svm.util.FileDumpingUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 
@@ -194,8 +195,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     private final Map<String, MethodGraphsInfo> methodsMap = new ConcurrentHashMap<>();
     private final Map<InitialLayerOnlyImageSingleton, Integer> initialLayerOnlySingletonMap = new ConcurrentHashMap<>();
     private final Map<AnalysisMethod, Set<AnalysisMethod>> polymorphicSignatureCallers = new ConcurrentHashMap<>();
-    private FileInfo fileInfo;
-    private GraphsOutput graphsOutput;
+    private final GraphsOutput graphsOutput;
     private final boolean useSharedLayerGraphs;
     private final boolean useSharedLayerStrengthenedGraphs;
 
@@ -211,9 +211,6 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
     private record ConstantParent(int constantId, int index) {
         static ConstantParent NONE = new ConstantParent(UNDEFINED_CONSTANT_ID, UNDEFINED_FIELD_INDEX);
-    }
-
-    private record FileInfo(Path layerFilePath, String fileName, String suffix) {
     }
 
     private record MethodGraphsInfo(String analysisGraphLocation, boolean analysisGraphIsIntrinsic,
@@ -233,26 +230,24 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     private static class GraphsOutput {
-        private final Path path;
-        private final Path tempPath;
-        private final FileChannel tempChannel;
+        private final FileChannel channel;
 
         private final AtomicLong currentOffset = new AtomicLong(0);
 
-        GraphsOutput(Path path, String fileName, String suffix) {
-            this.path = path;
-            this.tempPath = FileDumpingUtil.createTempFile(path.getParent(), fileName, suffix);
+        GraphsOutput() {
+            Path snapshotGraphsPath = HostedImageLayerBuildingSupport.singleton().getWriteLayerArchiveSupport().getSnapshotGraphsPath();
             try {
-                this.tempChannel = FileChannel.open(this.tempPath, EnumSet.of(StandardOpenOption.WRITE));
+                Files.createFile(snapshotGraphsPath);
+                channel = FileChannel.open(snapshotGraphsPath, EnumSet.of(StandardOpenOption.WRITE));
             } catch (IOException e) {
-                throw GraalError.shouldNotReachHere(e, "Error opening temporary graphs file.");
+                throw VMError.shouldNotReachHere("Error opening temporary graphs file " + snapshotGraphsPath, e);
             }
         }
 
         String add(byte[] encodedGraph) {
             long offset = currentOffset.getAndAdd(encodedGraph.length);
             try {
-                tempChannel.write(ByteBuffer.wrap(encodedGraph), offset);
+                channel.write(ByteBuffer.wrap(encodedGraph), offset);
             } catch (Exception e) {
                 throw GraalError.shouldNotReachHere(e, "Error during graphs file dumping.");
             }
@@ -261,10 +256,9 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
         void finish() {
             try {
-                tempChannel.close();
-                FileDumpingUtil.moveTryAtomically(tempPath, path);
+                channel.close();
             } catch (Exception e) {
-                throw GraalError.shouldNotReachHere(e, "Error during graphs file dumping.");
+                throw VMError.shouldNotReachHere("Error during graphs file dumping.", e);
             }
         }
     }
@@ -273,6 +267,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
         this.useSharedLayerGraphs = useSharedLayerGraphs;
         this.useSharedLayerStrengthenedGraphs = useSharedLayerStrengthenedGraphs;
+        graphsOutput = new GraphsOutput();
     }
 
     public void setInternedStringsIdentityMap(IdentityHashMap<String, String> map) {
@@ -281,10 +276,6 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
     public void setImageHeap(ImageHeap heap) {
         this.imageHeap = heap;
-    }
-
-    public void setSnapshotFileInfo(Path layerSnapshotPath, String fileName, String suffix) {
-        fileInfo = new FileInfo(layerSnapshotPath, fileName, suffix);
     }
 
     public void setAnalysisUniverse(AnalysisUniverse aUniverse) {
@@ -299,26 +290,19 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         this.hUniverse = hUniverse;
     }
 
-    public void openGraphsOutput(Path layerGraphsPath, String fileName, String suffix) {
-        AnalysisError.guarantee(graphsOutput == null, "Graphs file has already been opened");
-        graphsOutput = new GraphsOutput(layerGraphsPath, fileName, suffix);
-    }
-
     public void dumpFiles() {
         SVMImageLayerSnapshotUtil.SVMGraphEncoder graphEncoder = imageLayerSnapshotUtil.getGraphEncoder(null);
         byte[] encodedNodeClassMap = ObjectCopier.encode(graphEncoder, nodeClassMap);
         String location = graphsOutput.add(encodedNodeClassMap);
         snapshotBuilder.setNodeClassMapLocation(location);
-
         graphsOutput.finish();
 
-        FileDumpingUtil.dumpFile(fileInfo.layerFilePath, fileInfo.fileName, fileInfo.suffix, outputStream -> {
-            try {
-                Serialize.write(Channels.newChannel(outputStream), snapshotFileBuilder);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        Path snapshotFile = HostedImageLayerBuildingSupport.singleton().getWriteLayerArchiveSupport().getSnapshotPath();
+        try (FileOutputStream outputStream = new FileOutputStream(snapshotFile.toFile())) {
+            Serialize.write(Channels.newChannel(outputStream), snapshotFileBuilder);
+        } catch (IOException e) {
+            throw VMError.shouldNotReachHere("Unable to write " + snapshotFile, e);
+        }
     }
 
     public void initializeExternalValues() {
@@ -828,9 +812,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             }
             case ImageHeapPrimitiveArray imageHeapPrimitiveArray ->
                 persistConstantPrimitiveArray(builder.initPrimitiveData(), imageHeapPrimitiveArray.getType().getComponentType().getJavaKind(), imageHeapPrimitiveArray.getArray());
-            case ImageHeapRelocatableConstant relocatableConstant -> {
+            case ImageHeapRelocatableConstant relocatableConstant ->
                 builder.initRelocatable().setKey(relocatableConstant.getConstantData().key);
-            }
             default -> throw AnalysisError.shouldNotReachHere("Unexpected constant type " + imageHeapConstant);
         }
 

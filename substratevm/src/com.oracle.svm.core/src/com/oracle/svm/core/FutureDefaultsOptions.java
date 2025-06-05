@@ -53,10 +53,11 @@ public class FutureDefaultsOptions {
     private static final String ALL_NAME = "all";
     private static final String NONE_NAME = "none";
     private static final String RUN_TIME_INITIALIZE_JDK_NAME = "run-time-initialized-jdk";
+    private static final String TREAT_NAME_AS_TYPE_NAME = "treat-name-as-type";
 
     public static final String RUN_TIME_INITIALIZE_JDK_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_JDK_NAME + ")";
 
-    private static final Set<String> ALL_VALUES = Set.of(RUN_TIME_INITIALIZE_JDK_NAME, ALL_NAME, NONE_NAME);
+    private static final Set<String> ALL_VALUES = Set.of(RUN_TIME_INITIALIZE_JDK_NAME, TREAT_NAME_AS_TYPE_NAME, ALL_NAME, NONE_NAME);
 
     private static String futureDefaultsAllValues() {
         return StringUtil.joinSingleQuoted(ALL_VALUES);
@@ -117,5 +118,9 @@ public class FutureDefaultsOptions {
 
     public static boolean isJDKInitializedAtRunTime() {
         return allFutureDefaults() || getFutureDefaults().contains(RUN_TIME_INITIALIZE_JDK_NAME);
+    }
+
+    public static boolean treatNameAsType() {
+        return allFutureDefaults() || getFutureDefaults().contains(TREAT_NAME_AS_TYPE_NAME);
     }
 }
