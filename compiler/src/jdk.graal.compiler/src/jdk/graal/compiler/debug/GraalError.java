@@ -283,30 +283,39 @@ public class GraalError extends Error {
     }
 
     private void potentiallyAddContext(Object[] args) {
-        if (args != null) {
-            List<String> betterContext = new ArrayList<>();
-            for (int i = 0; i < args.length; i++) {
-                if (args[i] instanceof Iterable<?>) {
-                    for (Object o : (Iterable<?>) args[i]) {
-                        String potentialBetterString = potentialBetterString(o);
+        // be pessimistic here and ensure better reporting never causes a follow up error that is
+        // unhandled
+        try {
+            if (args != null) {
+                List<String> betterContext = new ArrayList<>();
+                for (int i = 0; i < args.length; i++) {
+                    if (args[i] instanceof Iterable<?>) {
+                        for (Object o : (Iterable<?>) args[i]) {
+                            String potentialBetterString = potentialBetterString(o);
+                            if (potentialBetterString != null) {
+                                betterContext.add(potentialBetterString);
+                            }
+                        }
+                    } else {
+                        String potentialBetterString = potentialBetterString(args[i]);
                         if (potentialBetterString != null) {
                             betterContext.add(potentialBetterString);
                         }
                     }
-                } else {
-                    String potentialBetterString = potentialBetterString(args[i]);
-                    if (potentialBetterString != null) {
-                        betterContext.add(potentialBetterString);
-                    }
+                }
+                if (!betterContext.isEmpty()) {
+                    addContext(Arrays.toString(betterContext.toArray()));
                 }
             }
-            if (!betterContext.isEmpty()) {
-                addContext(Arrays.toString(betterContext.toArray()));
-            }
+        } catch (Throwable t) {
+            addContext("Intercepted error in potentiallyAddContext: " + t);
         }
     }
 
     private static String potentialBetterString(Object o) {
+        if (o == null) {
+            return null;
+        }
         Object potentialBetterString = Assertions.decorateObjectErrorContext(o);
         if (!potentialBetterString.toString().equals(o.toString())) {
             return potentialBetterString.toString();

@@ -131,4 +131,15 @@ public class GraalErrorTest extends GraalCompilerTest {
         }
 
     }
+
+    @Test
+    public void testNull() {
+        try {
+            throw new GraalError("I have a null arg %s %s", "abc", null);
+        } catch (Throwable t) {
+            if (LOG_TTY) {
+                t.printStackTrace();
+            }
+        }
+    }
 }
