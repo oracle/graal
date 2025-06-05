@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,55 +40,11 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-import org.graalvm.collections.EconomicMap;
+public abstract class CGTrackingAbstractTransitionNode extends DFAAbstractTransitionNode {
 
-/**
- * Helper to keep track of the minimum amount of space required to track one counter in DFA mode.
- */
-public final class TrackerCellAllocator {
-    private final int reservedRange;
-    private int counter;
-    private int totalSize;
-
-    public TrackerCellAllocator(int reservedRange) {
-        this.reservedRange = reservedRange;
-        counter = reservedRange;
-        totalSize = reservedRange;
+    CGTrackingAbstractTransitionNode(short id, short successor) {
+        super(id, successor);
     }
 
-    public void resetTemp() {
-        this.counter = reservedRange;
-    }
-
-    public int allocTemp() {
-        int i = counter;
-        counter++;
-        if (counter > totalSize) {
-            totalSize = counter;
-        }
-        return i;
-    }
-
-    public int getTotalSize() {
-        return totalSize;
-    }
-
-    /**
-     * Builder, tracks how many fixed cells are needed. Is also used to remap the nfa state ids, to
-     * continuous identifiers starting from 0.
-     */
-    public static final class Builder {
-        private final EconomicMap<Integer, Integer> fixedMapping = EconomicMap.create();
-
-        public int registerAndGet(int id) {
-            if (!fixedMapping.containsKey(id)) {
-                fixedMapping.put(id, fixedMapping.size());
-            }
-            return fixedMapping.get(id);
-        }
-
-        public TrackerCellAllocator build() {
-            return new TrackerCellAllocator(fixedMapping.size());
-        }
-    }
+    public abstract int getCGTrackingCost();
 }

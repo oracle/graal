@@ -48,6 +48,7 @@ import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.LongArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
+import com.oracle.truffle.regex.util.EmptyArrays;
 import com.oracle.truffle.regex.util.TBitSet;
 
 /**
@@ -65,11 +66,13 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
     private final ObjectArrayBuffer<CodePointSet> argCharSets = new ObjectArrayBuffer<>();
     private final ObjectArrayBuffer<long[]> argConstraints = new ObjectArrayBuffer<>();
     private final ObjectArrayBuffer<long[]> argOperations = new ObjectArrayBuffer<>();
+    private boolean anyArgConstraints;
     private final IntArrayBuffer stack = new IntArrayBuffer();
     private final IntArrayBuffer skipStack = new IntArrayBuffer();
 
     private static final int INITIAL_CAPACITY = 8;
 
+    private TBitSet[] intersectingArgs = new TBitSet[INITIAL_CAPACITY];
     private CodePointSet[] matcherBuilders = new CodePointSet[INITIAL_CAPACITY];
     private long[][] constraintBuilder = new long[INITIAL_CAPACITY][];
     @SuppressWarnings("unchecked") private StateSet<SI, S>[] targetStateSets = new StateSet[INITIAL_CAPACITY];
@@ -78,6 +81,7 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
 
     private final TBitSet leadsToFinalState = new TBitSet(INITIAL_CAPACITY);
     private int resultLength = 0;
+    private int resultLengthStage1 = 0;
 
     private final SI stateIndex;
     private final boolean forward;
@@ -126,6 +130,7 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
         argCharSets.add(charSet);
         argConstraints.add(constraints);
         argOperations.add(operations);
+        anyArgConstraints |= constraints.length > 0;
     }
 
     private void addToStack(T transition, CodePointSet charSet, long[] constraints, long[] operations, int j) {
@@ -162,6 +167,7 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
         argCharSets.clear();
         argConstraints.clear();
         argOperations.clear();
+        anyArgConstraints = false;
         return result;
     }
 
@@ -212,97 +218,115 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
      *   {transitionSet {2},    matcherBuilder [c]}
      * ]
      * </pre>
-     * <p>
-     * {transitionSet {1}, matcherBuilder [ab], guard loop 0} {transitionSet {2}, matcherBuilder
-     * [bc], guard exit 0}
-     * <p>
-     * {transitionSet {1}, matcherBuilder [a], guard loop 0} {transitionSet {1}, matcherBuilder [b],
-     * guard {loop 0}} {transitionSet {1, 2}, matcherBuilder [b], guard {loop 0, exit 0}}
-     * {transitionSet {2}, matcherBuilder [b], guard {exit 0}} {transitionSet {2}, matcherBuilder
-     * [c], guard exit 0}
      */
     private void calcDisjointTransitions(CompilationBuffer compilationBuffer) {
-        for (int i = argTransitions.length() - 1; i >= 0; --i) {
-            stack.add(i);
-            skipStack.add(0);
-        }
 
-        outer: while (!stack.isEmpty()) {
-            int i = stack.pop();
+        /*
+         * Stage 1: merge transitions based on their codepoint sets, ignoring any other constraints.
+         */
+
+        for (int i = 0; i < argTransitions.length(); i++) {
             T argTransition = argTransitions.get(i);
             CodePointSet argCharSet = argCharSets.get(i);
-            long[] argConstraint = argConstraints.get(i);
-            long[] argOperation = argOperations.get(i);
-
+            long[] argOps = argOperations.get(i);
             int currentResultLength = resultLength;
-            int initial = skipStack.pop();
-            for (int j = initial; j < currentResultLength; j++) {
+            for (int j = 0; j < currentResultLength; j++) {
                 CodePointSet.IntersectAndSubtractResult<CodePointSet> result = matcherBuilders[j].intersectAndSubtract(argCharSet, compilationBuffer);
                 CodePointSet rSubtractedMatcher = result.subtractedA;
                 CodePointSet eSubtractedMatcher = result.subtractedB;
                 CodePointSet intersection = result.intersection;
                 if (intersection.matchesSomething()) {
+                    if (rSubtractedMatcher.matchesNothing()) {
+                        addTransitionToStage1(i, j, argTransition, argOps);
+                    } else {
+                        matcherBuilders[j] = rSubtractedMatcher;
+                        duplicateSlot(j, intersection, EmptyArrays.LONG);
+                        intersectingArgs[resultLength].union(intersectingArgs[j]);
+                        addTransitionToStage1(i, resultLength, argTransition, argOps);
+                        resultLength++;
+                    }
+                    argCharSet = eSubtractedMatcher;
+                    if (eSubtractedMatcher.matchesNothing()) {
+                        break;
+                    }
+                }
+            }
+            if (argCharSet.matchesSomething()) {
+                createSlot();
+                targetStateSets[resultLength] = StateSet.create(stateIndex);
+                matcherBuilders[resultLength] = argCharSet;
+                addTransitionToStage1(i, resultLength, argTransition, argOps);
+                resultLength++;
+            }
+        }
+
+        if (!anyArgConstraints) {
+            resultLengthStage1 = 0;
+            return;
+        }
+
+        resultLengthStage1 = resultLength;
+
+        /*
+         * Stage 2: split transitions based on constraints.
+         *
+         * Stage 1 yields a list of all possible combinations of transitions based on their
+         * codepoint sets. In stage 2, we calculate their possible subsets based on their respective
+         * constraints.
+         */
+
+        for (int iStage1 = 0; iStage1 < resultLengthStage1; iStage1++) {
+            /*
+             * For every iStage1, the codepoint set (matcher) is fixed, and intersectingArgs
+             * contains all transitions that whose codepoint set intersects with the current
+             * matcher. With the non-intersecting transitions already filtered out, we can
+             * completely ignore the remaining transitions' codepoint sets, and only look at their
+             * constraints.
+             */
+            CodePointSet matcher = matcherBuilders[iStage1];
+            for (int i : intersectingArgs[iStage1]) {
+                addToStack(argTransitions.get(i), matcher, argConstraints.get(i), argOperations.get(i), resultLength);
+            }
+            outer: while (!stack.isEmpty()) {
+                int i = stack.pop();
+                T argTransition = argTransitions.get(i);
+                long[] argConstraint = argConstraints.get(i);
+                long[] argOperation = argOperations.get(i);
+                assert argCharSets.get(i).equals(matcher);
+
+                int currentResultLength = resultLength;
+                int initial = skipStack.pop();
+                for (int j = initial; j < currentResultLength; j++) {
                     TransitionConstraint.MergeResult constraintMerge = TransitionConstraint.intersectAndSubtract(constraintBuilder[j], argConstraint);
                     if (constraintMerge == null) {
                         continue;
                     }
                     assert TransitionConstraint.isNormalized(constraintMerge.middle());
 
-                    // If the slot already leads to the final state then we can't merge the
-                    // transitions anyway.
-                    // Therefore, we don't need to duplicate anything here.
+                    // if the slot already contains an unconditional transition to the final state,
+                    // we don't have to check any other constraints.
                     if (!(shouldPruneAfterFinalState() && leadsToFinalState.get(j))) {
-
-                        if (rSubtractedMatcher.matchesNothing()) {
-                            if (constraintMerge.lhs().length == 0) {
-                                addTransitionTo(j, argTransition, argOperation);
-                            } else {
-                                constraintBuilder[j] = constraintMerge.lhs()[0];
-                                for (int k = 1; k < constraintMerge.lhs().length; ++k) {
-                                    duplicateSlot(j);
-                                    matcherBuilders[resultLength] = intersection;
-                                    constraintBuilder[resultLength] = constraintMerge.lhs()[k];
-                                    resultLength++;
-                                }
-
-                                duplicateSlot(j);
-                                matcherBuilders[resultLength] = intersection;
-                                constraintBuilder[resultLength] = constraintMerge.middle();
-                                addTransitionTo(resultLength, argTransition, argOperation);
+                        if (constraintMerge.lhs().length == 0) {
+                            addTransitionTo(j, argTransition, argOperation);
+                        } else {
+                            constraintBuilder[j] = constraintMerge.lhs()[0];
+                            for (int k = 1; k < constraintMerge.lhs().length; ++k) {
+                                duplicateSlot(j, matcher, constraintMerge.lhs()[k]);
                                 resultLength++;
                             }
-                        } else {
-                            matcherBuilders[j] = rSubtractedMatcher;
 
-                            duplicateSlot(j);
-                            matcherBuilders[resultLength] = intersection;
-                            constraintBuilder[resultLength] = constraintMerge.middle();
+                            duplicateSlot(j, matcher, constraintMerge.middle());
                             addTransitionTo(resultLength, argTransition, argOperation);
                             resultLength++;
-
-                            for (var leftConstraint : constraintMerge.lhs()) {
-                                assert TransitionConstraint.isNormalized(leftConstraint);
-                                duplicateSlot(j);
-                                matcherBuilders[resultLength] = intersection;
-                                constraintBuilder[resultLength] = leftConstraint;
-                                resultLength++;
-                            }
-
                         }
                     }
-                    if (eSubtractedMatcher.matchesSomething()) {
-                        addToStack(argTransition, eSubtractedMatcher, argConstraint, argOperation, j + 1);
-                    }
-
-                    for (var rhs : constraintMerge.rhs()) {
-                        addToStack(argTransition, intersection, rhs, argOperation, j + 1);
+                    for (long[] rhs : constraintMerge.rhs()) {
+                        addToStack(argTransition, matcher, rhs, argOperation, j + 1);
                     }
                     continue outer;
                 }
-            }
-            if (argCharSet.matchesSomething()) {
                 createSlot();
-                matcherBuilders[resultLength] = argCharSet;
+                matcherBuilders[resultLength] = matcher;
                 constraintBuilder[resultLength] = argConstraint;
                 targetStateSets[resultLength] = StateSet.create(stateIndex);
                 addTransitionTo(resultLength, argTransition, argOperation);
@@ -311,11 +335,13 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
         }
     }
 
-    private void duplicateSlot(int i) {
+    private void duplicateSlot(int i, CodePointSet matcher, long[] constraints) {
         createSlot();
         targetStateSets[resultLength] = targetStateSets[i].copy();
         transitionLists[resultLength].addAll(transitionLists[i]);
         operationLists[resultLength].addAll(operationLists[i]);
+        matcherBuilders[resultLength] = matcher;
+        constraintBuilder[resultLength] = constraints;
         if ((shouldPruneAfterFinalState() && leadsToFinalState.get(i))) {
             leadsToFinalState.set(resultLength);
         }
@@ -326,32 +352,37 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
             transitionLists = Arrays.copyOf(transitionLists, resultLength * 2);
             operationLists = Arrays.copyOf(operationLists, resultLength * 2);
             targetStateSets = Arrays.copyOf(targetStateSets, resultLength * 2);
-
             matcherBuilders = Arrays.copyOf(matcherBuilders, resultLength * 2);
             constraintBuilder = Arrays.copyOf(constraintBuilder, resultLength * 2);
+            intersectingArgs = Arrays.copyOf(intersectingArgs, resultLength * 2);
         }
-
         if (transitionLists[resultLength] == null) {
             transitionLists[resultLength] = new ObjectArrayBuffer<>();
         }
         transitionLists[resultLength].clear();
-
+        constraintBuilder[resultLength] = EmptyArrays.LONG;
         if (operationLists[resultLength] == null) {
             operationLists[resultLength] = new LongArrayBuffer();
         }
         operationLists[resultLength].clear();
+        if (intersectingArgs[resultLength] == null) {
+            intersectingArgs[resultLength] = new TBitSet(INITIAL_CAPACITY);
+        }
+        intersectingArgs[resultLength].clear();
+    }
+
+    private void addTransitionToStage1(int iArg, int i, T transition, long[] operations) {
+        if (anyArgConstraints) {
+            intersectingArgs[i].set(iArg);
+        } else {
+            addTransitionTo(i, transition, operations);
+        }
     }
 
     private void addTransitionTo(int i, T transition, long[] operations) {
         if (shouldPruneAfterFinalState() && leadsToFinalState.get(i)) {
             return;
         }
-
-        var target = transition.getTarget(forward);
-        var transitionList = transitionLists[i];
-        var targetSet = targetStateSets[i];
-        var operationList = operationLists[i];
-
         // This is a bit hacky but seems to work. The idea is
         // that when we add a NFA transition to an existing DFA transition
         // if the target state is already present, we drop that NFA transition.
@@ -361,10 +392,11 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
         // based on the kind of side effect performed when entering such state.
         // Also, it can add the same operations multiple times, but duplicates are removed
         // afterward.
-        operationList.addAll(operations);
+        operationLists[i].addAll(operations);
 
-        if (targetSet.add(target)) {
-            transitionList.add(transition);
+        S target = transition.getTarget(forward);
+        if (targetStateSets[i].add(target)) {
+            transitionLists[i].add(transition);
             if (shouldPruneAfterFinalState()) {
                 var targetState = (BasicState<?, ?>) target;
                 if (forward ? targetState.hasUnGuardedTransitionToUnAnchoredFinalState(true) : targetState.isUnAnchoredFinalState(false)) {
@@ -383,19 +415,17 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
 
         ObjectArrayBuffer<TB> resultBuffer1 = compilationBuffer.getObjectBuffer1();
         resultBuffer1.ensureCapacity(resultLength);
-        for (int i = 0; i < resultLength; i++) {
-            var matcherBuilder = matcherBuilders[i];
-            var constraints = constraintBuilder[i];
-            var operations = operationLists[i];
-
-            var opsArray = operations.toArray();
-
-            resultBuffer1.add(createTransitionBuilder(transitionLists[i].toArray(createTransitionArray(transitionLists[i].length())), targetStateSets[i], matcherBuilder, constraints,
-                            opsArray));
+        for (int i = resultLengthStage1; i < resultLength; i++) {
+            resultBuffer1.add(createTransitionBuilder(transitionLists[i].toArray(this::createTransitionArray), targetStateSets[i], matcherBuilders[i], constraintBuilder[i],
+                            operationLists[i].toArray()));
         }
 
-        if (shouldPruneAfterFinalState() && leadsToFinalState.isEmpty()) {
-            // no transitions were pruned, so no equal transition sets are possible
+        if (shouldPruneAfterFinalState() && leadsToFinalState.isEmpty() || anyArgConstraints) {
+            // If there are no transitions to final state, no transitions were pruned, so no equal
+            // transition sets are possible.
+            // If there are transitions with constraints, we deliberately don't merge transitions,
+            // because we want to guarantee that for any two transitions, their respective codepoint
+            // sets are either completely identical or disjunct.
             return resultBuffer1.toArray(createResultArray(resultBuffer1.length()));
         }
         resultBuffer1.sort((TB o1, TB o2) -> {

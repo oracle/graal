@@ -95,8 +95,11 @@ public final class DFATransitionCanonicalizer extends StateTransitionCanonicaliz
     @Override
     protected DFAStateTransitionBuilder createTransitionBuilder(NFAStateTransition[] transitions, StateSet<NFA, NFAState> targetStateSet, CodePointSet matcherBuilder, long[] constraints,
                     long[] operations) {
-        return dfaGen.isGenericCG() ? new DFACaptureGroupTransitionBuilder(transitions, targetStateSet, matcherBuilder, constraints, operations, dfaGen)
-                        : new DFAStateTransitionBuilder(transitions, targetStateSet, matcherBuilder, constraints, operations);
+        if (dfaGen.isGenericCG()) {
+            return new DFACaptureGroupTransitionBuilder(transitions, targetStateSet, matcherBuilder, constraints, operations, dfaGen);
+        } else {
+            return new DFAStateTransitionBuilder(transitions, targetStateSet, matcherBuilder, constraints, operations);
+        }
     }
 
     @Override

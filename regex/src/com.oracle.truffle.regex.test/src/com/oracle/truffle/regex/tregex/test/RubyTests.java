@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import java.util.Map;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -48,9 +50,12 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class RubyTests extends RegexTestBase {
 
+    private static final Map<String, String> ENGINE_OPTIONS = Map.of("regexDummyLang.Flavor", "Ruby");
+    private static final Map<String, String> OPT_IGNORE_ATOMIC_GROUPS = Map.of("regexDummyLang.IgnoreAtomicGroups", "true");
+
     @Override
-    String getEngineOptions() {
-        return "Flavor=Ruby";
+    Map<String, String> getEngineOptions() {
+        return ENGINE_OPTIONS;
     }
 
     @Override
@@ -341,7 +346,7 @@ public class RubyTests extends RegexTestBase {
 
     @Test
     public void ignoreAtomicGroups() {
-        test("(?>foo)", "", "IgnoreAtomicGroups=true", "foo", 0, true, 0, 3);
+        test("(?>foo)", "", OPT_IGNORE_ATOMIC_GROUPS, "foo", 0, true, 0, 3);
     }
 
     @Test
@@ -642,6 +647,16 @@ public class RubyTests extends RegexTestBase {
     @Test
     public void gr52472() {
         test("(|a+?){0,4}b", "", "aaab", 0, true, 0, 4, 1, 3);
+    }
+
+    @Test
+    public void testForceLinearExecution() {
+        test("(a*)b\\1", "", "_aabaaa_", 0, true, 1, 6, 1, 3);
+        expectUnsupported("(a*)b\\1", "", OPT_FORCE_LINEAR_EXECUTION);
+        test(".*a{1,200000}.*", "", "_aabaaa_", 0, true, 0, 8);
+        expectUnsupported(".*a{1,200000}.*", "", OPT_FORCE_LINEAR_EXECUTION);
+        test(".*b(?!a_)", "", "_aabaaa_", 0, true, 0, 4);
+        expectUnsupported(".*b(?!a_)", "", OPT_FORCE_LINEAR_EXECUTION);
     }
 
     @Test

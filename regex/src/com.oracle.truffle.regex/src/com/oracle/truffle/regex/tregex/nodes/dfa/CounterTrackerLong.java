@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,13 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+import java.util.Arrays;
+import java.util.PrimitiveIterator;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.regex.tregex.automaton.TransitionOp;
+import com.oracle.truffle.regex.util.BitSets;
 
 /**
  * Counter Tracker backed by a bitset using a single long per bitset. It can therefore only be used
@@ -51,20 +55,20 @@ import com.oracle.truffle.regex.tregex.automaton.TransitionOp;
 public final class CounterTrackerLong extends CounterTracker {
     private final int min;
     private final int max;
-    private final long canLoopMask;
-    private final long canExitMask;
-    private final long ltMinMask;
+    private final long maskLtMax;
+    private final long maskGeMin;
+    private final long maskLtMin;
     private final long saturateMinMask;
     private final int fixedOffset;
 
     public CounterTrackerLong(int min, int max, int numberOfCells, CounterTrackerData.Builder dataBuilder) {
         this.min = min;
         this.max = max;
-        this.canLoopMask = setAllTo(max - 1);
+        this.maskLtMax = BitSets.getRange(0, max - 2);
         // Note, if min = 0 then this mask makes no sense.
         // However, if min = 0 then we don't generate exit guards.
-        this.canExitMask = setAllFrom(min) & setAllTo(Math.max(min, max));
-        this.ltMinMask = setAllTo(min - 1);
+        this.maskGeMin = BitSets.getRange(min - 1, Math.max(min, max) - 1);
+        this.maskLtMin = min > 1 ? BitSets.getRange(0, min - 2) : 0;
         this.fixedOffset = dataBuilder.getFixedDataSize();
         if (max == -1) {
             saturateMinMask = 1L << (min - 1);
@@ -74,61 +78,42 @@ public final class CounterTrackerLong extends CounterTracker {
         dataBuilder.requestFixedSize(numberOfCells);
     }
 
-    private static long setAllTo(int n) {
-        if (n == 0) {
-            return 0;
-        }
-        return (~0L) >>> (64 - n);
-    }
-
-    private static long setAllFrom(int n) {
-        return ((~0L) << (n - 1));
-    }
-
     @Override
     @ExplodeLoop
     public void apply(long op, long[] data, int[][] intArrays) {
         CompilerAsserts.partialEvaluationConstant(op);
-        int dest = mapId(TransitionOp.getTarget(op));
+        int dst = mapId(TransitionOp.getTarget(op));
         int kind = TransitionOp.getKind(op);
         int modifier = TransitionOp.getModifier(op);
-        switch (kind) {
-            case TransitionOp.set1 -> {
-                if (modifier == TransitionOp.overwrite || modifier == TransitionOp.move) {
-                    data[dest] = 1;
-                } else {
-                    data[dest] |= 1;
-                }
+        if (kind == TransitionOp.set1) {
+            if (modifier == TransitionOp.overwrite) {
+                data[dst] = 1;
+            } else {
+                assert modifier == TransitionOp.union;
+                data[dst] |= 1;
             }
-            case TransitionOp.setMin -> {
-                var source = fixedOffset + TransitionOp.getSource(op);
-                // Note: the +1 is because setMin also increments the counters, therefore it sets
-                // all value from currMin + 1 to min + 1.
-                long rangeFromCurrMinToTop = data[source] == 0 ? (~0L) : ((~0L) << (Long.numberOfTrailingZeros(data[source]) + 1));
-                long rangeFromMinToBottom = setAllTo(min + 1);
-                var range = rangeFromCurrMinToTop & rangeFromMinToBottom;
-                if (modifier == TransitionOp.overwrite || modifier == TransitionOp.move) {
-                    data[dest] = range;
-                } else {
-                    data[dest] |= range;
+        } else {
+            int src = mapId(TransitionOp.getSource(op));
+            long bits = data[src];
+            switch (kind) {
+                case TransitionOp.inc -> {
+                    long shifted = max == -1 ? (bits << 1) | (bits & saturateMinMask) : (bits << 1);
+                    if (modifier == TransitionOp.overwrite) {
+                        data[dst] = shifted;
+                    } else {
+                        assert modifier == TransitionOp.union;
+                        data[dst] |= shifted;
+                    }
                 }
-            }
-            case TransitionOp.inc -> {
-                var source = fixedOffset + TransitionOp.getSource(op);
-                long saturate = data[source] & saturateMinMask;
-                if (modifier == TransitionOp.overwrite || modifier == TransitionOp.move) {
-                    data[dest] = (data[source] << 1);
-                } else {
-                    data[dest] |= (data[source] << 1);
-                }
-                data[dest] |= saturate;
-            }
-            case TransitionOp.maintain -> {
-                var source = mapId(TransitionOp.getSource(op));
-                if (modifier == TransitionOp.overwrite || modifier == TransitionOp.move) {
-                    data[dest] = data[source];
-                } else {
-                    data[dest] |= data[source];
+                case TransitionOp.maintain -> {
+                    if (modifier == TransitionOp.swap) {
+                        data[src] = data[dst];
+                        data[dst] = bits;
+                    } else if (modifier == TransitionOp.overwrite) {
+                        data[dst] = bits;
+                    } else {
+                        data[dst] |= bits;
+                    }
                 }
             }
         }
@@ -148,22 +133,37 @@ public final class CounterTrackerLong extends CounterTracker {
     }
 
     @Override
-    protected boolean canLoop(int sId, long[] fixedData, int[][] intArrays) {
+    protected boolean anyLtMax(int sId, long[] fixedData, int[][] intArrays) {
         if (max == -1) {
             return true;
         }
-        return (fixedData[mapId(sId)] & canLoopMask) != 0;
+        return intersect(sId, fixedData, maskLtMax);
     }
 
     @Override
-    protected boolean canExit(int sId, long[] fixedData, int[][] intArrays) {
+    protected boolean anyGeMin(int sId, long[] fixedData, int[][] intArrays) {
         assert min != 0;
-        return (fixedData[mapId(sId)] & canExitMask) != 0;
+        return intersect(sId, fixedData, maskGeMin);
     }
 
     @Override
-    protected boolean ltMin(int sId, long[] fixedData, int[][] intArrays) {
+    protected boolean anyLtMin(int sId, long[] fixedData, int[][] intArrays) {
         assert min != 0;
-        return (fixedData[mapId(sId)] & ltMinMask) != 0;
+        return intersect(sId, fixedData, maskLtMin);
+    }
+
+    private boolean intersect(int sId, long[] fixedData, long mask) {
+        return (fixedData[mapId(sId)] & mask) != 0;
+    }
+
+    @Override
+    public String dumpState(int sId, long[] fixedData, int[][] intArrays) {
+        long[] bs = {fixedData[mapId(sId)]};
+        int[] values = new int[BitSets.size(bs)];
+        PrimitiveIterator.OfInt it = BitSets.iterator(bs);
+        for (int i = values.length - 1; i >= 0; i--) {
+            values[i] = it.nextInt() + 1;
+        }
+        return "BitsetLong, current values: " + Arrays.toString(values);
     }
 }

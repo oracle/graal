@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 public record CounterTrackerData(long[] fixedData, int[][] intArrays) {
 
     @Override
@@ -50,31 +52,23 @@ public record CounterTrackerData(long[] fixedData, int[][] intArrays) {
     }
 
     public static final class Builder {
-        private int fixedDataSize = 0;
-        private int nIntArray = 0;
+        @CompilationFinal private int fixedDataSize = 0;
+        @CompilationFinal private int nIntArrays = 0;
 
         public void requestFixedSize(int requestedSize) {
             this.fixedDataSize += requestedSize;
         }
 
-        public void requestIntArray(int nArray) {
-            this.nIntArray += nArray;
+        public void requestIntArrays(int nArrays) {
+            this.nIntArrays += nArrays;
         }
 
         public int getFixedDataSize() {
             return fixedDataSize;
         }
 
-        public int getnIntArraySize() {
-            return nIntArray;
-        }
-
-        public int intArraySize() {
-            return nIntArray;
-        }
-
-        public int fixedDataSize() {
-            return fixedDataSize;
+        public int getNumberOfIntArrays() {
+            return nIntArrays;
         }
     }
 }

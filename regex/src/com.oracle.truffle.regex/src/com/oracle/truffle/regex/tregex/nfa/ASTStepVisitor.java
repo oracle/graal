@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import static com.oracle.truffle.regex.tregex.nfa.TransitionGuard.getQuantifierIndex;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -50,6 +48,7 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.automaton.TransitionConstraint;
 import com.oracle.truffle.regex.tregex.automaton.TransitionOp;
 import com.oracle.truffle.regex.tregex.buffer.LongArrayBuffer;
@@ -151,27 +150,27 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
 
     @Override
     protected void visit(RegexASTNode target) {
-        assert noPredicatesInGuards(getTransitionGuardsOnPath());
+        assert allGuardsAllowedInDFA(getTransitionGuardsOnPath());
         ASTSuccessor successor = new ASTSuccessor();
-        var guards = getTransitionGuardsOnPath();
+        long[] guards = getTransitionGuardsOnPath();
 
         operationsBuilder.clear();
         constraintsBuilder.clear();
-        var id = needsMaintainGuard();
+        int id = needsMaintainGuard();
         if (id != -1) {
+            if (id > Short.MAX_VALUE) {
+                throw new UnsupportedRegexException("too many quantifiers");
+            }
             operationsBuilder.add(TransitionOp.create(id, 0, 0, TransitionOp.maintain));
         }
 
-        for (var guard : guards) {
-            final int quantifierIndex = getQuantifierIndex(guard);
+        for (long guard : guards) {
             switch (TransitionGuard.getKind(guard)) {
-                case countLtMax -> constraintsBuilder.add(TransitionConstraint.create(quantifierIndex, 0, TransitionConstraint.existLtMax));
-                case countGeMin -> constraintsBuilder.add(TransitionConstraint.create(quantifierIndex, 0, TransitionConstraint.existGeMin));
-                case countLtMin -> constraintsBuilder.add(TransitionConstraint.create(quantifierIndex, 0, TransitionConstraint.existLtMin));
-                case countMaintain -> operationsBuilder.add(TransitionOp.create(quantifierIndex, 0, 0, TransitionOp.maintain));
-                case countInc -> operationsBuilder.add(TransitionOp.create(quantifierIndex, 0, 0, TransitionOp.inc));
-                case countSet1 -> operationsBuilder.add(TransitionOp.create(quantifierIndex, 0, 0, TransitionOp.set1));
-                case countSetMin -> operationsBuilder.add(TransitionOp.create(quantifierIndex, 0, 0, TransitionOp.setMin));
+                case countLtMax -> constraintsBuilder.add(TransitionConstraint.create(getQuantifierIndex(guard), 0, TransitionConstraint.anyLtMax));
+                case countGeMin -> constraintsBuilder.add(TransitionConstraint.create(getQuantifierIndex(guard), 0, TransitionConstraint.anyGeMin));
+                case countLtMin -> constraintsBuilder.add(TransitionConstraint.create(getQuantifierIndex(guard), 0, TransitionConstraint.anyLtMin));
+                case countInc -> operationsBuilder.add(TransitionOp.create(getQuantifierIndex(guard), 0, 0, TransitionOp.inc));
+                case countSet1 -> operationsBuilder.add(TransitionOp.create(getQuantifierIndex(guard), 0, 0, TransitionOp.set1));
             }
         }
 
@@ -214,13 +213,30 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
         stepCur.addSuccessor(successor);
     }
 
-    private static boolean noPredicatesInGuards(long[] transitionGuards) {
-        // Normalization should remove any exitZeroWidth, escapeZeroWidth, checkGroupMatched and
-        // checkGroupNotMatched guards. The effect of updateCG guards is implemented using
-        // getGroupBoundaries and enterZeroWidth guards have no effect when exitZeroWidth and
-        // escapeZeroWidth are removed already. Other guards shouldn't be used when building a DFA.
+    private static int getQuantifierIndex(long guard) {
+        final int quantifierIndex = TransitionGuard.getQuantifierIndex(guard);
+        if (quantifierIndex > Short.MAX_VALUE) {
+            throw new UnsupportedRegexException("too many quantifiers");
+        }
+        return quantifierIndex;
+    }
+
+    /**
+     * Checks if all remaining transition guards are expected and handled in DFA mode.
+     * <ul>
+     * <li>Normalization should remove any {@code exitZeroWidth}, {@code escapeZeroWidth},
+     * {@code checkGroupMatched} and {@code checkGroupNotMatched} guards.</li>
+     * <li>The effect of {@code updateCG} guards is implemented using
+     * {@code getGroupBoundaries}.</li>
+     * <li>{@code enterZeroWidth} guards remain, but have no effect when {@code exitZeroWidth} and
+     * {@code escapeZeroWidth} are removed already.</li>
+     * <li>all quantifier guards except {@code countSetMinInc} are transformed into
+     * {@link TransitionConstraint}s and {@link TransitionOp}s and are therefore allowed.</li>
+     * </ul>
+     */
+    private static boolean allGuardsAllowedInDFA(long[] transitionGuards) {
         for (long guard : transitionGuards) {
-            if (!TransitionGuard.is(guard, TransitionGuard.Kind.updateCG) && !TransitionGuard.is(guard, TransitionGuard.Kind.enterZeroWidth) && !TransitionGuard.isQuantifierGuard(guard)) {
+            if (!TransitionGuard.is(guard, TransitionGuard.Kind.updateCG) && !TransitionGuard.is(guard, TransitionGuard.Kind.enterZeroWidth) && !TransitionGuard.isQuantifierGuardAllowedInDFA(guard)) {
                 return false;
             }
         }

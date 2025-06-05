@@ -73,7 +73,6 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
      *
      * @return the minimum index as checked by
      *         {@link TRegexExecutorNode#inputHasNext(TRegexExecutorLocals)}.
-     * @see BackwardDFAStateNode
      */
     public int getCurMinIndex() {
         return curMinIndex;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,7 +77,7 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
     private ArrayList<Sequence> alternatives = new ArrayList<>();
     private short visitorIterationIndex = 0;
     private short groupNumber = -1;
-    private short groupsWithGuardsIndex = -1;
+    private int groupsWithGuardsIndex = -1;
     private int enclosedCaptureGroupsLo;
     private int enclosedCaptureGroupsHi;
     private int enclosedZeroWidthGroupsLo;
@@ -224,8 +224,7 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
     }
 
     public void setGroupsWithGuardsIndex(int groupsWithGuardsIndex) {
-        assert groupsWithGuardsIndex <= Short.MAX_VALUE;
-        this.groupsWithGuardsIndex = (short) groupsWithGuardsIndex;
+        this.groupsWithGuardsIndex = groupsWithGuardsIndex;
     }
 
     /**
@@ -318,7 +317,7 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
 
     @Override
     public boolean isUnrollingCandidate(RegexOptions options) {
-        return hasQuantifier() && getQuantifier().isWithinThreshold(options.quantifierUnrollThresholdGroup);
+        return hasQuantifier() && getQuantifier().isWithinThreshold(options.quantifierUnrollLimitGroup);
     }
 
     /**

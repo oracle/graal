@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,27 +40,52 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-/**
- * Counter tracker backed by a bitset. Very similar to {@link CounterTrackerLong}.
- */
-public class CounterTrackerBitSet extends AbstractCounterTrackerBitSet {
-    public static final int MAX_N = 6;
-    protected final int fixedOffset;
+import java.util.Objects;
 
-    public CounterTrackerBitSet(int min, int max, int numberOfCells, CounterTrackerData.Builder dataBuilder) {
-        super(min, max);
-        assert n <= MAX_N;
-        int size = n * numberOfCells;
-        this.fixedOffset = dataBuilder.getFixedDataSize();
-        dataBuilder.requestFixedSize(size);
+import com.oracle.truffle.api.CompilerAsserts;
+
+public final class CGTrackingTransitionNode extends CGTrackingAbstractTransitionNode {
+
+    private final DFACaptureGroupLazyTransition transition;
+    private final short lastTransitionIndex;
+
+    public CGTrackingTransitionNode(short id, short successor, DFACaptureGroupLazyTransition transition, short lastTransitionIndex) {
+        super(id, successor);
+        this.transition = transition;
+        this.lastTransitionIndex = lastTransitionIndex;
+    }
+
+    public static CGTrackingTransitionNode create(short id, short successor, DFACaptureGroupLazyTransition transition, short lastTransitionIndex) {
+        if (transition.isEmpty() && lastTransitionIndex < 0) {
+            return null;
+        }
+        return new CGTrackingTransitionNode(id, successor, transition, lastTransitionIndex);
     }
 
     @Override
-    int mapId(int sId, long[] fixedData) {
-        return fixedOffset + sId * n;
+    public int getCGTrackingCost() {
+        return transition.getCost();
     }
 
     @Override
-    public void init(long[] fixedData, int[][] intArrays) {
+    public void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        transition.apply(locals, executor, false);
+        if (lastTransitionIndex >= 0) {
+            locals.setLastTransition(lastTransitionIndex);
+        }
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof CGTrackingTransitionNode o)) {
+            return false;
+        }
+        return getSuccessor() == o.getSuccessor() && lastTransitionIndex == o.lastTransitionIndex && Objects.equals(transition, o.transition);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getSuccessor(), transition, lastTransitionIndex);
     }
 }

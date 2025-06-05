@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,25 +38,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.nodes.dfa;
+package com.oracle.truffle.regex.tregex.test;
 
-public class BackwardDFAStateNode extends DFAStateNode {
-    public BackwardDFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, Matchers matchers, DFASimpleCG simpleCG,
-                    long[][] constraints, long[][] operations, long[][] finalConstraints, long[][] anchoredFinalConstraints) {
-        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, simpleCG, constraints, operations, finalConstraints, anchoredFinalConstraints);
-    }
+import org.junit.Assert;
+import org.junit.Test;
 
-    protected BackwardDFAStateNode(BackwardDFAStateNode copy, short copyID) {
-        super(copy, copyID);
-    }
+import com.oracle.truffle.regex.tregex.automaton.TransitionConstraint;
 
-    @Override
-    public DFAStateNode createNodeSplitCopy(short copyID) {
-        return new BackwardDFAStateNode(this, copyID);
-    }
-
-    int getBackwardPrefixStateIndex() {
-        assert hasBackwardPrefixState();
-        return getSuccessors().length - 1;
+public class TransitionConstraintTest {
+    @Test
+    public void transitionConstraintDocTest() {
+        long a = TransitionConstraint.create(0, 0, TransitionConstraint.anyLtMax);
+        long b = TransitionConstraint.create(1, 0, TransitionConstraint.anyLtMax);
+        long c = TransitionConstraint.create(2, 0, TransitionConstraint.anyLtMax);
+        long d = TransitionConstraint.create(3, 0, TransitionConstraint.anyLtMax);
+        long[] lhs = new long[]{a, b, TransitionConstraint.not(c)};
+        long[] rhs = new long[]{TransitionConstraint.not(c), d};
+        TransitionConstraint.MergeResult result = TransitionConstraint.intersectAndSubtract(lhs, rhs);
+        Assert.assertEquals(1, result.lhs().length);
+        Assert.assertArrayEquals(new long[]{a, b, TransitionConstraint.not(c), TransitionConstraint.not(d)}, result.lhs()[0]);
+        Assert.assertArrayEquals(new long[]{a, b, TransitionConstraint.not(c), d}, result.middle());
+        Assert.assertEquals(2, result.rhs().length);
+        Assert.assertArrayEquals(new long[]{TransitionConstraint.not(a), TransitionConstraint.not(c), d}, result.rhs()[0]);
+        Assert.assertArrayEquals(new long[]{TransitionConstraint.not(b), TransitionConstraint.not(c), d}, result.rhs()[1]);
     }
 }

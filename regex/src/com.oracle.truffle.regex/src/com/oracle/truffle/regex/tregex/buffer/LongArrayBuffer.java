@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -133,28 +133,6 @@ public class LongArrayBuffer extends AbstractArrayBuffer implements Iterable<Lon
 
     public long peek() {
         return buf[length - 1];
-    }
-
-    public LongArrayBuffer asFixedSizeArray(int size) {
-        ensureCapacity(size);
-        length = size;
-        return this;
-    }
-
-    public LongArrayBuffer asFixedSizeArray(int size, int initialValue) {
-        ensureCapacity(size);
-        Arrays.fill(buf, 0, size, initialValue);
-        length = size;
-        return this;
-    }
-
-    public boolean contains(long value) {
-        for (long v : this) {
-            if (v == value) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public long[] toArray() {

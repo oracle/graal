@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import java.util.Map;
+
 import org.junit.Test;
 
 import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
@@ -47,9 +49,11 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class OracleDBTests extends RegexTestBase {
 
+    private static final Map<String, String> ENGINE_OPTIONS = Map.of("regexDummyLang.Flavor", "OracleDB");
+
     @Override
-    String getEngineOptions() {
-        return "Flavor=OracleDB";
+    Map<String, String> getEngineOptions() {
+        return ENGINE_OPTIONS;
     }
 
     @Override
@@ -105,59 +109,59 @@ public class OracleDBTests extends RegexTestBase {
         test("}", "", "}", 0, true, 0, 1);
         test("{", "", "{", 0, true, 0, 1);
         test("]", "", "]", 0, true, 0, 1);
-        expectSyntaxError("[", "", "", getTRegexEncoding(), "_", 0, ErrorCode.UnmatchedBracket);
-        expectSyntaxError(")", "", "", getTRegexEncoding(), "_", 0, ErrorCode.UnmatchedParenthesis);
+        expectSyntaxError("[", "", "_", 0, ErrorCode.UnmatchedBracket);
+        expectSyntaxError(")", "", "_", 0, ErrorCode.UnmatchedParenthesis);
         test("x{,1}", "", "x", 0, false);
         test("x{,1}?", "", "x", 0, false);
         test("x{,1}", "", "x{,1}", 0, true, 0, 5);
         test("x{,1}?", "", "x{,1}", 0, true, 0, 5);
         test("x{,1}?", "", "x{,1", 0, true, 0, 4);
         test("x{1,}", "", "x{1,}", 0, true, 0, 1);
-        expectSyntaxError("x{2,1}", "", "", getTRegexEncoding(), "_", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{2147483649}", "", "", getTRegexEncoding(), "x{2147483649}", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{2147483649,}", "", "", getTRegexEncoding(), "x{2147483649}", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{2147483649,2}", "", "", getTRegexEncoding(), "_", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{2147483649,2147483650}", "", "", getTRegexEncoding(), "xxx", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{0,4294967295}", "", "", getTRegexEncoding(), "x{4294967295}", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{1,4294967295}", "", "", getTRegexEncoding(), "x{4294967295}", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{2147483648,4294967295}", "", "", getTRegexEncoding(), "xx", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{1,2147483648}", "", "", getTRegexEncoding(), "xx", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{2,2147483648}", "", "", getTRegexEncoding(), "xx", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{2,2147483649}", "", "", getTRegexEncoding(), "xx", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{4294967296}", "", "", getTRegexEncoding(), "x{4294967296}", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{4294967297}", "", "", getTRegexEncoding(), "x{4294967297}", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2,1}", "", "_", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2147483649}", "", "x{2147483649}", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2147483649,}", "", "x{2147483649}", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2147483649,2}", "", "_", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2147483649,2147483650}", "", "xxx", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{0,4294967295}", "", "x{4294967295}", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{1,4294967295}", "", "x{4294967295}", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2147483648,4294967295}", "", "xx", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{1,2147483648}", "", "xx", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2,2147483648}", "", "xx", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2,2147483649}", "", "xx", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{4294967296}", "", "x{4294967296}", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{4294967297}", "", "x{4294967297}", 0, ErrorCode.InvalidQuantifier);
         test("x??", "", "x", 0, true, 0, 0);
-        expectSyntaxError("x{2}+", "", "", getTRegexEncoding(), "x", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{2}+", "", "", getTRegexEncoding(), "xx", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{2}+", "", "", getTRegexEncoding(), "xxx", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{2}+", "", "", getTRegexEncoding(), "xxxx", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{2}*", "", "", getTRegexEncoding(), "xxxx", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{2}*?", "", "", getTRegexEncoding(), "xxxx", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{2}*???", "", "", getTRegexEncoding(), "xxxx", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2}+", "", "x", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2}+", "", "xx", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2}+", "", "xxx", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2}+", "", "xxxx", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2}*", "", "xxxx", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2}*?", "", "xxxx", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2}*???", "", "xxxx", 0, ErrorCode.InvalidQuantifier);
         test("\\A*x\\Z+", "", "x", 0, true, 0, 1);
         test("\\A*x\\Z+", "", "xx", 0, true, 1, 2);
         test("\\A+x\\Z+", "", "xx", 0, false);
-        expectSyntaxError("x????", "", "", getTRegexEncoding(), "x?", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x????", "", "", getTRegexEncoding(), "xx?", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x??????", "", "", getTRegexEncoding(), "x?", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x??????", "", "", getTRegexEncoding(), "xx?", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x????", "", "x?", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x????", "", "xx?", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x??????", "", "x?", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x??????", "", "xx?", 0, ErrorCode.InvalidQuantifier);
         test("x{2}?", "", "xxxxx", 0, true, 0, 2);
-        expectSyntaxError("x{2}??", "", "", getTRegexEncoding(), "xxxxx", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{2}+", "", "", getTRegexEncoding(), "xxxxx", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{2}*", "", "", getTRegexEncoding(), "xxxxx", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x???", "", "", getTRegexEncoding(), "x", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x{2}*??", "", "", getTRegexEncoding(), "xxxx", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x???", "", "", getTRegexEncoding(), "x?", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x???", "", "", getTRegexEncoding(), "xx?", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x?????", "", "", getTRegexEncoding(), "x?", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("x?????", "", "", getTRegexEncoding(), "xx?", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2}??", "", "xxxxx", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2}+", "", "xxxxx", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2}*", "", "xxxxx", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x???", "", "x", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x{2}*??", "", "xxxx", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x???", "", "x?", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x???", "", "xx?", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x?????", "", "x?", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("x?????", "", "xx?", 0, ErrorCode.InvalidQuantifier);
         test("(a{0,1})*b\\1", "", "aab", 0, true, 0, 3, 2, 2);
         test("(a{0,1})*b\\1", "", "aaba", 0, true, 0, 3, 2, 2);
         test("(a{0,1})*b\\1", "", "aabaa", 0, true, 0, 3, 2, 2);
         test("[]]", "", "]", 0, true, 0, 1);
         test("[][]+", "", "[]", 0, true, 0, 2);
-        expectSyntaxError("[]", "", "", getTRegexEncoding(), "_", 0, ErrorCode.UnmatchedBracket);
-        expectSyntaxError("[b-a]", "", "", getTRegexEncoding(), "_", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[]", "", "_", 0, ErrorCode.UnmatchedBracket);
+        expectSyntaxError("[b-a]", "", "_", 0, ErrorCode.InvalidCharacterClass);
         test("[-a]", "", "-a", 0, true, 0, 1);
         test("[a-]", "", "-a", 0, true, 0, 1);
         test("[[ab]]", "", "[]ab]", 0, true, 0, 2);
@@ -165,7 +169,7 @@ public class OracleDBTests extends RegexTestBase {
         test("[[::]]", "", "[]:", 0, true, 0, 1);
         test("[[::]]", "", "[]:", 1, true, 1, 2);
         test("[[::]]", "", "[]:", 2, true, 2, 3);
-        expectSyntaxError("[[:ab:]]", "", "", getTRegexEncoding(), "_", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[:ab:]]", "", "_", 0, ErrorCode.InvalidCharacterClass);
         test("[[:upper:]]+", "", ":upper:", 0, false);
         test("[[:upper:]]+", "", ":UPPER:", 0, true, 1, 6);
         test("[:upper:]+", "", ":upper:", 0, true, 0, 7);
@@ -181,13 +185,13 @@ public class OracleDBTests extends RegexTestBase {
         test("[[=a=]-[=z=]]+", "", "abc-", 0, true, 0, 3);
         test("[[.a.]-[=z=]]+", "", "abc-", 0, true, 0, 3);
         test("[[=a=]-[.z.]]+", "", "abc-", 0, true, 0, 3);
-        expectSyntaxError("[[.a.]-[.ch.]]+", "", "", getTRegexEncoding(), "_", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[[.a.]-[:lower:]]+", "", "", getTRegexEncoding(), "_", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[[=a=]-[:lower:]]+", "", "", getTRegexEncoding(), "_", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[.a.]-[.ch.]]+", "", "_", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[.a.]-[:lower:]]+", "", "_", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[=a=]-[:lower:]]+", "", "_", 0, ErrorCode.InvalidCharacterClass);
         test("[[:upper:]-[.a.]]+", "", "a-A", 0, true, 0, 3);
         test("[[=c=]-c]", "", "\u010d-=c", 0, true, 4, 5);
         test("[[=c=]-]+", "", "\u010d-=c", 0, true, 0, 3);
-        expectSyntaxError("(\\2())", "", "", getTRegexEncoding(), "_", 0, ErrorCode.InvalidBackReference);
+        expectSyntaxError("(\\2())", "", "_", 0, ErrorCode.InvalidBackReference);
         test("(\\1a)", "", "aa", 0, false);
         test("(\\1a|){2}", "", "aa", 0, true, 0, 0, 0, 0);
         test("(\\1a|)*", "", "aa", 0, true, 0, 0, 0, 0);
@@ -247,7 +251,7 @@ public class OracleDBTests extends RegexTestBase {
         test("a{0}b", "", "ab", 0, true, 1, 2);
         test("(a*)(b?)(b+)b{3}", "", "aaabbbbbbb", 0, true, 0, 10, 0, 3, 3, 4, 4, 7);
         test("(a*)(b{0,1})(b{1,})b{3}", "", "aaabbbbbbb", 0, true, 0, 10, 0, 3, 3, 4, 4, 7);
-        expectSyntaxError("a{9876543210}", "", "", getTRegexEncoding(), "a", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a{9876543210}", "", "a", 0, ErrorCode.InvalidQuantifier);
         test("((a|a)|a)", "", "a", 0, true, 0, 1, 0, 1, 0, 1);
         test("(a*)(a|aa)", "", "aaaa", 0, true, 0, 4, 0, 3, 3, 4);
         test("a*(a.|aa)", "", "aaaa", 0, true, 0, 4, 2, 4);
@@ -888,7 +892,7 @@ public class OracleDBTests extends RegexTestBase {
         test("[[=\u0132=]]+", "", "ij", 0, true, 0, 2);
         test("[[=\u0132=]o]+", "", "ij", 0, true, 0, 2);
         test("[[=\u0132=]o]+", "i", "ij", 0, true, 0, 2);
-        expectSyntaxError("[\\s-r]+", "", "", getTRegexEncoding(), "\\stu", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[\\s-r]+", "", "\\stu", 0, ErrorCode.InvalidCharacterClass);
         test("[\\s-v]+", "", "\\stu", 0, true, 0, 4);
         test("$(\\A|)", "", "x", 0, true, 1, 1, 1, 1);
         test("(^\\w)|()^", "", "empty", 0, true, 0, 1, 0, 1, -1, -1);
@@ -989,7 +993,7 @@ public class OracleDBTests extends RegexTestBase {
         test("a(()|()|b|()|())*c", "", "abbc", 0, true, 0, 4, 3, 3, 3, 3, -1, -1, -1, -1, -1, -1);
         test("a(()|()|()|b|())*c", "", "abbc", 0, true, 0, 4, 3, 3, 3, 3, -1, -1, -1, -1, -1, -1);
         test("a(()|()|()|()|b)*c", "", "abbc", 0, true, 0, 4, 3, 3, 3, 3, -1, -1, -1, -1, -1, -1);
-        expectSyntaxError("a??+", "", "", getTRegexEncoding(), "aaa", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a??+", "", "aaa", 0, ErrorCode.InvalidQuantifier);
         test("()??()??()??()??()??()??()??()??\\3\\5\\7", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1);
         test("()*", "", "a", 0, true, 0, 0, 0, 0);
         test("(a|)*", "", "a", 0, true, 0, 1, 1, 1);
@@ -999,60 +1003,60 @@ public class OracleDBTests extends RegexTestBase {
         test("(a|())*?\\2", "", "a", 0, true, 0, 1, 1, 1, 1, 1);
         test("(a*)+", "", "a", 0, true, 0, 1, 1, 1);
         test("(\\1a|){2}", "", "aa", 0, true, 0, 0, 0, 0);
-        expectSyntaxError("[[.\\].]]", "", "", getTRegexEncoding(), "]", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[[.\\[.]]", "", "", getTRegexEncoding(), "[", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[[=\\]=]]", "", "", getTRegexEncoding(), "]", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[[=\\[=]]", "", "", getTRegexEncoding(), "[", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[.\\].]]", "", "]", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[.\\[.]]", "", "[", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[=\\]=]]", "", "]", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[=\\[=]]", "", "[", 0, ErrorCode.InvalidCharacterClass);
         test("[--I]", "", "-", 0, true, 0, 1);
-        expectSyntaxError("[[=^=]--I]", "", "", getTRegexEncoding(), "-", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[[=\\}=]I]", "", "", getTRegexEncoding(), "-", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[I-[=\\}=]]", "", "", getTRegexEncoding(), "I", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[y-\\{]", "", "", getTRegexEncoding(), "I", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[y-\\{]", "", "", getTRegexEncoding(), "I", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[y-\\{][y-\\{]", "", "", getTRegexEncoding(), "I", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[=^=]--I]", "", "-", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[=\\}=]I]", "", "-", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[I-[=\\}=]]", "", "I", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[y-\\{]", "", "I", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[y-\\{]", "", "I", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[y-\\{][y-\\{]", "", "I", 0, ErrorCode.InvalidCharacterClass);
         test("a?", "", "aaa", 0, true, 0, 1);
         test("a??", "", "aaa", 0, true, 0, 0);
-        expectSyntaxError("a???", "", "", getTRegexEncoding(), "aaa", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a???", "", "aaa", 0, ErrorCode.InvalidQuantifier);
         test("a+?", "", "aaa", 0, true, 0, 1);
-        expectSyntaxError("a+??", "", "", getTRegexEncoding(), "aaa", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("a??+", "", "", getTRegexEncoding(), "aaa", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("a?+", "", "", getTRegexEncoding(), "aaa", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("a?+?", "", "", getTRegexEncoding(), "aaa", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("a?+??", "", "", getTRegexEncoding(), "aaa", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("a?*??", "", "", getTRegexEncoding(), "aaa", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("(a?)*??", "", "", getTRegexEncoding(), "aaa", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a+??", "", "aaa", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a??+", "", "aaa", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a?+", "", "aaa", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a?+?", "", "aaa", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a?+??", "", "aaa", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a?*??", "", "aaa", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("(a?)*??", "", "aaa", 0, ErrorCode.InvalidQuantifier);
         test("((a?)*)??", "", "aaa", 0, true, 0, 0, -1, -1, -1, -1);
         test("((a?)*?)?", "", "aaa", 0, true, 0, 0, 0, 0, -1, -1);
-        expectSyntaxError("a?*?", "", "", getTRegexEncoding(), "aaa", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("a*??", "", "", getTRegexEncoding(), "aaa", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("a+*?", "", "", getTRegexEncoding(), "aaa", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a?*?", "", "aaa", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a*??", "", "aaa", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a+*?", "", "aaa", 0, ErrorCode.InvalidQuantifier);
         test("(a+)*?", "", "aaa", 0, true, 0, 0, -1, -1);
         test("((a+)*)?", "", "aaa", 0, true, 0, 3, 0, 3, 0, 3);
-        expectSyntaxError("a+*??", "", "", getTRegexEncoding(), "aaa", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("a++?", "", "", getTRegexEncoding(), "aaa", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("[[.\\a.]]", "", "", getTRegexEncoding(), ".", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("a+*??", "", "aaa", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a++?", "", "aaa", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("[[.\\a.]]", "", ".", 0, ErrorCode.InvalidCharacterClass);
         test("[[...]]", "", ".", 0, true, 0, 1);
         test("[[...]]", "", "[", 0, false);
         test("[[...]]", "", "]", 0, false);
-        expectSyntaxError("[[.\\..]]", "", "", getTRegexEncoding(), ".", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[[.\\..]]", "", "", getTRegexEncoding(), "\\", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[[.\\..]]", "", "", getTRegexEncoding(), "[", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[[.\\..]]", "", "", getTRegexEncoding(), "]", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[.\\..]]", "", ".", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[.\\..]]", "", "\\", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[.\\..]]", "", "[", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[.\\..]]", "", "]", 0, ErrorCode.InvalidCharacterClass);
         test("[[...]]", "", ".]", 0, true, 0, 1);
         test("[[...]a]", "", ".a]", 0, true, 0, 1);
         test("[a[...]]", "", "a]", 0, true, 0, 1);
         test("[[...]a]a", "", "a", 0, false);
         test("[[...]a]?a", "", "a", 0, true, 0, 1);
         test("[[...]a]|a", "", "a", 0, true, 0, 1);
-        expectSyntaxError("a++?", "", "", getTRegexEncoding(), "aaa", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("\\D|++?", "", "", getTRegexEncoding(), "9", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("\\D|++?^", "", "", getTRegexEncoding(), "9", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("\\S|\\D|++?^(3)", "", "", getTRegexEncoding(), "9", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("\\S|\\D|++?^((3)|[R-_\\(/])t[[:alnum:]]c", "", "", getTRegexEncoding(), "9", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("(\\d)|5+*?|[[:lower:]][[=l=]]^%", "", "", getTRegexEncoding(), "\u0169\u2113%", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a++?", "", "aaa", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("\\D|++?", "", "9", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("\\D|++?^", "", "9", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("\\S|\\D|++?^(3)", "", "9", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("\\S|\\D|++?^((3)|[R-_\\(/])t[[:alnum:]]c", "", "9", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("(\\d)|5+*?|[[:lower:]][[=l=]]^%", "", "\u0169\u2113%", 0, ErrorCode.InvalidQuantifier);
         test("[[===]]", "", "=", 0, true, 0, 1);
-        expectSyntaxError("[[=\\==]]", "", "", getTRegexEncoding(), "=", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[[=\\==]]", "", "", getTRegexEncoding(), "\\", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[=\\==]]", "", "=", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[=\\==]]", "", "\\", 0, ErrorCode.InvalidCharacterClass);
         test("[[===]]", "", "=]", 0, true, 0, 1);
         test("[[===]a]", "", "=a]", 0, true, 0, 1);
         test("[a[===]]", "", "a]", 0, true, 0, 1);
@@ -1068,9 +1072,9 @@ public class OracleDBTests extends RegexTestBase {
         test("\\\\(a)", "", "\\\\(a)", 0, false);
         test("\\\\(a)+", "", "\\a\\a", 0, true, 0, 2, 1, 2);
         test("\\\\(a)+", "", "\\aa", 0, true, 0, 3, 2, 3);
-        expectSyntaxError("\\(a)", "", "", getTRegexEncoding(), "\\a)", 0, ErrorCode.UnmatchedParenthesis);
-        expectSyntaxError(")", "", "", getTRegexEncoding(), "(\\a)", 0, ErrorCode.UnmatchedParenthesis);
-        expectSyntaxError("\\()", "", "", getTRegexEncoding(), "\\a)", 0, ErrorCode.UnmatchedParenthesis);
+        expectSyntaxError("\\(a)", "", "\\a)", 0, ErrorCode.UnmatchedParenthesis);
+        expectSyntaxError(")", "", "(\\a)", 0, ErrorCode.UnmatchedParenthesis);
+        expectSyntaxError("\\()", "", "\\a)", 0, ErrorCode.UnmatchedParenthesis);
         test("\\\\()", "", "\\a)", 0, true, 0, 1, 1, 1);
         test("\\\\(a)b", "", "\\ab", 0, true, 0, 3, 1, 2);
         test("\\\\(a)()b", "", "\\ab", 0, true, 0, 3, 1, 2, 2, 2);
@@ -1093,24 +1097,24 @@ public class OracleDBTests extends RegexTestBase {
         test("\\[b-b]", "", "[b-b]", 0, true, 0, 5);
         test("\\[[b-b]", "", "[b-b]", 0, true, 0, 2);
         test("\\[c-b]", "", "[c-b]", 0, true, 0, 5);
-        expectSyntaxError("\\[[c-b]", "", "", getTRegexEncoding(), "[c-b]", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("()?*", "", "", getTRegexEncoding(), "c", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("()?*|", "", "", getTRegexEncoding(), "c", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("()?*||", "", "", getTRegexEncoding(), "c", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("()?*||a", "", "", getTRegexEncoding(), "b", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("()?*||^a\\Zb", "", "", getTRegexEncoding(), "c", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("\\[[c-b]", "", "[c-b]", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("()?*", "", "c", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("()?*|", "", "c", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("()?*||", "", "c", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("()?*||a", "", "b", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("()?*||^a\\Zb", "", "c", 0, ErrorCode.InvalidQuantifier);
         test("ac??bc?", "", "abc", 0, true, 0, 3);
         test("ac??bc?", "", "acbc", 0, true, 0, 4);
         test("a?", "", "a", 0, true, 0, 1);
         test("a??", "", "a", 0, true, 0, 0);
-        expectSyntaxError("a???", "", "", getTRegexEncoding(), "a", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("(a)???", "", "", getTRegexEncoding(), "a", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a???", "", "a", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("(a)???", "", "a", 0, ErrorCode.InvalidQuantifier);
         test("(a?)??", "", "a", 0, true, 0, 0, -1, -1);
         test("(a??)?", "", "a", 0, true, 0, 0, 0, 0);
-        expectSyntaxError("(a???)", "", "", getTRegexEncoding(), "a", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("a{0,1}??", "", "", getTRegexEncoding(), "a", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("a??{0,1}", "", "", getTRegexEncoding(), "a", 0, ErrorCode.InvalidQuantifier);
-        expectSyntaxError("a{0,1}?{0,1}", "", "", getTRegexEncoding(), "a", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("(a???)", "", "a", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a{0,1}??", "", "a", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a??{0,1}", "", "a", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a{0,1}?{0,1}", "", "a", 0, ErrorCode.InvalidQuantifier);
         test("(a{0,1})*", "", "aaaaaa", 0, true, 0, 6, 6, 6);
         test("(a{0,2})*", "", "aaaaaa", 0, true, 0, 6, 6, 6);
         test("(a{1,2})*", "", "aaaaaa", 0, true, 0, 6, 4, 6);
@@ -1126,7 +1130,7 @@ public class OracleDBTests extends RegexTestBase {
         test("()?a{1,2}||b", "", "ccc", 0, true, 0, 0, -1, -1);
         test("[a-a]", "", "a", 0, true, 0, 1);
         test("[---]", "", "-", 0, true, 0, 1);
-        expectSyntaxError("[a---]", "", "", getTRegexEncoding(), "-", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[a---]", "", "-", 0, ErrorCode.InvalidCharacterClass);
         test("[a-a---]", "", "-", 0, true, 0, 1);
         test("[a-a---[:alpha:]]", "", "-", 0, true, 0, 1);
         test("[---[:alpha:]]", "", "-", 0, true, 0, 1);
@@ -1159,17 +1163,17 @@ public class OracleDBTests extends RegexTestBase {
         test("(|a)(|a)b", "", "ab", 0, true, 0, 2, 0, 0, 0, 1);
         test("(|a+?){0,4}", "", "aaa", 0, true, 0, 0, 0, 0);
         test("(|a+?){0,4}b", "", "aaab", 0, true, 0, 4, 3, 3);
-        expectSyntaxError("[^][.a[.b.]]", "", "", getTRegexEncoding(), "ab", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[^[.a[.b.]]", "", "", getTRegexEncoding(), "ab", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[[.a[.b.]]*", "", "", getTRegexEncoding(), "[[[...aabb", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[[.a[.b.]]*", "", "", getTRegexEncoding(), "[]]]", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[[.a[.b.]*]*", "", "", getTRegexEncoding(), "[..aa..bb..]][", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[[=abcdefgh=]*]*", "", "", getTRegexEncoding(), "[..aa..bb..]][", 0, ErrorCode.InvalidCharacterClass);
-        expectSyntaxError("[^]", "", "", getTRegexEncoding(), "[]^", 0, ErrorCode.UnmatchedBracket);
+        expectSyntaxError("[^][.a[.b.]]", "", "ab", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[^[.a[.b.]]", "", "ab", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[.a[.b.]]*", "", "[[[...aabb", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[.a[.b.]]*", "", "[]]]", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[.a[.b.]*]*", "", "[..aa..bb..]][", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[=abcdefgh=]*]*", "", "[..aa..bb..]][", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[^]", "", "[]^", 0, ErrorCode.UnmatchedBracket);
         test("[^]]", "", "[]^", 0, true, 0, 1);
-        expectSyntaxError("[]", "", "", getTRegexEncoding(), "[]", 0, ErrorCode.UnmatchedBracket);
+        expectSyntaxError("[]", "", "[]", 0, ErrorCode.UnmatchedBracket);
         test("[]]", "", "[]", 0, true, 1, 2);
-        expectSyntaxError("[[.a.b.]]", "", "", getTRegexEncoding(), "[[.a.b.]]", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("[[.a.b.]]", "", "[[.a.b.]]", 0, ErrorCode.InvalidCharacterClass);
         test("\\z|((\\WV|))\\Z", "", "a", 0, true, 1, 1, -1, -1, -1, -1);
         test("\\z|(\\WV|)\\Z", "", "a", 0, true, 1, 1, -1, -1);
         test("\\z|(x|)\\Z", "", "a", 0, true, 1, 1, -1, -1);
@@ -1194,10 +1198,10 @@ public class OracleDBTests extends RegexTestBase {
         test("(a??)a??|", "", "a", 0, true, 0, 0, 0, 0);
         test("(a??)(a??)|", "", "a", 0, true, 0, 0, 0, 0, 0, 0);
         test("()b??a??|", "", "a", 0, true, 0, 0, 0, 0);
-        expectSyntaxError("a{2,71920}", "", "", getTRegexEncoding(), "aa", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("a{2,71920}", "", "aa", 0, ErrorCode.InvalidQuantifier);
         test("()\\1\\z", "", "a", 0, true, 1, 1, 1, 1);
         test("()\\1\\1\\z", "", "a", 0, true, 1, 1, 1, 1);
-        expectSyntaxError("[]\\\\", "", "", getTRegexEncoding(), "g", 0, ErrorCode.UnmatchedBracket);
+        expectSyntaxError("[]\\\\", "", "g", 0, ErrorCode.UnmatchedBracket);
         test("[[:print:][.j.]]\\S;[0-HB]t", "", "$*iAt\u0005;;Et", 0, false);
         test("\\s\\Dz()[[.o.][:blank:][:upper:][=c=]'[.0.][:blank:]<-M}-}[=r=][.h.][=e=]]", "", " &zzh", 0, false);
         test("()(a\\1\\1)*", "", "aaaa", 0, true, 0, 4, 0, 0, 3, 4);
@@ -1541,7 +1545,7 @@ public class OracleDBTests extends RegexTestBase {
         test("(?=ab)a", "", "ab", 0, false);
         test("(?=()|^)|x", "", "empty", 0, true, 0, 0, 0, 0, -1, -1);
         test("a(?<=ba)", "", "ba", 0, false);
-        expectSyntaxError("(?<=(?<=a)[])", "i", "", getTRegexEncoding(), "empty", 0, ErrorCode.UnmatchedBracket);
+        expectSyntaxError("(?<=(?<=a)[])", "i", "empty", 0, ErrorCode.UnmatchedBracket);
         test("(?<=(?=|()))", "", "aa", 0, false);
         test("\\d\\W", "i", "4\u017f", 0, false);
         test("[\u08bc-\ucf3a]", "i", "\u03b0", 0, false);
@@ -1620,7 +1624,46 @@ public class OracleDBTests extends RegexTestBase {
         test("(?:a()|b??){22,26}c", "", "aabbbaabaaaaaabaaaac", 0, true, 19, 20, 19, 19, -1, -1);
         test("b()(a\\1|){4,4}\\2c", "", "baaaac", 0, false);
         test("a((?=b()|)[a-d])+", "", "abbbcbd", 0, true, 0, 7, 6, 7, 6, 6, -1, -1);
-        test("[[.\ue09f.][=\ud800\udc00=]]", "", "\ud800\udc00", 0, true, 0, 4);
+        test("(\ud848\ude53??){7,9}?\\Z", "m", "\ud848\ude53", 0, true, 0, 4, 4, 4);
+        test("(|[[.\ud974\udd29.][.\udb03\ude46.]luk-u]){7,7}?$", "", "pr", 0, true, 0, 2, 2, 2);
+        test("\\Z?(|l||){4,7}?(x)", "", "lx", 0, true, 0, 2, 1, 1, 1, 2);
+        test("\udbe5\udea1\\S\uda61\udf1d(|[\udb7e\ude23]){7,9}\\z", "", "\udbe5\udea1\u18e7\uda61\udf1d\udb7e\ude23\udb7e\ude23\udb7e\ude23\udb7e\ude23", 0, true, 0, 27, 27, 27);
+        test("(||j\\Z){5,7}?\\Z+?", "", "jj\n", 0, true, 1, 2, 2, 2);
+        test("(|[i-r]){6,7}\\Z", "", "lnijlr", 0, true, 0, 6, 6, 6);
+        test("(^|q){5,10}?(\udbb0\udc21)", "", "qqqq\udbb0\udc21", 0, false);
+        test("(^|b){6,18}?$", "", "bbbbb", 0, false);
+        test("\\A(?|[\ud985\udc7a-\udb1b\ude21]){6,10}?\\z|\\z", "", "\ud9dc\ude93\uda9e\udfd2\udaac\udeb8\uda44\uded1", 0, true, 0, 16, 16, 16);
+        test("\uda5b\ude5d(|+?[g-u]){4,8}?\\z", "m", "\uda5b\ude5dsng", 0, true, 0, 7, 7, 7);
+        test("(s|^){5,10}", "", "sss", 0, true, 0, 0, 0, 0);
+        test("(\\w*?){3,7}?\\Z", "", "\u2148\ud834\udeda\ua887\u0c83\ud806\ude14\u0f35\ud802\udea9\u2102\ud804\udccb\u1234\u0fc6\ud802\udf9f\u3033\ud806\udece\ud802\udd94\ud806\udca4\ud802\udf62\n",
+                        0, true, 41, 60, 56, 60);
+        test("x$\\S\ud9e9\udddd??\\d|(\\S|^){6,7}|\\d|^?", "", "x\u2019\ud9e9\udddd\ud807\udc53", 0, true, 0, 0, 0, 0);
+        test("(\\w*?){3,7}?\\z", "", "\u1994\ud834\udd28\u2414\ud807\udc6e\u0386\ud834\udd8b\u240e\u218d\u321f\u0889\u077f\ud802\ude4f\u1b18\ud807\udc6d\ua6f8\ua69c\ud835\udf58\u168f", 0, true, 48,
+                        58, 55, 58);
+        test("s()|^(|\\d){6,8}?\\Z", "m", "\n\ua8d1\ua9d6\u1a810\n", 0, true, 1, 11, -1, -1, 11, 11);
+        test("(|\\d){7,8}\\z", "", "\u2186\u2188\u0dec", 0, true, 0, 9, 9, 9);
+        test("\\A(?|()[r-v]+){6,10}?\\z()??|(+)$", "", "surutrtsuurtvsrssrsvsrvsrvr", 0, true, 0, 27, 27, 27, 0, 0, -1, -1, -1, -1);
+        test("\\A(?|()[\udabe\udd1c]){6,10}?\\z|\\z", "", "\udabe\udd1c\udabe\udd1c\udabe\udd1c\udabe\udd1c", 0, true, 0, 16, 16, 16, 12, 12);
+        test("(^\udab7\ude3e*){5,10}", "",
+                        "\udab7\ude3e\udab7\ude3e\udab7\ude3e\udab7\ude3e\udab7\ude3e\udab7\ude3e\udab7\ude3e\udab7\ude3e\udab7\ude3e\udab7\ude3e\udab7\ude3e\udab7\ude3e\udab7\ude3e", 0, true, 0, 0,
+                        0, 0);
+        test("\\W(|[\ud9a5\udc2b]\ud982\udf73){6,8}\\z|", "", "\ud805\udc5b\ud9a5\udc2b\ud982\udf73\ud9a5\udc2b\ud982\udf73\ud9a5\udc2b\ud982\udf73", 0, true, 0, 28, 28, 28);
+        test("\\W(|\uda5a\udd73){6,7}?\\Z|\\A|", "", "\ua721\uda5a\udd73\uda5a\udd73\uda5a\udd73\uda5a\udd73\n", 0, true, 0, 19, 19, 19);
+        test("(|y){3,8}?e", "ci", "Ye", 0, true, 0, 2, 1, 1);
+        test("\\W(|\uda5a\udd73){6,7}?\\Z||()", "", "\ud835\udf4f\uda5a\udd73\uda5a\udd73\uda5a\udd73\uda5a\udd73", 0, true, 0, 20, 20, 20, -1, -1);
+        test("\\W(|\uda5a\udd73){6,7}?()\\Z|\\A|", "", "\ud804\udde3\uda5a\udd73\uda5a\udd73\n", 0, true, 0, 12, 12, 12, 12, 12);
+        test("(\ud848\ude53??){6,7}?\\Z", "", "\ud848\ude53\ud848\ude53\ud848\ude53\n", 0, true, 0, 12, 12, 12);
+        test("(\\S\\w|\\A){4,7}||o\udab0\udfb4", "", "empty", 0, true, 0, 0, 0, 0);
+        test("[[:cntrl:]\ub4e2-\udaee\udc05]a[b[:xdigit:]]{70,70}\\S", "",
+                        "F\uff41aF\u061cae\uff19\uff10fa\uff22BCAfb\uff14\uff11b3baAF\uff214D\uff21\uff25bA2\uff45F\uff415f\uff18C9aDb\uff41\uff11c\uff23f\uff46\uff22\uff45deb\uff26bb0\uff44bb7E4\uff44F\uff4507\uff43\uff42\uff21b\uff15\uff14\u16fc",
+                        0, true, 6, 134);
+        test("((\\1)a|)\\1\\Z\\s\\1|\\1$\\1a\\1\\1\\2a\\1[[.a.][=b=]]()\\1", "", "a", 0, false);
+        test("[[.\uda67\ude18.][=\udaa4\udeb8=]]\udb9d\ude50(\\w\ud815\udf1f(\\1)\\D|)\\1\\Z\\s\\2|\\1$\\1\\w\\1\\1\\2\\D\\1[[.\udae5\ude94.][=\uda47\udf02=]]()\\1", "",
+                        "\udae6\udc76\udb98\udfb6\udb8e\udd53\u2284\uda1f\udc8f\ud9f6\ude95\uda46\udf3b\udbe6\udeab\ud95e\udc35\uda0d\udfd9\ud8d5\udc90\ud9c6\udd8a\uda3f\ude7c\udad7\udffe", 19,
+                        false);
+        test("(e?\\D[xg]){87,87}z", "",
+                        "axaxeageagageaxeaxeaxageaxagageaxeaxagageagaxaxeagaxeaxagagaxeagageaxeaxeagageaxeaxagaxaxaxageageagageagaxaxaxageaxageaxeageaxaxaxaxaxagaxagageaxeageageageaxeaxeaxageaxaxeaxeagaxagageaxeageaxeaxaxeaxageaxaxeagaxageageaz",
+                        0, false);
         test("(a{1100,1100})\\1", "i", "a".repeat(2400), 0, true, 0, 2200, 0, 1100);
 
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
@@ -1634,5 +1677,13 @@ public class OracleDBTests extends RegexTestBase {
         test("\\z{1,5}a", "", "a", 0, false);
         test("\\z{1,6}a", "", "a", 0, false);
         test("\\z{1,7}a", "", "a", 0, false);
+    }
+
+    @Test
+    public void testForceLinearExecution() {
+        test("(a*)b\\1", "", "_aabaaa_", 0, true, 1, 6, 1, 3);
+        expectUnsupported("(a*)b\\1", "", OPT_FORCE_LINEAR_EXECUTION);
+        test(".*a{1,65534}.*", "", "_aabaaa_", 0, true, 0, 8);
+        expectUnsupported(".*a{1,65534}.*", "", OPT_FORCE_LINEAR_EXECUTION);
     }
 }

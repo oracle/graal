@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,34 +42,46 @@ package com.oracle.truffle.regex.tregex.test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Map;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
+import com.oracle.truffle.regex.test.dummylang.TRegexTestDummyLanguage;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public abstract class RegexTestBase {
 
+    static final Map<String, String> OPT_MATCHING_MODE_MATCH = Map.of("regexDummyLang.MatchingMode", "match");
+    static final Map<String, String> OPT_MATCHING_MODE_FULLMATCH = Map.of("regexDummyLang.MatchingMode", "fullmatch");
+    static final Map<String, String> OPT_MATCHING_MODE_SEARCH = Map.of("regexDummyLang.MatchingMode", "search");
+    static final Map<String, String> OPT_FORCE_LINEAR_EXECUTION = Map.of("regexDummyLang.ForceLinearExecution", "true");
+
     private static final boolean ASSERTS = true;
     private static final boolean TEST_REGION_FROM_TO = true;
     private static final boolean TABLE_OMIT_FROM_INDEX = false;
 
-    private static Context context;
+    static Context context;
     private static boolean printTableHeader = true;
 
     @BeforeClass
     public static void setUp() {
         context = createContext();
         context.enter();
+        context.initialize(TRegexTestDummyLanguage.ID);
     }
 
     @AfterClass
@@ -85,34 +97,33 @@ public abstract class RegexTestBase {
         return Context.newBuilder().option("engine.WarnInterpreterOnly", "false").allowAllAccess(true).build();
     }
 
-    abstract String getEngineOptions();
+    abstract Map<String, String> getEngineOptions();
 
     abstract Encodings.Encoding getTRegexEncoding();
 
     Value compileRegex(String pattern, String flags) {
-        return compileRegex(pattern, flags, "", getTRegexEncoding());
+        return compileRegex(pattern, flags, Collections.emptyMap(), getTRegexEncoding());
     }
 
-    String createSourceString(String pattern, String flags, String options, Encodings.Encoding encoding) {
-        StringBuilder combinedOptions = new StringBuilder("RegressionTestMode=true");
-        if (encoding != Encodings.UTF_16_RAW) {
-            combinedOptions.append(",Encoding=").append(encoding.getName());
-        }
-        if (!getEngineOptions().isEmpty()) {
-            combinedOptions.append(",").append(getEngineOptions());
-        }
-        if (!options.isEmpty()) {
-            combinedOptions.append(",").append(options);
-        }
-        return combinedOptions.append('/').append(pattern).append('/').append(flags).toString();
-    }
-
-    Value compileRegex(String pattern, String flags, String options, Encodings.Encoding encoding) {
+    Value compileRegex(String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding) {
         return compileRegex(context, pattern, flags, options, encoding);
     }
 
-    Value compileRegex(Context ctx, String pattern, String flags, String options, Encodings.Encoding encoding) {
-        return ctx.eval("regexDummyLang", createSourceString(pattern, flags, options, encoding));
+    Source.Builder sourceBuilder(String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding) {
+        return Source.newBuilder("regexDummyLang", '/' + pattern + '/' + flags, "test").options(getEngineOptions()).options(options).option("regexDummyLang.Encoding",
+                        encoding == Encodings.BYTES ? "BYTES" : encoding.getName()).option("regexDummyLang.RegressionTestMode", "true");
+    }
+
+    Value compileRegex(Context ctx, String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding) {
+        return compileRegex(ctx, sourceBuilder(pattern, flags, options, encoding));
+    }
+
+    static Value compileRegex(Context ctx, Source.Builder source) {
+        try {
+            return ctx.eval(source.build());
+        } catch (IOException e) {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 
     Value execRegex(Value compiledRegex, String input, int fromIndex) {
@@ -133,10 +144,6 @@ public abstract class RegexTestBase {
         return compiledRegex.invokeMember("exec", input.switchEncodingUncached(encoding.getTStringEncoding()), fromIndex, toIndex, regionFrom, regionTo);
     }
 
-    Value execRegexBoolean(Value compiledRegex, String input, int fromIndex) {
-        return execRegexBoolean(compiledRegex, getTRegexEncoding(), input, fromIndex);
-    }
-
     Value execRegexBoolean(Value compiledRegex, Encodings.Encoding encoding, String input, int fromIndex) {
         return execRegexBoolean(compiledRegex, encoding, TruffleString.fromJavaStringUncached(input, encoding.getTStringEncoding()), fromIndex);
     }
@@ -151,11 +158,11 @@ public abstract class RegexTestBase {
         return compiledRegex.invokeMember("execBoolean", input.switchEncodingUncached(encoding.getTStringEncoding()), fromIndex, toIndex, regionFrom, regionTo);
     }
 
-    void testBoolean(String pattern, String flags, String options, String input, int fromIndex, boolean isMatch) {
+    void testBoolean(String pattern, String flags, Map<String, String> options, String input, int fromIndex, boolean isMatch) {
         String expectedResult = isMatch ? "Match" : "NoMatch";
-        options = options.isEmpty() ? "BooleanMatch=true" : "BooleanMatch=true," + options;
+        Source.Builder source = sourceBuilder(pattern, flags, options, getTRegexEncoding()).option("regexDummyLang.BooleanMatch", "true");
         try {
-            Value compiledRegex = compileRegex(pattern, flags, options, getTRegexEncoding());
+            Value compiledRegex = compileRegex(context, source);
             Value result = execRegexBoolean(compiledRegex, getTRegexEncoding(), input, fromIndex);
             if (result.asBoolean() != isMatch) {
                 String actualResult = result.asBoolean() ? "Match" : "NoMatch";
@@ -173,23 +180,19 @@ public abstract class RegexTestBase {
         }
     }
 
-    void testBoolean(String pattern, String flags, String input, int fromIndex, boolean isMatch) {
-        testBoolean(pattern, flags, "BooleanMatch=true", input, fromIndex, isMatch);
-    }
-
     void test(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
-        test(pattern, flags, "", input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
+        test(pattern, flags, Collections.emptyMap(), input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
     }
 
-    void test(String pattern, String flags, String options, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+    void test(String pattern, String flags, Map<String, String> options, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
         test(pattern, flags, options, getTRegexEncoding(), input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
     }
 
     void test(String pattern, String flags, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
-        test(pattern, flags, "", encoding, input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
+        test(pattern, flags, Collections.emptyMap(), encoding, input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
     }
 
-    void test(String pattern, String flags, String options, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+    void test(String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
         try {
             Value compiledRegex = compileRegex(pattern, flags, options, encoding);
             test(compiledRegex, pattern, flags, options, encoding, input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
@@ -200,10 +203,11 @@ public abstract class RegexTestBase {
                 throw e;
             }
         }
-        testBoolean(pattern, flags, "BooleanMatch=true" + (options.isEmpty() ? "" : "," + options), input, fromIndex, isMatch);
+        testBoolean(pattern, flags, options, input, fromIndex, isMatch);
     }
 
-    void test(Value compiledRegex, String pattern, String flags, String options, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+    void test(Value compiledRegex, String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch,
+                    int... captureGroupBoundsAndLastGroup) {
         Value result = execRegex(compiledRegex, encoding, input, fromIndex);
         int groupCount = compiledRegex.getMember("groupCount").asInt();
         validateResult(pattern, flags, options, input, fromIndex, result, groupCount, isMatch, captureGroupBoundsAndLastGroup);
@@ -228,7 +232,7 @@ public abstract class RegexTestBase {
         }
     }
 
-    private static void validateResult(String pattern, String flags, String options, String input, int fromIndex, Value result, int groupCount, boolean isMatch,
+    private static void validateResult(String pattern, String flags, Map<String, String> options, String input, int fromIndex, Value result, int groupCount, boolean isMatch,
                     int... captureGroupBoundsAndLastGroup) {
         if (isMatch != result.getMember("isMatch").asBoolean()) {
             fail(pattern, flags, options, input, fromIndex, result, groupCount, captureGroupBoundsAndLastGroup);
@@ -262,37 +266,41 @@ public abstract class RegexTestBase {
     }
 
     void expectUnsupported(String pattern, String flags) {
-        expectUnsupported(pattern, flags, "");
+        expectUnsupported(pattern, flags, Collections.emptyMap());
     }
 
-    void expectUnsupported(String pattern, String flags, String options) {
+    void expectUnsupported(String pattern, String flags, Map<String, String> options) {
         Assert.assertTrue(compileRegex(pattern, flags, options, getTRegexEncoding()).isNull());
     }
 
     void expectSyntaxError(String pattern, String flags, String expectedMessage) {
-        expectSyntaxError(pattern, flags, "", expectedMessage);
+        expectSyntaxError(pattern, flags, Collections.emptyMap(), expectedMessage);
     }
 
-    void expectSyntaxError(String pattern, String flags, String options, String expectedMessage) {
+    void expectSyntaxError(String pattern, String flags, Map<String, String> options, String expectedMessage) {
         expectSyntaxError(pattern, flags, options, getTRegexEncoding(), "", 0, expectedMessage, Integer.MIN_VALUE);
     }
 
     void expectSyntaxError(String pattern, String flags, String expectedMessage, int expectedPosition) {
-        expectSyntaxError(pattern, flags, "", getTRegexEncoding(), "", 0, expectedMessage, expectedPosition);
+        expectSyntaxError(pattern, flags, Collections.emptyMap(), getTRegexEncoding(), "", 0, expectedMessage, expectedPosition);
     }
 
-    void expectSyntaxError(String pattern, String flags, String options, Encodings.Encoding encoding, String input, int fromIndex, ErrorCode expectedErrorCode) {
-        expectSyntaxError(pattern, flags, options, encoding, input, fromIndex, expectedErrorCode, Integer.MIN_VALUE);
+    void expectSyntaxError(String pattern, String flags, String input, int fromIndex, ErrorCode expectedErrorCode) {
+        expectSyntaxError(pattern, flags, Collections.emptyMap(), getTRegexEncoding(), input, fromIndex, expectedErrorCode, Integer.MIN_VALUE);
     }
 
-    void expectSyntaxError(String pattern, String flags, String options, Encodings.Encoding encoding, String input, int fromIndex, ErrorCode expectedErrorCode, int expectedPosition) {
+    void expectSyntaxError(String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding, String input, int fromIndex, ErrorCode expectedErrorCode, int expectedPosition) {
         expectSyntaxError(pattern, flags, options, encoding, input, fromIndex, expectedErrorCode.name(), expectedPosition);
     }
 
-    void expectSyntaxError(String pattern, String flags, String options, Encodings.Encoding encoding, String input, int fromIndex, String expectedMessage, int expectedPosition) {
+    void expectSyntaxError(String pattern, String flags, String input, int fromIndex, String expectedMessage, int expectedPosition) {
+        expectSyntaxError(pattern, flags, Collections.emptyMap(), getTRegexEncoding(), input, fromIndex, expectedMessage, expectedPosition);
+    }
+
+    void expectSyntaxError(String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding, String input, int fromIndex, String expectedMessage, int expectedPosition) {
         Value compiledRegex;
         try {
-            compiledRegex = compileRegex(pattern, flags, options, getTRegexEncoding());
+            compiledRegex = compileRegex(pattern, flags, options, encoding);
         } catch (PolyglotException e) {
             String msg = e.getMessage();
             int pos = e.getSourceLocation().getCharIndex();
@@ -330,7 +338,7 @@ public abstract class RegexTestBase {
         return sb.append('^').toString();
     }
 
-    private static void fail(String pattern, String flags, String options, String input, int fromIndex, Value result, int groupCount, int... captureGroupBoundsAndLastGroup) {
+    private static void fail(String pattern, String flags, Map<String, String> options, String input, int fromIndex, Value result, int groupCount, int... captureGroupBoundsAndLastGroup) {
         String expectedResult = expectedResultToString(captureGroupBoundsAndLastGroup);
         String actualResult = actualResultToString(result, groupCount, captureGroupBoundsAndLastGroup.length % 2 == 1);
         printTable(pattern, flags, input, fromIndex, expectedResult, actualResult);
