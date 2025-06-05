@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1961,7 +1961,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * C7.2.90 Floating-point convert to to signed integer, rounding toward zero.<br>
+     * C7.2.90 Floating-point convert to signed integer, rounding toward zero.<br>
      *
      * @param size register size.
      * @param eSize source element size. Must be ElementSize.Word or ElementSize.DoubleWord.
