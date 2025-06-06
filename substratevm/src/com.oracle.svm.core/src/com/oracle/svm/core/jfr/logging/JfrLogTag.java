@@ -32,7 +32,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
  * class is necessary because {@link jdk.jfr.internal.LogTag} is an enum of log tag sets, and does
  * not provide the individual log tags.
  */
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+25/src/jdk.jfr/share/classes/jdk/jfr/internal/LogTag.java")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+26/src/jdk.jfr/share/classes/jdk/jfr/internal/LogTag.java")
 enum JfrLogTag {
     JFR,
     SYSTEM,
