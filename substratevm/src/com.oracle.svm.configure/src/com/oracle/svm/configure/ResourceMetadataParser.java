@@ -58,7 +58,7 @@ final class ResourceMetadataParser<C> extends ResourceConfigurationParser<C> {
     }
 
     @Override
-    protected UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> condition) {
+    protected UnresolvedAccessCondition parseCondition(EconomicMap<String, Object> condition) {
         return parseCondition(condition, true);
     }
 }
