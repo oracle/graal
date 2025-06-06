@@ -34,6 +34,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
+import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
@@ -114,10 +115,6 @@ public class AMD64HotSpotShenandoahLoadRefBarrierOp extends AMD64LIRInstruction 
     }
 
     @Override
-    // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/a2743bab4fd203b0791cf47e617c1a95b05ab3cc/src/hotspot/cpu/x86/gc/shenandoah/shenandoahBarrierSetAssembler_x86.cpp#L296-L430",
-              sha1 = "a039ddb87ee03446a7d015f2d955eb3014c9413e")
-    // @formatter:on
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         Register thread = providers.getRegisters().getThreadRegister();
         Register rtmp1 = asRegister(tmp);
@@ -125,6 +122,16 @@ public class AMD64HotSpotShenandoahLoadRefBarrierOp extends AMD64LIRInstruction 
         Register objectRegister = asRegister(object);
         Register resultRegister = asRegister(result);
         AMD64Address loadAddr = loadAddress.toAddress(masm);
+        emitCode(config, crb, masm, this, thread, resultRegister, objectRegister, rtmp1, rtmp2, loadAddr, callTarget, strength, notNull);
+    }
+
+    // @formatter:off
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/a2743bab4fd203b0791cf47e617c1a95b05ab3cc/src/hotspot/cpu/x86/gc/shenandoah/shenandoahBarrierSetAssembler_x86.cpp#L296-L430",
+              sha1 = "a039ddb87ee03446a7d015f2d955eb3014c9413e")
+    // @formatter:on
+    public static void emitCode(GraalHotSpotVMConfig config, CompilationResultBuilder crb, AMD64MacroAssembler masm, LIRInstruction op, Register thread, Register resultRegister,
+                    Register objectRegister, Register rtmp1, Register rtmp2,
+                    AMD64Address loadAddr, ForeignCallLinkage callTarget, ShenandoahLoadRefBarrierNode.ReferenceStrength strength, boolean notNull) {
         guaranteeDifferentRegisters(thread, rtmp1, rtmp2, objectRegister, resultRegister);
 
         Label done = new Label();
@@ -154,7 +161,7 @@ public class AMD64HotSpotShenandoahLoadRefBarrierOp extends AMD64LIRInstruction 
 
         // Check for object in collection set in an out-of-line mid-path.
         if (strength == ShenandoahLoadRefBarrierNode.ReferenceStrength.STRONG) {
-            crb.getLIR().addSlowPath(this, () -> {
+            crb.getLIR().addSlowPath(op, () -> {
                 masm.bind(csetCheck);
 
                 masm.movq(rtmp1, HotSpotReplacementsUtil.shenandoahGCCSetFastTestAddr(config));
@@ -170,7 +177,7 @@ public class AMD64HotSpotShenandoahLoadRefBarrierOp extends AMD64LIRInstruction 
         }
 
         // Call runtime slow-path LRB in out-of-line slow-path.
-        crb.getLIR().addSlowPath(this, () -> {
+        crb.getLIR().addSlowPath(op, () -> {
             masm.bind(slowPath);
             CallingConvention cc = callTarget.getOutgoingCallingConvention();
             GraalError.guarantee(cc.getArgumentCount() == 2, "Expecting callTarget to have only 2 parameters. It has " + cc.getArgumentCount());
