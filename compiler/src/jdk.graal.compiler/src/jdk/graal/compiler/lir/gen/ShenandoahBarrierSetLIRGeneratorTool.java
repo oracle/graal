@@ -24,9 +24,6 @@
  */
 package jdk.graal.compiler.lir.gen;
 
-import jdk.graal.compiler.core.common.LIRKind;
-import jdk.graal.compiler.core.common.memory.BarrierType;
-import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.nodes.gc.shenandoah.ShenandoahLoadRefBarrierNode;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;

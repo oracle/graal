@@ -30,7 +30,6 @@ import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.extended.ArrayRangeWrite;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
-import jdk.graal.compiler.nodes.java.LogicCompareAndSwapNode;
 import jdk.graal.compiler.nodes.java.ValueCompareAndSwapNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.type.NarrowOopStamp;
