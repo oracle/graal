@@ -64,7 +64,7 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
             return;
         }
 
-        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, true);
+        UnresolvedAccessCondition unresolvedCondition = parseCondition(data, true);
         TypeResult<C> conditionResult = conditionResolver.resolveCondition(unresolvedCondition);
         if (!conditionResult.isPresent()) {
             return;
