@@ -670,6 +670,11 @@ public class Graph implements EventCounter {
         INPUT_CHANGED,
 
         /**
+         * A node's control flow edge (i.e., predecessor or any successor) has changed.
+         */
+        CONTROL_FLOW_CHANGED,
+
+        /**
          * A node's {@linkplain Node#usages() usages} count dropped to zero.
          */
         ZERO_USAGES,
@@ -737,6 +742,9 @@ public class Graph implements EventCounter {
          */
         final void event(NodeEvent e, Node node) {
             switch (e) {
+                case CONTROL_FLOW_CHANGED:
+                    controlFlowChanged(node);
+                    break;
                 case INPUT_CHANGED:
                     inputChanged(node);
                     break;
@@ -773,7 +781,17 @@ public class Graph implements EventCounter {
         }
 
         /**
-         * Notifies this listener about a change in a node's inputs.
+         * Notifies this listener about a change in a node's control flow edges, i.e., its
+         * predecessor or any of its successor edges.
+         *
+         * @param node a node who has had its predecessor or one of its successors changed
+         */
+        public void controlFlowChanged(Node node) {
+        }
+
+        /**
+         * Notifies this listener about a change in a node's inputs (successor or predecessor edges
+         * not included).
          *
          * @param node a node who has had one of its inputs changed
          */
