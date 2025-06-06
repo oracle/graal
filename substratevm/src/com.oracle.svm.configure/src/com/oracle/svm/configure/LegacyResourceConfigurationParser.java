@@ -74,7 +74,7 @@ final class LegacyResourceConfigurationParser<C> extends ResourceConfigurationPa
     }
 
     @Override
-    protected UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> condition) {
+    protected UnresolvedAccessCondition parseCondition(EconomicMap<String, Object> condition) {
         return parseCondition(condition, false);
     }
 
