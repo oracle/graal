@@ -43,7 +43,7 @@ import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.ForeignConfigurationParser;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
@@ -208,7 +208,7 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
     }
 
     @Override
-    public void mergeConditional(UnresolvedConfigurationCondition condition, ForeignConfiguration other) {
+    public void mergeConditional(UnresolvedAccessCondition condition, ForeignConfiguration other) {
         // GR-64144: Not implemented with conditions yet
         merge(other);
     }
