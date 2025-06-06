@@ -61,14 +61,14 @@ public class AArch64HotSpotShenandoahBarrierSetLIRGenerator implements Shenandoa
     private static ForeignCallLinkage getReadBarrierStub(LIRGeneratorTool tool, ShenandoahLoadRefBarrierNode.ReferenceStrength strength, boolean narrow) {
         return switch (strength) {
             case STRONG ->
-                    narrow ? tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_NARROW)
-                            : tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER);
+                narrow ? tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_NARROW)
+                                : tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER);
             case WEAK ->
-                    narrow ? tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_WEAK_NARROW)
-                            : tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_WEAK);
+                narrow ? tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_WEAK_NARROW)
+                                : tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_WEAK);
             case PHANTOM ->
-                    narrow ? tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_PHANTOM_NARROW)
-                            : tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_PHANTOM);
+                narrow ? tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_PHANTOM_NARROW)
+                                : tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_PHANTOM);
         };
     }
 
@@ -109,9 +109,10 @@ public class AArch64HotSpotShenandoahBarrierSetLIRGenerator implements Shenandoa
 
     @Override
     public void emitCompareAndSwapOp(LIRGeneratorTool tool, boolean isLogic, Value address, MemoryOrderMode memoryOrder, AArch64Kind memKind, Variable result,
-                                     AllocatableValue allocatableExpectedValue, AllocatableValue allocatableNewValue, BarrierType barrierType) {
+                    AllocatableValue allocatableExpectedValue, AllocatableValue allocatableNewValue, BarrierType barrierType) {
         AllocatableValue tmp1 = tool.newVariable(LIRKind.value(AArch64Kind.QWORD));
-        tool.append(new AArch64HotSpotShenandoahCompareAndSwapOp(config, providers, memKind, memoryOrder, isLogic, result, allocatableExpectedValue, allocatableNewValue, tool.asAllocatable(address), tmp1));
+        tool.append(new AArch64HotSpotShenandoahCompareAndSwapOp(config, providers, memKind, memoryOrder, isLogic, result, allocatableExpectedValue, allocatableNewValue, tool.asAllocatable(address),
+                        tmp1));
     }
 
     @Override

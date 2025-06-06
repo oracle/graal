@@ -25,22 +25,17 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 
 /**
- * Special Shenandoah CAS implementation that handles false negatives due
- * to concurrent evacuation.  The service is more complex than a
- * traditional CAS operation because the CAS operation is intended to
- * succeed if the reference at addr exactly matches expected or if the
- * reference at addr holds a pointer to a from-space object that has
- * been relocated to the location named by expected.  There are two
- * races that must be addressed:
- *  a) A parallel thread may mutate the contents of addr so that it points
- *     to a different object.  In this case, the CAS operation should fail.
- *  b) A parallel thread may heal the contents of addr, replacing a
- *     from-space pointer held in addr with the to-space pointer
- *     representing the new location of the object.
- * Upon entry to cmpxchg_oop, it is assured that new_val equals null
- * or it refers to an object that is not being evacuated out of
- * from-space, or it refers to the to-space version of an object that
- * is being evacuated out of from-space.
+ * Special Shenandoah CAS implementation that handles false negatives due to concurrent evacuation.
+ * The service is more complex than a traditional CAS operation because the CAS operation is
+ * intended to succeed if the reference at addr exactly matches expected or if the reference at addr
+ * holds a pointer to a from-space object that has been relocated to the location named by expected.
+ * There are two races that must be addressed: a) A parallel thread may mutate the contents of addr
+ * so that it points to a different object. In this case, the CAS operation should fail. b) A
+ * parallel thread may heal the contents of addr, replacing a from-space pointer held in addr with
+ * the to-space pointer representing the new location of the object. Upon entry to cmpxchg_oop, it
+ * is assured that new_val equals null or it refers to an object that is not being evacuated out of
+ * from-space, or it refers to the to-space version of an object that is being evacuated out of
+ * from-space.
  */
 @Opcode("CAS_Shenandoah")
 public class AMD64HotSpotShenandoahCompareAndSwapOp extends AMD64LIRInstruction {
@@ -52,7 +47,6 @@ public class AMD64HotSpotShenandoahCompareAndSwapOp extends AMD64LIRInstruction 
     private final AMD64Kind accessKind;
     private final boolean isLogic;
 
-
     @Def private AllocatableValue result;
     @Alive({COMPOSITE}) private AMD64AddressValue address;
     @Alive private AllocatableValue cmpValue;
@@ -61,7 +55,8 @@ public class AMD64HotSpotShenandoahCompareAndSwapOp extends AMD64LIRInstruction 
     @Temp private AllocatableValue tmp1Value;
     @Temp private AllocatableValue tmp2Value;
 
-    public AMD64HotSpotShenandoahCompareAndSwapOp(GraalHotSpotVMConfig config, HotSpotProviders providers, AMD64Kind accessKind, AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue, AllocatableValue newValue, AllocatableValue tmp1, AllocatableValue tmp2, boolean isLogic) {
+    public AMD64HotSpotShenandoahCompareAndSwapOp(GraalHotSpotVMConfig config, HotSpotProviders providers, AMD64Kind accessKind, AllocatableValue result, AMD64AddressValue address,
+                    AllocatableValue cmpValue, AllocatableValue newValue, AllocatableValue tmp1, AllocatableValue tmp2, boolean isLogic) {
         super(TYPE);
         this.providers = providers;
         this.config = config;
@@ -109,12 +104,12 @@ public class AMD64HotSpotShenandoahCompareAndSwapOp extends AMD64LIRInstruction 
         //
         // Try to CAS with given arguments. If successful, then we are done.
 
-        // There are two ways to reach this label.  Initial entry into the
+        // There are two ways to reach this label. Initial entry into the
         // cmpxchg_oop code expansion starts at step1 (which is equivalent
-        // to label step4).  Additionally, in the rare case that four steps
+        // to label step4). Additionally, in the rare case that four steps
         // are required to perform the requested operation, the fourth step
-        // is the same as the first.  On a second pass through step 1,
-        // control may flow through step 2 on its way to failure.  It will
+        // is the same as the first. On a second pass through step 1,
+        // control may flow through step 2 on its way to failure. It will
         // not flow from step 2 to step 3 since we are assured that the
         // memory at addr no longer holds a from-space pointer.
         emitCompareAndSwap(crb, masm, accessKind, addr, expectedReg, newVal, resultReg);
@@ -155,7 +150,7 @@ public class AMD64HotSpotShenandoahCompareAndSwapOp extends AMD64LIRInstruction 
             // Test lowest two bits for 00.
             GraalError.guarantee(config.markWordLockMaskInPlace == 3, "mask must be 3 (11)");
             // If not forwarded, then we have a legitimate failure of the CAS.
-            masm.testAndJcc(AMD64BaseAssembler.OperandSize.QWORD, tmp2, (int)config.markWordLockMaskInPlace, AMD64Assembler.ConditionFlag.NotZero, done, false);
+            masm.testAndJcc(AMD64BaseAssembler.OperandSize.QWORD, tmp2, (int) config.markWordLockMaskInPlace, AMD64Assembler.ConditionFlag.NotZero, done, false);
             // Now set the two lowest bits. Upon re-inversion, these become 00.
             masm.orq(tmp2, (int) config.markWordLockMaskInPlace);
             // Invert again to get the resolved forwardee in tmp2.
@@ -165,10 +160,11 @@ public class AMD64HotSpotShenandoahCompareAndSwapOp extends AMD64LIRInstruction 
             compress(masm, opSize, tmp2);
 
             // Now we have the forwarded offender in tmp2.
-            // Compare with original expectedReg value, and if they don't match, we have legitimate failure
+            // Compare with original expectedReg value, and if they don't match, we have legitimate
+            // failure
             masm.cmpAndJcc(opSize, tmp1, tmp2, AMD64Assembler.ConditionFlag.NotEqual, done, false);
 
-            // Step 3.  We've confirmed that the value originally held in memory
+            // Step 3. We've confirmed that the value originally held in memory
             // (now held in resultReg/expectedReg) pointed to from-space version of original
             // expectedReg value. Try the CAS again with the from-space expectedReg
             // value. If it now succeeds, we're good.
@@ -183,7 +179,7 @@ public class AMD64HotSpotShenandoahCompareAndSwapOp extends AMD64LIRInstruction 
             masm.jcc(AMD64Assembler.ConditionFlag.Equal, done);
 
             // Step 4. CAS has failed because the value most recently fetched
-            // from addr is no longer the from-space pointer held in tmp2.  If a
+            // from addr is no longer the from-space pointer held in tmp2. If a
             // different thread replaced the in-memory value with its equivalent
             // to-space pointer, then CAS may still be able to succeed. The
             // value held in the expectedReg register must be updated to expect
@@ -223,6 +219,7 @@ public class AMD64HotSpotShenandoahCompareAndSwapOp extends AMD64LIRInstruction 
             GraalError.guarantee(opSize == AMD64BaseAssembler.OperandSize.QWORD, "unexpected opSize");
         }
     }
+
     private void uncompress(AMD64MacroAssembler masm, AMD64BaseAssembler.OperandSize opSize, Register dst) {
         if (opSize == AMD64BaseAssembler.OperandSize.DWORD) {
             CompressEncoding encoding = config.getOopEncoding();

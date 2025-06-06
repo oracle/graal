@@ -107,7 +107,8 @@ public class AMD64HotSpotShenandoahBarrierSetLIRGenerator implements ShenandoahB
     }
 
     @Override
-    public void emitCompareAndSwapOp(LIRGeneratorTool tool, boolean isLogic, LIRKind accessKind, AMD64Kind memKind, RegisterValue raxValue, AMD64AddressValue address, AllocatableValue newValue, BarrierType barrierType) {
+    public void emitCompareAndSwapOp(LIRGeneratorTool tool, boolean isLogic, LIRKind accessKind, AMD64Kind memKind, RegisterValue raxValue, AMD64AddressValue address, AllocatableValue newValue,
+                    BarrierType barrierType) {
         GraalError.guarantee(barrierType != BarrierType.NONE, "must have barrier type != NONE");
         AllocatableValue tmp1 = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
         AllocatableValue tmp2 = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));

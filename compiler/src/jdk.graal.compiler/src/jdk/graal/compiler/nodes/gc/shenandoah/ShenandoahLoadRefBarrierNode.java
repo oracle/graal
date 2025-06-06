@@ -62,8 +62,8 @@ public final class ShenandoahLoadRefBarrierNode extends ValueNode implements LIR
     }
 
     /**
-     * The input value. Typically this is a reference that has just been loaded.
-     * The barrier output represents the canonicalized reference.
+     * The input value. Typically this is a reference that has just been loaded. The barrier output
+     * represents the canonicalized reference.
      */
     @Input private ValueNode value;
 

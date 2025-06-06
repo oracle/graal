@@ -66,10 +66,9 @@ public class AMD64HotSpotShenandoahLoadRefBarrierOp extends AMD64LIRInstruction 
     private final ForeignCallLinkage callTarget;
 
     /**
-     * Strength (strong, weak, phantom) of incoming object reference. This
-     * affects whether or not the barrier needs to be active in the weak-roots
-     * phase, and whether or not we need to check for the object to be in
-     * the collection set.
+     * Strength (strong, weak, phantom) of incoming object reference. This affects whether or not
+     * the barrier needs to be active in the weak-roots phase, and whether or not we need to check
+     * for the object to be in the collection set.
      */
     private final ShenandoahLoadRefBarrierNode.ReferenceStrength strength;
 
@@ -174,7 +173,7 @@ public class AMD64HotSpotShenandoahLoadRefBarrierOp extends AMD64LIRInstruction 
         crb.getLIR().addSlowPath(this, () -> {
             masm.bind(slowPath);
             CallingConvention cc = callTarget.getOutgoingCallingConvention();
-            GraalError.guarantee(cc.getArgumentCount() == 2,"Expecting callTarget to have only 2 parameters. It has " + cc.getArgumentCount());
+            GraalError.guarantee(cc.getArgumentCount() == 2, "Expecting callTarget to have only 2 parameters. It has " + cc.getArgumentCount());
 
             AMD64Address cArg0 = (AMD64Address) crb.asAddress(cc.getArgument(0));
             AMD64Address cArg1 = (AMD64Address) crb.asAddress(cc.getArgument(1));

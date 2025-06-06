@@ -626,8 +626,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      * Shenandoah GC support.
      */
     /**
-     * Indicates whether or not the HotSpot VM has been built with Shenandoah support.
-     * If not, then we don't expect the Shenandoah symbols to be present in JVMCI.
+     * Indicates whether or not the HotSpot VM has been built with Shenandoah support. If not, then
+     * we don't expect the Shenandoah symbols to be present in JVMCI.
      */
     public final boolean hasShenandoahGC = getStore().getConstants().containsKey("INCLUDE_SHENANDOAHGC") && getConstant("INCLUDE_SHENANDOAHGC", Boolean.class);
 

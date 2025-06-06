@@ -82,7 +82,8 @@ public class AArch64TruffleCallBoundaryInstrumentationFactory extends TruffleCal
                         if (config.gc == HotSpotGraalRuntime.HotSpotGC.Shenandoah) {
                             Register thread = registers.getThreadRegister();
                             ForeignCallLinkage callTarget = crb.getForeignCalls().lookupForeignCall(SHENANDOAH_LOAD_BARRIER);
-                            AArch64HotSpotShenandoahLoadRefBarrierOp.emitCode(config, crb, masm, null, thread, spillRegister, spillRegister, address, callTarget, ShenandoahLoadRefBarrierNode.ReferenceStrength.STRONG, false);
+                            AArch64HotSpotShenandoahLoadRefBarrierOp.emitCode(config, crb, masm, null, thread, spillRegister, spillRegister, address, callTarget,
+                                            ShenandoahLoadRefBarrierNode.ReferenceStrength.STRONG, false);
                         }
                     } else {
                         AArch64Address address = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, thisRegister, installedCodeOffset);
@@ -94,7 +95,8 @@ public class AArch64TruffleCallBoundaryInstrumentationFactory extends TruffleCal
                         if (config.gc == HotSpotGraalRuntime.HotSpotGC.Shenandoah) {
                             Register thread = registers.getThreadRegister();
                             ForeignCallLinkage callTarget = crb.getForeignCalls().lookupForeignCall(SHENANDOAH_LOAD_BARRIER);
-                            AArch64HotSpotShenandoahLoadRefBarrierOp.emitCode(config, crb, masm, null, thread, spillRegister, spillRegister, address, callTarget, ShenandoahLoadRefBarrierNode.ReferenceStrength.STRONG, false);
+                            AArch64HotSpotShenandoahLoadRefBarrierOp.emitCode(config, crb, masm, null, thread, spillRegister, spillRegister, address, callTarget,
+                                            ShenandoahLoadRefBarrierNode.ReferenceStrength.STRONG, false);
                         }
                     }
                     masm.ldr(64, spillRegister, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, spillRegister, entryPointOffset));

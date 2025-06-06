@@ -22,22 +22,17 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 /**
- * Special Shenandoah CAS implementation that handles false negatives due
- * to concurrent evacuation.  The service is more complex than a
- * traditional CAS operation because the CAS operation is intended to
- * succeed if the reference at addr exactly matches expected or if the
- * reference at addr holds a pointer to a from-space object that has
- * been relocated to the location named by expected.  There are two
- * races that must be addressed:
- *  a) A parallel thread may mutate the contents of addr so that it points
- *     to a different object.  In this case, the CAS operation should fail.
- *  b) A parallel thread may heal the contents of addr, replacing a
- *     from-space pointer held in addr with the to-space pointer
- *     representing the new location of the object.
- * Upon entry to cmpxchg_oop, it is assured that new_val equals null
- * or it refers to an object that is not being evacuated out of
- * from-space, or it refers to the to-space version of an object that
- * is being evacuated out of from-space.
+ * Special Shenandoah CAS implementation that handles false negatives due to concurrent evacuation.
+ * The service is more complex than a traditional CAS operation because the CAS operation is
+ * intended to succeed if the reference at addr exactly matches expected or if the reference at addr
+ * holds a pointer to a from-space object that has been relocated to the location named by expected.
+ * There are two races that must be addressed: a) A parallel thread may mutate the contents of addr
+ * so that it points to a different object. In this case, the CAS operation should fail. b) A
+ * parallel thread may heal the contents of addr, replacing a from-space pointer held in addr with
+ * the to-space pointer representing the new location of the object. Upon entry to cmpxchg_oop, it
+ * is assured that new_val equals null or it refers to an object that is not being evacuated out of
+ * from-space, or it refers to the to-space version of an object that is being evacuated out of
+ * from-space.
  */
 public class AArch64HotSpotShenandoahCompareAndSwapOp extends AArch64AtomicMove.CompareAndSwapOp {
     public static final LIRInstructionClass<AArch64HotSpotShenandoahCompareAndSwapOp> TYPE = LIRInstructionClass.create(AArch64HotSpotShenandoahCompareAndSwapOp.class);
@@ -47,7 +42,8 @@ public class AArch64HotSpotShenandoahCompareAndSwapOp extends AArch64AtomicMove.
 
     @Temp private AllocatableValue tmp1Value;
 
-    public AArch64HotSpotShenandoahCompareAndSwapOp(GraalHotSpotVMConfig config, HotSpotProviders providers, AArch64Kind accessKind, MemoryOrderMode memoryOrder, boolean isLogicVariant, Variable result, AllocatableValue expectedValue, AllocatableValue newValue, AllocatableValue address, AllocatableValue tmp1) {
+    public AArch64HotSpotShenandoahCompareAndSwapOp(GraalHotSpotVMConfig config, HotSpotProviders providers, AArch64Kind accessKind, MemoryOrderMode memoryOrder, boolean isLogicVariant,
+                    Variable result, AllocatableValue expectedValue, AllocatableValue newValue, AllocatableValue address, AllocatableValue tmp1) {
         super(TYPE, accessKind, memoryOrder, isLogicVariant, result, expectedValue, newValue, address);
         this.providers = providers;
         this.config = config;
@@ -74,15 +70,15 @@ public class AArch64HotSpotShenandoahCompareAndSwapOp extends AArch64AtomicMove.
 
         // Step 1. Fast-path.
         //
-        // Try to CAS with given arguments.  If successful, then we are done.
+        // Try to CAS with given arguments. If successful, then we are done.
 
         emitCompareAndSwap(masm, accessKind, address, result, expected, newVal, memoryOrder, true);
-        // EQ flag set iff success.  result holds value fetched.
+        // EQ flag set iff success. result holds value fetched.
 
         // If expected equals null but result does not equal null, the
-        // step2 branches to done to report failure of CAS.  If both
+        // step2 branches to done to report failure of CAS. If both
         // expected and tmp2 equal null, the following branches to done to
-        // report success of CAS.  There's no need for a special test of
+        // report success of CAS. There's no need for a special test of
         // expected equal to null.
 
         masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, step2);
@@ -91,13 +87,13 @@ public class AArch64HotSpotShenandoahCompareAndSwapOp extends AArch64AtomicMove.
 
         crb.getLIR().addSlowPath(this, () -> {
             // Step 2. CAS has failed because the value held at addr does not
-            // match expected.  This may be a false negative because the value fetched
+            // match expected. This may be a false negative because the value fetched
             // from addr (now held in result) may be a from-space pointer to the
             // original copy of same object referenced by to-space pointer expected.
             //
             // To resolve this, it suffices to find the forward pointer associated
-            // with fetched value.  If this matches expected, retry CAS with new
-            // parameters.  If this mismatches, then we have a legitimate
+            // with fetched value. If this matches expected, retry CAS with new
+            // parameters. If this mismatches, then we have a legitimate
             // failure, and we're done.
             masm.bind(step2);
 
@@ -139,9 +135,9 @@ public class AArch64HotSpotShenandoahCompareAndSwapOp extends AArch64AtomicMove.
             // Branching to done with NE condition denotes failure.
             masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, done);
 
-            // Fall through to step 3.  No need for step3 label.
+            // Fall through to step 3. No need for step3 label.
 
-            // Step 3.  We've confirmed that the value originally held in memory
+            // Step 3. We've confirmed that the value originally held in memory
             // (now held in result) pointed to from-space version of original
             // expected value. Try the CAS again with the from-space expected
             // value. If it now succeeds, we're good.
@@ -161,15 +157,15 @@ public class AArch64HotSpotShenandoahCompareAndSwapOp extends AArch64AtomicMove.
             // requested operation, the fourth step is the same as the first.
 
             // Step 4. CAS has failed because the value most recently fetched
-            // from addr is no longer the from-space pointer held in result.  If a
+            // from addr is no longer the from-space pointer held in result. If a
             // different thread replaced the in-memory value with its equivalent
-            // to-space pointer, then CAS may still be able to succeed.  The
+            // to-space pointer, then CAS may still be able to succeed. The
             // value held in the expected register has not changed.
             //
             // It is extremely rare we reach this point.
 
             emitCompareAndSwap(masm, accessKind, address, result, expected, newVal, memoryOrder, setConditionFlags);
-            // EQ flag set iff success.  result holds value fetched.
+            // EQ flag set iff success. result holds value fetched.
 
             masm.jmp(done);
 

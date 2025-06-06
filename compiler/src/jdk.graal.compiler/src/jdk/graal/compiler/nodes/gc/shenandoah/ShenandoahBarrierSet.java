@@ -124,7 +124,8 @@ public class ShenandoahBarrierSet implements BarrierSet {
             throw GraalError.shouldNotReachHere("Unexpected location type " + loadStamp);
         }
 
-        GraalError.guarantee(!(location instanceof FieldLocationIdentity fieldLocationIdentity) || fieldLocationIdentity.getField().getJavaKind() != JavaKind.Object, "must not be a reference location: " + address);
+        GraalError.guarantee(!(location instanceof FieldLocationIdentity fieldLocationIdentity) || fieldLocationIdentity.getField().getJavaKind() != JavaKind.Object,
+                        "must not be a reference location: " + address);
         return BarrierType.NONE;
     }
 
