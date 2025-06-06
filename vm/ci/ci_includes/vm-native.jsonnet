@@ -4,7 +4,7 @@ local vm_common = import '../ci_common/common.jsonnet';
 local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
 {
-  local truffle_native_tck = vm_common.svm_common  + {
+  local truffle_native_tck = graal_common.deps.svm + {
     run+: [
       ['mx', '--env', 'ce', '--dynamicimports', '/tools', '--native-images=lib:jvmcicompiler', 'gate', '--tags', 'build,truffle-native-tck,truffle-native-tck-sl'],
     ],
@@ -14,7 +14,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     name: self.targets[0] + '-vm-truffle-native-tck-labs' + self.jdk_name + '-linux-amd64',
   },
 
-  local truffle_native_tck_wasm = vm_common.svm_common  + {
+  local truffle_native_tck_wasm = graal_common.deps.svm + {
     run+: [
       ['mx', '--env', 'ce', '--dynamicimports', '/wasm', '--native-images=lib:jvmcicompiler', 'gate', '--tags', 'build,truffle-native-tck-wasm'],
     ],
@@ -24,7 +24,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     name: self.targets[0] + '-vm-truffle-native-tck-wasm-labs' + self.jdk_name + '-linux-amd64',
   },
 
-  local truffle_maven_downloader = vm_common.svm_common + vm_common.sulong + {
+  local truffle_maven_downloader = graal_common.deps.svm + graal_common.deps.sulong + {
     run+: [
       ['export', 'SVM_SUITE=' + vm.svm_suite],
       ['mx', '--env', 'ce-llvm', '--native-images=', 'gate', '--no-warning-as-error', '--tags', 'build,maven-downloader'],
@@ -39,7 +39,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   },
 
   local builds = [
-    vm.vm_java_Latest + vm_common.svm_common + vm_common.sulong + vm_common.graalpy + vm.custom_vm + vm_common.vm_base('linux', 'amd64', 'gate') + {
+    vm.vm_java_Latest + graal_common.deps.svm + graal_common.deps.sulong + graal_common.deps.graalpy + vm.custom_vm + vm_common.vm_base('linux', 'amd64', 'gate') + {
      run+: [
        ['export', 'SVM_SUITE=' + vm.svm_suite],
        ['mx', '--dynamicimports', '$SVM_SUITE,graalpython', '--disable-polyglot', '--disable-libpolyglot', '--force-bash-launchers=lli,native-image', 'gate', '--no-warning-as-error', '--tags', 'build,python'],
