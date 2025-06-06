@@ -97,13 +97,13 @@ suite = {
       "digest": "sha512:22569a011d207fb8f33e7e71162542a5748cc3daa67eec59cbdc2aeb0894c331dfb8b6100ea88529c6cea72672cbddd77ca6134ddf331685d68b3e72b4e0a914",
     },
 
-    "JCODINGS_1.0.58": {
-      "digest" : "sha512:625210aa07d1e08bf2f5fdc9da6c491a4e5a56e7db297cba1aa73636670ac1d62f3fd763716ef6ede862456b17169272ed9c8461d07100f95262163dc9c18ef8",
-      "sourceDigest" : "sha512:d0f883f658310f7ad091aea08df28f1f5fe12080d6cb266cd91aec7e34cda1d57736d32618e8632b329854367d6e4d5fc91b5eb8ac9b823b26113fae3f75f50c",
+    "JCODINGS_1.0.63": {
+      "digest" : "sha512:280e989a1af7679da82bb9adb27a8c4e08c8da09f0bb93c380a36bfe7071c62bc9e7248b634d9e04f3ab275ec0672a44f8ab41dca8c10128c4351b6302275e84",
+      "sourceDigest" : "sha512:f6843609284be7dbfdbc7530e34c15e6aea7d3a45c4ee8e6836ee42fafbb9306f7234e20d8abbfc6a13e28d885eb5d743d69bfbbf738932db1fe42e031a835e3",
       "maven": {
         "groupId": "org.jruby.jcodings",
         "artifactId": "jcodings",
-        "version": "1.0.58",
+        "version": "1.0.63",
       },
       "license": ["MIT"],
     },
@@ -1461,7 +1461,7 @@ suite = {
           "TRUFFLE_API"
       ],
       "shadedDependencies" : [
-        "truffle:JCODINGS_1.0.58",
+        "truffle:JCODINGS_1.0.63",
       ],
       "class" : "ShadedLibraryProject",
       "shade" : {
@@ -1483,34 +1483,6 @@ suite = {
         "patch" : {
           "org/jcodings/util/ArrayReader.java" : {
             "\"/tables/\"" : "\"/org/graalvm/shadowed/org/jcodings/tables/\"",
-          },
-          # Fix CESU8Encoding.leftAdjustCharHead by applying a stripped down version of:
-          # https://github.com/jruby/jcodings/pull/61/ (not in 1.0.58; remove when updating to a newer version).
-          "org/jcodings/specific/CESU8Encoding.java" : {
-"""
-  (public int leftAdjustCharHead\\(byte\\[\\] bytes, int p, int s, int end\\) {
-    if \\(s <= p\\)
-      return s;
-    int p_ = s;
-    while \\(!utf8IsLead\\(bytes\\[p_\\] & 0xff\\) && p_ > p\\)
-      p_--;)(
-    return p_;
-  })
-""" : """
-  \\1
-    if (p_ > p && s - p_ == 2 && Character.isLowSurrogate((char) utf8Decode3ByteSequence(bytes, p_))) {
-      int pSurrogatePair = p_ - 1;
-      while (!utf8IsLead(bytes[pSurrogatePair] & 0xff) && pSurrogatePair > p)
-        pSurrogatePair--;
-      if (p_ - pSurrogatePair == 3 && Character.isHighSurrogate((char) utf8Decode3ByteSequence(bytes, pSurrogatePair))) {
-        return pSurrogatePair;
-      }
-    }\\2
-
-  private static int utf8Decode3ByteSequence(byte[] bytes, int p) {
-    return ((bytes[p] & 0xF) << 12) | ((bytes[p + 1] & 0xff & 0x3f) << 6) | (bytes[p + 2] & 0xff & 0x3f);
-  }
-""",
           },
           "org/jcodings/Encoding.java" : {
             "(public static Encoding load\\([^()]*\\) \\{\\s*)[^{}]*(?:\\{[^{}]*\\}[^{}]*)*(\\s*\\})" : "\\1throw new InternalException(ErrorMessages.ERR_ENCODING_CLASS_DEF_NOT_FOUND, name);\\2"
