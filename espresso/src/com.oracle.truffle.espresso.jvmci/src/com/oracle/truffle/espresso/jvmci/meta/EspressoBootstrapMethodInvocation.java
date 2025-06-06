@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.StringJoiner;
 
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -72,6 +73,16 @@ public final class EspressoBootstrapMethodInvocation implements ConstantPool.Boo
     @Override
     public List<JavaConstant> getStaticArguments() {
         return staticArguments;
+    }
+
+    @Override
+    public void resolve() {
+        throw JVMCIError.unimplemented();
+    }
+
+    @Override
+    public JavaConstant lookup() {
+        throw JVMCIError.unimplemented();
     }
 
     @Override

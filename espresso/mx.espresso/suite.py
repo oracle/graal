@@ -606,7 +606,7 @@ suite = {
             "layout": {
                 "bin/": [
                     "dependency:espresso:espresso",
-                    "dependency:ESPRESSO_JVM_STANDALONE_JAVA_LINKS/bin/*",
+                    "dependency:espresso:ESPRESSO_JVM_STANDALONE_JAVA_LINKS/bin/*",
                 ],
                 "./": [{
                         "source_type": "dependency",
