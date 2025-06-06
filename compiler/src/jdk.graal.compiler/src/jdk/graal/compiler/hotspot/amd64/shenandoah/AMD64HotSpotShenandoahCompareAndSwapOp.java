@@ -157,7 +157,7 @@ public class AMD64HotSpotShenandoahCompareAndSwapOp extends AMD64LIRInstruction 
             // If not forwarded, then we have a legitimate failure of the CAS.
             masm.testAndJcc(AMD64BaseAssembler.OperandSize.QWORD, tmp2, (int)config.markWordLockMaskInPlace, AMD64Assembler.ConditionFlag.NotZero, done, false);
             // Now set the two lowest bits. Upon re-inversion, these become 00.
-            masm.orq(tmp2, 7 /*(int) config.markWordLockMaskInPlace*/);
+            masm.orq(tmp2, (int) config.markWordLockMaskInPlace);
             // Invert again to get the resolved forwardee in tmp2.
             masm.notq(tmp2);
             // We need to compress it for comparing with original

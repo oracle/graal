@@ -25,17 +25,19 @@
 package jdk.graal.compiler.hotspot.aarch64.shenandoah;
 
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
-import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.core.aarch64.AArch64LIRGenerator;
+import jdk.graal.compiler.core.aarch64.AArch64ReadBarrierSetLIRGenerator;
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
+import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.aarch64.AArch64AddressValue;
-import jdk.graal.compiler.lir.aarch64.AArch64ControlFlow;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.ShenandoahBarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.nodes.gc.shenandoah.ShenandoahLoadRefBarrierNode;
@@ -44,12 +46,10 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
-import static jdk.graal.compiler.lir.LIRValueUtil.isIntConstant;
-
 /**
  * Lowers Shenandoah barriers to AArch64 LIR.
  */
-public class AArch64HotSpotShenandoahBarrierSetLIRGenerator implements ShenandoahBarrierSetLIRGeneratorTool {
+public class AArch64HotSpotShenandoahBarrierSetLIRGenerator implements ShenandoahBarrierSetLIRGeneratorTool, AArch64ReadBarrierSetLIRGenerator {
     public AArch64HotSpotShenandoahBarrierSetLIRGenerator(GraalHotSpotVMConfig config, HotSpotProviders providers) {
         this.config = config;
         this.providers = providers;
@@ -60,11 +60,14 @@ public class AArch64HotSpotShenandoahBarrierSetLIRGenerator implements Shenandoa
 
     private static ForeignCallLinkage getReadBarrierStub(LIRGeneratorTool tool, ShenandoahLoadRefBarrierNode.ReferenceStrength strength, boolean narrow) {
         return switch (strength) {
-            case STRONG -> narrow ? tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_NARROW)
+            case STRONG ->
+                    narrow ? tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_NARROW)
                             : tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER);
-            case WEAK -> narrow ? tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_WEAK_NARROW)
+            case WEAK ->
+                    narrow ? tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_WEAK_NARROW)
                             : tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_WEAK);
-            case PHANTOM -> narrow ? tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_PHANTOM_NARROW)
+            case PHANTOM ->
+                    narrow ? tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_PHANTOM_NARROW)
                             : tool.getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER_PHANTOM);
         };
     }
@@ -104,14 +107,26 @@ public class AArch64HotSpotShenandoahBarrierSetLIRGenerator implements Shenandoa
         lirTool.append(new AArch64HotSpotShenandoahCardBarrierOp(config, providers, addr, tmp));
     }
 
-    private Variable emitCompareAndSwap(LIRGeneratorTool tool, boolean isLogicVariant, LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
-        AArch64Kind memKind = (AArch64Kind) accessKind.getPlatformKind();
-        Variable result = tool.newVariable(tool.toRegisterKind(accessKind));
-        AllocatableValue allocatableExpectedValue = tool.asAllocatable(expectedValue);
-        AllocatableValue allocatableNewValue = tool.asAllocatable(newValue);
+    @Override
+    public void emitCompareAndSwapOp(LIRGeneratorTool tool, boolean isLogic, Value address, MemoryOrderMode memoryOrder, AArch64Kind memKind, Variable result,
+                                     AllocatableValue allocatableExpectedValue, AllocatableValue allocatableNewValue, BarrierType barrierType) {
         AllocatableValue tmp1 = tool.newVariable(LIRKind.value(AArch64Kind.QWORD));
-        AllocatableValue tmp2 = tool.newVariable(LIRKind.value(AArch64Kind.QWORD));
-        tool.append(new AArch64HotSpotShenandoahCompareAndSwapOp(config, providers, memKind, memoryOrder, isLogicVariant, result, allocatableExpectedValue, allocatableNewValue, tool.asAllocatable(address), tmp1, tmp2));
-        return isLogicVariant ? null : result;
+        tool.append(new AArch64HotSpotShenandoahCompareAndSwapOp(config, providers, memKind, memoryOrder, isLogic, result, allocatableExpectedValue, allocatableNewValue, tool.asAllocatable(address), tmp1));
+    }
+
+    @Override
+    public Value emitAtomicReadAndWrite(LIRGeneratorTool tool, LIRKind readKind, Value address, Value newValue, BarrierType barrierType) {
+        // We insert the necessary barriers in the node graph, at that level it
+        // is easier to handle compressed object references. No need to do anything
+        // special here.
+        return tool.emitAtomicReadAndWrite(readKind, address, newValue, BarrierType.NONE);
+    }
+
+    @Override
+    public Variable emitBarrieredLoad(LIRGeneratorTool tool, LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, BarrierType barrierType) {
+        // We insert the necessary barriers in the node graph, at that level it
+        // is easier to handle compressed object references. No need to do anything
+        // special here.
+        return tool.getArithmetic().emitLoad(kind, address, state, memoryOrder, MemoryExtendKind.DEFAULT);
     }
 }

@@ -46,14 +46,13 @@ public class AArch64HotSpotShenandoahCompareAndSwapOp extends AArch64AtomicMove.
     private final GraalHotSpotVMConfig config;
 
     @Temp private AllocatableValue tmp1Value;
-    @Temp private AllocatableValue tmp2Value;
 
-    public AArch64HotSpotShenandoahCompareAndSwapOp(GraalHotSpotVMConfig config, HotSpotProviders providers, AArch64Kind accessKind, MemoryOrderMode memoryOrder, boolean isLogicVariant, Variable result, AllocatableValue expectedValue, AllocatableValue newValue, AllocatableValue address, AllocatableValue tmp1, AllocatableValue tmp2) {
+    public AArch64HotSpotShenandoahCompareAndSwapOp(GraalHotSpotVMConfig config, HotSpotProviders providers, AArch64Kind accessKind, MemoryOrderMode memoryOrder, boolean isLogicVariant, Variable result, AllocatableValue expectedValue, AllocatableValue newValue, AllocatableValue address, AllocatableValue tmp1) {
         super(TYPE, accessKind, memoryOrder, isLogicVariant, result, expectedValue, newValue, address);
         this.providers = providers;
         this.config = config;
+
         this.tmp1Value = tmp1;
-        this.tmp2Value = tmp2;
     }
 
     @Override
@@ -68,12 +67,10 @@ public class AArch64HotSpotShenandoahCompareAndSwapOp extends AArch64AtomicMove.
         Register newVal = asRegister(newValue);
 
         Register tmp1 = asRegister(tmp1Value);
-        Register tmp2 = asRegister(tmp2Value);
         Label step2 = new Label();
-        Label step4 = new Label();
         Label done = new Label();
         GraalError.guarantee(accessKind == AArch64Kind.QWORD || accessKind == AArch64Kind.DWORD, "must be 64 or 32 bit access");
-        int size = accessKind == AArch64Kind.QWORD ? 64 : 32;
+        int size = (accessKind == AArch64Kind.QWORD) ? 64 : 32;
 
         // Step 1. Fast-path.
         //
@@ -104,20 +101,38 @@ public class AArch64HotSpotShenandoahCompareAndSwapOp extends AArch64AtomicMove.
             // failure, and we're done.
             masm.bind(step2);
 
+            // Check for null. If we get null, then we have a legitimate failure.
+            masm.tst(size, result, result);
+            Label resultNullFailure = setConditionFlags ? new Label() : done;
+            masm.branchConditionally(AArch64Assembler.ConditionFlag.EQ, resultNullFailure);
+
             // overwrite tmp1 with from-space pointer fetched from memory
             masm.mov(size, tmp1, result);
 
             // Decode tmp1 in order to resolve its forward pointer
             uncompress(masm, tmp1);
-            resolveForwardPointer(masm, tmp1, tmp2);
+
+            // Load mark-word (i.e. potential forwarding pointer).
+            masm.ldr(64, tmp1, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, tmp1, config.markOffset));
+            // Invert the mark-word, so that we can test the two lowest bits for 11, while
+            // preserving the upper bits.
+            masm.eon(64, tmp1, tmp1, zr);
+            // Check lowest bits for 00, which would have been originally 11.
+            // Original 11 indicates a forwarded object.
+            masm.tst(64, tmp1, config.markWordLockMaskInPlace);
+            // If not forwarded, then we're done. It must be a legitimate failure.
+            masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, done);
+            // Set lowest two bits, which will result in actual clearing the bits
+            // after the following inversion.
+            masm.orr(64, tmp1, tmp1, config.markWordLockMaskInPlace);
+            // ... and invert all bits back to get the forwarding pointer into tmp1.
+            masm.eon(64, tmp1, tmp1, zr);
+
             // Encode tmp1 to compare against expected.
             compress(masm, tmp1);
 
             // Does forwarded value of fetched from-space pointer match original
-            // value of expected?  If tmp1 holds null, this comparison will fail
-            // because we know from step1 that expected is not null.  There is
-            // no need for a separate test for tmp1 (the value originally held
-            // in memory) equal to null.
+            // value of expected?
             masm.cmp(size, tmp1, expected);
 
             // If not, then the failure was legitimate and we're done.
@@ -133,8 +148,8 @@ public class AArch64HotSpotShenandoahCompareAndSwapOp extends AArch64AtomicMove.
             //
             // Note: result holds encoded from-space pointer that matches to-space
             // object residing at expected. result is the new "expected".
-            masm.mov(size, tmp2, result);
-            emitCompareAndSwap(masm, accessKind, address, result, tmp2, newVal, memoryOrder, true);
+            masm.mov(size, tmp1, result);
+            emitCompareAndSwap(masm, accessKind, address, result, tmp1, newVal, memoryOrder, true);
             // EQ flag set iff success. result holds value fetched.
 
             // If fetched value did not equal the new expected, this could
@@ -146,43 +161,25 @@ public class AArch64HotSpotShenandoahCompareAndSwapOp extends AArch64AtomicMove.
             // requested operation, the fourth step is the same as the first.
 
             // Step 4. CAS has failed because the value most recently fetched
-            // from addr is no longer the from-space pointer held in tmp2.  If a
+            // from addr is no longer the from-space pointer held in result.  If a
             // different thread replaced the in-memory value with its equivalent
             // to-space pointer, then CAS may still be able to succeed.  The
             // value held in the expected register has not changed.
             //
             // It is extremely rare we reach this point.
 
-            emitCompareAndSwap(masm, accessKind, address, result, expected, newVal, memoryOrder, true);
+            emitCompareAndSwap(masm, accessKind, address, result, expected, newVal, memoryOrder, setConditionFlags);
             // EQ flag set iff success.  result holds value fetched.
 
             masm.jmp(done);
+
+            if (setConditionFlags) {
+                masm.bind(resultNullFailure);
+                // Clear zero flag to indicate failure.
+                masm.subs(32, zr, zr, 1);
+                masm.jmp(done);
+            }
         });
-    }
-
-    void resolveForwardPointer(AArch64MacroAssembler masm, Register obj, Register tmp) {
-        Label done = new Label();
-        // If reference is 0, then we're done.
-        masm.cbz(64, obj, done);
-        // Do the decoding in tmp, preserve obj for the case when obj is not forwarded.
-        masm.mov(64, tmp, obj);
-        // Load mark-word (i.e. potential forwarding pointer).
-        masm.ldr(64, tmp, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, tmp, config.markOffset));
-        // Invert the mark-word, so that we can test the two lowest bits for 11, while
-        // preserving the upper bits.
-        masm.eon(64, tmp, tmp, zr);
-        // Check lowest bits for 00, which would have been originally 11.
-        // Original 11 indicates a forwarded object.
-        masm.tst(64, tmp, config.markWordLockMaskInPlace);
-        // If not forwarded, then we're done.
-        masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, done);
-        // Set lowest two bits, which will result in actual clearing the bits
-        // after the following inversion.
-        masm.orr(64, tmp, tmp, config.markWordLockMaskInPlace);
-        // ... and invert all bits back to get the forwarding pointer into obj.
-        masm.eon(64, obj, tmp, zr);
-
-        masm.bind(done);
     }
 
     void uncompress(AArch64MacroAssembler masm, Register obj) {
@@ -195,7 +192,7 @@ public class AArch64HotSpotShenandoahCompareAndSwapOp extends AArch64AtomicMove.
     void compress(AArch64MacroAssembler masm, Register obj) {
         if (accessKind == AArch64Kind.DWORD) {
             Register heapBase = providers.getRegisters().getHeapBaseRegister();
-            AArch64HotSpotMove.UncompressPointer.emitUncompressCode(masm, obj, obj, heapBase, config.getOopEncoding(), false);
+            AArch64HotSpotMove.CompressPointer.emitCompressCode(masm, obj, obj, heapBase, config.getOopEncoding(), false);
         }
     }
 }
