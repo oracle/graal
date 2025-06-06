@@ -46,12 +46,12 @@
     "oraclejdk24":       {"name": "jpg-jdk",   "version": "24", "build_id": "jdk-24.0.1+9", "platformspecific": true, "extrabundles": ["static-libs"]},
 
     "oraclejdk-latest":       {"name": "jpg-jdk",   "version": "25",      "build_id": "jdk-25+26", "platformspecific": true, "extrabundles": ["static-libs"]},
-    "labsjdk-ce-latest":      {"name": "labsjdk",   "version": "ce-25+26-jvmci-b01-20250606074848-c338a5e83c", "platformspecific": true },
-    "labsjdk-ce-latestDebug": {"name": "labsjdk",   "version": "ce-25+26-jvmci-b01-20250606074848-c338a5e83c-debug", "platformspecific": true },
-    "labsjdk-ce-latest-llvm": {"name": "labsjdk",   "version": "ce-25+26-jvmci-b01-20250606074848-c338a5e83c-sulong", "platformspecific": true },
-    "labsjdk-ee-latest":      {"name": "labsjdk",   "version": "ee-25+26-jvmci-b01-20250606074848-c338a5e83c+2e6dc1795e", "platformspecific": true },
-    "labsjdk-ee-latestDebug": {"name": "labsjdk",   "version": "ee-25+26-jvmci-b01-20250606074848-c338a5e83c+2e6dc1795e-debug", "platformspecific": true },
-    "labsjdk-ee-latest-llvm": {"name": "labsjdk",   "version": "ee-25+26-jvmci-b01-20250606074848-c338a5e83c+2e6dc1795e-sulong", "platformspecific": true }
+    "labsjdk-ce-latest":      {"name": "labsjdk",   "version": "ce-25+26-jvmci-b01", "platformspecific": true },
+    "labsjdk-ce-latestDebug": {"name": "labsjdk",   "version": "ce-25+26-jvmci-b01-debug", "platformspecific": true },
+    "labsjdk-ce-latest-llvm": {"name": "labsjdk",   "version": "ce-25+26-jvmci-b01-sulong", "platformspecific": true },
+    "labsjdk-ee-latest":      {"name": "labsjdk",   "version": "ee-25+26-jvmci-b01", "platformspecific": true },
+    "labsjdk-ee-latestDebug": {"name": "labsjdk",   "version": "ee-25+26-jvmci-b01-debug", "platformspecific": true },
+    "labsjdk-ee-latest-llvm": {"name": "labsjdk",   "version": "ee-25+26-jvmci-b01-sulong", "platformspecific": true }
   },
 
   "eclipse": {
