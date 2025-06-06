@@ -25,13 +25,18 @@
 package jdk.graal.compiler.hotspot.amd64.shenandoah;
 
 import jdk.graal.compiler.core.amd64.AMD64LIRGenerator;
+import jdk.graal.compiler.core.amd64.AMD64ReadBarrierSetLIRGenerator;
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
+import jdk.graal.compiler.lir.LIRFrameState;
+import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.ShenandoahBarrierSetLIRGeneratorTool;
@@ -39,9 +44,10 @@ import jdk.graal.compiler.nodes.gc.shenandoah.ShenandoahLoadRefBarrierNode;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.Value;
 
-public class AMD64HotSpotShenandoahBarrierSetLIRGenerator implements ShenandoahBarrierSetLIRGeneratorTool {
+public class AMD64HotSpotShenandoahBarrierSetLIRGenerator implements ShenandoahBarrierSetLIRGeneratorTool, AMD64ReadBarrierSetLIRGenerator {
     public AMD64HotSpotShenandoahBarrierSetLIRGenerator(GraalHotSpotVMConfig config, HotSpotProviders providers) {
         this.config = config;
         this.providers = providers;
@@ -101,14 +107,27 @@ public class AMD64HotSpotShenandoahBarrierSetLIRGenerator implements ShenandoahB
     }
 
     @Override
-    public Value emitLogicCompareAndSwap(LIRGeneratorTool lirTool, LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder) {
-        GraalError.unimplemented("emitLogicCompareAndSwap");
-        return null;
+    public void emitCompareAndSwapOp(LIRGeneratorTool tool, boolean isLogic, LIRKind accessKind, AMD64Kind memKind, RegisterValue raxValue, AMD64AddressValue address, AllocatableValue newValue, BarrierType barrierType) {
+        GraalError.guarantee(barrierType != BarrierType.NONE, "must have barrier type != NONE");
+        AllocatableValue tmp1 = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+        AllocatableValue tmp2 = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+        tool.append(new AMD64HotSpotShenandoahCompareAndSwapOp(config, providers, memKind, raxValue, address, raxValue, newValue, tmp1, tmp2, isLogic));
     }
 
     @Override
-    public Value emitValueCompareAndSwap(LIRGeneratorTool lirTool, LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
-        GraalError.unimplemented("emitValueCompareAndSwap");
-        return null;
+    public Value emitAtomicReadAndWrite(LIRGeneratorTool tool, LIRKind readKind, Value address, Value newValue, BarrierType barrierType) {
+        // We insert the necessary barriers in the node graph, at that level it
+        // is easier to handle compressed object references. No need to do anything
+        // special here.
+        return tool.emitAtomicReadAndWrite(readKind, address, newValue, BarrierType.NONE);
     }
+
+    @Override
+    public Variable emitBarrieredLoad(LIRGeneratorTool tool, LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, BarrierType barrierType) {
+        // We insert the necessary barriers in the node graph, at that level it
+        // is easier to handle compressed object references. No need to do anything
+        // special here.
+        return tool.getArithmetic().emitLoad(kind, address, state, memoryOrder, MemoryExtendKind.DEFAULT);
+    }
+
 }

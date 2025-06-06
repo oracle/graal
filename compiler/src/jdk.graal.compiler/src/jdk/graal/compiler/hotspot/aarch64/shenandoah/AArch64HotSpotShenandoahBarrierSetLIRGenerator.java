@@ -114,19 +114,4 @@ public class AArch64HotSpotShenandoahBarrierSetLIRGenerator implements Shenandoa
         tool.append(new AArch64HotSpotShenandoahCompareAndSwapOp(config, providers, memKind, memoryOrder, isLogicVariant, result, allocatableExpectedValue, allocatableNewValue, tool.asAllocatable(address), tmp1, tmp2));
         return isLogicVariant ? null : result;
     }
-
-    @Override
-    public Value emitLogicCompareAndSwap(LIRGeneratorTool tool, LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder) {
-        emitCompareAndSwap(tool, true, accessKind, address, expectedValue, newValue, memoryOrder);
-        assert trueValue.getValueKind().equals(falseValue.getValueKind());
-        assert isIntConstant(trueValue, 1) && isIntConstant(falseValue, 0) : trueValue + " " + falseValue;
-        Variable result = tool.newVariable(LIRKind.combine(trueValue, falseValue));
-        tool.append(new AArch64ControlFlow.CondSetOp(result, AArch64Assembler.ConditionFlag.EQ));
-        return result;
-    }
-
-    @Override
-    public Value emitValueCompareAndSwap(LIRGeneratorTool tool, LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
-        return emitCompareAndSwap(tool, false, accessKind, address, expectedValue, newValue, memoryOrder);
-    }
 }

@@ -196,20 +196,9 @@ public class ShenandoahBarrierSet implements BarrierSet {
             }
             case AbstractCompareAndSwapNode cmpSwap -> {
                 if (useCASBarrier) {
-                    if (cmpSwap.getBarrierType() != BarrierType.NONE) {
-                        StructuredGraph graph = cmpSwap.graph();
-                        if (cmpSwap instanceof ValueCompareAndSwapNode) {
-                            ShenandoahValueCompareAndSwapNode newCmpXChg = new ShenandoahValueCompareAndSwapNode(cmpSwap.getAddress(), cmpSwap.getExpectedValue(), cmpSwap.getNewValue(), cmpSwap.getLocationIdentity(), cmpSwap.getBarrierType(), cmpSwap.getMemoryOrder());
-                            graph.add(newCmpXChg);
-                            graph.replaceFixedWithFixed(cmpSwap, newCmpXChg);
-                            addWriteBarriers(newCmpXChg, newCmpXChg.getNewValue(), newCmpXChg.getExpectedValue());
-                            addReadNodeBarriers(newCmpXChg);
-                        } else if (cmpSwap instanceof LogicCompareAndSwapNode) {
-                            ShenandoahLogicCompareAndSwapNode newCmpXChg = new ShenandoahLogicCompareAndSwapNode(cmpSwap.getAddress(), cmpSwap.getExpectedValue(), cmpSwap.getNewValue(), cmpSwap.getLocationIdentity(), cmpSwap.getBarrierType(), cmpSwap.getMemoryOrder());
-                            graph.add(newCmpXChg);
-                            graph.replaceFixedWithFixed(cmpSwap, newCmpXChg);
-                            addWriteBarriers(newCmpXChg, newCmpXChg.getNewValue(), newCmpXChg.getExpectedValue());
-                        }
+                    addWriteBarriers(cmpSwap, cmpSwap.getNewValue(), cmpSwap.getExpectedValue());
+                    if (cmpSwap instanceof ValueCompareAndSwapNode) {
+                        addReadNodeBarriers(cmpSwap);
                     }
                 }
             }

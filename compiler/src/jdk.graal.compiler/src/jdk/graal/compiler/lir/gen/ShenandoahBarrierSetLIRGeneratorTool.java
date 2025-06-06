@@ -40,8 +40,4 @@ public interface ShenandoahBarrierSetLIRGeneratorTool extends BarrierSetLIRGener
     void emitPreWriteBarrier(LIRGeneratorTool lirTool, Value address, AllocatableValue expectedObject, boolean nonNull);
 
     void emitCardBarrier(LIRGeneratorTool lirTool, Value address);
-
-    Value emitLogicCompareAndSwap(LIRGeneratorTool lirTool, LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder);
-
-    Value emitValueCompareAndSwap(LIRGeneratorTool lirTool, LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder);
 }

@@ -27,7 +27,6 @@ package jdk.graal.compiler.nodes.java;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
 
-import jdk.graal.compiler.core.common.type.Stamp;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
@@ -46,16 +45,11 @@ import jdk.vm.ci.meta.Value;
  * either the expected value or the compared against value instead of a boolean.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8)
-public class ValueCompareAndSwapNode extends AbstractCompareAndSwapNode {
+public final class ValueCompareAndSwapNode extends AbstractCompareAndSwapNode {
     public static final NodeClass<ValueCompareAndSwapNode> TYPE = NodeClass.create(ValueCompareAndSwapNode.class);
 
     public ValueCompareAndSwapNode(AddressNode address, ValueNode expectedValue, ValueNode newValue, LocationIdentity location, BarrierType barrierType, MemoryOrderMode memoryOrder) {
-        this(TYPE, address, location, expectedValue, newValue, barrierType, expectedValue.stamp(NodeView.DEFAULT).meet(newValue.stamp(NodeView.DEFAULT)).unrestricted(), memoryOrder);
-    }
-
-    protected ValueCompareAndSwapNode(NodeClass<? extends ValueCompareAndSwapNode> c, AddressNode address, LocationIdentity location, ValueNode expectedValue, ValueNode newValue,
-                            BarrierType barrierType, Stamp stamp, MemoryOrderMode memoryOrder) {
-        super(c, address, location, expectedValue, newValue, barrierType, stamp, memoryOrder, true);
+        super(TYPE, address, location, expectedValue, newValue, barrierType, expectedValue.stamp(NodeView.DEFAULT).meet(newValue.stamp(NodeView.DEFAULT)).unrestricted(), memoryOrder);
     }
 
     @Override
