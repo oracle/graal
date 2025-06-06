@@ -46,5 +46,6 @@ enum JfrLogTag {
     PERIODIC,
     SAMPLING,
     DCMD,
-    START
+    START,
+    METHODTRACE
 }
