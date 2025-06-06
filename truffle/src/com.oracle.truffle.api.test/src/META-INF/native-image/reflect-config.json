@@ -281,7 +281,11 @@
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.api.test.host.GR63075Test$NonPublicSubClass",
+    "name": "com.oracle.truffle.api.test.polyglot.ContextBuilderExtendAPITest$DenyAccessToMe",
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.ContextBuilderExtendAPITest$ShouldBeAccessible",
     "allPublicMethods": true
   }
 ]
