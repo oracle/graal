@@ -36,13 +36,13 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Formatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import jdk.vm.ci.code.BytecodePosition;
 import org.graalvm.collections.Pair;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -414,18 +414,15 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public List<StackTraceElement> getInliningCallStack(boolean ignoreInvocationPluginTarget) {
-            StackTraceElement[] callStackArray = methodScope.getCallStack();
-            List<StackTraceElement> callStack = new ArrayList<>(callStackArray.length);
-            Collections.addAll(callStack, callStackArray);
-            /*
-             * If triggered while processing an invocation plugin, the call stack as returned by the
-             * methodScope object will include the target of the plugin.
-             */
-            if (isParsingInvocationPlugin() && ignoreInvocationPluginTarget) {
-                callStack.removeFirst();
+        public BytecodePosition getInliningChain() {
+            BytecodePosition inliningContext = null;
+            int bci = methodScope.invokeData == null ? 0 : methodScope.invokeData.invoke.bci();
+            for (PEMethodScope cur = methodScope.caller; cur != null; cur = cur.caller) {
+                BytecodePosition caller = new BytecodePosition(null, cur.method, bci);
+                inliningContext = inliningContext == null ? caller : inliningContext.addCaller(caller);
+                bci = cur.invokeData == null ? 0 : cur.invokeData.invoke.bci();
             }
-            return Collections.unmodifiableList(callStack);
+            return inliningContext;
         }
 
         @Override
