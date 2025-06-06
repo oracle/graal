@@ -239,6 +239,9 @@ struct ImageSingletonObject {
   id @0 :SingletonObjId;
   className @1 :Text;
   store @2 :List(KeyStoreEntry);
+  recreateClass @3 :Text;
+  # GR-66792 remove once no custom persist actions exist
+  recreateMethod @4 :Text;
 }
 
 struct Annotation {
