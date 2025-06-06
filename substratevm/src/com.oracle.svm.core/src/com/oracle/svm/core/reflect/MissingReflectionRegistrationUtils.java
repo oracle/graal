@@ -37,7 +37,7 @@ import java.util.StringJoiner;
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 
 import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
@@ -126,7 +126,7 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
 
     public static MissingReflectionRegistrationError reportProxyAccess(Class<?>... interfaces) {
         var interfaceList = Arrays.stream(interfaces).map(Class::getTypeName).toList();
-        ConfigurationType type = new ConfigurationType(UnresolvedConfigurationCondition.alwaysTrue(), new ProxyConfigurationTypeDescriptor(interfaceList), true);
+        ConfigurationType type = new ConfigurationType(UnresolvedAccessCondition.unconditional(), new ProxyConfigurationTypeDescriptor(interfaceList), true);
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
                         reflectionError("access the proxy class inheriting", interfacesString(interfaces), elementToJSON(type)),
                         Proxy.class, null, null, interfaces);
