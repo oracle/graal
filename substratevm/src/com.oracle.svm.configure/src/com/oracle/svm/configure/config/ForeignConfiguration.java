@@ -42,7 +42,7 @@ import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.ForeignConfigurationParser;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
@@ -56,7 +56,7 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
         }
     }
 
-    private record StubDesc(UnresolvedConfigurationCondition condition, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions) implements JsonPrintable {
+    private record StubDesc(UnresolvedAccessCondition condition, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions) implements JsonPrintable {
         @Override
         public void printJson(JsonWriter writer) throws IOException {
             writer.appendObjectStart();
@@ -68,7 +68,7 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
         }
     }
 
-    private record DirectStubDesc(UnresolvedConfigurationCondition condition, String clazz, String method, ConfigurationFunctionDescriptor desc,
+    private record DirectStubDesc(UnresolvedAccessCondition condition, String clazz, String method, ConfigurationFunctionDescriptor desc,
                     Map<String, Object> linkerOptions) implements JsonPrintable {
         @Override
         public void printJson(JsonWriter writer) throws IOException {
@@ -208,7 +208,7 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
     }
 
     @Override
-    public void mergeConditional(UnresolvedConfigurationCondition condition, ForeignConfiguration other) {
+    public void mergeConditional(UnresolvedAccessCondition condition, ForeignConfiguration other) {
         // GR-64144: Not implemented with conditions yet
         merge(other);
     }
@@ -216,13 +216,13 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
     public void addDowncall(String returnType, List<String> parameterTypes, Map<String, Object> linkerOptions) {
         Objects.requireNonNull(returnType);
         Objects.requireNonNull(parameterTypes);
-        addDowncall(UnresolvedConfigurationCondition.alwaysTrue(), new ConfigurationFunctionDescriptor(returnType, parameterTypes), Map.copyOf(linkerOptions));
+        addDowncall(UnresolvedAccessCondition.unconditional(), new ConfigurationFunctionDescriptor(returnType, parameterTypes), Map.copyOf(linkerOptions));
     }
 
     public void addUpcall(String returnType, List<String> parameterTypes, Map<String, Object> linkerOptions) {
         Objects.requireNonNull(returnType);
         Objects.requireNonNull(parameterTypes);
-        addUpcall(UnresolvedConfigurationCondition.alwaysTrue(), new ConfigurationFunctionDescriptor(returnType, parameterTypes), Map.copyOf(linkerOptions));
+        addUpcall(UnresolvedAccessCondition.unconditional(), new ConfigurationFunctionDescriptor(returnType, parameterTypes), Map.copyOf(linkerOptions));
     }
 
     public void addDirectUpcall(String returnType, List<String> parameterTypes, Map<String, Object> linkerOptions, String clazz, String method) {
@@ -230,34 +230,34 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
         Objects.requireNonNull(parameterTypes);
         Objects.requireNonNull(clazz);
         Objects.requireNonNull(method);
-        addDirectUpcall(UnresolvedConfigurationCondition.alwaysTrue(), new ConfigurationFunctionDescriptor(returnType, parameterTypes), Map.copyOf(linkerOptions), clazz, method);
+        addDirectUpcall(UnresolvedAccessCondition.unconditional(), new ConfigurationFunctionDescriptor(returnType, parameterTypes), Map.copyOf(linkerOptions), clazz, method);
     }
 
-    public void addDowncall(UnresolvedConfigurationCondition configurationCondition, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions) {
+    public void addDowncall(UnresolvedAccessCondition condition, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions) {
         Objects.requireNonNull(desc);
-        downcallStubs.add(new StubDesc(configurationCondition, desc, Map.copyOf(linkerOptions)));
+        downcallStubs.add(new StubDesc(condition, desc, Map.copyOf(linkerOptions)));
     }
 
-    public void addUpcall(UnresolvedConfigurationCondition configurationCondition, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions) {
+    public void addUpcall(UnresolvedAccessCondition condition, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions) {
         Objects.requireNonNull(desc);
-        upcallStubs.add(new StubDesc(configurationCondition, desc, Map.copyOf(linkerOptions)));
+        upcallStubs.add(new StubDesc(condition, desc, Map.copyOf(linkerOptions)));
     }
 
-    public void addDirectUpcall(UnresolvedConfigurationCondition configurationCondition, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions, String clazz, String method) {
+    public void addDirectUpcall(UnresolvedAccessCondition condition, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions, String clazz, String method) {
         Objects.requireNonNull(desc);
         Objects.requireNonNull(clazz);
         Objects.requireNonNull(method);
-        DirectStubDesc candidate = new DirectStubDesc(configurationCondition, clazz, method, desc, Map.copyOf(linkerOptions));
+        DirectStubDesc candidate = new DirectStubDesc(condition, clazz, method, desc, Map.copyOf(linkerOptions));
         // only add the new descriptor if it is not subsumed by an existing one
         if (!directUpcallStubs.contains(candidate.withoutFD())) {
             directUpcallStubs.add(candidate);
         }
     }
 
-    public void addDirectUpcall(UnresolvedConfigurationCondition configurationCondition, Map<String, Object> linkerOptions, String clazz, String method) {
+    public void addDirectUpcall(UnresolvedAccessCondition condition, Map<String, Object> linkerOptions, String clazz, String method) {
         Objects.requireNonNull(clazz);
         Objects.requireNonNull(method);
-        DirectStubDesc directStubDesc = new DirectStubDesc(configurationCondition, clazz, method, null, Map.copyOf(linkerOptions));
+        DirectStubDesc directStubDesc = new DirectStubDesc(condition, clazz, method, null, Map.copyOf(linkerOptions));
         // remove all existing descriptors if they are subsumed by the new descriptor
         directUpcallStubs.removeIf(existing -> directStubDesc.equals(existing.withoutFD()));
         directUpcallStubs.add(directStubDesc);
@@ -337,25 +337,25 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
         }
 
         @Override
-        protected void registerDowncall(UnresolvedConfigurationCondition configurationCondition, ConfigurationFunctionDescriptor descriptor, Map<String, Object> options) {
-            ForeignConfiguration.this.addDowncall(configurationCondition, descriptor, options);
+        protected void registerDowncall(UnresolvedAccessCondition condition, ConfigurationFunctionDescriptor descriptor, Map<String, Object> options) {
+            ForeignConfiguration.this.addDowncall(condition, descriptor, options);
 
         }
 
         @Override
-        protected void registerUpcall(UnresolvedConfigurationCondition configurationCondition, ConfigurationFunctionDescriptor descriptor, Map<String, Object> options) {
-            ForeignConfiguration.this.addUpcall(configurationCondition, descriptor, options);
+        protected void registerUpcall(UnresolvedAccessCondition condition, ConfigurationFunctionDescriptor descriptor, Map<String, Object> options) {
+            ForeignConfiguration.this.addUpcall(condition, descriptor, options);
         }
 
         @Override
-        protected void registerDirectUpcallWithoutDescriptor(UnresolvedConfigurationCondition configurationCondition, String className, String methodName, EconomicMap<String, Object> optionsMap) {
-            ForeignConfiguration.this.addDirectUpcall(configurationCondition, economicMapToJavaMap(optionsMap), className, methodName);
+        protected void registerDirectUpcallWithoutDescriptor(UnresolvedAccessCondition condition, String className, String methodName, EconomicMap<String, Object> optionsMap) {
+            ForeignConfiguration.this.addDirectUpcall(condition, economicMapToJavaMap(optionsMap), className, methodName);
         }
 
         @Override
-        protected void registerDirectUpcallWithDescriptor(UnresolvedConfigurationCondition configurationCondition, String className, String methodName, ConfigurationFunctionDescriptor descriptor,
+        protected void registerDirectUpcallWithDescriptor(UnresolvedAccessCondition condition, String className, String methodName, ConfigurationFunctionDescriptor descriptor,
                         Map<String, Object> options) {
-            ForeignConfiguration.this.addDirectUpcall(configurationCondition, descriptor, options, className, methodName);
+            ForeignConfiguration.this.addDirectUpcall(condition, descriptor, options, className, methodName);
         }
 
         @Override

@@ -40,7 +40,7 @@ import org.junit.Test;
 
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
@@ -145,8 +145,8 @@ public class OmitPreviousConfigTests {
     }
 
     private static void doTestExpectedMissingTypes(TypeConfiguration typeConfig) {
-        Assert.assertNull(typeConfig.get(UnresolvedConfigurationCondition.alwaysTrue(), new NamedConfigurationTypeDescriptor("FlagTestA")));
-        Assert.assertNull(typeConfig.get(UnresolvedConfigurationCondition.alwaysTrue(), new NamedConfigurationTypeDescriptor("FlagTestB")));
+        Assert.assertNull(typeConfig.get(UnresolvedAccessCondition.unconditional(), new NamedConfigurationTypeDescriptor("FlagTestA")));
+        Assert.assertNull(typeConfig.get(UnresolvedAccessCondition.unconditional(), new NamedConfigurationTypeDescriptor("FlagTestB")));
     }
 
     private static void doTestTypeFlags(TypeConfiguration typeConfig) {
@@ -187,7 +187,7 @@ public class OmitPreviousConfigTests {
     }
 
     private static void doTestProxyConfig(ProxyConfiguration proxyConfig) {
-        UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.alwaysTrue();
+        UnresolvedAccessCondition condition = UnresolvedAccessCondition.unconditional();
         Assert.assertFalse(proxyConfig.contains(condition, "testProxySeenA", "testProxySeenB", "testProxySeenC"));
         Assert.assertTrue(proxyConfig.contains(condition, "testProxyUnseen"));
     }
@@ -196,7 +196,7 @@ public class OmitPreviousConfigTests {
         Assert.assertFalse(resourceConfig.anyResourceMatches("seenResource.txt"));
         Assert.assertTrue(resourceConfig.anyResourceMatches("unseenResource.txt"));
 
-        UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.alwaysTrue();
+        UnresolvedAccessCondition condition = UnresolvedAccessCondition.unconditional();
         Assert.assertFalse(resourceConfig.anyBundleMatches(condition, "seenBundle"));
         Assert.assertTrue(resourceConfig.anyBundleMatches(condition, "unseenBundle"));
     }
@@ -208,13 +208,13 @@ public class OmitPreviousConfigTests {
      */
     private static void doTestSerializationConfig(ConfigurationSet config) {
         SerializationConfiguration serializationConfig = config.getSerializationConfiguration();
-        UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.alwaysTrue();
+        UnresolvedAccessCondition condition = UnresolvedAccessCondition.unconditional();
         Assert.assertFalse(serializationConfig.contains(condition, "seenType"));
         Assert.assertTrue(serializationConfig.contains(condition, "unseenType"));
     }
 
     private static ConfigurationType getConfigTypeOrFail(TypeConfiguration typeConfig, String typeName) {
-        ConfigurationType type = typeConfig.get(UnresolvedConfigurationCondition.alwaysTrue(), new NamedConfigurationTypeDescriptor(typeName));
+        ConfigurationType type = typeConfig.get(UnresolvedAccessCondition.unconditional(), new NamedConfigurationTypeDescriptor(typeName));
         Assert.assertNotNull(type);
         return type;
     }
@@ -273,11 +273,11 @@ class TypeMethodsWithFlagsTest {
     }
 
     void populateConfig() {
-        ConfigurationType oldType = new ConfigurationType(UnresolvedConfigurationCondition.alwaysTrue(), getTypeName(), true);
+        ConfigurationType oldType = new ConfigurationType(UnresolvedAccessCondition.unconditional(), getTypeName(), true);
         setFlags(oldType);
         previousConfig.add(oldType);
 
-        ConfigurationType newType = new ConfigurationType(UnresolvedConfigurationCondition.alwaysTrue(), getTypeName(), true);
+        ConfigurationType newType = new ConfigurationType(UnresolvedAccessCondition.unconditional(), getTypeName(), true);
         for (Map.Entry<ConfigurationMethod, ConfigurationMemberDeclaration> methodEntry : methodsThatMustExist.entrySet()) {
             newType.addMethod(methodEntry.getKey().getName(), methodEntry.getKey().getInternalSignature(), methodEntry.getValue());
         }
@@ -310,7 +310,7 @@ class TypeMethodsWithFlagsTest {
         TypeConfiguration currentConfigWithoutPrevious = currentConfig.copyAndSubtract(previousConfig);
 
         ConfigurationTypeDescriptor name = getTypeName();
-        ConfigurationType configurationType = currentConfigWithoutPrevious.get(UnresolvedConfigurationCondition.alwaysTrue(), name);
+        ConfigurationType configurationType = currentConfigWithoutPrevious.get(UnresolvedAccessCondition.unconditional(), name);
         if (methodsThatMustExist.size() == 0) {
             Assert.assertNull("Generated configuration type " + name + " exists. Expected it to be cleared as it is empty.", configurationType);
         } else {
