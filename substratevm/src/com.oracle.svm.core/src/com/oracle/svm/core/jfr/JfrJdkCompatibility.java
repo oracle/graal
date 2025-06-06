@@ -32,10 +32,13 @@ import java.time.LocalDateTime;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -141,11 +144,22 @@ final class Target_jdk_jfr_internal_Utils {
     public static native String formatDateTime(LocalDateTime time);
 }
 
-@TargetClass(className = "jdk.jfr.internal.JVMSupport", onlyWith = {JDKLatest.class, HasJfrSupport.class})
+@TargetClass(className = "jdk.jfr.internal.JVMSupport", onlyWith = JDKLatest.class)
 final class Target_jdk_jfr_internal_JVMSupport {
+    @Alias //
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = JfrNotAvailableTransformer.class, isFinal = true) //
+    private static boolean notAvailable;
+
     @Substitute
     public static String makeFilename(Recording recording) {
         return JfrFilenameUtil.makeFilename(recording);
+    }
+}
+
+final class JfrNotAvailableTransformer implements FieldValueTransformer {
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        return !HasJfrSupport.get();
     }
 }
 
