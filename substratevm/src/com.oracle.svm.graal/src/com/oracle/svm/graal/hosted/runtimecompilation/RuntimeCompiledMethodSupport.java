@@ -477,6 +477,11 @@ public class RuntimeCompiledMethodSupport {
         protected boolean shouldVerifyFrameStates() {
             return Options.VerifyRuntimeCompilationFrameStates.getValue();
         }
+
+        @Override
+        protected boolean strictDynamicAccessInferenceIsApplicable() {
+            return false;
+        }
     }
 
     /**
