@@ -32,6 +32,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.options.OptionValues;
@@ -42,7 +43,7 @@ import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 
 @AutomaticallyRegisteredFeature
-public class StackValueFeature implements InternalFeature {
+public class StackValueFeature implements InternalFeature, FeatureSingleton {
     @Override
     public void registerGraalPhases(Providers providers, Suites suites, boolean hosted) {
         ListIterator<BasePhase<? super MidTierContext>> midTierPos = suites.getMidTier().findPhase(FrameStateAssignmentPhase.class);

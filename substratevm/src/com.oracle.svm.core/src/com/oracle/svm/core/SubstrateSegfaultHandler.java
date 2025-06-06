@@ -49,7 +49,6 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.graal.stackvalue.UnsafeLateStackValue;
@@ -57,6 +56,7 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerInternalFeature;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -72,7 +72,7 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredFeature
-class SubstrateSegfaultHandlerFeature implements InternalFeature {
+class SubstrateSegfaultHandlerFeature implements InitialLayerInternalFeature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return Collections.singletonList(IsolateListenerSupportFeature.class);

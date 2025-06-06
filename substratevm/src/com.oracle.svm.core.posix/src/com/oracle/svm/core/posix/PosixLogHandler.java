@@ -27,27 +27,24 @@ package com.oracle.svm.core.posix;
 import java.io.FileDescriptor;
 import java.util.EnumSet;
 
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerInternalFeature;
 import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMThreads;
 
 @AutomaticallyRegisteredFeature
-class PosixLogHandlerFeature implements InternalFeature {
+class PosixLogHandlerFeature implements InitialLayerInternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (ImageLayerBuildingSupport.firstImageBuild()) {
-            Log.finalizeDefaultLogHandler(new PosixLogHandler());
-        }
+        Log.finalizeDefaultLogHandler(new PosixLogHandler());
     }
 }
 

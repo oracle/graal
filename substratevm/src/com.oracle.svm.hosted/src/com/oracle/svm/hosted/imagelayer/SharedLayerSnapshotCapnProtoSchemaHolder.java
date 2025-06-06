@@ -3937,6 +3937,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setIntField(2, value);
       }
 
+      public final boolean getIsInitialLayerOnly() {
+        return _getBooleanField(96);
+      }
+      public final void setIsInitialLayerOnly(boolean value) {
+        _setBooleanField(96, value);
+      }
+
     }
 
     public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -3961,6 +3968,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
       public final int getConstantId() {
         return _getIntField(2);
+      }
+
+      public final boolean getIsInitialLayerOnly() {
+        return _getBooleanField(96);
       }
 
     }

@@ -28,6 +28,7 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -65,7 +66,6 @@ import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
@@ -73,8 +73,12 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerInternalFeature;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -512,7 +516,7 @@ public class SubstrateDiagnostics {
         return CodeInfoTable.lookupCodeInfo(possibleIp).isNonNull();
     }
 
-    public static class FatalErrorState {
+    public static class FatalErrorState implements InitialLayerOnlyImageSingleton {
         AtomicWord<IsolateThread> diagnosticThread;
         volatile int diagnosticThunkIndex;
         volatile int invocationCount;
@@ -564,6 +568,16 @@ public class SubstrateDiagnostics {
             invocationCount = 0;
 
             diagnosticThread.set(Word.nullPointer());
+        }
+
+        @Override
+        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+            return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+        }
+
+        @Override
+        public boolean accessibleInFutureLayers() {
+            return true;
         }
     }
 
@@ -1262,7 +1276,7 @@ public class SubstrateDiagnostics {
         public abstract int maxInvocationCount();
     }
 
-    public static class DiagnosticThunkRegistry {
+    public static class DiagnosticThunkRegistry implements InitialLayerOnlyImageSingleton {
         @Platforms(Platform.HOSTED_ONLY.class) //
         final int runtimeCompilationPosition;
 
@@ -1272,7 +1286,7 @@ public class SubstrateDiagnostics {
         @Fold
         public static synchronized DiagnosticThunkRegistry singleton() {
             /* The registry is already used very early during the image build. */
-            if (!ImageSingletons.contains(DiagnosticThunkRegistry.class)) {
+            if (!ImageSingletons.contains(DiagnosticThunkRegistry.class) && ImageLayerBuildingSupport.firstImageBuild()) {
                 ImageSingletons.add(DiagnosticThunkRegistry.class, new DiagnosticThunkRegistry());
             }
             return ImageSingletons.lookup(DiagnosticThunkRegistry.class);
@@ -1358,10 +1372,20 @@ public class SubstrateDiagnostics {
         void setInitialInvocationCount(int index, int value) {
             initialInvocationCount[index] = value;
         }
+
+        @Override
+        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+            return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+        }
+
+        @Override
+        public boolean accessibleInFutureLayers() {
+            return true;
+        }
     }
 
     @AutomaticallyRegisteredImageSingleton
-    public static class Options {
+    public static class Options implements InitialLayerOnlyImageSingleton {
         @Option(help = "Execute an endless loop before printing diagnostics for a fatal error.", type = OptionType.Debug)//
         public static final RuntimeOptionKey<Boolean> LoopOnFatalError = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates) {
             @Override
@@ -1417,11 +1441,21 @@ public class SubstrateDiagnostics {
         public static boolean implicitExceptionWithoutStacktraceIsFatal() {
             return singleton().implicitExceptionWithoutStacktraceIsFatal;
         }
+
+        @Override
+        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+            return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+        }
+
+        @Override
+        public boolean accessibleInFutureLayers() {
+            return true;
+        }
     }
 }
 
 @AutomaticallyRegisteredFeature
-class SubstrateDiagnosticsFeature implements InternalFeature {
+class SubstrateDiagnosticsFeature implements InitialLayerInternalFeature {
     /**
      * {@link RuntimeCompilation#isEnabled()} can't be executed in the
      * {@link DiagnosticThunkRegistry} constructor because the feature registration is not

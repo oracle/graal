@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,38 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layeredimagesingleton;
+package com.oracle.svm.core.imagelayer;
 
-import java.util.Collection;
+import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import jdk.vm.ci.meta.JavaConstant;
-
 @Platforms(Platform.HOSTED_ONLY.class)
-public interface LayeredImageSingletonSupport {
-
-    static LayeredImageSingletonSupport singleton() {
-        return ImageSingletons.lookup(LayeredImageSingletonSupport.class);
+public class BuildingMonolithicImage implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return !ImageLayerBuildingSupport.buildingImageLayer();
     }
-
-    /**
-     * This method is intended to be used in special situations during the building process to
-     * access singletons which (1) are only allowed to be accessed at runtime
-     * ({@link LayeredImageSingletonBuilderFlags#RUNTIME_ACCESS}) and/or (2) implement
-     * {@link MultiLayeredImageSingleton}.
-     */
-    <T> T lookup(Class<T> key, boolean accessRuntimeOnly, boolean accessMultiLayer);
-
-    Collection<Class<?>> getMultiLayeredImageSingletonKeys();
-
-    Collection<Class<?>> getFutureLayerAccessibleImageSingletonKeys();
-
-    void freezeLayeredImageSingletonMetadata();
-
-    boolean isInitialLayerOnlyImageSingleton(Class<?> key);
-
-    JavaConstant getInitialLayerOnlyImageSingleton(Class<?> key);
 }

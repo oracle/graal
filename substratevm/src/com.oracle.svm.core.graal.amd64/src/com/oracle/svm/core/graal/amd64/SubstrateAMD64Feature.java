@@ -41,6 +41,7 @@ import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 import com.oracle.svm.core.graal.code.SubstrateVectorArchitectureFactory;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -58,7 +59,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.AMD64.class)
-class SubstrateAMD64Feature implements InternalFeature {
+class SubstrateAMD64Feature implements InternalFeature, FeatureSingleton {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

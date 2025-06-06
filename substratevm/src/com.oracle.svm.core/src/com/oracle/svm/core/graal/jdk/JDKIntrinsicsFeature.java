@@ -32,6 +32,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -42,7 +43,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopySnippets;
 
 @AutomaticallyRegisteredFeature
-final class JDKIntrinsicsFeature implements InternalFeature {
+final class JDKIntrinsicsFeature implements InternalFeature, FeatureSingleton {
 
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {

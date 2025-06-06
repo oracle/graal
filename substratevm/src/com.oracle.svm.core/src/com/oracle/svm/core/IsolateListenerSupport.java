@@ -25,6 +25,7 @@
 package com.oracle.svm.core;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -32,12 +33,14 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
 @AutomaticallyRegisteredImageSingleton
-public class IsolateListenerSupport {
+public class IsolateListenerSupport implements InitialLayerOnlyImageSingleton {
     private IsolateListener[] listeners;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -78,6 +81,11 @@ public class IsolateListenerSupport {
                 throw VMError.shouldNotReachHere(e);
             }
         }
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
     }
 
     public interface IsolateListener {

@@ -26,13 +26,13 @@ package com.oracle.svm.core.windows;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerInternalFeature;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.ImageHeapProvider;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 @AutomaticallyRegisteredFeature
-class WindowsFeature implements InternalFeature {
+class WindowsFeature implements InitialLayerInternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {

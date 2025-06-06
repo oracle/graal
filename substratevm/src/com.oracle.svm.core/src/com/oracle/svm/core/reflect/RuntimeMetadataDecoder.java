@@ -30,18 +30,19 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.RecordComponent;
+import java.util.EnumSet;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
-public interface RuntimeMetadataDecoder {
+public interface RuntimeMetadataDecoder extends InitialLayerOnlyImageSingleton {
     int NO_DATA = -1;
 
     Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly, int layerId);
@@ -73,9 +74,6 @@ public interface RuntimeMetadataDecoder {
     boolean isHiding(int modifiers);
 
     boolean isNegative(int modifiers);
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    int getMetadataByteLength();
 
     class ElementDescriptor {
         private final Class<?> declaringClass;
@@ -154,7 +152,7 @@ public interface RuntimeMetadataDecoder {
         }
     }
 
-    interface MetadataAccessor {
+    interface MetadataAccessor extends InitialLayerOnlyImageSingleton {
         @Fold
         static MetadataAccessor singleton() {
             return ImageSingletons.lookup(MetadataAccessor.class);
@@ -167,6 +165,16 @@ public interface RuntimeMetadataDecoder {
         String getMemberName(int index, int layerId);
 
         String getOtherString(int index, int layerId);
+
+        @Override
+        default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+            return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+        }
+
+        @Override
+        default boolean accessibleInFutureLayers() {
+            return true;
+        }
     }
 
     static int getConstantPoolLayerId(Target_jdk_internal_reflect_ConstantPool constPool) {
@@ -175,5 +183,15 @@ public interface RuntimeMetadataDecoder {
         } else {
             return 0;
         }
+    }
+
+    @Override
+    default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
+    }
+
+    @Override
+    default boolean accessibleInFutureLayers() {
+        return true;
     }
 }

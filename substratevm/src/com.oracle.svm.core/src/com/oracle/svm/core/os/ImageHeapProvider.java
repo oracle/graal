@@ -26,6 +26,8 @@ package com.oracle.svm.core.os;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
@@ -36,6 +38,8 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -68,7 +72,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * Note that the relocatable data may overlap with both the read-only and writable part of the image
  * heap. Besides that, parts of the read-only relocatable data may be writable at run-time.
  */
-public interface ImageHeapProvider {
+public interface ImageHeapProvider extends InitialLayerOnlyImageSingleton {
     @Fold
     static ImageHeapProvider get() {
         return ImageSingletons.lookup(ImageHeapProvider.class);
@@ -101,4 +105,14 @@ public interface ImageHeapProvider {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     UnsignedWord getImageHeapAddressSpaceSize();
+
+    @Override
+    default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+    }
+
+    @Override
+    default boolean accessibleInFutureLayers() {
+        return true;
+    }
 }
