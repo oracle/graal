@@ -66,7 +66,7 @@ public abstract class ResourceConfigurationParser<C> extends ConditionalConfigur
         }
     }
 
-    protected abstract UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> condition);
+    protected abstract UnresolvedAccessCondition parseCondition(EconomicMap<String, Object> condition);
 
     protected void parseBundle(Object bundle, boolean inResourcesSection) {
         EconomicMap<String, Object> resource = asMap(bundle, "Elements of 'bundles' list must be a bundle descriptor object");
