@@ -26,9 +26,6 @@ package jdk.graal.compiler.replacements;
 
 import static jdk.vm.ci.code.BytecodeFrame.AFTER_BCI;
 
-import java.util.Collections;
-import java.util.List;
-
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -71,6 +68,7 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
@@ -329,8 +327,8 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     }
 
     @Override
-    public List<StackTraceElement> getInliningCallStack(boolean ignoreInvocationPluginTarget) {
-        return Collections.emptyList();
+    public BytecodePosition getInliningChain() {
+        return null;
     }
 
     @Override

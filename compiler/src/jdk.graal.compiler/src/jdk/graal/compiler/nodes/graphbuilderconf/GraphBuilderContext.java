@@ -28,8 +28,6 @@ import static jdk.graal.compiler.core.common.GraalOptions.StrictDeoptInsertionCh
 import static jdk.graal.compiler.core.common.type.StampFactory.objectNonNull;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import jdk.graal.compiler.bytecode.Bytecode;
@@ -77,6 +75,7 @@ import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -284,19 +283,16 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     /**
-     * Gets the inlined call stack for this context. A list with only one element implies that no
-     * inlining has taken place.
-     *
-     * @param ignoreInvocationPluginTarget if set to true, and {@link #isParsingInvocationPlugin()}
-     *            returns true, the resulting call stack does not include the target of the
-     *            invocation plugin.
+     * Gets the inlining chain of this context. A null return value implies that this is the context
+     * for the parse root.
      */
-    default List<StackTraceElement> getInliningCallStack(boolean ignoreInvocationPluginTarget) {
-        List<StackTraceElement> callStack = new ArrayList<>();
-        for (GraphBuilderContext cur = this; cur != null; cur = cur.getParent()) {
-            callStack.add(cur.getMethod().asStackTraceElement(cur.bci()));
+    default BytecodePosition getInliningChain() {
+        BytecodePosition inliningContext = null;
+        for (GraphBuilderContext cur = getParent(); cur != null; cur = cur.getParent()) {
+            BytecodePosition caller = new BytecodePosition(null, cur.getMethod(), cur.bci());
+            inliningContext = inliningContext == null ? caller : inliningContext.addCaller(caller);
         }
-        return Collections.unmodifiableList(callStack);
+        return inliningContext;
     }
 
     /**

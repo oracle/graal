@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.dynamicaccessinference;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -34,6 +35,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import jdk.vm.ci.code.BytecodePosition;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -99,10 +101,23 @@ public class DynamicAccessInferenceLog {
             assert targetMethod.hasReceiver() == (targetReceiver != null) : "Inferred receiver does not match with target method signature";
             assert targetMethod.getSignature().getParameterCount(false) == targetArguments.length : "Inferred arguments do not match with target method signature";
             this.callLocation = Pair.create(b.getMethod(), b.bci());
-            this.callStack = b.getInliningCallStack(true);
+            this.callStack = getCallStack(b);
             this.targetMethod = targetMethod;
             this.targetReceiver = targetReceiver;
             this.targetArguments = targetArguments;
+        }
+
+        private static List<StackTraceElement> getCallStack(GraphBuilderContext b) {
+            BytecodePosition inliningContext = b.getInliningChain();
+            List<StackTraceElement> callStack = new ArrayList<>();
+            if (inliningContext == null || !inliningContext.getMethod().equals(b.getMethod()) || inliningContext.getBCI() != b.bci()) {
+                callStack.add(b.getMethod().asStackTraceElement(b.bci()));
+            }
+            while (inliningContext != null) {
+                callStack.add(inliningContext.getMethod().asStackTraceElement(inliningContext.getBCI()));
+                inliningContext = inliningContext.getCaller();
+            }
+            return callStack;
         }
 
         @Override
