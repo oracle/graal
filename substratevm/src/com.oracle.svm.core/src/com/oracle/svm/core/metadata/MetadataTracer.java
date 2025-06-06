@@ -43,7 +43,7 @@ import com.oracle.svm.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.configure.JsonFileWriter;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.configure.config.ConfigurationSet;
@@ -254,7 +254,7 @@ public final class MetadataTracer {
         ConfigurationSet configurationSet = getConfigurationSetForTracing();
         if (configurationSet != null) {
             debugReflectionType(typeDescriptor, configurationSet);
-            return configurationSet.getReflectionConfiguration().getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), typeDescriptor);
+            return configurationSet.getReflectionConfiguration().getOrCreateType(UnresolvedAccessCondition.unconditional(), typeDescriptor);
         }
         return null;
     }
@@ -308,7 +308,7 @@ public final class MetadataTracer {
         ConfigurationSet configurationSet = getConfigurationSetForTracing();
         if (configurationSet != null) {
             debugResourceGlob(resourceName, moduleName);
-            configurationSet.getResourceConfiguration().addGlobPattern(UnresolvedConfigurationCondition.alwaysTrue(), resourceName, moduleName);
+            configurationSet.getResourceConfiguration().addGlobPattern(UnresolvedAccessCondition.unconditional(), resourceName, moduleName);
         }
     }
 
@@ -320,7 +320,7 @@ public final class MetadataTracer {
         ConfigurationSet configurationSet = getConfigurationSetForTracing();
         if (configurationSet != null) {
             debug("resource bundle registered", baseName);
-            configurationSet.getResourceConfiguration().addBundle(UnresolvedConfigurationCondition.alwaysTrue(), baseName, List.of());
+            configurationSet.getResourceConfiguration().addBundle(UnresolvedAccessCondition.unconditional(), baseName, List.of());
         }
     }
 
@@ -384,7 +384,7 @@ public final class MetadataTracer {
         if (debugWriter == null) {
             return;
         }
-        if (configurationSet.getReflectionConfiguration().get(UnresolvedConfigurationCondition.alwaysTrue(), typeDescriptor) == null) {
+        if (configurationSet.getReflectionConfiguration().get(UnresolvedAccessCondition.unconditional(), typeDescriptor) == null) {
             debug("type registered for reflection", typeDescriptor);
         }
     }

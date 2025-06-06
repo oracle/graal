@@ -31,16 +31,16 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 
 public abstract class SerializationConfigurationParser<C> extends ConditionalConfigurationParser {
 
     public static final String CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY = "customTargetConstructorClass";
 
-    protected final ConfigurationConditionResolver<C> conditionResolver;
+    protected final AccessConditionResolver<C> conditionResolver;
     protected final RuntimeSerializationSupport<C> serializationSupport;
 
-    public static <C> SerializationConfigurationParser<C> create(boolean combinedFileSchema, ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport,
+    public static <C> SerializationConfigurationParser<C> create(boolean combinedFileSchema, AccessConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport,
                     EnumSet<ConfigurationParserOption> parserOptions) {
         if (combinedFileSchema) {
             return new SerializationMetadataParser<>(conditionResolver, serializationSupport, parserOptions);
@@ -49,7 +49,7 @@ public abstract class SerializationConfigurationParser<C> extends ConditionalCon
         }
     }
 
-    public SerializationConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport,
+    public SerializationConfigurationParser(AccessConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport,
                     EnumSet<ConfigurationParserOption> parserOptions) {
         super(parserOptions);
         this.serializationSupport = serializationSupport;

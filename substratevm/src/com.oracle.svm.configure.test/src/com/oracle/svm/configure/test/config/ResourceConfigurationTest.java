@@ -41,9 +41,9 @@ import org.junit.Test;
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.ResourceConfigurationParser;
 import com.oracle.svm.configure.ResourcesRegistry;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ResourceConfiguration;
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 
 import jdk.graal.compiler.util.json.JsonWriter;
 
@@ -52,7 +52,7 @@ public class ResourceConfigurationTest {
     @Test
     public void anyResourceMatches() {
         ResourceConfiguration rc = new ResourceConfiguration();
-        UnresolvedConfigurationCondition defaultCond = UnresolvedConfigurationCondition.alwaysTrue();
+        UnresolvedAccessCondition defaultCond = UnresolvedAccessCondition.unconditional();
         rc.addResourcePattern(defaultCond, ".*/Resource.*txt$");
 
         Assert.assertTrue(rc.anyResourceMatches("com/my/app/Resource0.txt"));
@@ -71,7 +71,7 @@ public class ResourceConfigurationTest {
     @Test
     public void printJson() {
         ResourceConfiguration rc = new ResourceConfiguration();
-        UnresolvedConfigurationCondition defaultCond = UnresolvedConfigurationCondition.alwaysTrue();
+        UnresolvedAccessCondition defaultCond = UnresolvedAccessCondition.unconditional();
         rc.addResourcePattern(defaultCond, ".*/Resource.*txt$");
         rc.ignoreResourcePattern(defaultCond, ".*/Resource2.txt$");
         PipedWriter pw = new PipedWriter();
@@ -91,15 +91,15 @@ public class ResourceConfigurationTest {
             List<String> addedResources = new LinkedList<>();
             List<String> ignoredResources = new LinkedList<>();
 
-            ResourcesRegistry<UnresolvedConfigurationCondition> registry = new ResourcesRegistry<>() {
+            ResourcesRegistry<UnresolvedAccessCondition> registry = new ResourcesRegistry<>() {
 
                 @Override
-                public void addResources(UnresolvedConfigurationCondition condition, String pattern, Object origin) {
+                public void addResources(UnresolvedAccessCondition condition, String pattern, Object origin) {
                     addedResources.add(pattern);
                 }
 
                 @Override
-                public void addGlob(UnresolvedConfigurationCondition condition, String module, String glob, Object origin) {
+                public void addGlob(UnresolvedAccessCondition condition, String module, String glob, Object origin) {
                     throw new AssertionError("Unused function.");
                 }
 
@@ -113,16 +113,16 @@ public class ResourceConfigurationTest {
                 }
 
                 @Override
-                public void ignoreResources(UnresolvedConfigurationCondition condition, String pattern, Object origin) {
+                public void ignoreResources(UnresolvedAccessCondition condition, String pattern, Object origin) {
                     ignoredResources.add(pattern);
                 }
 
                 @Override
-                public void addResourceBundles(UnresolvedConfigurationCondition condition, String name) {
+                public void addResourceBundles(UnresolvedAccessCondition condition, String name) {
                 }
 
                 @Override
-                public void addResourceBundles(UnresolvedConfigurationCondition condition, String basename, Collection<Locale> locales) {
+                public void addResourceBundles(UnresolvedAccessCondition condition, String basename, Collection<Locale> locales) {
 
                 }
 
@@ -132,12 +132,12 @@ public class ResourceConfigurationTest {
                 }
 
                 @Override
-                public void addClassBasedResourceBundle(UnresolvedConfigurationCondition condition, String basename, String className) {
+                public void addClassBasedResourceBundle(UnresolvedAccessCondition condition, String basename, String className) {
 
                 }
             };
 
-            ResourceConfigurationParser<UnresolvedConfigurationCondition> rcp = ResourceConfigurationParser.create(false, ConfigurationConditionResolver.identityResolver(), registry,
+            ResourceConfigurationParser<UnresolvedAccessCondition> rcp = ResourceConfigurationParser.create(false, AccessConditionResolver.identityResolver(), registry,
                             EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
             writerThread.start();
             rcp.parseAndRegister(pr);

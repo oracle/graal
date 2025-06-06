@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.util.json.JsonParserException;
@@ -44,11 +44,11 @@ import jdk.graal.compiler.util.json.JsonParserException;
  */
 public final class ProxyConfigurationParser<C> extends ConditionalConfigurationParser {
 
-    private final ConfigurationConditionResolver<C> conditionResolver;
+    private final AccessConditionResolver<C> conditionResolver;
 
     private final BiConsumer<C, List<String>> proxyConfigConsumer;
 
-    public ProxyConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, EnumSet<ConfigurationParserOption> parserOptions, BiConsumer<C, List<String>> proxyConfigConsumer) {
+    public ProxyConfigurationParser(AccessConditionResolver<C> conditionResolver, EnumSet<ConfigurationParserOption> parserOptions, BiConsumer<C, List<String>> proxyConfigConsumer) {
         super(parserOptions);
         this.proxyConfigConsumer = proxyConfigConsumer;
         this.conditionResolver = conditionResolver;
@@ -90,7 +90,7 @@ public final class ProxyConfigurationParser<C> extends ConditionalConfigurationP
 
     private void parseWithConditionalConfig(EconomicMap<String, Object> proxyConfigObject) {
         checkAttributes(proxyConfigObject, "proxy descriptor object", Collections.singleton("interfaces"), Collections.singletonList(CONDITIONAL_KEY));
-        UnresolvedConfigurationCondition condition = parseCondition(proxyConfigObject, false);
+        UnresolvedAccessCondition condition = parseCondition(proxyConfigObject, false);
         TypeResult<C> resolvedCondition = conditionResolver.resolveCondition(condition);
         if (resolvedCondition.isPresent()) {
             parseInterfaceList(resolvedCondition.get(), asList(proxyConfigObject.get("interfaces"), "The interfaces property must be an array of fully qualified interface names"));
