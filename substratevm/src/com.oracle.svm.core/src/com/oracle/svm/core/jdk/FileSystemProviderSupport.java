@@ -46,6 +46,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.options.Option;
@@ -195,12 +196,12 @@ final class Target_sun_nio_fs_UnixFileSystem {
     private Target_sun_nio_fs_UnixPath rootDirectory;
 
     /**
-     * Flag to check if re-initialization at run time already happened. The initial value of this
-     * flag in the image heap is non-zero, and it is set to zero when re-initialization is done.
-     * This ensures that UnixFileSystem instances allocated at run time are not re-initialized,
-     * because they are allocated with the field value. Note that UnixFileSystem instances should
-     * not be allocated at run time, since only the singleton from the image heap should exist.
-     * However, there were JDK bugs in various JDK versions where unwanted allocations happened.
+     * Flag to check if reinitialization at run time is needed. For objects in the image heap, this
+     * field is initially non-zero and set to zero after reinitialization. If UnixFileSystem
+     * instances are allocated at run time, the field will be set to zero right away (default value)
+     * as there is no need for reinitialization. Note that UnixFileSystem instances should not be
+     * allocated at run time, as only the singleton from the image heap should exist. However, there
+     * were JDK bugs in various JDK versions where unwanted allocations happened.
      */
     @Inject //
     @RecomputeFieldValue(kind = Kind.Custom, declClass = NeedsReinitializationProvider.class)//
@@ -295,6 +296,10 @@ class UnixFileSystemAccessors {
         that.injectedRootDirectory = value;
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/linux/classes/sun/nio/fs/LinuxFileSystem.java#L44-L46")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/linux/classes/sun/nio/fs/LinuxFileSystemProvider.java#L45-L47")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/unix/classes/sun/nio/fs/UnixFileSystemProvider.java#L75-L77")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/unix/classes/sun/nio/fs/UnixFileSystem.java#L78-L108")
     private static synchronized void reinitialize(Target_sun_nio_fs_UnixFileSystem that) {
         if (that.needsReinitialization != NeedsReinitializationProvider.STATUS_NEEDS_REINITIALIZATION) {
             /* Field initialized is volatile, so double-checked locking is OK. */
@@ -311,10 +316,10 @@ class UnixFileSystemAccessors {
          * with the same value it is already set to, so this is harmless. All other field writes are
          * redirected to the set-accessors of this class and write the injected fields.
          *
-         * Note that the `System.getProperty("user.dir")` value is always used when re-initializing
-         * a UnixFileSystem, which is not the case with the WindowsFileSystem (JDK-8066709).
+         * Note that the `StaticProperty.userDir()` value is always used when re-initializing a
+         * UnixFileSystem, which is not the case with the WindowsFileSystem (JDK-8066709).
          */
-        that.originalConstructor(that.provider, System.getProperty(UserSystemProperty.DIR));
+        that.originalConstructor(that.provider, StaticProperty.userDir());
 
         /*
          * Now the object is completely re-initialized and can be used by any thread without
