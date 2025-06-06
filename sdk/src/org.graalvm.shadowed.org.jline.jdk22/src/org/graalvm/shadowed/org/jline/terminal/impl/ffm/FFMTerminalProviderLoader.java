@@ -46,6 +46,7 @@ import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.StructLayout;
 import java.lang.foreign.ValueLayout;
 
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeForeignAccess;
 import org.graalvm.shadowed.org.jline.terminal.spi.TerminalProvider;
@@ -100,7 +101,7 @@ class FFMTerminalProviderFeature implements Feature {
     }
 
     private static DowncallDesc[] getDowncalls() {
-        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+        if (Platform.includedIn(Platform.WINDOWS.class)) {
             return getWindowsDowncalls();
         }
         return getUnixDowncalls();
