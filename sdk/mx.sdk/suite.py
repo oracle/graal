@@ -1205,6 +1205,8 @@ suite = {
       # One must pass --enable-native-access=org.graalvm.shadowed.jline, otherwise
       # JLine silently falls back to exec provider on POSIX, and with a warning
       # to "Dumb" provider on Windows
+      # If desired, the FFM terminal on JDK22+ can be disabled at built time using system property:
+      # org.graalvm.shadowed.org.jline.terminal.ffm.disable=true
       "moduleInfo": {
         "name": "org.graalvm.shadowed.jline",
         "requires": [

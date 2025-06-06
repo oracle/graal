@@ -52,7 +52,16 @@ import org.graalvm.nativeimage.hosted.RuntimeForeignAccess;
 import org.graalvm.shadowed.org.jline.terminal.spi.TerminalProvider;
 
 public class FFMTerminalProviderLoader {
+    /**
+     * Build time flag to disable the FFM provider and avoid pulling FFM related code into the
+     * image.
+     */
+    static final boolean DISABLED = Boolean.getBoolean("org.graalvm.shadowed.org.jline.terminal.ffm.disable");
+
     public static TerminalProvider load() {
+        if (DISABLED) {
+            return null;
+        }
         return new org.graalvm.shadowed.org.jline.terminal.impl.ffm.FfmTerminalProvider();
     }
 }
@@ -108,6 +117,9 @@ class FFMTerminalProviderFeature implements Feature {
     }
 
     public void duringSetup(DuringSetupAccess access) {
+        if (FFMTerminalProviderLoader.DISABLED) {
+            return;
+        }
         for (DowncallDesc downcall : getDowncalls()) {
             RuntimeForeignAccess.registerForDowncall(downcall.fd(), (Object[]) downcall.options());
         }
