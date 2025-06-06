@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,40 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure;
+package com.oracle.svm.hosted;
 
-import java.util.Collection;
-import java.util.Locale;
-
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RegistrationCondition;
-import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 
-public interface ResourcesRegistry<C> extends RuntimeResourceSupport<C> {
+public final class ResourceAccessImpl implements ResourceAccess {
 
-    @SuppressWarnings("unchecked")
-    static ResourcesRegistry<RegistrationCondition> singleton() {
-        return ImageSingletons.lookup(ResourcesRegistry.class);
+    private final InternalResourceAccess rdaInstance;
+    private static ResourceAccessImpl instance;
+
+    private ResourceAccessImpl() {
+        rdaInstance = new InternalResourceAccess();
     }
 
-    void addClassBasedResourceBundle(C condition, String basename, String className);
-
-    /**
-     * Although the interface-methods below are already defined in the super-interface
-     * {@link RuntimeResourceSupport} they are also needed here for legacy code that accesses them
-     * reflectively.
-     */
-    @Deprecated
-    default void addResources(C condition, String pattern) {
-        addResources(condition, pattern, "unknown");
+    public static ResourceAccessImpl getResourceAccessImpl() {
+        if (instance == null) {
+            instance = new ResourceAccessImpl();
+        }
+        return instance;
     }
 
     @Override
-    void ignoreResources(C condition, String pattern);
+    public void register(RegistrationCondition condition, Module module, String pattern) {
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, pattern);
+        rdaInstance.register(condition, module, pattern);
+    }
 
     @Override
-    void addResourceBundles(C condition, String name);
+    public void registerResourceBundle(RegistrationCondition condition, Module module, String bundleName) {
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, bundleName);
+        rdaInstance.registerResourceBundle(condition, module, bundleName);
+    }
 
-    @Override
-    void addResourceBundles(C condition, String basename, Collection<Locale> locales);
 }

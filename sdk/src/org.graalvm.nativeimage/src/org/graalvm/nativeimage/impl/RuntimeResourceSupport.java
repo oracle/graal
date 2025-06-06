@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,11 +44,12 @@ import java.util.Collection;
 import java.util.Locale;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 
 public interface RuntimeResourceSupport<C> {
 
     @SuppressWarnings("unchecked")
-    static RuntimeResourceSupport<ConfigurationCondition> singleton() {
+    static RuntimeResourceSupport<RegistrationCondition> singleton() {
         return ImageSingletons.lookup(RuntimeResourceSupport.class);
     }
 
@@ -63,15 +64,15 @@ public interface RuntimeResourceSupport<C> {
     void addResourceBundles(C condition, String basename, Collection<Locale> locales);
 
     /* Following functions are used only from features */
-    void addCondition(ConfigurationCondition configurationCondition, Module module, String resourcePath);
+    void addCondition(RegistrationCondition condition, Module module, String resourcePath);
 
     void addResourceEntry(Module module, String resourcePath, Object origin);
 
     default void addResource(Module module, String resourcePath, Object origin) {
-        addResource(ConfigurationCondition.alwaysTrue(), module, resourcePath, origin);
+        addResource(RegistrationCondition.always(), module, resourcePath, origin);
     }
 
-    default void addResource(ConfigurationCondition condition, Module module, String resourcePath, Object origin) {
+    default void addResource(RegistrationCondition condition, Module module, String resourcePath, Object origin) {
         addResourceEntry(module, resourcePath, origin);
         addCondition(condition, module, resourcePath);
     }

@@ -38,7 +38,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
@@ -150,15 +150,15 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
 
         final RuntimeReflectionSupport reflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
         final RuntimeProxyCreationSupport proxy = ImageSingletons.lookup(RuntimeProxyCreationSupport.class);
-        final RuntimeSerializationSupport<ConfigurationCondition> serialization = RuntimeSerializationSupport.singleton();
-        final ConfigurationCondition always = ConfigurationCondition.alwaysTrue();
+        final RuntimeSerializationSupport<RegistrationCondition> serialization = RuntimeSerializationSupport.singleton();
+        final RegistrationCondition always = RegistrationCondition.always();
 
         /*
          * Sort descending by class hierarchy depth to avoid complexity related to field
          * registration.
          */
         classesToPreserve.forEach(c -> {
-            reflection.register(always, false, c);
+            reflection.register(always, c);
 
             reflection.registerAllDeclaredFields(always, c);
             reflection.registerAllDeclaredMethodsQuery(always, false, c);
@@ -204,7 +204,9 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
 
             // if we register as unsafe allocated earlier there are build-time
             // initialization errors
-            reflection.register(always, !(c.isArray() || c.isInterface() || c.isPrimitive() || Modifier.isAbstract(c.getModifiers())), c);
+            if (!(c.isArray() || c.isInterface() || c.isPrimitive() || Modifier.isAbstract(c.getModifiers()))) {
+                reflection.registerUnsafeAllocation(always, c);
+            }
         });
 
         /*
