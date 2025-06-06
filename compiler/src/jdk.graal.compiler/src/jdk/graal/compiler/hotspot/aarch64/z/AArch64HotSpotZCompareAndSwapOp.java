@@ -51,37 +51,46 @@ public final class AArch64HotSpotZCompareAndSwapOp extends AArch64AtomicMove.Com
     private final boolean isLogic;
     private final GraalHotSpotVMConfig config;
     private final ForeignCallLinkage callTarget;
-    @Temp protected AllocatableValue tmp;
+    @Temp private AllocatableValue tmp;
+    @Temp private AllocatableValue tmp2;
 
-    public AArch64HotSpotZCompareAndSwapOp(boolean isLogic, AArch64Kind accessKind, MemoryOrderMode memoryOrder, boolean setConditionFlags, AllocatableValue result, Value expectedValue,
+    public AArch64HotSpotZCompareAndSwapOp(boolean isLogic,
+                    AArch64Kind accessKind,
+                    MemoryOrderMode memoryOrder,
+                    boolean setConditionFlags,
+                    AllocatableValue result,
+                    Value expectedValue,
                     AllocatableValue newValue,
-                    AllocatableValue addressValue, GraalHotSpotVMConfig config, ForeignCallLinkage callTarget, AllocatableValue tmp) {
+                    AllocatableValue addressValue,
+                    GraalHotSpotVMConfig config,
+                    ForeignCallLinkage callTarget,
+                    AllocatableValue tmp, AllocatableValue tmp2) {
         super(TYPE, accessKind, memoryOrder, setConditionFlags, result, expectedValue, newValue, addressValue);
         this.isLogic = isLogic;
         this.config = config;
         this.callTarget = callTarget;
         this.tmp = tmp;
+        this.tmp2 = tmp2;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         // Use ANY_SIZE here because the store barrier performs 16 and 64 access for atomics.
         AArch64Address location = AArch64Address.createBaseRegisterOnlyAddress(AArch64Address.ANY_SIZE, asRegister(addressValue));
-        AArch64HotSpotZBarrierSetLIRGenerator.emitStoreBarrier(crb, masm, this, config, location, asRegister(tmp), ZWriteBarrierSetLIRGeneratorTool.StoreKind.Atomic,
+        Register tmpRegister = asRegister(tmp);
+        AArch64HotSpotZBarrierSetLIRGenerator.emitStoreBarrier(crb, masm, this, config, location, tmpRegister, ZWriteBarrierSetLIRGeneratorTool.StoreKind.Atomic,
                         callTarget, null);
-        try (AArch64MacroAssembler.ScratchRegister sc1 = masm.getScratchRegister()) {
-            Register rscratch1 = sc1.getRegister();
-            // Color newValue and expectedValue into a temporary registers
-            AArch64HotSpotZBarrierSetLIRGenerator.zColor(crb, masm, config, asRegister(tmp), asRegister(newValue));
-            AArch64HotSpotZBarrierSetLIRGenerator.zColor(crb, masm, config, rscratch1, asRegister(expectedValue));
-            Register address = asRegister(addressValue);
-            // Produce the colored result into a temporary register
-            Register result = asRegister(resultValue);
-            Register expected = rscratch1;
-            emitCompareAndSwap(masm, accessKind, address, result, expected, asRegister(tmp), memoryOrder, setConditionFlags);
-            if (!isLogic) {
-                AArch64HotSpotZBarrierSetLIRGenerator.zUncolor(masm, config, asRegister(resultValue));
-            }
+        Register tmp2Register = asRegister(tmp2);
+        // Color newValue and expectedValue into a temporary registers
+        AArch64HotSpotZBarrierSetLIRGenerator.zColor(crb, masm, config, tmpRegister, asRegister(newValue));
+        AArch64HotSpotZBarrierSetLIRGenerator.zColor(crb, masm, config, tmp2Register, asRegister(expectedValue));
+        Register address = asRegister(addressValue);
+        // Produce the colored result into a temporary register
+        Register result = asRegister(resultValue);
+        Register expected = tmp2Register;
+        emitCompareAndSwap(masm, accessKind, address, result, expected, tmpRegister, memoryOrder, setConditionFlags);
+        if (!isLogic) {
+            AArch64HotSpotZBarrierSetLIRGenerator.zUncolor(masm, config, asRegister(resultValue));
         }
     }
 }
