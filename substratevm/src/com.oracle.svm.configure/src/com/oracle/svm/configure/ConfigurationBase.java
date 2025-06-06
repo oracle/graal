@@ -39,7 +39,7 @@ public abstract class ConfigurationBase<T extends ConfigurationBase<T, P>, P> im
 
     protected abstract void merge(T other);
 
-    public abstract void mergeConditional(UnresolvedConfigurationCondition condition, T other);
+    public abstract void mergeConditional(UnresolvedAccessCondition condition, T other);
 
     protected abstract void subtract(T other);
 
