@@ -448,6 +448,9 @@ def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_e
     else:
         native_image_args += ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain"]
     native_image_args += [target_path]
+    # GR-65661: we need to disable the check in GraalVM for 21 as it does not allow polyglot version 26.0.0-dev
+    if jdk.version < mx.VersionSpec("25"):
+        native_image_args = ['-Dpolyglotimpl.DisableVersionChecks=true'] + native_image_args
     mx.log("Running {} {}".format(mx.exe_suffix('native-image'), " ".join(native_image_args)))
     mx.run([native_image_path] + native_image_args)
     return target_path
@@ -675,6 +678,9 @@ def native_truffle_unittest(args):
             f'-Djunit.platform.listeners.uid.tracking.output.dir={os.path.join(tmp, "test-ids")}'
         ]
         vm_args = enable_asserts_args + uid_tracking_args + mx.get_runtime_jvm_args(names=unittest_distributions + truffle_runtime_distributions) + module_args
+        # GR-65661: we need to disable the check in GraalVM for 21 as it does not allow polyglot version 26.0.0-dev
+        if jdk.version < mx.VersionSpec("25"):
+            vm_args = ['-Dpolyglotimpl.DisableVersionChecks=true'] + vm_args
 
         # 2. Collect test ids for a native image build
         junit_console_launcher_with_args = [
