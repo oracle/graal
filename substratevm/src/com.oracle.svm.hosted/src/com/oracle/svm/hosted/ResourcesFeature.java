@@ -65,7 +65,7 @@ import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ResourceConfigurationParser;
 import com.oracle.svm.configure.ResourcesRegistry;
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ClassLoaderSupport.ConditionWithOrigin;
@@ -425,7 +425,7 @@ public class ResourcesFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
         /* load and parse resource configuration files */
-        ConfigurationConditionResolver<AccessCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
+        AccessConditionResolver<AccessCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
                         ClassInitializationSupport.singleton());
 
         ResourceConfigurationParser<AccessCondition> parser = ResourceConfigurationParser.create(true, conditionResolver, ResourcesRegistry.singleton(),

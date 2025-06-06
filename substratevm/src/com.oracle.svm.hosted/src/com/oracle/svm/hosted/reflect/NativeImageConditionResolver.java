@@ -28,13 +28,13 @@ import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 
 import com.oracle.svm.configure.ClassNameSupport;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.util.TypeResult;
 
-public class NativeImageConditionResolver implements ConfigurationConditionResolver<AccessCondition> {
+public class NativeImageConditionResolver implements AccessConditionResolver<AccessCondition> {
     private final ImageClassLoader classLoader;
     @SuppressWarnings({"FieldCanBeLocal", "unused"}) private final ClassInitializationSupport classInitializationSupport;
 
@@ -44,7 +44,7 @@ public class NativeImageConditionResolver implements ConfigurationConditionResol
     }
 
     @Override
-    public TypeResult<AccessCondition> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition) {
+    public TypeResult<AccessCondition> resolveCondition(UnresolvedAccessCondition unresolvedCondition) {
         String reflectionName = ClassNameSupport.typeNameToReflectionName(unresolvedCondition.getTypeName());
         TypeResult<Class<?>> clazz = classLoader.findClass(reflectionName);
         return clazz.map(type -> {

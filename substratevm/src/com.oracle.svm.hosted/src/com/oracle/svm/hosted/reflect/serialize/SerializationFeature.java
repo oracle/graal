@@ -63,7 +63,7 @@ import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.SerializationConfigurationParser;
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -130,7 +130,7 @@ public class SerializationFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
-        ConfigurationConditionResolver<AccessCondition> conditionResolver = new NativeImageConditionResolver(imageClassLoader, ClassInitializationSupport.singleton());
+        AccessConditionResolver<AccessCondition> conditionResolver = new NativeImageConditionResolver(imageClassLoader, ClassInitializationSupport.singleton());
         EnumSet<ConfigurationParserOption> parserOptions = ConfigurationFiles.Options.getConfigurationParserOptions();
         SerializationConfigurationParser<AccessCondition> parser = SerializationConfigurationParser.create(true, conditionResolver, serializationBuilder, parserOptions);
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, imageClassLoader, "serialization");

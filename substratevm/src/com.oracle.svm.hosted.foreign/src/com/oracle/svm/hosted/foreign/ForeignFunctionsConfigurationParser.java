@@ -55,7 +55,7 @@ import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.ForeignConfigurationParser;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -102,8 +102,8 @@ public class ForeignFunctionsConfigurationParser extends ForeignConfigurationPar
     }
 
     @Override
-    protected void registerDowncall(UnresolvedConfigurationCondition configurationCondition, FunctionDescriptor descriptor, Option[] options) {
-        TypeResult<AccessCondition> typeResult = conditionResolver.resolveCondition(configurationCondition);
+    protected void registerDowncall(UnresolvedAccessCondition condition, FunctionDescriptor descriptor, Option[] options) {
+        TypeResult<AccessCondition> typeResult = conditionResolver.resolveCondition(condition);
         if (!typeResult.isPresent()) {
             return;
         }
@@ -111,8 +111,8 @@ public class ForeignFunctionsConfigurationParser extends ForeignConfigurationPar
     }
 
     @Override
-    protected void registerUpcall(UnresolvedConfigurationCondition configurationCondition, FunctionDescriptor descriptor, Option[] options) {
-        TypeResult<AccessCondition> typeResult = conditionResolver.resolveCondition(configurationCondition);
+    protected void registerUpcall(UnresolvedAccessCondition condition, FunctionDescriptor descriptor, Option[] options) {
+        TypeResult<AccessCondition> typeResult = conditionResolver.resolveCondition(condition);
         if (!typeResult.isPresent()) {
             return;
         }
@@ -120,8 +120,8 @@ public class ForeignFunctionsConfigurationParser extends ForeignConfigurationPar
     }
 
     @Override
-    protected void registerDirectUpcallWithDescriptor(UnresolvedConfigurationCondition configurationCondition, String className, String methodName, FunctionDescriptor descriptor, Option[] options) {
-        TypeResult<AccessCondition> typeResult = conditionResolver.resolveCondition(configurationCondition);
+    protected void registerDirectUpcallWithDescriptor(UnresolvedAccessCondition condition, String className, String methodName, FunctionDescriptor descriptor, Option[] options) {
+        TypeResult<AccessCondition> typeResult = conditionResolver.resolveCondition(condition);
         if (!typeResult.isPresent()) {
             return;
         }
@@ -152,13 +152,8 @@ public class ForeignFunctionsConfigurationParser extends ForeignConfigurationPar
     }
 
     @Override
-<<<<<<< Updated upstream
-    protected void registerDirectUpcallWithoutDescriptor(UnresolvedConfigurationCondition configurationCondition, String className, String methodName, EconomicMap<String, Object> optionsMap) {
-        TypeResult<ConfigurationCondition> typeResult = conditionResolver.resolveCondition(configurationCondition);
-=======
-    protected void registerDirectUpcallWithoutDescriptor(UnresolvedAccessCondition configurationCondition, String className, String methodName, EconomicMap<String, Object> optionsMap) {
-        TypeResult<AccessCondition> typeResult = conditionResolver.resolveCondition(configurationCondition);
->>>>>>> Stashed changes
+    protected void registerDirectUpcallWithoutDescriptor(UnresolvedAccessCondition condition, String className, String methodName, EconomicMap<String, Object> optionsMap) {
+        TypeResult<AccessCondition> typeResult = conditionResolver.resolveCondition(condition);
         if (!typeResult.isPresent()) {
             return;
         }

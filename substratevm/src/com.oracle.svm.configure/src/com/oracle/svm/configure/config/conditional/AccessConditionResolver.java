@@ -24,26 +24,26 @@
  */
 package com.oracle.svm.configure.config.conditional;
 
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.util.TypeResult;
 
-public interface ConfigurationConditionResolver<T> {
+public interface AccessConditionResolver<T> {
 
-    static ConfigurationConditionResolver<UnresolvedConfigurationCondition> identityResolver() {
-        return new ConfigurationConditionResolver<>() {
+    static AccessConditionResolver<UnresolvedAccessCondition> identityResolver() {
+        return new AccessConditionResolver<>() {
             @Override
-            public TypeResult<UnresolvedConfigurationCondition> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition) {
+            public TypeResult<UnresolvedAccessCondition> resolveCondition(UnresolvedAccessCondition unresolvedCondition) {
                 return TypeResult.forType(unresolvedCondition.getTypeName(), unresolvedCondition);
             }
 
             @Override
-            public UnresolvedConfigurationCondition alwaysTrue() {
-                return UnresolvedConfigurationCondition.alwaysTrue();
+            public UnresolvedAccessCondition alwaysTrue() {
+                return UnresolvedAccessCondition.unconditional();
             }
         };
     }
 
-    TypeResult<T> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition);
+    TypeResult<T> resolveCondition(UnresolvedAccessCondition unresolvedCondition);
 
     T alwaysTrue();
 }

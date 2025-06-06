@@ -52,7 +52,7 @@ import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.configure.ReflectionConfigurationParser;
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -64,7 +64,7 @@ import jdk.graal.compiler.util.json.JsonParserException;
 public final class ConfigurationParserUtils {
 
     public static ReflectionConfigurationParser<AccessCondition, Class<?>> create(ConfigurationFile configurationKind, boolean combinedFileSchema,
-                    ConfigurationConditionResolver<AccessCondition> conditionResolver, ReflectionRegistry registry, RuntimeProxyRegistrySupport proxyRegistry,
+                    AccessConditionResolver<AccessCondition> conditionResolver, ReflectionRegistry registry, RuntimeProxyRegistrySupport proxyRegistry,
                     RuntimeSerializationSupport<AccessCondition> serializationSupport, RuntimeJNIAccessSupport jniSupport, ImageClassLoader imageClassLoader) {
         var additionalParserOptions = configurationKind == ConfigurationFile.JNI ? EnumSet.of(JNI_PARSER) : null;
         return ReflectionConfigurationParser.create(combinedFileSchema, conditionResolver, RegistryAdapter.create(registry, proxyRegistry, serializationSupport, jniSupport, imageClassLoader),

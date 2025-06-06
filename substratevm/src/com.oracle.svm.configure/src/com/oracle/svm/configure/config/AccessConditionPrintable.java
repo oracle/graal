@@ -25,17 +25,17 @@
 package com.oracle.svm.configure.config;
 
 import static com.oracle.svm.configure.ConditionalConfigurationParser.CONDITIONAL_KEY;
-import static com.oracle.svm.configure.UnresolvedConfigurationCondition.TYPE_REACHABLE_KEY;
-import static com.oracle.svm.configure.UnresolvedConfigurationCondition.TYPE_REACHED_KEY;
+import static com.oracle.svm.configure.UnresolvedAccessCondition.TYPE_REACHABLE_KEY;
+import static com.oracle.svm.configure.UnresolvedAccessCondition.TYPE_REACHED_KEY;
 
 import java.io.IOException;
 
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 
 import jdk.graal.compiler.util.json.JsonWriter;
 
-final class ConfigurationConditionPrintable {
-    static void printConditionAttribute(UnresolvedConfigurationCondition condition, JsonWriter writer, boolean combinedFile) throws IOException {
+final class AccessConditionPrintable {
+    static void printConditionAttribute(UnresolvedAccessCondition condition, JsonWriter writer, boolean combinedFile) throws IOException {
         if (!condition.isAlwaysTrue()) {
             writer.quote(CONDITIONAL_KEY).appendFieldSeparator().appendObjectStart();
             /*
