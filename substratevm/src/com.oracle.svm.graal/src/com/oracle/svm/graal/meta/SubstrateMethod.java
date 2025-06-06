@@ -349,6 +349,11 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     }
 
     @Override
+    public boolean isDeclared() {
+        throw shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
     public boolean isClassInitializer() {
         assert !("<clinit>".equals(name) && isStatic()) : "class initializers are executed during native image generation and are never in the native image";
         return false;

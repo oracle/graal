@@ -41,6 +41,8 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 
+import java.util.List;
+
 public final class InterpreterConstantPool implements ConstantPool {
 
     private final InterpreterResolvedObjectType holder;
@@ -86,6 +88,11 @@ public final class InterpreterConstantPool implements ConstantPool {
 
     @Override
     public JavaMethod lookupMethod(int cpi, int opcode, ResolvedJavaMethod caller) {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
+    public List<BootstrapMethodInvocation> lookupBootstrapMethodInvocations(boolean invokeDynamic) {
         throw VMError.intentionallyUnimplemented();
     }
 
