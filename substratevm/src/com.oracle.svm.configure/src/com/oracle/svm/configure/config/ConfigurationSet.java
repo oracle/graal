@@ -200,12 +200,7 @@ public class ConfigurationSet {
     }
 
     public static void printConfigurationToCombinedFile(JsonPrintable config, ConfigurationFile configFile, JsonWriter writer) throws IOException {
-        if (!configFile.equals(ConfigurationFile.RESOURCES)) {
-            /*
-             * Resources are printed at the top level of the object, not in a defined field
-             */
-            writer.quote(configFile.getFieldName()).appendFieldSeparator();
-        }
+        writer.quote(configFile.getFieldName()).appendFieldSeparator();
         config.printJson(writer);
     }
 

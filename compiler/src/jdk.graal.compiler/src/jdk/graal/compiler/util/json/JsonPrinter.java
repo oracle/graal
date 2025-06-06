@@ -55,7 +55,12 @@ public interface JsonPrinter<T> {
      * @see JsonWriter#print(Object)
      */
     static <T> void printCollection(JsonWriter writer, Collection<T> collection, Comparator<T> comparator, JsonPrinter<T> elementPrinter) throws IOException {
-        if (collection.isEmpty()) {
+        printCollection(writer, collection, comparator, elementPrinter, true, true);
+    }
+
+    /* Utility method to allow printing multiple collections into the same array */
+    static <T> void printCollection(JsonWriter writer, Collection<T> collection, Comparator<T> comparator, JsonPrinter<T> elementPrinter, boolean arrayStart, boolean arrayEnd) throws IOException {
+        if (collection.isEmpty() && arrayStart && arrayEnd) {
             writer.append("[]");
             return;
         }
@@ -66,7 +71,9 @@ public interface JsonPrinter<T> {
             ((List<T>) ordered).sort(comparator);
         }
 
-        writer.appendArrayStart();
+        if (arrayStart) {
+            writer.appendArrayStart();
+        }
         boolean separator = false;
         for (T t : ordered) {
             if (separator) {
@@ -75,6 +82,8 @@ public interface JsonPrinter<T> {
             elementPrinter.print(t, writer);
             separator = true;
         }
-        writer.appendArrayEnd();
+        if (arrayEnd) {
+            writer.appendArrayEnd();
+        }
     }
 }
