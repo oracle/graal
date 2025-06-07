@@ -26,20 +26,18 @@ package com.oracle.svm.hosted.option;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.svm.common.option.MultiOptionValue;
+
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 
 public class HostedOptionCustomizer implements HostedOptionProvider {
-
     private final EconomicMap<OptionKey<?>, Object> hostedValues;
     private final EconomicMap<OptionKey<?>, Object> runtimeValues;
 
-    public HostedOptionCustomizer(HostedOptionProvider original) {
-        hostedValues = OptionValues.newOptionMap();
-        hostedValues.putAll(original.getHostedValues());
-
-        runtimeValues = OptionValues.newOptionMap();
-        runtimeValues.putAll(original.getRuntimeValues());
+    public HostedOptionCustomizer(HostedOptionParser hostedOptionParser) {
+        this.hostedValues = copyOptionValues(hostedOptionParser.getHostedValues());
+        this.runtimeValues = copyOptionValues(hostedOptionParser.getRuntimeValues());
     }
 
     @Override
@@ -50,5 +48,19 @@ public class HostedOptionCustomizer implements HostedOptionProvider {
     @Override
     public EconomicMap<OptionKey<?>, Object> getRuntimeValues() {
         return runtimeValues;
+    }
+
+    private static EconomicMap<OptionKey<?>, Object> copyOptionValues(EconomicMap<OptionKey<?>, Object> original) {
+        EconomicMap<OptionKey<?>, Object> result = OptionValues.newOptionMap();
+        var cursor = original.getEntries();
+        while (cursor.advance()) {
+            OptionKey<?> key = cursor.getKey();
+            Object value = cursor.getValue();
+            if (value instanceof MultiOptionValue<?> v) {
+                value = v.createCopy();
+            }
+            result.put(key, value);
+        }
+        return result;
     }
 }
