@@ -53,15 +53,21 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
     public void testMathSubstitutions() {
         assertInGraph(assertNotInGraph(testGraph("mathAbs"), IfNode.class), AbsNode.class);     // Java
         double value = 34567.891D;
+
         testGraph("mathCos");
         testGraph("mathLog");
         testGraph("mathLog10");
         testGraph("mathSin");
         testGraph("mathSqrt");
         testGraph("mathTan");
-        testGraph("mathTanh");
-        testGraph("mathCbrt");
         testGraph("mathAll");
+        if (getReplacements().hasSubstitution(getResolvedJavaMethod(Math.class, "tanh"), getInitialOptions())) {
+            testGraph("mathTanh");
+        }
+        if (getReplacements().hasSubstitution(getResolvedJavaMethod(Math.class, "cbrt"), getInitialOptions())) {
+            testGraph("mathCbrt");
+        }
+        testGraph("mathCbrt");
 
         test("mathCos", value);
         test("mathLog", value);
@@ -145,7 +151,7 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
     }
 
     public static double mathAll(double value) {
-        return Math.sqrt(value) + Math.log(value) + Math.log10(value) + Math.sin(value) + Math.cos(value) + Math.tan(value) + Math.tanh(value) + Math.cbrt(value);
+        return Math.sqrt(value) + Math.log(value) + Math.log10(value) + Math.sin(value) + Math.cos(value) + Math.tan(value);
     }
 
     public void testSubstitution(String testMethodName, Class<?> holder, String methodName, boolean optional, Object[] args, Class<?>... intrinsicClasses) {
