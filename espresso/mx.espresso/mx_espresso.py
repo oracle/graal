@@ -727,12 +727,20 @@ class EspressoRuntimeResourceProject(mx.JavaProject):
 
 
 class EspressoRuntimeResourceBuildTask(mx.JavaBuildTask):
+    subject: EspressoRuntimeResourceProject
+
     def __str__(self):
         return f'Generating {self.subject.name} internal resource and compiling it with {self._getCompiler().name()}'
 
     @staticmethod
     def _template_file():
         return join(_suite.mxDir, 'espresso_runtime_resource.template')
+
+    def witness_file(self):
+        return join(self.subject.get_output_root(), 'witness')
+
+    def witness_contents(self):
+        return self.subject.resource_id
 
     def needsBuild(self, newestInput):
         is_needed, reason = mx.ProjectBuildTask.needsBuild(self, newestInput)
@@ -748,6 +756,13 @@ class EspressoRuntimeResourceBuildTask(mx.JavaBuildTask):
         ])
         if newestInput is None or newestInput.isOlderThan(template_ts):
             newestInput = template_ts
+        witness_file = self.witness_file()
+        if not exists(witness_file):
+            return True, witness_file + " doesn't exist"
+        expected = self.witness_contents()
+        with open(witness_file, 'r', encoding='utf-8') as f:
+            if f.read() != expected:
+                return True, "Outdated content"
         return super().needsBuild(newestInput)
 
     @staticmethod
@@ -791,6 +806,10 @@ class EspressoRuntimeResourceBuildTask(mx.JavaBuildTask):
         with mx_util.SafeFileCreation(target_file) as sfc, open(sfc.tmpPath, 'w', encoding='utf-8') as f:
             f.write(file_content)
         super(EspressoRuntimeResourceBuildTask, self).build()
+        witness_file = self.witness_file()
+        mx_util.ensure_dirname_exists(witness_file)
+        with mx_util.SafeFileCreation(witness_file) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as outfile:
+            outfile.write(self.witness_contents())
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
