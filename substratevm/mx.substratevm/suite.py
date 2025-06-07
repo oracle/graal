@@ -352,6 +352,7 @@ suite = {
             ],
             "requiresConcealed" : {
                 "java.base" : [
+                    "com.sun.crypto.provider",
                     "sun.invoke.util",
                     "sun.net",
                     "sun.net.www",
@@ -362,6 +363,8 @@ suite = {
                     "sun.reflect.generics.repository",
                     "sun.reflect.generics.tree",
                     "sun.security.jca",
+                    "sun.security.provider",
+                    "sun.security.rsa",
                     "sun.security.ssl",
                     "sun.security.util",
                     "sun.text.spi",
