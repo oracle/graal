@@ -47,6 +47,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 
+import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -344,6 +345,11 @@ public class SVMHost extends HostVM {
     @Override
     public boolean isRelocatedPointer(JavaConstant constant) {
         return constant instanceof RelocatableConstant;
+    }
+
+    @Override
+    public void validateReachableObject(Object obj) {
+        ImageSingletons.lookup(ClassInitializationFeature.class).checkImageHeapInstance(obj);
     }
 
     @Override
