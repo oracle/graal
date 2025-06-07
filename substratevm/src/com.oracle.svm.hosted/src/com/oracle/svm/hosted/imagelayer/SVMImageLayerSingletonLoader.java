@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import static com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader.getBooleans;
-
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,10 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
-import com.oracle.svm.shaded.org.capnproto.Text;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
@@ -75,9 +70,9 @@ public class SVMImageLayerSingletonLoader {
                     case I -> v.getI();
                     case J -> v.getJ();
                     case STR -> v.getStr().toString();
-                    case IL -> Stream.of(v.getIl()).flatMapToInt(r -> IntStream.range(0, r.size()).map(r::get)).toArray();
-                    case ZL -> getBooleans(v.getZl());
-                    case STRL -> StreamSupport.stream(v.getStrl().spliterator(), false).map(Text.Reader::toString).toArray(String[]::new);
+                    case IL -> CapnProtoAdapters.toIntArray(v.getIl());
+                    case ZL -> CapnProtoAdapters.toBooleanArray(v.getZl());
+                    case STRL -> CapnProtoAdapters.toStringArray(v.getStrl());
                     case _NOT_IN_SCHEMA -> throw new IllegalStateException("Unexpected value: " + v.which());
                 };
                 keyStore.put(entry.getKey().toString(), value);
