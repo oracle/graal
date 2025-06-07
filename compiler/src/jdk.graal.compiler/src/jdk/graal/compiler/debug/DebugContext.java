@@ -665,7 +665,7 @@ public final class DebugContext implements AutoCloseable {
             }
             currentScope = new ScopeImpl(this, Thread.currentThread(), DebugOptions.DisableIntercept.getValue(options));
             currentScope.updateFlags(currentConfig);
-            metricsEnabled = true;
+            metricsEnabled = !disableConfig;
         } else {
             metricsEnabled = immutable.hasUnscopedMetrics() || immutable.listMetrics;
         }
@@ -765,6 +765,10 @@ public final class DebugContext implements AutoCloseable {
 
     public boolean isCountEnabled() {
         return currentScope != null && currentScope.isCountEnabled();
+    }
+
+    public boolean isTimeEnabled() {
+        return currentScope != null && currentScope.isTimeEnabled();
     }
 
     public boolean isMemUseTrackingEnabled() {
@@ -1887,6 +1891,28 @@ public final class DebugContext implements AutoCloseable {
         return createCounter("%s", name, null);
     }
 
+    public static CountingTimerKey countingTimer(CharSequence name) {
+        return new CountingTimerKey(name);
+    }
+
+    /**
+     * Tracks both the number of times a timer was started and the elapsed time.
+     */
+    public static class CountingTimerKey {
+        CounterKey count;
+        TimerKey time;
+
+        CountingTimerKey(CharSequence name) {
+            count = DebugContext.counter(name + "Count");
+            time = DebugContext.timer(name + "Time");
+        }
+
+        public DebugCloseable start(DebugContext debug) {
+            count.add(debug, 1);
+            return time.start(debug);
+        }
+    }
+
     /**
      * Gets a tally of the metric values in this context and a given tally.
      *
@@ -2316,7 +2342,7 @@ public final class DebugContext implements AutoCloseable {
             ByteArrayOutputStream baos = new ByteArrayOutputStream(metricsBufSize);
             PrintStream out = new PrintStream(baos);
             if (metricsFile.endsWith(".csv") || metricsFile.endsWith(".CSV")) {
-                printMetricsCSV(out, compilable, identity, compilationNr, desc.identifier);
+                printMetricsCSV(out, compilable, identity, compilationNr, desc.identifier, DebugOptions.OmitZeroMetrics.getValue(getOptions()));
             } else {
                 printMetrics(out, compilable, identity, compilationNr, desc.identifier);
             }
@@ -2345,8 +2371,9 @@ public final class DebugContext implements AutoCloseable {
      * @param compilationNr where this compilation lies in the ordered sequence of all compilations
      *            identified by {@code identity}
      * @param compilationId the runtime issued identifier for the compilation
+     * @param skipZero
      */
-    private void printMetricsCSV(PrintStream out, Object compilable, Integer identity, int compilationNr, String compilationId) {
+    private void printMetricsCSV(PrintStream out, Object compilable, Integer identity, int compilationNr, String compilationId, boolean skipZero) {
         String compilableName = compilable instanceof JavaMethod ? ((JavaMethod) compilable).format("%H.%n(%p)%R") : String.valueOf(compilable);
         String csvFormat = CSVUtil.buildFormatString("%s", "%s", "%d", "%s");
         String format = String.format(csvFormat, CSVUtil.Escape.escapeArgsFormatString(compilableName, identity, compilationNr, compilationId));
@@ -2355,8 +2382,12 @@ public final class DebugContext implements AutoCloseable {
         for (MetricKey key : KeyRegistry.getKeys()) {
             int index = ((AbstractKey) key).getIndex();
             if (index < metricValues.length) {
-                Pair<String, String> valueAndUnit = key.toCSVFormat(metricValues[index]);
-                CSVUtil.Escape.println(out, format, CSVUtil.Escape.escape(key.getName()), valueAndUnit.getLeft(), valueAndUnit.getRight());
+                long metricValue = metricValues[index];
+                if (skipZero && metricValue == 0) {
+                    continue;
+                }
+                Pair<String, String> valueAndUnit = key.toCSVFormat(metricValue);
+                CSVUtil.Escape.println(out, format, key.getName(), valueAndUnit.getLeft(), valueAndUnit.getRight());
             }
         }
     }

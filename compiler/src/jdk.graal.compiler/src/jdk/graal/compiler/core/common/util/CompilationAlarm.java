@@ -38,6 +38,7 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.serviceprovider.JMXService;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -73,6 +74,11 @@ public final class CompilationAlarm implements AutoCloseable {
     private CompilationAlarm(double period) {
         this.previous = currentAlarm.get();
         reset(period);
+        JMXService.GCTimeStatistics timing = null;
+        if (period != 0) {
+            timing = GraalServices.getGCTimeStatistics();
+        }
+        this.gcTiming = timing;
     }
 
     /**
@@ -190,7 +196,13 @@ public final class CompilationAlarm implements AutoCloseable {
             cloneTree.durationNS = elapsed();
             printTree("", sb, cloneTree, true);
 
-            throw new PermanentBailoutException("Compilation exceeded %.3f seconds. %n Phase timings:%n %s <===== TIMEOUT HERE", period, sb.toString().trim());
+            // Include information about time spent in the GC if it's available.
+            String gcMessage = "";
+            if (gcTiming != null) {
+                gcMessage = String.format(" (GC time is %s ms of %s ms elapsed)", gcTiming.getGCTimeMills(), gcTiming.getElapsedTimeMillis());
+            }
+
+            throw new PermanentBailoutException("Compilation exceeded %.3f seconds%s. %n Phase timings:%n %s <===== TIMEOUT HERE", period, gcMessage, sb.toString().trim());
         }
     }
 
@@ -209,6 +221,11 @@ public final class CompilationAlarm implements AutoCloseable {
      * The time at which this alarm expires in nanoseconds.
      */
     private long expirationNS;
+
+    /**
+     * Time spent in the garbage collector if it's available.
+     */
+    private final JMXService.GCTimeStatistics gcTiming;
 
     /**
      * Signal the execution of the phase identified by {@code name} starts.
