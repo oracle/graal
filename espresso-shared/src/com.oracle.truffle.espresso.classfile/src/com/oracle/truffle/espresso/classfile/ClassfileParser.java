@@ -50,6 +50,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_STRICT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNCHRONIZED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNTHETIC;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_VALUE_BASED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VOLATILE;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
@@ -893,7 +894,7 @@ public final class ClassfileParser {
                 flags = switch (location) {
                     case Method -> parseMethodVMAnnotations(subStream);
                     case Field -> parseFieldVMAnnotations(subStream);
-                    case Class -> 0;
+                    case Class -> parseClassVMAnnotations(subStream);
                 };
             }
 
@@ -939,6 +940,20 @@ public final class ClassfileParser {
                 Symbol<?> annotType = pool.utf8At(typeIndex, "annotation type");
                 if (ParserTypes.jdk_internal_vm_annotation_Stable.equals(annotType)) {
                     flags |= ACC_STABLE;
+                }
+            }
+            return flags;
+        }
+
+        private int parseClassVMAnnotations(ClassfileStream subStream) {
+            int flags = 0;
+            int count = subStream.readU2();
+            for (int j = 0; j < count; j++) {
+                int typeIndex = parseAnnotation(subStream);
+                // Validation of the type is done at runtime by guest java code.
+                Symbol<?> annotType = pool.utf8At(typeIndex, "annotation type");
+                if (ParserTypes.jdk_internal_ValueBased.equals(annotType)) {
+                    flags |= ACC_VALUE_BASED;
                 }
             }
             return flags;
@@ -1248,6 +1263,10 @@ public final class ClassfileParser {
                         throw classFormatError("Duplicate PermittedSubclasses attribute");
                     }
                     classAttributes[i] = permittedSubclasses = parsePermittedSubclasses(attributeName);
+                } else if (attributeName.equals(ParserNames.RuntimeVisibleAnnotations)) {
+                    RuntimeVisibleAnnotationsAttribute annotations = commonAttributeParser.parseRuntimeVisibleAnnotations(attributeSize, AnnotationLocation.Class);
+                    classFlags |= annotations.flags;
+                    classAttributes[i] = annotations.attribute;
                 } else {
                     Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
                     // stream.skip(attributeSize);
