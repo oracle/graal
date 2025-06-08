@@ -87,45 +87,37 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
 
     @Override
     protected Location moveLocation(Location oldLocation) {
-        if (oldLocation instanceof LongLocation) {
-            return newLongLocation(oldLocation.isFinal(), ((LongLocation) oldLocation).isImplicitCastIntToLong());
+        if (oldLocation instanceof LongLocation longLocation) {
+            return newLongLocation(longLocation.isImplicitCastIntToLong());
         } else if (oldLocation instanceof IntLocation) {
-            return newIntLocation(oldLocation.isFinal());
-        } else if (oldLocation instanceof DoubleLocation) {
-            return newDoubleLocation(oldLocation.isFinal(), ((DoubleLocation) oldLocation).isImplicitCastIntToDouble());
+            return newIntLocation();
+        } else if (oldLocation instanceof DoubleLocation doubleLocation) {
+            return newDoubleLocation(doubleLocation.isImplicitCastIntToDouble());
         } else if (oldLocation instanceof BooleanLocation) {
-            return newBooleanLocation(oldLocation.isFinal());
+            return newBooleanLocation();
         } else if (oldLocation instanceof ObjectLocation) {
-            return newObjectLocation(oldLocation.isFinal(), ((ObjectLocation) oldLocation).isNonNull());
+            return newObjectLocation();
         } else {
             assert oldLocation instanceof CoreLocations.ValueLocation : oldLocation;
             return advance(oldLocation);
         }
     }
 
-    @Override
-    public Location newObjectLocation(boolean useFinal, boolean nonNull) {
+    private Location newObjectLocation() {
         if (ObjectStorageOptions.InObjectFields) {
             int insertPos = objectFieldSize;
             if (insertPos + OBJECT_SLOT_SIZE <= getLayout().getObjectFieldCount()) {
                 return advance((Location) getLayout().getObjectFieldLocation(insertPos));
             }
         }
-        return newObjectArrayLocation(useFinal, nonNull);
+        return newObjectArrayLocation();
     }
 
-    @SuppressWarnings("unused")
-    private Location newObjectArrayLocation(boolean useFinal, boolean nonNull) {
+    private Location newObjectArrayLocation() {
         return advance(new ObjectArrayLocation(objectArraySize));
     }
 
-    @Override
-    public Location newTypedObjectLocation(boolean useFinal, Class<?> type, boolean nonNull) {
-        return newObjectLocation(useFinal, nonNull);
-    }
-
-    @Override
-    protected Location newIntLocation(boolean useFinal) {
+    private Location newIntLocation() {
         if (ObjectStorageOptions.PrimitiveLocations && ObjectStorageOptions.IntegerLocations) {
             if (ObjectStorageOptions.InObjectFields && primitiveFieldSize + getLayout().getLongFieldSize() <= getLayout().getPrimitiveFieldCount()) {
                 return advance(new IntLocationDecorator(getLayout().getPrimitiveFieldLocation(primitiveFieldSize)));
@@ -134,15 +126,14 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
                 return advance(new IntLocationDecorator(new LongArrayLocation(alignedIndex)));
             }
         }
-        return newObjectLocation(useFinal, true);
+        return newObjectLocation();
     }
 
-    @Override
-    public Location newDoubleLocation(boolean useFinal) {
-        return newDoubleLocation(useFinal, getLayout().isAllowedIntToDouble());
+    private Location newDoubleLocation() {
+        return newDoubleLocation(getLayout().isAllowedIntToDouble());
     }
 
-    Location newDoubleLocation(boolean useFinal, boolean allowedIntToDouble) {
+    Location newDoubleLocation(boolean allowedIntToDouble) {
         if (ObjectStorageOptions.PrimitiveLocations && ObjectStorageOptions.DoubleLocations) {
             if (ObjectStorageOptions.InObjectFields && primitiveFieldSize + getLayout().getLongFieldSize() <= getLayout().getPrimitiveFieldCount()) {
                 return advance(new DoubleLocationDecorator(getLayout().getPrimitiveFieldLocation(primitiveFieldSize), allowedIntToDouble));
@@ -151,15 +142,14 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
                 return advance(new DoubleLocationDecorator(new LongArrayLocation(alignedIndex), allowedIntToDouble));
             }
         }
-        return newObjectLocation(useFinal, true);
+        return newObjectLocation();
     }
 
-    @Override
-    public Location newLongLocation(boolean useFinal) {
-        return newLongLocation(useFinal, getLayout().isAllowedIntToLong());
+    private Location newLongLocation() {
+        return newLongLocation(getLayout().isAllowedIntToLong());
     }
 
-    Location newLongLocation(boolean useFinal, boolean allowedIntToLong) {
+    Location newLongLocation(boolean allowedIntToLong) {
         if (ObjectStorageOptions.PrimitiveLocations && ObjectStorageOptions.LongLocations) {
             if (ObjectStorageOptions.InObjectFields && primitiveFieldSize + getLayout().getLongFieldSize() <= getLayout().getPrimitiveFieldCount()) {
                 return advance((Location) CoreLocations.createLongLocation(getLayout().getPrimitiveFieldLocation(primitiveFieldSize), allowedIntToLong));
@@ -168,59 +158,53 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
                 return advance(new LongArrayLocation(alignedIndex, allowedIntToLong));
             }
         }
-        return newObjectLocation(useFinal, true);
+        return newObjectLocation();
     }
 
-    @Override
-    public Location newBooleanLocation(boolean useFinal) {
+    private Location newBooleanLocation() {
         if (ObjectStorageOptions.PrimitiveLocations && ObjectStorageOptions.BooleanLocations) {
             if (primitiveFieldSize + getLayout().getLongFieldSize() <= getLayout().getPrimitiveFieldCount()) {
                 return advance(new BooleanLocationDecorator(getLayout().getPrimitiveFieldLocation(primitiveFieldSize)));
             }
         }
-        return newObjectLocation(useFinal, true);
+        return newObjectLocation();
     }
 
     @Override
-    protected Location locationForValue(Object value, boolean useFinal, boolean nonNull) {
-        return locationForValue(value, useFinal, nonNull, 0);
+    public Location locationForValue(Object value) {
+        return locationForValue(value, 0);
     }
 
-    Location locationForValue(Object value, boolean useFinal, boolean nonNull, int putFlags) {
+    Location locationForValue(Object value, int putFlags) {
         if (Flags.isConstant(putFlags)) {
             return constantLocation(value);
         } else if (Flags.isDeclaration(putFlags)) {
             return declaredLocation(value);
         }
         if (value instanceof Integer) {
-            return newIntLocation(useFinal);
+            return newIntLocation();
         } else if (value instanceof Double) {
-            return newDoubleLocation(useFinal, Flags.isImplicitCastIntToDouble(putFlags) || layout.isAllowedIntToDouble());
+            return newDoubleLocation(Flags.isImplicitCastIntToDouble(putFlags) || layout.isAllowedIntToDouble());
         } else if (value instanceof Long) {
-            return newLongLocation(useFinal, Flags.isImplicitCastIntToLong(putFlags) || layout.isAllowedIntToLong());
+            return newLongLocation(Flags.isImplicitCastIntToLong(putFlags) || layout.isAllowedIntToLong());
         } else if (value instanceof Boolean) {
-            return newBooleanLocation(useFinal);
-        } else if (ObjectStorageOptions.TypedObjectLocations && value != null) {
-            return newTypedObjectLocation(useFinal, value.getClass(), nonNull);
+            return newBooleanLocation();
         }
-        return newObjectLocation(useFinal, nonNull && value != null);
+        return newObjectLocation();
     }
 
     @Override
-    protected Location locationForType(Class<?> type, boolean useFinal, boolean nonNull) {
+    public Location locationForType(Class<?> type) {
         if (type == int.class) {
-            return newIntLocation(useFinal);
+            return newIntLocation();
         } else if (type == double.class) {
-            return newDoubleLocation(useFinal);
+            return newDoubleLocation();
         } else if (type == long.class) {
-            return newLongLocation(useFinal);
+            return newLongLocation();
         } else if (type == boolean.class) {
-            return newBooleanLocation(useFinal);
-        } else if (ObjectStorageOptions.TypedObjectLocations && type != null && type != Object.class) {
-            assert !type.isPrimitive() : "unsupported primitive type";
-            return newTypedObjectLocation(useFinal, type, nonNull);
+            return newBooleanLocation();
         }
-        return newObjectLocation(useFinal, nonNull);
+        return newObjectLocation();
     }
 
     @Override
@@ -230,7 +214,7 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
         if (oldLocation instanceof ConstantLocation && Flags.isConstant(putFlags)) {
             return constantLocation(value);
         } else if (oldLocation instanceof ValueLocation) {
-            return locationForValue(value, false, value != null);
+            return locationForValue(value, putFlags);
         } else if (oldLocation instanceof TypedLocation && ((TypedLocation) oldLocation).getType().isPrimitive()) {
             if (!shared && ((TypedLocation) oldLocation).getType() == int.class) {
                 LongLocation primLocation = ((PrimitiveLocationDecorator) oldLocation).getInternalLongLocation();
@@ -242,9 +226,9 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
                     return new DoubleLocationDecorator(primLocation, true);
                 }
             }
-            return newObjectLocation(oldLocation.isFinal(), value != null);
+            return newObjectLocation();
         }
-        return locationForValue(value, false, value != null);
+        return locationForValue(value, putFlags);
     }
 
     /**

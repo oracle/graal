@@ -1084,18 +1084,6 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
 
         protected abstract Location moveLocation(Location oldLocation);
 
-        protected abstract Location newObjectLocation(boolean useFinal, boolean nonNull);
-
-        protected abstract Location newTypedObjectLocation(boolean useFinal, Class<?> type, boolean nonNull);
-
-        protected abstract Location newIntLocation(boolean useFinal);
-
-        protected abstract Location newDoubleLocation(boolean useFinal);
-
-        protected abstract Location newLongLocation(boolean useFinal);
-
-        protected abstract Location newBooleanLocation(boolean useFinal);
-
         /**
          * Creates a new location from a constant value. The value is stored in the shape rather
          * than in the object.
@@ -1109,6 +1097,8 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
         /**
          * Creates a new declared location with a default value. A declared location only assumes a
          * type after the first set (initialization).
+         * <p>
+         * Used by tests.
          *
          * @param value the default value
          */
@@ -1117,46 +1107,22 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
         }
 
         /**
-         * Create a new location compatible with the given initial value.
-         *
-         * @param value the initial value this location is going to be assigned
-         * @param useFinal final location
-         * @param nonNull non-null location
-         */
-        protected Location locationForValue(Object value, boolean useFinal, boolean nonNull) {
-            throw new UnsupportedOperationException();
-        }
-
-        /**
+         * Creates a new location compatible with the given initial value.
+         * <p>
          * Used by tests.
          */
-        public Location locationForValue(Object value) {
-            return locationForValue(value, false, value != null);
-        }
-
-        protected Location locationForValueUpcast(Object value, Location oldLocation) {
-            return locationForValueUpcast(value, oldLocation, 0);
-        }
+        public abstract Location locationForValue(Object value);
 
         protected abstract Location locationForValueUpcast(Object value, Location oldLocation, int putFlags);
 
         /**
-         * Create a new location for a fixed type. It can only be assigned to values of this type.
+         * Creates a new location for a fixed type. It can only be assigned to values of this type.
+         * <p>
+         * Used by tests.
          *
          * @param type the Java type this location must be compatible with (may be primitive)
-         * @param useFinal final location
-         * @param nonNull non-null location
          */
-        protected Location locationForType(Class<?> type, boolean useFinal, boolean nonNull) {
-            throw new UnsupportedOperationException();
-        }
-
-        /**
-         * Used by tests.
-         */
-        public final Location locationForType(Class<?> type) {
-            return locationForType(type, false, false);
-        }
+        public abstract Location locationForType(Class<?> type);
 
         protected <T extends Location> T advance(T location0) {
             if (location0 instanceof LocationImpl location) {
@@ -1196,16 +1162,6 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
             primitiveFieldSize = Math.max(primitiveFieldSize, index + count);
         }
 
-        public Location existingLocationForValue(Object value, Location oldLocation, ShapeImpl oldShape) {
-            assert oldShape.getLayout() == this.layout;
-            Location newLocation;
-            if (oldLocation.canStore(value)) {
-                newLocation = oldLocation;
-            } else {
-                newLocation = oldShape.allocator().locationForValueUpcast(value, oldLocation);
-            }
-            return newLocation;
-        }
     }
 
     static final class PropertyAssumptions {
