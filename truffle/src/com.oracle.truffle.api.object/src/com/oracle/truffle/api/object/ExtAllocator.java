@@ -107,13 +107,13 @@ abstract class ExtAllocator extends BaseAllocator {
     protected Location moveLocation(Location oldLocation) {
         final boolean decorateFinal = false;
         if (oldLocation instanceof IntLocation) {
-            return newIntLocation(decorateFinal, oldLocation);
+            return newIntLocation(decorateFinal, oldLocation, NO_VALUE);
         } else if (oldLocation instanceof DoubleLocation) {
-            return newDoubleLocation(decorateFinal, ((DoubleLocation) oldLocation).isImplicitCastIntToDouble(), oldLocation);
+            return newDoubleLocation(decorateFinal, ((DoubleLocation) oldLocation).isImplicitCastIntToDouble(), oldLocation, NO_VALUE);
         } else if (oldLocation instanceof LongLocation) {
-            return newLongLocation(decorateFinal, ((LongLocation) oldLocation).isImplicitCastIntToLong(), oldLocation);
+            return newLongLocation(decorateFinal, ((LongLocation) oldLocation).isImplicitCastIntToLong(), oldLocation, NO_VALUE);
         } else if (oldLocation instanceof BooleanLocation) {
-            return newBooleanLocation(decorateFinal, oldLocation);
+            return newBooleanLocation(decorateFinal, oldLocation, NO_VALUE);
         } else if (oldLocation instanceof AbstractObjectFieldLocation) {
             return newObjectLocation(decorateFinal, oldLocation, NO_VALUE);
         } else if (oldLocation instanceof AbstractObjectArrayLocation) {
@@ -266,10 +266,10 @@ abstract class ExtAllocator extends BaseAllocator {
 
     @Override
     public Location newIntLocation(boolean useFinal) {
-        return newIntLocation(false, null);
+        return newIntLocation(false, null, NO_VALUE);
     }
 
-    private Location newIntLocation(boolean decorateFinal, Location oldLocation) {
+    private Location newIntLocation(boolean decorateFinal, Location oldLocation, Object value) {
         if (PrimitiveLocations && IntegerLocations) {
             ExtLayout l = getLayout();
             if (InObjectFields) {
@@ -288,15 +288,15 @@ abstract class ExtAllocator extends BaseAllocator {
                 return advance(location);
             }
         }
-        return newObjectLocation(decorateFinal, null, NO_VALUE);
+        return newObjectLocation(decorateFinal, oldLocation, value);
     }
 
     @Override
     public Location newDoubleLocation(boolean useFinal) {
-        return newDoubleLocation(false, getLayout().isAllowedIntToDouble(), null);
+        return newDoubleLocation(false, getLayout().isAllowedIntToDouble(), null, NO_VALUE);
     }
 
-    private Location newDoubleLocation(boolean decorateFinal, boolean allowIntToDouble, Location oldLocation) {
+    private Location newDoubleLocation(boolean decorateFinal, boolean allowIntToDouble, Location oldLocation, Object value) {
         if (PrimitiveLocations && DoubleLocations) {
             ExtLayout l = getLayout();
             if (InObjectFields) {
@@ -316,7 +316,7 @@ abstract class ExtAllocator extends BaseAllocator {
                 return advance(location);
             }
         }
-        return newObjectLocation(decorateFinal, null, NO_VALUE);
+        return newObjectLocation(decorateFinal, oldLocation, value);
     }
 
     /**
@@ -339,10 +339,10 @@ abstract class ExtAllocator extends BaseAllocator {
 
     @Override
     public Location newLongLocation(boolean useFinal) {
-        return newLongLocation(false, getLayout().isAllowedIntToLong(), null);
+        return newLongLocation(false, getLayout().isAllowedIntToLong(), null, NO_VALUE);
     }
 
-    private Location newLongLocation(boolean decorateFinal, boolean allowIntToLong, Location oldLocation) {
+    private Location newLongLocation(boolean decorateFinal, boolean allowIntToLong, Location oldLocation, Object value) {
         if (PrimitiveLocations && LongLocations) {
             ExtLayout l = getLayout();
             if (InObjectFields) {
@@ -362,15 +362,15 @@ abstract class ExtAllocator extends BaseAllocator {
                 return advance(location);
             }
         }
-        return newObjectLocation(decorateFinal, null, NO_VALUE);
+        return newObjectLocation(decorateFinal, oldLocation, value);
     }
 
     @Override
     public Location newBooleanLocation(boolean useFinal) {
-        return newBooleanLocation(false, null);
+        return newBooleanLocation(false, null, NO_VALUE);
     }
 
-    private Location newBooleanLocation(boolean decorateFinal, Location oldLocation) {
+    private Location newBooleanLocation(boolean decorateFinal, Location oldLocation, Object value) {
         if (PrimitiveLocations && BooleanLocations && InObjectFields) {
             ExtLayout l = getLayout();
             int fieldIndex = tryAllocatePrimitiveSlot(l, primitiveFieldSize, Integer.BYTES);
@@ -383,7 +383,7 @@ abstract class ExtAllocator extends BaseAllocator {
                 }
             }
         }
-        return newObjectLocation(decorateFinal, null, NO_VALUE);
+        return newObjectLocation(decorateFinal, oldLocation, value);
     }
 
     @Override
@@ -411,9 +411,9 @@ abstract class ExtAllocator extends BaseAllocator {
             boolean allowedIntToDouble = getLayout().isAllowedIntToDouble() || Flags.isImplicitCastIntToDouble(putFlags);
             boolean allowedIntToLong = getLayout().isAllowedIntToLong() || Flags.isImplicitCastIntToLong(putFlags);
             if (value instanceof Double && allowedIntToDouble) {
-                newLocation = newDoubleLocation(decorateFinal, allowedIntToDouble, oldLocation);
+                newLocation = newDoubleLocation(decorateFinal, allowedIntToDouble, oldLocation, NO_VALUE);
             } else if (value instanceof Long && allowedIntToLong) {
-                newLocation = newLongLocation(decorateFinal, allowedIntToLong, oldLocation);
+                newLocation = newLongLocation(decorateFinal, allowedIntToLong, oldLocation, NO_VALUE);
             }
         }
 
@@ -456,14 +456,14 @@ abstract class ExtAllocator extends BaseAllocator {
         }
         boolean decorateFinal = true;
         if (value instanceof Integer) {
-            return newIntLocation(decorateFinal, null);
+            return newIntLocation(decorateFinal, null, value);
         } else if (value instanceof Double) {
-            return newDoubleLocation(decorateFinal, getLayout().isAllowedIntToDouble(), null);
+            return newDoubleLocation(decorateFinal, getLayout().isAllowedIntToDouble(), null, value);
         } else if (value instanceof Long) {
-            return newLongLocation(decorateFinal, getLayout().isAllowedIntToLong(), null);
+            return newLongLocation(decorateFinal, getLayout().isAllowedIntToLong(), null, value);
         } else if (value instanceof Boolean) {
-            return newBooleanLocation(decorateFinal, null);
-        } else if (TypedObjectLocations && value != null && value.getClass() != null) {
+            return newBooleanLocation(decorateFinal, null, value);
+        } else if (TypedObjectLocations && value != null) {
             return newTypedObjectLocation(value.getClass(), nonNull, decorateFinal, null, value);
         }
         return newObjectLocation(decorateFinal, null, value);

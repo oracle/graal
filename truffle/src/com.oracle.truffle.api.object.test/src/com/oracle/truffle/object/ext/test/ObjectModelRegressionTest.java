@@ -57,6 +57,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import org.hamcrest.CoreMatchers;
+import org.hamcrest.MatcherAssert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -471,6 +473,25 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
         a.getShape().tryMerge(b.getShape());
         library.updateShape(a);
         assertSame(b.getShape(), a.getShape());
+    }
+
+    @Test
+    public void testBooleanLocationTypeAssumption() {
+        assumeExtLayout();
+
+        Shape emptyShape = Shape.newBuilder().build();
+
+        DynamicObject obj = new TestDynamicObject(emptyShape);
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, obj);
+
+        library.put(obj, "b1", true);
+        library.put(obj, "b2", true);
+        library.put(obj, "b2", false);
+
+        Shape shape = obj.getShape();
+        MatcherAssert.assertThat(shape.getProperty("b1").getLocation().toString(), CoreMatchers.containsString("Boolean"));
+        MatcherAssert.assertThat(shape.getProperty("b2").getLocation().toString(), CoreMatchers.containsString("Boolean"));
     }
 
     /**
