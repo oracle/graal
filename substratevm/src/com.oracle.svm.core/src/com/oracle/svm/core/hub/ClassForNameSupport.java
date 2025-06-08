@@ -29,7 +29,9 @@ import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
 
 import java.lang.reflect.Modifier;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.collections.EconomicMap;
@@ -39,6 +41,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.ClassNameSupport;
+import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -47,6 +50,7 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFla
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
@@ -280,6 +284,16 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public Set<String> getKnownClassNames() {
+        EconomicMap<String, ?> map = respectClassLoader() ? knownClassNames : knownClasses;
+        Set<String> set = new HashSet<>(map.size());
+        for (String key : map.getKeys()) {
+            set.add(key);
+        }
+        return set;
+    }
+
     public static Class<?> forName(String className, ClassLoader classLoader) throws ClassNotFoundException {
         return forName(className, classLoader, false);
     }
@@ -329,17 +343,22 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
     }
 
     private Object forName0(String className, ClassLoader classLoader) {
-        var conditional = knownClasses.get(className);
-        Object result = conditional == null ? null : conditional.getValue();
         if (className.endsWith("[]")) {
             /* Querying array classes with their "TypeName[]" name always throws */
-            result = NEGATIVE_QUERY;
+            return new ClassNotFoundException(className);
         }
+        var conditional = knownClasses.get(className);
+        Object result = conditional == null ? null : conditional.getValue();
         if (result == null) {
             result = PredefinedClassesSupport.getLoadedForNameOrNull(className, classLoader);
         }
         if (result == null && !ClassNameSupport.isValidReflectionName(className)) {
-            result = NEGATIVE_QUERY;
+            /* Invalid class names always throw, no need for reflection data */
+            return new ClassNotFoundException(className);
+        }
+        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+            // NB: the early returns above ensure we do not trace calls with bad type args.
+            MetadataTracer.singleton().traceReflectionType(className);
         }
         return result == NEGATIVE_QUERY ? new ClassNotFoundException(className) : result;
     }
@@ -433,7 +452,16 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
                 break;
             }
         }
-        return conditionSet != null && conditionSet.satisfied();
+        if (conditionSet != null) {
+            if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+                ConfigurationType type = MetadataTracer.singleton().traceReflectionType(clazz.getName());
+                if (type != null) {
+                    type.setUnsafeAllocated();
+                }
+            }
+            return conditionSet.satisfied();
+        }
+        return false;
     }
 
     @Override

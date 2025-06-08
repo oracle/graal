@@ -27,9 +27,17 @@ package jdk.graal.compiler.debug.test;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.TTY;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.LoopBeginNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 
-public class GraalErrorTest {
+public class GraalErrorTest extends GraalCompilerTest {
 
     @FunctionalInterface
     interface Error {
@@ -77,6 +85,61 @@ public class GraalErrorTest {
             Assert.fail();
         } catch (Throwable ex) {
             Assert.assertTrue(ex.getMessage().contains(msg));
+        }
+    }
+
+    public static final boolean LOG_TTY = Boolean.parseBoolean(GraalServices.getSavedProperty("test.GraalErrorTest.stdout"));
+
+    static int foo(int limit) {
+        int res = 0;
+        for (int i = 0; i < limit; i++) {
+            res += GraalDirectives.sideEffect(i);
+        }
+        return res;
+    }
+
+    // run with -Dtest.GraalErrorTest.stdout=true to inspect how error messages are formatted
+    @Test
+    public void testErrorExampels() {
+        StructuredGraph g = parseEager("foo", StructuredGraph.AllowAssumptions.NO);
+
+        FixedNode loopBeginNode = g.getNodes(LoopBeginNode.TYPE).first();
+
+        try {
+            assert false : Assertions.errorMessage("Message", loopBeginNode);
+        } catch (Throwable t) {
+            if (LOG_TTY) {
+                TTY.printf("Assertions.errorMessage(..) -> %s%n%n", t.getMessage());
+            }
+        }
+
+        try {
+            assert false : Assertions.errorMessageContext("Message", loopBeginNode);
+        } catch (Throwable t) {
+            if (LOG_TTY) {
+                TTY.printf("Assertions.errorMessageContext(..) -> %s%n%n", t.getMessage());
+            }
+        }
+
+        try {
+            GraalError.guarantee(false, "Message %s", loopBeginNode);
+        } catch (Throwable t) {
+            if (LOG_TTY) {
+                TTY.printf("Guarantee -> %s%n%n", t.getMessage());
+                t.printStackTrace();
+            }
+        }
+
+    }
+
+    @Test
+    public void testNull() {
+        try {
+            throw new GraalError("I have a null arg %s %s", "abc", null);
+        } catch (Throwable t) {
+            if (LOG_TTY) {
+                t.printStackTrace();
+            }
         }
     }
 }

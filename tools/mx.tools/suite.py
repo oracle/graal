@@ -224,6 +224,10 @@ suite = {
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "javaCompliance" : "17+",
             "workingSets" : "Tools",
+            "jacoco" : "include",
+            "jacocoExcludePackages" : [
+                "com.oracle.truffle.tools.dap.types",
+            ],
         },
         "com.oracle.truffle.tools.dap.test" : {
             "subDir" : "src",
@@ -296,6 +300,10 @@ suite = {
             "javaCompliance" : "17+",
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets": "Tools",
+            "jacoco" : "include",
+            "jacocoExcludePackages" : [
+                "org.graalvm.tools.lsp.server.types",
+            ],
         },
         "org.graalvm.tools.lsp.test": {
             "subDir": "src",

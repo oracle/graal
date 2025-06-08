@@ -142,9 +142,10 @@ public class GraalConfiguration {
 
     public void populateMatchRuleRegistry(HashMap<Class<? extends NodeMatchRules>, EconomicMap<Class<? extends Node>, List<MatchStatement>>> matchRuleRegistry) {
         /*
-         * We create both types of match rules so the target machine could use vectorization for
-         * run-time compilation even if the image does not support vectorization. This allows
-         * Truffle to produce optimal code on a target machine.
+         * We generate both types of match rules to enable vectorization during run-time
+         * compilation, even if the image was built without vectorization support (e.g., AVX on
+         * AMD64 machine). This ensures that Truffle runtime compilation can leverage vectorized
+         * code on target machines that support it.
          */
         final Architecture hostedArchitecture = ConfigurationValues.getTarget().arch;
         if (hostedArchitecture instanceof AMD64) {

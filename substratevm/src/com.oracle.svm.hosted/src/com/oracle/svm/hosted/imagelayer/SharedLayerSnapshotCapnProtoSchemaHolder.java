@@ -168,18 +168,11 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setBooleanField(98, value);
       }
 
-      public final boolean getIsInitializedAtBuildTime() {
+      public final boolean getIsLinked() {
         return _getBooleanField(99);
       }
-      public final void setIsInitializedAtBuildTime(boolean value) {
-        _setBooleanField(99, value);
-      }
-
-      public final boolean getIsLinked() {
-        return _getBooleanField(100);
-      }
       public final void setIsLinked(boolean value) {
-        _setBooleanField(100, value);
+        _setBooleanField(99, value);
       }
 
       public final boolean hasSourceFileName() {
@@ -219,24 +212,24 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
 
       public final boolean getIsInstantiated() {
-        return _getBooleanField(101);
+        return _getBooleanField(100);
       }
       public final void setIsInstantiated(boolean value) {
-        _setBooleanField(101, value);
+        _setBooleanField(100, value);
       }
 
       public final boolean getIsUnsafeAllocated() {
-        return _getBooleanField(102);
+        return _getBooleanField(101);
       }
       public final void setIsUnsafeAllocated(boolean value) {
-        _setBooleanField(102, value);
+        _setBooleanField(101, value);
       }
 
       public final boolean getIsReachable() {
-        return _getBooleanField(103);
+        return _getBooleanField(102);
       }
       public final void setIsReachable(boolean value) {
-        _setBooleanField(103, value);
+        _setBooleanField(102, value);
       }
 
       public final boolean hasInterfaces() {
@@ -309,10 +302,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ClassInitializationInfo.factory,10, 0);
       }
       public final boolean getHasArrayType() {
-        return _getBooleanField(104);
+        return _getBooleanField(103);
       }
       public final void setHasArrayType(boolean value) {
-        _setBooleanField(104, value);
+        _setBooleanField(103, value);
       }
 
       public final boolean hasSubTypes() {
@@ -328,10 +321,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _initPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 11, size);
       }
       public final boolean getIsAnySubtypeInstantiated() {
-        return _getBooleanField(105);
+        return _getBooleanField(104);
       }
       public final void setIsAnySubtypeInstantiated(boolean value) {
-        _setBooleanField(105, value);
+        _setBooleanField(104, value);
       }
 
       public final WrappedType.Builder getWrappedType() {
@@ -403,12 +396,8 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getBooleanField(98);
       }
 
-      public final boolean getIsInitializedAtBuildTime() {
-        return _getBooleanField(99);
-      }
-
       public final boolean getIsLinked() {
-        return _getBooleanField(100);
+        return _getBooleanField(99);
       }
 
       public boolean hasSourceFileName() {
@@ -431,15 +420,15 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
 
       public final boolean getIsInstantiated() {
-        return _getBooleanField(101);
+        return _getBooleanField(100);
       }
 
       public final boolean getIsUnsafeAllocated() {
-        return _getBooleanField(102);
+        return _getBooleanField(101);
       }
 
       public final boolean getIsReachable() {
-        return _getBooleanField(103);
+        return _getBooleanField(102);
       }
 
       public final boolean hasInterfaces() {
@@ -485,7 +474,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
 
       public final boolean getHasArrayType() {
-        return _getBooleanField(104);
+        return _getBooleanField(103);
       }
 
       public final boolean hasSubTypes() {
@@ -496,7 +485,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
 
       public final boolean getIsAnySubtypeInstantiated() {
-        return _getBooleanField(105);
+        return _getBooleanField(104);
       }
 
       public WrappedType.Reader getWrappedType() {

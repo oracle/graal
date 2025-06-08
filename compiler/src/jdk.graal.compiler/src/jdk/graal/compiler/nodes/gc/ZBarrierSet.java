@@ -184,22 +184,25 @@ public class ZBarrierSet implements BarrierSet {
                             node instanceof LoweredAtomicReadAndWriteNode) {
                 LIRLowerableAccess read = (LIRLowerableAccess) node;
                 Stamp stamp = read.getAccessStamp(NodeView.DEFAULT);
+                BarrierType barrierType = read.getBarrierType();
                 if (!stamp.isObjectStamp()) {
-                    GraalError.guarantee(read.getBarrierType() == BarrierType.NONE, "no barriers for primitive reads: %s", read);
+                    GraalError.guarantee(barrierType == BarrierType.NONE, "no barriers for primitive reads: %s", read);
                     continue;
                 }
 
-                BarrierType expectedBarrier = barrierForLocation(read.getBarrierType(), read.getLocationIdentity(), JavaKind.Object);
+                BarrierType expectedBarrier = barrierForLocation(barrierType, read.getLocationIdentity(), JavaKind.Object);
                 if (expectedBarrier != null) {
-                    GraalError.guarantee(expectedBarrier == read.getBarrierType(), "expected %s but found %s in %s", expectedBarrier, read.getBarrierType(), read);
+                    GraalError.guarantee(expectedBarrier == barrierType, "expected %s but found %s in %s", expectedBarrier, barrierType, read);
                     continue;
                 }
 
                 ValueNode base = read.getAddress().getBase();
                 if (!base.stamp(NodeView.DEFAULT).isObjectStamp()) {
-                    GraalError.guarantee(read.getBarrierType() == BarrierType.NONE, "no barrier for non-heap read: %s", read);
+                    GraalError.guarantee(barrierType == BarrierType.NONE, "no barrier for non-heap read: %s", read);
+                } else if (node instanceof AbstractCompareAndSwapNode || node instanceof LoweredAtomicReadAndWriteNode) {
+                    GraalError.guarantee(barrierType == BarrierType.FIELD || barrierType == BarrierType.ARRAY, "missing barriers for heap read: %s", read);
                 } else {
-                    GraalError.guarantee(read.getBarrierType() == BarrierType.READ, "missing barriers for heap read: %s", read);
+                    GraalError.guarantee(barrierType == BarrierType.READ, "missing barriers for heap read: %s", read);
                 }
             } else if (node instanceof AddressableMemoryAccess) {
                 AddressableMemoryAccess access = (AddressableMemoryAccess) node;

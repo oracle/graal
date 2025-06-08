@@ -65,12 +65,14 @@ public abstract class ConfigurationParser {
     public static final String PROXY_KEY = "proxy";
     public static final String REFLECTION_KEY = "reflection";
     public static final String JNI_KEY = "jni";
+    public static final String FOREIGN_KEY = "foreign";
     public static final String SERIALIZATION_KEY = "serialization";
     public static final String RESOURCES_KEY = "resources";
     public static final String BUNDLES_KEY = "bundles";
     public static final String GLOBS_KEY = "globs";
     public static final String MODULE_KEY = "module";
     public static final String GLOB_KEY = "glob";
+    public static final String BUNDLE_KEY = "bundle";
     private final Map<String, Set<String>> seenUnknownAttributesByType = new HashMap<>();
     private final EnumSet<ConfigurationParserOption> parserOptions;
 

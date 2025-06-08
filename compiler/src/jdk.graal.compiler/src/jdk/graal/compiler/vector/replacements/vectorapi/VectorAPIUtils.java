@@ -27,8 +27,6 @@ package jdk.graal.compiler.vector.replacements.vectorapi;
 
 import org.graalvm.word.LocationIdentity;
 
-import jdk.graal.compiler.vector.nodes.simd.SimdPrimitiveCompareNode;
-
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
@@ -51,6 +49,7 @@ import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
 import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
+import jdk.graal.compiler.vector.nodes.simd.SimdPrimitiveCompareNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -122,7 +121,7 @@ public class VectorAPIUtils {
              */
             return null;
         }
-        if (vectorArchitecture(providers).getSupportedVectorMoveLength(vectorType.payloadStamp.getComponent(0), vectorType.vectorLength) != vectorType.vectorLength) {
+        if (!vectorType.isMask && vectorArchitecture(providers).getSupportedVectorMoveLength(vectorType.payloadStamp.getComponent(0), vectorType.vectorLength) != vectorType.vectorLength) {
             /*
              * This vector type is not natively supported by the target. Don't try to intrinsify
              * operations on vectors of this type.

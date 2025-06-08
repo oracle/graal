@@ -40,6 +40,7 @@ import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
@@ -549,7 +550,7 @@ public final class Space {
             /* Verify that there are no threads that have a TLAB. */
             for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
                 ThreadLocalAllocation.Descriptor tlab = ThreadLocalAllocation.getTlab(thread);
-                if (tlab.getAlignedChunk().isNonNull() || tlab.getUnalignedChunk().isNonNull()) {
+                if (tlab.getAlignedAllocationStart(SubstrateAllocationSnippets.TLAB_START_IDENTITY).isNonNull() || tlab.getUnalignedChunk().isNonNull()) {
                     return false;
                 }
             }

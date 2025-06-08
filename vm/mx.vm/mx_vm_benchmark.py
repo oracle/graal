@@ -362,10 +362,11 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         def get_size_message(image_name, image_location):
             return FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(image_name, getsize(image_location), image_location)
 
-        bmSuiteArgs = bmSuiteArgs or ['base']
+        runArgs = self.runArgs(bmSuiteArgs)
+        runArgs = runArgs or ['base']
         out = ""
 
-        for arg in bmSuiteArgs:
+        for arg in runArgs:
             if arg == 'standalones':
                 # Standalones
                 for project in mx.projects():
@@ -383,7 +384,7 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                     launcher_name = mx_sdk_vm_impl.remove_exe_suffix(basename(location))
                     out += get_size_message(launcher_name, os.path.join(output_root, location))
             else:
-                mx.abort("FileSizeBenchmarkSuite expects 'base' or 'standalones' in bench suite arguments but got " + arg)
+                mx.abort("FileSizeBenchmarkSuite expects 'base' (default) or 'standalones' in runArgs but got " + arg)
 
         if out:
             mx.log(out, end='')
@@ -532,7 +533,7 @@ def register_graalvm_vms():
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
             config_names = list()
-            for main_config in ['default', 'gate', 'llvm', 'native-architecture', 'future-defaults-all', 'preserve-all', 'preserve-classpath', 'layered'] + analysis_context_sensitivity:
+            for main_config in ['default', 'gate', 'llvm', 'native-architecture', 'future-defaults-all', 'preserve-all', 'preserve-classpath', 'layered', 'graalos'] + analysis_context_sensitivity:
                 config_names.append(f'{main_config}-{config_suffix}')
 
             for optimization_level in optimization_levels:
@@ -544,7 +545,7 @@ def register_graalvm_vms():
                 mx_benchmark.add_java_vm(NativeImageVM('native-image', config_name, ['--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED']), _suite, 10)
 
     # Adding JAVA_HOME VMs to be able to run benchmarks on GraalVM binaries without the need of building it first
-    for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'upx', 'upx-g1gc', 'quickbuild', 'quickbuild-g1gc', 'layered']:
+    for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'upx', 'upx-g1gc', 'quickbuild', 'quickbuild-g1gc', 'layered', 'graalos']:
         mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', java_home_config), _suite, 5)
 
 

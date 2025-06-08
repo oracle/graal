@@ -92,15 +92,13 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
 
     public static boolean areFunctionCallsSupported() {
         return switch (CABI.current()) {
-            case CABI.SYS_V -> !OS.DARWIN.isCurrent(); // GR-63074: code emit failures on
-                                                       // darwin-amd64
-            case CABI.WIN_64, CABI.MAC_OS_AARCH_64, CABI.LINUX_AARCH_64 -> true;
+            case CABI.SYS_V, CABI.WIN_64, CABI.MAC_OS_AARCH_64, CABI.LINUX_AARCH_64 -> true;
             default -> false;
         };
     }
 
     public static RuntimeException functionCallsUnsupported() {
-        assert SubstrateOptions.ForeignAPISupport.getValue();
+        assert SubstrateOptions.isForeignAPIEnabled();
         throw VMError.unsupportedFeature("Calling foreign functions is currently not supported on platform: " +
                         (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase(Locale.ROOT));
     }

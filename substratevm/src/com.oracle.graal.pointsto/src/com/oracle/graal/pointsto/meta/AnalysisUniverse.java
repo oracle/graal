@@ -216,7 +216,7 @@ public class AnalysisUniverse implements Universe {
         AnalysisType result = optionalLookup(type);
         if (result == null) {
             result = createType(type);
-            if (hostVM.useBaseLayer()) {
+            if (hostVM.useBaseLayer() && result.isInBaseLayer()) {
                 imageLayerLoader.initializeBaseLayerType(result);
             }
         }

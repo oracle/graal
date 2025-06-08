@@ -68,8 +68,10 @@ import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.UnadoptableNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 /**
@@ -1950,6 +1952,180 @@ abstract class DynamicObjectLibraryImpl {
                 DynamicObjectSupport.invalidateAllPropertyAssumptions(currentShape);
             }
             return otherShape;
+        }
+    }
+
+    static DynamicObjectLibrary getUncached() {
+        return Uncached.INSTANCE;
+    }
+
+    /**
+     * A copy of DynamicObjectLibraryImplGen.DynamicObjectLibraryExports.Uncached but without the
+     * exact receiver checks, so that it can be used on any DynamicObject without a dispatch.
+     */
+    @DenyReplace
+    static final class Uncached extends DynamicObjectLibrary implements UnadoptableNode {
+
+        static final DynamicObjectLibrary INSTANCE = new Uncached();
+
+        private Uncached() {
+        }
+
+        @Override
+        public boolean accepts(Object receiver) {
+            return receiver instanceof DynamicObject;
+        }
+
+        @Override
+        public Shape getShape(DynamicObject arg0Value) {
+            return DynamicObjectLibraryImpl.getShape(arg0Value, arg0Value.getShape());
+        }
+
+        @TruffleBoundary
+        @Override
+        public Object getOrDefault(DynamicObject arg0Value, Object arg1Value, Object arg2Value) {
+            return DynamicObjectLibraryImpl.getOrDefault(arg0Value, arg1Value, arg2Value, arg0Value.getShape(), KeyCacheNode.getUncached());
+        }
+
+        @TruffleBoundary
+        @Override
+        public int getIntOrDefault(DynamicObject arg0Value, Object arg1Value, Object arg2Value) throws UnexpectedResultException {
+            return DynamicObjectLibraryImpl.getIntOrDefault(arg0Value, arg1Value, arg2Value, arg0Value.getShape(), KeyCacheNode.getUncached());
+        }
+
+        @TruffleBoundary
+        @Override
+        public double getDoubleOrDefault(DynamicObject arg0Value, Object arg1Value, Object arg2Value) throws UnexpectedResultException {
+            return DynamicObjectLibraryImpl.getDoubleOrDefault(arg0Value, arg1Value, arg2Value, arg0Value.getShape(), KeyCacheNode.getUncached());
+        }
+
+        @TruffleBoundary
+        @Override
+        public long getLongOrDefault(DynamicObject arg0Value, Object arg1Value, Object arg2Value) throws UnexpectedResultException {
+            return DynamicObjectLibraryImpl.getLongOrDefault(arg0Value, arg1Value, arg2Value, arg0Value.getShape(), KeyCacheNode.getUncached());
+        }
+
+        @TruffleBoundary
+        @Override
+        public boolean containsKey(DynamicObject arg0Value, Object arg1Value) {
+            return DynamicObjectLibraryImpl.containsKey(arg0Value, arg1Value, arg0Value.getShape(), KeyCacheNode.getUncached());
+        }
+
+        @TruffleBoundary
+        @Override
+        public void put(DynamicObject arg0Value, Object arg1Value, Object arg2Value) {
+            DynamicObjectLibraryImpl.put(arg0Value, arg1Value, arg2Value, arg0Value.getShape(), KeyCacheNode.getUncached());
+        }
+
+        @TruffleBoundary
+        @Override
+        public void putInt(DynamicObject arg0Value, Object arg1Value, int arg2Value) {
+            DynamicObjectLibraryImpl.putInt(arg0Value, arg1Value, arg2Value, arg0Value.getShape(), KeyCacheNode.getUncached());
+        }
+
+        @TruffleBoundary
+        @Override
+        public void putLong(DynamicObject arg0Value, Object arg1Value, long arg2Value) {
+            DynamicObjectLibraryImpl.putLong(arg0Value, arg1Value, arg2Value, arg0Value.getShape(), KeyCacheNode.getUncached());
+        }
+
+        @TruffleBoundary
+        @Override
+        public void putDouble(DynamicObject arg0Value, Object arg1Value, double arg2Value) {
+            DynamicObjectLibraryImpl.putDouble(arg0Value, arg1Value, arg2Value, arg0Value.getShape(), KeyCacheNode.getUncached());
+        }
+
+        @TruffleBoundary
+        @Override
+        public boolean putIfPresent(DynamicObject arg0Value, Object arg1Value, Object arg2Value) {
+            return DynamicObjectLibraryImpl.putIfPresent(arg0Value, arg1Value, arg2Value, arg0Value.getShape(), KeyCacheNode.getUncached());
+        }
+
+        @TruffleBoundary
+        @Override
+        public void putWithFlags(DynamicObject arg0Value, Object arg1Value, Object arg2Value, int arg3Value) {
+            DynamicObjectLibraryImpl.putWithFlags(arg0Value, arg1Value, arg2Value, arg3Value, arg0Value.getShape(), KeyCacheNode.getUncached());
+        }
+
+        @TruffleBoundary
+        @Override
+        public void putConstant(DynamicObject arg0Value, Object arg1Value, Object arg2Value, int arg3Value) {
+            DynamicObjectLibraryImpl.putConstant(arg0Value, arg1Value, arg2Value, arg3Value, arg0Value.getShape(), KeyCacheNode.getUncached());
+        }
+
+        @TruffleBoundary
+        @Override
+        public Property getProperty(DynamicObject arg0Value, Object arg1Value) {
+            return DynamicObjectLibraryImpl.getProperty(arg0Value, arg1Value, arg0Value.getShape(), KeyCacheNode.getUncached());
+        }
+
+        @TruffleBoundary
+        @Override
+        public boolean setPropertyFlags(DynamicObject arg0Value, Object arg1Value, int arg2Value) {
+            return DynamicObjectLibraryImpl.setPropertyFlags(arg0Value, arg1Value, arg2Value, arg0Value.getShape(), KeyCacheNode.getUncached());
+        }
+
+        @TruffleBoundary
+        @Override
+        public boolean removeKey(DynamicObject arg0Value, Object arg1Value) {
+            return DynamicObjectLibraryImpl.removeKey(arg0Value, arg1Value, arg0Value.getShape(), KeyCacheNode.getUncached());
+        }
+
+        @Override
+        public Object getDynamicType(DynamicObject arg0Value) {
+            return DynamicObjectLibraryImpl.getDynamicType(arg0Value, arg0Value.getShape());
+        }
+
+        @TruffleBoundary
+        @Override
+        public boolean setDynamicType(DynamicObject arg0Value, Object arg1Value) {
+            return DynamicObjectLibraryImpl.setDynamicType(arg0Value, arg1Value, this, arg0Value.getShape(), DynamicObjectLibraryImplFactory.SetDynamicTypeNodeGen.getUncached());
+        }
+
+        @Override
+        public int getShapeFlags(DynamicObject arg0Value) {
+            return DynamicObjectLibraryImpl.getShapeFlags(arg0Value, arg0Value.getShape());
+        }
+
+        @TruffleBoundary
+        @Override
+        public boolean setShapeFlags(DynamicObject arg0Value, int arg1Value) {
+            return DynamicObjectLibraryImpl.setShapeFlags(arg0Value, arg1Value, this, arg0Value.getShape(), DynamicObjectLibraryImplFactory.SetFlagsNodeGen.getUncached());
+        }
+
+        @Override
+        public boolean isShared(DynamicObject arg0Value) {
+            return DynamicObjectLibraryImpl.isShared(arg0Value, arg0Value.getShape());
+        }
+
+        @TruffleBoundary
+        @Override
+        public void markShared(DynamicObject arg0Value) {
+            DynamicObjectLibraryImpl.markShared(arg0Value, this, arg0Value.getShape(), DynamicObjectLibraryImplFactory.MakeSharedNodeGen.getUncached());
+        }
+
+        @TruffleBoundary
+        @Override
+        public boolean updateShape(DynamicObject arg0Value) {
+            return DynamicObjectLibraryImpl.updateShape(arg0Value, arg0Value.getShape());
+        }
+
+        @TruffleBoundary
+        @Override
+        public boolean resetShape(DynamicObject arg0Value, Shape arg1Value) {
+            return DynamicObjectLibraryImpl.resetShape(arg0Value, arg1Value, this, arg0Value.getShape(), DynamicObjectLibraryImplFactory.ResetShapeNodeGen.getUncached());
+        }
+
+        @TruffleBoundary
+        @Override
+        public Object[] getKeyArray(DynamicObject arg0Value) {
+            return DynamicObjectLibraryImpl.getKeyArray(arg0Value, arg0Value.getShape());
+        }
+
+        @TruffleBoundary
+        @Override
+        public Property[] getPropertyArray(DynamicObject arg0Value) {
+            return DynamicObjectLibraryImpl.getPropertyArray(arg0Value, arg0Value.getShape());
         }
     }
 }

@@ -1551,6 +1551,9 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
                                                           "dependency": f'{build_library.name}',
                                                           "path": 'language_resources/resources/*',
                                                           "optional": True},
+                    f'{resource_base_folder}/external_isolate/': {"source_type": "dependency",
+                                                          "dependency": "sdk:NATIVEBRIDGE_LAUNCHER_RESOURCES",
+                                                          "path": f"{os_name}/{cpu_architecture}/*"},
                 },
                 path=None,
                 platformDependent=True,
@@ -1903,7 +1906,6 @@ truffle_nfi_component = mx_sdk_vm.GraalVmLanguage(
     truffle_jars=['truffle:TRUFFLE_NFI'],
     support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT'],
     support_libraries_distributions=['truffle:TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT'],
-    installable=False,
     stability="supported",
 )
 mx_sdk_vm.register_graalvm_component(truffle_nfi_component)
@@ -1920,7 +1922,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         'truffle:TRUFFLE_NFI_LIBFFI',
         'truffle:TRUFFLE_NFI_PANAMA',
     ],
-    installable=False,
     stability="supported",
 ))
 
@@ -1936,8 +1937,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         'truffle:TRUFFLE_ICU4J',
     ],
     support_distributions=['truffle:TRUFFLE_ICU4J_GRAALVM_SUPPORT'],
-    installable=True,
-    standalone=False,
     stability="supported",
 ))
 
@@ -1951,8 +1950,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dependencies=['Truffle'],
     truffle_jars=['truffle:ANTLR4', 'truffle:TRUFFLE_ANTLR4'],
     support_distributions=['truffle:TRUFFLE_ANTLR4_GRAALVM_SUPPORT'],
-    installable=True,
-    standalone=False,
     stability="supported",
 ))
 
@@ -1967,8 +1964,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     truffle_jars=['truffle:TRUFFLE_JSON',
     ],
     support_distributions=['truffle:TRUFFLE_JSON_GRAALVM_SUPPORT'],
-    installable=False,
-    standalone=False,
     stability="supported",
 ))
 
@@ -1982,8 +1977,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dependencies=['Truffle'],
     truffle_jars=['truffle:TRUFFLE_XZ'],
     support_distributions=['truffle:TRUFFLE_XZ_GRAALVM_SUPPORT'],
-    installable=True,
-    standalone=False,
     stability="supported",
 ))
 

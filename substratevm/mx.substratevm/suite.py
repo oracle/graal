@@ -352,6 +352,7 @@ suite = {
             ],
             "requiresConcealed" : {
                 "java.base" : [
+                    "com.sun.crypto.provider",
                     "sun.invoke.util",
                     "sun.net",
                     "sun.net.www",
@@ -362,6 +363,8 @@ suite = {
                     "sun.reflect.generics.repository",
                     "sun.reflect.generics.tree",
                     "sun.security.jca",
+                    "sun.security.provider",
+                    "sun.security.rsa",
                     "sun.security.ssl",
                     "sun.security.util",
                     "sun.text.spi",
@@ -1548,6 +1551,7 @@ suite = {
                 "com.oracle.svm.hosted",
                 "truffle:TRUFFLE_RUNTIME",
                 "sdk:NATIVEIMAGE",
+                "sdk:NATIVEBRIDGE",
             ],
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [
@@ -2597,7 +2601,11 @@ suite = {
             "subDir" : "src",
             "description" : "Truffle TCK",
             "dependencies" : ["com.oracle.svm.truffle.tck"],
-            "distDependencies" : ["SVM", "truffle:TRUFFLE_RUNTIME"],
+            "distDependencies" : [
+                "SVM",
+                "sdk:NATIVEBRIDGE",
+                "truffle:TRUFFLE_RUNTIME"
+            ],
             "noMavenJavadoc": True,
             "maven" : {
                 "tag": ["default", "public"],

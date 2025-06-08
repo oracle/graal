@@ -5,10 +5,10 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.
 * GR-61493 Added `RootNode.prepareForCall` which allows root nodes to prepare themselves for use as a call target (or to validate whether they can be used as a call target).
-* GR-57063 Bytecode-DSL: Improved variadic support. Variadic operands compile and execute now more efficiently with fewer reallocations.
-* GR-57063 Bytecode-DSL: Added an `startOffset` parameter to `@Variadic` which allows to reserve a fixed number of slots in the object array for custom use.
-* GR-57063 Bytecode-DSL: The `@Variadic` annotation can now also be used on `@Operation` annotated classes to indicate that the operation produces a dynamic variadic return value. Dynamic variadic return values are efficiently flattened into the object array of a variadic operand.
-* GR-57063 Bytecode-DSL: Added a `variadicStackLimit` parameter to `@GenerateBytecode` that allows to specify how many variable arguments are stored on the stack before they are collapsed into an object array. 
+* GR-57063 Bytecode DSL: Improved variadic support. Variadic operands compile and execute now more efficiently with fewer reallocations.
+* GR-57063 Bytecode DSL: Added an `startOffset` parameter to `@Variadic` which allows to reserve a fixed number of slots in the object array for custom use.
+* GR-57063 Bytecode DSL: The `@Variadic` annotation can now also be used on `@Operation` annotated classes to indicate that the operation produces a dynamic variadic return value. Dynamic variadic return values are efficiently flattened into the object array of a variadic operand.
+* GR-57063 Bytecode DSL: Added a `variadicStackLimit` parameter to `@GenerateBytecode` that allows to specify how many variable arguments are stored on the stack before they are collapsed into an object array. 
 * GR-50017 TruffleStringIterator.NextNode and TruffleStringIterator.PreviousNode now require the iterated string's encoding as a parameter for performance reasons.
 * GR-63075 Java host interop again inherits public method methods from non-public base classes if public access is enabled. This was originally changed in 24.1.
 * GR-63201 Added `TruffleLanguage.Registration.optionalResources` and `TruffleInstrument.Registration.optionalResources` attributes to support optional resources which implementations are not available at the runtime. Optional resources, if omitted at runtime, can still be used as long as their resource path is specified via the `polyglot.engine.resourcePath.<componentId>` system property.
@@ -25,6 +25,10 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-64488 Added `TruffleFile#getFileStoreInfo()` providing access to disk-related metadata such as total size, usable space, unallocated space and block size.
 * GR-43908 Added a deoptimization cycle detection to Truffle. This feature is enabled by default when running optimized on JDK 25 and later. Whenever a deoptimization cycle is detected, the compilation fails with a permanent bailout that contains the Java stack trace of the location. If this error is encountered too frequently it can be disabled by setting `compiler.DeoptCycleDetectionThreshold` to `-1`. For further information, please see the extended [deopt cycle detection](https://github.com/oracle/graal/blob/master/truffle/docs/Optimizing.md#automatic-detection-of-deoptimization-cycles) guide. 
   *  Added `compiler.DeoptCycleDetectionThreshold` and `compiler.DeoptCycleDetectionAllowedRepeats` options which allow to fine-tune the sensitivity of the deoptimization loop detection.
+* GR-64594 Bytecode DSL: Improved builder performance. Creating bytecode nodes with Bytecode DSL is now 40% faster and requires 5 times less temporary memory.
+* GR-64594 Bytecode DSL: Builder instances now have a `toString()` implementation that prints current operations as well as the instructions that have been already emitted. This should make it easier to debug problems with builder usage.
+* GR-64594 Bytecode DSL: Added `@GenerateBytecode(..., additionalAssertions=true)` to enable additional assertions for Bytecode DSL implementation bugs. This feature can also be enabled with `-A.truffle.dsl.AdditionalAssertions=true` at Java source compile time. These assertions are intentionally disabled by default, as they can lead to slow-downs even when assertions are disabled.
+* GR-65428 JDK specific optimizations when building Truffle languages with native-image are now enabled by default, even if the truffle-enterprise.jar is not provided on the class or module-path.
 
 ## Version 24.2.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.

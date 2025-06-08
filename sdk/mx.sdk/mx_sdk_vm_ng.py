@@ -376,21 +376,21 @@ class LanguageLibraryProject(NativeImageLibraryProject):
     def get_build_args(self):
         build_args = super().get_build_args()[:]
 
-        # Signals flags, the first 2 are also set in AbstractLanguageLauncher but better to be explicit
+        # Signals flags
         build_args += [
             '-R:+EnableSignalHandling',
             '-R:+InstallSegfaultHandler',
-            '--install-exit-handlers',
-        ]
+        ] + mx_sdk_vm_impl.svm_experimental_options(['-H:+InstallExitHandlers'])
 
         # Monitoring flags
         if get_bootstrap_graalvm_version() >= mx.VersionSpec("24.0"):
             build_args += ['--enable-monitoring=jvmstat,heapdump,jfr,threaddump']
         else:
             build_args += ['--enable-monitoring=jvmstat,heapdump,jfr']
-            build_args += ['-H:+UnlockExperimentalVMOptions', '-H:+DumpThreadStacksOnSignal', '-H:-UnlockExperimentalVMOptions']
+            build_args += mx_sdk_vm_impl.svm_experimental_options(['-H:+DumpThreadStacksOnSignal'])
+
+        build_args += mx_sdk_vm_impl.svm_experimental_options(['-H:+DumpRuntimeCompilationOnSignal'])
         build_args += [
-            '-H:+UnlockExperimentalVMOptions', '-H:+DumpRuntimeCompilationOnSignal', '-H:-UnlockExperimentalVMOptions',
             '-R:-UsePerfData', # See GR-25329, reduces startup instructions significantly
         ]
 

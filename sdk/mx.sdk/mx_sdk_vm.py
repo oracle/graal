@@ -338,7 +338,7 @@ class GraalVmComponent(object):
         self.standalone = None
         self.post_install_msg = None
         self.installable_id = None
-        self.extra_installable_qualifiers = extra_installable_qualifiers or []
+        self.extra_installable_qualifiers = None
         self.has_relative_home = has_relative_home
         self.jvm_configs = jvm_configs or []
         self.extra_native_targets = extra_native_targets
@@ -379,7 +379,6 @@ class GraalVmComponent(object):
         assert isinstance(self.jvmci_parent_jars, list)
         assert isinstance(self.launcher_configs, list)
         assert isinstance(self.library_configs, list)
-        assert isinstance(self.extra_installable_qualifiers, list)
 
         assert not any(cp_arg in self.polyglot_lib_build_args for cp_arg in ('-cp', '-classpath')), "the '{}' component passes a classpath argument to libpolylgot: '{}'. Use `polyglot_lib_jar_dependencies` instead".format(self.name, ' '.join(self.polyglot_lib_build_args))
 
@@ -1219,17 +1218,6 @@ def ee_implementor(jdk_home=base_jdk().home):
     else:
         mx.warn(f"Release file for '{jdk_home}' ({release_file_path}) is missing the IMPLEMENTOR field")
         return False
-
-
-def extra_installable_qualifiers(jdk_home, ce_edition, oracle_edition):
-    """
-    Returns the edition name depending on the value of the `IMPLEMENTOR` field of the `release` file of a given JDK.
-    :type jdk_home: str
-    :type ce_edition: list[str] | None
-    :type oracle_edition: list[str] | None
-    :rtype: list[str] | None
-    """
-    return oracle_edition if ee_implementor(jdk_home) else ce_edition
 
 
 @mx.command(_suite, 'verify-graalvm-configs')

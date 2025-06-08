@@ -62,7 +62,7 @@ import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import org.graalvm.collections.Pair;
-import org.graalvm.nativebridge.NativeIsolate;
+import org.graalvm.nativebridge.Isolate;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -192,7 +192,7 @@ public class PolyglotGCTest {
         runInSubprocess(() -> {
             Context context = newContextBuilder().build();
             AbstractExecutableTestLanguage.execute(context, ContextGcLanguage.class);
-            NativeIsolate isolate = getEnginesIsolate(context.getEngine());
+            Isolate<?> isolate = getEnginesIsolate(context.getEngine());
             Reference<Engine> engineRef = new WeakReference<>(context.getEngine());
             context = null;
             assertEngineGc("Engine without running threads should be collected", engineRef, isolate);
@@ -203,7 +203,7 @@ public class PolyglotGCTest {
     public void testEngineCollected() throws Exception {
         runInSubprocess(() -> {
             Engine engine = newEngineBuilder().build();
-            NativeIsolate isolate = getEnginesIsolate(engine);
+            Isolate<?> isolate = getEnginesIsolate(engine);
             Reference<Engine> engineRef = new WeakReference<>(engine);
             engine = null;
             assertEngineGc("Engine without running threads should be collected", engineRef, isolate);
@@ -514,7 +514,7 @@ public class PolyglotGCTest {
     public void testEngineWithSystemThreadCollected() throws Exception {
         runInSubprocess(() -> {
             Engine engine = newEngineBuilder().build();
-            NativeIsolate isolate = getEnginesIsolate(engine);
+            Isolate<?> isolate = getEnginesIsolate(engine);
             WeakReference<Engine> engineRef = new WeakReference<>(engine);
             engine = null;
             assertEngineGc("Engine with active system thread should be collected", engineRef, isolate);
@@ -613,7 +613,7 @@ public class PolyglotGCTest {
             }
             context = null;
             GCUtils.assertNotGc("Engine with existing API context should not be collected", engineReference);
-            NativeIsolate isolate = getEnginesIsolate(apiEngine);
+            Isolate<?> isolate = getEnginesIsolate(apiEngine);
             apiEngine = null;
             assertEngineGc("Should be collected", engineReference, isolate);
         });
@@ -953,7 +953,7 @@ public class PolyglotGCTest {
     }
 
     @SuppressWarnings("try")
-    private static void assertEngineGc(String message, Reference<Engine> engineRef, NativeIsolate isolate) {
+    private static void assertEngineGc(String message, Reference<Engine> engineRef, Isolate<?> isolate) {
         GCUtils.assertGc(message, engineRef);
         // Process reference queue by creating a new Engine
         try (Engine engine = Engine.create()) {
@@ -965,10 +965,10 @@ public class PolyglotGCTest {
         }
     }
 
-    static NativeIsolate getEnginesIsolate(Engine engine) {
+    static Isolate<?> getEnginesIsolate(Engine engine) {
         if (TruffleTestAssumptions.isIsolateEncapsulation()) {
             assertNotNull(ENTERPRISE_POLYGLOT_CLASS.getSimpleName() + " must be on classpath/module-path", ENTERPRISE_POLYGLOT_CLASS);
-            return (NativeIsolate) ReflectionUtils.invokeStatic(ENTERPRISE_POLYGLOT_CLASS, "getIsolate", new Class<?>[]{Object.class}, engine);
+            return (Isolate<?>) ReflectionUtils.invokeStatic(ENTERPRISE_POLYGLOT_CLASS, "getIsolate", new Class<?>[]{Object.class}, engine);
         }
         return null;
     }

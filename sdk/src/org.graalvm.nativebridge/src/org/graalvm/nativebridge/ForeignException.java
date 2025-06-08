@@ -106,15 +106,16 @@ public final class ForeignException extends RuntimeException {
      * still possible to use it by the hand-written code, but it's recommended to use the bridge
      * processor.
      *
+     * @param isolate the receiver isolate
      * @param marshaller the marshaller to unmarshal the exception
      */
-    public RuntimeException throwOriginalException(BinaryMarshaller<? extends Throwable> marshaller) {
+    public RuntimeException throwOriginalException(Isolate<?> isolate, BinaryMarshaller<? extends Throwable> marshaller) {
         try {
             if (rawData == null) {
                 throw new RuntimeException("Failed to marshall foreign throwable.");
             }
             BinaryInput in = BinaryInput.create(rawData);
-            Throwable t = marshaller.read(in);
+            Throwable t = marshaller.read(isolate, in);
             throw ForeignException.silenceException(RuntimeException.class, t);
         } finally {
             clearPendingException();

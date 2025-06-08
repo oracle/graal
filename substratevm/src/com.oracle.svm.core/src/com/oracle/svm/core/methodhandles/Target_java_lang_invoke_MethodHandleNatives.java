@@ -65,7 +65,7 @@ import sun.invoke.util.VerifyAccess;
  */
 @SuppressWarnings("unused")
 @TargetClass(className = "java.lang.invoke.MethodHandleNatives")
-final class Target_java_lang_invoke_MethodHandleNatives {
+public final class Target_java_lang_invoke_MethodHandleNatives {
 
     /*
      * MemberName native constructor. We need to resolve the actual type and flags of the member and
@@ -209,7 +209,7 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     static native String refKindName(byte refKind);
 
     @Substitute
-    static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, int lookupMode, boolean speculativeResolve)
+    public static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, int lookupMode, boolean speculativeResolve)
                     throws LinkageError, ClassNotFoundException {
         Class<?> declaringClass = self.getDeclaringClass();
         Target_java_lang_invoke_MemberName resolved = Util_java_lang_invoke_MethodHandleNatives.resolve(self, caller, speculativeResolve);

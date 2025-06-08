@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import com.oracle.svm.core.encoder.SymbolEncoder;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -127,6 +128,7 @@ public class FrameInfoEncoder {
 
     public abstract static class SourceFieldsFromMethod extends Customization {
         private final HostedStringDeduplication stringTable = HostedStringDeduplication.singleton();
+        private final SymbolEncoder encoder = SymbolEncoder.singleton();
 
         @Override
         protected void fillSourceFields(ResolvedJavaMethod method, FrameInfoQueryResult resultFrameInfo) {
@@ -144,7 +146,7 @@ public class FrameInfoEncoder {
              */
             int sourceMethodModifiers = method.getModifiers();
             String methodSignature = method.getSignature().toMethodDescriptor();
-            String sourceMethodName = stringTable.deduplicate(source.getMethodName(), true);
+            String sourceMethodName = stringTable.deduplicate(encoder.encodeMethod(source.getMethodName(), sourceClass), true);
             String sourceMethodSignature = CodeInfoEncoder.shouldEncodeAllMethodMetadata() ? stringTable.deduplicate(methodSignature, true) : methodSignature;
             resultFrameInfo.setSourceFields(sourceClass, sourceMethodName, sourceMethodSignature, sourceMethodModifiers);
         }

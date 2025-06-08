@@ -41,13 +41,10 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     third_party_license_files=[],
     truffle_jars=[],
     dir_name='java',
-    installable_id='espresso-compiler-stub',
-    installable=True,
     dependencies=['Java on Truffle'],
     support_distributions=['espresso-compiler-stub:ESPRESSO_COMPILER_SUPPORT'],
     priority=2,
     stability=_espresso_stability,
-    standalone=False,
 ))
 
 def create_ni_standalone(base_standalone_name, register_distribution):

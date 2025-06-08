@@ -58,7 +58,6 @@ svm_wasm_component = "niwasm"
 web_image_builder = "web-image:SVM_WASM"
 web_image_builder_jars = [
     web_image_builder,
-    "web-image:SVM_WASM_API",
     "web-image:SVM_WASM_JIMFS",
     "web-image:SVM_WASM_GUAVA",
     "web-image:WEBIMAGE_CLOSURE_SUPPORT",
@@ -472,7 +471,7 @@ def get_launcher_flags(names: [str], cp_suffix: str = None) -> [str]:
     (distributions, projects) with web image.
 
     Many internal distributions directly or indirectly depend on jars in the image builder itself
-    (e.g. svm-wasm-api.jar), which cannot be passed to the launcher again.
+    (e.g. svm-wasm.jar), which cannot be passed to the launcher again.
     Because of that we omit all the flags required for the image builder jars and their dependencies (since the image
     builder will already have the proper paths set up for those).
 
@@ -753,7 +752,6 @@ svm_wasm_macro = mx_sdk_vm.GraalVmSvmTool(
     priority=0,
     builder_jar_distributions=[
         "web-image:SVM_WASM",
-        "web-image:SVM_WASM_API",
         "web-image:SVM_WASM_JIMFS",
         "web-image:SVM_WASM_GUAVA",
     ],
@@ -766,7 +764,6 @@ web_image_macro = mx_sdk_vm.GraalVmSvmTool(
     name="Web Image",
     short_name=web_image_component,
     dir_name="web-image",
-    installable_id="web-image",
     license_files=[],
     third_party_license_files=[],
     dependencies=["ni"],
@@ -785,7 +782,6 @@ web_image_macro = mx_sdk_vm.GraalVmSvmTool(
             build_args=[],
         ),
     ],
-    installable=True,
     jlink=False,
 )
 mx_sdk_vm.register_graalvm_component(web_image_macro)

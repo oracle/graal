@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.49.0",
+  "mxversion": "7.54.3",
   "name" : "sdk",
   "version" : "25.0.0",
   "release" : False,
@@ -456,6 +456,16 @@ suite = {
       "javaCompliance" : "21+"
     },
 
+    "org.graalvm.webimage.api": {
+        "subDir": "src",
+        "sourceDirs": ["src"],
+        "dependencies": [],
+        "javaCompliance": "21+",
+        "spotbugs": "true",
+        "workingSets": "SDK",
+        "checkstyle": "org.graalvm.word",
+    },
+
     "com.oracle.svm.core.annotate" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -620,6 +630,51 @@ suite = {
       "workingSets" : "Graal,Test",
       "jacoco" : "exclude",
       "testProject" : True,
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "org.graalvm.nativebridge.benchmark": {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "NATIVEBRIDGE",
+      ],
+      "annotationProcessors" : [
+        "NATIVEBRIDGE_PROCESSOR",
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "17+",
+      "workingSets" : "Graal,Test",
+      "jacoco" : "exclude",
+      "testProject" : True,
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "org.graalvm.nativebridge.launcher": {
+      "subDir": "src",
+      "native": "executable",
+      "deliverable": "launcher",
+      "use_jdk_headers": True,
+      "buildDependencies": [
+      ],
+      "os_arch": {
+        "windows": {
+          "<others>": {
+            "cflags": ["/std:c++17"]
+          }
+        },
+        "linux": {
+          "<others>": {
+            "toolchain": "sdk:LLVM_NINJA_TOOLCHAIN",
+            "cflags": ["-std=c++17", "-g", "-Wall", "-Werror", "-D_GNU_SOURCE", "-stdlib=libc++"],
+            "ldlibs": ["-ldl", "-pthread", "-stdlib=libc++", "-static-libstdc++", "-l:libc++abi.a"],
+          },
+        },
+        "darwin": {
+          "<others>": {
+            "cflags": ["-std=c++17", "-g", "-Wall", "-Werror", "-pthread", "-ObjC++"],
+            "ldlibs": ["-ldl", "-pthread", "-framework", "Foundation"],
+          },
+        },
+      },
       "graalCompilerSourceEdition": "ignore",
     },
     "org.graalvm.toolchain.test" : {
@@ -902,6 +957,25 @@ suite = {
         # coordinates stable in case of the (unlikely) event that the distribution
         # is renamed.
         "artifactId": "nativeimage-libgraal",
+        "tag": ["default", "public"],
+      },
+    },
+
+    "WEBIMAGE_PREVIEW": {
+      "subDir": "src",
+      "dependencies": [
+        "org.graalvm.webimage.api",
+      ],
+      "distDependencies": [],
+      "moduleInfo": {
+        "name": "org.graalvm.webimage.api",
+        "exports": [
+          "org.graalvm.webimage.api",
+        ],
+      },
+      "description": "The JavaScript interoperability API for GraalVM Web Image. This API is currently in preview and subject to change at any time.",
+      "maven": {
+        "artifactId": "webimage-preview",
         "tag": ["default", "public"],
       },
     },
@@ -1192,6 +1266,24 @@ suite = {
       "distDependencies" : [],
       "maven": False,
     },
+    "NATIVEBRIDGE_LAUNCHER_RESOURCES": {
+      "type": "dir",
+      "platformDependent": True,
+      "platforms": [
+          "linux-amd64",
+          "linux-aarch64",
+          "darwin-amd64",
+          "darwin-aarch64",
+          "windows-amd64",
+          "windows-aarch64",
+      ],
+      "layout": {
+        "<os>/<arch>/": "dependency:org.graalvm.nativebridge.launcher",
+      },
+      "description": "Contains a launcher for process isolated polyglot.",
+      "maven": False,
+      "graalCompilerSourceEdition": "ignore",
+    },
     "NATIVEBRIDGE_PROCESSOR_TEST" : {
       "subDir" : "src",
       "dependencies" : [
@@ -1206,6 +1298,18 @@ suite = {
           "jdk.vm.ci.services",
         ],
       },
+      "maven": False,
+      "testDistribution" : True,
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "NATIVEBRIDGE_BENCHMARK": {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.nativebridge.benchmark"
+      ],
+      "distDependencies" : [
+        "NATIVEBRIDGE"
+      ],
       "maven": False,
       "testDistribution" : True,
       "graalCompilerSourceEdition": "ignore",

@@ -23,7 +23,14 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-53985) Add experimental option `ClassForNameRespectsClassLoader` that makes `Class.forName(...)` respect the class loader hierarchy.
 * (GR-59869) Implemented initial optimization of Java Vector API (JEP 338) operations in native images. See the compiler changelog for more details.
 * (GR-63268) Reflection and JNI queries do not require metadata entries to throw the expected JDK exception when querying a class that doesn't exist under `--exact-reachability-metadata` if the query cannot possibly be a valid class name
+* (GR-60208) Adds the Tracing Agent support for applications using the Foreign Function & Memory (FFM) API. The agent generates FFM configuration in _foreign-config.json_. Additionally, support for FFM configurations has been added to the `native-image-configure` tool.
+* (GR-64787) Enable `--install-exit-handlers` by default for executables and deprecate the option. If shared libraries were using this flag, the same functionality can be restored by using `-H:+InstallExitHandlers`.
 * (GR-47881) Remove the total number of loaded types, fields, and methods from the build output, deprecated these metrics in the build output schema, and removed already deprecated build output metrics.
+* (GR-64619) Missing registration errors are now subclasses of `LinkageError`
+* (GR-63591) Resource bundle registration is now included as part of the `"resources"` section of _reachability-metadata.json_. When this is the case, the bundle name is specified using the `"bundle"` field.
+* (GR-57827) Move the initialization of security providers from build time to runtime.
+* (GR-57827) Security providers can now be initialized at run time (instead of build time) when using the option `--future-defaults=all` or `--future-defaults=run-time-initialized-jdk`.
+Run-time initialization of security providers helps reduce image heap size by avoiding unnecessary objects inclusion.
 
 ## GraalVM for JDK 24 (Internal Version 24.2.0)
 * (GR-59717) Added `DuringSetupAccess.registerObjectReachabilityHandler` to allow registering a callback that is executed when an object of a specified type is marked as reachable during heap scanning.

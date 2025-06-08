@@ -26,7 +26,12 @@ package com.oracle.svm.core.foreign;
 
 import java.util.function.BooleanSupplier;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Set of predicates used to control activation of substitutions (depending on method
@@ -39,21 +44,51 @@ public final class ForeignAPIPredicates {
     public static final class Enabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return SubstrateOptions.ForeignAPISupport.getValue();
+            return SubstrateOptions.isForeignAPIEnabled();
         }
     }
 
     public static final class FunctionCallsSupported implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return SubstrateOptions.ForeignAPISupport.getValue() && ForeignFunctionsRuntime.areFunctionCallsSupported();
+            return SubstrateOptions.isForeignAPIEnabled() && ForeignFunctionsRuntime.areFunctionCallsSupported();
         }
     }
 
     public static final class FunctionCallsUnsupported implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return SubstrateOptions.ForeignAPISupport.getValue() && !ForeignFunctionsRuntime.areFunctionCallsSupported();
+            return SubstrateOptions.isForeignAPIEnabled() && !ForeignFunctionsRuntime.areFunctionCallsSupported();
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static final class SharedArenasEnabled implements BooleanSupplier {
+        public static boolean getValue() {
+            return SubstrateOptions.isForeignAPIEnabled() && SubstrateOptions.SharedArenaSupport.getValue();
+        }
+
+        @Override
+        public boolean getAsBoolean() {
+            return SharedArenasEnabled.getValue();
+        }
+    }
+
+    public static final class SharedArenasDisabled implements BooleanSupplier {
+        private static final String SHARED_ARENA_SUPPORT_OPTION_NAME = SubstrateOptionsParser.commandArgument(SubstrateOptions.SharedArenaSupport, "+");
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        SharedArenasDisabled() {
+        }
+
+        @Override
+        public boolean getAsBoolean() {
+            return !SharedArenasEnabled.getValue();
+        }
+
+        public static RuntimeException fail() {
+            assert !SharedArenasEnabled.getValue();
+            throw VMError.unsupportedFeature("Support for Arena.ofShared is not active: enable with " + SHARED_ARENA_SUPPORT_OPTION_NAME);
         }
     }
 }

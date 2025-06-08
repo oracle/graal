@@ -36,11 +36,20 @@ The report will detail all registered service classes, the API methods that trig
 
 > Note: The `--enable-all-security-services` option is now deprecated and it will be removed in a future release.
 
+## Provider Initialization
+
+Currently security providers are initialized at build time.
+To move their initialization to run time, use the option `--future-defaults=all` or `--future-defaults=run-time-initialized-jdk`. 
+Provider verification will still occur at build time. 
+Run-time initialization of security providers helps reduce image heap size.
+To move their initialization to run time, you can use the flag `--future-defaults=all` or `--future-defaults=run-time-initialized-jdk`.
+
 ## Provider Registration
 
 The `native-image` builder captures the list of providers and their preference order from the underlying JVM.
 The provider order is specified in the `java.security` file under `<java-home>/conf/security/java.security`.
-New security providers cannot be registered at run time; all providers must be statically configured at executable build time.
+New security providers cannot be registered at run time by default (see the section above); all providers must be statically configured at executable build time.
+If the user specifies `--future-defaults=all` or `--future-defaults=run-time-initialized-jdk` to move providers initialization to run time, then a specific properties file can be used via the command line option `-Djava.security.properties=<path>`.
 
 ## Providers Reordering at Run Time
 
@@ -51,6 +60,9 @@ Provider bcProvider = Security.getProvider("BC");
 Security.removeProvider("BC");
 Security.insertProviderAt(bcProvider, 1);
 ```
+
+If `--future-defaults=all` or `--future-defaults=run-time-initialized-jdk` is enabled, the list of providers is constructed at run time.
+The same approach to manipulating providers can then be used.
 
 ## SecureRandom
 

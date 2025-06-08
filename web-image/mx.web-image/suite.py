@@ -63,20 +63,20 @@ suite = {
         },
         # virtual file system that substitutes NIO and IO
         "JIMFS_BFS": {
-            "digest": "sha512:dac2d913bcae2ed216c6fd0658a9b3d080741d5d512133834d727ba41e1a1a013574885c9d21d27594246faf361a45c5af8b7883e6f1ce34843e59b9e181a565",
-            "sourceDigest": "sha512:409570c18b01ea29f8c3ac656cf9f1f3540c71d64d26f7a02ff906227eec9d2797643904b003f13bbe86d2e75ed954a5a816984db915e987724bed2b4ce56e68",
+            "digest": "sha512:eabab57f753aa904f2734f5228ed8fe3e0ee2290aa4e898e5fcb193aed496258477d43c80efb5fc1ca3ccebb43b7c67f3488b4d118abe5fc6f337a689a7a1f87",
+            "sourceDigest": "sha512:65e298d6bdd1288687047256fb117513927d373f3ad2caf8d057e27204d401bcae99b2ecc2a9ea71dbeea9f549f5d2a10c3cecaa0e6f1a77ab7d993b7f4ad450",
             "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/web-image",
-            "urls": ["{urlbase}/jimfs-1.2-oracle-00001.jar"],
-            "sourceUrls": ["{urlbase}/jimfs-1.2-oracle-00001-sources.jar"],
+            "urls": ["{urlbase}/jimfs-1.3.0-c7a51a6e2109ff7e391815ba34ad404ac8a375c6-shaded.jar"],
+            "sourceUrls": ["{urlbase}/jimfs-1.3.0-c7a51a6e2109ff7e391815ba34ad404ac8a375c6-shaded-sources.jar"],
             "dependencies": ["GUAVA_BFS"],
         },
         # Dependency of JIMFS
         "GUAVA_BFS": {
-            "digest": "sha512:02afa0937235a5dab09957a33bf6ce0461419e7e3e11f76a1fe5f0a3d44a54dabdfc2c3097a2970becec889bb30bd3b27f26fe7c83d38a365ba792dea495ea40",
-            "sourceDigest": "sha512:1b2090bf9a5943cbe1c76759042146cec4290ae7e71a24122dfa0a81da59072195d6610adf4514b54b047bb6d4394254017babf06a8cd351f57375366b320c04",
+            "digest": "sha512:464ba85eaa87fbd5330522e71dad1eee09d8a320b3ebbee9008e529279eac6553460b195aa6fc834c04c6eccbcd7bcfe56f7635a6a6edae4357e915c9b42709f",
+            "sourceDigest": "sha512:111acb5e2f9c20dfb99656b9f72344c30bc0e453449f47ba9c57bcec2e0cf919860bf20eae10ef9dbb0f59908bdb4c23473532a420059db2e6bb377b5c07989b",
             "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/web-image",
-            "urls": ["{urlbase}/guava-31.0.1-jre-oracle-00001.jar"],
-            "sourceUrls": ["{urlbase}/guava-31.0.1-jre-oracle-00001-sources.jar"],
+            "urls": ["{urlbase}/guava-33.4.8-jre-shaded.jar"],
+            "sourceUrls": ["{urlbase}/guava-33.4.8-jre-shaded-sources.jar"],
         },
     },
     # -------------    Projects  -------------
@@ -89,7 +89,7 @@ suite = {
                 "compiler:GRAAL",
                 "substratevm:SVM",
                 "substratevm:SVM_CONFIGURE",
-                "org.graalvm.webimage.api",
+                "sdk:WEBIMAGE_PREVIEW",
                 "SVM_WASM_JIMFS",
             ],
             "requires": [
@@ -115,17 +115,6 @@ suite = {
             ],
             "spotbugsIgnoresGenerated": True,
             "checkPackagePrefix": False,
-        },
-        "org.graalvm.webimage.api": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [],
-            "javaCompliance": "21+",
-            "spotbugs": "true",
-            "workingSets": "web-image",
-            "annotationProcessors": ["compiler:GRAAL_PROCESSOR"],
-            "checkstyle": "com.oracle.svm.webimage",
-            "spotbugsIgnoresGenerated": True,
         },
         "com.oracle.svm.webimage.tools": {
             "subDir": "src",
@@ -160,7 +149,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "substratevm:SVM",
-                "SVM_WASM_API",
                 "WEBIMAGE_LIBRARY_SUPPORT",
                 "mx:JUNIT",
                 "NET_JAVA_HTML",
@@ -281,7 +269,7 @@ suite = {
             ],
             "distDependencies": [
                 "substratevm:SVM",
-                "SVM_WASM_API",
+                "sdk:WEBIMAGE_PREVIEW",
                 "SVM_WASM_JIMFS",
             ],
             "moduleInfo": {
@@ -289,7 +277,6 @@ suite = {
                 "requires": [
                     "org.graalvm.nativeimage.pointsto",
                     "org.graalvm.nativeimage.builder",
-                    "org.graalvm.webimage.api",
                     "org.graalvm.collections",
                 ],
                 "opens": [
@@ -303,20 +290,6 @@ suite = {
                             org.graalvm.extraimage.librarysupport,
                             org.graalvm.extraimage.closurecompiler,
                             com.oracle.svm.extraimage_enterprise.closurecompiler""",
-                ],
-            },
-            "maven": False,
-        },
-        "SVM_WASM_API": {
-            "subDir": "src",
-            "dependencies": [
-                "org.graalvm.webimage.api",
-            ],
-            "distDependencies": [],
-            "moduleInfo": {
-                "name": "org.graalvm.webimage.api",
-                "exports": [
-                    "org.graalvm.webimage.api",
                 ],
             },
             "maven": False,
@@ -349,7 +322,6 @@ suite = {
                 "requires": [
                     "jdk.graal.compiler",
                     "org.graalvm.nativeimage.builder",
-                    "org.graalvm.webimage.api",
                 ],
             },
         },
@@ -413,7 +385,6 @@ suite = {
                 "com.oracle.svm.webimage.jtt",
             ],
             "distDependencies": [
-                "SVM_WASM_API",
                 "WEBIMAGE_LIBRARY_SUPPORT",
             ],
             "exclude": [
@@ -430,7 +401,7 @@ suite = {
                     "org.graalvm.wrapped.google.guava",
                 ],
                 "exports": [
-                    "com.google.common.jimfs to org.graalvm.extraimage.builder, com.oracle.svm.extraimage_enterprise",
+                    "org.graalvm.shadowed.com.google.common.jimfs to org.graalvm.extraimage.builder, com.oracle.svm.extraimage_enterprise",
                 ],
             },
             "javaCompliance": "17+",
@@ -447,7 +418,7 @@ suite = {
                     "java.logging",
                 ],
                 "exports": [
-                    "com.google.common.* to org.graalvm.wrapped.google.jimfs",
+                    "org.graalvm.shadowed.com.google.common.* to org.graalvm.wrapped.google.jimfs",
                 ],
             },
             "javaCompliance": "17+",

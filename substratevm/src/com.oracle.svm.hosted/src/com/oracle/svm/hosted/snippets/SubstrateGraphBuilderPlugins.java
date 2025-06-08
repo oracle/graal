@@ -38,6 +38,9 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.encoder.SymbolEncoder;
+import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -101,14 +104,13 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ReachabilityRegistrationNode;
+import com.oracle.svm.hosted.SharedArenaSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.nodes.ReadReservedRegister;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.core.common.LibGraalSupport;
-import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -223,18 +225,21 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerArenaPlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, ArenaIntrinsics.class);
-        r.register(new RequiredInlineOnlyInvocationPlugin("checkArenaValidInScope", MemorySessionImpl.class, Object.class, long.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode session, ValueNode ptrOne, ValueNode ptrTwo) {
-                b.setIsParsingScopedMemoryMethod(session);
-                MemoryArenaValidInScopeNode result = new MemoryArenaValidInScopeNode(session, new FieldLocationIdentity(b.getMetaAccess().lookupJavaField(MemoryArenaValidInScopeNode.STATE_FIELD)));
-                b.addPush(JavaKind.Long, result);
-                result.addScopeAssociatedValue(ptrOne);
-                result.addScopeAssociatedValue(ptrTwo);
-                return true;
-            }
-        });
+        if (SharedArenaSupport.isAvailable()) {
+            Registration r = new Registration(plugins, ArenaIntrinsics.class);
+            r.register(new RequiredInlineOnlyInvocationPlugin("checkArenaValidInScope", MemorySessionImpl.class, Object.class, long.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode session, ValueNode ptrOne, ValueNode ptrTwo) {
+                    b.setIsParsingScopedMemoryMethod(session);
+                    MemoryArenaValidInScopeNode result = new MemoryArenaValidInScopeNode(session,
+                                    new FieldLocationIdentity(b.getMetaAccess().lookupJavaField(MemoryArenaValidInScopeNode.STATE_FIELD)));
+                    b.addPush(JavaKind.Long, result);
+                    result.addScopeAssociatedValue(ptrOne);
+                    result.addScopeAssociatedValue(ptrTwo);
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerSerializationPlugins(ImageClassLoader loader, InvocationPlugins plugins, ParsingReason reason) {
@@ -1109,6 +1114,7 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerClassPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Class.class);
+        SymbolEncoder encoder = SymbolEncoder.singleton();
         /*
          * The field DynamicHub.name cannot be final, so we ensure early constant folding using an
          * invocation plugin.
@@ -1125,7 +1131,7 @@ public class SubstrateGraphBuilderPlugins {
                          * also ensures we get the same String instance that is stored in
                          * DynamicHub.name without having a dependency on DynamicHub.
                          */
-                        String className = type.toClassName().intern();
+                        String className = encoder.encodeClass(type.toClassName()).intern();
                         b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getConstantReflection().forString(className), b.getMetaAccess()));
                         return true;
                     }

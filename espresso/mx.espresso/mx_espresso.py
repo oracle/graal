@@ -108,6 +108,7 @@ def javavm_deps():
 
 def javavm_build_args():
     result = []
+    # GR-64948: On GraalVM 21 CopyLanguageResources is incorrectly detected as experimental
     if mx_sdk_vm_ng.get_bootstrap_graalvm_version() >= mx.VersionSpec("24.0"):
         result += ['--enable-monitoring=threaddump', '-H:+CopyLanguageResources']
     else:
@@ -403,13 +404,6 @@ class EspressoReleaseFileProject(AbstractSimpleGeneratedFileProject):
 #########################
 add_gate_runner(_suite, _espresso_gate_runner)
 
-
-if mx.is_windows():
-    lib_javavm_cp = '%GRAALVM_HOME%\\lib\\graalvm\\lib-javavm.jar'
-else:
-    lib_javavm_cp = '${GRAALVM_HOME}/lib/graalvm/lib-javavm.jar'
-
-
 espresso_library_config = mx_sdk_vm.LanguageLibraryConfig(
     language='java',
     jar_distributions=['espresso:LIB_JAVAVM'],
@@ -434,8 +428,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Java on Truffle',
     short_name='java',
-    installable_id='espresso',
-    installable=True,
     license_files=['LICENSE_JAVAONTRUFFLE'],
     third_party_license_files=[],
     dependencies=['Truffle', 'nfi-libffi', 'ejvm'],
@@ -445,18 +437,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     polyglot_lib_jar_dependencies=['espresso:LIB_JAVAVM'],
     has_polyglot_lib_entrypoints=True,
     priority=1,
-    post_install_msg="""
-This version of Java on Truffle is experimental. We do not recommended it for production use.
-
-Usage: java -truffle [-options] class [args...]
-           (to execute a class)
-    or java -truffle [-options] -jar jarfile [args...]
-           (to execute a jar file)
-
-To rebuild the polyglot library:
-    gu rebuild-images libpolyglot -cp """ + lib_javavm_cp,
     stability=_espresso_stability,
-    standalone=False,
 ))
 
 if espresso_llvm_java_home:
@@ -468,14 +449,10 @@ if espresso_llvm_java_home:
         third_party_license_files=[],
         truffle_jars=[],
         dir_name='java',
-        installable_id='espresso-llvm',
-        extra_installable_qualifiers=mx_sdk_vm.extra_installable_qualifiers(jdk_home=espresso_llvm_java_home, ce_edition=['ce'], oracle_edition=['ee']),
-        installable=True,
         dependencies=['Java on Truffle', 'LLVM Runtime Native'],
         support_distributions=['espresso:ESPRESSO_LLVM_SUPPORT'],
         priority=2,
         stability=_espresso_stability,
-        standalone=False,
     ))
 
 
@@ -600,8 +577,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         community_archive_name="espresso-community",
         enterprise_archive_name="espresso",
         community_dist_name=f'GRAALVM_ESPRESSO_COMMUNITY_JAVA{java_home_dep.major_version}',
-        enterprise_dist_name=f'GRAALVM_ESPRESSO_JAVA{java_home_dep.major_version}',
-        standalone_prefix=False))
+        enterprise_dist_name=f'GRAALVM_ESPRESSO_JAVA{java_home_dep.major_version}'))
 
 
 def espresso_resources_suite():
@@ -751,12 +727,20 @@ class EspressoRuntimeResourceProject(mx.JavaProject):
 
 
 class EspressoRuntimeResourceBuildTask(mx.JavaBuildTask):
+    subject: EspressoRuntimeResourceProject
+
     def __str__(self):
         return f'Generating {self.subject.name} internal resource and compiling it with {self._getCompiler().name()}'
 
     @staticmethod
     def _template_file():
         return join(_suite.mxDir, 'espresso_runtime_resource.template')
+
+    def witness_file(self):
+        return join(self.subject.get_output_root(), 'witness')
+
+    def witness_contents(self):
+        return self.subject.resource_id
 
     def needsBuild(self, newestInput):
         is_needed, reason = mx.ProjectBuildTask.needsBuild(self, newestInput)
@@ -772,6 +756,13 @@ class EspressoRuntimeResourceBuildTask(mx.JavaBuildTask):
         ])
         if newestInput is None or newestInput.isOlderThan(template_ts):
             newestInput = template_ts
+        witness_file = self.witness_file()
+        if not exists(witness_file):
+            return True, witness_file + " doesn't exist"
+        expected = self.witness_contents()
+        with open(witness_file, 'r', encoding='utf-8') as f:
+            if f.read() != expected:
+                return True, "Outdated content"
         return super().needsBuild(newestInput)
 
     @staticmethod
@@ -815,6 +806,10 @@ class EspressoRuntimeResourceBuildTask(mx.JavaBuildTask):
         with mx_util.SafeFileCreation(target_file) as sfc, open(sfc.tmpPath, 'w', encoding='utf-8') as f:
             f.write(file_content)
         super(EspressoRuntimeResourceBuildTask, self).build()
+        witness_file = self.witness_file()
+        mx_util.ensure_dirname_exists(witness_file)
+        with mx_util.SafeFileCreation(witness_file) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as outfile:
+            outfile.write(self.witness_contents())
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
@@ -822,8 +817,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     name='Espresso libjvm',
     short_name='ejvm',
     dir_name='truffle',
-    installable_id='espresso',
-    installable=True,
     license_files=[],
     third_party_license_files=[],
     dependencies=['Java on Truffle'],
@@ -841,7 +834,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Espresso Launcher',
     short_name='elau',
-    installable=False,
     license_files=[],
     third_party_license_files=[],
     dependencies=['Java on Truffle'],
@@ -862,8 +854,6 @@ jvm_cfg_component = mx_sdk_vm.GraalVmJreComponent(
     name='Espresso Standalone jvm.cfg',
     short_name='ejc',
     dir_name='.',
-    installable_id='espresso',
-    installable=True,
     license_files=[],
     third_party_license_files=[],
     dependencies=['Java on Truffle'],

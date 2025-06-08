@@ -53,26 +53,25 @@ public class RuntimeImageHeapChunkWriter implements ImageHeapChunkWriter {
 
     @Override
     public void initializeAlignedChunk(int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk) {
-        AlignedHeapChunk.AlignedHeader header = (AlignedHeapChunk.AlignedHeader) getChunkPointerInBuffer(chunkPosition);
-        header.setTopOffset(Word.unsigned(topOffset));
-        header.setEndOffset(Word.unsigned(endOffset));
-        header.setSpace(null);
-        header.setOffsetToPreviousChunk(Word.unsigned(offsetToPreviousChunk));
-        header.setOffsetToNextChunk(Word.unsigned(offsetToNextChunk));
-        header.setIdentityHashSalt(Word.zero(), IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION);
+        initializeChunk(chunkPosition, topOffset, endOffset, offsetToPreviousChunk, offsetToNextChunk);
     }
 
     @Override
     public void initializeUnalignedChunk(int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk, long objectSize) {
+        initializeChunk(chunkPosition, topOffset, endOffset, offsetToPreviousChunk, offsetToNextChunk);
+
         UnalignedHeapChunk.UnalignedHeader header = (UnalignedHeapChunk.UnalignedHeader) getChunkPointerInBuffer(chunkPosition);
-        header.setTopOffset(Word.unsigned(topOffset));
+        UnalignedHeapChunk.initializeObjectStartOffset(header, Word.unsigned(objectSize));
+    }
+
+    private void initializeChunk(int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk) {
+        HeapChunk.Header<?> header = (HeapChunk.Header<?>) getChunkPointerInBuffer(chunkPosition);
+        header.setTopOffset(Word.unsigned(topOffset), HeapChunk.CHUNK_HEADER_TOP_IDENTITY);
         header.setEndOffset(Word.unsigned(endOffset));
         header.setSpace(null);
         header.setOffsetToPreviousChunk(Word.unsigned(offsetToPreviousChunk));
         header.setOffsetToNextChunk(Word.unsigned(offsetToNextChunk));
         header.setIdentityHashSalt(Word.zero(), IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION);
-
-        UnalignedHeapChunk.initializeObjectStartOffset(header, Word.unsigned(objectSize));
     }
 
     @Override

@@ -59,6 +59,9 @@ public final class ParserKlass {
      */
     private final ParserConstantPool pool;
 
+    private final char majorVersion;
+    private final char minorVersion;
+
     private final int thisKlassIndex;
     private final long hiddenKlassId;
 
@@ -72,7 +75,11 @@ public final class ParserKlass {
                     ParserField[] fields,
                     Attribute[] attributes,
                     int thisKlassIndex,
+                    int majorVersion,
+                    int minorVersion,
                     long hiddenKlassId) {
+        assert majorVersion == (char) majorVersion;
+        assert minorVersion == (char) minorVersion;
         this.pool = pool;
         this.flags = flags;
         this.name = name;
@@ -83,6 +90,8 @@ public final class ParserKlass {
         this.fields = fields;
         this.attributes = attributes;
         this.thisKlassIndex = thisKlassIndex;
+        this.majorVersion = (char) majorVersion;
+        this.minorVersion = (char) minorVersion;
         this.hiddenKlassId = hiddenKlassId;
     }
 
@@ -145,6 +154,14 @@ public final class ParserKlass {
 
     public long getHiddenKlassId() {
         return hiddenKlassId;
+    }
+
+    public int getMajorVersion() {
+        return majorVersion;
+    }
+
+    public int getMinorVersion() {
+        return minorVersion;
     }
 
     @Override

@@ -369,11 +369,6 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         # Added by BaristaNativeImageCommand
         return []
 
-    def extra_image_build_argument(self, benchmark, args):
-        return [
-            "--install-exit-handlers"
-        ] + super().extra_image_build_argument(benchmark, args)
-
     def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
         return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
@@ -936,8 +931,7 @@ _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
     # 2. Native-image picks a different service provider than the JVM for javax.xml.transform.TransformerFactory.
     #    We can simply remove the jar containing that provider as it is not required for the benchmark to run.
     'fop':      [f"-Djava.util.logging.config.file={_empty_file()}",
-                 '--initialize-at-run-time=org.apache.fop.render.rtf.rtflib.rtfdoc.RtfList',
-                 '-H:+ForeignAPISupport'],
+                 '--initialize-at-run-time=org.apache.fop.render.rtf.rtflib.rtfdoc.RtfList'],
     'batik':    []
 }
 

@@ -186,11 +186,25 @@ native-image --module-path target/AwesomeLib-1.0-SNAPSHOT.jar --shared
 3. The layer specified by `--layer-use` must be compatible with the standalone command line.
    The compatibility rules refer to:
     - class/jar file compatibility (`-cp`, `-p`, same JDK, same GraalVM, same libs, etc.)
-    - config compatibility: GC config, etc.
+    - config compatibility: image builder options (e.g. GC config), etc.
     - Java system properties and Environment variables compatibility
     - access compatibility: no additional unsafe and field accesses are allowed
 
    In case of incompatibility an error message is printed and the build process is aborted.
+   More information about compatibility checking can be found [below](#compatibility-rules)
+
+### Compatibility rules
+
+Currently, layer build compatibility checking is very limited and is only performed for the image builder arguments.
+The list below gives a few examples of checks that are already implemented.
+
+- Module system options `--add-exports`, `--add-opens`, `--add-reads` that were passed in the previous image build also need to be passed in the current image build.
+  Note that additional module system options not found in the previous image build are allowed to be used in the current image build.
+- Builder options of the form `-H:NeverInline=<pattern>` follow the same logic as the module system options above.
+- If debug option `-g` was passed in the previous image build it must also be passed in the current image build at the same position.
+- Other options like `-H:EntryPointNamePrefix=...`, `-H:APIFunctionPrefix=...`, ... follow the same logic as the `-g` option.
+
+The number of checks is subject to change and will be further improved in the future.
 
 ### Limitations
 
@@ -200,6 +214,16 @@ native-image --module-path target/AwesomeLib-1.0-SNAPSHOT.jar --shared
   avoid any potential issues that can stem from _multiple inheritance_.
 - A shared layer is using the _.so_ extension to conform with the standard OS loader restrictions. However, it is not a
   standard shared library file, and it cannot be used with other applications.
+
+### Class Initialization
+
+With Native Image Layers class initialization needs to be coherent between layers.
+To achieve this we enforce that the initialization state of types in shared layers stays exactly the same in the
+subsequent dependent layers.
+More concretely if a class `A` is initialized at build time in a base layer, then it will be automatically
+initialized at build time in the extension layers. The same holds for run time initialization.
+In the future we plan to relax this restriction and allow run-time initialized types in base layers to be promoted
+into build-time initialized types in the extension layers.
 
 ## Packaging Native Image Layers
 

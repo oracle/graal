@@ -351,6 +351,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public Pointer allocateUnalignedChunk(UnsignedWord nbytes) {
         WordPointer allocOut = UnsafeStackValue.get(WordPointer.class);
         int error = allocateInHeapAddressSpace(nbytes, getAlignmentForUnalignedChunks(), allocOut);

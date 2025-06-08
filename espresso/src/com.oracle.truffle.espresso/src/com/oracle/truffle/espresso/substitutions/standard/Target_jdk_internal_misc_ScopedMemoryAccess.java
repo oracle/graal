@@ -26,11 +26,16 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -47,6 +52,7 @@ import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
+import com.oracle.truffle.espresso.substitutions.SubstitutionNode;
 
 @EspressoSubstitutions
 public final class Target_jdk_internal_misc_ScopedMemoryAccess {
@@ -68,6 +74,49 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
             }
         }, future);
         return !action.found;
+    }
+
+    @Substitution
+    abstract static class CloseScope0 extends SubstitutionNode {
+        abstract void execute(@JavaType(internalName = "Ljdk/internal/foreign/MemorySessionImpl;") StaticObject session,
+                        @JavaType(internalName = "Ljdk/internal/misc/ScopedMemoryAccess$ScopedAccessError;") StaticObject error);
+
+        @Specialization
+        @SuppressWarnings("unused")
+        static void doCloseScope(StaticObject session, StaticObject err,
+                        @Cached Once warn) {
+            // GR-65277
+            if (warn.once()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                TruffleLogger logger = EspressoContext.get(null).getLogger();
+                logger.warning("ScopedMemoryAccess.closeScope() not supported in this Java version, and is currently a no-op.");
+            }
+        }
+
+    }
+
+    static final class Once {
+        private Once() {
+        }
+
+        @CompilationFinal private volatile boolean valid = true;
+
+        public boolean once() {
+            if (valid) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                synchronized (this) {
+                    if (valid) {
+                        valid = false;
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        public static Once create() {
+            return new Once();
+        }
     }
 
     private static final class CloseScopedMemoryAction extends ThreadLocalAction {

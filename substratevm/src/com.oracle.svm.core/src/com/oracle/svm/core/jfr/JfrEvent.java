@@ -65,6 +65,7 @@ public final class JfrEvent {
     public static final JfrEvent JavaMonitorWait = create("jdk.JavaMonitorWait", 5, JfrEventFlags.HasDuration);
     public static final JfrEvent JavaMonitorInflate = create("jdk.JavaMonitorInflate", 5, JfrEventFlags.HasDuration);
     public static final JfrEvent ObjectAllocationInNewTLAB = create("jdk.ObjectAllocationInNewTLAB", 5);
+    public static final JfrEvent ObjectAllocationOutsideTLAB = create("jdk.ObjectAllocationOutsideTLAB", 5);
     public static final JfrEvent GCHeapSummary = create("jdk.GCHeapSummary");
     public static final JfrEvent ThreadAllocationStatistics = create("jdk.ThreadAllocationStatistics");
     public static final JfrEvent SystemGC = create("jdk.SystemGC", 5, JfrEventFlags.HasDuration);

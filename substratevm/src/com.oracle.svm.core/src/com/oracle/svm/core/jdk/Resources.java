@@ -43,6 +43,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import com.oracle.svm.core.encoder.SymbolEncoder;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.ImageInfo;
@@ -72,6 +73,7 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFla
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.GlobUtils;
@@ -89,6 +91,7 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
 
     private static final int INVALID_TIMESTAMP = -1;
     public static final char RESOURCES_INTERNAL_PATH_SEPARATOR = '/';
+    private final SymbolEncoder encoder = SymbolEncoder.singleton();
 
     /**
      * @return the singleton corresponding to this layer's resources in a layered build, the unique
@@ -178,6 +181,11 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
     @Platforms(Platform.HOSTED_ONLY.class)
     public Iterable<ConditionalRuntimeValue<ResourceStorageEntryBase>> resources() {
         return resources.getValues();
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public Iterable<ModuleResourceKey> resourceKeys() {
+        return resources.getKeys();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -318,7 +326,7 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
         assert MissingRegistrationUtils.throwMissingRegistrationErrors();
         synchronized (requestedPatterns) {
             updateTimeStamp();
-            requestedPatterns.put(new RequestedPattern(module, handleEscapedCharacters(pattern)), RuntimeConditionSet.createHosted(condition));
+            requestedPatterns.put(new RequestedPattern(encoder.encodeModule(module), handleEscapedCharacters(pattern)), RuntimeConditionSet.createHosted(condition));
         }
     }
 
@@ -393,6 +401,9 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
             } else {
                 return null;
             }
+        }
+        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+            MetadataTracer.singleton().traceResource(resourceName, moduleName);
         }
         if (!entry.getConditions().satisfied()) {
             return missingMetadata(resourceName, throwOnMissing);
