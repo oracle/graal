@@ -198,11 +198,6 @@ final class Target_jdk_internal_misc_Unsafe_Core {
 
 @TargetClass(jdk.internal.access.SharedSecrets.class)
 final class Target_jdk_internal_access_SharedSecrets {
-    @Substitute
-    private static Target_jdk_internal_access_JavaAWTAccess getJavaAWTAccess() {
-        return null;
-    }
-
     /**
      * The JavaIOAccess implementation installed by the class initializer of java.io.Console
      * captures state like "is a tty". The only way to remove such state is by resetting the field.
@@ -213,10 +208,6 @@ final class Target_jdk_internal_access_SharedSecrets {
 
 @TargetClass(jdk.internal.access.JavaIOAccess.class)
 final class Target_jdk_internal_access_JavaIOAccess {
-}
-
-@TargetClass(jdk.internal.access.JavaAWTAccess.class)
-final class Target_jdk_internal_access_JavaAWTAccess {
 }
 
 @TargetClass(className = "sun.reflect.misc.MethodUtil")
