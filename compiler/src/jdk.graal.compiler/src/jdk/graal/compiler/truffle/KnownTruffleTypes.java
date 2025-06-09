@@ -221,11 +221,12 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
         ResolvedJavaType throwableType = metaAccess.lookupJavaType(Throwable.class);
         for (ResolvedJavaField staticField : throwableType.getStaticFields()) {
             if (staticField.getName().equals("jfrTracing") &&
-                            staticField.getType().equals(metaAccess.lookupJavaType(boolean.class)) && staticField.isVolatile()) {
+                            staticField.getType().equals(metaAccess.lookupJavaType(boolean.class)) &&
+                            (JavaVersionUtil.JAVA_SPEC > 25 || staticField.isVolatile())) {
                 return staticField;
             }
         }
-        throw GraalError.shouldNotReachHere("Field Throwable.jfrTracing not found. This field was added in JDK-22+24 and must be present. " +
+        throw GraalError.shouldNotReachHere("Field Throwable.jfrTracing not found. This field was added in JDK-22+24 (as volatile and later changed in JDK26 to not volatile) and must be present." +
                         "This either means this field was removed in which case this code needs to be adapted or the meta access lookup above failed which should never happen.");
     }
 
