@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,10 @@ import static jdk.graal.compiler.core.common.calc.FloatConvert.I2D;
 import static jdk.graal.compiler.core.common.calc.FloatConvert.I2F;
 import static jdk.graal.compiler.core.common.calc.FloatConvert.L2D;
 import static jdk.graal.compiler.core.common.calc.FloatConvert.L2F;
+import static jdk.graal.compiler.core.common.calc.FloatConvert.UI2D;
+import static jdk.graal.compiler.core.common.calc.FloatConvert.UI2F;
+import static jdk.graal.compiler.core.common.calc.FloatConvert.UL2D;
+import static jdk.graal.compiler.core.common.calc.FloatConvert.UL2F;
 import static jdk.vm.ci.code.CodeUtil.isPowerOf2;
 
 import java.lang.reflect.InvocationTargetException;
@@ -2617,6 +2621,90 @@ public final class IntegerStamp extends PrimitiveStamp {
                             assert stamp.getBits() == 64 : stamp;
                             double lowerBound = stamp.lowerBound();
                             double upperBound = stamp.upperBound();
+                            return StampFactory.forFloat(JavaKind.Double, lowerBound, upperBound, true);
+                        }
+                    },
+
+                    new ArithmeticOpTable.FloatConvertOp(UI2F) {
+
+                        @Override
+                        public Constant foldConstant(Constant c) {
+                            PrimitiveConstant value = (PrimitiveConstant) c;
+                            return JavaConstant.forFloat(NumUtil.unsignedToFloat(Integer.toUnsignedLong(value.asInt())));
+                        }
+
+                        @Override
+                        protected Stamp foldStampImpl(Stamp input) {
+                            if (input.isEmpty()) {
+                                return StampFactory.empty(JavaKind.Float);
+                            }
+                            IntegerStamp stamp = (IntegerStamp) input;
+                            assert stamp.getBits() == 32 : stamp;
+                            float lowerBound = NumUtil.unsignedToFloat(stamp.unsignedLowerBound());
+                            float upperBound = NumUtil.unsignedToFloat(stamp.unsignedUpperBound());
+                            return StampFactory.forFloat(JavaKind.Float, lowerBound, upperBound, true);
+                        }
+                    },
+
+                    new ArithmeticOpTable.FloatConvertOp(UL2F) {
+
+                        @Override
+                        public Constant foldConstant(Constant c) {
+                            PrimitiveConstant value = (PrimitiveConstant) c;
+                            return JavaConstant.forFloat(NumUtil.unsignedToFloat(value.asLong()));
+                        }
+
+                        @Override
+                        protected Stamp foldStampImpl(Stamp input) {
+                            if (input.isEmpty()) {
+                                return StampFactory.empty(JavaKind.Float);
+                            }
+                            IntegerStamp stamp = (IntegerStamp) input;
+                            assert stamp.getBits() == 64 : stamp;
+                            float lowerBound = NumUtil.unsignedToFloat(stamp.unsignedLowerBound());
+                            float upperBound = NumUtil.unsignedToFloat(stamp.unsignedUpperBound());
+                            return StampFactory.forFloat(JavaKind.Float, lowerBound, upperBound, true);
+                        }
+                    },
+
+                    new ArithmeticOpTable.FloatConvertOp(UI2D) {
+
+                        @Override
+                        public Constant foldConstant(Constant c) {
+                            PrimitiveConstant value = (PrimitiveConstant) c;
+                            return JavaConstant.forDouble(NumUtil.unsignedToDouble(Integer.toUnsignedLong(value.asInt())));
+                        }
+
+                        @Override
+                        protected Stamp foldStampImpl(Stamp input) {
+                            if (input.isEmpty()) {
+                                return StampFactory.empty(JavaKind.Double);
+                            }
+                            IntegerStamp stamp = (IntegerStamp) input;
+                            assert stamp.getBits() == 32 : stamp;
+                            double lowerBound = NumUtil.unsignedToDouble(stamp.unsignedLowerBound());
+                            double upperBound = NumUtil.unsignedToDouble(stamp.unsignedUpperBound());
+                            return StampFactory.forFloat(JavaKind.Double, lowerBound, upperBound, true);
+                        }
+                    },
+
+                    new ArithmeticOpTable.FloatConvertOp(UL2D) {
+
+                        @Override
+                        public Constant foldConstant(Constant c) {
+                            PrimitiveConstant value = (PrimitiveConstant) c;
+                            return JavaConstant.forDouble(NumUtil.unsignedToDouble(value.asLong()));
+                        }
+
+                        @Override
+                        protected Stamp foldStampImpl(Stamp input) {
+                            if (input.isEmpty()) {
+                                return StampFactory.empty(JavaKind.Double);
+                            }
+                            IntegerStamp stamp = (IntegerStamp) input;
+                            assert stamp.getBits() == 64 : stamp;
+                            double lowerBound = NumUtil.unsignedToDouble(stamp.unsignedLowerBound());
+                            double upperBound = NumUtil.unsignedToDouble(stamp.unsignedUpperBound());
                             return StampFactory.forFloat(JavaKind.Double, lowerBound, upperBound, true);
                         }
                     });

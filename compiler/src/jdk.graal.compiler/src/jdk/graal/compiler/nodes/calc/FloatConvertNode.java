@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -94,6 +94,7 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
         switch (getFloatConvert()) {
             case F2D:
             case I2D:
+            case UI2D:
                 return true;
             case I2F:
             case L2D:
