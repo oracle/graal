@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.phases;
 import static com.oracle.svm.core.SubstrateUtil.toUnboxedClass;
 import static jdk.graal.compiler.bytecode.Bytecodes.LDC2_W;
 
-import java.lang.annotation.Annotation;
 import java.lang.constant.ConstantDescs;
 import java.lang.invoke.LambdaConversionException;
 import java.lang.invoke.MethodHandles;
@@ -55,6 +54,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration;
 import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration.BootstrapMethodRecord;
 import com.oracle.svm.core.bootstrap.BootstrapMethodInfo;
@@ -178,15 +178,21 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
     public abstract static class SharedBytecodeParser extends BytecodeParser {
 
-        private static final Class<?> SCOPED_SUBSTRATE_ANNOTATION;
         private static final Executable SESSION_EXCEPTION_HANDLER_METHOD;
         private static final Class<?> MAPPED_MEMORY_UTILS_PROXY_CLASS;
         private static final Class<?> ABSTRACT_MEMORY_SEGMENT_IMPL_CLASS;
 
         static {
-            SCOPED_SUBSTRATE_ANNOTATION = ReflectionUtil.lookupClass("com.oracle.svm.core.foreign.SVMScoped");
-            Class<?> substrateForeignUtilClass = ReflectionUtil.lookupClass("com.oracle.svm.core.foreign.SubstrateForeignUtil");
-            SESSION_EXCEPTION_HANDLER_METHOD = ReflectionUtil.lookupMethod(substrateForeignUtilClass, "sessionExceptionHandler", MemorySessionImpl.class, Object.class, long.class);
+            /*
+             * Class 'SubstrateForeignUtil' is optional because it is contained in a different
+             * distribution which may not always be available.
+             */
+            Class<?> substrateForeignUtilClass = ReflectionUtil.lookupClass(true, "com.oracle.svm.core.foreign.SubstrateForeignUtil");
+            if (substrateForeignUtilClass != null) {
+                SESSION_EXCEPTION_HANDLER_METHOD = ReflectionUtil.lookupMethod(substrateForeignUtilClass, "sessionExceptionHandler", MemorySessionImpl.class, Object.class, long.class);
+            } else {
+                SESSION_EXCEPTION_HANDLER_METHOD = null;
+            }
             MAPPED_MEMORY_UTILS_PROXY_CLASS = ReflectionUtil.lookupClass("jdk.internal.access.foreign.MappedMemoryUtilsProxy");
             ABSTRACT_MEMORY_SEGMENT_IMPL_CLASS = ReflectionUtil.lookupClass("jdk.internal.foreign.AbstractMemorySegmentImpl");
         }
@@ -247,9 +253,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 }
             }
 
-            if (SCOPED_SUBSTRATE_ANNOTATION != null && SharedArenaSupport.SCOPED_ANNOTATION != null && graph.method() != null) {
+            if (graph.method() != null) {
                 try {
-                    if (AnnotationAccess.isAnnotationPresent(method, (Class<? extends Annotation>) SCOPED_SUBSTRATE_ANNOTATION) && SharedArenaSupport.isAvailable()) {
+                    if (AnnotationAccess.isAnnotationPresent(method, ForeignSupport.Scoped.class) && SharedArenaSupport.isAvailable()) {
                         // substituted, only add the scoped node
                         introduceScopeNodes();
                     } else if (AnnotationAccess.isAnnotationPresent(method, SharedArenaSupport.SCOPED_ANNOTATION) && SharedArenaSupport.isAvailable()) {
