@@ -625,16 +625,20 @@ public abstract class AArch64ASIMDAssembler {
         CMLT_ZERO(0b01010 << 12),
         ABS(0b01011 << 12),
         XTN(0b10010 << 12),
+        SQXTN(0b10100 << 12),
+        UQXTN(UBit | 0b10100 << 12),
         /* size 0x */
         FCVTN(0b10110 << 12),
         FCVTL(0b10111 << 12),
         SCVTF(0b11101 << 12),
+        UCVTF(UBit | 0b11101 << 12),
         /* size 1x */
         FCMGT_ZERO(0b01100 << 12),
         FCMEQ_ZERO(0b01101 << 12),
         FCMLT_ZERO(0b01110 << 12),
         FABS(0b01111 << 12),
         FCVTZS(0b11011 << 12),
+        FCVTZU(UBit | 0b11011 << 12),
         /* UBit 1, size xx */
         REV32(UBit | 0b00000 << 12),
         CMGE_ZERO(UBit | 0b01000 << 12),
@@ -1980,6 +1984,25 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * Floating-point convert to unsigned integer, rounding toward zero.<br>
+     *
+     * @param size register size.
+     * @param eSize source element size. Must be ElementSize.Word or ElementSize.DoubleWord.
+     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
+     *            performed on more than one element).
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void fcvtzuVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
+
+        twoRegMiscEncoding(ASIMDInstruction.FCVTZU, size, elemSize1X(eSize), dst, src);
+    }
+
+    /**
      * C7.2.97 floating point divide vector.<br>
      *
      * <code>for i in 0..n-1 do dst[i] = fp_div(src1[i], src2[i])</code>
@@ -2732,6 +2755,25 @@ public abstract class AArch64ASIMDAssembler {
         assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
         twoRegMiscEncoding(ASIMDInstruction.SCVTF, size, elemSize0X(eSize), dst, src);
+    }
+
+    /**
+     * Unsigned integer convert to floating-point.<br>
+     *
+     * @param size register size.
+     * @param eSize source element size. Must be ElementSize.Word or ElementSize.DoubleWord.
+     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
+     *            performed on more than one element).
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void ucvtfVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
+
+        twoRegMiscEncoding(ASIMDInstruction.UCVTF, size, elemSize0X(eSize), dst, src);
     }
 
     /**
@@ -4094,6 +4136,48 @@ public abstract class AArch64ASIMDAssembler {
         assert dstESize != ElementSize.DoubleWord : dstESize;
 
         twoRegMiscEncoding(ASIMDInstruction.XTN, true, elemSizeXX(dstESize), dst, src);
+    }
+
+    /**
+     * Signed saturating extract Narrow.<br>
+     * <p>
+     * From the manual: "This instruction reads each vector element from the source SIMD register,
+     * saturates each value to half the original width, places the result into a vector, and writes
+     * the vector to the destination SIMD register. All the values in this instruction are signed
+     * integer values."
+     *
+     * @param dstESize destination element size. Cannot be ElementSize.DoubleWord. The source
+     *            element size is twice this width.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void sqxtnVV(ElementSize dstESize, Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert dstESize != ElementSize.DoubleWord : dstESize;
+
+        twoRegMiscEncoding(ASIMDInstruction.SQXTN, false, elemSizeXX(dstESize), dst, src);
+    }
+
+    /**
+     * Unsigned saturating extract Narrow.<br>
+     * <p>
+     * From the manual: "This instruction reads each vector element from the source SIMD register,
+     * saturates each value to half the original width, places the result into a vector, and writes
+     * the vector to the destination SIMD register. All the values in this instruction are unsigned
+     * integer values."
+     *
+     * @param dstESize destination element size. Cannot be ElementSize.DoubleWord. The source
+     *            element size is twice this width.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void uqxtnVV(ElementSize dstESize, Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert dstESize != ElementSize.DoubleWord : dstESize;
+
+        twoRegMiscEncoding(ASIMDInstruction.UQXTN, false, elemSizeXX(dstESize), dst, src);
     }
 
     /**
