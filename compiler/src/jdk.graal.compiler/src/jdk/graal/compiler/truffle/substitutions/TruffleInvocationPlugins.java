@@ -36,6 +36,7 @@ import org.graalvm.word.LocationIdentity;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.StrideUtil;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
+import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -53,11 +54,13 @@ import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
+import jdk.graal.compiler.nodes.calc.FloatConvertNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.OptionalInlineOnlyInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.OptionalInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.OptionalLazySymbol;
@@ -95,6 +98,7 @@ public class TruffleInvocationPlugins {
         if (architecture instanceof AMD64 || architecture instanceof AArch64) {
             registerTStringPlugins(plugins, replacements, architecture);
             registerArrayUtilsPlugins(plugins, replacements);
+            registerExactMathPlugins(plugins, replacements);
         }
         registerFramePlugins(plugins, replacements);
         registerBytecodePlugins(plugins, replacements);
@@ -666,5 +670,45 @@ public class TruffleInvocationPlugins {
             b.addPush(JavaKind.Int, new ArrayIndexOfNode(constStride, variant, null, locationIdentity, array, offset, length, fromIndex, values));
         }
         return true;
+    }
+
+    public static void registerExactMathPlugins(InvocationPlugins plugins, Replacements replacements) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/ExactMath;"));
+        var r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.ExactMath", replacements);
+        var lowerer = replacements.getProviders().getLowerer();
+
+        for (JavaKind floatKind : new JavaKind[]{JavaKind.Float, JavaKind.Double}) {
+            for (JavaKind integerKind : new JavaKind[]{JavaKind.Int, JavaKind.Long}) {
+                r.registerConditional(lowerer.supportsUnsignedFloatConvert(), new OptionalInvocationPlugin(
+                                integerKind == JavaKind.Long ? "truncateToUnsignedLong" : "truncateToUnsignedInt",
+                                floatKind.toJavaClass()) {
+                    @Override
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x) {
+                        FloatConvert op = floatKind == JavaKind.Double
+                                        ? (integerKind == JavaKind.Long
+                                                        ? FloatConvert.D2UL
+                                                        : FloatConvert.D2UI)
+                                        : (integerKind == JavaKind.Long
+                                                        ? FloatConvert.F2UL
+                                                        : FloatConvert.F2UI);
+                        b.addPush(integerKind, FloatConvertNode.create(op, x, NodeView.DEFAULT));
+                        return true;
+                    }
+                });
+            }
+
+            r.registerConditional(lowerer.supportsUnsignedFloatConvert(), new OptionalInvocationPlugin(
+                            floatKind == JavaKind.Double ? "unsignedToDouble" : "unsignedToFloat",
+                            long.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x) {
+                    FloatConvert op = floatKind == JavaKind.Double
+                                    ? FloatConvert.UL2D
+                                    : FloatConvert.UL2F;
+                    b.addPush(floatKind, FloatConvertNode.create(op, x, NodeView.DEFAULT));
+                    return true;
+                }
+            });
+        }
     }
 }
