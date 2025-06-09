@@ -92,6 +92,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
                     "native.encoding",
                     "stdout.encoding",
                     "stderr.encoding",
+                    "stdin.encoding",
     };
 
     /** System properties that are computed at run time on first access. */
