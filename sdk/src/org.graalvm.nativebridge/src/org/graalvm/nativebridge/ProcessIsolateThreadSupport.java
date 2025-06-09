@@ -419,6 +419,8 @@ final class ProcessIsolateThreadSupport {
          */
         @Override
         public void close() throws IOException {
+            selector.close();
+            channel.configureBlocking(true);
             channel.close();
         }
 
@@ -636,9 +638,8 @@ final class ProcessIsolateThreadSupport {
 
     private Runnable createDispatchRunnable(SocketChannel peerThreadChannel) {
         return () -> {
-            try (SocketChannel s = peerThreadChannel) {
-                Thread currentThread = Thread.currentThread();
-                ThreadChannel threadChannel = new ThreadChannel(this, s, currentThread);
+            Thread currentThread = Thread.currentThread();
+            try (ThreadChannel threadChannel = new ThreadChannel(this, peerThreadChannel, currentThread)) {
                 workerThreads.add(threadChannel);
                 try {
                     dispatchSupport.onWorkerThreadStarted(currentThread, threadChannel);
