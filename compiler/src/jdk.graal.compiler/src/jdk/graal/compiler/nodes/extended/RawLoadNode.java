@@ -55,6 +55,7 @@ import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
+import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -176,7 +177,26 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
                                 return;
                             }
                         }
-                        tool.replaceWith(entry);
+                        JavaKind kind = accessKind();
+                        ValueNode replacement = tool.getAlias(entry);
+
+                        if (kind.getStackKind() == JavaKind.Int) {
+                            /*
+                             * Get the value as it would be actually stored in memory or in other
+                             * words only the bytes we are interested in. The type is defined by the
+                             * access kind, e.g. for the access kind byte and the value 0xF0F0F0F0
+                             * we actually want to have 0xF0.
+                             */
+                            ValueNode narrowed = DefaultJavaLoweringProvider.implicitPrimitiveStoreConvert(kind, replacement);
+                            /*
+                             * Expand the value to 32 bits again and perform boolean coercion if
+                             * necessary.
+                             */
+                            replacement = DefaultJavaLoweringProvider.implicitUnsafePrimitiveLoadConvert(kind, narrowed);
+                        }
+
+                        tool.ensureAdded(replacement);
+                        tool.replaceWith(replacement);
                     }
                 }
             }

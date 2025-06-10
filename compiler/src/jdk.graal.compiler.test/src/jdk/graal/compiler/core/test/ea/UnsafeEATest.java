@@ -26,6 +26,9 @@ package jdk.graal.compiler.core.test.ea;
 
 import java.nio.ByteBuffer;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
@@ -37,9 +40,6 @@ import jdk.graal.compiler.nodes.extended.RawLoadNode;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
 import jdk.graal.compiler.nodes.extended.UnsafeAccessNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
-import org.junit.Assert;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -346,6 +346,68 @@ public class UnsafeEATest extends EATestBase {
             return x;
         }
         return x;
+    }
+
+    static final int VALUE = 0xF0F0F0F0;
+
+    public static boolean getBoolean() {
+        TestClassInt data = new TestClassInt(VALUE, VALUE);
+        return UNSAFE.getBoolean(data, TestClassInt.fieldOffset1);
+    }
+
+    public static long getByte() {
+        TestClassInt data = new TestClassInt(VALUE, VALUE);
+        return UNSAFE.getByte(data, TestClassInt.fieldOffset1);
+    }
+
+    public static long getShort() {
+        TestClassInt data = new TestClassInt(VALUE, VALUE);
+        return UNSAFE.getShort(data, TestClassInt.fieldOffset1);
+    }
+
+    public static long getChar() {
+        TestClassInt data = new TestClassInt(VALUE, VALUE);
+        return UNSAFE.getShort(data, TestClassInt.fieldOffset1);
+    }
+
+    @Test
+    public void testUnsafeLoad() {
+        test("getBoolean");
+        test("getByte");
+        test("getShort");
+        test("getChar");
+    }
+
+    public static long setBoolean() {
+        TestClassInt data = new TestClassInt(VALUE, VALUE);
+        UNSAFE.putBoolean(data, TestClassInt.fieldOffset1, true);
+        return data.getFirstField();
+    }
+
+    public static long setByte() {
+        TestClassInt data = new TestClassInt(VALUE, VALUE);
+        UNSAFE.putByte(data, TestClassInt.fieldOffset1, (byte) VALUE);
+        return data.getFirstField();
+    }
+
+    public static long setShort() {
+        TestClassInt data = new TestClassInt(VALUE, VALUE);
+        UNSAFE.putShort(data, TestClassInt.fieldOffset1, (short) VALUE);
+        return data.getFirstField();
+    }
+
+    public static long setChar() {
+        TestClassInt data = new TestClassInt(VALUE, VALUE);
+        UNSAFE.putChar(data, TestClassInt.fieldOffset1, (char) VALUE);
+        return data.getFirstField();
+    }
+
+    @Test
+    public void testUnsafeStore() {
+        test("setBoolean");
+        test("setByte");
+        test("setShort");
+        test("setChar");
     }
 
 }
