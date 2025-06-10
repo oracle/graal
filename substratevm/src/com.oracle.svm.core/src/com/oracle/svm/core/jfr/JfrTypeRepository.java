@@ -69,7 +69,7 @@ public class JfrTypeRepository implements JfrRepository {
     private final JfrClassInfoTable epochTypeData0;
     private final JfrClassInfoTable epochTypeData1;
 
-    private final UninterruptibleUtils.CharReplacer dotWithSlash = new ReplaceDotWithSlash();
+    private final UninterruptibleUtils.CharReplacer dotWithSlash;
     private long currentPackageId = 0;
     private long currentModuleId = 0;
     private long currentClassLoaderId = 0;
@@ -80,13 +80,17 @@ public class JfrTypeRepository implements JfrRepository {
         flushedPackages = new JfrPackageInfoTable();
         flushedModules = new JfrModuleInfoTable();
         flushedClassLoaders = new JfrClassLoaderInfoTable();
+
         typeInfo = new TypeInfo();
+        dotWithSlash = new ReplaceDotWithSlash();
+
         epochTypeData0 = new JfrClassInfoTable();
         epochTypeData1 = new JfrClassInfoTable();
     }
 
     public void teardown() {
         clearEpochData();
+        getEpochData(false).clear();
         typeInfo.teardown();
     }
 
@@ -98,8 +102,15 @@ public class JfrTypeRepository implements JfrRepository {
 
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getClassId(Class<?> clazz) {
-        addClass(clazz);
-        /* Tagging the traceID epoch bits is not required for this class to serialize types. But we must still do it to support JVM#getTypeId(Class)*/
+        JfrClassInfoTable classInfoTable = getEpochData(false);
+        ClassInfoRaw classInfoRaw = StackValue.get(ClassInfoRaw.class);
+        classInfoRaw.setId(JfrTraceId.getTraceId(clazz));
+        classInfoRaw.setHash(getHash(clazz.getName()));
+        classInfoRaw.setName(clazz.getName());
+        classInfoRaw.setInstance(clazz);
+        classInfoTable.putIfAbsent(classInfoRaw);
+
+        /* Tagging the traceID epoch bits is not actually required for this class to serialize types.*/
         return JfrTraceId.load(clazz);
     }
 
@@ -122,27 +133,16 @@ public class JfrTypeRepository implements JfrRepository {
         return count;
     }
 
-    /** Called upon event emission. */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public void addClass(Class<?> clazz) {
-        JfrClassInfoTable classInfoTable = getEpochData(false);
-        ClassInfoRaw classInfoRaw = StackValue.get(ClassInfoRaw.class);
-        classInfoRaw.setId(JfrTraceId.getTraceId(clazz));
-        classInfoRaw.setHash(getHash(clazz.getName()));
-        classInfoRaw.setName(clazz.getName());
-        classInfoRaw.setInstance(clazz);
-        classInfoTable.putIfAbsent(classInfoRaw);
-    }
-
     /**
      * Visit all used classes, and collect their packages, modules, classloaders and possibly
      * referenced classes.
      *
      * This method does not need to be marked uninterruptible since the epoch cannot change while the chunkwriter
      * lock is held.
-     * Unlike other JFR repositories, locking is not needed to protect a data buffer. Writes to the JfrClassInfoTable
-     * and the read here are allowed to race. There is no risk of separating events from constant data due to
-     * the write order (constants before events during emission, and events before constants during flush).
+     * Unlike other JFR repositories, locking is not needed to protect a data buffer. Similar to other constant repositories,
+     * writes/reads to the current epochData are allowed to race at flushpoints.
+     * There is no risk of separating events from constant data due to the write order
+     * (constants before events during emission, and events before constants during flush).
      */
     private void collectTypeInfo(boolean flushpoint) {
         JfrClassInfoTable classInfoTable = getEpochData(!flushpoint);
@@ -206,7 +206,7 @@ public class JfrTypeRepository implements JfrRepository {
         writer.writeCompressedLong(JfrType.Class.getId());
         writer.writeCompressedInt(size);
 
-        // *** we can't use visitor pattern, but maybe there's a better way than duplicating this over and over again.
+        //  Nested loops since the visitor pattern may allocate.
         for (int i = 0; i < table.length; i++) {
             ClassInfoRaw entry = table[i];
             while (entry.isNonNull()) {
@@ -361,8 +361,8 @@ public class JfrTypeRepository implements JfrRepository {
         return typeInfo.classes.contains(classInfoRaw) || flushedClasses.contains(classInfoRaw);
     }
 
+    /** We cannot directly call getPackage() or getPackageName() since that may allocate. */
     private boolean addPackage(TypeInfo typeInfo, Class<?> clazz) {
-        // *** if we've made it this far, we know the package is not null. Although the name may be empty
         boolean hasModule = clazz.getModule() != null;
         String moduleName = hasModule ? clazz.getModule().getName() : null;
 
@@ -371,7 +371,7 @@ public class JfrTypeRepository implements JfrRepository {
         setPackageNameAndLength(clazz, packageInfoRaw);
 
         /* The empty/null package represented by "" is always traced with id 0.
-        The id 0 is reserved and  does not need to be serialized. */
+        The id 0 is reserved and does not need to be serialized. */
         if (packageInfoRaw.getNameLength().equal(0)) {
             return false;
         }
@@ -446,19 +446,21 @@ public class JfrTypeRepository implements JfrRepository {
         } else {
             classLoaderInfoRaw.setName(classLoader.getName());
         }
-        classLoaderInfoRaw.setHash(getHash(classLoaderInfoRaw.getName()));
 
+        classLoaderInfoRaw.setHash(getHash(classLoaderInfoRaw.getName()));
         if (isClassLoaderVisited(typeInfo, classLoaderInfoRaw)) {
             return false;
         }
-        if (classLoader != null) {
-            classLoaderInfoRaw.setId(++currentClassLoaderId);
-            classLoaderInfoRaw.setClassTraceId(JfrTraceId.getTraceId(classLoader.getClass()));
-        } else {
+
+        if (classLoader == null) {
             // Bootstrap loader has reserved ID of 0
             classLoaderInfoRaw.setId(0);
             classLoaderInfoRaw.setClassTraceId(0);
+        } else {
+            classLoaderInfoRaw.setId(++currentClassLoaderId);
+            classLoaderInfoRaw.setClassTraceId(JfrTraceId.getTraceId(classLoader.getClass()));
         }
+
         typeInfo.classLoaders.putNew(classLoaderInfoRaw);
         return true;
     }
@@ -512,8 +514,6 @@ public class JfrTypeRepository implements JfrRepository {
         }
     }
 
-    // *** we shouldn't preemtively compute ALL package names, only the ones used in JFR events. This current approach is ok, but since we don't stash, we must recompute every time.
-    // *** Maybe its not a big deal since we call getPackage() on every class we visit anyway. And we only do this for classes that are in an event.
     /** This method sets the package name and length. packageInfoRaw may be on the stack or native memory.*/
     private void setPackageNameAndLength(Class<?> clazz, PackageInfoRaw packageInfoRaw) {
         DynamicHub hub = DynamicHub.fromClass(clazz);
@@ -550,7 +550,8 @@ public class JfrTypeRepository implements JfrRepository {
 
         assert buffer.add(dot).belowOrEqual(bufferEnd);
 
-        Pointer packageNameEnd = UninterruptibleUtils.String.toModifiedUTF8(str, dot, buffer, bufferEnd, false, dotWithSlash); // *** we need to replace dots w slashes in here now.
+        // Since we're serializing now, we must do replacements here, instead of the symbol repository.
+        Pointer packageNameEnd = UninterruptibleUtils.String.toModifiedUTF8(str, dot, buffer, bufferEnd, false, dotWithSlash);
         packageInfoRaw.setModifiedUTF8Name(buffer);
 
         UnsignedWord packageNameLength = packageNameEnd.subtract(buffer); // end - start
@@ -639,7 +640,7 @@ public class JfrTypeRepository implements JfrRepository {
         @RawField
         String getClassLoaderName();
         @RawField
-        void setHasClassLoader(boolean value); // *** name may be empty or null, but CL may be non null
+        void setHasClassLoader(boolean value); // Needed because CL name may be empty or null, even if CL is non-null
         @RawField
         boolean getHasClassLoader();
     }
@@ -722,7 +723,7 @@ public class JfrTypeRepository implements JfrRepository {
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected boolean isEqual(UninterruptibleEntry v0, UninterruptibleEntry v1) {
-            // *** We can't compare IDs bc that's something we assign after we do the check.
+            // IDs cannot be compared since they are only assigned after checking the table.
             PackageInfoRaw entry1 = (PackageInfoRaw) v0;
             PackageInfoRaw entry2 = (PackageInfoRaw) v1;
             return entry1.getNameLength().equal(entry2.getNameLength()) && LibC.memcmp(entry1.getModifiedUTF8Name(), entry2.getModifiedUTF8Name(), entry1.getNameLength()) == 0;
@@ -732,7 +733,7 @@ public class JfrTypeRepository implements JfrRepository {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected void free(UninterruptibleEntry entry) {
             PackageInfoRaw packageInfoRaw = (PackageInfoRaw) entry;
-            /* The base method will free only the entry itself, not th utf8 data. */
+            /* The base method will free only the entry itself, not the utf8 data. */
             NullableNativeMemory.free(packageInfoRaw.getModifiedUTF8Name());
             packageInfoRaw.setModifiedUTF8Name(WordFactory.nullPointer());
             super.free(entry);
@@ -746,11 +747,11 @@ public class JfrTypeRepository implements JfrRepository {
                     if (!contains(sourceInfo)) {
                         // Put if not already there.
                         PackageInfoRaw destinationInfo = (PackageInfoRaw) putNew(sourceInfo);
-                        // allocate a new buffer
+                        // allocate a new buffer.
                         PointerBase newUtf8Name = NullableNativeMemory.malloc(sourceInfo.getNameLength(), NmtCategory.JFR);
-                        // set the buffer ptr
+                        // set the buffer ptr.
                         destinationInfo.setModifiedUTF8Name(newUtf8Name);
-                        // Copy source buffer contents over to new buffer
+                        // Copy source buffer contents over to new buffer.
                         if (newUtf8Name.isNonNull()) {
                             UnmanagedMemoryUtil.copy((Pointer) sourceInfo.getModifiedUTF8Name(), (Pointer) newUtf8Name, sourceInfo.getNameLength());
                         }

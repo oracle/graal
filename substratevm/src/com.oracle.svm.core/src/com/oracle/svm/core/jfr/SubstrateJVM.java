@@ -744,6 +744,9 @@ public class SubstrateJVM {
     /** See JfrRecorderService::vm_error_rotation */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used on OOME for emergency dumps")
     public void vmErrorRotation() {
+        if (!recording) {
+            return;
+        }
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
             boolean existingFile = chunkWriter.hasOpenFile();
