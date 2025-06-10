@@ -548,10 +548,10 @@ public class Vector128Ops {
 
     private static ByteVector f32x4_convert_i32x4_u(ByteVector xBytes) {
         IntVector x = xBytes.reinterpretAsInts();
-        Vector<Long> xUnsignedLow = x.convert(VectorOperators.ZERO_EXTEND_I2L, 0);
-        Vector<Long> xUnsignedHigh = x.convert(VectorOperators.ZERO_EXTEND_I2L, 1);
-        Vector<Float> resultLow = xUnsignedLow.convert(VectorOperators.L2F, 0);
-        Vector<Float> resultHigh = xUnsignedHigh.convert(VectorOperators.L2F, -1);
+        LongVector xUnsignedLow = castLong128(x.convert(VectorOperators.ZERO_EXTEND_I2L, 0));
+        LongVector xUnsignedHigh = castLong128(x.convert(VectorOperators.ZERO_EXTEND_I2L, 1));
+        FloatVector resultLow = castFloat128(xUnsignedLow.convert(VectorOperators.L2F, 0));
+        FloatVector resultHigh = castFloat128(xUnsignedHigh.convert(VectorOperators.L2F, -1));
         Vector<Float> result = resultLow.lanewise(VectorOperators.FIRST_NONZERO, resultHigh);
         return result.reinterpretAsBytes();
     }
