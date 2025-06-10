@@ -108,7 +108,7 @@ public abstract class LLVMSymbol {
 
     /**
      * Get the unique module ID for the symbol. The ID is assigned during parsing. The module ID is
-     * unqiue per bitcode file. Symbols that are not created from parsing or that are alias have the
+     * unique per bitcode file. Symbols that are not created from parsing or that are alias have the
      * value of null.
      */
     public final BitcodeID getBitcodeIDIllegalOk() {
@@ -117,7 +117,7 @@ public abstract class LLVMSymbol {
 
     /**
      * Get the unique module ID for the symbol. The ID is assigned during parsing. The module ID is
-     * unqiue per bitcode file. Symbols that are not created from parsing or that are alias throw an
+     * unique per bitcode file. Symbols that are not created from parsing or that are alias throw an
      * {@link LLVMIllegalSymbolIndexException}.
      *
      * @param exception a {@link BranchProfile} for the exception case
@@ -132,7 +132,7 @@ public abstract class LLVMSymbol {
 
     /**
      * Get the unique module ID for the symbol. The ID is assigned during parsing. The module ID is
-     * unqiue per bitcode file. Symbols that are not created from parsing or that are alias throw an
+     * unique per bitcode file. Symbols that are not created from parsing or that are alias throw an
      * {@link LLVMIllegalSymbolIndexException}.
      *
      * This function does not profile the exception case, and can not be used from compiled code.

@@ -539,7 +539,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                      * is virtualized because it has the ensure virtualized flag set.
                      *
                      * In this case the algorithm would again become exponential in runtime over the
-                     * loop nest depth, thus we throw a non-permanent bailout excpetion.
+                     * loop nest depth, thus we throw a non-permanent bailout exception.
                      */
                     throw new RetryableBailoutException(
                                     "Materializing an ensureVirtualized marked allocation inside a very deep loop nest, this may lead to exponential " + "runtime of the partial escape analysis.");

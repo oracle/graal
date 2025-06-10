@@ -557,7 +557,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
         /**
          * Equivalence strategy for global value numbering.
          *
-         * Determine if two nodes are equal with respect to global value numbering. Tihs means their
+         * Determine if two nodes are equal with respect to global value numbering. This means their
          * inputs are equal, their node classes are equal and their data fields.
          */
 
