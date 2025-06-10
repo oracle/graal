@@ -300,7 +300,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     static boolean isStaticMethodPresent(String className, String methodName, Collection<Class<?>> parameterTypes) {
         try {
             Class<?> clazz = Class.forName(className);
-            Method method = ReflectionUtil.lookupMethod(clazz, methodName, parameterTypes.toArray(new Class<?>[0]));
+            Method method = ReflectionUtil.lookupMethod(true, clazz, methodName, parameterTypes.toArray(new Class<?>[0]));
             return method != null;
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere(e);

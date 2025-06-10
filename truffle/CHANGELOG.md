@@ -28,6 +28,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-64594 Bytecode DSL: Improved builder performance. Creating bytecode nodes with Bytecode DSL is now 40% faster and requires 5 times less temporary memory.
 * GR-64594 Bytecode DSL: Builder instances now have a `toString()` implementation that prints current operations as well as the instructions that have been already emitted. This should make it easier to debug problems with builder usage.
 * GR-64594 Bytecode DSL: Added `@GenerateBytecode(..., additionalAssertions=true)` to enable additional assertions for Bytecode DSL implementation bugs. This feature can also be enabled with `-A.truffle.dsl.AdditionalAssertions=true` at Java source compile time. These assertions are intentionally disabled by default, as they can lead to slow-downs even when assertions are disabled.
+* GR-65428 JDK specific optimizations when building Truffle languages with native-image are now enabled by default, even if the truffle-enterprise.jar is not provided on the class or module-path.
+* GR-38296 Removed the deprecated `BytecodeOSRNode.copyIntoOSRFrame` hook that does not declare a `targetMetadata` parameter.
+
 
 ## Version 24.2.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.

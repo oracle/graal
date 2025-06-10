@@ -1166,8 +1166,6 @@ meth public static boolean pollOSRBackEdge(com.oracle.truffle.api.nodes.Bytecode
 meth public static boolean pollOSRBackEdge(com.oracle.truffle.api.nodes.BytecodeOSRNode,int)
 meth public static java.lang.Object tryOSR(com.oracle.truffle.api.nodes.BytecodeOSRNode,int,java.lang.Object,java.lang.Runnable,com.oracle.truffle.api.frame.VirtualFrame)
 meth public static java.lang.Object tryOSR(com.oracle.truffle.api.nodes.BytecodeOSRNode,long,java.lang.Object,java.lang.Runnable,com.oracle.truffle.api.frame.VirtualFrame)
-meth public void copyIntoOSRFrame(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.frame.VirtualFrame,int)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 meth public void copyIntoOSRFrame(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.frame.VirtualFrame,int,java.lang.Object)
 meth public void copyIntoOSRFrame(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.frame.VirtualFrame,long,java.lang.Object)
 meth public void prepareOSR(int)
