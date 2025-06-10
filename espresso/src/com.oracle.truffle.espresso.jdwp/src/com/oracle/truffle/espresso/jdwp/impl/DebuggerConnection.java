@@ -115,6 +115,7 @@ public final class DebuggerConnection implements Commands {
 
     private static class JDWPReceiver implements Runnable {
 
+        private static final Object NOT_ENTERED_MARKER = new Object();
         private DebuggerController.SetupState setupState;
         private final DebuggerController controller;
         private RequestedJDWPEvents requestedJDWPEvents;
@@ -199,11 +200,17 @@ public final class DebuggerConnection implements Commands {
                 setupState = null;
                 latch.countDown();
             }
-            // Now, begin processing packets when they start to flow from the debugger
+            // Now, begin processing packets when they start to flow from the debugger.
+            // Make sure this thread is entered in the context
             try {
                 while (!Thread.currentThread().isInterrupted() && !controller.isClosing()) {
+                    Object previous = NOT_ENTERED_MARKER;
                     try {
-                        processPacket(Packet.fromByteArray(debuggerConnection.connection.readPacket()));
+                        // get the packet outside the Truffle context, because it's a blocking IO
+                        // operation
+                        Packet packet = Packet.fromByteArray(debuggerConnection.connection.readPacket());
+                        previous = controller.enterTruffleContext();
+                        processPacket(packet);
                     } catch (IOException e) {
                         if (!debuggerConnection.isOpen()) {
                             // when the socket is closed, we're done
@@ -214,6 +221,10 @@ public final class DebuggerConnection implements Commands {
                         }
                     } catch (ConnectionClosedException e) {
                         break;
+                    } finally {
+                        if (previous != NOT_ENTERED_MARKER) {
+                            controller.leaveTruffleContext(previous);
+                        }
                     }
                 }
             } finally {
