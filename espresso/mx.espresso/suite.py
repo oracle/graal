@@ -915,8 +915,6 @@ suite = {
             # - sulong:SULONG_CORE
             # - sulong:SULONG_NATIVE
             # - sulong:SULONG_NFI
-            # - sulong-managed:SULONG_ENTERPRISE
-            # - sulong-managed:SULONG_ENTERPRISE_NATIVE
             # - truffle-enterprise:TRUFFLE_ENTERPRISE
             "dynamicDistDependencies": "jvm_standalone_deps",
             "maven": False,
