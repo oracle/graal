@@ -764,15 +764,15 @@ public final class DebugContext implements AutoCloseable {
     }
 
     public boolean isCountEnabled() {
-        return currentScope != null && currentScope.isCountEnabled();
+        return currentScope != null && currentScope.isCountEnabled() || immutable.unscopedCounters != null;
     }
 
     public boolean isTimeEnabled() {
-        return currentScope != null && currentScope.isTimeEnabled();
+        return currentScope != null && currentScope.isTimeEnabled() || immutable.unscopedTimers != null;
     }
 
     public boolean isMemUseTrackingEnabled() {
-        return currentScope != null && currentScope.isMemUseTrackingEnabled();
+        return currentScope != null && currentScope.isMemUseTrackingEnabled() || immutable.unscopedMemUseTrackers != null;
     }
 
     public boolean isDumpEnabledForMethod() {

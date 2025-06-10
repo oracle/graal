@@ -344,7 +344,7 @@ public class DebugContextTest {
         map.put(DebugOptions.Count, "");
         OptionValues options = new OptionValues(map);
         DebugContext debug = new Builder(options).build();
-        try (Scope s1 = debug.scope("Scope")) {
+        try (Scope _ = debug.scope("Scope")) {
             Assert.assertTrue(debug.isCountEnabled());
         }
     }
@@ -355,7 +355,7 @@ public class DebugContextTest {
         map.put(DebugOptions.Counters, "");
         OptionValues options = new OptionValues(map);
         DebugContext debug = new Builder(options).build();
-        try (Scope s1 = debug.scope("Scope")) {
+        try (Scope _ = debug.scope("Scope")) {
             Assert.assertTrue(debug.isCountEnabled());
         }
     }
