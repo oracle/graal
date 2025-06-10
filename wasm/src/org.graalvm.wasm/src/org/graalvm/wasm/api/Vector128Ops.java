@@ -542,7 +542,7 @@ public class Vector128Ops {
         Vector<Double> xHigh = x.convert(VectorOperators.F2D, 1);
         Vector<Integer> resultLow = truncSatU32(xLow).convert(VectorOperators.L2I, 0);
         Vector<Integer> resultHigh = truncSatU32(xHigh).convert(VectorOperators.L2I, -1);
-        Vector<Integer> result = resultLow.lanewise(VectorOperators.FIRST_NONZERO, resultHigh);
+        Vector<Integer> result = firstNonzero(resultLow, resultHigh);
         return result.reinterpretAsBytes();
     }
 
@@ -552,7 +552,7 @@ public class Vector128Ops {
         LongVector xUnsignedHigh = castLong128(x.convert(VectorOperators.ZERO_EXTEND_I2L, 1));
         FloatVector resultLow = castFloat128(xUnsignedLow.convert(VectorOperators.L2F, 0));
         FloatVector resultHigh = castFloat128(xUnsignedHigh.convert(VectorOperators.L2F, -1));
-        Vector<Float> result = resultLow.lanewise(VectorOperators.FIRST_NONZERO, resultHigh);
+        Vector<Float> result = firstNonzero(resultLow, resultHigh);
         return result.reinterpretAsBytes();
     }
 
@@ -616,7 +616,7 @@ public class Vector128Ops {
         Vector<E> ySat = sat(y, min, max);
         Vector<F> resultLow = xSat.convert(conv, 0);
         Vector<F> resultHigh = ySat.convert(conv, -1);
-        Vector<F> result = resultLow.lanewise(VectorOperators.FIRST_NONZERO, resultHigh);
+        Vector<F> result = firstNonzero(resultLow, resultHigh);
         return result.reinterpretAsBytes();
     }
 
@@ -822,7 +822,7 @@ public class Vector128Ops {
         Vector<F> yHigh = y.convert(upcast, 1);
         Vector<E> resultLow = op.apply(xLow, yLow).convert(downcast, 0);
         Vector<E> resultHigh = op.apply(xHigh, yHigh).convert(downcast, -1);
-        Vector<E> result = resultLow.lanewise(VectorOperators.FIRST_NONZERO, resultHigh);
+        Vector<E> result = firstNonzero(resultLow, resultHigh);
         return result.reinterpretAsBytes();
     }
 
@@ -841,6 +841,13 @@ public class Vector128Ops {
 
     private static <E> VectorMask<E> odds(Shape<E> shape) {
         return VectorMask.fromArray(shape.species(), ALTERNATING_BITS, 1);
+    }
+
+    private static <E> Vector<E> firstNonzero(Vector<E> x, Vector<E> y) {
+        // Use this definition instead of the FIRST_NONZERO operators, because the FIRST_NONZERO
+        // operator is not compatible with native image
+        VectorMask<?> mask = x.viewAsIntegralLanes().compare(VectorOperators.EQ, 0);
+        return x.blend(y, mask.cast(x.species()));
     }
 
     public static ByteVector fromArray(byte[] bytes) {
