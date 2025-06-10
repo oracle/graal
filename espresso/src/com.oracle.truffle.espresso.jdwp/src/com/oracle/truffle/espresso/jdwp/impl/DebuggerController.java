@@ -706,17 +706,13 @@ public final class DebuggerController implements ContextsListener {
     }
 
     public Object enterTruffleContext() {
-        if (truffleContext != null) {
-            return truffleContext.enter(null);
-        }
-        return null;
+        assert truffleContext != null;
+        return truffleContext.enter(null);
     }
 
     public void leaveTruffleContext(Object previous) {
-        if (truffleContext != null) {
-            // pass null as previous since we know the jdwp thread only ever enters one context
-            truffleContext.leave(null, previous);
-        }
+        assert truffleContext != null;
+        truffleContext.leave(null, previous);
     }
 
     @Override
