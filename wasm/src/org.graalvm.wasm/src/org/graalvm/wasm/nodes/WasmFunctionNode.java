@@ -118,25 +118,6 @@ import com.oracle.truffle.api.nodes.Node;
  * instrument gets notified that a certain line in the source code was reached.
  */
 public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
-    private static final float MIN_FLOAT_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
-    private static final float MAX_FLOAT_TRUNCATABLE_TO_INT = 2147483520f;
-    private static final float MIN_FLOAT_TRUNCATABLE_TO_U_INT = -0.99999994f;
-    private static final float MAX_FLOAT_TRUNCATABLE_TO_U_INT = 4294967040f;
-
-    private static final double MIN_DOUBLE_TRUNCATABLE_TO_INT = -2147483648.9999997;
-    private static final double MAX_DOUBLE_TRUNCATABLE_TO_INT = 2147483647.9999998;
-    private static final double MIN_DOUBLE_TRUNCATABLE_TO_U_INT = -0.9999999999999999;
-    private static final double MAX_DOUBLE_TRUNCATABLE_TO_U_INT = 4294967295.9999995;
-
-    private static final float MIN_FLOAT_TRUNCATABLE_TO_LONG = Long.MIN_VALUE;
-    private static final float MAX_FLOAT_TRUNCATABLE_TO_LONG = 9223371487098961900.0f;
-    private static final float MIN_FLOAT_TRUNCATABLE_TO_U_LONG = MIN_FLOAT_TRUNCATABLE_TO_U_INT;
-    private static final float MAX_FLOAT_TRUNCATABLE_TO_U_LONG = 18446742974197924000.0f;
-
-    private static final double MIN_DOUBLE_TRUNCATABLE_TO_LONG = Long.MIN_VALUE;
-    private static final double MAX_DOUBLE_TRUNCATABLE_TO_LONG = 9223372036854774800.0;
-    private static final double MIN_DOUBLE_TRUNCATABLE_TO_U_LONG = MIN_DOUBLE_TRUNCATABLE_TO_U_INT;
-    private static final double MAX_DOUBLE_TRUNCATABLE_TO_U_LONG = 18446744073709550000.0;
 
     private static final int REPORT_LOOP_STRIDE = 1 << 8;
 
@@ -4095,55 +4076,67 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         pushInt(frame, stackPointer - 1, result);
     }
 
+    private WasmException trunc_f32_trap(float x) {
+        if (Float.isNaN(x)) {
+            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT, this);
+        } else {
+            throw WasmException.create(Failure.INT_OVERFLOW, this);
+        }
+    }
+
+    private WasmException trunc_f64_trap(double x) {
+        if (Double.isNaN(x)) {
+            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT, this);
+        } else {
+            throw WasmException.create(Failure.INT_OVERFLOW, this);
+        }
+    }
+
     private void i32_trunc_f32_s(VirtualFrame frame, int stackPointer) {
         final float x = popFloat(frame, stackPointer - 1);
-        if (Float.isNaN(x)) {
+        final int result;
+        if (x >= -0x1p31f && x < 0x1p31f) {
+            result = (int) x;
+        } else {
             enterErrorBranch();
-            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
-        } else if (x < MIN_FLOAT_TRUNCATABLE_TO_INT || x > MAX_FLOAT_TRUNCATABLE_TO_INT) {
-            enterErrorBranch();
-            throw WasmException.create(Failure.INT_OVERFLOW);
+            throw trunc_f32_trap(x);
         }
-        final int result = (int) x;
         pushInt(frame, stackPointer - 1, result);
     }
 
     private void i32_trunc_f32_u(VirtualFrame frame, int stackPointer) {
         final float x = popFloat(frame, stackPointer - 1);
-        if (Float.isNaN(x)) {
+        final int result;
+        if (x > -1.0f && x < 0x1p32f) {
+            result = ExactMath.truncateToUnsignedInt(x);
+        } else {
             enterErrorBranch();
-            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
-        } else if (x < MIN_FLOAT_TRUNCATABLE_TO_U_INT || x > MAX_FLOAT_TRUNCATABLE_TO_U_INT) {
-            enterErrorBranch();
-            throw WasmException.create(Failure.INT_OVERFLOW);
+            throw trunc_f32_trap(x);
         }
-        final int result = ExactMath.truncateToUnsignedInt(x);
         pushInt(frame, stackPointer - 1, result);
     }
 
     private void i32_trunc_f64_s(VirtualFrame frame, int stackPointer) {
         final double x = popDouble(frame, stackPointer - 1);
-        if (Double.isNaN(x)) {
+        final int result;
+        if (x > -0x1.00000002p31 && x < 0x1p31) { // sic!
+            result = (int) x;
+        } else {
             enterErrorBranch();
-            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
-        } else if (x < MIN_DOUBLE_TRUNCATABLE_TO_INT || x > MAX_DOUBLE_TRUNCATABLE_TO_INT) {
-            enterErrorBranch();
-            throw WasmException.create(Failure.INT_OVERFLOW);
+            throw trunc_f64_trap(x);
         }
-        final int result = (int) x;
         pushInt(frame, stackPointer - 1, result);
     }
 
     private void i32_trunc_f64_u(VirtualFrame frame, int stackPointer) {
         final double x = popDouble(frame, stackPointer - 1);
-        if (Double.isNaN(x)) {
+        final int result;
+        if (x > -1.0 && x < 0x1p32) {
+            result = ExactMath.truncateToUnsignedInt(x);
+        } else {
             enterErrorBranch();
-            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
-        } else if (x < MIN_DOUBLE_TRUNCATABLE_TO_U_INT || x > MAX_DOUBLE_TRUNCATABLE_TO_U_INT) {
-            enterErrorBranch();
-            throw WasmException.create(Failure.INT_OVERFLOW);
+            throw trunc_f64_trap(x);
         }
-        final int result = ExactMath.truncateToUnsignedInt(x);
         pushInt(frame, stackPointer - 1, result);
     }
 
@@ -4184,53 +4177,49 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private void i64_trunc_f32_s(VirtualFrame frame, int stackPointer) {
         final float x = popFloat(frame, stackPointer - 1);
-        if (Float.isNaN(x)) {
+        final long result;
+        if (x >= -0x1p63f && x < 0x1p63f) {
+            result = (long) x;
+        } else {
             enterErrorBranch();
-            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
-        } else if (x < MIN_FLOAT_TRUNCATABLE_TO_LONG || x > MAX_FLOAT_TRUNCATABLE_TO_LONG) {
-            enterErrorBranch();
-            throw WasmException.create(Failure.INT_OVERFLOW);
+            throw trunc_f32_trap(x);
         }
-        final long result = (long) x;
         pushLong(frame, stackPointer - 1, result);
     }
 
     private void i64_trunc_f32_u(VirtualFrame frame, int stackPointer) {
         final float x = popFloat(frame, stackPointer - 1);
-        if (Float.isNaN(x)) {
+        final long result;
+        if (x > -1.0f && x < 0x1p64f) {
+            result = ExactMath.truncateToUnsignedLong(x);
+        } else {
             enterErrorBranch();
-            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
-        } else if (x < MIN_FLOAT_TRUNCATABLE_TO_U_LONG || x > MAX_FLOAT_TRUNCATABLE_TO_U_LONG) {
-            enterErrorBranch();
-            throw WasmException.create(Failure.INT_OVERFLOW);
+            throw trunc_f32_trap(x);
         }
-        final long result = ExactMath.truncateToUnsignedLong(x);
         pushLong(frame, stackPointer - 1, result);
     }
 
     private void i64_trunc_f64_s(VirtualFrame frame, int stackPointer) {
         final double x = popDouble(frame, stackPointer - 1);
-        if (Double.isNaN(x)) {
+        final long result;
+        if (x >= -0x1p63 && x < 0x1p63) {
+            result = (long) x;
+        } else {
             enterErrorBranch();
-            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
-        } else if (x < MIN_DOUBLE_TRUNCATABLE_TO_LONG || x > MAX_DOUBLE_TRUNCATABLE_TO_LONG) {
-            enterErrorBranch();
-            throw WasmException.create(Failure.INT_OVERFLOW);
+            throw trunc_f64_trap(x);
         }
-        final long result = (long) x;
         pushLong(frame, stackPointer - 1, result);
     }
 
     private void i64_trunc_f64_u(VirtualFrame frame, int stackPointer) {
         final double x = popDouble(frame, stackPointer - 1);
-        if (Double.isNaN(x)) {
+        final long result;
+        if (x > -1.0 && x < 0x1p64) {
+            result = ExactMath.truncateToUnsignedLong(x);
+        } else {
             enterErrorBranch();
-            throw WasmException.create(Failure.INVALID_CONVERSION_TO_INT);
-        } else if (x < MIN_DOUBLE_TRUNCATABLE_TO_U_LONG || x > MAX_DOUBLE_TRUNCATABLE_TO_U_LONG) {
-            enterErrorBranch();
-            throw WasmException.create(Failure.INT_OVERFLOW);
+            throw trunc_f64_trap(x);
         }
-        final long result = ExactMath.truncateToUnsignedLong(x);
         pushLong(frame, stackPointer - 1, result);
     }
 
