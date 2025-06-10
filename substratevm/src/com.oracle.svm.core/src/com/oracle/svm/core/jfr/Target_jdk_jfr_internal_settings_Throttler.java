@@ -27,38 +27,50 @@ package com.oracle.svm.core.jfr;
 import java.util.Random;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+
+import jdk.graal.compiler.nodes.extended.MembarNode;
 
 @TargetClass(className = "jdk.jfr.internal.settings.Throttler")
 public final class Target_jdk_jfr_internal_settings_Throttler {
     @Alias //
     @InjectAccessors(ThrottlerRandomAccessor.class) //
     private Random randomGenerator;
+
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    Random injectedRandomGenerator;
 }
 
 final class ThrottlerRandomAccessor {
-    private static Random cachedRandom;
-
     @SuppressWarnings("unused")
     static Random get(Target_jdk_jfr_internal_settings_Throttler receiver) {
-        if (cachedRandom != null) {
-            return cachedRandom;
+        Random value = receiver.injectedRandomGenerator;
+        if (value != null) {
+            return value;
         }
-        return initializeRandom();
+        return initializeRandom(receiver);
     }
 
-    private static synchronized Random initializeRandom() {
-        if (cachedRandom != null) {
-            return cachedRandom;
+    private static synchronized Random initializeRandom(Target_jdk_jfr_internal_settings_Throttler receiver) {
+        Random value = receiver.injectedRandomGenerator;
+        if (value != null) {
+            return value;
         }
 
-        cachedRandom = new Random();
-        return cachedRandom;
+        value = new Random();
+        /* Ensure that other threads see a fully initialized Random object once published below. */
+        MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
+
+        receiver.injectedRandomGenerator = value;
+        return value;
     }
 
     @SuppressWarnings("unused")
     static synchronized void set(Target_jdk_jfr_internal_settings_Throttler receiver, Random value) {
-        throw new RuntimeException("The field jdk.jfr.internal.settings.Throttler.randomGenerator cannot be set");
+        receiver.injectedRandomGenerator = value;
     }
 }
