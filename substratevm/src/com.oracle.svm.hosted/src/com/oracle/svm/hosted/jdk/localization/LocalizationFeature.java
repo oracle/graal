@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -102,7 +102,6 @@ import sun.util.cldr.CLDRLocaleProviderAdapter;
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.locale.provider.ResourceBundleBasedAdapter;
 import sun.util.resources.LocaleData;
-import sun.util.resources.ParallelListResourceBundle;
 
 /**
  * LocalizationFeature is the core class of SVM localization support. It contains all the options
@@ -484,10 +483,6 @@ public class LocalizationFeature implements InternalFeature {
                                         String baseName = e.getClassName().split("_")[0];
                                         prepareNegativeBundle(ConfigurationCondition.alwaysTrue(), baseName, locale, true);
                                         continue; /* No bundle for this `locale`. */
-                                    }
-                                    if (bundle instanceof ParallelListResourceBundle) {
-                                        /* Make sure the `bundle` content is complete. */
-                                        localeData.setSupplementary((ParallelListResourceBundle) bundle);
                                     }
                                     prepareJDKBundle(bundle, locale);
                                 }
