@@ -1592,7 +1592,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                             // this branch is not compiled, it can be a loop exit
                             throw e;
                         }
-                        assert context.getEspressoEnv().Polyglot;
+                        if (!context.getEspressoEnv().Polyglot) {
+                            CompilerDirectives.transferToInterpreter();
+                            throw EspressoError.shouldNotReachHere("Unexpected non-espresso AbstractTruffleException", e);
+                        }
                         Meta meta = getMethod().getMeta();
                         meta.polyglot.ForeignException.safeInitialize(); // should fold
                         wrappedException = EspressoException.wrap(
