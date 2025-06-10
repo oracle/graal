@@ -1770,7 +1770,7 @@ public class NativeImage {
             }
             int exitStatusCode = bundleSupport.containerSupport.initializeImage();
             switch (ExitStatus.of(exitStatusCode)) {
-                case OK -> {
+                case OK, CONTAINER_REUSE -> {
                 }
                 case BUILDER_ERROR -> {
                     /* Exit, builder has handled error reporting. */

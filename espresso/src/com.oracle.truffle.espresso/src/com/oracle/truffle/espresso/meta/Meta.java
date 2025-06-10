@@ -440,6 +440,27 @@ public final class Meta extends ContextAccessImpl
             HIDDEN_CRC32 = null;
         }
 
+        java_util_zip_Inflater = knownKlass(Types.java_util_zip_Inflater);
+        if (getJavaVersion().java11OrLater()) {
+            java_util_zip_Inflater_inputConsumed = java_util_zip_Inflater.requireDeclaredField(Names.inputConsumed, Types._int);
+            java_util_zip_Inflater_outputConsumed = java_util_zip_Inflater.requireDeclaredField(Names.outputConsumed, Types._int);
+            java_util_zip_Inflater_buf = null;
+            java_util_zip_Inflater_len = null;
+            java_util_zip_Inflater_off = null;
+            java_util_zip_Inflater_needDict = null;
+            java_util_zip_Inflater_finished = null;
+        } else {
+            java_util_zip_Inflater_inputConsumed = null;
+            java_util_zip_Inflater_outputConsumed = null;
+            java_util_zip_Inflater_buf = java_util_zip_Inflater.requireDeclaredField(Names.buf, Types._byte_array);
+            java_util_zip_Inflater_len = java_util_zip_Inflater.requireDeclaredField(Names.len, Types._int);
+            java_util_zip_Inflater_off = java_util_zip_Inflater.requireDeclaredField(Names.off, Types._int);
+            java_util_zip_Inflater_needDict = java_util_zip_Inflater.requireDeclaredField(Names.needDict, Types._boolean);
+            java_util_zip_Inflater_finished = java_util_zip_Inflater.requireDeclaredField(Names.finished, Types._boolean);
+        }
+
+        java_util_zip_DataFormatException = knownKlass(Types.java_util_zip_DataFormatException);
+
         ObjectKlass nioNativeThreadKlass = knownKlass(Types.sun_nio_ch_NativeThread);
         sun_nio_ch_NativeThread_init = nioNativeThreadKlass.lookupDeclaredMethod(Names.init, Signatures._void);
         if (getJavaVersion().java21OrLater()) {
@@ -510,6 +531,7 @@ public final class Meta extends ContextAccessImpl
         } else {
             java_nio_ByteBuffer_get = null;
         }
+
         java_nio_ByteBuffer_getByte = java_nio_ByteBuffer.requireDeclaredMethod(Names.get, Signatures._byte_int);
         java_nio_ByteBuffer_getShort = java_nio_ByteBuffer.requireDeclaredMethod(Names.getShort, Signatures._short_int);
         java_nio_ByteBuffer_getInt = java_nio_ByteBuffer.requireDeclaredMethod(Names.getInt, Signatures._int_int);
@@ -1752,6 +1774,16 @@ public final class Meta extends ContextAccessImpl
 
     public final ObjectKlass java_util_zip_CRC32;
     public final Field HIDDEN_CRC32;
+
+    public final ObjectKlass java_util_zip_Inflater;
+    public final Field java_util_zip_Inflater_inputConsumed;
+    public final Field java_util_zip_Inflater_outputConsumed;
+    public final Field java_util_zip_Inflater_buf;
+    public final Field java_util_zip_Inflater_len;
+    public final Field java_util_zip_Inflater_off;
+    public final Field java_util_zip_Inflater_needDict;
+    public final Field java_util_zip_Inflater_finished;
+    public final ObjectKlass java_util_zip_DataFormatException;
 
     public final Method sun_nio_ch_NativeThread_isNativeThread;
     public final Method sun_nio_ch_NativeThread_current0;
