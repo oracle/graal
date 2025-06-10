@@ -49,11 +49,17 @@ public class OptimizationUtility {
     }
 
     /**
-     * Determine if the given graph should be considered "hot" for additional optimization purposes.
-     * We define "hot" by inspecting its self time with respect to overall execution time. This is a
-     * pure heuristical value.
+     * Determine if the given graph should be considered "hot" for optimization purposes. We define
+     * "hot" by inspecting its self time with respect to overall execution time. This is a purely
+     * heuristical value.
      */
     public static boolean hotGlobalSelfTime(StructuredGraph graph) {
-        return graph.globalProfileProvider().getGlobalSelfTimePercent() > Options.HotCodeMinSelfTime.getValue(graph.getOptions());
+        final double globalSelfTimePercent = graph.globalProfileProvider().getGlobalSelfTimePercent();
+        if (globalSelfTimePercent == StructuredGraph.GlobalProfileProvider.GLOBAL_PROFILE_PROVIDER_DISABLED) {
+            // We are in a mode where there is no self time data available. In JIT all compilation
+            // units are hot.
+            return true;
+        }
+        return globalSelfTimePercent > Options.HotCodeMinSelfTime.getValue(graph.getOptions());
     }
 }
