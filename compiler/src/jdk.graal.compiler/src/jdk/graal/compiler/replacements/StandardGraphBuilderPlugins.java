@@ -1207,7 +1207,7 @@ public class StandardGraphBuilderPlugins {
         r.registerConditional(supportsRound, new InvocationPlugin(name, double.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                b.push(JavaKind.Double, b.append(new RoundNode(arg, mode)));
+                b.push(JavaKind.Double, b.append(RoundNode.create(arg, mode)));
                 return true;
             }
         });
