@@ -145,7 +145,7 @@ public final class UnimplementedGraalIntrinsics {
                                 "sun/security/provider/SHA2.implCompress0([BI)V");
             }
 
-            if (!GraalServices.getSavedProperty("os.name").contains("Linux")) {
+            if (!(GraalServices.getSavedProperty("os.name").contains("Linux") && amd64.getFeatures().contains(AMD64.CPUFeature.AVX2))) {
                 add(ignore,
                                 "java/util/DualPivotQuicksort.partition(Ljava/lang/Class;Ljava/lang/Object;JIIIILjava/util/DualPivotQuicksort$PartitionOperation;)[I",
                                 "java/util/DualPivotQuicksort.sort(Ljava/lang/Class;Ljava/lang/Object;JIILjava/util/DualPivotQuicksort$SortOperation;)V");

@@ -30,12 +30,17 @@ import java.nio.file.spi.FileSystemProvider;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JDKInitializedAtRunTime;
+import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -49,6 +54,29 @@ import com.oracle.svm.util.ReflectionUtil;
  * @see com.oracle.svm.core.jdk.FileSystemProviderSupport
  */
 final class FileSystemProviderRuntimeInitSupport {
+}
+
+@AutomaticallyRegisteredFeature
+final class FileSystemProviderRunTimeInitFeature implements InternalFeature {
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return FutureDefaultsOptions.isJDKInitializedAtRunTime();
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+            /*
+             * Explicitly register NativeImageResourceFileSystemProvider for reflective
+             * instantiation. Normally, the ServiceLoaderFeature does this as well, but in case it
+             * is turned off (-H:-UseServiceLoaderFeature), we should still at least register our
+             * own provider.
+             */
+            RuntimeReflection.register(NativeImageResourceFileSystemProvider.class);
+            RuntimeReflection.registerForReflectiveInstantiation(NativeImageResourceFileSystemProvider.class);
+        }
+    }
 }
 
 // java.io
