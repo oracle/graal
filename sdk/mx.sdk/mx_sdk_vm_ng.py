@@ -424,6 +424,10 @@ class NativeImageBuildTask(mx.BuildTask):
             experimental_build_args.append('-H:+VerifyRuntimeCompilationFrameStates')
         build_args = []
 
+        # GR-65661: we need to disable the check in GraalVM for 21 as it does not allow polyglot version 26.0.0-dev
+        if get_bootstrap_graalvm_version() < mx.VersionSpec("25"):
+            build_args += ['-Dpolyglotimpl.DisableVersionChecks=true']
+
         canonical_name = self.subject.base_file_name()
         profiles = mx_sdk_vm_impl._image_profiles(canonical_name)
         if profiles:
