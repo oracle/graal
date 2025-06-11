@@ -618,11 +618,15 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setIsImplementationInvoked(method.isSimplyImplementationInvoked());
         builder.setIsIntrinsicMethod(method.isIntrinsicMethod());
 
+        builder.setCompilationBehaviorOrdinal((byte) method.getCompilationBehavior().ordinal());
+
         if (graphsInfo != null && graphsInfo.analysisGraphLocation != null) {
+            assert !method.isDelayed() : "The method " + method + " has an analysis graph, but is delayed to the application layer";
             builder.setAnalysisGraphLocation(graphsInfo.analysisGraphLocation);
             builder.setAnalysisGraphIsIntrinsic(graphsInfo.analysisGraphIsIntrinsic);
         }
         if (graphsInfo != null && graphsInfo.strengthenedGraphLocation != null) {
+            assert !method.isDelayed() : "The method " + method + " has a strengthened graph, but is delayed to the application layer";
             builder.setStrengthenedGraphLocation(graphsInfo.strengthenedGraphLocation);
         }
 

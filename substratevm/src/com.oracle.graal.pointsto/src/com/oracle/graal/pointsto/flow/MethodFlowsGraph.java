@@ -490,10 +490,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
          */
         for (InvokeTypeFlow invokeTypeFlow : getInvokes()) {
             if (!invokeTypeFlow.isDirectInvoke() && !bb.isClosed(invokeTypeFlow.getReceiverType())) {
-                if (invokeTypeFlow.actualReturn != null) {
-                    invokeTypeFlow.actualReturn.enableFlow(bb);
-                    invokeTypeFlow.actualReturn.onSaturated(bb);
-                }
+                invokeTypeFlow.saturateForOpenTypeWorld(bb);
             }
         }
     }

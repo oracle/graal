@@ -556,6 +556,9 @@ public abstract class NativeImage extends AbstractImage {
             if (ImageLayerBuildingSupport.buildingImageLayer()) {
                 LayeredDispatchTableFeature.singleton().defineDispatchTableSlotSymbols(objectFile, textSection, codeCache, metaAccess);
             }
+            if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
+                HostedDynamicLayerInfo.singleton().checkMissingDelayedMethods();
+            }
 
             /*
              * Mark locations that depend on the memory address of code (text), data, or the heap at
@@ -1026,11 +1029,16 @@ public abstract class NativeImage extends AbstractImage {
                 final Map<String, HostedMethod> methodsBySignature = new HashMap<>();
                 // 1. fq with return type
 
+                boolean buildingSharedLayer = ImageLayerBuildingSupport.buildingSharedLayer();
+                boolean buildingApplicationLayer = ImageLayerBuildingSupport.buildingApplicationLayer();
+                HostedDynamicLayerInfo hostedDynamicLayerInfo = buildingApplicationLayer ? HostedDynamicLayerInfo.singleton() : null;
+
                 for (Pair<HostedMethod, CompilationResult> pair : codeCache.getOrderedCompilations()) {
                     HostedMethod current = pair.getLeft();
                     final String symName = localSymbolNameForMethod(current);
                     final String signatureString = current.getUniqueShortName();
-                    defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, ImageLayerBuildingSupport.buildingSharedLayer(), pair.getRight());
+                    boolean global = buildingSharedLayer || (buildingApplicationLayer && hostedDynamicLayerInfo.forceGlobalMethodSymbol(symName));
+                    defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, global, pair.getRight());
                     watchdog.recordActivity();
                 }
                 // 2. fq without return type -- only for entry points!

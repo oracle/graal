@@ -106,32 +106,33 @@ struct PersistedAnalysisMethod {
   analysisGraphIsIntrinsic @25 :Bool;
   strengthenedGraphLocation @26 :Text;
   hostedMethodIndex @27 :HostedMethodIndex;
+  compilationBehaviorOrdinal @28 :Int8;
   wrappedMethod :union {
-    none @28 :Void; # default
+    none @29 :Void; # default
     factoryMethod :group {
-      targetConstructorId @29 :MethodId;
-      throwAllocatedObject @30 :Bool;
-      instantiatedTypeId @31 :TypeId;
+      targetConstructorId @30 :MethodId;
+      throwAllocatedObject @31 :Bool;
+      instantiatedTypeId @32 :TypeId;
     }
     outlinedSB :group {
-      methodTypeReturn @32 :Text;
-      methodTypeParameters @33 :List(Text);
+      methodTypeReturn @33 :Text;
+      methodTypeParameters @34 :List(Text);
     }
     cEntryPointCallStub :group {
-      originalMethodId @34 :MethodId;
-      notPublished @35 :Bool;
+      originalMethodId @35 :MethodId;
+      notPublished @36 :Bool;
     }
     wrappedMember :group {
       union {
-        reflectionExpandSignature @36 :Void;
-        javaCallVariantWrapper @37 :Void;
+        reflectionExpandSignature @37 :Void;
+        javaCallVariantWrapper @38 :Void;
       }
-      name @38 :Text;
-      declaringClassName @39 :Text;
-      argumentTypeNames @40 :List(Text);
+      name @39 :Text;
+      declaringClassName @40 :Text;
+      argumentTypeNames @41 :List(Text);
     }
     polymorphicSignature :group {
-      callers @41 :List(MethodId);
+      callers @42 :List(MethodId);
     }
   }
 }

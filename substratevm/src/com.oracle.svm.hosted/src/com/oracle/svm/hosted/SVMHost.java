@@ -74,6 +74,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.common.meta.GuaranteeFolded;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.core.NeverInline;
@@ -163,6 +164,7 @@ import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import jdk.internal.loader.NativeLibraries;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.vm.annotation.DontInline;
+import jdk.internal.vm.annotation.ForceInline;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -854,6 +856,11 @@ public class SVMHost extends HostVM {
         return SubstrateOptions.NeverInline.getValue().values().stream()
                         .map(MethodFilter::parse)
                         .anyMatch(filter -> filter.matches(method));
+    }
+
+    @Override
+    public boolean hasAlwaysInlineDirective(ResolvedJavaMethod method) {
+        return AnnotationAccess.isAnnotationPresent(method, AlwaysInline.class) || AnnotationAccess.isAnnotationPresent(method, ForceInline.class);
     }
 
     private InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy(MultiMethod.MultiMethodKey multiMethodKey) {

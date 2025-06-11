@@ -984,7 +984,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class PersistedAnalysisMethod {
-    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)13);
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)6,(short)13);
     public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -1278,14 +1278,21 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setIntField(6, value);
       }
 
+      public final byte getCompilationBehaviorOrdinal() {
+        return _getByteField(22);
+      }
+      public final void setCompilationBehaviorOrdinal(byte value) {
+        _setByteField(22, value);
+      }
+
       public final WrappedMethod.Builder getWrappedMethod() {
         return new PersistedAnalysisMethod.WrappedMethod.Builder(segment, data, pointers, dataSize, pointerCount);
       }
       public final WrappedMethod.Builder initWrappedMethod() {
-        _setBooleanField(172,false);
-        _setShortField(11,(short)0);
-        _setIntField(7,0);
+        _setShortField(14,(short)0);
         _setIntField(8,0);
+        _setBooleanField(288,false);
+        _setIntField(10,0);
         _clearPointerField(10);
         _clearPointerField(11);
         _clearPointerField(12);
@@ -1441,6 +1448,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getIntField(6);
       }
 
+      public final byte getCompilationBehaviorOrdinal() {
+        return _getByteField(22);
+      }
+
       public WrappedMethod.Reader getWrappedMethod() {
         return new PersistedAnalysisMethod.WrappedMethod.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
       }
@@ -1448,7 +1459,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
     }
 
     public static class WrappedMethod {
-      public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)13);
+      public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)6,(short)13);
       public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
         public Factory() {
         }
@@ -1473,7 +1484,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           super(segment, data, pointers, dataSize, pointerCount);
         }
         public Which which() {
-          switch(_getShortField(11)) {
+          switch(_getShortField(14)) {
             case 0 : return Which.NONE;
             case 1 : return Which.FACTORY_METHOD;
             case 2 : return Which.OUTLINED_S_B;
@@ -1495,7 +1506,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           return com.oracle.svm.shaded.org.capnproto.Void.VOID;
         }
         public final void setNone(com.oracle.svm.shaded.org.capnproto.Void value) {
-          _setShortField(11, (short)PersistedAnalysisMethod.WrappedMethod.Which.NONE.ordinal());
+          _setShortField(14, (short)PersistedAnalysisMethod.WrappedMethod.Which.NONE.ordinal());
         }
 
         public final boolean isFactoryMethod() {
@@ -1505,10 +1516,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           return new PersistedAnalysisMethod.WrappedMethod.FactoryMethod.Builder(segment, data, pointers, dataSize, pointerCount);
         }
         public final FactoryMethod.Builder initFactoryMethod() {
-          _setShortField(11, (short)PersistedAnalysisMethod.WrappedMethod.Which.FACTORY_METHOD.ordinal());
-          _setBooleanField(172,false);
-          _setIntField(7,0);
+          _setShortField(14, (short)PersistedAnalysisMethod.WrappedMethod.Which.FACTORY_METHOD.ordinal());
           _setIntField(8,0);
+          _setBooleanField(288,false);
+          _setIntField(10,0);
   return new PersistedAnalysisMethod.WrappedMethod.FactoryMethod.Builder(segment, data, pointers, dataSize, pointerCount);
         }
 
@@ -1519,7 +1530,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           return new PersistedAnalysisMethod.WrappedMethod.OutlinedSB.Builder(segment, data, pointers, dataSize, pointerCount);
         }
         public final OutlinedSB.Builder initOutlinedSB() {
-          _setShortField(11, (short)PersistedAnalysisMethod.WrappedMethod.Which.OUTLINED_S_B.ordinal());
+          _setShortField(14, (short)PersistedAnalysisMethod.WrappedMethod.Which.OUTLINED_S_B.ordinal());
           _clearPointerField(10);
           _clearPointerField(11);
   return new PersistedAnalysisMethod.WrappedMethod.OutlinedSB.Builder(segment, data, pointers, dataSize, pointerCount);
@@ -1532,9 +1543,9 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           return new PersistedAnalysisMethod.WrappedMethod.CEntryPointCallStub.Builder(segment, data, pointers, dataSize, pointerCount);
         }
         public final CEntryPointCallStub.Builder initCEntryPointCallStub() {
-          _setShortField(11, (short)PersistedAnalysisMethod.WrappedMethod.Which.C_ENTRY_POINT_CALL_STUB.ordinal());
-          _setBooleanField(172,false);
-          _setIntField(7,0);
+          _setShortField(14, (short)PersistedAnalysisMethod.WrappedMethod.Which.C_ENTRY_POINT_CALL_STUB.ordinal());
+          _setBooleanField(256,false);
+          _setIntField(10,0);
   return new PersistedAnalysisMethod.WrappedMethod.CEntryPointCallStub.Builder(segment, data, pointers, dataSize, pointerCount);
         }
 
@@ -1545,8 +1556,8 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           return new PersistedAnalysisMethod.WrappedMethod.WrappedMember.Builder(segment, data, pointers, dataSize, pointerCount);
         }
         public final WrappedMember.Builder initWrappedMember() {
-          _setShortField(11, (short)PersistedAnalysisMethod.WrappedMethod.Which.WRAPPED_MEMBER.ordinal());
-          _setShortField(14,(short)0);
+          _setShortField(14, (short)PersistedAnalysisMethod.WrappedMethod.Which.WRAPPED_MEMBER.ordinal());
+          _setShortField(20,(short)0);
           _clearPointerField(10);
           _clearPointerField(11);
           _clearPointerField(12);
@@ -1560,7 +1571,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           return new PersistedAnalysisMethod.WrappedMethod.PolymorphicSignature.Builder(segment, data, pointers, dataSize, pointerCount);
         }
         public final PolymorphicSignature.Builder initPolymorphicSignature() {
-          _setShortField(11, (short)PersistedAnalysisMethod.WrappedMethod.Which.POLYMORPHIC_SIGNATURE.ordinal());
+          _setShortField(14, (short)PersistedAnalysisMethod.WrappedMethod.Which.POLYMORPHIC_SIGNATURE.ordinal());
           _clearPointerField(10);
   return new PersistedAnalysisMethod.WrappedMethod.PolymorphicSignature.Builder(segment, data, pointers, dataSize, pointerCount);
         }
@@ -1573,7 +1584,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         }
 
         public Which which() {
-          switch(_getShortField(11)) {
+          switch(_getShortField(14)) {
             case 0 : return Which.NONE;
             case 1 : return Which.FACTORY_METHOD;
             case 2 : return Which.OUTLINED_S_B;
@@ -1639,7 +1650,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _NOT_IN_SCHEMA,
       }
       public static class FactoryMethod {
-        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)13);
+        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)6,(short)13);
         public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
           public Factory() {
           }
@@ -1667,24 +1678,24 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
             return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
           }
           public final int getTargetConstructorId() {
-            return _getIntField(7);
+            return _getIntField(8);
           }
           public final void setTargetConstructorId(int value) {
-            _setIntField(7, value);
+            _setIntField(8, value);
           }
 
           public final boolean getThrowAllocatedObject() {
-            return _getBooleanField(172);
+            return _getBooleanField(288);
           }
           public final void setThrowAllocatedObject(boolean value) {
-            _setBooleanField(172, value);
+            _setBooleanField(288, value);
           }
 
           public final int getInstantiatedTypeId() {
-            return _getIntField(8);
+            return _getIntField(10);
           }
           public final void setInstantiatedTypeId(int value) {
-            _setIntField(8, value);
+            _setIntField(10, value);
           }
 
         }
@@ -1695,15 +1706,15 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           }
 
           public final int getTargetConstructorId() {
-            return _getIntField(7);
+            return _getIntField(8);
           }
 
           public final boolean getThrowAllocatedObject() {
-            return _getBooleanField(172);
+            return _getBooleanField(288);
           }
 
           public final int getInstantiatedTypeId() {
-            return _getIntField(8);
+            return _getIntField(10);
           }
 
         }
@@ -1712,7 +1723,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
       public static class OutlinedSB {
-        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)13);
+        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)6,(short)13);
         public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
           public Factory() {
           }
@@ -1793,7 +1804,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
       public static class CEntryPointCallStub {
-        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)13);
+        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)6,(short)13);
         public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
           public Factory() {
           }
@@ -1821,17 +1832,17 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
             return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
           }
           public final int getOriginalMethodId() {
-            return _getIntField(7);
+            return _getIntField(10);
           }
           public final void setOriginalMethodId(int value) {
-            _setIntField(7, value);
+            _setIntField(10, value);
           }
 
           public final boolean getNotPublished() {
-            return _getBooleanField(172);
+            return _getBooleanField(256);
           }
           public final void setNotPublished(boolean value) {
-            _setBooleanField(172, value);
+            _setBooleanField(256, value);
           }
 
         }
@@ -1842,11 +1853,11 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           }
 
           public final int getOriginalMethodId() {
-            return _getIntField(7);
+            return _getIntField(10);
           }
 
           public final boolean getNotPublished() {
-            return _getBooleanField(172);
+            return _getBooleanField(256);
           }
 
         }
@@ -1855,7 +1866,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
       public static class WrappedMember {
-        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)13);
+        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)6,(short)13);
         public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
           public Factory() {
           }
@@ -1880,7 +1891,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
             super(segment, data, pointers, dataSize, pointerCount);
           }
           public Which which() {
-            switch(_getShortField(14)) {
+            switch(_getShortField(20)) {
               case 0 : return Which.REFLECTION_EXPAND_SIGNATURE;
               case 1 : return Which.JAVA_CALL_VARIANT_WRAPPER;
               default: return Which._NOT_IN_SCHEMA;
@@ -1898,7 +1909,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
             return com.oracle.svm.shaded.org.capnproto.Void.VOID;
           }
           public final void setReflectionExpandSignature(com.oracle.svm.shaded.org.capnproto.Void value) {
-            _setShortField(14, (short)PersistedAnalysisMethod.WrappedMethod.WrappedMember.Which.REFLECTION_EXPAND_SIGNATURE.ordinal());
+            _setShortField(20, (short)PersistedAnalysisMethod.WrappedMethod.WrappedMember.Which.REFLECTION_EXPAND_SIGNATURE.ordinal());
           }
 
           public final boolean isJavaCallVariantWrapper() {
@@ -1910,7 +1921,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
             return com.oracle.svm.shaded.org.capnproto.Void.VOID;
           }
           public final void setJavaCallVariantWrapper(com.oracle.svm.shaded.org.capnproto.Void value) {
-            _setShortField(14, (short)PersistedAnalysisMethod.WrappedMethod.WrappedMember.Which.JAVA_CALL_VARIANT_WRAPPER.ordinal());
+            _setShortField(20, (short)PersistedAnalysisMethod.WrappedMethod.WrappedMember.Which.JAVA_CALL_VARIANT_WRAPPER.ordinal());
           }
 
           public final boolean hasName() {
@@ -1963,7 +1974,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           }
 
           public Which which() {
-            switch(_getShortField(14)) {
+            switch(_getShortField(20)) {
               case 0 : return Which.REFLECTION_EXPAND_SIGNATURE;
               case 1 : return Which.JAVA_CALL_VARIANT_WRAPPER;
               default: return Which._NOT_IN_SCHEMA;
@@ -2019,7 +2030,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
       public static class PolymorphicSignature {
-        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)13);
+        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)6,(short)13);
         public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
           public Factory() {
           }
