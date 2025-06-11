@@ -76,8 +76,8 @@ public class GlobalProfilesOptimizationUtility {
         final double globalSelfTimePercent = graph.globalProfileProvider().getGlobalSelfTimePercent();
         if (globalSelfTimePercent == StructuredGraph.GlobalProfileProvider.GLOBAL_PROFILE_PROVIDER_DISABLED) {
             // We are in a mode where there is no self time data available. In JIT all compilation
-            // units are hot.
-            return true;
+            // units are hot but none is extra hot.
+            return false;
         }
         return globalSelfTimePercent > Options.HotCodeMinSelfTime.getValue(graph.getOptions());
     }
