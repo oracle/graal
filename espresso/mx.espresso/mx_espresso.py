@@ -574,8 +574,8 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     register_espresso_runtime_resources(register_project, register_distribution, _suite)
     register_distribution(DeliverableStandaloneArchive(_suite,
         standalone_dist='ESPRESSO_NATIVE_STANDALONE',
-        community_archive_name="espresso-community",
-        enterprise_archive_name="espresso",
+        community_archive_name=f"espresso-community-java{java_home_dep.major_version}",
+        enterprise_archive_name=f"espresso-java{java_home_dep.major_version}",
         community_dist_name=f'GRAALVM_ESPRESSO_COMMUNITY_JAVA{java_home_dep.major_version}',
         enterprise_dist_name=f'GRAALVM_ESPRESSO_JAVA{java_home_dep.major_version}'))
 
