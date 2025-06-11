@@ -226,7 +226,7 @@ public class Vector128Ops {
 
     private static ByteVector f64x2_floorOrCeil(ByteVector xBytes, double negativeBoundary, double positiveBoundary, double sign) {
         DoubleVector x = xBytes.reinterpretAsDoubles();
-        LongVector exponent = getExponent(x);
+        LongVector exponent = castLong128(getExponent(x));
         VectorMask<Double> isNegativeExponent = exponent.lt(0).cast(F64X2.species());
         VectorMask<Double> isZero = x.eq(0);
         VectorMask<Double> isNegative = x.lt(0);
