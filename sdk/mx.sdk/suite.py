@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.54.3",
+  "mxversion": "7.54.5",
   "name" : "sdk",
   "version" : "25.0.0",
   "release" : False,
@@ -135,7 +135,6 @@ suite = {
         "version": "3.28.0",
       },
     },
-
     "JLINE_TERMINAL": {
       "moduleName": "org.jline.terminal",
       "digest": "sha512:abe0ad0303e5eb81b549301dfdcf34aace14495240816f14302d193296c7a8be31488e468d18a215976b8e4e8fa29f72d830e492eed7d4a6f9f04c81a6e36c3c",
@@ -146,7 +145,6 @@ suite = {
         "version": "3.28.0",
       },
     },
-
     "JLINE_BUILTINS": {
       "moduleName": "org.jline.builtins",
       "digest": "sha512:189d893405170a3edc624a6b822a8a394a2f8b623c23aed9e015d4b018b232307408b6038322719155fc7da7e9c04a9bb0a76c8521f49dd86a5f84ea3880acb6",
@@ -154,6 +152,16 @@ suite = {
       "maven": {
         "groupId": "org.jline",
         "artifactId": "jline-builtins",
+        "version": "3.28.0",
+      },
+    },
+    "JLINE_TERMINAL_FFM": {
+      "moduleName": "org.jline.terminal.ffm",
+      "digest": "sha512:e5839b04a2fd6119a11c6bc16e05203af88512039d85551b19d6e87c358a325ed5eb7051022a225e2641357c99d9c4121817a4795c50cf79a13b6b9d537cee96",
+      "sourceDigest": "sha512:c651ae99fe1f453d9b3d22913e2fb003c11ff9c43621bedd7508fa322b49f15c3d93cf146c00f2e1f9dd939f3ca9009a52ee407b63fa3f3d4f5c997a1efba139",
+      "maven": {
+        "groupId": "org.jline",
+        "artifactId": "jline-terminal-ffm",
         "version": "3.28.0",
       },
     },
@@ -684,13 +692,16 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
     "org.graalvm.shadowed.org.jline": {
-      # shaded JLINE_*
+      # shaded custom JLine bundle
       "subDir": "src",
       "sourceDirs": ["src"],
       "javaCompliance": "17+",
       "spotbugs": "false",
       "requires": [
         "java.logging",
+      ],
+      "dependencies": [
+        "sdk:NATIVEIMAGE",
       ],
       "shadedDependencies": [
         "sdk:JLINE_READER",
@@ -732,6 +743,11 @@ suite = {
                     String getDetectedCharset() { return null; }
                 }""",
           },
+          # Adds calls to initialize logging. This is a convenient way to enable JLine logging
+          # in order to verify which terminal provider is used at runtime.
+          "org/jline/terminal/TerminalBuilder.java": {
+            "private TerminalBuilder\\(\\) {}": "private TerminalBuilder() { org.graalvm.shadowed.org.jline.terminal.JLineLoggingSupport.init(); }"
+          },
           # Remove dependency on JLine's native library (would require shading and deployment of the library)
           # The native library is a fallback for functionality that is otherwise done via accessing
           # JDK internals via reflection.
@@ -755,16 +771,24 @@ suite = {
                 import org.graalvm.shadowed.org.jline.terminal.Terminal;
                 import org.graalvm.shadowed.org.jline.terminal.impl.exec.ExecTerminalProvider;
               """,
+            # \\x7b is to avoid the opening curly brace, which confuses the suite.py parser.
+            # The commented out closing curly brace at the end is to match the opening
+            # brace, again, to make the suite.py parser happy.
             "static TerminalProvider load\\(String name\\) throws IOException \\x7b":
               """
               static TerminalProvider load(String name) throws IOException {
                   switch (name) {
                       case \"exec\":
                           return new ExecTerminalProvider();
+                      case \"ffm\":
+                          TerminalProvider p = org.graalvm.shadowed.org.jline.terminal.impl.ffm.FFMTerminalProviderLoader.load();
+                          if (p != null) {
+                              return p;
+                          }
                       default:
-                        if (Boolean.TRUE) { // to avoid unreachable code
-                            throw new IOException(\"Unable to find terminal provider \" + name);
-                        }
+                          if (Boolean.TRUE) { // to avoid unreachable code below the switch
+                              throw new IOException(\"Unable to find terminal provider \" + name);
+                          }
                   }
                   // }
               """,
@@ -772,6 +796,48 @@ suite = {
         },
       },
       "description": "JLINE shaded library.",
+      "allowsJavadocWarnings": True,
+      "noMavenJavadoc": True,
+      "javac.lint.overrides": 'none',
+      "jacoco": "exclude",
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "org.graalvm.shadowed.org.jline.jdk22": {
+      # Shaded JLINE_TERMINAL_FFM as jdk22 overlay for the shaded JLine bundle
+      # Needs --enable-native-access=org.graalvm.shadowed.jline
+      "subDir": "src",
+      "sourceDirs": ["src"],
+      "javaCompliance": "22+",
+      "spotbugs": "false",
+      "requires": [
+        "java.logging",
+      ],
+      "dependencies": [
+        "org.graalvm.shadowed.org.jline",
+        "sdk:NATIVEIMAGE",
+      ],
+      "shadedDependencies": [
+        "sdk:JLINE_TERMINAL_FFM",
+      ],
+      "class": "ShadedLibraryProject",
+      "shade": {
+        "packages": {
+          "org.jline": "org.graalvm.shadowed.org.jline",
+        },
+        "exclude": [
+          "META-INF/MANIFEST.MF",
+          # we patch the JLine's service loading mechanism with
+          # hard-coded set of supported services, see one of the patches below
+          "META-INF/services/**",
+          "META-INF/maven/**",
+          # We have our own native-image configuration (in the overlaid project)
+          "META-INF/native-image/**",
+        ],
+      },
+      "description": "JLINE FFM based Terminal service provider.",
+      "overlayTarget" : "org.graalvm.shadowed.org.jline",
+      "multiReleaseJarVersion" : "22",
+      "ignoreSrcGenForOverlayMap": "true",
       "allowsJavadocWarnings": True,
       "noMavenJavadoc": True,
       "javac.lint.overrides": 'none',
@@ -1135,7 +1201,12 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
     "JLINE3": {
-      # shaded JLINE_*
+      # Custom shaded JLine bundle (with FFM terminal provider on JDK22+)
+      # One must pass --enable-native-access=org.graalvm.shadowed.jline, otherwise
+      # JLine silently falls back to exec provider on POSIX, and with a warning
+      # to "Dumb" provider on Windows
+      # If desired, the FFM terminal on JDK22+ can be disabled at built time using system property:
+      # org.graalvm.shadowed.org.jline.terminal.ffm.disable=true
       "moduleInfo": {
         "name": "org.graalvm.shadowed.jline",
         "requires": [
@@ -1160,6 +1231,10 @@ suite = {
       "spotbugs": "false",
       "dependencies": [
         "org.graalvm.shadowed.org.jline",
+      ],
+      "distDependencies": [
+         "sdk:NATIVEIMAGE",
+         "sdk:POLYGLOT",
       ],
       "description": "JLINE3 shaded module.",
       "allowsJavadocWarnings": True,
