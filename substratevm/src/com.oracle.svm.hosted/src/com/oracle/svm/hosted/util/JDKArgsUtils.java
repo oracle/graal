@@ -90,33 +90,4 @@ public class JDKArgsUtils {
             default -> arg.startsWith("--module=");
         };
     }
-
-    private static boolean isWhiteSpaceOption(String name) {
-        return isModuleOption(name) || isLauncherOption(name);
-    }
-
-    private static boolean isModuleOption(String name) {
-        return switch (name) {
-            case "--module-path", "-p", "--upgrade-module-path", "--add-modules", "--enable-native-access", "--limit-modules", "--add-exports", "--add-opens", "--add-reads", "--patch-module" -> true;
-            default -> false;
-        };
-    }
-
-    private static boolean isLauncherOption(String name) {
-        return isClassPathOption(name) ||
-                        isLauncherMainOption(name) ||
-                        "--describe-module".equals(name) ||
-                        "-d".equals(name) ||
-                        "--source".equals(name);
-    }
-
-    private static boolean isClassPathOption(String name) {
-        return "-classpath".equals(name) ||
-                        "-cp".equals(name) ||
-                        "--class-path".equals(name);
-    }
-
-    private static boolean isLauncherMainOption(String name) {
-        return "--module".equals(name) || "-m".equals(name);
-    }
 }
