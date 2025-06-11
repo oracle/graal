@@ -441,14 +441,17 @@ public abstract class BytecodeParser {
                     offset += 12;
                     break;
                 }
+                case Bytecode.SELECT:
+                case Bytecode.SELECT_OBJ: {
+                    offset += 2;
+                    break;
+                }
                 case Bytecode.UNREACHABLE:
                 case Bytecode.NOP:
                 case Bytecode.RETURN:
                 case Bytecode.LOOP:
                 case Bytecode.DROP:
                 case Bytecode.DROP_OBJ:
-                case Bytecode.SELECT:
-                case Bytecode.SELECT_OBJ:
                 case Bytecode.I32_EQZ:
                 case Bytecode.I32_EQ:
                 case Bytecode.I32_NE:
