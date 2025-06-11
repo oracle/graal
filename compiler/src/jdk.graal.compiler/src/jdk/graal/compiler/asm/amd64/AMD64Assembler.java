@@ -5036,6 +5036,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         AMD64MOp.INC.emit(this, OperandSize.QWORD, dst);
     }
 
+    public final void movapd(Register dst, AMD64Address src) {
+        SSEOp.MOVAPD.emit(this, OperandSize.PD, dst, src);
+    }
+
     public final void movapd(Register dst, Register src) {
         SSEOp.MOVAPD.emit(this, OperandSize.PD, dst, src);
     }
@@ -5297,6 +5301,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
 
     public final void orl(Register dst, int imm32) {
         AMD64BinaryArithmetic.OR.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
+    }
+
+    public final void orpd(Register dst, Register src) {
+        SSEOp.OR.emit(this, OperandSize.PD, dst, src);
     }
 
     public final void orq(Register dst, Register src) {

@@ -163,6 +163,7 @@ The following system properties are automatically copied into the generated exec
 | native.encoding               | Specifies the host environment's character encoding               |
 | org.graalvm.nativeimage.kind  | Specifies if the image is built as a shared library or executable |
 | path.separator                | Path separator                                                    |
+| stdin.encoding                | Specifies the encoding for `System.in`                            |
 | stdout.encoding               | Specifies the encoding for `System.out` and `System.err`          |
 | sun.jnu.encoding              | Specifies encoding when parsing values passed via the commandline |
 

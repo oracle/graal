@@ -135,6 +135,7 @@ import jdk.graal.compiler.lir.amd64.AMD64CountLeadingZerosOp;
 import jdk.graal.compiler.lir.amd64.AMD64CountTrailingZerosOp;
 import jdk.graal.compiler.lir.amd64.AMD64FloatToHalfFloatOp;
 import jdk.graal.compiler.lir.amd64.AMD64HalfFloatToFloatOp;
+import jdk.graal.compiler.lir.amd64.AMD64MathCbrtOp;
 import jdk.graal.compiler.lir.amd64.AMD64MathCopySignOp;
 import jdk.graal.compiler.lir.amd64.AMD64MathCosOp;
 import jdk.graal.compiler.lir.amd64.AMD64MathExpOp;
@@ -1309,6 +1310,11 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     @Override
     public Value emitMathExp(Value input) {
         return new AMD64MathExpOp().emitLIRWrapper(getLIRGen(), input);
+    }
+
+    @Override
+    public Value emitMathCbrt(Value input) {
+        return new AMD64MathCbrtOp().emitLIRWrapper(getLIRGen(), input);
     }
 
     @Override
