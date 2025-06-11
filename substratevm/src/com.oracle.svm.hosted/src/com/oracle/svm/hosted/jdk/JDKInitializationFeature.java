@@ -278,6 +278,11 @@ public class JDKInitializationFeature implements InternalFeature {
 
         rci.initializeAtRunTime("jdk.internal.markdown.MarkdownTransformer", "Contains a static field with a DocTreeScanner which is initialized at run time");
 
+        /* Ensure "enhanced exception messages" are initialized (JDK 25+26, JDK-8348986). */
+        var exceptionsClass = ReflectionUtil.lookupClass("jdk.internal.util.Exceptions");
+        var exceptionsSetup = ReflectionUtil.lookupMethod(exceptionsClass, "setup");
+        ReflectionUtil.invokeMethod(exceptionsSetup, null);
+
         /*
          * The local class Holder in FallbackLinker#getInstance fails the build time initialization
          * starting JDK 22. There is no way to obtain a list of local classes using reflection. They

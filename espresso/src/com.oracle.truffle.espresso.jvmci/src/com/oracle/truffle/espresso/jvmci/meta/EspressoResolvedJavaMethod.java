@@ -147,6 +147,11 @@ public final class EspressoResolvedJavaMethod implements ResolvedJavaMethod {
     }
 
     @Override
+    public boolean isDeclared() {
+        throw JVMCIError.unimplemented();
+    }
+
+    @Override
     public boolean isClassInitializer() {
         return isStatic() && "<clinit>".equals(getName());
     }
