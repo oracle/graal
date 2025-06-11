@@ -77,72 +77,193 @@ public class Vector128Ops {
         }
     }
 
-    public static final Shape<Byte> I8X16 = new Shape<>() {
+    public static final class I8X16Shape implements Shape<Byte> {
+
+        private I8X16Shape() {
+        }
+
         @Override
-        public Vector<Byte> reinterpret(ByteVector bytes) {
-            return bytes;
+        public ByteVector reinterpret(ByteVector bytes) {
+            return castByte128(bytes);
         }
 
         @Override
         public VectorSpecies<Byte> species() {
             return ByteVector.SPECIES_128;
         }
-    };
-    public static final Shape<Short> I16X8 = new Shape<>() {
+
         @Override
-        public Vector<Short> reinterpret(ByteVector bytes) {
-            return bytes.reinterpretAsShorts();
+        public ByteVector zero() {
+            return castByte128(ByteVector.zero(species()));
+        }
+
+        @Override
+        public ByteVector broadcast(long e) {
+            return castByte128(ByteVector.broadcast(species(), e));
+        }
+
+        public ByteVector broadcast(byte e) {
+            return castByte128(ByteVector.broadcast(species(), e));
+        }
+    }
+
+    public static final I8X16Shape I8X16 = new I8X16Shape();
+
+    public static final class I16X8Shape implements Shape<Short> {
+
+        private I16X8Shape() {
+        }
+
+        @Override
+        public ShortVector reinterpret(ByteVector bytes) {
+            return castShort128(bytes.reinterpretAsShorts());
         }
 
         @Override
         public VectorSpecies<Short> species() {
             return ShortVector.SPECIES_128;
         }
-    };
-    public static final Shape<Integer> I32X4 = new Shape<>() {
+
         @Override
-        public Vector<Integer> reinterpret(ByteVector bytes) {
-            return bytes.reinterpretAsInts();
+        public ShortVector zero() {
+            return castShort128(ShortVector.zero(species()));
+        }
+
+        @Override
+        public ShortVector broadcast(long e) {
+            return castShort128(ShortVector.broadcast(species(), e));
+        }
+
+        public ShortVector broadcast(short e) {
+            return castShort128(ShortVector.broadcast(species(), e));
+        }
+    }
+
+    public static final I16X8Shape I16X8 = new I16X8Shape();
+
+    public static final class I32X4Shape implements Shape<Integer> {
+
+        private I32X4Shape() {
+        }
+
+        @Override
+        public IntVector reinterpret(ByteVector bytes) {
+            return castInt128(bytes.reinterpretAsInts());
         }
 
         @Override
         public VectorSpecies<Integer> species() {
             return IntVector.SPECIES_128;
         }
-    };
-    public static final Shape<Long> I64X2 = new Shape<>() {
+
         @Override
-        public Vector<Long> reinterpret(ByteVector bytes) {
-            return bytes.reinterpretAsLongs();
+        public IntVector zero() {
+            return castInt128(IntVector.zero(species()));
+        }
+
+        @Override
+        public IntVector broadcast(long e) {
+            return castInt128(IntVector.broadcast(species(), e));
+        }
+
+        public IntVector broadcast(int e) {
+            return castInt128(IntVector.broadcast(species(), e));
+        }
+    }
+
+    public static final I32X4Shape I32X4 = new I32X4Shape();
+
+    public static final class I64X2Shape implements Shape<Long> {
+
+        private I64X2Shape() {
+        }
+
+        @Override
+        public LongVector reinterpret(ByteVector bytes) {
+            return castLong128(bytes.reinterpretAsLongs());
         }
 
         @Override
         public VectorSpecies<Long> species() {
             return LongVector.SPECIES_128;
         }
-    };
-    public static final Shape<Float> F32X4 = new Shape<>() {
+
         @Override
-        public Vector<Float> reinterpret(ByteVector bytes) {
-            return bytes.reinterpretAsFloats();
+        public LongVector zero() {
+            return castLong128(LongVector.zero(species()));
+        }
+
+        @Override
+        public LongVector broadcast(long e) {
+            return castLong128(LongVector.broadcast(species(), e));
+        }
+    }
+
+    public static final I64X2Shape I64X2 = new I64X2Shape();
+
+    public static final class F32X4Shape implements Shape<Float> {
+
+        private F32X4Shape() {
+        }
+
+        @Override
+        public FloatVector reinterpret(ByteVector bytes) {
+            return castFloat128(bytes.reinterpretAsFloats());
         }
 
         @Override
         public VectorSpecies<Float> species() {
             return FloatVector.SPECIES_128;
         }
-    };
-    public static final Shape<Double> F64X2 = new Shape<>() {
+
+        @Override
+        public FloatVector zero() {
+            return castFloat128(FloatVector.zero(species()));
+        }
+
+        @Override
+        public FloatVector broadcast(long e) {
+            return castFloat128(FloatVector.broadcast(species(), e));
+        }
+
+        public FloatVector broadcast(float e) {
+            return castFloat128(FloatVector.broadcast(species(), e));
+        }
+    }
+
+    public static final F32X4Shape F32X4 = new F32X4Shape();
+
+    public static final class F64X2Shape implements Shape<Double> {
+
+        private F64X2Shape() {
+        }
+
         @Override
         public Vector<Double> reinterpret(ByteVector bytes) {
-            return bytes.reinterpretAsDoubles();
+            return castDouble128(bytes.reinterpretAsDoubles());
         }
 
         @Override
         public VectorSpecies<Double> species() {
             return DoubleVector.SPECIES_128;
         }
-    };
+
+        @Override
+        public DoubleVector zero() {
+            return castDouble128(DoubleVector.zero(species()));
+        }
+
+        @Override
+        public DoubleVector broadcast(long e) {
+            return castDouble128(DoubleVector.broadcast(species(), e));
+        }
+
+        public DoubleVector broadcast(double e) {
+            return castDouble128(DoubleVector.broadcast(species(), e));
+        }
+    }
+
+    public static final F64X2Shape F64X2 = new F64X2Shape();
 
     @FunctionalInterface
     private interface UnaryScalarOp<F> {
@@ -230,11 +351,11 @@ public class Vector128Ops {
         VectorMask<Double> isNegativeExponent = exponent.lt(0).cast(F64X2.species());
         VectorMask<Double> isZero = x.eq(0);
         VectorMask<Double> isNegative = x.lt(0);
-        DoubleVector negativeExponentResult = DoubleVector.broadcast(F64X2.species(), positiveBoundary).blend(DoubleVector.broadcast(F64X2.species(), negativeBoundary), isNegative).blend(x, isZero);
+        DoubleVector negativeExponentResult = F64X2.broadcast(positiveBoundary).blend(F64X2.broadcast(negativeBoundary), isNegative).blend(x, isZero);
         VectorMask<Double> isHighExponent = exponent.compare(VectorOperators.GE, 52).cast(F64X2.species());
         DoubleVector highExponentResult = x;
         LongVector doppel = x.viewAsIntegralLanes();
-        Vector<Long> mask = I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK).lanewise(VectorOperators.LSHR, exponent);
+        LongVector mask = I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK).lanewise(VectorOperators.LSHR, exponent);
         VectorMask<Double> isIntegral = doppel.and(mask).eq(0).cast(F64X2.species());
         DoubleVector integralResult = x;
         DoubleVector fractional = doppel.and(mask.neg()).viewAsFloatingLanes();
@@ -594,18 +715,18 @@ public class Vector128Ops {
     private static ByteVector f32x4_relop(ByteVector xBytes, ByteVector yBytes, VectorOperators.Comparison comp) {
         FloatVector x = xBytes.reinterpretAsFloats();
         FloatVector y = yBytes.reinterpretAsFloats();
-        Vector<Integer> zero = I32X4.zero();
-        Vector<Integer> minusOne = I32X4.broadcast(-1);
-        Vector<Integer> result = zero.blend(minusOne, x.compare(comp, y).cast(I32X4.species()));
+        IntVector zero = I32X4.zero();
+        IntVector minusOne = I32X4.broadcast(-1);
+        IntVector result = zero.blend(minusOne, x.compare(comp, y).cast(I32X4.species()));
         return result.reinterpretAsBytes();
     }
 
     private static ByteVector f64x2_relop(ByteVector xBytes, ByteVector yBytes, VectorOperators.Comparison comp) {
         DoubleVector x = xBytes.reinterpretAsDoubles();
         DoubleVector y = yBytes.reinterpretAsDoubles();
-        Vector<Long> zero = I64X2.zero();
-        Vector<Long> minusOne = I64X2.broadcast(-1);
-        Vector<Long> result = zero.blend(minusOne, x.compare(comp, y).cast(I64X2.species()));
+        LongVector zero = I64X2.zero();
+        LongVector minusOne = I64X2.broadcast(-1);
+        LongVector result = zero.blend(minusOne, x.compare(comp, y).cast(I64X2.species()));
         return result.reinterpretAsBytes();
     }
 
@@ -806,8 +927,8 @@ public class Vector128Ops {
     private static Vector<Long> truncSatU32(Vector<Double> x) {
         VectorMask<Long> underflow = x.test(VectorOperators.IS_NAN).or(x.test(VectorOperators.IS_NEGATIVE)).cast(I64X2.species());
         VectorMask<Long> overflow = x.compare(VectorOperators.GT, 0xffff_ffffL).cast(I64X2.species());
-        Vector<Long> zero = I64X2.zero();
-        Vector<Long> u32max = I64X2.broadcast(0xffff_ffffL);
+        LongVector zero = I64X2.zero();
+        LongVector u32max = I64X2.broadcast(0xffff_ffffL);
         Vector<Long> trunc = x.convert(VectorOperators.D2L, 0);
         return trunc.blend(u32max, overflow).blend(zero, underflow);
     }
@@ -879,27 +1000,27 @@ public class Vector128Ops {
     }
 
     public static ByteVector broadcast(byte value) {
-        return ByteVector.broadcast(I8X16.species(), value);
+        return I8X16.broadcast(value);
     }
 
     public static ByteVector broadcast(short value) {
-        return ShortVector.broadcast(I16X8.species(), value).reinterpretAsBytes();
+        return I16X8.broadcast(value).reinterpretAsBytes();
     }
 
     public static ByteVector broadcast(int value) {
-        return IntVector.broadcast(I32X4.species(), value).reinterpretAsBytes();
+        return I32X4.broadcast(value).reinterpretAsBytes();
     }
 
     public static ByteVector broadcast(long value) {
-        return LongVector.broadcast(I64X2.species(), value).reinterpretAsBytes();
+        return I64X2.broadcast(value).reinterpretAsBytes();
     }
 
     public static ByteVector broadcast(float value) {
-        return FloatVector.broadcast(F32X4.species(), value).reinterpretAsBytes();
+        return F32X4.broadcast(value).reinterpretAsBytes();
     }
 
     public static ByteVector broadcast(double value) {
-        return DoubleVector.broadcast(F64X2.species(), value).reinterpretAsBytes();
+        return F64X2.broadcast(value).reinterpretAsBytes();
     }
 
     public static byte[] toArray(ByteVector vec) {
