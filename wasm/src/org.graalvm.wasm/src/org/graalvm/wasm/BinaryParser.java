@@ -785,7 +785,7 @@ public class BinaryParser extends BinaryStreamParser {
                     assertTrue(WasmType.isNumberType(t1) && WasmType.isNumberType(t2), Failure.TYPE_MISMATCH);
                     assertTrue(t1 == t2 || t1 == WasmType.UNKNOWN_TYPE || t2 == WasmType.UNKNOWN_TYPE, Failure.TYPE_MISMATCH);
                     state.push(t1 == WasmType.UNKNOWN_TYPE ? t2 : t1);
-                    state.addInstruction(Bytecode.SELECT);
+                    state.addSelectInstruction(Bytecode.SELECT);
                     break;
                 }
                 case Instructions.SELECT_T: {
@@ -798,9 +798,9 @@ public class BinaryParser extends BinaryStreamParser {
                     state.popChecked(t);
                     state.push(t);
                     if (WasmType.isNumberType(t)) {
-                        state.addInstruction(Bytecode.SELECT);
+                        state.addSelectInstruction(Bytecode.SELECT);
                     } else {
-                        state.addInstruction(Bytecode.SELECT_OBJ);
+                        state.addSelectInstruction(Bytecode.SELECT_OBJ);
                     }
                     break;
                 }
