@@ -488,6 +488,8 @@ public interface InternalResource {
 
         /**
          * The IBM z/OS operating system.
+         *
+         * @since 26.0
          */
         ZOS("z/OS");
 
@@ -554,6 +556,7 @@ public interface InternalResource {
         /**
          * The IBM s390x 64-bit architecture.
          *
+         * @since 26.0
          */
         S390X("s390x");
 

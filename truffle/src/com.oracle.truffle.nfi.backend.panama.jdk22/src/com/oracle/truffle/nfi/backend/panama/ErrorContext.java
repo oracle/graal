@@ -55,6 +55,7 @@ public class ErrorContext extends AbstractErrorContext {
         case DARWIN -> "__error";
         case LINUX -> "__errno_location";
         case WINDOWS -> "_errno";
+        default -> throw new IllegalStateException("Unsupported OS " + OS.getCurrent());
     };
 
     public static final VarHandle INT_VAR_HANDLE = ValueLayout.JAVA_INT.varHandle();
