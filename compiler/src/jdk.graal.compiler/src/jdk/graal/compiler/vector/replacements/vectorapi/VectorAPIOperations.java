@@ -52,8 +52,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * <ul>
  * <li>LROTATE, RROTATE, REVERSE, REVERSE_BYTES: we have nodes for these, but they are not
  * arithmetic ops</li>
- * <li>COMPRESS, EXPAND, COMPRESS_BITS, EXPAND_BITS: need to check which of these map to our
- * existing compress and expand ops, and what the other pair does</li>
+ * <li>COMPRESS_BITS, EXPAND_BITS: need to check which of these map to our existing compress and
+ * expand ops, and what the other pair does</li>
  * </ul>
  */
 public class VectorAPIOperations {
