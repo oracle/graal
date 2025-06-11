@@ -25,6 +25,7 @@
 package jdk.graal.compiler.replacements;
 
 import java.util.EnumMap;
+import java.util.List;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.word.LocationIdentity;
@@ -48,6 +49,7 @@ import jdk.graal.compiler.nodes.extended.AbstractBoxingNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
+import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.options.OptionValues;
@@ -308,6 +310,9 @@ public class BoxingSnippets implements Snippets {
         }
         GraalError.guarantee(controlFlow.count() == 1, "Must only have a single control flow element - the branch into the cache but found more %s", controlFlow);
 
+        IfNode cacheIf = (IfNode) controlFlow.first();
+        IfNode inlinedNode = (IfNode) duplicates.get(cacheIf);
+
         ProfileData.BranchProbabilityData b = null;
         switch (kind) {
             case Byte:
@@ -322,13 +327,19 @@ public class BoxingSnippets implements Snippets {
             case Short:
             case Int:
             case Long:
+                AbstractBeginNode trueSucc = cacheIf.trueSuccessor();
+                GraalError.guarantee(trueSucc.next() instanceof IfNode, "Must have the bounds check next but found %s", trueSucc.next());
+                IfNode boundsIf = (IfNode) trueSucc.next();
+                GraalError.guarantee(isBoundsCheck(boundsIf), "Must have the bounds check next but found %s", boundsIf);
+                List<Node> anchored = boundsIf.trueSuccessor().anchored().snapshot();
+                GraalError.guarantee(anchored.stream().filter(x -> x instanceof MemoryAccess m && NamedLocationIdentity.isArrayLocation(m.getLocationIdentity())).count() == 1,
+                                "Remaining control flow should read from the cache but is %s", boundsIf.trueSuccessor());
+
                 b = ProfileData.BranchProbabilityData.injected(BranchProbabilityNode.FREQUENT_PROBABILITY);
                 break;
             default:
                 throw GraalError.shouldNotReachHere("Unknown control flow in boxing code, did a JDK change trigger this error? Consider adding new logic to set the profile of " + controlFlow);
         }
-        IfNode cacheIf = (IfNode) controlFlow.first();
-        IfNode inlinedNode = (IfNode) duplicates.get(cacheIf);
         inlinedNode.setTrueSuccessorProbability(b);
         inlinedNode.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, inlinedNode.graph(), "After updating profile of %s", inlinedNode);
     }
