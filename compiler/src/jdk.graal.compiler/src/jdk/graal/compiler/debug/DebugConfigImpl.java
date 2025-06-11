@@ -160,17 +160,15 @@ final class DebugConfigImpl implements DebugConfig {
     }
 
     private boolean isEnabled(DebugContext.Scope scope, DebugFilter filter) {
-        return getLevel(scope, filter) >= 0;
+        return getLevel(scope, filter) >= 1;
     }
 
     private int getLevel(DebugContext.Scope scope, DebugFilter filter) {
-        int level;
         if (filter == null) {
             // null means the value has not been set
-            level = -1;
-        } else {
-            level = filter.matchLevel(scope);
+            return -1;
         }
+        int level = filter.matchLevel(scope);
         if (level >= 0 && !checkMethodFilter(scope)) {
             level = -1;
         }
