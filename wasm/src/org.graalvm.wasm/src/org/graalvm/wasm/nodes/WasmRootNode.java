@@ -84,9 +84,9 @@ public abstract class WasmRootNode extends RootNode {
         // We want to ensure that linking always precedes the running of the WebAssembly code.
         // This linking should be as late as possible, because a WebAssembly context should
         // be able to parse multiple modules before the code gets run.
-        if (!instance.isLinkCompleted()) {
+        if (!instance.isLinkCompletedFastPath()) {
             nonLinkedProfile.enter();
-            instance.store().linker().tryLink(instance);
+            instance.store().linker().tryLinkFastPath(instance);
         }
     }
 
