@@ -662,10 +662,10 @@ public final class Target_jdk_jfr_internal_JVM {
     /** See {@link JVM#setMethodTraceFilters}. */
     @Substitute
     public static long[] setMethodTraceFilters(
-            String[] classes,
-            String[] methods,
-            String[] annotations,
-            int[] modification) {
+                    String[] classes,
+                    String[] methods,
+                    String[] annotations,
+                    int[] modification) {
         // JFR method tracing is not supported. No filters can be used so return null.
         return null;
     }
