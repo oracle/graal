@@ -451,7 +451,7 @@ public final class EspressoContext
                 registries.getBootClassRegistry().initUnnamedModule(null);
             }
             javaAgentsOnLoad();
-            initializeAgents();
+            initializeNativeAgents();
 
             try (DebugCloseable metaInit = META_INIT.scope(espressoEnv.getTimers())) {
                 this.meta = new Meta(this);
@@ -725,7 +725,7 @@ public final class EspressoContext
         }
     }
 
-    private void initializeAgents() {
+    private void initializeNativeAgents() {
         agents = new AgentLibraries(this);
         if (getEnv().getOptions().hasBeenSet(EspressoOptions.AgentLib)) {
             agents.registerAgents(getEnv().getOptions().get(EspressoOptions.AgentLib), false);
@@ -737,7 +737,7 @@ public final class EspressoContext
             agents.initialize();
         } else {
             if (!agents.isEmpty()) {
-                getLogger().warning("Agents support is currently disabled in Espresso. Ignoring passed agent options.");
+                agents.noSupportWarning(getLogger());
             }
         }
     }
