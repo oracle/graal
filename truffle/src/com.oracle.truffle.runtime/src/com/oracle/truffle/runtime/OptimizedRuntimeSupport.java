@@ -223,18 +223,10 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
         }
     }
 
-    // Support for deprecated frame transfer: GR-38296
-    @Override
-    public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, long bytecodeTarget) {
-        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
-        BytecodeOSRMetadata.OsrEntryDescription targetMetadata = osrMetadata.getLazyState().get(bytecodeTarget);
-        osrMetadata.transferFrame((FrameWithoutBoxing) source, (FrameWithoutBoxing) target, bytecodeTarget, targetMetadata);
-    }
-
     @Override
     public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, long bytecodeTarget, Object targetMetadata) {
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
-        osrMetadata.transferFrame((FrameWithoutBoxing) source, (FrameWithoutBoxing) target, bytecodeTarget, targetMetadata);
+        osrMetadata.transferFrame((FrameWithoutBoxing) source, (FrameWithoutBoxing) target, targetMetadata);
     }
 
     @Override
