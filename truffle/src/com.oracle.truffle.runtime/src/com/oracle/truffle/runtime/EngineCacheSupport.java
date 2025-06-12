@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.runtime;
 
+import java.nio.file.Path;
 import java.util.function.Function;
 
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -54,6 +56,11 @@ public interface EngineCacheSupport extends OptimizedRuntimeServiceProvider {
     void onEnginePatch(EngineData e);
 
     boolean onEngineClosing(EngineData e);
+
+    @SuppressWarnings("unused")
+    default boolean onStoreCache(EngineData e, Path path, WordPointer cancelledWord) {
+        throw new UnsupportedOperationException("Engine persist ist not yet supported on this JDK. Please update to resolve this problem.");
+    }
 
     void onEngineClosed(EngineData e);
 

@@ -43,12 +43,14 @@ package com.oracle.truffle.api.test.wrapper;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.Reference;
+import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -188,4 +190,10 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
         dispatch.onEngineCollected(engineReceiver);
         hostToGuest.shutdown(engine.remoteEngine);
     }
+
+    @Override
+    public boolean storeCache(Object engineReceiver, Path targetFile, WordPointer cancelWord) {
+        throw new UnsupportedOperationException();
+    }
+
 }

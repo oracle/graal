@@ -63,6 +63,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -980,7 +981,24 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                 // ignore interrupted
             }
         }
+    }
 
+    public void waitForCompilation(OptimizedCallTarget optimizedCallTarget, long timeout, BooleanSupplier cancelledPredicate) throws ExecutionException, TimeoutException {
+        CompilationTask task = optimizedCallTarget.getCompilationTask();
+        if (task != null) {
+            BooleanSupplier prev = task.cancelledPredicate;
+            try {
+                task.cancelledPredicate = cancelledPredicate;
+                try {
+                    task.awaitCompletion(timeout, TimeUnit.MILLISECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    // ignore interrupted
+                }
+            } finally {
+                task.cancelledPredicate = prev;
+            }
+        }
     }
 
     public int getCompilationQueueSize() {

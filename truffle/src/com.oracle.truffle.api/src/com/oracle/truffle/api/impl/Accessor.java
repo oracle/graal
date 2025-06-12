@@ -73,6 +73,7 @@ import java.util.logging.LogRecord;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
@@ -692,7 +693,9 @@ public abstract class Accessor {
 
         public abstract void preinitializeContext(Object polyglotEngine);
 
-        public abstract void finalizeStore(Object polyglotEngine);
+        public abstract Object finalizeStore(Object polyglotEngine);
+
+        public abstract void restoreStore(Object polyglotEngine, Object finalizationResult);
 
         public abstract Object getEngineLock(Object polyglotEngine);
 
@@ -1294,6 +1297,8 @@ public abstract class Accessor {
         public abstract void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> logSupplier, SandboxPolicy sandboxPolicy);
 
         public abstract boolean onEngineClosing(Object runtimeData);
+
+        public abstract boolean onStoreCache(Object runtimeData, Path targetPath, WordPointer cancelledWord);
 
         public abstract void onEngineClosed(Object runtimeData);
 

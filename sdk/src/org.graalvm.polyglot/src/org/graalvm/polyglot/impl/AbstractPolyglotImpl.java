@@ -74,6 +74,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.logging.LogRecord;
 
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
@@ -849,6 +850,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract SandboxPolicy getSandboxPolicy(Object engineReceiver);
 
         public abstract void onEngineCollected(Object engineReceiver);
+
+        public abstract boolean storeCache(Object engineReceiver, Path targetFile, WordPointer cancelledWord);
 
     }
 

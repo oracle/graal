@@ -40,10 +40,12 @@
  */
 package com.oracle.truffle.runtime;
 
+import java.nio.file.Path;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.SandboxPolicy;
@@ -358,6 +360,11 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     @Override
     public boolean onEngineClosing(Object runtimeData) {
         return ((EngineData) runtimeData).onEngineClosing();
+    }
+
+    @Override
+    public boolean onStoreCache(Object runtimeData, Path targetPath, WordPointer cancelledWord) {
+        return ((EngineData) runtimeData).onStoreCache(targetPath, cancelledWord);
     }
 
     @Override

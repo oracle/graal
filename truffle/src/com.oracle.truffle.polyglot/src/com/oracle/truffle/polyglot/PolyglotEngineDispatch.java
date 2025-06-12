@@ -43,6 +43,7 @@ package com.oracle.truffle.polyglot;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.Reference;
+import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,6 +53,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -327,4 +329,11 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
     public void onEngineCollected(Object engineReceiver) {
         ((PolyglotEngineImpl) engineReceiver).onEngineCollected();
     }
+
+    @Override
+    public boolean storeCache(Object engineReceiver, Path targetFile, WordPointer cancelledWord) {
+        PolyglotEngineImpl engine = ((PolyglotEngineImpl) engineReceiver);
+        return engine.storeCache(targetFile, cancelledWord);
+    }
+
 }
