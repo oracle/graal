@@ -28,24 +28,27 @@ This guide shows how you can take advantage of Native Image linking options incl
 - A 64-bit `musl` toolchain, `make`, and `configure`
 - The latest `zlib` library
 
-The easiest way to install GraalVM is with [SDKMAN!](https://sdkman.io/jdks#graal).
+Make sure you have installed a GraalVM JDK.
+The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
 For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
 To create statically linked applications with Native Image, you require a `musl` toolchain with the `zlib` library.
-For the best compatibility, use [musl-1.2.4](https://musl.libc.org/releases/musl-1.2.4.tar.gz) or later.
-We recommend building `musl` from [source](https://musl.libc.org/) as shown below:
+Use the latest or a recent version of musl (all versions prior and including `1.2.5` are affected by [CVE-2025-26519](https://www.openwall.com/lists/musl/2025/02/13/1)).
+The steps to building `musl` from [source](https://musl.libc.org/) as shown below.
+The example assumes you are using [musl-1.2.6](https://musl.libc.org/releases/musl-1.2.6.tar.gz).
+
 
 ```bash
 # Specify an installation directory for musl:
 export MUSL_HOME=$PWD/musl-toolchain
 
 # Download musl and zlib sources:
-curl -O https://musl.libc.org/releases/musl-1.2.4.tar.gz
+curl -O https://musl.libc.org/releases/musl-1.2.6.tar.gz
 curl -O https://zlib.net/fossils/zlib-1.2.13.tar.gz
 
 # Build musl from source
-tar -xzvf musl-1.2.4.tar.gz
-pushd musl-1.2.4
+tar -xzvf musl-1.2.6.tar.gz
+pushd musl-1.2.6
 ./configure --prefix=$MUSL_HOME --static
 # The next operation may require privileged access to system resources, so use sudo
 sudo make && make install
@@ -66,7 +69,7 @@ make && make install
 popd
 ```
 
-With the requirements set up, create the demo.
+With the requirements set up, create the demo as shown below.
 
 ## Build a Static Native Executable
 
