@@ -27,6 +27,7 @@ package com.oracle.svm.interpreter.metadata;
 import java.lang.reflect.Modifier;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class InterpreterResolvedPrimitiveType extends InterpreterResolvedJavaType {
@@ -102,5 +103,10 @@ public final class InterpreterResolvedPrimitiveType extends InterpreterResolvedJ
     @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
         return this.equals(other);
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredMethods(boolean link) {
+        return NO_METHODS;
     }
 }

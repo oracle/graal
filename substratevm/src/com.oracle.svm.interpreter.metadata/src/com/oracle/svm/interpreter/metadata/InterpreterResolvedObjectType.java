@@ -228,7 +228,10 @@ public final class InterpreterResolvedObjectType extends InterpreterResolvedJava
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods() {
+    public ResolvedJavaMethod[] getDeclaredMethods(boolean link) {
+        if (link) {
+            link();
+        }
         return declaredMethods;
     }
 

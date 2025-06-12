@@ -32,6 +32,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.Assumptions;
@@ -187,6 +189,11 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType {
     }
 
     @Override
+    public void link() {
+        RuntimeClassLoading.ensureLinked(DynamicHub.fromClass(clazz));
+    }
+
+    @Override
     public final boolean isInstance(JavaConstant obj) {
         throw VMError.intentionallyUnimplemented();
     }
@@ -262,8 +269,8 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType {
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods() {
-        return NO_METHODS;
+    public final ResolvedJavaMethod[] getDeclaredMethods() {
+        return getDeclaredMethods(true);
     }
 
     @Override

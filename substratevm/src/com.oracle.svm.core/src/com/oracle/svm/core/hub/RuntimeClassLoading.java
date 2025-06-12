@@ -258,4 +258,11 @@ public class RuntimeClassLoading {
     public static ResolvedJavaType createInterpreterType(DynamicHub hub, ResolvedJavaType analysisType) {
         return ImageSingletons.lookup(CremaSupport.class).createInterpreterType(hub, analysisType);
     }
+
+    public static void ensureLinked(DynamicHub dynamicHub) {
+        if (dynamicHub.isLinked()) {
+            return;
+        }
+        // GR-59739 runtime linking
+    }
 }
