@@ -351,7 +351,7 @@ class UnixFileSystemAccessors {
  * fields so we cannot re-use the substitutions.
  */
 
-@TargetClass(className = "sun.nio.fs.WindowsFileSystem")
+@TargetClass(className = "sun.nio.fs.WindowsFileSystem", onlyWith = JDKInitializedAtBuildTime.class)
 @Platforms({Platform.WINDOWS.class})
 final class Target_sun_nio_fs_WindowsFileSystem_BuildTime {
 
@@ -381,7 +381,7 @@ final class Target_sun_nio_fs_WindowsFileSystem_BuildTime {
     native void originalConstructor(Target_sun_nio_fs_WindowsFileSystemProvider_BuildTime p, String dir);
 }
 
-@TargetClass(className = "sun.nio.fs.WindowsFileSystemProvider")
+@TargetClass(className = "sun.nio.fs.WindowsFileSystemProvider", onlyWith = JDKInitializedAtBuildTime.class)
 @Platforms({Platform.WINDOWS.class})
 final class Target_sun_nio_fs_WindowsFileSystemProvider_BuildTime {
 }
@@ -455,7 +455,7 @@ class UserDirAccessors {
     }
 }
 
-@TargetClass(className = "java.io.WinNTFileSystem")
+@TargetClass(className = "java.io.WinNTFileSystem", onlyWith = JDKInitializedAtBuildTime.class)
 @Platforms(Platform.WINDOWS.class)
 final class Target_java_io_WinNTFileSystem_BuildTime {
 
