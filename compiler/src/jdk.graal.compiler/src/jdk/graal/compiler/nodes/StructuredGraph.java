@@ -1339,9 +1339,12 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     public interface GlobalProfileProvider {
 
-        GlobalProfileProvider DEFAULT = new GlobalProfileProvider() {
+        /**
+         * The default time returned when no global profile provider is available on the platform.
+         */
+        int GLOBAL_PROFILE_PROVIDER_DISABLED = -1;
 
-            public static final int DEFAULT_TIME = -1;
+        GlobalProfileProvider DEFAULT = new GlobalProfileProvider() {
 
             /**
              * The default time provider always returns -1, i.e. the self time is unknown by
@@ -1349,7 +1352,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
              */
             @Override
             public double getGlobalSelfTimePercent() {
-                return DEFAULT_TIME;
+                return GLOBAL_PROFILE_PROVIDER_DISABLED;
             }
 
             /**
