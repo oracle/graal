@@ -106,6 +106,7 @@ import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyWrapper;
+import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
@@ -954,7 +955,10 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     private static boolean delegateProcessing(ConstantReference.Builder builder, Object constant) {
         if (constant instanceof PatchedWordConstant patchedWordConstant) {
             WordBase word = patchedWordConstant.getWord();
-            if (word instanceof MethodPointer methodPointer) {
+            if (word instanceof MethodOffset) {
+                builder.setMethodOffset(Void.VOID);
+                return true;
+            } else if (word instanceof MethodPointer methodPointer) {
                 AnalysisMethod method = getRelocatableConstantMethod(methodPointer);
                 builder.initMethodPointer().setMethodId(method.getId());
                 return true;

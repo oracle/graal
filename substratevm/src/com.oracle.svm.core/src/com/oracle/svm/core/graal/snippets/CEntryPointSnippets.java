@@ -83,9 +83,10 @@ import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.ImageLayerSection;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
@@ -208,8 +209,16 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     @NeverInline("Heap base register is set in caller, prevent reads from floating before that.")
     private static void initCodeBase() {
-        ImageCodeInfo imageCodeInfo = MultiLayeredImageSingleton.getForLayer(ImageCodeInfo.class, MultiLayeredImageSingleton.INITIAL_LAYER_NUMBER);
-        CodePointer codeBase = imageCodeInfo.getCodeStart();
+        CodePointer codeBase;
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            /* Layered ImageSingleton handling is not ready yet at this point. */
+            Pointer initialLayerSection = ImageLayerSection.getInitialLayerSection().get();
+            int codeStartEntry = ImageLayerSection.getEntryOffset(ImageLayerSection.SectionEntries.CODE_START);
+            codeBase = initialLayerSection.readWord(codeStartEntry);
+        } else {
+            ImageCodeInfo imageCodeInfo = ImageSingletons.lookup(ImageCodeInfo.class);
+            codeBase = imageCodeInfo.getCodeStart();
+        }
         writeCurrentVMCodeBase(codeBase);
     }
 

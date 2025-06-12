@@ -168,6 +168,7 @@ struct ConstantReference {
     }
     cEntryPointLiteralCodePointer @5 :CEntryPointLiteralReference;
     cGlobalDataBasePointer @6 :Void;
+    methodOffset @7 :Void;
   }
 }
 

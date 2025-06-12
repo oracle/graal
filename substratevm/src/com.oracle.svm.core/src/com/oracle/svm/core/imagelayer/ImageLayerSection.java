@@ -32,7 +32,6 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
 
 public abstract class ImageLayerSection implements LayeredImageSingleton {
 
@@ -40,16 +39,13 @@ public abstract class ImageLayerSection implements LayeredImageSingleton {
     protected final CGlobalData<WordPointer> cachedImageFDs;
     protected final CGlobalData<WordPointer> cachedImageHeapOffsets;
     protected final CGlobalData<WordPointer> cachedImageHeapRelocations;
-    protected final CGlobalData<Word> heapRelativeRelocations;
 
     protected ImageLayerSection(CGlobalData<Pointer> initialSectionStart, CGlobalData<WordPointer> cachedImageFDs, CGlobalData<WordPointer> cachedImageHeapOffsets,
-                    CGlobalData<WordPointer> cachedImageHeapRelocations,
-                    CGlobalData<Word> heapRelativeRelocations) {
+                    CGlobalData<WordPointer> cachedImageHeapRelocations) {
         this.initialSectionStart = initialSectionStart;
         this.cachedImageFDs = cachedImageFDs;
         this.cachedImageHeapOffsets = cachedImageHeapOffsets;
         this.cachedImageHeapRelocations = cachedImageHeapRelocations;
-        this.heapRelativeRelocations = heapRelativeRelocations;
     }
 
     public enum SectionEntries {
@@ -61,7 +57,10 @@ public abstract class ImageLayerSection implements LayeredImageSingleton {
         HEAP_WRITEABLE_END,
         HEAP_WRITEABLE_PATCHED_BEGIN,
         HEAP_WRITEABLE_PATCHED_END,
-        NEXT_SECTION
+        CODE_START,
+        NEXT_SECTION,
+        VARIABLY_SIZED_DATA,
+        FIRST_SINGLETON,
     }
 
     private static ImageLayerSection singleton() {
@@ -91,11 +90,6 @@ public abstract class ImageLayerSection implements LayeredImageSingleton {
     @Fold
     public static CGlobalData<WordPointer> getCachedImageHeapRelocations() {
         return singleton().cachedImageHeapRelocations;
-    }
-
-    @Fold
-    public static CGlobalData<Word> getHeapRelativeRelocationsStart() {
-        return singleton().heapRelativeRelocations;
     }
 
     protected abstract int getEntryOffsetInternal(SectionEntries entry);

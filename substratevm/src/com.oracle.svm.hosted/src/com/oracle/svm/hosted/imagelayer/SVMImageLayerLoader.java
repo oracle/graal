@@ -1467,20 +1467,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                 }
                 case NULL_POINTER -> JavaConstant.NULL_POINTER;
                 case NOT_MATERIALIZED ->
-                    /*
-                     * This constant is a field value or an object value that was not materialized
-                     * in the base image.
-                     */
-                    new AnalysisFuture<>(() -> {
-                        String errorMessage = "Reading the value of a base layer constant which was not materialized in the base image, ";
-                        if (parentConstant instanceof ImageHeapInstance instance) {
-                            AnalysisField field = getFieldFromIndex(instance, finalPosition);
-                            errorMessage += "reachable by reading field " + field + " of parent object constant: " + parentConstant;
-                        } else {
-                            errorMessage += "reachable by indexing at position " + finalPosition + " into parent array constant: " + parentConstant;
-                        }
-                        throw AnalysisError.shouldNotReachHere(errorMessage);
-                    });
+                    unsupportedReferencedConstant("Reading the value of a base layer constant which was not materialized in the base image", parentConstant, finalPosition);
+                case METHOD_OFFSET ->
+                    unsupportedReferencedConstant("Reading the value of a code offset constant in a base image, which is not supported", parentConstant, finalPosition);
                 case PRIMITIVE_VALUE -> {
                     PrimitiveValue.Reader pv = constantData.getPrimitiveValue();
                     yield JavaConstant.forPrimitive((char) pv.getTypeChar(), pv.getRawValue());
@@ -1489,6 +1478,19 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             };
         }
         return values;
+    }
+
+    private static AnalysisFuture<?> unsupportedReferencedConstant(String message, ImageHeapConstant parentConstant, int finalPosition) {
+        return new AnalysisFuture<>(() -> {
+            String errorMessage = message + ": ";
+            if (parentConstant instanceof ImageHeapInstance instance) {
+                AnalysisField field = getFieldFromIndex(instance, finalPosition);
+                errorMessage += "reachable by reading field " + field + " of parent object constant: " + parentConstant;
+            } else {
+                errorMessage += "reachable by indexing at position " + finalPosition + " into parent array constant: " + parentConstant;
+            }
+            throw AnalysisError.shouldNotReachHere(errorMessage);
+        });
     }
 
     private boolean delegateProcessing(ConstantReference.Reader constantRef, Object[] values, int i) {

@@ -33,6 +33,7 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_PATCHED_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_PATCHED_END;
+import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.CODE_START;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_BEGIN;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_END;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_RELOCATABLE_BEGIN;
@@ -42,11 +43,13 @@ import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HE
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_WRITEABLE_PATCHED_BEGIN;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_WRITEABLE_PATCHED_END;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.NEXT_SECTION;
+import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.VARIABLY_SIZED_DATA;
 import static com.oracle.svm.core.posix.linux.ProcFSSupport.findMapping;
 import static com.oracle.svm.core.util.PointerUtils.roundDown;
 import static com.oracle.svm.core.util.UnsignedUtils.isAMultiple;
 import static com.oracle.svm.core.util.UnsignedUtils.roundUp;
 import static jdk.graal.compiler.word.Word.signed;
+import static jdk.graal.compiler.word.Word.unsigned;
 
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -84,6 +87,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.PauseNode;
+import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import jdk.graal.compiler.word.Word;
 
 /**
@@ -241,28 +245,91 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             return;
         }
 
-        Pointer currentSection = ImageLayerSection.getInitialLayerSection().get();
-        Word heapBegin = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_BEGIN));
-
-        Word patches = ImageLayerSection.getHeapRelativeRelocationsStart().get();
-        int endOffset = Integer.BYTES + (patches.readInt(0) * Integer.BYTES);
+        Pointer layerSection = ImageLayerSection.getInitialLayerSection().get();
+        Pointer initialLayerImageHeap = layerSection.readWord(ImageLayerSection.getEntryOffset(HEAP_BEGIN));
+        Pointer codeBase = layerSection.readWord(ImageLayerSection.getEntryOffset(CODE_START));
 
         int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
-        int offset = Integer.BYTES;
-        while (offset < endOffset) {
-            int heapOffset = patches.readInt(offset);
-            int referenceEncoding = patches.readInt(offset + Integer.BYTES);
+        while (layerSection.isNonNull()) {
+            Pointer data = layerSection.add(ImageLayerSection.getEntryOffset(VARIABLY_SIZED_DATA));
+            int offset = 0;
 
-            if (referenceSize == 4) {
-                heapBegin.writeInt(heapOffset, referenceEncoding);
-            } else {
-                heapBegin.writeLong(heapOffset, referenceEncoding);
-            }
+            // Skip singletons table
+            long singletonTableEntryCount = data.readLong(offset);
+            UnsignedWord singletonTableAlignedSize = roundUp(unsigned(singletonTableEntryCount * referenceSize), unsigned(Long.BYTES));
+            offset += Long.BYTES + (int) singletonTableAlignedSize.rawValue();
 
-            offset += 2 * Integer.BYTES;
+            Pointer layerHeapRelocs = layerSection.readWord(ImageLayerSection.getEntryOffset(HEAP_RELOCATABLE_BEGIN));
+            Pointer layerCode = layerSection.readWord(ImageLayerSection.getEntryOffset(CODE_START));
+            Word layerCodeOffsetToBase = (Word) layerCode.subtract(codeBase);
+            offset = applyLayerCodePointerPatches(data, offset, layerHeapRelocs, layerCodeOffsetToBase);
+
+            Word negativeCodeBase = Word.<Word> zero().subtract(codeBase);
+            offset = applyLayerCodePointerPatches(data, offset, layerHeapRelocs, negativeCodeBase);
+
+            applyLayerImageHeapRefPatches(data.add(offset), initialLayerImageHeap);
+
+            layerSection = layerSection.readWord(ImageLayerSection.getEntryOffset(NEXT_SECTION));
         }
 
         heapPatchStateAddr.writeWordVolatile(0, ImageHeapPatchingState.SUCCESSFUL);
+    }
+
+    @Uninterruptible(reason = "Thread state not yet set up.")
+    private static int applyLayerCodePointerPatches(Pointer data, int startOffset, Pointer layerHeapRelocs, Word addend) {
+        int wordSize = ConfigurationValues.getTarget().wordSize;
+
+        int offset = startOffset;
+        int bitmapWordCount = (int) data.readLong(offset);
+        offset += Long.BYTES;
+        if (addend.equal(0)) {
+            offset += bitmapWordCount * Long.BYTES;
+            return offset;
+        }
+
+        for (int i = 0; i < bitmapWordCount; i++) {
+            long bits = data.readLong(offset);
+            offset += Long.BYTES;
+            int j = 0; // index of a 1-bit
+            while (bits != 0) {
+                int ntz = CountTrailingZerosNode.countLongTrailingZeros(bits);
+                j += ntz;
+
+                int at = (i * 64 + j) * wordSize;
+                Word w = layerHeapRelocs.readWord(at);
+                w = w.add(addend);
+                layerHeapRelocs.writeWord(at, w);
+
+                /*
+                 * Note that we must not shift by ntz+1 here because it can be 64, and according to
+                 * the Java Language Specification, 15.19. Shift Operators: If the promoted type of
+                 * the left-hand operand is long, then only the six lowest-order bits of the
+                 * right-hand operand are used as the shift distance. [..] The shift distance
+                 * actually used is therefore always in the range 0 to 63, inclusive.
+                 */
+                bits = (bits >>> ntz) >>> 1;
+                j++;
+            }
+        }
+        return offset;
+    }
+
+    @Uninterruptible(reason = "Thread state not yet set up.")
+    private static void applyLayerImageHeapRefPatches(Pointer patches, Pointer layerImageHeap) {
+        int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+        int count = (int) patches.readLong(0);
+        int offset = Long.BYTES;
+        int endOffset = offset + count * Integer.BYTES;
+        while (offset < endOffset) {
+            int heapOffset = patches.readInt(offset);
+            int referenceEncoding = patches.readInt(offset + Integer.BYTES);
+            offset += 2 * Integer.BYTES;
+            if (referenceSize == 4) {
+                layerImageHeap.writeInt(heapOffset, referenceEncoding);
+            } else {
+                layerImageHeap.writeLong(heapOffset, referenceEncoding);
+            }
+        }
     }
 
     @Override

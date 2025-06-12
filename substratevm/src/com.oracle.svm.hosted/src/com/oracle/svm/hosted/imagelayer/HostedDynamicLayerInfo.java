@@ -137,11 +137,18 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
             assert aMethod.isInBaseLayer() : hMethod;
             priorLayerMethodSymbols.add(localSymbolNameForMethod(hMethod));
             hMethod.setCompiledInPriorLayer();
+            hMethod.setCodeAddressOffset(getPriorInstalledOffset(aMethod));
         }
     }
 
     public void defineSymbolsForPriorLayerMethods(ObjectFile objectFile) {
         assert BuildPhaseProvider.isHeapLayoutFinished();
+        /*
+         * In vtables, we can typically reference methods from the initial layer via their known
+         * offsets from the code base, without using symbols. Only in some cases, such as
+         * CFunctionPointer/MethodPointer, we still use symbols. Therefore, not all these symbol
+         * entries are needed, but the command-line linker should remove any unnecessary ones.
+         */
         priorLayerMethodSymbols.forEach(symbol -> objectFile.createUndefinedSymbol(symbol, 0, true));
     }
 

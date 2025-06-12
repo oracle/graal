@@ -96,12 +96,12 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Tracks metdata {@link MultiLayeredImageSingleton} and {@link ApplicationLayerOnlyImageSingleton}
+ * Tracks metadata {@link MultiLayeredImageSingleton} and {@link ApplicationLayerOnlyImageSingleton}
  * singletons so that they can be properly referenced as needed.
  */
 @AutomaticallyRegisteredFeature
 public class LoadImageSingletonFeature implements InternalFeature, FeatureSingleton, UnsavedSingleton {
-    public static final String CROSS_LAYER_SINGLETON_TABLE_SYMBOL = "__layered_singleton_table_start";
+    public static final String CROSS_LAYER_SINGLETON_TABLE_SYMBOL = "__svm_layer_singleton_table_start";
 
     static CrossLayerSingletonMappingInfo getCrossLayerSingletonMappingInfo() {
         return (CrossLayerSingletonMappingInfo) ImageSingletons.lookup(LoadImageSingletonFactory.class);

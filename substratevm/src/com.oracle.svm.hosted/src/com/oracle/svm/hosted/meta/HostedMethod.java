@@ -229,7 +229,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     public void setCodeAddressOffset(int address) {
-        assert isCompiled();
+        assert isCompiled() || isCompiledInPriorLayer();
         assert codeAddressOffset == INVALID_CODE_ADDRESS_OFFSET && address != INVALID_CODE_ADDRESS_OFFSET : Assertions.errorMessage(codeAddressOffset, address);
 
         codeAddressOffset = address;

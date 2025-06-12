@@ -72,6 +72,7 @@ import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.StringInternSupport;
+import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -87,6 +88,7 @@ import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
@@ -98,6 +100,7 @@ import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -119,7 +122,9 @@ public final class NativeImageHeap implements ImageHeap {
     private final int minInstanceSize;
     private final int minArraySize;
     private final int fillerArrayBaseOffset;
+
     private final boolean layeredBuild = ImageLayerBuildingSupport.buildingImageLayer();
+    private final boolean initialLayerBuild = layeredBuild && ImageLayerBuildingSupport.buildingInitialLayer();
 
     /**
      * A Map from objects at construction-time to native image objects.
@@ -647,12 +652,34 @@ public final class NativeImageHeap implements ImageHeap {
         heapLayouter.assignObjectToPartition(info, !written || immutable, references, relocatable, patched);
     }
 
-    private static boolean isRelocatableConstant(JavaConstant constant) {
+    private boolean isRelocatableConstant(JavaConstant constant) {
         return constant instanceof PatchedWordConstant pwc && isRelocatableValue(pwc.getWord());
     }
 
-    private static boolean isRelocatableValue(Object value) {
-        return value instanceof RelocatedPointer;
+    /** @see NativeImageHeapWriter#writeConstant */
+    private boolean isRelocatableValue(Object value) {
+        if (value instanceof RelocatedPointer) {
+            return true;
+        }
+        /*
+         * In the initial layer, method offsets don't need to be adjusted because they are relative
+         * to that layer's text section (the code base). In other layers, we need to adjust the code
+         * offsets at runtime so that they reflect the displacement between the code base and the
+         * text sections of layers in memory.
+         */
+        if (layeredBuild && value instanceof MethodOffset methodOffset) {
+            if (!initialLayerBuild) {
+                // Need to adjust to reflect displacement between code base and layer's text section
+                return true;
+            }
+            ResolvedJavaMethod method = methodOffset.getMethod();
+            HostedMethod hMethod = (method instanceof HostedMethod) ? (HostedMethod) method : hUniverse.lookup(method);
+            if (NativeImage.isInjectedNotCompiled(hMethod)) {
+                // References code in another (maybe future) layer, which must be patched at runtime
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

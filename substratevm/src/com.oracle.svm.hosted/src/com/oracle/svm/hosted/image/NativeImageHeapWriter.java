@@ -68,6 +68,7 @@ import com.oracle.svm.hosted.imagelayer.LayeredImageHooks;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
@@ -81,6 +82,7 @@ import jdk.graal.compiler.debug.Indent;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Writes the native image heap into one or multiple {@link RelocatableBuffer}s.
@@ -179,7 +181,7 @@ public final class NativeImageHeapWriter {
             CrossLayerConstantRegistryFeature.singleton().markFutureHeapConstantPatchSite(constant, heapOffset);
             fillReferenceWithGarbage(buffer, index);
         } else if (value instanceof PatchedWordConstant) {
-            addNonDataRelocation(buffer, index, prepareRelocatable(info, value));
+            addWordConstantRelocation(buffer, index, prepareRelocatable(info, value));
         } else {
             write(buffer, index, value, info != null ? info : field);
         }
@@ -224,7 +226,7 @@ public final class NativeImageHeapWriter {
 
     private void writeConstant(RelocatableBuffer buffer, int index, JavaKind kind, JavaConstant constant, ObjectInfo info) {
         if (constant instanceof PatchedWordConstant) {
-            addNonDataRelocation(buffer, index, prepareRelocatable(info, constant));
+            addWordConstantRelocation(buffer, index, prepareRelocatable(info, constant));
             return;
         }
 
@@ -254,13 +256,26 @@ public final class NativeImageHeapWriter {
         }
     }
 
+    /**
+     * @see NativeImageHeap#isRelocatableValue
+     * @see NativeImage#markCodeRelocationSite
+     */
     private void writeConstant(RelocatableBuffer buffer, int index, JavaKind kind, Object constantValue, ObjectInfo info) {
         Object value = constantValue;
         if (value instanceof MethodOffset methodOffset) {
-            HostedMethod target = NativeImage.getMethodPointerTargetMethod(heap.hMetaAccess, methodOffset.getMethod());
+            HostedMetaAccess metaAccess = heap.hMetaAccess;
+            ResolvedJavaMethod method = methodOffset.getMethod();
+            if (!(method instanceof HostedMethod)) {
+                method = metaAccess.getUniverse().lookup(method);
+            }
+            if (NativeImage.isInjectedNotCompiled((HostedMethod) method)) {
+                addWordConstantRelocation(buffer, index, methodOffset);
+                return;
+            }
+            HostedMethod target = NativeImage.getMethodRefTargetMethod(metaAccess, method);
             value = target.getCodeAddressOffset();
-        } else if (value instanceof RelocatedPointer) {
-            addNonDataRelocation(buffer, index, (RelocatedPointer) value);
+        } else if (value instanceof RelocatedPointer relocatedPointer) {
+            addWordConstantRelocation(buffer, index, relocatedPointer);
             return;
         }
 
@@ -316,13 +331,13 @@ public final class NativeImageHeapWriter {
     }
 
     /**
-     * Adds a relocation for a code pointer or other non-data pointers.
+     * Adds a relocation for a word constant.
      */
-    private void addNonDataRelocation(RelocatableBuffer buffer, int index, RelocatedPointer pointer) {
+    private void addWordConstantRelocation(RelocatableBuffer buffer, int index, WordBase word) {
         mustBeReferenceAligned(index);
-        assert pointer instanceof MethodPointer || pointer instanceof CGlobalDataBasePointer : "unknown relocated pointer " + pointer;
+        assert word instanceof MethodOffset || word instanceof MethodPointer || word instanceof CGlobalDataBasePointer : "unknown relocatable " + word;
         int pointerSize = ConfigurationValues.getTarget().wordSize;
-        addDirectRelocationWithoutAddend(buffer, index, pointerSize, pointer);
+        addDirectRelocationWithoutAddend(buffer, index, pointerSize, word);
     }
 
     private static void writePrimitive(RelocatableBuffer buffer, int index, JavaConstant con) {
@@ -431,7 +446,9 @@ public final class NativeImageHeapWriter {
                 instanceFields = instanceFields.filter(field -> !dynamicHubLayout.isIgnoredField(field));
 
                 if (imageLayer) {
-                    LayeredImageHooks.processWrittenDynamicHub(new LayeredImageHooks.WrittenDynamicHubInfo((DynamicHub) info.getObject(), heap.aUniverse, heap.hUniverse, vTable));
+                    int vTableOffsetInHeapRelocs = NumUtil.safeToInt(info.getOffset() + dynamicHubLayout.getVTableSlotOffset(0) - heapLayout.getReadOnlyRelocatableOffset());
+                    LayeredImageHooks.processWrittenDynamicHub(
+                                    new LayeredImageHooks.WrittenDynamicHubInfo((DynamicHub) info.getObject(), heap.aUniverse, heap.hUniverse, vTable, vTableOffsetInHeapRelocs));
                 }
 
             } else if (heap.getHybridLayout(clazz) != null) {

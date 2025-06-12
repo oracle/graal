@@ -1523,6 +1523,7 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Avoid linker relocations for code and instead emit address computations.", type = OptionType.Expert) //
+    @LayerVerifiedOption(severity = Severity.Error, kind = Kind.Changed, positional = false) //
     public static final HostedOptionKey<Boolean> RelativeCodePointers = new HostedOptionKey<>(false, SubstrateOptions::validateRelativeCodePointers);
 
     @Fold
