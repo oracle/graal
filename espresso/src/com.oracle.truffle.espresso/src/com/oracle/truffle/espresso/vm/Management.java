@@ -162,6 +162,8 @@ public final class Management extends NativeEnv {
     @CompilationFinal //
     private int managementVersion;
 
+    private MemoryMXBean memoryMXBean;
+
     private final @Pointer TruffleObject initializeManagementContext;
     private final @Pointer TruffleObject disposeManagementContext;
 
@@ -178,6 +180,14 @@ public final class Management extends NativeEnv {
     @Override
     protected TruffleLogger getLogger() {
         return LOGGER;
+    }
+
+    @TruffleBoundary
+    private MemoryMXBean getHostMemoryMXBean() {
+        if (memoryMXBean == null) {
+            memoryMXBean = ManagementFactory.getMemoryMXBean();
+        }
+        return memoryMXBean;
     }
 
     /**
@@ -611,11 +621,11 @@ public final class Management extends NativeEnv {
     @TruffleBoundary
     public @JavaType(Object.class) StaticObject GetMemoryUsage(@SuppressWarnings("unused") boolean heap, @Inject Meta meta) {
         MemoryUsage usage;
-        MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+        MemoryMXBean hostBean = getHostMemoryMXBean();
         if (heap) {
-            usage = memoryMXBean.getHeapMemoryUsage();
+            usage = hostBean.getHeapMemoryUsage();
         } else {
-            usage = memoryMXBean.getNonHeapMemoryUsage();
+            usage = hostBean.getNonHeapMemoryUsage();
         }
         return asGuestUsage(usage, meta);
     }
