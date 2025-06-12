@@ -223,18 +223,11 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     # NOTE: After adding or removing deploy jobs, please make sure you modify ce-release-artifacts.json accordingly.
     #
     "vm-base": mx_env + deploy_graalvm_base + default_os_arch_jdk_mixin + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk21": weekly,
       "linux:amd64:jdk-latest": post_merge,
-      "linux:aarch64:jdk21": weekly + capabilities('!xgene3') + timelimit('1:30:00'),
-      "linux:aarch64:jdk-latest": daily + capabilities('!xgene3') + timelimit('1:30:00'),
-
-      "darwin:amd64:jdk21": weekly,
-      "darwin:amd64:jdk-latest": daily,
-      "darwin:aarch64:jdk21": weekly + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
-      "darwin:aarch64:jdk-latest": daily + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
-
-      "windows:amd64:jdk21": weekly + timelimit('1:30:00'),
-      "windows:amd64:jdk-latest": daily + timelimit('1:30:00'),
+      "linux:aarch64:jdk-latest": post_merge + capabilities('!xgene3') + timelimit('1:30:00'),
+      "darwin:amd64:jdk-latest": post_merge,
+      "darwin:aarch64:jdk-latest": post_merge + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
+      "windows:amd64:jdk-latest": post_merge + timelimit('1:30:00'),
     }),
   },
 
@@ -244,11 +237,11 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     #
     "vm-espresso": mx_env + deploy_graalvm_espresso + espresso_java_home(21) + default_os_arch_jdk_mixin + platform_spec(no_jobs) + (
     if vm.deploy_espress_standalone then platform_spec({
-      "linux:amd64:jdk-latest": weekly,
-      "linux:aarch64:jdk-latest": weekly,
-      "darwin:amd64:jdk-latest": weekly,
-      "darwin:aarch64:jdk-latest": weekly,
-      "windows:amd64:jdk-latest": weekly,
+      "linux:amd64:jdk-latest": post_merge,
+      "linux:aarch64:jdk-latest": post_merge,
+      "darwin:amd64:jdk-latest": post_merge,
+      "darwin:aarch64:jdk-latest": post_merge,
+      "windows:amd64:jdk-latest": post_merge,
     }) else {}),
   },
 
