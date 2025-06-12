@@ -93,8 +93,10 @@ public class StructsProcessor extends AbstractProcessor {
     private static final String STRUCTS_CLASS = "Structs";
 
     // Methods
-    private static final String GET_INFO = "getInfo";
+    private static final String GET_STRUCT_SIZE = "getStructSize";
     private static final String GET_OFFSET = "getOffset";
+    private static final String GET_START_BIT = "getStartBit";
+    private static final String GET_END_BIT = "getEndBit";
     private static final String GET = "get";
     private static final String PUT = "put";
     private static final String GET_UNCACHED = "getUncached";
@@ -229,7 +231,7 @@ public class StructsProcessor extends AbstractProcessor {
             nativeTypes.add(NativeType.valueOf(type.getSimpleName().toString()));
         }
 
-        String className = ProcessorUtils.removeUnderscores(strName); // Replace '_j' with 'J'
+        String className = removeUnderscores(strName); // Replace '_j' with 'J'
         // Generate code
         String source = generateStruct(strName, members, nativeTypes, length, className);
         // Commit and write to files.
@@ -266,13 +268,12 @@ public class StructsProcessor extends AbstractProcessor {
                         .withSuperClass(STRUCT_STORAGE_CLASS + "<" + className + "." + wrapperName + ">");
 
         // Generate the fields:
-        // - One to store the struct size
         // - One per member to store their offsets
-        generateFields(struct, members);
+        generateFields(struct, members, typesList, length);
 
         // Generate the constructor.
         // Use passed MemberOffsetGetter.
-        generateConstructor(struct, strName, members, className);
+        generateConstructor(struct, strName, members, typesList, length, className);
 
         // Generate the wrapper structure that will access the native struct java-like.
         // It simply wraps a byte buffer around the pointer, and uses offsets in parent class to
@@ -285,20 +286,32 @@ public class StructsProcessor extends AbstractProcessor {
         return structFile.build();
     }
 
-    private static void generateFields(ClassBuilder struct, List<String> members) {
-        for (String member : members) {
+    private static void generateFields(ClassBuilder struct, List<String> members, List<NativeType> typesList, int length) {
+        for (int i = 0; i < length; i++) {
+            String member = members.get(i);
+            NativeType type = typesList.get(i);
             struct.withField(new FieldBuilder("int", member).withQualifiers(new ModifierBuilder().asFinal()));
+            if (type == NativeType.BITFIELD_INT) {
+                struct.withField(new FieldBuilder("byte", member + "StartBit").withQualifiers(new ModifierBuilder().asFinal()));
+                struct.withField(new FieldBuilder("byte", member + "EndBit").withQualifiers(new ModifierBuilder().asFinal()));
+            }
         }
     }
 
-    private static void generateConstructor(ClassBuilder struct, String strName, List<String> members, String className) {
+    private static void generateConstructor(ClassBuilder struct, String strName, List<String> members, List<NativeType> typesList, int length, String className) {
         MethodBuilder constructor = new MethodBuilder(className) //
                         .withParams(argument(MEMBER_OFFSET_GETTER_CLASS, MEMBER_OFFSET_GETTER_ARG)) //
                         .asConstructor();
 
-        constructor.addBodyLine("super(", call(MEMBER_OFFSET_GETTER_ARG, GET_INFO, new String[]{stringify(strName)}), ");");
-        for (String member : members) {
+        constructor.addBodyLine("super(", call(MEMBER_OFFSET_GETTER_ARG, GET_STRUCT_SIZE, new String[]{stringify(strName)}), ");");
+        for (int i = 0; i < length; i++) {
+            String member = members.get(i);
+            NativeType type = typesList.get(i);
             constructor.addBodyLine(assignment(member, "(int) " + call(MEMBER_OFFSET_GETTER_ARG, GET_OFFSET, new String[]{stringify(strName), stringify(member)})));
+            if (type == NativeType.BITFIELD_INT) {
+                constructor.addBodyLine(assignment(member + "StartBit", "(byte) " + call(MEMBER_OFFSET_GETTER_ARG, GET_START_BIT, new String[]{stringify(strName), stringify(member)})));
+                constructor.addBodyLine(assignment(member + "EndBit", "(byte) " + call(MEMBER_OFFSET_GETTER_ARG, GET_END_BIT, new String[]{stringify(strName), stringify(member)})));
+            }
         }
 
         struct.withMethod(constructor);
@@ -325,12 +338,17 @@ public class StructsProcessor extends AbstractProcessor {
 
             MethodBuilder getter = new MethodBuilder(methodName) //
                             .withModifiers(new ModifierBuilder().asPublic()) //
-                            .withReturnType(argType) //
-                            .addBodyLine("return ", call(null, GET + callSuffix, new String[]{member}), ';');
+                            .withReturnType(argType);
             MethodBuilder setter = new MethodBuilder(methodName) //
                             .withModifiers(new ModifierBuilder().asPublic()) //
-                            .withParams(argument(argType, VALUE)) //
-                            .addBodyLine(call(null, PUT + callSuffix, new String[]{member, VALUE}), ';');
+                            .withParams(argument(argType, VALUE));
+            if (type == NativeType.BITFIELD_INT) {
+                getter.addBodyLine("return ", call(null, GET + callSuffix, new String[]{member, member + "StartBit", member + "EndBit"}), ';');
+                setter.addBodyLine(call(null, PUT + callSuffix, new String[]{member, member + "StartBit", member + "EndBit", VALUE}), ';');
+            } else {
+                getter.addBodyLine("return ", call(null, GET + callSuffix, new String[]{member}), ';');
+                setter.addBodyLine(call(null, PUT + callSuffix, new String[]{member, VALUE}), ';');
+            }
             wrapper.withMethod(getter);
             wrapper.withMethod(setter);
         }
@@ -399,57 +417,37 @@ public class StructsProcessor extends AbstractProcessor {
     }
 
     private static String nativeTypeToMethodSuffix(NativeType type) {
-        switch (type) {
-            case BOOLEAN:
-                return "Boolean";
-            case BYTE:
-                return "Byte";
-            case CHAR:
-                return "Char";
-            case SHORT:
-                return "Short";
-            case INT:
-                return "Int";
-            case LONG:
-                return "Long";
-            case FLOAT:
-                return "Float";
-            case DOUBLE:
-                return "Double";
-            case OBJECT:
-                return "Object";
-            case POINTER:
-                return "Pointer";
-            default:
-                return "";
-        }
+        return switch (type) {
+            case VOID -> "";
+            case BOOLEAN -> "Boolean";
+            case BYTE -> "Byte";
+            case CHAR -> "Char";
+            case SHORT -> "Short";
+            case INT -> "Int";
+            case LONG -> "Long";
+            case FLOAT -> "Float";
+            case DOUBLE -> "Double";
+            case OBJECT -> "Object";
+            case POINTER -> "Pointer";
+            case BITFIELD_INT -> "BitFieldInt";
+        };
     }
 
     private static String nativeTypeToArgType(NativeType type) {
-        switch (type) {
-            case BOOLEAN:
-                return "boolean";
-            case BYTE:
-                return "byte";
-            case CHAR:
-                return "char";
-            case SHORT:
-                return "short";
-            case INT:
-                return "int";
-            case LONG:
-                return "long";
-            case FLOAT:
-                return "float";
-            case DOUBLE:
-                return "double";
-            case OBJECT:
-                return "StaticObject";
-            case POINTER:
-                return "TruffleObject";
-            default:
-                return "";
-        }
+        return switch (type) {
+            case VOID -> "";
+            case BOOLEAN -> "boolean";
+            case BYTE -> "byte";
+            case CHAR -> "char";
+            case SHORT -> "short";
+            case INT -> "int";
+            case LONG -> "long";
+            case FLOAT -> "float";
+            case DOUBLE -> "double";
+            case OBJECT -> "StaticObject";
+            case POINTER -> "TruffleObject";
+            case BITFIELD_INT -> "int";
+        };
     }
 
 }
