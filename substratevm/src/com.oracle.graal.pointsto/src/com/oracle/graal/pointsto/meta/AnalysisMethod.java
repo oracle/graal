@@ -818,6 +818,11 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
+    public boolean isDeclared() {
+        return wrapped.isDeclared();
+    }
+
+    @Override
     public boolean isClassInitializer() {
         return wrapped.isClassInitializer();
     }

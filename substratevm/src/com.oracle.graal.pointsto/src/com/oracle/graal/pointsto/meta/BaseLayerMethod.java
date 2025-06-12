@@ -147,6 +147,11 @@ public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMet
     }
 
     @Override
+    public boolean isDeclared() {
+        throw unimplemented();
+    }
+
+    @Override
     public boolean isClassInitializer() {
         throw unimplemented();
     }

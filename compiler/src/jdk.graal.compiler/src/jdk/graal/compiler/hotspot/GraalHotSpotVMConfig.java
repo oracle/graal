@@ -682,6 +682,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long arithmeticLogAddress = getFieldValue("CompilerToVM::Data::dlog", Long.class, "address");
     public final long arithmeticLog10Address = getFieldValue("CompilerToVM::Data::dlog10", Long.class, "address");
     public final long arithmeticPowAddress = getFieldValue("CompilerToVM::Data::dpow", Long.class, "address");
+    public final long arithmeticCbrtAddress = getFieldValue("CompilerToVM::Data::dcbrt", Long.class, "address");
 
     public final long fremAddress = getAddress("SharedRuntime::frem");
     public final long dremAddress = getAddress("SharedRuntime::drem");

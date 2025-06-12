@@ -26,6 +26,7 @@ package com.oracle.svm.interpreter.metadata;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
+import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -263,6 +264,11 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType {
     @Override
     public ResolvedJavaMethod[] getDeclaredMethods() {
         return NO_METHODS;
+    }
+
+    @Override
+    public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
+        throw VMError.intentionallyUnimplemented();
     }
 
     @Override

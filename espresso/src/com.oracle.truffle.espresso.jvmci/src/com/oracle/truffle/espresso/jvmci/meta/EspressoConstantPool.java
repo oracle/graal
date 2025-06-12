@@ -25,7 +25,9 @@ package com.oracle.truffle.espresso.jvmci.meta;
 import static com.oracle.truffle.espresso.jvmci.EspressoJVMCIRuntime.runtime;
 
 import java.lang.invoke.MethodHandle;
+import java.util.List;
 
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -111,6 +113,11 @@ public final class EspressoConstantPool implements ConstantPool {
 
     @Override
     public native EspressoBootstrapMethodInvocation lookupBootstrapMethodInvocation(int cpi, int opcode);
+
+    @Override
+    public List<BootstrapMethodInvocation> lookupBootstrapMethodInvocations(boolean invokeDynamic) {
+        throw JVMCIError.unimplemented();
+    }
 
     @Override
     public native JavaType lookupType(int cpi, int opcode);

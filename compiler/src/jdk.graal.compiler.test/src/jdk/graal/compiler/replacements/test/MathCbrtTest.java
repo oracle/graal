@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,29 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr.logging;
+package jdk.graal.compiler.replacements.test;
 
-import com.oracle.svm.core.util.BasedOnJDKClass;
+import org.junit.Test;
 
-/**
- * This enum contains all log tags that are in at least one {@link jdk.jfr.internal.LogTag}. This
- * class is necessary because {@link jdk.jfr.internal.LogTag} is an enum of log tag sets, and does
- * not provide the individual log tags.
- */
-@BasedOnJDKClass(className = "jdk.jfr.internal.LogTag")
-enum JfrLogTag {
-    JFR,
-    SYSTEM,
-    EVENT,
-    SETTING,
-    BYTECODE,
-    PARSER,
-    METADATA,
-    STREAMING,
-    THROTTLE,
-    PERIODIC,
-    SAMPLING,
-    DCMD,
-    START,
-    METHODTRACE
+import jdk.graal.compiler.jtt.JTTTest;
+
+public class MathCbrtTest extends JTTTest {
+
+    public double cbrt(double d) {
+        return Math.cbrt(d);
+    }
+
+    @Test
+    public void testCbrt() {
+        for (double d = -3.0d; d <= 3.0D; d += 0.01D) {
+            test("cbrt", d);
+        }
+
+        double[] inputs = {Math.PI / 2, Math.PI, -1.0D, Double.MAX_VALUE, Double.MIN_VALUE, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY,
+                        Double.longBitsToDouble(0x7fffffffffffffffL), Double.longBitsToDouble(0xffffffffffffffffL)};
+        for (double d : inputs) {
+            test("cbrt", d);
+        }
+    }
 }
