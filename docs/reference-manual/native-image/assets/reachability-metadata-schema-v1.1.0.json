@@ -355,10 +355,47 @@
                 "title": "Fully qualified name of the interface defining the proxy class",
                 "type": "string"
               }
+            },
+            "lambda": {
+              "title": "Lambda class descriptor",
+              "type": "object",
+              "properties": {
+                "declaringClass": {
+                  "title": "The class in which the lambda class is defined",
+                  "type": "#/$defs/type"
+                },
+                "declaringMethod": {
+                  "title": "The method in which the lambda class is defined",
+                  "type": "#/$defs/method",
+                  "default": {}
+                },
+                "interfaces": {
+                  "title": "Non-empty list of interfaces implemented by the lambda class",
+                  "type": "array",
+                  "items": {
+                    "title": "Fully qualified name of the interface implemented by the lambda class",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "declaringClass",
+                  "interfaces"
+                ],
+                "additionalProperties": false
+              }
             }
           },
-          "required": [
-            "proxy"
+          "oneOf": [
+            {
+              "required": [
+                "proxy"
+              ]
+            },
+            {
+              "required": [
+                "lambda"
+              ]
+            }
           ],
           "additionalProperties": false
         }
