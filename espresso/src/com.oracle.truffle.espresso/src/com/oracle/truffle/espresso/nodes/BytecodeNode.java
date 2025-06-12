@@ -297,7 +297,6 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
@@ -305,7 +304,6 @@ import com.oracle.truffle.espresso.bytecode.MapperBCI;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 import com.oracle.truffle.espresso.classfile.JavaKind;
-import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
@@ -483,10 +481,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     public FrameDescriptor getFrameDescriptor() {
         return frameDescriptor;
-    }
-
-    Source getSource() {
-        return getMethodVersion().getMethod().getSource();
     }
 
     public SourceSection getSourceSectionAtBCI(int bci) {
@@ -2117,11 +2111,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     private RuntimeConstantPool getConstantPool() {
         return getMethodVersion().getPool();
-    }
-
-    @TruffleBoundary
-    private BootstrapMethodsAttribute getBootstrapMethods() {
-        return (BootstrapMethodsAttribute) (getDeclaringKlass()).getAttribute(BootstrapMethodsAttribute.NAME);
     }
 
     // region Bytecode quickening
