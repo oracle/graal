@@ -47,8 +47,8 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       curl: '==7.50.1',
     },
     run+: [
-      ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + self.ci_resources.infra.notify_releaser_service,
-      ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + self.ci_resources.infra.notify_indexer_service('java-latest', 'ce'),
+      ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'release/graal-vm/25.0', '||'] + self.ci_resources.infra.notify_indexer_service('java-25', 'ce'),
+      ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'cpu/graal-vm/25.0', '||'] + self.ci_resources.infra.notify_indexer_service('java-25', 'ce'),
     ],
     runAfter: [
       'post-merge-deploy-vm-base-java-latest-linux-amd64',
