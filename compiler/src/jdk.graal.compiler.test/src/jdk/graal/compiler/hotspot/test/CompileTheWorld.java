@@ -60,8 +60,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.Formatter;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,7 +69,6 @@ import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import jdk.graal.compiler.options.OptionsContainer;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraal;
@@ -99,7 +96,10 @@ import jdk.graal.compiler.hotspot.meta.HotSpotSuitesProvider;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsContainer;
 import jdk.graal.compiler.options.OptionsParser;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
@@ -519,8 +519,8 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
 
         @Override
         public List<String> getClassNames() throws IOException {
-            Set<String> negative = new HashSet<>();
-            Set<String> positive = new HashSet<>();
+            Set<String> negative = new EconomicHashSet<>();
+            Set<String> positive = new EconomicHashSet<>();
             if (limitModules != null && !limitModules.isEmpty()) {
                 for (String s : limitModules.split(",")) {
                     if (s.startsWith("~")) {
@@ -598,7 +598,7 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
 
     int compiledClasses;
 
-    final Map<ResolvedJavaMethod, Integer> hugeMethods = new HashMap<>();
+    final Map<ResolvedJavaMethod, Integer> hugeMethods = new EconomicHashMap<>();
 
     private List<Compilation> prepareCompilations(String[] classPath) throws IOException {
         int startAtClass = startAt;
@@ -917,7 +917,7 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
          * spawns threads to redirect sysout and syserr. To help debug such scenarios, the stacks of
          * potentially problematic threads are dumped.
          */
-        Map<Thread, StackTraceElement[]> suspiciousThreads = new HashMap<>();
+        Map<Thread, StackTraceElement[]> suspiciousThreads = new EconomicHashMap<>();
         for (Map.Entry<Thread, StackTraceElement[]> e : Thread.getAllStackTraces().entrySet()) {
             Thread thread = e.getKey();
             if (thread != Thread.currentThread() && !initialThreads.containsKey(thread) && !thread.isDaemon() && thread.isAlive()) {

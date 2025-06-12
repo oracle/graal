@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.hosted.webimage.codegen.irwalk;
 
-import java.util.HashSet;
 import java.util.Set;
 
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.util.EconomicHashSet;
 
 public class BlockVisitHistory {
     private final Set<HIRBlock> visitedBlocks;
 
     public BlockVisitHistory() {
-        visitedBlocks = new HashSet<>();
+        visitedBlocks = new EconomicHashSet<>();
     }
 
     public boolean blockVisited(HIRBlock b) {

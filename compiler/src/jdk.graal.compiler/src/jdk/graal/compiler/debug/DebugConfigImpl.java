@@ -31,11 +31,11 @@ import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.JavaMethod;
 
@@ -259,7 +259,7 @@ final class DebugConfigImpl implements DebugConfig {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             e.printStackTrace(new PrintStream(baos));
             debug.log("Exception raised in scope %s: %s", debug.getCurrentScopeName(), baos);
-            Map<Object, Object> firstSeen = new IdentityHashMap<>();
+            Map<Object, Object> firstSeen = EconomicHashMap.newIdentityMap();
             for (Object o : debug.context()) {
                 // Only dump a context object once.
                 if (!firstSeen.containsKey(o)) {

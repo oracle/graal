@@ -30,7 +30,6 @@ import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +41,7 @@ import jdk.graal.compiler.core.ArchitectureSpecific;
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.internal.misc.VM;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.EncodedSpeculationReason;
@@ -120,7 +120,7 @@ public final class GraalServices {
     static {
         LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
         if (libgraal != null) {
-            libgraalServices = new HashMap<>();
+            libgraalServices = new EconomicHashMap<>();
             String arch = getJVMCIArch();
             libgraal.getClassModuleMap().keySet().stream()//
                             .map(GraalServices::loadClassOrNull)//

@@ -39,7 +39,6 @@ import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.Arrays;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -213,6 +212,7 @@ import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import jdk.graal.compiler.replacements.nodes.LogNode;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.LibGraalService;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
@@ -291,7 +291,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected RegisterFinalizerSnippets.Templates registerFinalizerSnippets;
     protected VirtualThreadUpdateJFRSnippets.Templates virtualThreadUpdateJFRSnippets;
 
-    protected final Map<Class<? extends Node>, Extension> extensions = new HashMap<>();
+    protected final Map<Class<? extends Node>, Extension> extensions = new EconomicHashMap<>();
 
     public DefaultHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
                     HotSpotConstantReflectionProvider constantReflection, PlatformConfigurationProvider platformConfig, MetaAccessExtensionProvider metaAccessExtensionProvider,

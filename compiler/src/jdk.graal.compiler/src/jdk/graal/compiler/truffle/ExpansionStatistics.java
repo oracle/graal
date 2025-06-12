@@ -28,8 +28,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.IntSummaryStatistics;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +52,8 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.spi.VirtualizableAllocation;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -61,14 +61,14 @@ import jdk.vm.ci.meta.Signature;
 
 final class ExpansionStatistics {
 
-    private final Set<TruffleCompilerOptions.CompilationTier> enabledStages = new HashSet<>();
+    private final Set<TruffleCompilerOptions.CompilationTier> enabledStages = new EconomicHashSet<>();
     private final PartialEvaluator partialEvaluator;
     private volatile TruffleCompilable previousCompilation;
     private final Set<TruffleCompilerOptions.CompilationTier> traceMethodExpansion;
     private final Set<TruffleCompilerOptions.CompilationTier> traceNodeExpansion;
-    private final Map<TruffleCompilerOptions.CompilationTier, Map<ResolvedJavaMethod, Stats>> methodExpansionStatistics = new HashMap<>();
-    private final Map<TruffleCompilerOptions.CompilationTier, Map<NodeClassKey, Stats>> nodeExpansionStatistics = new HashMap<>();
-    private final Map<TruffleCompilerOptions.CompilationTier, Map<NodeSpecializationKey, Stats>> specializationExpansionStatistics = new HashMap<>();
+    private final Map<TruffleCompilerOptions.CompilationTier, Map<ResolvedJavaMethod, Stats>> methodExpansionStatistics = new EconomicHashMap<>();
+    private final Map<TruffleCompilerOptions.CompilationTier, Map<NodeClassKey, Stats>> nodeExpansionStatistics = new EconomicHashMap<>();
+    private final Map<TruffleCompilerOptions.CompilationTier, Map<NodeSpecializationKey, Stats>> specializationExpansionStatistics = new EconomicHashMap<>();
 
     private ExpansionStatistics(PartialEvaluator partialEvaluator,
                     Set<TruffleCompilerOptions.CompilationTier> traceMethodExpansion, Set<TruffleCompilerOptions.CompilationTier> traceNodeExpansion,
@@ -77,10 +77,10 @@ final class ExpansionStatistics {
         this.traceMethodExpansion = traceMethodExpansion;
         this.traceNodeExpansion = traceNodeExpansion;
         for (TruffleCompilerOptions.CompilationTier tier : methodExpansionStatistics) {
-            this.methodExpansionStatistics.put(tier, new HashMap<>());
+            this.methodExpansionStatistics.put(tier, new EconomicHashMap<>());
         }
         for (TruffleCompilerOptions.CompilationTier tier : nodeExpansionStatistics) {
-            this.nodeExpansionStatistics.put(tier, new HashMap<>());
+            this.nodeExpansionStatistics.put(tier, new EconomicHashMap<>());
         }
         this.enabledStages.addAll(traceMethodExpansion);
         this.enabledStages.addAll(traceNodeExpansion);
@@ -156,7 +156,7 @@ final class ExpansionStatistics {
                 methodTree = buildMethodTree(graph);
             }
 
-            Map<ResolvedJavaMethod, Stats> sums = new HashMap<>();
+            Map<ResolvedJavaMethod, Stats> sums = new EconomicHashMap<>();
             methodTree.acceptStats(sums, (tree) -> tree.position == null ? null : tree.position.getMethod(), compilable.getName());
 
             combineExpansionStatistics(tier, this.methodExpansionStatistics, sums);
@@ -170,12 +170,12 @@ final class ExpansionStatistics {
                 nodeTree = methodTree.groupByNode();
             }
 
-            Map<NodeClassKey, Stats> classSums = new HashMap<>();
+            Map<NodeClassKey, Stats> classSums = new EconomicHashMap<>();
             nodeTree.acceptStats(classSums, (tree) -> new NodeClassKey(tree), compilable.getName());
 
             combineExpansionStatistics(tier, this.nodeExpansionStatistics, classSums);
 
-            Map<NodeSpecializationKey, Stats> specializationSums = new HashMap<>();
+            Map<NodeSpecializationKey, Stats> specializationSums = new EconomicHashMap<>();
             nodeTree.acceptStats(specializationSums, (tree) -> new NodeSpecializationKey(tree), compilable.getName());
 
             combineExpansionStatistics(tier, this.specializationExpansionStatistics, specializationSums);
@@ -209,7 +209,7 @@ final class ExpansionStatistics {
             Map<T, List<Entry<S, Stats>>> subGroups = null;
             if (subGroupMap != null) {
                 List<Entry<S, Stats>> subEntries = subGroupMap.entrySet().stream().sorted(ExpansionStatistics::orderBySumDesc).collect(Collectors.toList());
-                subGroups = new HashMap<>();
+                subGroups = new EconomicHashMap<>();
                 for (Entry<S, Stats> entry : subEntries) {
                     List<Entry<S, Stats>> subGroup = subGroups.computeIfAbsent(subGroupToGroup.apply(entry.getKey()), (k) -> new ArrayList<>());
                     subGroup.add(entry);
@@ -329,7 +329,7 @@ final class ExpansionStatistics {
                     Map<T, Stats> newStats) {
         Map<T, Stats> methodStats = stats.get(tier);
         if (methodStats == null) {
-            methodStats = new HashMap<>();
+            methodStats = new EconomicHashMap<>();
             stats.put(tier, methodStats);
         }
         for (Entry<T, Stats> entry : newStats.entrySet()) {
@@ -720,7 +720,7 @@ final class ExpansionStatistics {
         }
 
         Set<ResolvedJavaMethod> findSpecializationMethods() {
-            Set<ResolvedJavaMethod> specializations = new HashSet<>();
+            Set<ResolvedJavaMethod> specializations = new EconomicHashSet<>();
             int nodeId = getTruffleNodeId(position);
 
             for (Node node : graalNodes) {
@@ -827,8 +827,8 @@ final class ExpansionStatistics {
                 }
 
                 // merge empty silbling children with each other
-                Set<MethodKey> toRemove = new HashSet<>();
-                Map<Integer, TreeNode> mergeChildren = new HashMap<>();
+                Set<MethodKey> toRemove = new EconomicHashSet<>();
+                Map<Integer, TreeNode> mergeChildren = new EconomicHashMap<>();
                 for (Entry<MethodKey, TreeNode> entry : new ArrayList<>(children.entrySet())) {
                     TreeNode mergeTarget = mergeChildren.get(getTruffleNodeId(entry.getValue().position));
                     if (mergeTarget != null) {

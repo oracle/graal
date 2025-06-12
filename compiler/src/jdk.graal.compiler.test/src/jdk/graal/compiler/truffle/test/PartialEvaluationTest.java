@@ -62,6 +62,7 @@ import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.TruffleDebugJavaMethod;
 import jdk.graal.compiler.truffle.TruffleTierContext;
 import jdk.graal.compiler.truffle.phases.TruffleTier;
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -71,8 +72,8 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
 
-    private static final Set<String> WRAPPER_CLASSES = Set.of(Boolean.class.getName(), Byte.class.getName(), Character.class.getName(), Float.class.getName(), Integer.class.getName(),
-                    Long.class.getName(), Short.class.getName(), Double.class.getName());
+    private static final Set<String> WRAPPER_CLASSES = CollectionsUtil.setOf(Boolean.class.getName(), Byte.class.getName(), Character.class.getName(), Float.class.getName(),
+                    Integer.class.getName(), Long.class.getName(), Short.class.getName(), Double.class.getName());
 
     protected CompilationResult lastCompilationResult;
     DebugContext lastDebug;

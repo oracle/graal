@@ -37,6 +37,7 @@ import org.junit.runners.Parameterized;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
+import jdk.graal.compiler.util.CollectionsUtil;
 
 /**
  * Tests that {@link JVMCIVersionCheck} handles OpenJDK versions correctly.
@@ -123,7 +124,7 @@ public class JVMCIVersionCheckOpenJDKTest extends GraalCompilerTest {
         Runtime.Version version = Runtime.Version.parse(minVersion);
         if (version.optional().isEmpty()) {
             // OpenJDK version
-            return Map.of(Integer.toString(version.feature()), Map.of(
+            return CollectionsUtil.mapOf(Integer.toString(version.feature()), CollectionsUtil.mapOf(
                             DEFAULT_VENDOR_ENTRY, JVMCIVersionCheck.createOpenJDKVersion(minVersion)));
         } else {
             // LabsJDK version
@@ -133,7 +134,7 @@ public class JVMCIVersionCheckOpenJDKTest extends GraalCompilerTest {
             int jvmciBuild = Integer.parseInt(optional.split("jvmci-b", 2)[1]);
             // get the version string without the option part
             String versionWithoutOptional = version.toString().split("-" + optional, 2)[0];
-            return Map.of(Integer.toString(version.feature()), Map.of(
+            return CollectionsUtil.mapOf(Integer.toString(version.feature()), CollectionsUtil.mapOf(
                             DEFAULT_VENDOR_ENTRY, JVMCIVersionCheck.createLabsJDKVersion(versionWithoutOptional, jvmciBuild)));
         }
     }

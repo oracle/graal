@@ -30,7 +30,7 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.EnumSet;
-import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import jdk.graal.compiler.core.common.LIRKind;
@@ -43,6 +43,7 @@ import jdk.graal.compiler.lir.framemap.FrameMap;
 import jdk.graal.compiler.lir.framemap.ReferenceMapBuilder;
 import jdk.graal.compiler.lir.util.IndexedValueMap;
 import jdk.graal.compiler.lir.util.ValueSet;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.Value;
 
 final class RegStackValueSet extends ValueSet<RegStackValueSet> {
@@ -50,7 +51,7 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
     private final FrameMap frameMap;
     private final IndexedValueMap registers;
     private final IndexedValueMap stack;
-    private HashMap<Integer, Value> extraStack;
+    private Map<Integer, Value> extraStack;
 
     RegStackValueSet(FrameMap frameMap) {
         this.frameMap = frameMap;
@@ -63,7 +64,7 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
         registers = new IndexedValueMap(s.registers);
         stack = new IndexedValueMap(s.stack);
         if (s.extraStack != null) {
-            extraStack = new HashMap<>(s.extraStack);
+            extraStack = new EconomicHashMap<>(s.extraStack);
         }
     }
 
@@ -87,7 +88,7 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
                 stack.put(index / 4, v);
             } else {
                 if (extraStack == null) {
-                    extraStack = new HashMap<>();
+                    extraStack = new EconomicHashMap<>();
                 }
                 extraStack.put(index, v);
             }
@@ -100,7 +101,7 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
         stack.putAll(v.stack);
         if (v.extraStack != null) {
             if (extraStack == null) {
-                extraStack = new HashMap<>();
+                extraStack = new EconomicHashMap<>();
             }
             extraStack.putAll(v.extraStack);
         }

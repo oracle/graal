@@ -35,9 +35,7 @@ import static org.junit.Assert.fail;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -53,6 +51,8 @@ import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import jdk.graal.compiler.graphio.parsing.model.InputNode;
 import jdk.graal.compiler.graphio.parsing.model.Properties;
 import jdk.graal.compiler.graphio.parsing.model.Property;
+import jdk.graal.compiler.util.CollectionsUtil;
+import jdk.graal.compiler.util.EconomicHashMap;
 
 public class GraphioTestUtil {
     public static boolean checkNotNulls(Object a, Object b) {
@@ -125,7 +125,7 @@ public class GraphioTestUtil {
         }
     }
 
-    private static final Collection<String> GRAPH_EXCLUDE_PROPERTIES = Arrays.asList(PROPNAME_NAME, PROPNAME_DUPLICATE);
+    private static final Collection<String> GRAPH_EXCLUDE_PROPERTIES = CollectionsUtil.setOf(PROPNAME_NAME, PROPNAME_DUPLICATE);
 
     public static void assertInputGraphEquals(InputGraph a, InputGraph b) {
         if (checkNotNulls(a, b)) {
@@ -147,7 +147,7 @@ public class GraphioTestUtil {
     public static void assertInputNodesEquals(Collection<? extends InputNode> a, Collection<? extends InputNode> b) {
         if (checkNotNulls(a, b)) {
             assertEquals(a.size(), b.size());
-            Map<Integer, InputNode> nodes = new HashMap<>();
+            Map<Integer, InputNode> nodes = new EconomicHashMap<>();
             b.forEach(x -> nodes.put(x.getId(), x));
             a.forEach(x -> assertInputNodeEquals(x, nodes.get(x.getId())));
         }
@@ -162,7 +162,7 @@ public class GraphioTestUtil {
 
     public static void assertBlocksEquals(Collection<? extends InputBlock> a, Collection<? extends InputBlock> b) {
         if (checkNotNulls(a, b)) {
-            Map<String, InputBlock> blocks = new HashMap<>();
+            Map<String, InputBlock> blocks = new EconomicHashMap<>();
             b.forEach(x -> blocks.put(x.getName(), x));
             a.forEach(x -> assertInputBlockEquals(x, blocks.get(x.getName())));
         }

@@ -30,8 +30,8 @@ import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -83,7 +83,7 @@ public class OptionProcessor extends AbstractProcessor {
     private static final String OPTION_DESCRIPTORS_CLASS_NAME = "jdk.graal.compiler.options.OptionDescriptors";
     private static final String OPTIONS_CONTAINER_CLASS_NAME = "jdk.graal.compiler.options.OptionsContainer";
 
-    private final Set<Element> processed = new HashSet<>();
+    private final Set<Element> processed = new LinkedHashSet<>();
 
     private TypeMirror optionTypeMirror;
     private TypeMirror optionKeyTypeMirror;
@@ -417,7 +417,7 @@ public class OptionProcessor extends AbstractProcessor {
             }
             String className = String.join(".", simpleNames.reversed());
             String packageName = ((PackageElement) e).getQualifiedName().toString();
-            return new OptionsDeclarer(optionsDeclarerElement, className, packageName, implementsOptionsContainer, new ArrayList<>(), new HashSet<>());
+            return new OptionsDeclarer(optionsDeclarerElement, className, packageName, implementsOptionsContainer, new ArrayList<>(), new LinkedHashSet<>());
         }
 
         String getOptionDescriptorsClassName() {
@@ -438,7 +438,7 @@ public class OptionProcessor extends AbstractProcessor {
         optionKeyTypeMirror = getTypeElement(OPTION_KEY_CLASS_NAME).asType();
         boolean ok = true;
 
-        Map<Element, OptionsDeclarer> map = new HashMap<>();
+        Map<Element, OptionsDeclarer> map = new LinkedHashMap<>();
         for (Element element : roundEnv.getElementsAnnotatedWith(optionTypeElement)) {
             if (!processed.contains(element)) {
                 processed.add(element);

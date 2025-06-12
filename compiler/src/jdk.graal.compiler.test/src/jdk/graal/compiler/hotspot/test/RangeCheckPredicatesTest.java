@@ -26,18 +26,21 @@
 
 package jdk.graal.compiler.hotspot.test;
 
-import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
-import static jdk.vm.ci.meta.DeoptimizationReason.LoopLimitCheck;
 import static jdk.graal.compiler.core.common.GraalOptions.LoopPredication;
 import static jdk.graal.compiler.core.common.GraalOptions.LoopPredicationMainPath;
 import static jdk.graal.compiler.core.common.GraalOptions.SpeculativeGuardMovement;
+import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
+import static jdk.vm.ci.meta.DeoptimizationReason.LoopLimitCheck;
 
-import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-import jdk.graal.compiler.core.test.GraalCompilerTest;
 import org.graalvm.collections.EconomicMap;
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.core.common.cfg.CFGLoop;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.loop.phases.LoopPredicationPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -45,9 +48,7 @@ import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
-import org.junit.Assert;
-import org.junit.Test;
-
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
@@ -113,7 +114,7 @@ public class RangeCheckPredicatesTest extends GraalCompilerTest {
     private void runNoOutOfBound(String methodName, int size, OptionValues options, Object... testParameters) {
         final ResolvedJavaMethod method = getResolvedJavaMethod(methodName);
         final int[] array = new int[size];
-        final HashSet<DeoptimizationReason> deoptimizationReasons = new HashSet<>();
+        final Set<DeoptimizationReason> deoptimizationReasons = new EconomicHashSet<>();
         deoptimizationReasons.add(BoundsCheckException);
         deoptimizationReasons.add(LoopLimitCheck);
         Object[] args = new Object[testParameters.length + 1];

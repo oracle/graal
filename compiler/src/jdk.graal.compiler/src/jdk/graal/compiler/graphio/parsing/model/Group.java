@@ -30,7 +30,7 @@ import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNA
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -180,7 +180,7 @@ public class Group extends AbstractMutableDocumentItem<Group> implements
      */
     @Override
     public Set<Integer> getChildNodeIds() {
-        Set<Integer> res = new HashSet<>();
+        Set<Integer> res = new LinkedHashSet<>();
         for (InputGraph g : getGraphs()) {
             res.addAll(g.getNodeIds());
         }
@@ -194,7 +194,7 @@ public class Group extends AbstractMutableDocumentItem<Group> implements
      */
     @Override
     public Set<InputNode> getChildNodes() {
-        Set<InputNode> res = new HashSet<>();
+        Set<InputNode> res = new LinkedHashSet<>();
         for (InputGraph g : getGraphs()) {
             res.addAll(g.getNodes());
         }

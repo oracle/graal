@@ -24,12 +24,13 @@
  */
 package com.oracle.svm.webimage.hightiercodegen.variables;
 
-import java.util.HashMap;
+import java.util.Map;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.util.EconomicHashMap;
 
 /**
  * Storing variable allocation result for a method.
@@ -44,10 +45,10 @@ public final class VariableMap {
     /**
      * The nodes stored with the resolved variables.
      */
-    private final HashMap<ValueNode, ResolvedVar> resolvedVars;
+    private final Map<ValueNode, ResolvedVar> resolvedVars;
 
     public VariableMap() {
-        resolvedVars = new HashMap<>();
+        resolvedVars = new EconomicHashMap<>();
     }
 
     public ResolvedVar getVarByNode(ValueNode n) {
