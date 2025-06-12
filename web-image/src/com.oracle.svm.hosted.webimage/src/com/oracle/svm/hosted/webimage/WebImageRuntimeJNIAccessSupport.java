@@ -28,7 +28,7 @@ package com.oracle.svm.hosted.webimage;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 
 /**
@@ -40,37 +40,37 @@ import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
  */
 public class WebImageRuntimeJNIAccessSupport implements RuntimeJNIAccessSupport {
     @Override
-    public void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
+    public void register(RegistrationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
         // Do nothing.
     }
 
     @Override
-    public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... methods) {
+    public void register(RegistrationCondition condition, boolean queriedOnly, Executable... methods) {
         // Do nothing.
     }
 
     @Override
-    public void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields) {
+    public void register(RegistrationCondition condition, boolean finalIsWritable, Field... fields) {
         // Do nothing.
     }
 
     @Override
-    public void registerClassLookup(ConfigurationCondition condition, String typeName) {
+    public void registerClassLookup(RegistrationCondition condition, String typeName) {
         // Do nothing.
     }
 
     @Override
-    public void registerFieldLookup(ConfigurationCondition condition, Class<?> declaringClass, String fieldName) {
+    public void registerFieldLookup(RegistrationCondition condition, Class<?> declaringClass, String fieldName) {
         // Do nothing.
     }
 
     @Override
-    public void registerMethodLookup(ConfigurationCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
+    public void registerMethodLookup(RegistrationCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
         // Do nothing.
     }
 
     @Override
-    public void registerConstructorLookup(ConfigurationCondition condition, Class<?> declaringClass, Class<?>... parameterTypes) {
+    public void registerConstructorLookup(RegistrationCondition condition, Class<?> declaringClass, Class<?>... parameterTypes) {
         // Do nothing.
     }
 }
