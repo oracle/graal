@@ -55,6 +55,8 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.threads.ThreadState;
+import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.VM;
 
 public class PolyglotTypeMappings {
@@ -343,7 +345,12 @@ public class PolyglotTypeMappings {
         }
 
         public Object convert(StaticObject foreign) {
-            return callNode.call(receiver, foreign);
+            Transition transition = Transition.transition(ThreadState.IN_ESPRESSO);
+            try {
+                return callNode.call(receiver, foreign);
+            } finally {
+                transition.restore();
+            }
         }
     }
 

@@ -252,15 +252,18 @@ public final class Target_java_lang_Thread {
             unit = TimeUnit.MILLISECONDS;
         }
         StaticObject thread = meta.getContext().getCurrentPlatformThread();
-        try (Transition transition = Transition.transition(meta.getContext(), State.TIMED_WAITING)) {
+        Transition transition = Transition.transition(TIMED_SLEEPING, location);
+        try {
             meta.getContext().getBlockingSupport().sleep(unit.toNanos(amount), location);
         } catch (GuestInterruptedException e) {
             if (meta.getThreadAccess().isInterrupted(thread, true)) {
                 throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
             }
-            meta.getThreadAccess().fullSafePoint(thread);
+            meta.getThreadAccess().checkDeprecatedThreadStatus(thread);
         } catch (IllegalArgumentException e) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
+        } finally {
+            transition.restore(location);
         }
     }
 
