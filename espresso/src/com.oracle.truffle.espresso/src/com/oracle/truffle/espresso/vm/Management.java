@@ -36,8 +36,6 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.IntFunction;
@@ -45,15 +43,14 @@ import java.util.function.IntFunction;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.blocking.ThreadRequests;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
@@ -74,10 +71,11 @@ import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
+import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
-import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.ThreadAccess;
+import com.oracle.truffle.espresso.threads.ThreadState;
 import com.oracle.truffle.espresso.vm.structs.JmmOptionalSupport;
 
 @GenerateNativeEnv(target = ManagementImpl.class, prependEnv = true)
@@ -312,7 +310,8 @@ public final class Management extends NativeEnv {
     }
 
     @ManagementImpl
-    public int GetThreadInfo(@JavaType(long[].class) StaticObject ids, int maxDepth, @JavaType(Object[].class) StaticObject infoArray, @Inject EspressoLanguage language, @Inject Meta meta) {
+    public int GetThreadInfo(@JavaType(long[].class) StaticObject ids, int maxDepth, @JavaType(Object[].class) StaticObject infoArray,
+                    @Inject EspressoLanguage language, @Inject Meta meta, @Inject SubstitutionProfiler location) {
         if (StaticObject.isNull(ids)) {
             throw meta.throwNullPointerExceptionBoundary();
         }
@@ -327,7 +326,7 @@ public final class Management extends NativeEnv {
             threads[i] = findThreadById(activeThreads, id);
         }
 
-        fillThreadInfos(threads, infoArray, maxDepth, language, meta, null);
+        fillThreadInfos(threads, infoArray, maxDepth, language, meta, location);
 
         return JNI_OK; // always 0
     }
@@ -369,6 +368,8 @@ public final class Management extends NativeEnv {
                         /* waitedTime */Types._long,
                         /* StackTraceElement[] */ Types.java_lang_StackTraceElement_array));
 
+        VM.StackTrace[] traces = ThreadRequests.getStackTraces(getContext(), actualMaxDepth, node, threads);
+
         for (int i = 0; i < threads.length; i++) {
             StaticObject thread = threads[i];
             if (StaticObject.isNull(thread) || !getThreadAccess().isAlive(thread) || getThreadAccess().isVirtualThread(thread)) {
@@ -377,9 +378,9 @@ public final class Management extends NativeEnv {
                 int threadStatus = meta.getThreadAccess().getState(thread);
                 StaticObject lockObj = StaticObject.NULL;
                 StaticObject lockOwner = StaticObject.NULL;
-                if ((threadStatus & State.BLOCKED.value) != 0) {
+                if (ThreadState.isBlocked(threadStatus)) {
                     lockObj = (StaticObject) meta.HIDDEN_THREAD_PENDING_MONITOR.getHiddenObject(thread);
-                } else if ((threadStatus & (State.WAITING.value | State.TIMED_WAITING.value)) != 0) {
+                } else if (ThreadState.hasBlockingObject(threadStatus)) {
                     lockObj = (StaticObject) meta.HIDDEN_THREAD_WAITING_MONITOR.getHiddenObject(thread);
                 }
                 if (lockObj == null) {
@@ -399,7 +400,7 @@ public final class Management extends NativeEnv {
                 long blockedCount = Target_java_lang_Thread.getThreadCounter(thread, meta.HIDDEN_THREAD_BLOCKED_COUNT);
                 long waitedCount = Target_java_lang_Thread.getThreadCounter(thread, meta.HIDDEN_THREAD_WAITED_COUNT);
 
-                StaticObject stackTrace = Target_java_lang_Thread.getStackTrace(thread, actualMaxDepth, getContext(), node);
+                StaticObject stackTrace = traces[i] == null ? StaticObject.NULL : traces[i].toGuest(getContext());
 
                 StaticObject threadInfo = meta.java_lang_management_ThreadInfo.allocateInstance(getContext());
                 init.invokeDirectSpecial( /* this */ threadInfo,
@@ -786,7 +787,7 @@ public final class Management extends NativeEnv {
     @SuppressWarnings("unused")
     public @JavaType(internalName = "[Ljava/lang/management/ThreadInfo;") StaticObject DumpThreads(@JavaType(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers,
                     int maybeMaxDepth,
-                    @Inject EspressoLanguage language, @Inject Meta meta) {
+                    @Inject EspressoLanguage language, @Inject Meta meta, @Inject SubstitutionProfiler location) {
         int maxDepth;
         if (managementVersion >= JMM_VERSION_2) {
             maxDepth = maybeMaxDepth;
@@ -800,7 +801,7 @@ public final class Management extends NativeEnv {
             return result;
         } else {
             StaticObject result = getMeta().java_lang_management_ThreadInfo.allocateReferenceArray(ids.length(language));
-            if (GetThreadInfo(ids, maxDepth, result, language, meta) != JNI_OK) {
+            if (GetThreadInfo(ids, maxDepth, result, language, meta, location) != JNI_OK) {
                 return StaticObject.NULL;
             }
             return result;
@@ -845,51 +846,19 @@ public final class Management extends NativeEnv {
     }
 
     @ManagementImpl
-    public @JavaType(Thread[].class) StaticObject FindCircularBlockedThreads(@Inject Meta meta) {
-        return FindDeadlocks(true, meta);
+    public @JavaType(Thread[].class) StaticObject FindCircularBlockedThreads(@Inject Meta meta, @Inject SubstitutionProfiler location) {
+        return FindDeadlocks(true, meta, location);
     }
 
     @ManagementImpl
     @TruffleBoundary
-    public @JavaType(Thread[].class) StaticObject FindDeadlocks(boolean objectMonitorsOnly, @Inject Meta meta) {
+    public @JavaType(Thread[].class) StaticObject FindDeadlocks(boolean objectMonitorsOnly, @Inject Meta meta, @Inject SubstitutionProfiler location) {
         if (!objectMonitorsOnly) {
             getLogger().warning(() -> "Calling unimplemented Management.FindDeadlocks(false)");
             return StaticObject.createArray(meta.java_lang_Thread.getArrayKlass(), StaticObject.EMPTY_ARRAY, getContext());
         }
-        Thread initiatingThread = Thread.currentThread();
-        EspressoThreadRegistry threadRegistry = getContext().getEspressoEnv().getThreadRegistry();
-        FindDeadLocksAction action = new FindDeadLocksAction(initiatingThread, threadRegistry, objectMonitorsOnly);
-        Future<Void> future = getContext().getEnv().submitThreadLocal(null, action);
-        TruffleSafepoint.setBlockedThreadInterruptible(null, f -> {
-            try {
-                future.get();
-            } catch (ExecutionException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
-        }, future);
-        assert action.results != null;
-        return StaticObject.createArray(meta.java_lang_Thread.getArrayKlass(), action.results, getContext());
-    }
-
-    private static class FindDeadLocksAction extends ThreadLocalAction {
-        private final Thread initiatingThread;
-        private final EspressoThreadRegistry threadRegistry;
-        private final boolean objectMonitorsOnly;
-        private StaticObject[] results;
-
-        public FindDeadLocksAction(Thread initiatingThread, EspressoThreadRegistry threadRegistry, boolean objectMonitorsOnly) {
-            super(false, true);
-            this.initiatingThread = initiatingThread;
-            this.threadRegistry = threadRegistry;
-            this.objectMonitorsOnly = objectMonitorsOnly;
-        }
-
-        @Override
-        protected void perform(Access access) {
-            if (access.getThread() == initiatingThread) {
-                results = threadRegistry.findDeadlocks(objectMonitorsOnly);
-            }
-        }
+        StaticObject[] deadlocks = ThreadRequests.findDeadlocks(getContext(), objectMonitorsOnly, location, (StaticObject[]) null);
+        return StaticObject.createArray(meta.java_lang_Thread.getArrayKlass(), deadlocks, getContext());
     }
 
     @ManagementImpl
