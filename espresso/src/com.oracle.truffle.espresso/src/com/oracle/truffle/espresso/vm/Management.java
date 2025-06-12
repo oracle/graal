@@ -31,6 +31,7 @@ import java.lang.management.MemoryManagerMXBean;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
 import java.lang.management.MemoryUsage;
+import java.lang.management.ThreadMXBean;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
@@ -78,6 +79,7 @@ import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_Threa
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.ThreadAccess;
+import com.oracle.truffle.espresso.vm.structs.JmmOptionalSupport;
 
 @GenerateNativeEnv(target = ManagementImpl.class, prependEnv = true)
 public final class Management extends NativeEnv {
@@ -163,6 +165,7 @@ public final class Management extends NativeEnv {
     private int managementVersion;
 
     private MemoryMXBean memoryMXBean;
+    private ThreadMXBean threadMXBean;
 
     private final @Pointer TruffleObject initializeManagementContext;
     private final @Pointer TruffleObject disposeManagementContext;
@@ -188,6 +191,14 @@ public final class Management extends NativeEnv {
             memoryMXBean = ManagementFactory.getMemoryMXBean();
         }
         return memoryMXBean;
+    }
+
+    @TruffleBoundary
+    private ThreadMXBean getHostThreadMXBean() {
+        if (threadMXBean == null) {
+            threadMXBean = ManagementFactory.getThreadMXBean();
+        }
+        return threadMXBean;
     }
 
     /**
@@ -266,12 +277,16 @@ public final class Management extends NativeEnv {
 
     @ManagementImpl
     public int GetOptionalSupport(@Pointer TruffleObject /* jmmOptionalSupport **/ supportPtr) {
-        if (!getUncached().isNull(supportPtr)) {
-            ByteBuffer supportBuf = NativeUtils.directByteBuffer(supportPtr, 8);
-            supportBuf.putInt(0); // nothing optional is supported
-            return 0;
+        if (getUncached().isNull(supportPtr)) {
+            return -1;
         }
-        return -1;
+        ByteBuffer supportBuf = NativeUtils.directByteBuffer(supportPtr, 8);
+        supportBuf.putInt(0); // clear
+        JmmOptionalSupport.JmmOptionalSupportWrapper optionalSupport = getVM().getStructs().jmmOptionalSupport.wrap(getHandles(), supportPtr);
+        ThreadMXBean hostBean = getHostThreadMXBean();
+        optionalSupport.isOtherThreadCpuTimeSupported(hostBean.isThreadCpuTimeSupported() ? 1 : 0);
+        optionalSupport.isCurrentThreadCpuTimeSupported(hostBean.isCurrentThreadCpuTimeSupported() ? 1 : 0);
+        return 0;
     }
 
     private static void validateThreadIdArray(EspressoLanguage language, Meta meta, @JavaType(long[].class) StaticObject threadIds, SubstitutionProfiler profiler) {
@@ -284,6 +299,18 @@ public final class Management extends NativeEnv {
                 throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid thread ID entry");
             }
         }
+    }
+
+    private static int validateThreadIdArray(EspressoLanguage language, Meta meta, @JavaType(long[].class) StaticObject threadIds) {
+        assert threadIds.isArray();
+        int numThreads = threadIds.length(language);
+        for (int i = 0; i < numThreads; ++i) {
+            long tid = threadIds.<long[]> unwrap(language)[i];
+            if (tid <= 0) {
+                throw meta.throwIllegalArgumentExceptionBoundary("Invalid thread ID entry");
+            }
+        }
+        return numThreads;
     }
 
     private static void validateThreadInfoArray(Meta meta, @JavaType(internalName = "[Ljava/lang/management/ThreadInfo;") StaticObject infoArray, SubstitutionProfiler profiler) {
@@ -907,6 +934,57 @@ public final class Management extends NativeEnv {
                 getLogger().warning(() -> "Calling ResetStatistic with unimplemented type (" + type + ")");
         }
         return false;
+    }
+
+    @ManagementImpl
+    public long GetThreadCpuTimeWithKind(long threadId, boolean withSysTime,
+                    @Inject Meta meta) {
+        if (threadId < 0) {
+            throw meta.throwIllegalArgumentExceptionBoundary("Invalid thread ID");
+        }
+        ThreadMXBean hostBean = getHostThreadMXBean();
+        if (threadId == 0) {
+            if (!hostBean.isCurrentThreadCpuTimeSupported()) {
+                return -1;
+            }
+            long id = EspressoThreadRegistry.getThreadId(Thread.currentThread());
+            return withSysTime ? hostBean.getThreadCpuTime(id) : hostBean.getThreadUserTime(id);
+        }
+        StaticObject[] activeThreads = getContext().getActiveThreads();
+        StaticObject thread = findThreadById(activeThreads, threadId);
+        if (getThreadAccess().isVirtualThread(thread)) {
+            return -1;
+        }
+        Thread host = getThreadAccess().getHost(thread);
+        long hostId = EspressoThreadRegistry.getThreadId(host);
+        return withSysTime ? hostBean.getThreadCpuTime(hostId) : hostBean.getThreadUserTime(hostId);
+    }
+
+    @ManagementImpl
+    public void GetThreadCpuTimesWithKind(@JavaType(long[].class) StaticObject threadIds, @JavaType(long[].class) StaticObject times, boolean withSysTime,
+                    @Inject EspressoLanguage language, @Inject Meta meta) {
+        if (StaticObject.isNull(threadIds) || StaticObject.isNull(times)) {
+            throw meta.throwNullPointerExceptionBoundary();
+        }
+        int length = validateThreadIdArray(language, meta, threadIds);
+        if (length != times.length(language)) {
+            throw meta.throwIllegalArgumentExceptionBoundary("The length of the given long array does not match the length of the given array of thread IDs");
+        }
+
+        StaticObject[] activeThreads = getContext().getActiveThreads();
+        InterpreterToVM interpreterToVM = getInterpreterToVM();
+        ThreadMXBean hostBean = getHostThreadMXBean();
+        for (int i = 0; i < length; i++) {
+            long guestId = interpreterToVM.getArrayLong(language, i, threadIds);
+            StaticObject thread = findThreadById(activeThreads, guestId);
+            if (getThreadAccess().isVirtualThread(thread)) {
+                continue;
+            }
+            Thread host = getThreadAccess().getHost(thread);
+            long hostId = EspressoThreadRegistry.getThreadId(host);
+            long time = withSysTime ? hostBean.getThreadCpuTime(hostId) : hostBean.getThreadUserTime(hostId);
+            interpreterToVM.setArrayLong(language, time, i, times);
+        }
     }
 
     // Checkstyle: resume method name check

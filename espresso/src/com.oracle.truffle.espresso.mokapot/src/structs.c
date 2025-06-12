@@ -23,6 +23,7 @@
 
 #include "jvm.h"
 #include "jvmti.h"
+#include "jmm_common.h"
 #include "structs.h"
 
 #include <jni.h>
@@ -218,6 +219,9 @@
     V(_jvmtiAddrLocationMap) \
     V(_jvmtiEventCallbacks)
 
+#define JMM_STRUCT_LIST(V) \
+    V(jmmOptionalSupport)
+
 #define MEMBER_INFO_STRUCT_LIST(V) \
     V(member_info)
 
@@ -225,6 +229,7 @@
     JNI_STRUCT_LIST(V) \
     JVM_STRUCT_LIST(V) \
     JVMTI_STRUCT_LIST(V) \
+    JMM_STRUCT_LIST(V) \
     MEMBER_INFO_STRUCT_LIST(V)
 
 #define STRUCT_MEMBER_LIST_LIST(V) \
@@ -233,7 +238,8 @@
     JVMTI_STRUCT_MEMBER_LIST(V) \
     MEMBER_INFO_STRUCT_MEMBER_LIST(V)
 
-#define STRUCT_BITFIELD_MEMBER_LIST_LIST(V)
+#define STRUCT_BITFIELD_MEMBER_LIST_LIST(V) \
+    JMM_STRUCT_BITFIELD_MEMBER_LIST(V)
 
 void add_member_info(member_info** info, char* id, size_t offset) {
     member_info* current = malloc(sizeof(struct member_info));
