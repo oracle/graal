@@ -214,6 +214,7 @@ final class LinkedKlassFieldLayout {
                                         new HiddenField(Names.HIDDEN_INTERRUPTED, Types._boolean, VersionRange.lower(13), NO_ADDITIONAL_FLAGS),
                                         new HiddenField(Names.HIDDEN_HOST_THREAD),
                                         new HiddenField(Names.HIDDEN_ESPRESSO_MANAGED, Types._boolean, VersionRange.ALL, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TO_NATIVE_LOCK, Types.java_lang_Object, VersionRange.ALL, Constants.ACC_FINAL),
                                         new HiddenField(Names.HIDDEN_DEPRECATION_SUPPORT),
                                         new HiddenField(Names.HIDDEN_THREAD_UNPARK_SIGNALS, Types._int, VersionRange.ALL, Constants.ACC_VOLATILE),
                                         new HiddenField(Names.HIDDEN_THREAD_PARK_LOCK, Types.java_lang_Object, VersionRange.ALL, Constants.ACC_FINAL),
