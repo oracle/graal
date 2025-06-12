@@ -882,7 +882,7 @@ suite = {
             "maven": False,
         },
 
-        "JAVA_COMMUNITY": {
+        "JAVA_POM": {
             "class": "DynamicPOMDistribution",
             "description": "Java on Truffle (aka Espresso): a Java bytecode interpreter",
             "distDependencies": [
@@ -891,7 +891,7 @@ suite = {
                 "truffle:TRUFFLE_NFI_LIBFFI",
                 "truffle:TRUFFLE_RUNTIME",
                 # sulong is not strictly required, but it'll work out of the box in more cases if it's there
-                "sulong:LLVM_NATIVE_COMMUNITY",
+                "sulong:LLVM_NATIVE_POM",
             ],
             # optionally provides:
             # - ESPRESSO_RUNTIME_RESOURCES
