@@ -299,7 +299,9 @@ struct StaticFinalFieldFoldingSingleton {
 
 struct LayeredRuntimeMetadataSingleton {
   methods @0 :List(MethodId);
-  fields @1 :List(FieldId);
+  methodStates @1 :List(Bool);
+  fields @2 :List(FieldId);
+  fieldStates @3 :List(Bool);
 }
 
 struct LayeredModule {

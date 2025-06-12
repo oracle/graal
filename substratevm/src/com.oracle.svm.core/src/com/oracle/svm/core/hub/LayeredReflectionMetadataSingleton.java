@@ -24,7 +24,12 @@
  */
 package com.oracle.svm.core.hub;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
@@ -32,19 +37,41 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.DynamicHub.ReflectionMetadata;
-import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
+import com.oracle.svm.core.imagelayer.BuildingInitialLayerPredicate;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 
 /**
  * This singleton stores the {@link ReflectionMetadata} of each {@link DynamicHub} across layers to
  * allow registering elements for reflection in extension layers too.
  */
-@AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
-public class LayeredReflectionMetadataSingleton implements MultiLayeredImageSingleton, UnsavedSingleton {
+@AutomaticallyRegisteredImageSingleton(onlyWith = BuildingInitialLayerPredicate.class)
+public class LayeredReflectionMetadataSingleton implements MultiLayeredImageSingleton {
+    private static final String LAYERED_REFLECTION_METADATA_HUBS = "layered reflection metadata hubs";
+    private static final String LAYERED_REFLECTION_METADATA_CLASS_FLAGS = "layered reflection metadata classFlags";
+
     private final EconomicMap<Integer, ReflectionMetadata> reflectionMetadataMap = EconomicMap.create();
+
+    /**
+     * The class flags registered in previous layers. This map is used to check if the class flags
+     * in the current layer are the same as the previous layer. If they are the same and the rest of
+     * the reflection metadata is empty, the class can be skipped. If the class flags of the current
+     * layer are not a subset of the previous layer class flags, the new class flags become the
+     * combination of both class flags through an or statement.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private final Map<Integer, Integer> previousLayerClassFlags;
+
+    LayeredReflectionMetadataSingleton() {
+        this(Map.of());
+    }
+
+    LayeredReflectionMetadataSingleton(Map<Integer, Integer> previousLayerClassFlags) {
+        this.previousLayerClassFlags = previousLayerClassFlags;
+    }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static LayeredReflectionMetadataSingleton currentLayer() {
@@ -59,7 +86,24 @@ public class LayeredReflectionMetadataSingleton implements MultiLayeredImageSing
     public void setReflectionMetadata(DynamicHub hub, ReflectionMetadata reflectionMetadata) {
         /* GR-63472: Two different classes could have the same name in different class loaders */
         assert !reflectionMetadataMap.containsKey(hub.getTypeID()) : "The hub %s was added twice in the same layered reflection metadata".formatted(hub);
+        if (isClassFlagsSubsetOfPreviousLayer(hub.getTypeID(), reflectionMetadata) && isReflectionMetadataEmpty(reflectionMetadata)) {
+            return;
+        }
         reflectionMetadataMap.put(hub.getTypeID(), reflectionMetadata);
+    }
+
+    private boolean isClassFlagsSubsetOfPreviousLayer(int hub, ReflectionMetadata reflectionMetadata) {
+        int previousLayerFlags = previousLayerClassFlags.getOrDefault(hub, 0);
+        return getCombinedClassFlags(reflectionMetadata, previousLayerFlags) == previousLayerFlags;
+    }
+
+    private static int getCombinedClassFlags(ReflectionMetadata reflectionMetadata, int previousLayerFlags) {
+        return previousLayerFlags | reflectionMetadata.classFlags;
+    }
+
+    private static boolean isReflectionMetadataEmpty(ReflectionMetadata reflectionMetadata) {
+        return reflectionMetadata.fieldsEncodingIndex == -1 && reflectionMetadata.methodsEncodingIndex == -1 &&
+                        reflectionMetadata.constructorsEncodingIndex == -1 && reflectionMetadata.recordComponentsEncodingIndex == -1;
     }
 
     public ReflectionMetadata getReflectionMetadata(DynamicHub hub) {
@@ -69,5 +113,47 @@ public class LayeredReflectionMetadataSingleton implements MultiLayeredImageSing
     @Override
     public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
         return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+    }
+
+    @Override
+    public PersistFlags preparePersist(ImageSingletonWriter writer) {
+        List<Integer> hubs = new ArrayList<>();
+        List<Integer> classFlagsList = new ArrayList<>();
+
+        var cursor = reflectionMetadataMap.getEntries();
+        while (cursor.advance()) {
+            int hub = cursor.getKey();
+            hubs.add(hub);
+            classFlagsList.add(getCombinedClassFlags(cursor.getValue(), previousLayerClassFlags.getOrDefault(hub, 0)));
+        }
+
+        for (var entry : previousLayerClassFlags.entrySet()) {
+            if (!hubs.contains(entry.getKey())) {
+                /*
+                 * If new class flags were written in this layer, the class flags from previous
+                 * layers need to be skipped.
+                 */
+                hubs.add(entry.getKey());
+                classFlagsList.add(entry.getValue());
+            }
+        }
+
+        writer.writeIntList(LAYERED_REFLECTION_METADATA_HUBS, hubs);
+        writer.writeIntList(LAYERED_REFLECTION_METADATA_CLASS_FLAGS, classFlagsList);
+
+        return PersistFlags.CREATE;
+    }
+
+    @SuppressWarnings("unused")
+    public static Object createFromLoader(ImageSingletonLoader loader) {
+        List<Integer> hubs = loader.readIntList(LAYERED_REFLECTION_METADATA_HUBS);
+        List<Integer> previousLayerClassFlags = loader.readIntList(LAYERED_REFLECTION_METADATA_CLASS_FLAGS);
+
+        Map<Integer, Integer> classDatas = new HashMap<>();
+        for (int i = 0; i < hubs.size(); ++i) {
+            classDatas.put(hubs.get(i), previousLayerClassFlags.get(i));
+        }
+
+        return new LayeredReflectionMetadataSingleton(Collections.unmodifiableMap(classDatas));
     }
 }
