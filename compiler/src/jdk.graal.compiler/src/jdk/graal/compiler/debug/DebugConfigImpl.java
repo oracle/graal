@@ -36,7 +36,6 @@ import java.util.List;
 import java.util.Map;
 
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.JavaMethod;
 
@@ -47,7 +46,7 @@ final class DebugConfigImpl implements DebugConfig {
     private final DebugFilter countFilter;
     private final DebugFilter logFilter;
     private final DebugFilter trackMemUseFilter;
-    private final DebugFilter timerFilter;
+    private final DebugFilter timeFilter;
     private final DebugFilter dumpFilter;
     private final DebugFilter verifyFilter;
     private final MethodFilter methodFilter;
@@ -76,7 +75,7 @@ final class DebugConfigImpl implements DebugConfig {
                     String logFilter,
                     String countFilter,
                     String trackMemUseFilter,
-                    String timerFilter,
+                    String timeFilter,
                     String dumpFilter,
                     String verifyFilter,
                     String methodFilter,
@@ -87,7 +86,7 @@ final class DebugConfigImpl implements DebugConfig {
         this.logFilter = DebugFilter.parse(logFilter);
         this.countFilter = DebugFilter.parse(countFilter);
         this.trackMemUseFilter = DebugFilter.parse(trackMemUseFilter);
-        this.timerFilter = DebugFilter.parse(timerFilter);
+        this.timeFilter = DebugFilter.parse(timeFilter);
         this.dumpFilter = DebugFilter.parse(dumpFilter);
         this.verifyFilter = DebugFilter.parse(verifyFilter);
         if (methodFilter == null || methodFilter.isEmpty()) {
@@ -147,7 +146,7 @@ final class DebugConfigImpl implements DebugConfig {
 
     @Override
     public boolean isTimeEnabled(DebugContext.Scope scope) {
-        return isEnabled(scope, timerFilter);
+        return isEnabled(scope, timeFilter);
     }
 
     @Override
@@ -161,16 +160,15 @@ final class DebugConfigImpl implements DebugConfig {
     }
 
     private boolean isEnabled(DebugContext.Scope scope, DebugFilter filter) {
-        return getLevel(scope, filter) > 0;
+        return getLevel(scope, filter) >= 1;
     }
 
     private int getLevel(DebugContext.Scope scope, DebugFilter filter) {
-        int level;
         if (filter == null) {
-            level = 0;
-        } else {
-            level = filter.matchLevel(scope);
+            // null means the value has not been set
+            return -1;
         }
+        int level = filter.matchLevel(scope);
         if (level >= 0 && !checkMethodFilter(scope)) {
             level = -1;
         }
@@ -219,7 +217,7 @@ final class DebugConfigImpl implements DebugConfig {
         sb.append("Debug config:");
         add(sb, "Log", logFilter);
         add(sb, "Count", countFilter);
-        add(sb, "Time", timerFilter);
+        add(sb, "Time", timeFilter);
         add(sb, "Dump", dumpFilter);
         add(sb, "MethodFilter", methodFilter);
         return sb.toString();
