@@ -40,7 +40,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.ConfigurationType;
@@ -125,7 +125,7 @@ public final class MetadataTracer {
         assert enabled();
         ConfigurationSet configurationSet = config;
         if (configurationSet != null) {
-            return configurationSet.getReflectionConfiguration().getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), typeDescriptor);
+            return configurationSet.getReflectionConfiguration().getOrCreateType(UnresolvedAccessCondition.alwaysTrue(), typeDescriptor);
         }
         return null;
     }
@@ -152,7 +152,7 @@ public final class MetadataTracer {
         assert enabled();
         ConfigurationSet configurationSet = config;
         if (configurationSet != null) {
-            configurationSet.getResourceConfiguration().addGlobPattern(UnresolvedConfigurationCondition.alwaysTrue(), resourceName, moduleName);
+            configurationSet.getResourceConfiguration().addGlobPattern(UnresolvedAccessCondition.alwaysTrue(), resourceName, moduleName);
         }
     }
 
@@ -163,7 +163,7 @@ public final class MetadataTracer {
         assert enabled();
         ConfigurationSet configurationSet = config;
         if (configurationSet != null) {
-            configurationSet.getResourceConfiguration().addBundle(UnresolvedConfigurationCondition.alwaysTrue(), baseName, List.of());
+            configurationSet.getResourceConfiguration().addBundle(UnresolvedAccessCondition.alwaysTrue(), baseName, List.of());
         }
     }
 
