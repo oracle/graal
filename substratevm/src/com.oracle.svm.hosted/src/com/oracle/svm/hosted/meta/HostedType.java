@@ -32,6 +32,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.VMError;
 
@@ -103,6 +104,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
      */
     protected HostedMethod[] openTypeWorldDispatchTables;
     /**
+     * The dispatch table metadata used by Crema: for interfaces, the i-table prototype; for
+     * abstract types, the vtable; for other types, the dispatch table (v- & i-tables).
+     */
+    protected HostedMethod[] cremaOpenTypeWorldDispatchTables;
+    /**
      * Used for tracking original call targets contained within the dispatch table. This is in
      * contrast with {@link #openTypeWorldDispatchTables}, which contains the resolved methods for
      * each of the targets for this given type. In other words,
@@ -171,6 +177,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         return openTypeWorldDispatchTables;
     }
 
+    public HostedMethod[] getCremaOpenTypeWorldDispatchTables() {
+        assert cremaOpenTypeWorldDispatchTables != null : this;
+        return cremaOpenTypeWorldDispatchTables;
+    }
+
     public HostedMethod[] getOpenTypeWorldDispatchTableSlotTargets() {
         assert openTypeWorldDispatchTableSlotTargets != null;
         return openTypeWorldDispatchTableSlotTargets;
@@ -178,6 +189,10 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     public HostedMethod[] getVTable() {
         return SubstrateOptions.useClosedTypeWorldHubLayout() ? getClosedTypeWorldVTable() : getOpenTypeWorldDispatchTables();
+    }
+
+    public HostedMethod[] getInterpreterDispatchTable() {
+        return RuntimeClassLoading.isSupported() ? getCremaOpenTypeWorldDispatchTables() : getVTable();
     }
 
     @Override

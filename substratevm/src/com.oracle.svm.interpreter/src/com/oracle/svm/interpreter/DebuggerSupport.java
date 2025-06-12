@@ -24,6 +24,25 @@
  */
 package com.oracle.svm.interpreter;
 
+import static com.oracle.svm.interpreter.InterpreterUtil.traceInterpreter;
+
+import java.io.IOException;
+import java.lang.reflect.Executable;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.ProcessProperties;
+import org.graalvm.word.Pointer;
+
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.FunctionPointerHolder;
@@ -39,28 +58,11 @@ import com.oracle.svm.interpreter.metadata.Lazy;
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.interpreter.metadata.serialization.SerializationContext;
 import com.oracle.svm.interpreter.metadata.serialization.Serializers;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.ProcessProperties;
-import org.graalvm.word.Pointer;
-
-import java.io.IOException;
-import java.lang.reflect.Executable;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.Set;
-
-import static com.oracle.svm.interpreter.InterpreterUtil.traceInterpreter;
 
 public class DebuggerSupport {
     public static final String IMAGE_INTERP_HASH_SYMBOL_NAME = "__svm_interp_hash";

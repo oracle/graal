@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.meta;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -39,6 +40,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
 
@@ -290,6 +292,24 @@ public final class VTableBuilder {
                 LayeredDispatchTableFeature.singleton().registerNonArrayDispatchTable(type, validTarget);
             }
         }
+        if (RuntimeClassLoading.isSupported()) {
+            assert !type.isInterface();
+            List<HostedMethod> sourceTable;
+            if (type.isAbstract()) {
+                sourceTable = resultClassTableMethods;
+            } else {
+                sourceTable = Arrays.asList(type.openTypeWorldDispatchTableSlotTargets);
+            }
+            type.cremaOpenTypeWorldDispatchTables = new HostedMethod[sourceTable.size()];
+            for (int i = 0; i < sourceTable.size(); i++) {
+                HostedMethod resultMethod = sourceTable.get(i);
+                var resolvedMethod = (HostedMethod) type.resolveConcreteMethod(resultMethod, type);
+                if (resolvedMethod != null) {
+                    resultMethod = resolvedMethod;
+                }
+                type.cremaOpenTypeWorldDispatchTables[i] = resultMethod;
+            }
+        }
 
         for (HostedType subType : type.subTypes) {
             if (subType instanceof HostedInstanceClass instanceClass && openHubUtils.shouldIncludeType(subType)) {
@@ -307,7 +327,14 @@ public final class VTableBuilder {
              * looking at their declared methods.
              */
             if (type.isInterface() && openHubUtils.shouldIncludeType(type)) {
-                dispatchTablesMap.put(type, generateITable(type));
+                List<HostedMethod> itable = generateITable(type);
+                dispatchTablesMap.put(type, itable);
+                if (RuntimeClassLoading.isSupported()) {
+                    type.cremaOpenTypeWorldDispatchTables = new HostedMethod[itable.size()];
+                    for (int i = 0; i < itable.size(); i++) {
+                        type.cremaOpenTypeWorldDispatchTables[i] = itable.get(i);
+                    }
+                }
             }
         }
 
@@ -319,6 +346,7 @@ public final class VTableBuilder {
         for (HostedType type : hUniverse.getTypes()) {
             if (type.isArray() && openHubUtils.shouldIncludeType(type)) {
                 type.openTypeWorldDispatchTables = objectType.openTypeWorldDispatchTables;
+                type.cremaOpenTypeWorldDispatchTables = objectType.cremaOpenTypeWorldDispatchTables;
                 type.openTypeWorldDispatchTableSlotTargets = objectType.openTypeWorldDispatchTableSlotTargets;
                 type.itableStartingOffsets = objectType.itableStartingOffsets;
                 if (openHubUtils.shouldRegisterType(type)) {
@@ -330,6 +358,12 @@ public final class VTableBuilder {
                 type.openTypeWorldDispatchTables = HostedMethod.EMPTY_ARRAY;
                 type.openTypeWorldDispatchTableSlotTargets = HostedMethod.EMPTY_ARRAY;
                 type.itableStartingOffsets = emptyITableOffsets;
+            }
+            if (RuntimeClassLoading.isSupported()) {
+                if (type.isPrimitive()) {
+                    type.cremaOpenTypeWorldDispatchTables = HostedMethod.EMPTY_ARRAY;
+                }
+                assert type.cremaOpenTypeWorldDispatchTables != null : "No dispatch tables for type " + type;
             }
         }
     }
