@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.vm.structs;
 
+import static com.oracle.truffle.espresso.ffi.NativeType.BITFIELD_INT;
 import static com.oracle.truffle.espresso.ffi.NativeType.BOOLEAN;
 import static com.oracle.truffle.espresso.ffi.NativeType.INT;
 import static com.oracle.truffle.espresso.ffi.NativeType.LONG;
@@ -718,6 +719,43 @@ import com.oracle.truffle.espresso.vm.structs.GenerateStructs.KnownStruct;
                                                 POINTER,
                                                 POINTER,
                                                 POINTER,
+                                }),
+                /*-
+                 * typedef struct jmmOptionalSupport {
+                 *   unsigned int isLowMemoryDetectionSupported : 1;
+                 *   unsigned int isCompilationTimeMonitoringSupported : 1;
+                 *   unsigned int isThreadContentionMonitoringSupported : 1;
+                 *   unsigned int isCurrentThreadCpuTimeSupported : 1;
+                 *   unsigned int isOtherThreadCpuTimeSupported : 1;
+                 *   unsigned int isObjectMonitorUsageSupported : 1;
+                 *   unsigned int isSynchronizerUsageSupported : 1;
+                 *   unsigned int isThreadAllocatedMemorySupported : 1;
+                 *   unsigned int isRemoteDiagnosticCommandsSupported : 1;
+                 *   unsigned int : 22;
+                 * } jmmOptionalSupport;
+                 */
+                @KnownStruct(structName = "jmmOptionalSupport", //
+                                memberNames = {
+                                                "isLowMemoryDetectionSupported",
+                                                "isCompilationTimeMonitoringSupported",
+                                                "isThreadContentionMonitoringSupported",
+                                                "isCurrentThreadCpuTimeSupported",
+                                                "isOtherThreadCpuTimeSupported",
+                                                "isObjectMonitorUsageSupported",
+                                                "isSynchronizerUsageSupported",
+                                                "isThreadAllocatedMemorySupported",
+                                                "isRemoteDiagnosticCommandsSupported",
+                                }, //
+                                types = {
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
                                 }),
 })
 public abstract class StructWrapper {
