@@ -31,9 +31,9 @@
 #include <string.h>
 
 #define JNI_STRUCT_MEMBER_LIST(V) \
-	V(JavaVMAttachArgs, version) \
-	V(JavaVMAttachArgs, name) \
-	V(JavaVMAttachArgs, group) \
+    V(JavaVMAttachArgs, version) \
+    V(JavaVMAttachArgs, name) \
+    V(JavaVMAttachArgs, group) \
 
 #define JVM_STRUCT_MEMBER_LIST(V) \
     V(jdk_version_info, jdk_version)
@@ -171,20 +171,20 @@
     V(_jvmtiEventCallbacks, VMObjectAlloc) \
     V(_jvmtiEventCallbacks, reserved85) \
     V(_jvmtiEventCallbacks, SampledObjectAlloc)
-    
+
 #define MEMBER_INFO_STRUCT_MEMBER_LIST(V) \
     V(member_info, id) \
     V(member_info, offset) \
     V(member_info, next)
-    
+
 #define JNI_STRUCT_LIST(V) \
-	V(JavaVMAttachArgs) \
-	V(JavaVMAttachArgs) \
-	V(JavaVMAttachArgs) \
+    V(JavaVMAttachArgs) \
+    V(JavaVMAttachArgs) \
+    V(JavaVMAttachArgs) \
 
 #define JVM_STRUCT_LIST(V) \
     V(jdk_version_info)
-    
+
 #define JVMTI_STRUCT_LIST(V) \
     V(_jvmtiThreadInfo) \
     V(_jvmtiMonitorStackDepthInfo) \
@@ -208,37 +208,37 @@
     V(_jvmtiTimerInfo) \
     V(_jvmtiAddrLocationMap) \
     V(_jvmtiEventCallbacks)
-    
+
 #define MEMBER_INFO_STRUCT_LIST(V) \
     V(member_info)
 
 #define STRUCT_LIST_LIST(V) \
-	JNI_STRUCT_LIST(V) \
-	JVM_STRUCT_LIST(V) \
+    JNI_STRUCT_LIST(V) \
+    JVM_STRUCT_LIST(V) \
     JVMTI_STRUCT_LIST(V) \
     MEMBER_INFO_STRUCT_LIST(V)
-    
+
 #define STRUCT_MEMBER_LIST_LIST(V) \
-	JNI_STRUCT_MEMBER_LIST(V) \
-	JVM_STRUCT_MEMBER_LIST(V) \
+    JNI_STRUCT_MEMBER_LIST(V) \
+    JVM_STRUCT_MEMBER_LIST(V) \
     JVMTI_STRUCT_MEMBER_LIST(V) \
     MEMBER_INFO_STRUCT_MEMBER_LIST(V)
 
 void add_member_info(member_info** info, char* id, size_t offset) {
-	member_info* current = malloc(sizeof(struct member_info));
-	current->id = id;
-	current->offset = offset;
-	current->next = (*info);
-	*info = current;
+    member_info* current = malloc(sizeof(struct member_info));
+    current->id = id;
+    current->offset = offset;
+    current->next = (*info);
+    *info = current;
 }
 
 size_t lookup_member_info(member_info** info, char* id) {
-	for (member_info* current = *info; current != NULL; current = current->next) {
-		if (strcmp(id, current->id) == 0) {
-			return current->offset;
-		}
-	}
-	return -1;
+    for (member_info* current = *info; current != NULL; current = current->next) {
+        if (strcmp(id, current->id) == 0) {
+            return current->offset;
+        }
+    }
+    return -1;
 }
 
 void free_member_info(member_info** info) {
@@ -256,10 +256,10 @@ void free_member_info(member_info** info) {
 JNIEXPORT void JNICALL initializeStructs(void (*notify_member_offset_init)(void *)) {
   member_info** info = malloc(sizeof(struct member_info*));
   (*info) = NULL;
-	
+
   #define MEMBER_INFO__(STRUCT_NAME, MEMBER_NAME) \
     add_member_info(info, #STRUCT_NAME "." #MEMBER_NAME, offsetof(struct STRUCT_NAME, MEMBER_NAME));
-    
+
   STRUCT_MEMBER_LIST_LIST(MEMBER_INFO__)
   #undef MEMBER_INFO__
 
@@ -268,9 +268,9 @@ JNIEXPORT void JNICALL initializeStructs(void (*notify_member_offset_init)(void 
 
   STRUCT_LIST_LIST(STRUCT_INFO__)
   #undef STRUCT_INFO__
-  
+
   notify_member_offset_init(info);
-  
+
   free_member_info(info);
 }
 
