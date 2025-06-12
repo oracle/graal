@@ -736,7 +736,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     private void traceClassFlagQuery(int mask) {
-        ConfigurationType type = MetadataTracer.singleton().traceReflectionType(getTypeName());
+        ConfigurationType type = MetadataTracer.singleton().traceReflectionTypeImpl(getTypeName());
         if (type == null) {
             return;
         }
@@ -1347,18 +1347,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         ConfigurationMemberDeclaration declaration = publicOnly ? ConfigurationMemberDeclaration.PRESENT : ConfigurationMemberDeclaration.DECLARED;
         if (field != null) {
             // register declaring type and field
-            ConfigurationType declaringType = MetadataTracer.singleton().traceReflectionType(field.getDeclaringClass().getTypeName());
-            if (declaringType != null) {
-                declaringType.addField(fieldName, declaration, false);
-            }
+            MetadataTracer.singleton().traceField(field.getDeclaringClass().getTypeName(), fieldName, declaration);
             // register receiver type
             MetadataTracer.singleton().traceReflectionType(getTypeName());
         } else {
             // register receiver type and negative field query
-            ConfigurationType receiverType = MetadataTracer.singleton().traceReflectionType(getTypeName());
-            if (receiverType != null) {
-                receiverType.addField(fieldName, declaration, false);
-            }
+            MetadataTracer.singleton().traceField(getTypeName(), fieldName, declaration);
         }
     }
 
@@ -1432,18 +1426,13 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         ConfigurationMemberDeclaration declaration = publicOnly ? ConfigurationMemberDeclaration.PRESENT : ConfigurationMemberDeclaration.DECLARED;
         if (method != null) {
             // register declaring type and method
-            ConfigurationType declaringType = MetadataTracer.singleton().traceReflectionType(method.getDeclaringClass().getTypeName());
-            if (declaringType != null) {
-                declaringType.addMethod(methodName, toInternalSignature(parameterTypes), declaration);
-            }
+            // TODO (GR-64765) loosen to queried accessibility once method invocations are traced
+            MetadataTracer.singleton().traceMethod(method.getDeclaringClass().getTypeName(), methodName, toInternalSignature(parameterTypes), declaration, ConfigurationMemberAccessibility.ACCESSED);
             // register receiver type
             MetadataTracer.singleton().traceReflectionType(getTypeName());
         } else {
             // register receiver type and negative method query
-            ConfigurationType receiverType = MetadataTracer.singleton().traceReflectionType(getTypeName());
-            if (receiverType != null) {
-                receiverType.addMethod(methodName, toInternalSignature(parameterTypes), declaration, ConfigurationMemberAccessibility.QUERIED);
-            }
+            MetadataTracer.singleton().traceMethod(getTypeName(), methodName, toInternalSignature(parameterTypes), declaration, ConfigurationMemberAccessibility.QUERIED);
         }
     }
 
