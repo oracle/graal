@@ -1034,12 +1034,6 @@ suite = {
             "ldlibs" : ["-ldl"],
           },
         },
-        "linux-musl" : {
-          "<others>" : {
-            "cflags" : ["-g", "-O3", "-Wall", "-Werror", "-fvisibility=hidden"],
-            "ldlibs" : ["-ldl"],
-          },
-        },
         "<others>" : {
           "<others>" : {
             "cflags" : ["-g", "-O3", "-Wall", "-Werror", "-fvisibility=hidden"],
