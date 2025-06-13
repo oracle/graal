@@ -60,6 +60,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -1663,6 +1664,21 @@ final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
 @TargetClass(className = "jdk.incubator.vector.AbstractVector", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_AbstractVector {
 
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native ArrayIndexOutOfBoundsException wrongPart(Target_jdk_incubator_vector_AbstractSpecies dsp, Target_jdk_incubator_vector_AbstractSpecies rsp, boolean lanewise, int part);
+}
+
+@TargetClass(className = "jdk.internal.vm.vector.VectorSupport", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_internal_vm_vector_VectorSupport {
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorMask", onlyWith = VectorAPIEnabled.class)
+    private static final class Target_jdk_incubator_vector_VectorSupport_VectorMask<E> {
+    }
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native <M extends Target_jdk_incubator_vector_VectorSupport_VectorMask<E>, E> boolean test(int cond, Class<?> mClass, Class<?> eClass, int length, M m1, M m2, BiFunction<M, M, Boolean> defaultImpl);
 }
 
 @TargetClass(className = "jdk.incubator.vector.AbstractSpecies", onlyWith = VectorAPIEnabled.class)
