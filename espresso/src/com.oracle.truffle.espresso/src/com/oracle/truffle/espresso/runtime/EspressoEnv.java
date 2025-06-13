@@ -105,6 +105,7 @@ public final class EspressoEnv {
     private final PolyglotTypeMappings polyglotTypeMappings;
     private final boolean enableGenericTypeHints;
     private final HashMap<String, EspressoForeignProxyGenerator.GeneratedProxyBytes> proxyCache;
+    public final boolean AdvancedRedefinition;
 
     // Debug option
     public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
@@ -168,6 +169,7 @@ public final class EspressoEnv {
         this.enableGenericTypeHints = env.getOptions().get(EspressoOptions.EnableGenericTypeHints);
         this.proxyCache = polyglotTypeMappings.hasMappings() ? new HashMap<>() : null;
         this.UseBindingsLoader = env.getOptions().get(EspressoOptions.UseBindingsLoader);
+        this.AdvancedRedefinition = env.getOptions().get(EspressoOptions.EnableAdvancedRedefinition);
 
         EspressoOptions.JImageMode requestedJImageMode = env.getOptions().get(EspressoOptions.JImage);
         if (!NativeAccessAllowed && requestedJImageMode == EspressoOptions.JImageMode.NATIVE) {
