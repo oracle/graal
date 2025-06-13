@@ -580,7 +580,7 @@ public final class VM extends NativeEnv {
                 packageNames.add(meta.toGuestString(s));
             }
         });
-        return StaticObject.createArray(meta.java_lang_String.getArrayClass(), packageNames.toArray(StaticObject.EMPTY_ARRAY), getContext());
+        return StaticObject.createArray(meta.java_lang_String.getArrayKlass(), packageNames.toArray(StaticObject.EMPTY_ARRAY), getContext());
     }
 
     @VmImpl
@@ -3482,7 +3482,7 @@ public final class VM extends NativeEnv {
         if (numThreads < threads.length) {
             threads = Arrays.copyOf(threads, numThreads);
         }
-        return getMeta().getAllocator().wrapArrayAs(getMeta().java_lang_Thread.getArrayClass(), threads);
+        return getMeta().getAllocator().wrapArrayAs(getMeta().java_lang_Thread.getArrayKlass(), threads);
     }
 
     // endregion threads

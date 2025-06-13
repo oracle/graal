@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableRef;
@@ -112,8 +113,8 @@ public final class JDWP {
             static CommandResult createReply(Packet packet, JDWPContext context, DebuggerController controller) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                KlassRef[] allLoadedClasses = context.getAllLoadedClasses();
-                reply.writeInt(allLoadedClasses.length);
+                Set<? extends KlassRef> allLoadedClasses = context.getAllLoadedClasses();
+                reply.writeInt(allLoadedClasses.size());
 
                 for (KlassRef klass : allLoadedClasses) {
                     reply.writeByte(TypeTag.getKind(klass));
@@ -121,7 +122,7 @@ public final class JDWP {
                     reply.writeString(klass.getTypeAsString());
                     reply.writeInt(klass.getStatus());
                 }
-                controller.fine(() -> "Loaded classes: " + allLoadedClasses.length);
+                controller.fine(() -> "Loaded classes: " + allLoadedClasses.size());
 
                 return new CommandResult(reply);
             }
@@ -441,8 +442,8 @@ public final class JDWP {
             static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                KlassRef[] allLoadedClasses = context.getAllLoadedClasses();
-                reply.writeInt(allLoadedClasses.length);
+                Set<? extends KlassRef> allLoadedClasses = context.getAllLoadedClasses();
+                reply.writeInt(allLoadedClasses.size());
 
                 for (KlassRef klass : allLoadedClasses) {
                     reply.writeByte(TypeTag.getKind(klass));
@@ -2662,7 +2663,7 @@ public final class JDWP {
                 if (classLoader == null) {
                     return new CommandResult(reply);
                 }
-                List<? extends KlassRef> klasses = context.getInitiatedClasses(classLoader);
+                Set<? extends KlassRef> klasses = context.getInitiatedClasses(classLoader);
 
                 reply.writeInt(klasses.size());
 

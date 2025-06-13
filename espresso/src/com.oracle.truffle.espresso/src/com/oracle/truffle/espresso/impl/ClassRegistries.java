@@ -25,7 +25,10 @@ package com.oracle.truffle.espresso.impl;
 import static com.oracle.truffle.espresso.impl.LoadingConstraints.INVALID_LOADER_ID;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -171,7 +174,7 @@ public final class ClassRegistries {
             if (elemental == null) {
                 return null;
             }
-            return elemental.getArrayClass(TypeSymbols.getArrayDimensions(type));
+            return elemental.getArrayKlass(TypeSymbols.getArrayDimensions(type));
         }
 
         ClassRegistry registry = getClassRegistry(classLoader);
@@ -180,16 +183,44 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
-    public List<Klass> getLoadedClassesByLoader(StaticObject classLoader) {
+    public Set<Klass> getLoadedClassesByLoader(StaticObject classLoader, boolean includeHidden) {
         if (classLoader == StaticObject.NULL) {
-            ArrayList<Klass> result = new ArrayList<>(bootClassRegistry.classes.size());
+            Set<Klass> result = new HashSet<>();
             for (RegistryEntry value : bootClassRegistry.classes.values()) {
                 result.add(value.klass());
             }
+            if (includeHidden) {
+                addAllHiddenKlasses(bootClassRegistry, result);
+            }
+            // include array classes
+            result.addAll(getLoadedArrayClasses(result));
+            // include primitive array classes, but not the primitive classes themselves
+            result.addAll(getLoadedArrayClasses(Arrays.asList(context.getMeta().PRIMITIVE_KLASSES)));
             return result;
         }
         ClassRegistry classRegistry = getClassRegistry(classLoader);
-        return classRegistry == null ? Collections.emptyList() : classRegistry.getLoadedKlasses();
+        if (classRegistry == null) {
+            return Collections.emptySet();
+        }
+        Set<Klass> result = classRegistry.getLoadedKlasses();
+        if (includeHidden) {
+            addAllHiddenKlasses(classRegistry, result);
+        }
+
+        // include loaded array classes
+        result.addAll(getLoadedArrayClasses(result));
+        return result;
+    }
+
+    private static void addAllHiddenKlasses(ClassRegistry registry, Set<Klass> result) {
+        synchronized (registry.getStrongHiddenClassRegistrationLock()) {
+            if (registry.strongHiddenKlasses != null) {
+                result.addAll(registry.strongHiddenKlasses);
+            }
+            if (registry.getHiddenKlasses() != null) {
+                result.addAll(registry.getHiddenKlasses());
+            }
+        }
     }
 
     @TruffleBoundary
@@ -215,21 +246,29 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
-    public List<Klass> getAllLoadedClasses() {
-        ArrayList<Klass> list = new ArrayList<>();
-        // add classes from boot registry
-        for (RegistryEntry entry : bootClassRegistry.classes.values()) {
-            list.add(entry.klass());
-        }
+    public Set<Klass> getAllLoadedClasses() {
+        // first add classes from boot registry
+        HashSet<Klass> set = new HashSet<>(getLoadedClassesByLoader(StaticObject.NULL, true));
+
         // add classes from all other registries
         synchronized (weakClassLoaderSet) {
             for (StaticObject classLoader : weakClassLoaderSet) {
-                for (RegistryEntry entry : getClassRegistry(classLoader).classes.values()) {
-                    list.add(entry.klass());
-                }
+                set.addAll(getLoadedClassesByLoader(classLoader, true));
             }
         }
-        return list;
+        return set;
+    }
+
+    private static Set<Klass> getLoadedArrayClasses(Collection<Klass> elementalKlasses) {
+        Set<Klass> result = new HashSet<>();
+        for (Klass elementalKlass : elementalKlasses) {
+            ArrayKlass arrayKlass = elementalKlass.getArrayKlass(false);
+            while (arrayKlass != null) {
+                result.add(arrayKlass);
+                arrayKlass = arrayKlass.getArrayKlass(false);
+            }
+        }
+        return result;
     }
 
     public ModuleRef[] getAllModuleRefs() {
@@ -279,7 +318,7 @@ public final class ClassRegistries {
             if (elemental == null) {
                 return null;
             }
-            return elemental.getArrayClass(TypeSymbols.getArrayDimensions(type));
+            return elemental.getArrayKlass(TypeSymbols.getArrayDimensions(type));
         }
         ClassRegistry registry = getClassRegistry(classLoader);
         return registry.loadKlass(context, type, protectionDomain);

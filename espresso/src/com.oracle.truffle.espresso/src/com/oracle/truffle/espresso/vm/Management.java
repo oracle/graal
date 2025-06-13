@@ -844,7 +844,7 @@ public final class Management extends NativeEnv {
     public @JavaType(Thread[].class) StaticObject FindDeadlocks(boolean objectMonitorsOnly, @Inject Meta meta) {
         if (!objectMonitorsOnly) {
             getLogger().warning(() -> "Calling unimplemented Management.FindDeadlocks(false)");
-            return StaticObject.createArray(meta.java_lang_Thread.getArrayClass(), StaticObject.EMPTY_ARRAY, getContext());
+            return StaticObject.createArray(meta.java_lang_Thread.getArrayKlass(), StaticObject.EMPTY_ARRAY, getContext());
         }
         Thread initiatingThread = Thread.currentThread();
         EspressoThreadRegistry threadRegistry = getContext().getEspressoEnv().getThreadRegistry();
@@ -858,7 +858,7 @@ public final class Management extends NativeEnv {
             }
         }, future);
         assert action.results != null;
-        return StaticObject.createArray(meta.java_lang_Thread.getArrayClass(), action.results, getContext());
+        return StaticObject.createArray(meta.java_lang_Thread.getArrayKlass(), action.results, getContext());
     }
 
     private static class FindDeadLocksAction extends ThreadLocalAction {
