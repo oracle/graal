@@ -242,7 +242,7 @@ final class JavaUnicodeProperties {
         if (cached != null) {
             return cached;
         }
-        UnicodeProperties unicode = new UnicodeProperties(unicodePropertyData, UnicodeProperties.CASE_INSENSITIVE | UnicodeProperties.BLOCKS | UnicodeProperties.OTHER_PROPERTIES);
+        UnicodeProperties unicode = new UnicodeProperties(unicodePropertyData, UnicodeProperties.BLOCKS | UnicodeProperties.OTHER_PROPERTIES, UnicodeProperties.NameMatchingMode.ignoreCase);
         JavaUnicodeProperties ret = new JavaUnicodeProperties(unicode);
         CACHE[cacheIndex] = ret;
         return ret;

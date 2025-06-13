@@ -56,7 +56,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 public final class ECMAScriptFlavor extends RegexFlavor {
 
     public static final ECMAScriptFlavor INSTANCE = new ECMAScriptFlavor();
-    public static final UnicodeProperties UNICODE = new UnicodeProperties(UnicodePropertyDataVersion.UNICODE_16_0_0, 0);
+    public static final UnicodeProperties UNICODE = new UnicodeProperties(UnicodePropertyDataVersion.UNICODE_16_0_0, 0, UnicodeProperties.NameMatchingMode.exact);
 
     private ECMAScriptFlavor() {
         super(0);
