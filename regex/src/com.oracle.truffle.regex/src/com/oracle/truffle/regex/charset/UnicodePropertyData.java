@@ -49,21 +49,41 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 
+import com.oracle.truffle.regex.charset.UnicodeProperties.NameMatchingMode;
 import com.oracle.truffle.regex.charset.UnicodePropertyDataDiff.CodePointSetDiff;
 
 public class UnicodePropertyData {
 
+    private record Aliases(
+                    EconomicMap<String, String> prop,
+                    EconomicMap<String, String> gc,
+                    EconomicMap<String, String> sc,
+                    EconomicMap<String, String> blk) {
+
+        private Aliases transform(NameMatchingMode nameMatchingMode) {
+            return new Aliases(
+                            transformMap(prop, nameMatchingMode),
+                            transformMap(gc, nameMatchingMode),
+                            transformMap(sc, nameMatchingMode),
+                            transformMap(blk, nameMatchingMode));
+        }
+
+        private static EconomicMap<String, String> transformMap(EconomicMap<String, String> source, NameMatchingMode nameMatchingMode) {
+            EconomicMap<String, String> target = EconomicMap.create(source.size());
+            MapCursor<String, String> cursor = source.getEntries();
+            while (cursor.advance()) {
+                String transformedKey = nameMatchingMode.normalize(cursor.getKey());
+                assert !target.containsKey(transformedKey) || target.get(transformedKey).equals(cursor.getValue());
+                target.put(transformedKey, cursor.getValue());
+            }
+            return target;
+        }
+    }
+
     private final EconomicMap<String, CodePointSet> properties;
     protected final EconomicMap<String, ClassSetContents> emoji;
-    protected final EconomicMap<String, String> propAliases;
-    protected final EconomicMap<String, String> gcAliases;
-    protected final EconomicMap<String, String> scAliases;
-    protected final EconomicMap<String, String> blkAliases;
     private ClassSetContents rgiEmoji;
-    private EconomicMap<String, String> propAliasesCaseInsensitive;
-    private EconomicMap<String, String> gcAliasesCaseInsensitive;
-    private EconomicMap<String, String> scAliasesCaseInsensitive;
-    private EconomicMap<String, String> blkAliasesCaseInsensitive;
+    private final Aliases[] aliases = new Aliases[NameMatchingMode.values().length];
 
     UnicodePropertyData(
                     EconomicMap<String, CodePointSet> properties,
@@ -74,10 +94,7 @@ public class UnicodePropertyData {
                     EconomicMap<String, String> blkAliases) {
         this.properties = properties;
         this.emoji = emoji;
-        this.propAliases = propAliases;
-        this.gcAliases = gcAliases;
-        this.scAliases = scAliases;
-        this.blkAliases = blkAliases;
+        aliases[NameMatchingMode.exact.ordinal()] = new Aliases(propAliases, gcAliases, scAliases, blkAliases);
     }
 
     CodePointSet retrieveProperty(String propertySpec) {
@@ -118,64 +135,50 @@ public class UnicodePropertyData {
         return rgiEmoji;
     }
 
-    String lookupPropertyAlias(String alias, boolean caseInsensitive) {
-        String name = propAliases.get(alias);
-        if (name == null && caseInsensitive) {
-            return lookupPropertyAliasCaseInsensitive(alias);
+    Aliases getExactAliases() {
+        return aliases[NameMatchingMode.exact.ordinal()];
+    }
+
+    Aliases getAliases(NameMatchingMode nameMatchingMode) {
+        Aliases lookup = aliases[nameMatchingMode.ordinal()];
+        if (lookup == null) {
+            assert nameMatchingMode != NameMatchingMode.exact;
+            lookup = getExactAliases().transform(nameMatchingMode);
+            aliases[nameMatchingMode.ordinal()] = lookup;
+        }
+        return lookup;
+    }
+
+    String lookupPropertyAlias(String alias, NameMatchingMode nameMatchingMode) {
+        String name = getExactAliases().prop.get(alias);
+        if (name == null && nameMatchingMode != NameMatchingMode.exact) {
+            return getAliases(nameMatchingMode).prop.get(nameMatchingMode.normalize(alias));
         }
         return name;
     }
 
-    private String lookupPropertyAliasCaseInsensitive(String alias) {
-        if (propAliasesCaseInsensitive == null) {
-            propAliasesCaseInsensitive = createCaseInsensitiveMap(propAliases);
-        }
-        return propAliasesCaseInsensitive.get(alias.toLowerCase());
-    }
-
-    String lookupGeneralCategoryAlias(String alias, boolean caseInsensitive) {
-        String name = gcAliases.get(alias);
-        if (name == null && caseInsensitive) {
-            return lookupGcAliasCaseInsensitive(alias);
+    String lookupGeneralCategoryAlias(String alias, NameMatchingMode nameMatchingMode) {
+        String name = getExactAliases().gc.get(alias);
+        if (name == null && nameMatchingMode != NameMatchingMode.exact) {
+            return getAliases(nameMatchingMode).gc.get(nameMatchingMode.normalize(alias));
         }
         return name;
     }
 
-    private String lookupGcAliasCaseInsensitive(String alias) {
-        if (gcAliasesCaseInsensitive == null) {
-            gcAliasesCaseInsensitive = createCaseInsensitiveMap(gcAliases);
-        }
-        return gcAliasesCaseInsensitive.get(alias.toLowerCase());
-    }
-
-    String lookupScriptAlias(String alias, boolean caseInsensitive) {
-        String name = scAliases.get(alias);
-        if (name == null && caseInsensitive) {
-            return lookupScAliasCaseInsensitive(alias);
+    String lookupScriptAlias(String alias, NameMatchingMode nameMatchingMode) {
+        String name = getExactAliases().sc.get(alias);
+        if (name == null && nameMatchingMode != NameMatchingMode.exact) {
+            return getAliases(nameMatchingMode).sc.get(nameMatchingMode.normalize(alias));
         }
         return name;
     }
 
-    private String lookupScAliasCaseInsensitive(String alias) {
-        if (scAliasesCaseInsensitive == null) {
-            scAliasesCaseInsensitive = createCaseInsensitiveMap(scAliases);
-        }
-        return scAliasesCaseInsensitive.get(alias.toLowerCase());
-    }
-
-    String lookupBlockAlias(String alias, boolean caseInsensitive) {
-        String name = blkAliases.get(alias);
-        if (name == null && caseInsensitive) {
-            return lookupBlkAliasCaseInsensitive(alias);
+    String lookupBlockAlias(String alias, NameMatchingMode nameMatchingMode) {
+        String name = getExactAliases().blk.get(alias);
+        if (name == null && nameMatchingMode != NameMatchingMode.exact) {
+            return getAliases(nameMatchingMode).blk.get(nameMatchingMode.normalize(alias));
         }
         return name;
-    }
-
-    private String lookupBlkAliasCaseInsensitive(String alias) {
-        if (blkAliasesCaseInsensitive == null) {
-            blkAliasesCaseInsensitive = createCaseInsensitiveMap(blkAliases);
-        }
-        return blkAliasesCaseInsensitive.get(alias.toLowerCase());
     }
 
     private static EconomicSet<String> stringSet(String... strings) {
@@ -184,17 +187,6 @@ public class UnicodePropertyData {
             set.add(s);
         }
         return set;
-    }
-
-    private static EconomicMap<String, String> createCaseInsensitiveMap(EconomicMap<String, String> source) {
-        EconomicMap<String, String> target = EconomicMap.create(source.size());
-        MapCursor<String, String> cursor = source.getEntries();
-        while (cursor.advance()) {
-            String lowerCaseKey = cursor.getKey().toLowerCase();
-            assert !target.containsKey(lowerCaseKey);
-            target.put(lowerCaseKey, cursor.getValue());
-        }
-        return target;
     }
 
     /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
