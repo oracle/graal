@@ -2891,7 +2891,7 @@ public class TagTest extends AbstractInstructionTest {
 
     }
 
-    @ExpectError("Tag instrumentation uses implicit root tagging, but the RootTag was not provded by the language class 'com.oracle.truffle.api.bytecode.test.TagTest.NoRootTagTestLanguage'. " +
+    @ExpectError("Tag instrumentation uses implicit root tagging, but the RootTag was not provided by the language class 'com.oracle.truffle.api.bytecode.test.TagTest.NoRootTagTestLanguage'. " +
                     "Specify the tag using @ProvidedTags(RootTag.class) on the language class or explicitly disable root tagging using @GenerateBytecode(.., enableRootTagging=false) to resolve this.")
     @GenerateBytecode(languageClass = NoRootTagTestLanguage.class, //
                     enableTagInstrumentation = true)
@@ -2944,7 +2944,7 @@ public class TagTest extends AbstractInstructionTest {
 
     }
 
-    @ExpectError("Tag instrumentation uses implicit root body tagging, but the RootTag was not provded by the language class 'com.oracle.truffle.api.bytecode.test.TagTest.NoRootBodyTagTestLanguage'. " +
+    @ExpectError("Tag instrumentation uses implicit root body tagging, but the RootTag was not provided by the language class 'com.oracle.truffle.api.bytecode.test.TagTest.NoRootBodyTagTestLanguage'. " +
                     "Specify the tag using @ProvidedTags(RootBodyTag.class) on the language class or explicitly disable root tagging using @GenerateBytecode(.., enableRootBodyTagging=false) to resolve this.")
     @GenerateBytecode(languageClass = NoRootBodyTagTestLanguage.class, //
                     enableTagInstrumentation = true)
