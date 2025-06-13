@@ -41,11 +41,28 @@
 #ifndef __TRUFFLE_INTERNAL_H
 #define __TRUFFLE_INTERNAL_H
 
-#if defined(__linux__) && defined(_GNU_SOURCE)
+#if defined(__linux__)
+
+#if !defined(_GNU_SOURCE)
+#error "expected to be set via CLFAGS.  required for detection below"
+#endif
+
+/* musl does not set __USE_GNU in features.h
+ * source: https://stackoverflow.com/a/70211227
+ */
+#include <features.h>
+
+#ifdef __USE_GNU
+/* glibc */
 #define ENABLE_ISOLATED_NAMESPACE
 #define ISOLATED_NAMESPACE 0x10000
 #include <dlfcn.h>
-#endif
+
+#else  // !__USE_GNU
+/* musl. dlmopen not available */
+#endif // !__USE_GNU
+
+#endif // __linux__
 
 #include "native.h"
 #include "trufflenfi.h"
