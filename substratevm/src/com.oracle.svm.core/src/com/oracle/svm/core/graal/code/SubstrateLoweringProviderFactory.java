@@ -24,15 +24,16 @@
  */
 package com.oracle.svm.core.graal.code;
 
+import com.oracle.svm.core.layeredimagesingleton.BuildTimeUnsavedSingleton;
+
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
-public interface SubstrateLoweringProviderFactory {
+public interface SubstrateLoweringProviderFactory extends BuildTimeUnsavedSingleton {
     DefaultJavaLoweringProvider newLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                     MetaAccessExtensionProvider metaAccessExtensionProvider,
                     TargetDescription target);

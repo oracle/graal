@@ -24,11 +24,15 @@
  */
 package com.oracle.svm.core.stack;
 
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
@@ -70,7 +74,7 @@ import jdk.graal.compiler.options.Option;
  * error. The red zone is small and sized just to do something slightly better than a segmentation
  * fault.
  */
-public interface StackOverflowCheck {
+public interface StackOverflowCheck extends InitialLayerOnlyImageSingleton {
 
     class Options {
         @Option(help = "Size (in bytes) of the yellow zone reserved at the end of the stack. This stack space is reserved for VM use and cannot be used by the application.")//
@@ -85,7 +89,7 @@ public interface StackOverflowCheck {
      * stack that grows from higher addresses towards lower addresses. All supported platforms use
      * this direction.
      */
-    interface PlatformSupport {
+    interface PlatformSupport extends InitialLayerOnlyImageSingleton {
         @Fold
         static PlatformSupport singleton() {
             return ImageSingletons.lookup(PlatformSupport.class);
@@ -107,6 +111,16 @@ public interface StackOverflowCheck {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         boolean lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr);
+
+        @Override
+        default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+            return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+        }
+
+        @Override
+        default boolean accessibleInFutureLayers() {
+            return true;
+        }
     }
 
     @Fold

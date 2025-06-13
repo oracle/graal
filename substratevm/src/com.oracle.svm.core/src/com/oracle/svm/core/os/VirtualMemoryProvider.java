@@ -24,18 +24,24 @@
  */
 package com.oracle.svm.core.os;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
+
 /**
  * Primitive operations for low-level virtual memory management.
  */
-public interface VirtualMemoryProvider {
+public interface VirtualMemoryProvider extends InitialLayerOnlyImageSingleton {
     /**
      * Bitmask with the modes of protection for {@linkplain #commit committed} or
      * {@linkplain #mapFile mapped} memory.
@@ -189,4 +195,14 @@ public interface VirtualMemoryProvider {
      * @return 0 when successful, or a non-zero implementation-specific error code.
      */
     int free(PointerBase start, UnsignedWord nbytes);
+
+    @Override
+    default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+    }
+
+    @Override
+    default boolean accessibleInFutureLayers() {
+        return true;
+    }
 }

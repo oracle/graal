@@ -56,6 +56,7 @@ import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
+import com.oracle.svm.core.layeredimagesingleton.BuildTimeUnsavedSingleton;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
@@ -1307,7 +1308,7 @@ public class SubstrateOptions {
         return getImagePath().resolve(reportsPath).toString();
     }
 
-    public static class ReportingSupport {
+    public static class ReportingSupport implements BuildTimeUnsavedSingleton {
         Path reportsPath;
 
         public ReportingSupport(Path reportingPath) {

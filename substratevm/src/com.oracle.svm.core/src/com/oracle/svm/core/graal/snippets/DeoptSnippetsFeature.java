@@ -26,16 +26,17 @@ package com.oracle.svm.core.graal.snippets;
 
 import java.util.Map;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
+
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-
 @AutomaticallyRegisteredFeature
-final class DeoptSnippetsFeature implements InternalFeature {
+final class DeoptSnippetsFeature implements InternalFeature, FeatureSingleton {
 
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,

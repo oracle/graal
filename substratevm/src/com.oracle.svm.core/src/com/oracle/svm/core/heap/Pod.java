@@ -47,6 +47,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.layeredimagesingleton.UnsupportedLayeredSingleton;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.UnsignedUtils;
 
@@ -280,7 +281,7 @@ public final class Pod<T> {
         }
     }
 
-    public static final class RuntimeSupport {
+    public static final class RuntimeSupport implements UnsupportedLayeredSingleton {
         @Fold
         public static boolean isPresent() {
             return ImageSingletons.contains(RuntimeSupport.class);

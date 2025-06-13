@@ -34,6 +34,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrGCName;
@@ -42,6 +43,7 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.layeredimagesingleton.UnsupportedLayeredSingleton;
 import com.oracle.svm.core.util.VMError;
 
 class JfrGCEventSupport {
@@ -139,10 +141,10 @@ class JfrGCEventSupport {
 }
 
 @AutomaticallyRegisteredFeature
-class JfrGCEventFeature implements InternalFeature {
+class JfrGCEventFeature implements InternalFeature, UnsupportedLayeredSingleton {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.useSerialGC();
+        return SubstrateOptions.useSerialGC() && !ImageLayerBuildingSupport.buildingImageLayer();
     }
 
     @Override

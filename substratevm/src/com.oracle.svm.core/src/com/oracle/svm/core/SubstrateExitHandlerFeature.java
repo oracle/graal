@@ -29,9 +29,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 
 @AutomaticallyRegisteredFeature
-public class SubstrateExitHandlerFeature implements InternalFeature {
+public class SubstrateExitHandlerFeature implements InternalFeature, FeatureSingleton {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (SubstrateOptions.InstallExitHandlers.getValue()) {
