@@ -726,7 +726,19 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         if (typeData.getIsInitialized()) {
             classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtBuildTime(clazz, "computed in a previous layer"));
         } else {
-            classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtRunTime(clazz, "computed in a previous layer"));
+            if (typeData.getIsFailedInitialization()) {
+                /*
+                 * In the previous layer this class was configured with --initialize-at-build-time
+                 * but its initialization failed so it was registered as run time initialized. We
+                 * attempt to init it again in this layer and verify that it fails. This will allow
+                 * the class to be configured again in this layer with --initialize-at-build-time,
+                 * either before or after this step.
+                 */
+                classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtBuildTime(clazz, "computed in a previous layer"));
+                VMError.guarantee(classInitializationSupport.isFailedInitialization(clazz), "Expected the initialization to fail for %s, as it has failed in a previous layer.", clazz);
+            } else {
+                classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtRunTime(clazz, "computed in a previous layer"));
+            }
         }
 
         /* Extract and record the base layer identity hashcode for this type. */
