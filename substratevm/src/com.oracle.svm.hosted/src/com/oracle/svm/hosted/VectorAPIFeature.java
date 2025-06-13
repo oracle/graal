@@ -233,6 +233,9 @@ public class VectorAPIFeature implements InternalFeature {
             warmupImplCache(vectorClass, "BIN_IMPL", "binaryOperations", warmupData);
             warmupImplCache(vectorClass, "TERN_IMPL", "ternaryOperations", warmupData);
             warmupImplCache(vectorClass, "REDUCE_IMPL", "reductionOperations", warmupData);
+            if (!elementName.equals("Float") && !elementName.equals("Double")) {
+                warmupImplCache(vectorClass, "BIN_INT_IMPL", "broadcastIntOperations", warmupData);
+            }
         }
 
         /* Warm up caches for mapping between lane types, used by shuffles. */
