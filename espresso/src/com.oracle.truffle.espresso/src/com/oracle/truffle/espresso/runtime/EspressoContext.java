@@ -804,7 +804,7 @@ public final class EspressoContext
     }
 
     public boolean advancedRedefinitionEnabled() {
-        return espressoEnv.JDWPOptions != null;
+        return espressoEnv.AdvancedRedefinition;
     }
 
     public TypeSymbols getTypes() {

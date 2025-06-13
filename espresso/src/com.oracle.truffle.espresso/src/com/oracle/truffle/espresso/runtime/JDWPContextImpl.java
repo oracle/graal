@@ -828,7 +828,7 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     public synchronized int redefineClasses(List<RedefineInfo> redefineInfos) {
-        return context.getClassRedefinition().redefineClasses(redefineInfos, false, true);
+        return context.getClassRedefinition().redefineClasses(redefineInfos, true);
     }
 
     @Override

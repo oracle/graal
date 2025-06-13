@@ -258,11 +258,15 @@ public final class ClassRedefinition {
     }
 
     @TruffleBoundary
-    public void redefineClasses(RedefineInfo[] redefineInfos, boolean applyTransformers) {
-        redefineClasses(Arrays.asList(redefineInfos), true, applyTransformers);
+    public int redefineClasses(RedefineInfo[] redefineInfos, boolean applyTransformers) {
+        return redefineClasses(Arrays.asList(redefineInfos), applyTransformers);
     }
 
-    public synchronized int redefineClasses(List<RedefineInfo> redefineInfos, boolean jvmtiRestrictions, boolean applyTransformers) {
+    public int redefineClasses(List<RedefineInfo> redefineInfos, boolean applyTransformers) {
+        return redefineClasses(redefineInfos, !context.advancedRedefinitionEnabled(), applyTransformers);
+    }
+
+    private synchronized int redefineClasses(List<RedefineInfo> redefineInfos, boolean jvmtiRestrictions, boolean applyTransformers) {
         List<RedefineInfo> resultingInfos = applyTransformers ? getTransformedInfos(redefineInfos) : redefineInfos;
 
         // make sure the modules of redefined classes can read injected agent classes
@@ -465,7 +469,7 @@ public final class ClassRedefinition {
                 throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "attempted to redefine record attribute");
             }
             if (attrChanged(oldKlass.getAttribute(PermittedSubclassesAttribute.NAME), newParserKlass.getAttribute(PermittedSubclassesAttribute.NAME), oldConstantPool, newConstantPool)) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "attempted to redefine record attribute");
+                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "attempted to redefine permitted subclasses attribute");
             }
         }
 
