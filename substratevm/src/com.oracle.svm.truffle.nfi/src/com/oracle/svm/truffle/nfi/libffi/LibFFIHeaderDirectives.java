@@ -27,7 +27,11 @@ package com.oracle.svm.truffle.nfi.libffi;
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
 
+import com.oracle.svm.core.OS;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.CContext;
 
@@ -46,10 +50,32 @@ public class LibFFIHeaderDirectives implements CContext.Directives {
         return Collections.singletonList("<svm_libffi.h>");
     }
 
+    private static String basePath() {
+        /* Find location of library directory based on known header name */
+        String libffiHeader = ProjectHeaderFile.resolve("com.oracle.svm.libffi", "include/svm_libffi.h");
+        File libffiHeaderPath = new File(libffiHeader.substring(1));
+
+        return libffiHeaderPath.getParentFile().getParent();
+    }
+
+    private static String multitargetSuffix() {
+        String os = OS.getCurrent().asPackageName();
+        String arch = SubstrateUtil.getArchitectureName();
+        String libc = OS.LINUX.isCurrent() ? SubstrateOptions.UseLibC.getValue() : "default";
+
+        return os + "-" + arch + File.separator + libc;
+    }
+
     @Override
     public List<String> getOptions() {
-        String libffiHeader = ProjectHeaderFile.resolve("com.oracle.svm.libffi", "include/svm_libffi.h");
-        String libffiPath = new File(libffiHeader.substring(1)).getParent();
-        return Collections.singletonList("-I" + libffiPath);
+        /* Add base and target specific include directories */
+        Function<String, String> bp = multitarget -> "-I" + basePath() + File.separator + multitarget + "include";
+        return List.of(bp.apply(""), bp.apply(multitargetSuffix() + File.separator));
+    }
+
+    @Override
+    public List<String> getLibraryPaths() {
+        /* Add multitarget style path */
+        return List.of(basePath() + File.separator + multitargetSuffix());
     }
 }

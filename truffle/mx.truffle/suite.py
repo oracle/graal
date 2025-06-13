@@ -999,6 +999,9 @@ suite = {
 
     "libffi" : {
       "class" : "LibffiBuilderProject",
+      "multitarget": {
+         "libc": ["glibc", "musl", "default"],
+      },
       "dependencies" : [
         "LIBFFI_SOURCES",
       ],
@@ -1008,8 +1011,10 @@ suite = {
     "com.oracle.truffle.nfi.native" : {
       "subDir" : "src",
       "native" : "shared_lib",
-      "toolchain" : "sdk:LLVM_NINJA_TOOLCHAIN",
       "deliverable" : "trufflenfi",
+      "multitarget": {
+        "libc": ["glibc", "musl", "default"],
+      },
       "use_jdk_headers" : True,
       "buildDependencies" : [
         "libffi",
@@ -1914,7 +1919,7 @@ suite = {
           "darwin-aarch64",
       ],
       "layout" : {
-        "bin/" : "dependency:com.oracle.truffle.nfi.native",
+        "bin/" : "dependency:com.oracle.truffle.nfi.native/*",
         "include/" : "dependency:com.oracle.truffle.nfi.native/include/*.h",
       },
       "include_dirs" : ["include"],
@@ -1938,8 +1943,18 @@ suite = {
           "windows-amd64",
           "windows-aarch64",
       ],
-      "layout" : {
-        "META-INF/resources/nfi-native/libnfi/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native",
+      "os": {
+        "linux": {
+          "layout": {
+            # only glibc.
+            "META-INF/resources/nfi-native/libnfi/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native/linux-*/glibc/*"
+          },
+        },
+        "<others>": {
+          "layout": {
+            "META-INF/resources/nfi-native/libnfi/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native/*/*/*",
+          },
+        },
       },
       "description" : "Contains the native library needed by the libffi NFI backend.",
       "maven": False,
@@ -2285,8 +2300,18 @@ suite = {
       "native" : True,
       "platformDependent" : True,
       "description" : "Truffle NFI support distribution for the GraalVM",
-      "layout" : {
-        "./" : ["dependency:com.oracle.truffle.nfi.native"],
+      "os": {
+        "linux": {
+          "layout": {
+            # only glibc.
+            "./" : "dependency:com.oracle.truffle.nfi.native/linux-*/glibc/*"
+          },
+        },
+        "<others>": {
+          "layout": {
+            "./" : "dependency:com.oracle.truffle.nfi.native/*/*/*",
+          },
+        },
       },
       "maven" : False,
       "graalCompilerSourceEdition": "ignore",
