@@ -148,7 +148,7 @@ public final class Target_java_lang_reflect_Array {
         if (dimensions.length == 1) {
             return meta.getAllocator().createNewMultiArray(component, dimensions);
         }
-        return meta.getAllocator().createNewMultiArray(component.getArrayClass(dimensions.length - 1), dimensions);
+        return meta.getAllocator().createNewMultiArray(component.getArrayKlass(dimensions.length - 1), dimensions);
     }
 
     @Substitution

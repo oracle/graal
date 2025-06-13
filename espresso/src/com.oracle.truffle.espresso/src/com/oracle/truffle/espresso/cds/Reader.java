@@ -464,7 +464,7 @@ final class Reader implements CDSArchiveFormat {
         Symbol<Type> elementalTypeSymbol = espressoContext.getTypes().getElementalType(typeSymbol);
         if (TypeSymbols.isArray(typeSymbol) && TypeSymbols.isPrimitive(elementalTypeSymbol)) {
             Klass elemental = meta.resolvePrimitive(elementalTypeSymbol);
-            klass = elemental.getArrayClass(TypeSymbols.getArrayDimensions(typeSymbol));
+            klass = elemental.getArrayKlass(TypeSymbols.getArrayDimensions(typeSymbol));
         } else {
             klass = meta.loadKlassOrNull(typeSymbol, StaticObject.NULL, StaticObject.NULL);
         }

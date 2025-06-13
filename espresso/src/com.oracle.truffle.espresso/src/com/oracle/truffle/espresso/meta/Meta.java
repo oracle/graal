@@ -2987,7 +2987,7 @@ public final class Meta extends ContextAccessImpl
             if (elemental == null) {
                 return null;
             }
-            return elemental.getArrayClass(TypeSymbols.getArrayDimensions(type));
+            return elemental.getArrayKlass(TypeSymbols.getArrayDimensions(type));
         }
         return loadKlassOrNull(type, classLoader, protectionDomain);
     }
@@ -3007,7 +3007,7 @@ public final class Meta extends ContextAccessImpl
         }
         if (TypeSymbols.isArray(type)) {
             Klass elemental = resolveSymbolOrFail(getTypes().getElementalType(type), classLoader, protectionDomain);
-            return elemental.getArrayClass(TypeSymbols.getArrayDimensions(type));
+            return elemental.getArrayKlass(TypeSymbols.getArrayDimensions(type));
         }
         return loadKlassOrFail(type, classLoader, protectionDomain);
     }
