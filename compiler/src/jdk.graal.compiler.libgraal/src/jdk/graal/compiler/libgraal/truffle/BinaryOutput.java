@@ -24,10 +24,10 @@
  */
 package jdk.graal.compiler.libgraal.truffle;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.WordFactory;
 
 import java.io.Closeable;
 import java.nio.ByteBuffer;
@@ -615,7 +615,7 @@ public abstract class BinaryOutput {
             if (unmanaged) {
                 UnmanagedMemory.free(address);
                 byteBufferView = null;
-                address = WordFactory.nullPointer();
+                address = Word.nullPointer();
                 length = 0;
                 unmanaged = false;
                 pos = Integer.MIN_VALUE;
@@ -639,7 +639,7 @@ public abstract class BinaryOutput {
                     throw new OutOfMemoryError();
                 }
                 if (unmanaged) {
-                    address = UnmanagedMemory.realloc(address, WordFactory.unsigned(newCapacity));
+                    address = UnmanagedMemory.realloc(address, Word.unsigned(newCapacity));
                 } else {
                     CCharPointer newAddress = UnmanagedMemory.malloc(newCapacity);
                     memcpy(newAddress, address, pos);

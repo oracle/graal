@@ -29,7 +29,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -60,24 +59,8 @@ public class HotSpotManagedFailedSpeculationListTest extends HotSpotGraalCompile
 
     InstalledCode compiledMethod;
 
-    /**
-     * Determines if {@link HotSpotNmethod} declares
-     * {@code setSpeculationLog(HotSpotSpeculationLog)}. Only such versions properly add a tether
-     * from an nmethod to the failed speculation list.
-     */
-    private static boolean hasSpeculationLogTether() {
-        try {
-            HotSpotNmethod.class.getDeclaredMethod("setSpeculationLog", HotSpotSpeculationLog.class);
-            return true;
-        } catch (NoSuchMethodException e) {
-            return false;
-        }
-    }
-
     @Test
     public void testDeoptimize() throws Exception {
-        Assume.assumeTrue(hasSpeculationLogTether());
-
         // Compile and run deoptimizeSnippet
         test("deoptimizeSnippet");
 

@@ -486,6 +486,10 @@ suite = {
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
       ],
+
+      # Direct reference to jdk.vm.ci.hotspot.CompilerThreadCanCallJavaScope
+      # causing spotbugs analysis to fail with "missing class" error.
+      "spotbugs": "false",
     },
 
     "jdk.graal.compiler.libgraal.loader" : {
