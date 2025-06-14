@@ -34,6 +34,7 @@ import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
 
 import java.util.Objects;
+import org.openide.util.Exceptions;
 
 /**
  * Selects the default mode for graphs. It seems appropriate to have call graph
@@ -45,7 +46,12 @@ import java.util.Objects;
 public class GraphTypeModeSelector implements ModeSelector {
     @Override
     public Mode selectModeForOpen(TopComponent tc, Mode mode) {
-        if (tc.getLookup().lookup(InputGraph.class) == null) {
+        try {
+            if (tc.getLookup().lookup(InputGraph.class) == null) {
+                return null;
+            }
+        } catch (IllegalAccessError err) {
+            Exceptions.printStackTrace(err);
             return null;
         }
         TimelineModel mdl = tc.getLookup().lookup(TimelineModel.class);

@@ -117,7 +117,7 @@
         <module>ViewerApi</module>
     </modules>
     <properties>
-        <netbeans.version>RELEASE220</netbeans.version>
+        <netbeans.version>RELEASE260</netbeans.version>
         <brandingToken>idealgraphvisualizer</brandingToken>
         <swinglayouts.version>1.0.2</swinglayouts.version>
         <nbmmvnplugin.version>4.8</nbmmvnplugin.version>
