@@ -142,6 +142,7 @@ local common_json = import "../common.json";
 
     common_catch_files: {
       catch_files+: [
+        "^(?:# )?(?P<filename>(?:/|[A-Z]:\\\\)\\S+[/\\\\]hs_err_pid\\d+\\.log)$",
         # Keep in sync with jdk.graal.compiler.debug.StandardPathUtilitiesProvider#DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP
         "Graal diagnostic output saved in '(?P<filename>[^']+)'",
         # Keep in sync with jdk.graal.compiler.debug.DebugContext#DUMP_FILE_MESSAGE_REGEXP
