@@ -524,14 +524,5 @@ public final class GraalServices {
         return Math.fma(a, b, c);
     }
 
-    /**
-     * Gets the update-release counter for the current Java runtime.
-     *
-     * @see java.lang.Runtime.Version
-     */
-    public static int getJavaUpdateVersion() {
-        return Runtime.version().update();
-    }
-
     private static final JMXService jmx = loadSingle(JMXService.class, libgraalServices != null);
 }
