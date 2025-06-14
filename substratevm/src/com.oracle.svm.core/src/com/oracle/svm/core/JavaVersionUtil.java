@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.serviceprovider;
+package com.oracle.svm.core;
 
 import java.lang.Runtime.Version;
 
 /**
- * Interface to query which JDK version Graal is running on.
+ * Interface to query which JDK version Native Image is running on.
  */
 public final class JavaVersionUtil {
 

@@ -239,8 +239,7 @@ public class BoxingSnippets implements Snippets {
         }
 
         static Class<?> getCacheClass(JavaKind kind) {
-            Class<?>[] innerClasses = null;
-            innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
+            Class<?>[] innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
             for (Class<?> innerClass : innerClasses) {
                 if (innerClass.getSimpleName().equals(kind.toBoxedJavaClass().getSimpleName() + "Cache")) {
                     return innerClass;
