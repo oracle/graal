@@ -48,6 +48,12 @@ public abstract class JavaSubstitution extends SubstitutionProfiler {
         throw EspressoError.unimplemented(currentMethod.getDeclaringKlass().getExternalName() + "." + currentMethod.getName() + currentMethod.getRawSignature());
     }
 
+    public static EspressoError shouldNotReachHere() {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        Method currentMethod = JavaSubstitution.getCurrentMethod();
+        throw EspressoError.shouldNotReachHere(currentMethod.getDeclaringKlass().getExternalName() + "." + currentMethod.getName() + currentMethod.getRawSignature());
+    }
+
     private static Method getCurrentMethod() {
         EspressoContext ctx = EspressoContext.get(null);
         return Truffle.getRuntime().iterateFrames(

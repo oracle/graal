@@ -42,6 +42,7 @@ import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
 
+import com.oracle.svm.hosted.imagelayer.CapnProtoAdapters;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -67,7 +68,6 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.util.FileUtils;
-import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerWriter;
 
@@ -394,7 +394,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         public static Object createFromLoader(ImageSingletonLoader loader) {
             JNIRegistrationSupportSingleton singleton = new JNIRegistrationSupportSingleton();
             var snapshotReader = ((SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl) loader).getSnapshotReader();
-            SVMImageLayerLoader.streamStrings(snapshotReader.getRegisteredJNILibraries()).forEach(singleton.prevLayerRegisteredLibraries::add);
+            CapnProtoAdapters.forEach(snapshotReader.getRegisteredJNILibraries(), singleton.prevLayerRegisteredLibraries::add);
             return singleton;
         }
     }

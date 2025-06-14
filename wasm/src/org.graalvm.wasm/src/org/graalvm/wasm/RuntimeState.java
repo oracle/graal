@@ -40,10 +40,14 @@
  */
 package org.graalvm.wasm;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -108,9 +112,19 @@ public abstract class RuntimeState {
      */
     private final int droppedDataInstanceOffset;
 
-    @CompilationFinal private volatile Linker.LinkState linkState;
+    @CompilationFinal private Linker.LinkState linkState;
 
     @CompilationFinal private int startFunctionIndex;
+
+    static final VarHandle LINK_STATE;
+
+    static {
+        try {
+            LINK_STATE = MethodHandles.lookup().findVarHandle(RuntimeState.class, "linkState", Linker.LinkState.class);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
 
     private void ensureGlobalsCapacity(int index) {
         while (index >= globalAddresses.length) {
@@ -153,30 +167,22 @@ public abstract class RuntimeState {
 
     private void checkNotLinked() {
         // The symbol table must be read-only after the module gets linked.
-        if (linkState == Linker.LinkState.linked) {
+        Linker.LinkState state = linkState();
+        if (state == Linker.LinkState.linked || state == Linker.LinkState.failed) {
             throw CompilerDirectives.shouldNotReachHere("The engine tried to modify the instance after linking.");
         }
     }
 
     public void setLinkInProgress() {
-        if (linkState != Linker.LinkState.nonLinked) {
-            throw CompilerDirectives.shouldNotReachHere("Can only switch to in-progress state when not linked.");
-        }
-        this.linkState = Linker.LinkState.inProgress;
+        setLinkState(Linker.LinkState.nonLinked, Linker.LinkState.inProgress, "Can only switch to in-progress state when not linked.");
     }
 
     public void setLinkCompleted() {
-        if (linkState != Linker.LinkState.inProgress) {
-            throw CompilerDirectives.shouldNotReachHere("Can only switch to linked state when linking is in-progress.");
-        }
-        this.linkState = Linker.LinkState.linked;
+        setLinkState(Linker.LinkState.inProgress, Linker.LinkState.linked, "Can only switch to linked state when linking is in-progress.");
     }
 
     public void setLinkFailed() {
-        if (linkState != Linker.LinkState.inProgress) {
-            throw CompilerDirectives.shouldNotReachHere("Can only switch to failed state when linking is in-progress.");
-        }
-        this.linkState = Linker.LinkState.failed;
+        setLinkState(Linker.LinkState.inProgress, Linker.LinkState.failed, "Can only switch to failed state when linking is in-progress.");
     }
 
     public WasmStore store() {
@@ -188,23 +194,46 @@ public abstract class RuntimeState {
     }
 
     public Linker.LinkState linkState() {
-        return linkState;
+        CompilerAsserts.neverPartOfCompilation();
+        return (Linker.LinkState) LINK_STATE.getVolatile(this);
+    }
+
+    private void setLinkState(Linker.LinkState expectedState, Linker.LinkState newState, String message) {
+        assert expectedState != Linker.LinkState.linked && expectedState != Linker.LinkState.failed : expectedState;
+        assert Thread.holdsLock(store());
+        if (!LINK_STATE.compareAndSet(this, expectedState, newState)) {
+            /*
+             * setLinkState is always invoked while the linker is holding a store lock, so we should
+             * always see the expected state here and the CAS should never fail.
+             */
+            throw CompilerDirectives.shouldNotReachHere(message);
+        }
     }
 
     public boolean isNonLinked() {
-        return linkState == Linker.LinkState.nonLinked;
+        return linkState() == Linker.LinkState.nonLinked;
     }
 
     public boolean isLinkInProgress() {
-        return linkState == Linker.LinkState.inProgress;
+        return linkState() == Linker.LinkState.inProgress;
     }
 
     public boolean isLinkCompleted() {
+        return linkState() == Linker.LinkState.linked;
+    }
+
+    /**
+     * Non-volatile link state check for use in compiled code. May read a stale value, which is OK,
+     * since in that case we'll just (deoptimize and) enter the slow path, and check again. Once
+     * this method has returned true, i.e., we've reached the state {@link Linker.LinkState#linked},
+     * we can safely rely on the module to be linked, and stay linked, since it is a final state.
+     */
+    public boolean isLinkCompletedFastPath() {
         return linkState == Linker.LinkState.linked;
     }
 
     public boolean isLinkFailed() {
-        return linkState == Linker.LinkState.failed;
+        return linkState() == Linker.LinkState.failed;
     }
 
     public SymbolTable symbolTable() {

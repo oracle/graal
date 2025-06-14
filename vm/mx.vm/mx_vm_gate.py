@@ -56,7 +56,6 @@ class VmGateTasks:
     sulong = 'sulong'
     sulong_aot = 'sulong-aot'
     graal_js_all = 'graal-js'
-    graal_js_smoke = 'graal-js-smoke'
     graal_js_tests = 'graal-js-tests'
     graal_js_tests_compiled = 'graal-js-tests-compiled'
     graal_nodejs = 'graal-nodejs'
@@ -64,7 +63,6 @@ class VmGateTasks:
     ruby = 'ruby'
     python = 'python'
     fastr = 'fastr'
-    graalpython = 'graalpython'
     integration = 'integration'
     tools = 'tools'
     libgraal = 'libgraal'
@@ -141,17 +139,15 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
     """
 
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
-    graalvm_jdk = mx.JDKConfig(graalvm_home)
     jres = [('GraalVM', graalvm_home, [])]
 
-    if mx_sdk_vm.jlink_has_save_jlink_argfiles(graalvm_jdk):
-        # Create a minimal image that should contain libgraal
-        libgraal_jre = abspath('libgraal-jre')
-        if exists(libgraal_jre):
-            mx.rmtree(libgraal_jre)
-        mx.run([join(graalvm_home, 'bin', 'jlink'), f'--output={libgraal_jre}', '--add-modules=java.base'])
-        jres.append(('LibGraal JRE', libgraal_jre, []))
-        atexit.register(mx.rmtree, libgraal_jre)
+    # Create a minimal image that should contain libgraal
+    libgraal_jre = abspath('libgraal-jre')
+    if exists(libgraal_jre):
+        mx.rmtree(libgraal_jre)
+    mx.run([join(graalvm_home, 'bin', 'jlink'), f'--output={libgraal_jre}', '--add-modules=java.base'])
+    jres.append(('LibGraal JRE', libgraal_jre, []))
+    atexit.register(mx.rmtree, libgraal_jre)
 
     expect = r"Using compiler configuration '[^']+' \(\"[^\"]+\"\) provided by [\.\w]+ loaded from a[ \w]* Native Image shared library"
     compiler_log_file = abspath('graal-compiler.log')

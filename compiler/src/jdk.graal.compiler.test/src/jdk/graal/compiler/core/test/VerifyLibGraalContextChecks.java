@@ -28,15 +28,23 @@ import java.util.List;
 
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.VerifyPhase;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.services.Services;
 
 /**
- * Ensures that no code accesses {@link jdk.vm.ci.services.Services#IS_IN_NATIVE_IMAGE}.
+ * Checks invariants related to libgraal. This includes:
+ * <ul>
+ * <li>no code accesses {@link jdk.vm.ci.services.Services#IS_IN_NATIVE_IMAGE}</li>
+ * <li>no calls to Runtime.version() as libgraal might be deployed in different JDK version than the
+ * one in which it was built</li>
+ * </ul>
  */
 public class VerifyLibGraalContextChecks extends VerifyPhase<CoreProviders> {
 
@@ -47,8 +55,9 @@ public class VerifyLibGraalContextChecks extends VerifyPhase<CoreProviders> {
 
     @Override
     protected void verify(StructuredGraph graph, CoreProviders context) {
+        MetaAccessProvider metaAccess = context.getMetaAccess();
 
-        final ResolvedJavaType servicesType = context.getMetaAccess().lookupJavaType(Services.class);
+        final ResolvedJavaType servicesType = metaAccess.lookupJavaType(Services.class);
         servicesType.getStaticFields();
 
         List<LoadFieldNode> loads = graph.getNodes().filter(LoadFieldNode.class).snapshot();
@@ -62,6 +71,22 @@ public class VerifyLibGraalContextChecks extends VerifyPhase<CoreProviders> {
                                     GraalServices.class.getName());
 
                 }
+            }
+        }
+
+        ResolvedJavaType runtimeType = metaAccess.lookupJavaType(Runtime.class);
+        ResolvedJavaType runtimeVersionType = metaAccess.lookupJavaType(Runtime.Version.class);
+        for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
+            ResolvedJavaMethod callee = t.targetMethod();
+            String calleeName = callee.getName();
+            ResolvedJavaType calleeDeclaringClass = callee.getDeclaringClass();
+            if (calleeDeclaringClass.equals(runtimeType)) {
+                if (calleeName.equals("version")) {
+                    throw new VerificationError(t, "call to Runtime.version() not allowed");
+                }
+            }
+            if (runtimeVersionType.equals(callee.getDeclaringClass()) && "feature".equals(callee.getName())) {
+                throw new VerificationError("Call to %s at callsite %s is prohibited, use JavaVersionUtil.JAVA_SPEC", callee.format("%H.%n(%p)"), graph.method().format("%H.%n(%p)"));
             }
         }
     }

@@ -83,4 +83,11 @@ public interface SharedMethod extends ResolvedJavaMethod {
 
     /** Always call this method indirectly, even if it is normally called directly. */
     boolean forceIndirectCall();
+
+    /**
+     * Override to fix JVMCI incompatibility issues (caused by "JDK-8357987: [JVMCI] Add support for
+     * retrieving all methods of a ResolvedJavaType").
+     */
+    @Override
+    boolean isDeclared();
 }

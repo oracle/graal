@@ -80,7 +80,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import com.oracle.svm.core.JavaVersionUtil;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;

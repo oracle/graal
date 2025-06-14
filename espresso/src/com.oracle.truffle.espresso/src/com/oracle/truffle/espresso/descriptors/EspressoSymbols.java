@@ -154,8 +154,10 @@ public class EspressoSymbols {
         public static final Symbol<Type> jdk_internal_module_Modules = SYMBOLS.putType("Ljdk/internal/module/Modules;");
         public static final Symbol<Type> java_lang_module_ModuleDescriptor = SYMBOLS.putType("Ljava/lang/module/ModuleDescriptor;");
 
-        // CRC32
+        // Espresso Libs
         public static final Symbol<Type> java_util_zip_CRC32 = SYMBOLS.putType("Ljava/util/zip/CRC32;");
+        public static final Symbol<Type> java_util_zip_Inflater = SYMBOLS.putType("Ljava/util/zip/Inflater;");
+        public static final Symbol<Type> java_util_zip_DataFormatException = SYMBOLS.putType("Ljava/util/zip/DataFormatException;");
 
         // URL class loader
         public static final Symbol<Type> java_net_URLClassLoader = SYMBOLS.putType("Ljava/net/URLClassLoader;");
@@ -752,6 +754,13 @@ public class EspressoSymbols {
         public static final Symbol<Name> instance = SYMBOLS.putName("instance");
         // java.util.zip
         public static final Symbol<Name> HIDDEN_CRC32 = SYMBOLS.putName("0HIDDEN_CRC32");
+        public static final Symbol<Name> inputConsumed = SYMBOLS.putName("inputConsumed");
+        public static final Symbol<Name> outputConsumed = SYMBOLS.putName("outputConsumed");
+        public static final Symbol<Name> len = SYMBOLS.putName("len");
+        public static final Symbol<Name> off = SYMBOLS.putName("off");
+        public static final Symbol<Name> needDict = SYMBOLS.putName("needDict");
+        public static final Symbol<Name> finished = SYMBOLS.putName("finished");
+        public static final Symbol<Name> buf = SYMBOLS.putName("buf");
         // java.lang.invoke.*
         // CallSite
         public static final Symbol<Name> target = SYMBOLS.putName("target");

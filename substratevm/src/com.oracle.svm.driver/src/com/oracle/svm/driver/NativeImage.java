@@ -109,7 +109,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import com.oracle.svm.core.JavaVersionUtil;
 import jdk.internal.jimage.ImageReader;
 
 public class NativeImage {
@@ -290,7 +290,6 @@ public class NativeImage {
     final String oHCLibraryPath = oH(SubstrateOptions.CLibraryPath);
     final String oHFallbackThreshold = oH(SubstrateOptions.FallbackThreshold);
     final String oHFallbackExecutorJavaArg = oH(FallbackExecutor.Options.FallbackExecutorJavaArg);
-    final String oHNativeImageOptionsEnvVar = oH(SubstrateOptions.BuildOutputNativeImageOptionsEnvVarValue, OptionOrigin.originDriver);
     final String oRRuntimeJavaArg = oR(Options.FallbackExecutorRuntimeJavaArg);
     final String oHTraceClassInitialization = oH(SubstrateOptions.TraceClassInitialization);
     final String oHTraceObjectInstantiation = oH(SubstrateOptions.TraceObjectInstantiation);
@@ -948,29 +947,35 @@ public class NativeImage {
         optionHandlers.add(handler);
     }
 
+    private List<String> defaultNativeImageArgs = null;
+
     private List<String> getDefaultNativeImageArgs() {
-        List<String> defaultNativeImageArgs = new ArrayList<>();
-        String propertyOptions = userConfigProperties.get("NativeImageArgs");
-        if (propertyOptions != null) {
-            Collections.addAll(defaultNativeImageArgs, propertyOptions.split(" +"));
-        }
-        final String envVarName = SubstrateOptions.NATIVE_IMAGE_OPTIONS_ENV_VAR;
-        String nativeImageOptionsValue = System.getenv(envVarName);
-        if (nativeImageOptionsValue != null) {
-            defaultNativeImageArgs.addAll(JDKArgsUtils.parseArgsFromEnvVar(nativeImageOptionsValue, envVarName, msg -> showError(msg)));
-        }
-        if (!defaultNativeImageArgs.isEmpty()) {
-            String buildApplyOptionName = BundleSupport.BundleOptionVariants.apply.optionName();
-            if (config.getBuildArgs().stream().noneMatch(arg -> arg.startsWith(buildApplyOptionName + "="))) {
-                if (nativeImageOptionsValue != null) {
-                    addPlainImageBuilderArg(oHNativeImageOptionsEnvVar + nativeImageOptionsValue);
+        if (defaultNativeImageArgs == null) {
+            List<String> args = new ArrayList<>();
+            String propertyOptions = userConfigProperties.get("NativeImageArgs");
+            if (propertyOptions != null) {
+                Collections.addAll(args, propertyOptions.split(" +"));
+            }
+            final String envVarName = SubstrateOptions.NATIVE_IMAGE_OPTIONS_ENV_VAR;
+            String nativeImageOptionsValue = System.getenv(envVarName);
+            if (nativeImageOptionsValue != null) {
+                args.addAll(JDKArgsUtils.parseArgsFromEnvVar(nativeImageOptionsValue, envVarName, msg -> showError(msg)));
+            }
+            if (!args.isEmpty()) {
+                String buildApplyOptionName = BundleSupport.BundleOptionVariants.apply.optionName();
+                if (config.getBuildArgs().stream().noneMatch(arg -> arg.startsWith(buildApplyOptionName + "="))) {
+                    if (nativeImageOptionsValue != null) {
+                        LogUtils.info("Picked up " + envVarName, nativeImageOptionsValue);
+                    }
+                    defaultNativeImageArgs = List.copyOf(args);
+                } else {
+                    LogUtils.warning("Option '" + buildApplyOptionName + "' in use. Ignoring environment variables " + envVarName + " and " + NativeImage.CONFIG_FILE_ENV_VAR_KEY + ".");
                 }
-                return List.copyOf(defaultNativeImageArgs);
             } else {
-                LogUtils.warning("Option '" + buildApplyOptionName + "' in use. Ignoring environment variables " + envVarName + " and " + NativeImage.CONFIG_FILE_ENV_VAR_KEY + ".");
+                defaultNativeImageArgs = List.of();
             }
         }
-        return List.of();
+        return defaultNativeImageArgs;
     }
 
     static void ensureDirectoryExists(Path dir) {
@@ -1770,7 +1775,7 @@ public class NativeImage {
             }
             int exitStatusCode = bundleSupport.containerSupport.initializeImage();
             switch (ExitStatus.of(exitStatusCode)) {
-                case OK -> {
+                case OK, CONTAINER_REUSE -> {
                 }
                 case BUILDER_ERROR -> {
                     /* Exit, builder has handled error reporting. */

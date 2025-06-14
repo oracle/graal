@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,10 +27,14 @@ package jdk.graal.compiler.nodes.calc;
 
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
 
+import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool.RoundingMode;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -38,10 +42,6 @@ import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
-import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool.RoundingMode;
-import jdk.graal.compiler.nodeinfo.NodeInfo;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -61,6 +61,14 @@ public final class RoundNode extends UnaryNode implements ArithmeticLIRLowerable
     public RoundNode(ValueNode value, RoundingMode mode) {
         super(TYPE, roundStamp((FloatStamp) value.stamp(NodeView.DEFAULT), mode), value);
         this.mode = mode;
+    }
+
+    public static ValueNode create(ValueNode input, RoundingMode mode) {
+        ValueNode folded = tryFold(input, mode);
+        if (folded != null) {
+            return folded;
+        }
+        return new RoundNode(input, mode);
     }
 
     public RoundingMode mode() {
@@ -102,7 +110,7 @@ public final class RoundNode extends UnaryNode implements ArithmeticLIRLowerable
         return roundStamp((FloatStamp) newStamp, mode);
     }
 
-    public ValueNode tryFold(ValueNode input) {
+    public static ValueNode tryFold(ValueNode input, RoundingMode mode) {
         if (input.isConstant()) {
             JavaConstant c = input.asJavaConstant();
             if (c.getJavaKind() == JavaKind.Double) {
@@ -116,8 +124,18 @@ public final class RoundNode extends UnaryNode implements ArithmeticLIRLowerable
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        ValueNode folded = tryFold(forValue);
-        return folded != null ? folded : this;
+        ValueNode folded = tryFold(forValue, mode);
+        if (folded != null) {
+            return folded;
+        }
+        /*
+         * Try to replace F2D->RoundD->D2F with RoundF. First replace F2D->RoundD with RoundF->F2D,
+         * then rely on further FloatConvertNode canonicalization to eliminate F2D->D2F, if any.
+         */
+        if (forValue instanceof FloatConvertNode convert && convert.getFloatConvert() == FloatConvert.F2D) {
+            return FloatConvertNode.create(FloatConvert.F2D, RoundNode.create(convert.getValue(), mode), NodeView.from(tool));
+        }
+        return this;
     }
 
     @Override

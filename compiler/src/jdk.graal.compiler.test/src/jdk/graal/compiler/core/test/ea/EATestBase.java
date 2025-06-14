@@ -114,6 +114,13 @@ public class EATestBase extends GraalCompilerTest {
             }
         }
 
+        public int getFirstField() {
+            if (firstFieldIsX) {
+                return x;
+            }
+            return y;
+        }
+
         public void setFirstField(int v) {
             if (firstFieldIsX) {
                 x = v;

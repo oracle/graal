@@ -205,26 +205,34 @@ local common_json = import "../common.json";
       },
     },
 
+    cmake:: {
+      packages+: {
+        cmake: "==3.22.2",
+      },
+    },
+
     gradle:: {
       downloads+: {
         GRADLE_JAVA_HOME: jdks_data["oraclejdk21"],
       }
     },
 
-    local code_tools = {
+    # ProGuard does not yet run on JDK 25
+    proguard: {
+      downloads+: if 'jdk_version' in self && self.jdk_version > 21 then {
+        TOOLS_JAVA_HOME: jdks_data['oraclejdk24'],
+        IGV_JAVA_HOME: jdks_data['oraclejdk21'],
+      } else {},
+    },
+    # GR-49566: SpotBugs does not yet run on JDK 22
+    spotbugs: {
       downloads+: if 'jdk_version' in self && self.jdk_version > 21 then {
         TOOLS_JAVA_HOME: jdks_data['oraclejdk21'],
       } else {},
     },
-    # GR-46676: ProGuard does not yet run on JDK 22
-    proguard: code_tools,
-    # GR-49566: SpotBugs does not yet run on JDK 22
-    spotbugs: code_tools,
 
-    sulong:: {
-      packages+: {
-        cmake: "==3.22.2",
-      } + if self.os == "windows" then {
+    sulong:: self.cmake + {
+      packages+: if self.os == "windows" then {
         msvc_source: "==14.0",
       } else {},
     },
@@ -259,7 +267,7 @@ local common_json = import "../common.json";
       } else {},
     },
 
-    graalpy:: self.gradle + {
+    graalpy:: self.gradle + self.cmake + {
       packages+: if (self.os == "linux") then {
         libffi: '>=3.2.1',
         bzip2: '>=1.0.6',

@@ -25,6 +25,7 @@
 package jdk.graal.compiler.replacements.amd64;
 
 import static jdk.graal.compiler.nodes.calc.FloatTypeTestNode.FloatTypeTestOp.IS_INFINITE;
+import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.CBRT;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
@@ -189,6 +190,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         registerUnaryMath(r, "cos", COS);
         registerUnaryMath(r, "tan", TAN);
         registerUnaryMath(r, "tanh", TANH);
+        registerUnaryMath(r, "cbrt", CBRT);
 
         registerFMA(r, arch);
         registerMinMax(r, arch);

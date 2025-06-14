@@ -221,7 +221,7 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
         ResolvedJavaType throwableType = metaAccess.lookupJavaType(Throwable.class);
         for (ResolvedJavaField staticField : throwableType.getStaticFields()) {
             if (staticField.getName().equals("jfrTracing") &&
-                            staticField.getType().equals(metaAccess.lookupJavaType(boolean.class)) && staticField.isVolatile()) {
+                            staticField.getType().equals(metaAccess.lookupJavaType(boolean.class))) {
                 return staticField;
             }
         }

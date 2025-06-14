@@ -66,8 +66,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.imagelayer.CapnProtoAdapters;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -104,7 +104,6 @@ import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.ReflectionMetadataEncoderFactory;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.RuntimeMetadataEncoder;
-import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerWriter;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -1312,8 +1311,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl loaderImpl = (SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl) loader;
             var reader = loaderImpl.getSnapshotReader().getLayeredRuntimeMetadataSingleton();
 
-            Set<Integer> registeredMethods = SVMImageLayerLoader.streamInts(reader.getMethods()).boxed().collect(Collectors.toCollection(HashSet::new));
-            Set<Integer> registeredFields = SVMImageLayerLoader.streamInts(reader.getFields()).boxed().collect(Collectors.toCollection(HashSet::new));
+            Set<Integer> registeredMethods = CapnProtoAdapters.toCollection(reader.getMethods(), Integer::valueOf, HashSet::new);
+            Set<Integer> registeredFields = CapnProtoAdapters.toCollection(reader.getFields(), Integer::valueOf, HashSet::new);
             return new LayeredRuntimeMetadataSingleton(registeredMethods, registeredFields);
         }
     }

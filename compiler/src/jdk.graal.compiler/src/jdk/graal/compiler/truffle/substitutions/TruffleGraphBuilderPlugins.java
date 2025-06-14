@@ -291,7 +291,7 @@ public class TruffleGraphBuilderPlugins {
 
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x) {
-                    b.addPush(kind, new RoundNode(x, RoundingMode.TRUNCATE));
+                    b.addPush(kind, RoundNode.create(x, RoundingMode.TRUNCATE));
                     return true;
                 }
 

@@ -97,6 +97,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
+import com.oracle.truffle.espresso.libs.LibsState;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.EspressoForeignProxyGenerator;
@@ -198,6 +199,7 @@ public final class EspressoContext
     // endregion VM
 
     @CompilationFinal private TruffleIO truffleIO = null;
+    @CompilationFinal private LibsState libsState = null;
 
     @CompilationFinal private EspressoException stackOverflow;
     @CompilationFinal private EspressoException outOfMemory;
@@ -387,6 +389,10 @@ public final class EspressoContext
         return truffleIO;
     }
 
+    public LibsState getLibsState() {
+        return libsState;
+    }
+
     @SuppressWarnings("try")
     private void spawnVM() throws ContextPatchingException {
         try (DebugCloseable spawn = SPAWN_VM.scope(espressoEnv.getTimers())) {
@@ -445,7 +451,7 @@ public final class EspressoContext
                 registries.getBootClassRegistry().initUnnamedModule(null);
             }
             javaAgentsOnLoad();
-            initializeAgents();
+            initializeNativeAgents();
 
             try (DebugCloseable metaInit = META_INIT.scope(espressoEnv.getTimers())) {
                 this.meta = new Meta(this);
@@ -460,6 +466,7 @@ public final class EspressoContext
             this.lazyCaches = new LazyContextCaches(this);
             if (language.useEspressoLibs()) {
                 this.truffleIO = new TruffleIO(this);
+                this.libsState = new LibsState();
             }
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
@@ -718,7 +725,7 @@ public final class EspressoContext
         }
     }
 
-    private void initializeAgents() {
+    private void initializeNativeAgents() {
         agents = new AgentLibraries(this);
         if (getEnv().getOptions().hasBeenSet(EspressoOptions.AgentLib)) {
             agents.registerAgents(getEnv().getOptions().get(EspressoOptions.AgentLib), false);
@@ -730,7 +737,7 @@ public final class EspressoContext
             agents.initialize();
         } else {
             if (!agents.isEmpty()) {
-                getLogger().warning("Agents support is currently disabled in Espresso. Ignoring passed agent options.");
+                agents.noSupportWarning(getLogger());
             }
         }
     }

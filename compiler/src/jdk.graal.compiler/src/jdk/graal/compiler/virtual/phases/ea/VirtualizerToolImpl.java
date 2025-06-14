@@ -50,6 +50,7 @@ import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -175,6 +176,14 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
 
         if (canVirtualize) {
             getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s for entryKind %s and access kind %s", current, entryKind, accessKind);
+            if (theAccessKind != null && entryKind != theAccessKind &&
+                            (theAccessKind != JavaKind.Int && theAccessKind.getStackKind() == JavaKind.Int)) {
+                ValueNode entry = getEntry(virtual, index);
+                // We can't just set the given value as the new entry but need to simulate a store
+                // operation
+                newValue = DefaultJavaLoweringProvider.simulatePrimitiveStore(accessKind, entry, newValue);
+                ensureAdded(newValue);
+            }
             state.setEntry(virtual.getObjectId(), index, newValue);
             if (entryKind == JavaKind.Int) {
                 if (accessKind.needsTwoSlots()) {

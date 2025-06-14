@@ -263,6 +263,11 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod {
     }
 
     @Override
+    public boolean isDeclared() {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
     public boolean isClassInitializer() {
         return "<clinit>".equals(getName()) && isStatic();
     }

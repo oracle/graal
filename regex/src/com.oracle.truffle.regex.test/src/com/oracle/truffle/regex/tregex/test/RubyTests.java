@@ -643,4 +643,14 @@ public class RubyTests extends RegexTestBase {
     public void gr52472() {
         test("(|a+?){0,4}b", "", "aaab", 0, true, 0, 4, 1, 3);
     }
+
+    @Test
+    public void unicodePropertyNameMangling() {
+        test("\\p{private_use}", "", "\ue000", 0, true, 0, 1);
+        test("\\p{private-use}", "", "\ue000", 0, true, 0, 1);
+        test("\\p{PRIVATE use}", "", "\ue000", 0, true, 0, 1);
+        test("\\p{private use}", "", "\ue000", 0, true, 0, 1);
+        test("\\p{privateuse}", "", "\ue000", 0, true, 0, 1);
+        test("\\p{p R iV__-  --_aTe     Us   e___}", "", "\ue000", 0, true, 0, 1);
+    }
 }
