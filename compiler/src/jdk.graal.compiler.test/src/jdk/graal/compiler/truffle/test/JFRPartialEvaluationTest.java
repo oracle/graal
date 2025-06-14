@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -167,7 +167,7 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
         try {
             SubprocessTestUtils.newBuilder(JFRPartialEvaluationTest.class, action) //
                             .prefixVmOption(String.format("-XX:StartFlightRecording=exceptions=all,filename=%s", jfrFile)) //
-                            .onExit((p) -> {
+                            .onExit((_) -> {
                                 try {
                                     assertTrue(String.format("JFR event file %s is missing", jfrFile), Files.size(jfrFile) > 0);
                                 } catch (IOException ioe) {

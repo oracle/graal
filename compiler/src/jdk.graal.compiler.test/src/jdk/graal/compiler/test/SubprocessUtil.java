@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,9 +45,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.junit.Assume;
 
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.util.CollectionsUtil;
 
 /**
@@ -205,7 +205,7 @@ public final class SubprocessUtil {
      * Detects whether a Java agent is specified in the VM arguments.
      */
     public static boolean isJavaAgentAttached() {
-        return isJavaAgentAttached(javaAgentValue -> true);
+        return isJavaAgentAttached(_ -> true);
     }
 
     /**

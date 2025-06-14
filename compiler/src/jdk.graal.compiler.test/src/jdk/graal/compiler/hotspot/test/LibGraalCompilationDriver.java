@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -655,7 +655,6 @@ public class LibGraalCompilationDriver {
     /**
      * Compiles all the given methods, using libgraal if available.
      */
-    @SuppressWarnings("try")
     public void compileAll(List<? extends Compilation> compilations, OptionValues options) {
         try (LibGraalParams libgraal = LibGraal.isAvailable() ? new LibGraalParams(options) : null) {
             compileAll(libgraal, compilations, options);
@@ -738,7 +737,6 @@ public class LibGraalCompilationDriver {
     /**
      * Compiles all methods in {@code compilations} sequentially on one thread.
      */
-    @SuppressWarnings("try")
     private Map<ResolvedJavaMethod, CompilationResult> compileAllSingleThreaded(
                     LibGraalParams libgraal, List<? extends Compilation> compilations, OptionValues options,
                     AtomicLong compileTime, AtomicLong memoryUsed, AtomicLong codeSize) {
@@ -747,7 +745,7 @@ public class LibGraalCompilationDriver {
         long intervalStart = System.currentTimeMillis();
         long lastCompletedTaskCount = 0;
         long completedTaskCount = 0;
-        try (LibGraalScope scope = libgraal == null ? null : new LibGraalScope()) {
+        try (LibGraalScope _ = libgraal == null ? null : new LibGraalScope()) {
             for (Compilation task : compilations) {
                 compileAndRecord(task, libgraal, options, compileTime, memoryUsed, codeSize, results);
                 completedTaskCount++;
@@ -775,11 +773,10 @@ public class LibGraalCompilationDriver {
             setDaemon(true);
         }
 
-        @SuppressWarnings("try")
         @Override
         public void run() {
             setContextClassLoader(getClass().getClassLoader());
-            try (LibGraalScope scope = libgraal == null ? null : new LibGraalScope()) {
+            try (LibGraalScope _ = libgraal == null ? null : new LibGraalScope()) {
                 super.run();
             }
         }
@@ -851,7 +848,7 @@ public class LibGraalCompilationDriver {
      */
     private boolean shouldPrintMetrics(LibGraalIsolate isolate) {
         synchronized (printMetrics) {
-            return printMetrics.computeIfAbsent(isolate.getId(), id -> new AtomicBoolean()).getAndSet(false);
+            return printMetrics.computeIfAbsent(isolate.getId(), _ -> new AtomicBoolean()).getAndSet(false);
         }
     }
 
