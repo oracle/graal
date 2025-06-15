@@ -182,7 +182,7 @@ public class CompilationFinalWeakReferencePartialEvaluationTest extends PartialE
     }
 
     private static IntSupplier generateTestData() {
-        return IntStream.range(0, 42).mapToObj(i -> new TestData()).reduce((l, r) -> new TestData(l, r)).get();
+        return IntStream.range(0, 42).mapToObj(_ -> new TestData()).reduce((l, r) -> new TestData(l, r)).get();
     }
 
     /**

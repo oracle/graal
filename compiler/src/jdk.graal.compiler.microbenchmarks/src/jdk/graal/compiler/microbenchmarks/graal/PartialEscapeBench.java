@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +22,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.preview.test;
+package jdk.graal.compiler.microbenchmarks.graal;
 
-import java.lang.reflect.Method;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.Warmup;
 
-import jdk.graal.compiler.hotspot.test.HotSpotGraalCompilerTest;
+public class PartialEscapeBench extends GraalBenchmark {
 
-public class ScopedValueCacheTest extends HotSpotGraalCompilerTest {
+    private static class Thing {
+        final int id;
+        final String name;
 
-    private static boolean contains(Object[] array, Object value) {
-        for (Object element : array) {
-            if (element == value) {
-                return true;
-            }
+        Thing(int id, String name) {
+            this.id = id;
+            this.name = name;
         }
-        return false;
     }
 
-    @SuppressWarnings("preview")
-    public static void testScopedValue() {
-        ScopedValue<Integer> scopedValue = ScopedValue.newInstance();
-        ScopedValue.where(scopedValue, 42).run(() -> {
-            scopedValue.get();
-            try {
-                Method get = Thread.class.getDeclaredMethod("scopedValueCache");
-                get.setAccessible(true);
-                Object[] cache = (Object[]) get.invoke(null);
-                assertTrue(contains(cache, scopedValue));
-            } catch (ReflectiveOperationException e) {
-                fail(e.getMessage());
+    @State(Scope.Thread)
+    public static class ThingsCache {
+
+        private Thing[] cache = new Thing[100];
+
+        public Thing getOrAdd(Thing input) {
+            if (cache[input.id] == null) {
+                cache[input.id] = input;
             }
-        });
+            return cache[input.id];
+        }
+    }
+
+    @Benchmark
+    @Warmup(iterations = 30)
+    public String benchPartialEscape(ThingsCache cache) {
+        Thing thing = cache.getOrAdd(new Thing(42, "the answer!"));
+        return thing.name;
     }
 }

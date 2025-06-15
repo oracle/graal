@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -150,7 +150,6 @@ public class HostInliningTest extends TruffleCompilerImplTest {
         runTest("testNativeCall");
     }
 
-    @SuppressWarnings("try")
     void runTest(String methodName) {
         // initialize the Truffle runtime to ensure that all intrinsics are applied
         Truffle.getRuntime();
@@ -178,7 +177,7 @@ public class HostInliningTest extends TruffleCompilerImplTest {
             }
         }
 
-        try (DebugContext.Scope ds = graph.getDebug().scope("Testing", method, graph)) {
+        try (DebugContext.Scope _ = graph.getDebug().scope("Testing", method, graph)) {
             HighTierContext context = getEagerHighTierContext();
             CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
             if (run == TestRun.WITH_CONVERT_TO_GUARD) {

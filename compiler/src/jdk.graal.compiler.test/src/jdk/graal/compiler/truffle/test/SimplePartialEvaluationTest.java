@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -99,14 +99,13 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void neverPartOfCompilationTest() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode firstTree = new NeverPartOfCompilationTestNode(new ConstantTestNode(1), 2);
         assertPartialEvalEquals(SimplePartialEvaluationTest::constant42, new RootTestNode(fd, "neverPartOfCompilationTest", firstTree));
 
         AbstractTestNode secondTree = new NeverPartOfCompilationTestNode(new ConstantTestNode(1), 1);
-        try (PreventDumping noDump = new PreventDumping()) {
+        try (PreventDumping _ = new PreventDumping()) {
             assertPartialEvalEquals(SimplePartialEvaluationTest::constant42, new RootTestNode(fd, "neverPartOfCompilationTest", secondTree));
             Assert.fail("Expected verification error!");
         } catch (GraalBailoutException t) {
@@ -501,7 +500,6 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void complexUnrollFullExplodeUntilReturn() throws Exception {
         FrameDescriptor fd = new FrameDescriptor();
         final int loopIterations = 5;

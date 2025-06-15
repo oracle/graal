@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,7 +48,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
-import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -248,7 +247,7 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
      */
     @SuppressWarnings("try")
     InitKind ensureClassInitialized(Class<?> clazz, boolean allowErrors) {
-        LibGraalLoader libGraalLoader = loader.classLoaderSupport.getLibGraalLoader();
+        ClassLoader libGraalLoader = (ClassLoader) loader.classLoaderSupport.getLibGraalLoader();
         ClassLoader cl = clazz.getClassLoader();
         // Graal and JVMCI make use of ServiceLoader which uses the
         // context class loader so it needs to be the libgraal loader.

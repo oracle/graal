@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -264,7 +264,7 @@ public class GraalOSRTest extends GraalOSRTestBase {
      */
     private static String normalizedDisassembly(String dis) {
         Pattern cpRef = Pattern.compile("#\\d+");
-        return Stream.of(dis.split("\n")).map(line -> cpRef.matcher(line.trim()).replaceAll(mr -> "#__")).collect(Collectors.joining(System.lineSeparator()));
+        return Stream.of(dis.split("\n")).map(line -> cpRef.matcher(line.trim()).replaceAll(_ -> "#__")).collect(Collectors.joining(System.lineSeparator()));
     }
 
     private static final int ArrayLength = 10000;

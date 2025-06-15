@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -261,7 +261,6 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         runTest(new InvariantsTool());
     }
 
-    @SuppressWarnings("try")
     public static void runTest(InvariantsTool tool) {
         RuntimeProvider rt = Graal.getRequiredCapability(RuntimeProvider.class);
         Providers providers = rt.getHostBackend().getProviders();
@@ -409,7 +408,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
             try (DebugContext debug = new Builder(options).build()) {
                 StructuredGraph graph = new StructuredGraph.Builder(options, debug, AllowAssumptions.YES).method(method).build();
-                try (DebugCloseable s = debug.disableIntercept(); DebugContext.Scope ds = debug.scope("CheckingGraph", graph, method)) {
+                try (DebugCloseable _ = debug.disableIntercept(); DebugContext.Scope _ = debug.scope("CheckingGraph", graph, method)) {
                     graphBuilderSuite.apply(graph, context);
                     // update phi stamps
                     graph.getNodes().filter(PhiNode.class).forEach(PhiNode::inferStamp);
@@ -468,7 +467,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                                 try (DebugContext debug = new Builder(options).build()) {
                                     boolean isSubstitution = method.getAnnotation(Snippet.class) != null;
                                     StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).setIsSubstitution(isSubstitution).build();
-                                    try (DebugCloseable s = debug.disableIntercept(); DebugContext.Scope ds = debug.scope("CheckingGraph", graph, method)) {
+                                    try (DebugCloseable _ = debug.disableIntercept(); DebugContext.Scope _ = debug.scope("CheckingGraph", graph, method)) {
                                         checkMethod(method);
                                         graphBuilderSuite.apply(graph, context);
                                         // update phi stamps

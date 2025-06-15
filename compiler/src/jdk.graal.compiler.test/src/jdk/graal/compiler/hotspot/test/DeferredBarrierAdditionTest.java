@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -83,11 +83,10 @@ public class DeferredBarrierAdditionTest extends HotSpotGraalCompilerTest {
         testHelper("testCrossReferences", 1, getInitialOptions());
     }
 
-    @SuppressWarnings("try")
     protected void testHelper(final String snippetName, final int expectedBarriers, OptionValues options) {
         ResolvedJavaMethod snippet = getResolvedJavaMethod(snippetName);
         DebugContext debug = getDebugContext(options, null, snippet);
-        try (DebugContext.Scope s = debug.scope("WriteBarrierAdditionTest", snippet)) {
+        try (DebugContext.Scope _ = debug.scope("WriteBarrierAdditionTest", snippet)) {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO, debug);
             HighTierContext highContext = getDefaultHighTierContext();
             MidTierContext midContext = new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, graph.getProfilingInfo());

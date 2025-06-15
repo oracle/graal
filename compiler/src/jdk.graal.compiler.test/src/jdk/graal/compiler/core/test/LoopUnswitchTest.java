@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -371,7 +371,6 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         test(snippet, referenceSnippet, new DefaultLoopPolicies());
     }
 
-    @SuppressWarnings("try")
     private void test(String snippet, String referenceSnippet, LoopPolicies policies) {
         DebugContext debug = getDebugContext();
         final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
@@ -389,7 +388,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
 
         canonicalizer.apply(graph, getProviders());
         canonicalizer.apply(referenceGraph, getProviders());
-        try (DebugContext.Scope s = debug.scope("Test", new DebugDumpScope("Test:" + snippet))) {
+        try (DebugContext.Scope _ = debug.scope("Test", new DebugDumpScope("Test:" + snippet))) {
             assertEquals(referenceGraph, graph);
         } catch (Throwable e) {
             throw debug.handle(e);
