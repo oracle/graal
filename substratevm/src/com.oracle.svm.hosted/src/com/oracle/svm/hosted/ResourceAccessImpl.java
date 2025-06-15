@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,40 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jni;
+package com.oracle.svm.hosted;
 
-import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
-
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
-import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
-import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 
-/**
- * Support for registering classes, methods and fields before and during the analysis so they are
- * accessible via JNI at image runtime.
- */
-@Platforms(Platform.HOSTED_ONLY.class)
-public final class JNIRuntimeAccess {
-    private JNIRuntimeAccess() {
+public final class ResourceAccessImpl implements ResourceAccess {
+
+    private final InternalResourceAccess rdaInstance;
+    private static ResourceAccessImpl instance;
+
+    private ResourceAccessImpl() {
+        rdaInstance = new InternalResourceAccess();
     }
 
-    public static void register(Class<?>... classes) {
-        RuntimeJNIAccess.register(classes);
+    public static ResourceAccessImpl getResourceAccessImpl() {
+        if (instance == null) {
+            instance = new ResourceAccessImpl();
+        }
+        return instance;
     }
 
-    public static void register(Executable... methods) {
-        RuntimeJNIAccess.register(methods);
+    @Override
+    public void register(AccessCondition condition, Module module, String pattern) {
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, pattern);
+        rdaInstance.register(condition, module, pattern);
     }
 
-    public static void register(Field... fields) {
-        RuntimeJNIAccess.register(fields);
+    @Override
+    public void registerResourceBundle(AccessCondition condition, Module module, String bundleName) {
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, bundleName);
+        rdaInstance.registerResourceBundle(condition, module, bundleName);
     }
 
-    public static void register(boolean finalIsWritable, Field... fields) {
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.alwaysTrue(), finalIsWritable, fields);
-    }
 }

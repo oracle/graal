@@ -36,13 +36,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.option.HostedOptionKey;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
@@ -141,6 +144,11 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                     Object.class, Object[].class, CFunctionPointer.class);
 
     FeatureImpl.BeforeAnalysisAccessImpl analysisAccess;
+
+    public static final class Options {
+        @Option(help = "Emits a warning when the old metadata registration API is used.", type = OptionType.User) public static final HostedOptionKey<Boolean> MetadataRegistrationAPIDeprecationWarning = new HostedOptionKey<>(
+                        false);
+    }
 
     @Override
     public SubstrateAccessor getOrCreateAccessor(Executable member) {
@@ -293,12 +301,12 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         var conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(), ClassInitializationSupport.singleton());
         reflectionData.duringSetup(access.getMetaAccess(), aUniverse);
         RuntimeProxyCreationSupport proxyRegistry = ImageSingletons.lookup(RuntimeProxyCreationSupport.class);
-        RuntimeSerializationSupport<ConfigurationCondition> serializationSupport = RuntimeSerializationSupport.singleton();
+        RuntimeSerializationSupport<AccessCondition> serializationSupport = RuntimeSerializationSupport.singleton();
         RuntimeJNIAccessSupport jniSupport = SubstrateOptions.JNI.getValue() ? ImageSingletons.lookup(RuntimeJNIAccessSupport.class) : null;
-        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(ConfigurationFile.REFLECTION, true, conditionResolver, reflectionData, proxyRegistry,
+        ReflectionConfigurationParser<AccessCondition, Class<?>> parser = ConfigurationParserUtils.create(ConfigurationFile.REFLECTION, true, conditionResolver, reflectionData, proxyRegistry,
                         serializationSupport, jniSupport, access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, access.getImageClassLoader(), "reflection");
-        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> legacyParser = ConfigurationParserUtils.create(ConfigurationFile.REFLECTION, false, conditionResolver, reflectionData,
+        ReflectionConfigurationParser<AccessCondition, Class<?>> legacyParser = ConfigurationParserUtils.create(ConfigurationFile.REFLECTION, false, conditionResolver, reflectionData,
                         proxyRegistry, serializationSupport, jniSupport, access.getImageClassLoader());
         loadedConfigurations += ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, access.getImageClassLoader(), "reflection",
                         ConfigurationFiles.Options.ReflectionConfigurationFiles, ConfigurationFiles.Options.ReflectionConfigurationResources,
@@ -309,7 +317,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
         /* Primitive classes cannot be accessed through Class.forName() */
         for (Class<?> primitiveClass : PRIMITIVE_CLASSES) {
-            ClassForNameSupport.currentLayer().registerNegativeQuery(ConfigurationCondition.alwaysTrue(), primitiveClass.getName());
+            ClassForNameSupport.currentLayer().registerNegativeQuery(AccessCondition.alwaysTrue(), primitiveClass.getName());
         }
 
         access.registerObjectReachableCallback(SubstrateAccessor.class, ReflectionFeature::onAccessorReachable);
