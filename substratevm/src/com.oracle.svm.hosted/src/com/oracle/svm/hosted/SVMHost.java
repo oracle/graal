@@ -47,6 +47,8 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
+import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceSupport;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -219,6 +221,8 @@ public class SVMHost extends HostVM {
     private final boolean buildingImageLayer = ImageLayerBuildingSupport.buildingImageLayer();
     private final LayeredStaticFieldSupport layeredStaticFieldSupport;
 
+    private final StrictDynamicAccessInferenceSupport strictDynamicAccessInferenceSupport;
+
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
                     MissingRegistrationSupport missingRegistrationSupport) {
@@ -255,6 +259,8 @@ public class SVMHost extends HostVM {
         enableTrackAcrossLayers = ImageLayerBuildingSupport.buildingSharedLayer();
         enableReachableInCurrentLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
         layeredStaticFieldSupport = ImageLayerBuildingSupport.buildingImageLayer() ? LayeredStaticFieldSupport.singleton() : null;
+
+        strictDynamicAccessInferenceSupport = StrictDynamicAccessInferenceFeature.isDisabled() ? null : StrictDynamicAccessInferenceSupport.singleton();
     }
 
     /**
@@ -1269,5 +1275,9 @@ public class SVMHost extends HostVM {
 
     public SimulateClassInitializerSupport createSimulateClassInitializerSupport(AnalysisMetaAccess aMetaAccess) {
         return new SimulateClassInitializerSupport(aMetaAccess, this);
+    }
+
+    public StrictDynamicAccessInferenceSupport getStrictDynamicAccessInferenceSupport() {
+        return strictDynamicAccessInferenceSupport;
     }
 }

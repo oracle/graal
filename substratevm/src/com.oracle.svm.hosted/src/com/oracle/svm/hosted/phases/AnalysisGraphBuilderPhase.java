@@ -35,6 +35,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceSupport;
 import com.oracle.svm.util.ModuleSupport;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -104,6 +105,15 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
                         IntrinsicContext intrinsicContext, SVMHost hostVM, boolean explicitExceptionEdges) {
             super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges);
             this.hostVM = hostVM;
+        }
+
+        @Override
+        protected void build(FixedWithNextNode startInstruction, FrameStateBuilder startFrameState) {
+            StrictDynamicAccessInferenceSupport dynamicAccessInferenceSupport = hostVM.getStrictDynamicAccessInferenceSupport();
+            if (strictDynamicAccessInferenceIsApplicable() && dynamicAccessInferenceSupport != null) {
+                dynamicAccessInferenceSupport.analyze(method, intrinsicContext);
+            }
+            super.build(startInstruction, startFrameState);
         }
 
         @Override
@@ -303,6 +313,10 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
                 clearNonLiveLocals(dispatchState, dispatchBlock, true);
             }
             return dispatchState;
+        }
+
+        protected boolean strictDynamicAccessInferenceIsApplicable() {
+            return true;
         }
     }
 }
