@@ -37,7 +37,7 @@ import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.ProxyConfigurationParser;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 
 import jdk.graal.compiler.util.json.JsonWriter;
@@ -82,21 +82,21 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
     }
 
     @Override
-    public void mergeConditional(UnresolvedConfigurationCondition condition, ProxyConfiguration other) {
+    public void mergeConditional(UnresolvedAccessCondition condition, ProxyConfiguration other) {
         for (ConditionalElement<List<String>> interfaceList : other.interfaceLists) {
             add(condition, new ArrayList<>(interfaceList.element()));
         }
     }
 
-    public void add(UnresolvedConfigurationCondition condition, List<String> interfaceList) {
+    public void add(UnresolvedAccessCondition condition, List<String> interfaceList) {
         interfaceLists.add(new ConditionalElement<>(condition, interfaceList));
     }
 
-    public boolean contains(UnresolvedConfigurationCondition condition, List<String> interfaceList) {
+    public boolean contains(UnresolvedAccessCondition condition, List<String> interfaceList) {
         return interfaceLists.contains(new ConditionalElement<>(condition, interfaceList));
     }
 
-    public boolean contains(UnresolvedConfigurationCondition condition, String... interfaces) {
+    public boolean contains(UnresolvedAccessCondition condition, String... interfaces) {
         return contains(condition, Arrays.asList(interfaces));
     }
 
