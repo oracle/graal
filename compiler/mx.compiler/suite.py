@@ -85,41 +85,6 @@ suite = {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/batik-all-1.7.jar"],
     },
 
-    "ASM_9.7.1" : {
-      "digest" : "sha512:4767b01603dad5c79cc1e2b5f3722f72b1059d928f184f446ba11badeb1b381b3a3a9a801cc43d25d396df950b09d19597c73173c411b1da890de808b94f1f50",
-      "sourceDigest" : "sha512:d7c0de5912d04949a3d06cad366ff35a877da2682d9c74579625d62686032ea9349aff6102b17f92e9ec7eb4e9b1cd906b649c6a3ac798bfb9e31e5425de009d",
-      "maven" : {
-        "groupId" : "org.ow2.asm",
-        "artifactId" : "asm",
-        "version" : "9.7.1",
-      },
-      "license" : "BSD-new",
-    },
-
-    "ASM_TREE_9.7.1" : {
-      "digest" : "sha512:e55008c392fdd35e95d3404766b12dd4b46e13d5c362fcd0ab42a65751a82737eaf0ebc857691d1916190d34407adfde4437615d69c278785416fd911e00978d",
-      "sourceDigest" : "sha512:3cea80bc7b55679dfa3d2065c6cb6951007cc7817082e9fcf4c5e3cdc073c22eddf7c7899cff60b1092049ec9038e8d3aa9a8828ef731739bda8b5afcec30e86",
-      "maven" : {
-        "groupId" : "org.ow2.asm",
-        "artifactId" : "asm-tree",
-        "version" : "9.7.1",
-      },
-      "dependencies" : ["ASM_9.7.1"],
-      "license" : "BSD-new",
-    },
-
-    "ASM_UTIL_9.7.1" : {
-      "digest" : "sha512:522d793d15a2c5ea6504a50222cf0750f1eab7b881cf289675042539b1aba8b3868197b1bebe729de728dd10020eb028ae16252dcd5d84fdcbf7f925832bc269",
-      "sourceDigest" : "sha512:387aa887bfec24aec287d9aacebfdc0c2e1ab16a4adce933aecac6fc41545ce43a3eea0ed139db52dd0d0af910cfd2162aa4d6330a81b32b64b36f03b49db66a",
-      "maven" : {
-        "groupId" : "org.ow2.asm",
-        "artifactId" : "asm-util",
-        "version" : "9.7.1",
-      },
-      "dependencies" : ["ASM_9.7.1"],
-      "license" : "BSD-new",
-    },
-
     "HSDIS" : {
       "urlbase" : "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hsdis",
       "packedResource" : True,
@@ -248,8 +213,6 @@ suite = {
       "dependencies" : [
         "jdk.graal.compiler",
         "mx:JUNIT",
-        "ASM_TREE_9.7.1",
-        "ASM_UTIL_9.7.1",
         "JAVA_ALLOCATION_INSTRUMENTER",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_TEST",
@@ -296,7 +259,8 @@ suite = {
         "truffle:TRUFFLE_DSL_PROCESSOR"
       ],
       "checkstyle" : "jdk.graal.compiler",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "24+",
+      "forceJavac": True,
       "jacoco" : "exclude",
       # warning: [incubating] using incubating module(s): jdk.incubator.vector
       "javac.lint.overrides" : "-incubating",
@@ -322,42 +286,6 @@ suite = {
       "workingSets" : "Graal,HotSpot",
     },
 
-    "jdk.graal.compiler.hotspot.preview.test" : {
-      "testProject" : True,
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "jdk.graal.compiler.test",
-      ],
-      "requiresConcealed" : {
-        "java.base" : [
-          "jdk.internal.util",
-        ],
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.meta",
-        ],
-      },
-      "jacoco" : "exclude",
-      "checkstyle": "jdk.graal.compiler",
-      "javaCompliance" : "21+",
-      "javaPreviewNeeded": "21+",
-      "workingSets" : "Graal,HotSpot,Test",
-      "graalCompilerSourceEdition": "ignore",
-    },
-
-    "jdk.graal.compiler.virtual.bench" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : ["mx:JMH_1_21", "jdk.graal.compiler.microbenchmarks"],
-      "checkstyle" : "jdk.graal.compiler",
-      "javaCompliance" : "21+",
-      "annotationProcessors" : ["mx:JMH_1_21"],
-      "spotbugsIgnoresGenerated" : True,
-      "workingSets" : "Graal,Bench",
-      "testProject" : True,
-      "graalCompilerSourceEdition": "ignore",
-    },
-
     "jdk.graal.compiler.microbenchmarks" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -373,7 +301,8 @@ suite = {
         ],
       },
       "checkstyle" : "jdk.graal.compiler",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "24+",
+      "forceJavac": True,
       "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
@@ -462,7 +391,8 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "workingSets" : "Graal",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "24+",
+      "forceJavac": True,
       "checkstyle" : "jdk.graal.compiler",
       "dependencies" : [
         "GRAAL",
@@ -496,7 +426,8 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "workingSets" : "Graal",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "24+",
+      "forceJavac": True,
       "checkstyle" : "jdk.graal.compiler",
       "dependencies" : [
         "sdk:NATIVEIMAGE_LIBGRAAL",
@@ -507,6 +438,7 @@ suite = {
           "jdk.internal.jimage",
         ],
       },
+      "spotbugs": "false",
     },
   },
 
@@ -526,27 +458,10 @@ suite = {
         "truffle:TRUFFLE_COMPILER",
         "truffle:TRUFFLE_RUNTIME",
         "regex:TREGEX",
-        "ASM_TREE_9.7.1",
-        "ASM_UTIL_9.7.1",
       ],
       "exclude" : [
         "mx:JUNIT",
         "JAVA_ALLOCATION_INSTRUMENTER",
-      ],
-      "testDistribution" : True,
-      "unittestConfig": "graal",
-      "maven": False,
-      "graalCompilerSourceEdition": "ignore",
-    },
-    "GRAAL_TEST_PREVIEW_FEATURES" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "jdk.graal.compiler.hotspot.preview.test",
-      ],
-      "distDependencies" : [
-        "GRAAL_TEST",
-      ],
-      "exclude" : [
       ],
       "testDistribution" : True,
       "unittestConfig": "graal",
@@ -674,7 +589,7 @@ suite = {
       },
       "subDir": "src",
       "description" : "Module that builds libgraal",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "24+",
       "dependencies": [
         "jdk.graal.compiler.libgraal",
       ],
@@ -693,7 +608,6 @@ suite = {
     "GRAAL_COMPILER_WHITEBOX_MICRO_BENCHMARKS" : {
       "subDir" : "src",
       "dependencies" : [
-        "jdk.graal.compiler.virtual.bench",
         "jdk.graal.compiler.microbenchmarks",
       ],
       "distDependencies" : [

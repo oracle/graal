@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,7 +81,6 @@ public class LambdaEagerTest extends GraalCompilerTest {
     }
 
     @Override
-    @SuppressWarnings("try")
     protected InstalledCode getCode(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
         assert graph == null;
         return super.getCode(installedCodeOwner, graph, forceCompile, installAsDefault, new OptionValues(options, InlineEverything, true));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,19 @@
  */
 package jdk.graal.compiler.core.test;
 
+import static java.lang.classfile.ClassFile.ACC_PUBLIC;
+import static java.lang.constant.ConstantDescs.CD_Object;
+import static java.lang.constant.ConstantDescs.CD_boolean;
+import static java.lang.constant.ConstantDescs.INIT_NAME;
+import static java.lang.constant.ConstantDescs.MTD_void;
+
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.CodeBuilder;
+import java.lang.classfile.Label;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
+
 import org.junit.Test;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
 
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -52,17 +60,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Since [GR-51446], Graal defers some checks to run time, e.g., if it cannot be proven statically
  * that an unlocked object matches the object on top of the monitor stack.
  */
-public class UnbalancedMonitorsTest extends GraalCompilerTest {
+public class UnbalancedMonitorsTest extends GraalCompilerTest implements CustomizedBytecodePattern {
     private static final String CLASS_NAME = UnbalancedMonitorsTest.class.getName();
     private static final String INNER_CLASS_NAME = CLASS_NAME + "$UnbalancedMonitors";
-    private static final String CLASS_NAME_INTERNAL = CLASS_NAME.replace('.', '/');
-    private static final String INNER_CLASS_NAME_INTERNAL = INNER_CLASS_NAME.replace('.', '/');
-
-    private static AsmLoader LOADER = new AsmLoader(UnbalancedMonitorsTest.class.getClassLoader());
 
     @Test
     public void runWrongOrder() throws Exception {
-        Class<?> clazz = LOADER.findClass(INNER_CLASS_NAME);
+        Class<?> clazz = getClass(INNER_CLASS_NAME);
         ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "wrongOrder");
         Object instance = clazz.getName();
         InstalledCode code = getCode(method);
@@ -91,7 +95,7 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest {
     }
 
     private void checkForBailout(String name) throws ClassNotFoundException {
-        ResolvedJavaMethod method = getResolvedJavaMethod(LOADER.findClass(INNER_CLASS_NAME), name);
+        ResolvedJavaMethod method = getResolvedJavaMethod(getClass(INNER_CLASS_NAME), name);
         try {
             OptionValues options = getInitialOptions();
             StructuredGraph graph = new StructuredGraph.Builder(options, getDebugContext(options, null, method)).method(method).build();
@@ -111,8 +115,6 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest {
         }
         assertTrue("should have bailed out", false);
     }
-
-    static class Gen implements Opcodes {
 
     // @formatter:off
     // Template class used with Bytecode Outline to generate ASM code
@@ -146,188 +148,126 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest {
     //        }
     //    }
     // @formatter:on
-
-        public static byte[] generateClass() {
-
-            ClassWriter cw = new ClassWriter(0);
-
-            cw.visit(52, ACC_SUPER | ACC_PUBLIC, INNER_CLASS_NAME_INTERNAL, null, "java/lang/Object", null);
-
-            cw.visitSource("UnbalancedMonitorsTest.java", null);
-
-            cw.visitInnerClass(INNER_CLASS_NAME_INTERNAL, CLASS_NAME_INTERNAL, "UnbalancedMonitors", ACC_STATIC);
-
-            visitConstructor(cw);
-            visitWrongOrder(cw);
-            visitBlockStructured(cw, true, false);
-            visitBlockStructured(cw, true, true);
-            visitBlockStructured(cw, false, false);
-            visitBlockStructured(cw, false, true);
-            cw.visitEnd();
-
-            return cw.toByteArray();
-        }
-
-        private static void visitBlockStructured(ClassWriter cw, boolean normalReturnError, boolean tooMany) {
-            String name = (tooMany ? "tooMany" : "tooFew") + "Exits" + (normalReturnError ? "" : "Exceptional");
-            // Generate too many or too few exits down the either the normal or exceptional return
-            // paths
-            int exceptionalExitCount = normalReturnError ? 1 : (tooMany ? 2 : 0);
-            int normalExitCount = normalReturnError ? (tooMany ? 2 : 0) : 1;
-            MethodVisitor mv;
-            mv = cw.visitMethod(ACC_PUBLIC, name, "(Ljava/lang/Object;Ljava/lang/Object;)Z", null, null);
-            mv.visitCode();
-            Label l0 = new Label();
-            Label l1 = new Label();
-            Label l2 = new Label();
-            mv.visitTryCatchBlock(l0, l1, l2, null);
-            Label l3 = new Label();
-            mv.visitTryCatchBlock(l2, l3, l2, null);
-            Label l4 = new Label();
-            Label l5 = new Label();
-            Label l6 = new Label();
-            mv.visitTryCatchBlock(l4, l5, l6, null);
-            Label l7 = new Label();
-            mv.visitTryCatchBlock(l2, l7, l6, null);
-            Label l8 = new Label();
-            mv.visitLabel(l8);
-            mv.visitVarInsn(ALOAD, 1);
-            mv.visitInsn(DUP);
-            mv.visitVarInsn(ASTORE, 3);
-            mv.visitInsn(MONITORENTER);
-            mv.visitLabel(l4);
-            mv.visitVarInsn(ALOAD, 2);
-            mv.visitInsn(DUP);
-            mv.visitVarInsn(ASTORE, 4);
-            mv.visitInsn(MONITORENTER);
-            mv.visitLabel(l0);
-            mv.visitVarInsn(ALOAD, 2);
-            mv.visitVarInsn(ALOAD, 1);
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Object", "equals", "(Ljava/lang/Object;)Z", false);
-            mv.visitVarInsn(ALOAD, 4);
-            mv.visitInsn(MONITOREXIT);
-            mv.visitLabel(l1);
-            for (int i = 0; i < normalExitCount; i++) {
-                mv.visitVarInsn(ALOAD, 3);
-                mv.visitInsn(MONITOREXIT);
-            }
-            mv.visitLabel(l5);
-            mv.visitInsn(IRETURN);
-            mv.visitLabel(l2);
-            mv.visitFrame(Opcodes.F_FULL, 5, new Object[]{INNER_CLASS_NAME_INTERNAL, "java/lang/Object", "java/lang/Object", "java/lang/Object",
-                            "java/lang/Object"}, 1, new Object[]{"java/lang/Throwable"});
-            mv.visitVarInsn(ALOAD, 4);
-            mv.visitInsn(MONITOREXIT);
-            mv.visitLabel(l3);
-            mv.visitInsn(ATHROW);
-            mv.visitLabel(l6);
-            mv.visitFrame(Opcodes.F_FULL, 4, new Object[]{INNER_CLASS_NAME_INTERNAL, "java/lang/Object", "java/lang/Object", "java/lang/Object"}, 1,
-                            new Object[]{"java/lang/Throwable"});
-            for (int i = 0; i < exceptionalExitCount; i++) {
-                mv.visitVarInsn(ALOAD, 3);
-                mv.visitInsn(MONITOREXIT);
-            }
-            mv.visitLabel(l7);
-            mv.visitInsn(ATHROW);
-            Label l9 = new Label();
-            mv.visitLabel(l9);
-            mv.visitMaxs(2, 5);
-            mv.visitEnd();
-        }
-
-        private static void visitWrongOrder(ClassWriter cw) {
-            MethodVisitor mv;
-            mv = cw.visitMethod(ACC_PUBLIC, "wrongOrder", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", null, null);
-            mv.visitCode();
-            Label l0 = new Label();
-            Label l1 = new Label();
-            Label l2 = new Label();
-            mv.visitTryCatchBlock(l0, l1, l2, null);
-            Label l3 = new Label();
-            mv.visitTryCatchBlock(l2, l3, l2, null);
-            Label l4 = new Label();
-            Label l5 = new Label();
-            Label l6 = new Label();
-            mv.visitTryCatchBlock(l4, l5, l6, null);
-            Label l7 = new Label();
-            mv.visitTryCatchBlock(l2, l7, l6, null);
-            Label l8 = new Label();
-            mv.visitLabel(l8);
-            mv.visitVarInsn(ALOAD, 1);
-            mv.visitInsn(DUP);
-            mv.visitVarInsn(ASTORE, 3);
-            mv.visitInsn(MONITORENTER);
-            mv.visitLabel(l4);
-            mv.visitVarInsn(ALOAD, 2);
-            mv.visitInsn(DUP);
-            mv.visitVarInsn(ASTORE, 4);
-            mv.visitInsn(MONITORENTER);
-            mv.visitLabel(l0);
-            mv.visitVarInsn(ALOAD, 2);
-            mv.visitVarInsn(ALOAD, 3);
-            mv.visitInsn(MONITOREXIT);
-            mv.visitLabel(l1);
-            // Swapped exit order with exit above
-            mv.visitVarInsn(ALOAD, 4);
-            mv.visitInsn(MONITOREXIT);
-            mv.visitLabel(l5);
-            mv.visitInsn(ARETURN);
-            mv.visitLabel(l2);
-            mv.visitFrame(Opcodes.F_FULL, 5, new Object[]{INNER_CLASS_NAME_INTERNAL, "java/lang/Object", "java/lang/Object", "java/lang/Object",
-                            "java/lang/Object"}, 1, new Object[]{"java/lang/Throwable"});
-            mv.visitVarInsn(ALOAD, 4);
-            mv.visitInsn(MONITOREXIT);
-            mv.visitLabel(l3);
-            mv.visitInsn(ATHROW);
-            mv.visitLabel(l6);
-            mv.visitFrame(Opcodes.F_FULL, 4, new Object[]{INNER_CLASS_NAME_INTERNAL, "java/lang/Object", "java/lang/Object", "java/lang/Object"}, 1,
-                            new Object[]{"java/lang/Throwable"});
-            mv.visitVarInsn(ALOAD, 3);
-            mv.visitInsn(MONITOREXIT);
-            mv.visitLabel(l7);
-            mv.visitInsn(ATHROW);
-            Label l9 = new Label();
-            mv.visitLabel(l9);
-            mv.visitMaxs(2, 5);
-            mv.visitEnd();
-        }
-
-        private static void visitConstructor(ClassWriter cw) {
-            MethodVisitor mv;
-            mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
-            mv.visitCode();
-            Label l0 = new Label();
-            mv.visitLabel(l0);
-            mv.visitVarInsn(ALOAD, 0);
-            mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
-            Label l1 = new Label();
-            mv.visitLabel(l1);
-            mv.visitInsn(RETURN);
-            Label l2 = new Label();
-            mv.visitLabel(l2);
-            mv.visitMaxs(1, 1);
-            mv.visitEnd();
-        }
+    @Override
+    public byte[] generateClass(String className) {
+        // @formatter:off
+        return ClassFile.of().build(ClassDesc.of(className), classBuilder -> classBuilder
+                        .withMethodBody(INIT_NAME, MTD_void, ACC_PUBLIC, b -> b
+                                        .aload(0)
+                                        .invokespecial(CD_Object, INIT_NAME, MTD_void)
+                                        .return_())
+                        .withMethodBody("wrongOrder", MethodTypeDesc.of(CD_Object, CD_Object, CD_Object), ACC_PUBLIC, UnbalancedMonitorsTest::visitWrongOrder)
+                        .withMethodBody("tooFewExits", MethodTypeDesc.of(CD_boolean, CD_Object, CD_Object), ACC_PUBLIC, b -> visitBlockStructured(b, true, false))
+                        .withMethodBody("tooManyExits", MethodTypeDesc.of(CD_boolean, CD_Object, CD_Object), ACC_PUBLIC, b -> visitBlockStructured(b, true, true))
+                        .withMethodBody("tooFewExitsExceptional", MethodTypeDesc.of(CD_boolean, CD_Object, CD_Object), ACC_PUBLIC, b -> visitBlockStructured(b, false, false))
+                        .withMethodBody("tooManyExitsExceptional", MethodTypeDesc.of(CD_boolean, CD_Object, CD_Object), ACC_PUBLIC, b -> visitBlockStructured(b, false, true)));
+        // @formatter:on
     }
 
-    public static class AsmLoader extends ClassLoader {
-        Class<?> loaded;
+    private static void visitBlockStructured(CodeBuilder b, boolean normalReturnError, boolean tooMany) {
+        // Generate too many or too few exits down either the normal or exceptional return paths
+        int exceptionalExitCount = normalReturnError ? 1 : (tooMany ? 2 : 0);
+        int normalExitCount = normalReturnError ? (tooMany ? 2 : 0) : 1;
 
-        public AsmLoader(ClassLoader parent) {
-            super(parent);
+        Label l0 = b.newLabel();
+        Label l1 = b.newLabel();
+        Label l2 = b.newLabel();
+        Label l3 = b.newLabel();
+        Label l4 = b.newLabel();
+        Label l5 = b.newLabel();
+        Label l6 = b.newLabel();
+        Label l7 = b.newLabel();
+        Label l8 = b.newLabel();
+
+        // @formatter:off
+        b.labelBinding(l8)
+                        .aload(1)
+                        .dup()
+                        .astore(3)
+                        .monitorenter()
+                        .labelBinding(l4)
+                        .aload(2)
+                        .dup()
+                        .astore(4)
+                        .monitorenter()
+                        .labelBinding(l0)
+                        .aload(2)
+                        .aload(1)
+                        .invokevirtual(CD_Object, "equals", MethodTypeDesc.of(CD_boolean, CD_Object))
+                        .aload(4)
+                        .monitorexit()
+                        .labelBinding(l1);
+        for (int i = 0; i < normalExitCount; i++) {
+            b.aload(3).monitorexit();
         }
 
-        @Override
-        protected Class<?> findClass(String name) throws ClassNotFoundException {
-            if (name.equals(INNER_CLASS_NAME)) {
-                if (loaded != null) {
-                    return loaded;
-                }
-                byte[] bytes = Gen.generateClass();
-                return (loaded = defineClass(name, bytes, 0, bytes.length));
-            } else {
-                return super.findClass(name);
-            }
+        b.labelBinding(l5)
+                        .ireturn()
+                        .labelBinding(l2)
+                        .aload(4)
+                        .monitorexit()
+                        .labelBinding(l3)
+                        .athrow()
+                        .labelBinding(l6);
+
+        for (int i = 0; i < exceptionalExitCount; i++) {
+            b.aload(3).monitorexit();
         }
+
+        b.labelBinding(l7)
+                        .athrow()
+                        .exceptionCatchAll(l0, l1, l2)
+                        .exceptionCatchAll(l2, l3, l2)
+                        .exceptionCatchAll(l4, l5, l6)
+                        .exceptionCatchAll(l2, l7, l6);
+        // @formatter:on
+    }
+
+    private static void visitWrongOrder(CodeBuilder b) {
+        Label l0 = b.newLabel();
+        Label l1 = b.newLabel();
+        Label l2 = b.newLabel();
+        Label l3 = b.newLabel();
+        Label l4 = b.newLabel();
+        Label l5 = b.newLabel();
+        Label l6 = b.newLabel();
+        Label l7 = b.newLabel();
+        Label l8 = b.newLabel();
+
+        // @formatter:off
+        b.labelBinding(l8)
+                        .aload(1)
+                        .dup()
+                        .astore(3)
+                        .monitorenter()
+                        .labelBinding(l4)
+                        .aload(2)
+                        .dup()
+                        .astore(4)
+                        .monitorenter()
+                        .labelBinding(l0)
+                        .aload(2)
+                        .aload(3)
+                        .monitorexit()
+                        .labelBinding(l1)
+                        .aload(4)
+                        .monitorexit()
+                        .labelBinding(l5)
+                        .areturn()
+                        .labelBinding(l2)
+                        .aload(4)
+                        .monitorexit()
+                        .labelBinding(l3)
+                        .athrow()
+                        .labelBinding(l6)
+                        .aload(3)
+                        .monitorexit()
+                        .labelBinding(l7)
+                        .athrow()
+                        .exceptionCatchAll(l0, l1, l2)
+                        .exceptionCatchAll(l2, l3, l2)
+                        .exceptionCatchAll(l4, l5, l6)
+                        .exceptionCatchAll(l2, l7, l6);
+        // @formatter:on
     }
 }

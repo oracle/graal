@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -262,7 +262,6 @@ public class CompilationAlarmPhaseTimesTest extends GraalCompilerTest {
 
     }
 
-    @SuppressWarnings("try")
     private static StringBuilder runAndTrack(Runnable r) {
         // set the timeout very high, we just want to verify toString methods
         OptionValues opt = new OptionValues(getInitialOptions(), CompilationAlarm.Options.CompilationExpirationPeriod, Double.MAX_VALUE);

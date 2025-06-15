@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,7 +88,7 @@ public class HotSpotStackIntrospectionTest extends HotSpotGraalCompilerTest {
 
     private void test(String name) throws InvalidInstalledCodeException {
         ResolvedJavaMethod method = getMetaAccess().lookupJavaMethod(getMethod(name));
-        Function<Void, Void> f = o -> {
+        Function<Void, Void> f = _ -> {
             stackIntrospection.iterateFrames(null, null, 0, frame -> {
                 if (frame.getMethod().equals(method)) {
                     frame.materializeVirtualObjects(true);

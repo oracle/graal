@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -348,9 +348,8 @@ public class NestedLoopEffectsPhaseComplexityTest2 extends GraalCompilerTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void testIterative2() {
-        try (AutoCloseable c = new TTY.Filter()) {
+        try (AutoCloseable _ = new TTY.Filter()) {
             OptionValues options = new OptionValues(getInitialOptions(), DumpOnError, false, GraalOptions.EscapeAnalysisLoopCutoff, 2);
             prepareGraph("recursiveMethod1", 30, true, options);
         } catch (Throwable t) {
