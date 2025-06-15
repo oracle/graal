@@ -241,6 +241,40 @@ Metadata, for proxy classes, is in the form an ordered collection of interfaces 
 }
 ```
 
+To provide metadata for a lambda class, the following metadata must be added to the `reflection` array in
+_reachability-metadata.json_
+
+```json
+{
+  "type": {
+    "lambda": {
+      "declaringClass": "FullyQualifiedLambdaDeclaringType",
+      "declaringMethod": {
+        "name": "declaringMethodName",
+        "parameterType": [
+          "FullyQualifiedParameterType1",
+          "...",
+          "FullyQualifiedParameterType2"
+        ]
+      },
+      "interfaces": [
+        "FullyQualifiedLambdaInterface1",
+        "...",
+        "FullyQualifiedLamdbaInterface2"
+      ]
+    }
+  }
+}
+```
+
+The `"declaringClass"` field specifies in which class, and the optional `"declaringMethod"` field specifies in which
+method the lambda is defined.
+If `"declaringMethod"` is not specified, the lambda class is searched through all methods of the specified declaring
+class.
+The `"interfaces"` field specifies which interfaces are implemented by the lambda class.
+Such a definition can match multiple lambda classes. If that is the case, the registration entry applies to all those
+classes.
+
 Invocation of methods above without the provided metadata will result in throwing `MissingReflectionRegistrationError` which extends `java.lang.Error` and
 should not be handled. Note that even if a type does not exist on the classpath, the methods above will throw a `MissingReflectionRegistrationError`.
 

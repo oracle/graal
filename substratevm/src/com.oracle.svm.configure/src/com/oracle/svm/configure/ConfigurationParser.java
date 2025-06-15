@@ -32,8 +32,10 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -49,6 +51,9 @@ import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.util.json.JsonParser;
 import jdk.graal.compiler.util.json.JsonParserException;
+import jdk.graal.compiler.util.json.JsonPrintable;
+import jdk.graal.compiler.util.json.JsonPrinter;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public abstract class ConfigurationParser {
     public static InputStream openStream(URI uri) throws IOException {
@@ -63,6 +68,11 @@ public abstract class ConfigurationParser {
     public static final String NAME_KEY = "name";
     public static final String TYPE_KEY = "type";
     public static final String PROXY_KEY = "proxy";
+    public static final String LAMBDA_KEY = "lambda";
+    public static final String DECLARING_CLASS_KEY = "declaringClass";
+    public static final String DECLARING_METHOD_KEY = "declaringMethod";
+    public static final String INTERFACES_KEY = "interfaces";
+    public static final String PARAMETER_TYPES_KEY = "parameterTypes";
     public static final String REFLECTION_KEY = "reflection";
     public static final String JNI_KEY = "jni";
     public static final String FOREIGN_KEY = "foreign";
@@ -252,7 +262,7 @@ public abstract class ConfigurationParser {
         }
     }
 
-    protected static Optional<ConfigurationTypeDescriptor> parseTypeContents(Object typeObject) {
+    protected Optional<ConfigurationTypeDescriptor> parseTypeContents(Object typeObject) {
         if (typeObject instanceof String stringValue) {
             return Optional.of(NamedConfigurationTypeDescriptor.fromJSONName(stringValue));
         } else {
@@ -260,12 +270,14 @@ public abstract class ConfigurationParser {
             if (type.containsKey(PROXY_KEY)) {
                 checkHasExactlyOneAttribute(type, "type descriptor object", Set.of(PROXY_KEY));
                 return Optional.of(getProxyDescriptor(type.get(PROXY_KEY)));
+            } else if (type.containsKey(LAMBDA_KEY)) {
+                return Optional.of(getLambdaDescriptor(type.get(LAMBDA_KEY)));
             }
             /*
              * We return if we find a future version of a type descriptor (as a JSON object) instead
              * of failing parsing.
              */
-            // TODO warn
+            // TODO warn (GR-65606)
             return Optional.empty();
         }
     }
@@ -274,5 +286,55 @@ public abstract class ConfigurationParser {
         List<Object> proxyInterfaces = asList(proxyObject, "proxy interface content should be an interface list");
         List<String> proxyInterfaceNames = proxyInterfaces.stream().map(obj -> asString(obj, "proxy")).toList();
         return ProxyConfigurationTypeDescriptor.fromInterfaceTypeNames(proxyInterfaceNames);
+    }
+
+    private LambdaConfigurationTypeDescriptor getLambdaDescriptor(Object lambdaObject) {
+        EconomicMap<String, Object> lambda = asMap(lambdaObject, "lambda type descriptor should be an object");
+        checkAttributes(lambda, "lambda descriptor object", List.of(DECLARING_CLASS_KEY, INTERFACES_KEY), List.of(DECLARING_METHOD_KEY));
+        Optional<ConfigurationTypeDescriptor> declaringType = parseTypeContents(lambda.get(DECLARING_CLASS_KEY));
+        if (declaringType.isEmpty()) {
+            throw new JsonParserException("Could not parse lambda declaring type");
+        }
+        ConfigurationMethodDescriptor method = null;
+        if (lambda.containsKey(DECLARING_METHOD_KEY)) {
+            EconomicMap<String, Object> methodObject = asMap(lambda.get(DECLARING_METHOD_KEY), "lambda declaring method descriptor should be an object");
+            method = parseMethod(methodObject);
+        }
+        List<?> interfaceNames = asList(lambda.get(INTERFACES_KEY), "lambda implemented interfaces must be specified");
+        if (interfaceNames.isEmpty()) {
+            throw new JsonParserException("Lambda interfaces must not be empty");
+        }
+        List<NamedConfigurationTypeDescriptor> interfaces = interfaceNames.stream().map(s -> NamedConfigurationTypeDescriptor.fromJSONName(asString(s))).toList();
+        return new LambdaConfigurationTypeDescriptor(declaringType.get(), method, interfaces);
+    }
+
+    public record ConfigurationMethodDescriptor(String name, List<NamedConfigurationTypeDescriptor> parameterTypes) implements JsonPrintable, Comparable<ConfigurationMethodDescriptor> {
+        @Override
+        public int compareTo(ConfigurationMethodDescriptor other) {
+            return Comparator.comparing(ConfigurationMethodDescriptor::name)
+                            .thenComparing((a, b) -> Arrays.compare(a.parameterTypes.toArray(ConfigurationTypeDescriptor[]::new), b.parameterTypes.toArray(ConfigurationTypeDescriptor[]::new)))
+                            .compare(this, other);
+        }
+
+        @Override
+        public void printJson(JsonWriter writer) throws IOException {
+            writer.appendObjectStart();
+            writer.quote(NAME_KEY).appendFieldSeparator().quote(name);
+            if (parameterTypes != null) {
+                writer.appendSeparator().quote(PARAMETER_TYPES_KEY).appendFieldSeparator();
+                JsonPrinter.printCollection(writer, parameterTypes, ConfigurationTypeDescriptor::compareTo, ConfigurationTypeDescriptor::printJson);
+            }
+        }
+    }
+
+    protected ConfigurationMethodDescriptor parseMethod(EconomicMap<String, Object> methodJson) {
+        checkAttributes(methodJson, "method descriptor", List.of(NAME_KEY), List.of(PARAMETER_TYPES_KEY));
+        String name = asString(methodJson.get(NAME_KEY));
+        List<NamedConfigurationTypeDescriptor> parameterTypes = null;
+        if (methodJson.containsKey(PARAMETER_TYPES_KEY)) {
+            List<?> parameterTypesStrings = asList(methodJson.get(PARAMETER_TYPES_KEY), "parameter types list");
+            parameterTypes = parameterTypesStrings.stream().map(s -> NamedConfigurationTypeDescriptor.fromJSONName(asString(s))).toList();
+        }
+        return new ConfigurationMethodDescriptor(name, parameterTypes);
     }
 }

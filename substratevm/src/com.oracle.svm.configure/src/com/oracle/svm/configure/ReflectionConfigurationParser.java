@@ -45,7 +45,6 @@ import jdk.graal.compiler.util.json.JsonParserException;
  */
 public abstract class ReflectionConfigurationParser<C, T> extends ConditionalConfigurationParser {
     private static final String CONSTRUCTOR_NAME = "<init>";
-    private static final String PARAMETER_TYPES_KEY = "parameterTypes";
 
     protected final ConfigurationConditionResolver<C> conditionResolver;
     protected final ReflectionConfigurationParserDelegate<C, T> delegate;
