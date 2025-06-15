@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.headers;
 
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.PointerBase;
@@ -31,10 +33,12 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.memory.NativeMemory;
 
 /** Platform-independent LibC support. Don't use this class directly, use {@link LibC} instead. */
-public interface LibCSupport {
+public interface LibCSupport extends InitialLayerOnlyImageSingleton {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int errno();
 
@@ -86,4 +90,14 @@ public interface LibCSupport {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     UnsignedWord strtoull(CCharPointer string, CCharPointerPointer endPtr, int base);
+
+    @Override
+    default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+    }
+
+    @Override
+    default boolean accessibleInFutureLayers() {
+        return true;
+    }
 }

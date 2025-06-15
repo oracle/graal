@@ -30,13 +30,20 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.UnsupportedLayeredSingleton;
 
 /**
  * For compatibility with legacy code.
  */
 @AutomaticallyRegisteredFeature
 @Deprecated
-public class IsolateListenerFeature implements InternalFeature {
+public class IsolateListenerFeature implements InternalFeature, UnsupportedLayeredSingleton {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return !ImageLayerBuildingSupport.buildingImageLayer();
+    }
+
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return List.of(IsolateListenerSupportFeature.class);

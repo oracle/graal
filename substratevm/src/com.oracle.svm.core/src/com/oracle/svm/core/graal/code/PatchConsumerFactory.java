@@ -26,13 +26,16 @@ package com.oracle.svm.core.graal.code;
 
 import java.util.function.Consumer;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.layeredimagesingleton.BuildTimeUnsavedSingleton;
+
 import jdk.graal.compiler.asm.Assembler.CodeAnnotation;
 import jdk.graal.compiler.code.CompilationResult;
-import org.graalvm.nativeimage.ImageSingletons;
 
 public abstract class PatchConsumerFactory {
 
-    public abstract static class HostedPatchConsumerFactory extends PatchConsumerFactory {
+    public abstract static class HostedPatchConsumerFactory extends PatchConsumerFactory implements BuildTimeUnsavedSingleton {
         public static HostedPatchConsumerFactory factory() {
             return ImageSingletons.lookup(HostedPatchConsumerFactory.class);
         }

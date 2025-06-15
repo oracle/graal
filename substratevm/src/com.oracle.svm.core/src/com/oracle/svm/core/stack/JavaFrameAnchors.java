@@ -27,7 +27,6 @@ package com.oracle.svm.core.stack;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
@@ -38,6 +37,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -52,6 +52,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Maintains the linked list of {@link JavaFrameAnchor} for stack walking. Note that a thread may
@@ -155,7 +156,7 @@ public class JavaFrameAnchors {
 }
 
 @AutomaticallyRegisteredFeature
-class JavaFrameAnchorsFeature implements InternalFeature {
+class JavaFrameAnchorsFeature implements InternalFeature, FeatureSingleton {
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(JavaFrameAnchors.VERIFY_FRAME_ANCHOR_STUB);

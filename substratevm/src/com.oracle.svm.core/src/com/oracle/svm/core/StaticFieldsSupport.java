@@ -42,6 +42,8 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.BuildTimeUnsavedSingleton;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
@@ -94,7 +96,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class StaticFieldsSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public interface HostedStaticFieldSupport {
+    public interface HostedStaticFieldSupport extends BuildTimeUnsavedSingleton {
 
         static HostedStaticFieldSupport singleton() {
             return ImageSingletons.lookup(HostedStaticFieldSupport.class);
@@ -273,7 +275,7 @@ public final class StaticFieldsSupport {
      * We must ensure we are not querying the offset of a static field of a type assignable from
      * {@link org.graalvm.word.WordBase}.
      */
-    public interface StaticFieldValidator {
+    public interface StaticFieldValidator extends BuildTimeUnsavedSingleton {
         static void checkFieldOffsetAllowed(ResolvedJavaField field) {
             if (field.isStatic()) {
                 if (SubstrateUtil.HOSTED) {
@@ -335,7 +337,7 @@ class MultiLayeredStaticFieldsBase implements MultiLayeredImageSingleton, Unsave
  * See {@link StaticFieldsSupport} for how this prevents aliasing issues.
  */
 @AutomaticallyRegisteredFeature
-final class StaticFieldsFeature implements InternalFeature {
+final class StaticFieldsFeature implements InternalFeature, FeatureSingleton {
 
     @Override
     public void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {

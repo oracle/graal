@@ -30,8 +30,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.layeredimagesingleton.BuildTimeUnsavedSingleton;
+
 @Platforms(Platform.HOSTED_ONLY.class)
-public final class BuildPhaseProvider {
+public final class BuildPhaseProvider implements BuildTimeUnsavedSingleton {
 
     private boolean featureRegistrationFinished;
     private boolean setupFinished;

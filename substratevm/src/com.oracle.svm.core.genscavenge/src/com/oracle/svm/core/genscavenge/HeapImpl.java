@@ -130,11 +130,13 @@ public final class HeapImpl extends Heap {
         this.oldGeneration = SerialGCOptions.useCompactingOldGen() ? new CompactingOldGeneration("OldGeneration")
                         : new CopyingOldGeneration("OldGeneration");
         HeapParameters.initialize();
-        DiagnosticThunkRegistry.singleton().add(new DumpHeapSettingsAndStatistics());
-        DiagnosticThunkRegistry.singleton().add(new DumpHeapUsage());
-        DiagnosticThunkRegistry.singleton().add(new DumpGCPolicy());
-        DiagnosticThunkRegistry.singleton().add(new DumpImageHeapInfo());
-        DiagnosticThunkRegistry.singleton().add(new DumpChunkInfo());
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            DiagnosticThunkRegistry.singleton().add(new DumpHeapSettingsAndStatistics());
+            DiagnosticThunkRegistry.singleton().add(new DumpHeapUsage());
+            DiagnosticThunkRegistry.singleton().add(new DumpGCPolicy());
+            DiagnosticThunkRegistry.singleton().add(new DumpImageHeapInfo());
+            DiagnosticThunkRegistry.singleton().add(new DumpChunkInfo());
+        }
     }
 
     @Fold

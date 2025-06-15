@@ -26,12 +26,12 @@ package com.oracle.svm.core.posix.darwin;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerInternalFeature;
+import com.oracle.svm.core.os.ImageHeapProvider;
 
 @AutomaticallyRegisteredFeature
-class DarwinImageSingletonsFeature implements InternalFeature {
+class DarwinImageSingletonsFeature implements InitialLayerInternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         if (!ImageSingletons.contains(ImageHeapProvider.class)) {

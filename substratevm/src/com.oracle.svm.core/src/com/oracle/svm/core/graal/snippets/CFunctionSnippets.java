@@ -41,6 +41,7 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.nodes.VerificationMarkerNode;
 import com.oracle.svm.core.graal.stackvalue.LoweredStackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
@@ -278,7 +279,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
-class CFunctionSnippetsFeature implements InternalFeature {
+class CFunctionSnippetsFeature implements InternalFeature, FeatureSingleton {
 
     @Override
     @SuppressWarnings("unused")

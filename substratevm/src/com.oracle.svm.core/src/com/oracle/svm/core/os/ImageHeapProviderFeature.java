@@ -26,11 +26,11 @@ package com.oracle.svm.core.os;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerInternalFeature;
 
 @AutomaticallyRegisteredFeature
-public class ImageHeapProviderFeature implements InternalFeature {
+public class ImageHeapProviderFeature implements InitialLayerInternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (!ImageSingletons.contains(ImageHeapProvider.class)) {
