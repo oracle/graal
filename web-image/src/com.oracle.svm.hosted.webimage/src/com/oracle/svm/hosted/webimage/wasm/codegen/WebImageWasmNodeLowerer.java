@@ -902,6 +902,7 @@ public abstract class WebImageWasmNodeLowerer extends NodeLowerer {
                     assert type == f64 : type;
                     yield Unary.Op.F64Promote32;
                 }
+                default -> throw GraalError.unimplemented("FloatConvertNode, op: " + floatConvert.getFloatConvert()); // ExcludeFromJacocoGeneratedReport
             };
         } else if (node instanceof ReinterpretNode) {
             assert node.getStackKind().getBitCount() == node.getValue().getStackKind().getBitCount() : node.getStackKind().getBitCount() + " != " + node.getValue().getStackKind().getBitCount();
