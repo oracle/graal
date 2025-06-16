@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.vector.lir.amd64;
 
-import static jdk.graal.compiler.vector.lir.amd64.AMD64VectorNodeMatchRules.getRegisterSize;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMIOp.VPERMILPS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMIOp.VPERMPD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMIOp.VPERMQ;
@@ -33,10 +32,9 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VFMADD231PD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VFMADD231PS;
 import static jdk.graal.compiler.lir.LIRValueUtil.asConstant;
 import static jdk.graal.compiler.lir.LIRValueUtil.isConstantValue;
+import static jdk.graal.compiler.vector.lir.amd64.AMD64VectorNodeMatchRules.getRegisterSize;
 
 import java.util.function.BiFunction;
-
-import jdk.graal.compiler.vector.lir.VectorLIRGeneratorTool;
 
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64SIMDInstructionEncoding;
@@ -66,9 +64,10 @@ import jdk.graal.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryConstOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorMove;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorMove.AVXMoveToIntOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorShuffle;
-import jdk.graal.compiler.lir.amd64.vector.AMD64VectorUnary.AVXConvertOp;
+import jdk.graal.compiler.lir.amd64.vector.AMD64VectorUnary.AVXConvertToFloatOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorUnary.AVXUnaryOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorUnary.AVXUnaryRVMOp;
+import jdk.graal.compiler.vector.lir.VectorLIRGeneratorTool;
 import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
@@ -238,9 +237,9 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
         return emitConvertOp(LIRKind.combine(inputVal).changeType(kind), opcode, inputVal, narrow);
     }
 
-    protected Value emitConvertOp(PlatformKind kind, VexRVMConvertOp opcode, Value inputVal) {
+    protected Value emitConvertOp(PlatformKind kind, VexRVMConvertOp opcode, Value inputVal, Signedness signedness) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(inputVal).changeType(kind));
-        getLIRGen().append(new AVXConvertOp(opcode, result, asAllocatable(inputVal), simdEncoding));
+        getLIRGen().append(new AVXConvertToFloatOp(opcode, result, asAllocatable(inputVal), simdEncoding, signedness));
         return result;
     }
 
@@ -445,7 +444,7 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
      * Emit a scalar floating point to integer conversion that needs fixup code to adjust the result
      * to Java semantics.
      */
-    protected AllocatableValue emitFloatConvertWithFixup(AMD64Kind kind, VexRMOp op, Value input, boolean canBeNaN, boolean canOverflow, boolean narrow) {
+    protected AllocatableValue emitFloatConvertWithFixup(AMD64Kind kind, VexRMOp op, Value input, boolean canBeNaN, boolean canOverflow, boolean narrow, Signedness signedness) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(input).changeType(kind));
         /*
          * If the convert is a narrowing convert (e.g. D2F), we have to encode with the argument
@@ -453,7 +452,7 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
          */
         AVXSize size = narrow ? getRegisterSize(input) : getRegisterSize(result);
         AMD64ConvertFloatToIntegerOp.OpcodeEmitter emitter = (crb, masm, dst, src) -> op.emit(masm, size, dst, src);
-        getLIRGen().append(new AMD64ConvertFloatToIntegerOp(getLIRGen(), emitter, result, input, canBeNaN, canOverflow));
+        getLIRGen().append(new AMD64ConvertFloatToIntegerOp(getLIRGen(), emitter, result, input, canBeNaN, canOverflow, signedness));
         return result;
     }
 

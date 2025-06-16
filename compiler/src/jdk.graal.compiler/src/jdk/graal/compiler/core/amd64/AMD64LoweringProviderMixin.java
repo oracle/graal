@@ -25,9 +25,11 @@
 
 package jdk.graal.compiler.core.amd64;
 
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.nodes.memory.ExtendableMemoryAccess;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
+import jdk.vm.ci.amd64.AMD64;
 
 public interface AMD64LoweringProviderMixin extends LoweringProvider {
 
@@ -65,4 +67,18 @@ public interface AMD64LoweringProviderMixin extends LoweringProvider {
         return false;
     }
 
+    @Override
+    default boolean supportsFloatToUnsignedConvert() {
+        return true;
+    }
+
+    @Override
+    default boolean supportsUnsignedToFloatConvert() {
+        /*
+         * Use AVX-512 conversion instructions if available. Otherwise, don't bother with
+         * hand-written assembly intrinsics, which won't beat the pure Java implementation.
+         */
+        AMD64 amd64 = (AMD64) getTarget().arch;
+        return AMD64Assembler.supportsFullAVX512(amd64.getFeatures());
+    }
 }
