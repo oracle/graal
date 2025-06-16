@@ -32,7 +32,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
-import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -1669,18 +1668,34 @@ final class Target_jdk_incubator_vector_AbstractVector {
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native ArrayIndexOutOfBoundsException wrongPart(Target_jdk_incubator_vector_AbstractSpecies dsp, Target_jdk_incubator_vector_AbstractSpecies rsp, boolean lanewise, int part);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native Target_jdk_incubator_vector_AbstractVector defaultReinterpret(Target_jdk_incubator_vector_AbstractSpecies rsp);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native Target_jdk_incubator_vector_AbstractVector convert0(char kind, Target_jdk_incubator_vector_AbstractSpecies rsp);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native Target_jdk_incubator_vector_AbstractVector convertShapeTemplate(Target_jdk_incubator_vector_VectorOperators.Conversion conv, Target_jdk_incubator_vector_VectorSpecies toSpecies, int part);
 }
 
 @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_internal_vm_vector_VectorSupport {
 
     @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorMask", onlyWith = VectorAPIEnabled.class)
-    private static final class Target_jdk_incubator_vector_VectorSupport_VectorMask<E> {
+    private static final class Target_jdk_incubator_vector_VectorSupport_VectorMask {
     }
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native <M extends Target_jdk_incubator_vector_VectorSupport_VectorMask<E>, E> boolean test(int cond, Class<?> mClass, Class<?> eClass, int length, M m1, M m2, BiFunction<M, M, Boolean> defaultImpl);
+    static native <M extends Target_jdk_incubator_vector_VectorSupport_VectorMask, E> boolean test(int cond, Class<?> mClass, Class<?> eClass, int length, M m1, M m2, BiFunction<M, M, Boolean> defaultImpl);
+}
+
+@TargetClass(className = "jdk.incubator.vector.VectorSpecies", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_VectorSpecies {
 }
 
 @TargetClass(className = "jdk.incubator.vector.AbstractSpecies", onlyWith = VectorAPIEnabled.class)
@@ -1718,6 +1733,10 @@ final class Target_jdk_incubator_vector_VectorOperators {
         @AnnotateOriginal
         @CompilerDirectives.TruffleBoundary
         native UnsupportedOperationException illegalOperation(int requireKind, int forbidKind);
+    }
+
+    @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "Conversion", onlyWith = VectorAPIEnabled.class)
+    public interface Conversion {
     }
 }
 
@@ -1799,4 +1818,52 @@ final class Target_jdk_incubator_vector_VectorIntrinsics {
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native IllegalArgumentException requireLengthFailed(int haveLength, int length);
+}
+
+@TargetClass(className = "jdk.incubator.vector.ByteVector", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_ByteVector {
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native boolean compareWithOp(int cond, byte a, byte b);
+}
+
+@TargetClass(className = "jdk.incubator.vector.ShortVector", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_ShortVector {
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native boolean compareWithOp(int cond, short a, short b);
+}
+
+@TargetClass(className = "jdk.incubator.vector.IntVector", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_IntVector {
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native boolean compareWithOp(int cond, int a, int b);
+}
+
+@TargetClass(className = "jdk.incubator.vector.LongVector", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_LongVector {
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native boolean compareWithOp(int cond, long a, long b);
+}
+
+@TargetClass(className = "jdk.incubator.vector.FloatVector", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_FloatVector {
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native boolean compareWithOp(int cond, float a, float b);
+}
+
+@TargetClass(className = "jdk.incubator.vector.DoubleVector", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_DoubleVector {
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native boolean compareWithOp(int cond, double a, double b);
 }
