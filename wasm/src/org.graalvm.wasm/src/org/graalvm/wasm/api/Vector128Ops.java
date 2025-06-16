@@ -239,7 +239,7 @@ public class Vector128Ops {
         }
 
         @Override
-        public Vector<Double> reinterpret(ByteVector bytes) {
+        public DoubleVector reinterpret(ByteVector bytes) {
             return castDouble128(bytes.reinterpretAsDoubles());
         }
 
@@ -658,11 +658,11 @@ public class Vector128Ops {
     }
 
     private static ByteVector i32x4_trunc_sat_f32x4(ByteVector xBytes) {
-        FloatVector x = xBytes.reinterpretAsFloats();
-        Vector<Double> xLow = x.convert(VectorOperators.F2D, 0);
-        Vector<Double> xHigh = x.convert(VectorOperators.F2D, 1);
-        Vector<Integer> resultLow = truncSatU32(xLow).convert(VectorOperators.L2I, 0);
-        Vector<Integer> resultHigh = truncSatU32(xHigh).convert(VectorOperators.L2I, -1);
+        FloatVector x = F32X4.reinterpret(xBytes);
+        DoubleVector xLow = castDouble128(x.convert(VectorOperators.F2D, 0));
+        DoubleVector xHigh = castDouble128(x.convert(VectorOperators.F2D, 1));
+        IntVector resultLow = castInt128(truncSatU32(xLow).convert(VectorOperators.L2I, 0));
+        IntVector resultHigh = castInt128(truncSatU32(xHigh).convert(VectorOperators.L2I, -1));
         Vector<Integer> result = firstNonzero(resultLow, resultHigh);
         return result.reinterpretAsBytes();
     }
@@ -678,9 +678,9 @@ public class Vector128Ops {
     }
 
     private static ByteVector i32x4_trunc_sat_f64x2_zero(ByteVector xBytes) {
-        DoubleVector x = xBytes.reinterpretAsDoubles();
-        Vector<Long> longResult = truncSatU32(x);
-        Vector<Integer> result = longResult.convert(VectorOperators.L2I, 0);
+        DoubleVector x = F64X2.reinterpret(xBytes);
+        LongVector longResult = truncSatU32(x);
+        IntVector result = castInt128(longResult.convert(VectorOperators.L2I, 0));
         return result.reinterpretAsBytes();
     }
 
@@ -830,9 +830,9 @@ public class Vector128Ops {
     }
 
     private static ByteVector f64x2_ternop(ByteVector xBytes, ByteVector yBytes, ByteVector zBytes, int vectorOpcode) {
-        DoubleVector x = xBytes.reinterpretAsDoubles();
-        DoubleVector y = yBytes.reinterpretAsDoubles();
-        DoubleVector z = zBytes.reinterpretAsDoubles();
+        DoubleVector x = F64X2.reinterpret(xBytes);
+        DoubleVector y = F64X2.reinterpret(yBytes);
+        DoubleVector z = F64X2.reinterpret(zBytes);
         DoubleVector result = switch (vectorOpcode) {
             case Bytecode.VECTOR_F64X2_RELAXED_MADD -> x.lanewise(VectorOperators.FMA, y, z);
             case Bytecode.VECTOR_F64X2_RELAXED_NMADD -> x.neg().lanewise(VectorOperators.FMA, y, z);
@@ -924,12 +924,12 @@ public class Vector128Ops {
         return vec.max(vMin).min(vMax);
     }
 
-    private static Vector<Long> truncSatU32(Vector<Double> x) {
+    private static LongVector truncSatU32(DoubleVector x) {
         VectorMask<Long> underflow = x.test(VectorOperators.IS_NAN).or(x.test(VectorOperators.IS_NEGATIVE)).cast(I64X2.species());
-        VectorMask<Long> overflow = x.compare(VectorOperators.GT, 0xffff_ffffL).cast(I64X2.species());
+        VectorMask<Long> overflow = x.compare(VectorOperators.GT, F64X2.broadcast((double) 0xffff_ffffL)).cast(I64X2.species());
         LongVector zero = I64X2.zero();
         LongVector u32max = I64X2.broadcast(0xffff_ffffL);
-        Vector<Long> trunc = x.convert(VectorOperators.D2L, 0);
+        LongVector trunc = castLong128(x.convert(VectorOperators.D2L, 0));
         return trunc.blend(u32max, overflow).blend(zero, underflow);
     }
 
