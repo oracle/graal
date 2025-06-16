@@ -82,6 +82,7 @@ import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.PauseNode;
 import jdk.graal.compiler.word.Word;
 
@@ -121,6 +122,14 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
      * calculating this value requires iterating through multiple sections.
      */
     static final CGlobalData<WordPointer> CACHED_LAYERED_IMAGE_HEAP_ADDRESS_SPACE_SIZE = CGlobalDataFactory.createWord();
+
+    private static final class ImageHeapPatchingState {
+        static final Word UNINITIALIZED = Word.zero();
+        static final Word IN_PROGRESS = Word.unsigned(1);
+        static final Word SUCCESSFUL = Word.unsigned(2);
+    }
+
+    private static final CGlobalData<Word> IMAGE_HEAP_PATCHING_STATE = CGlobalDataFactory.createWord();
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord getLayeredImageHeapAddressSpaceSize() {
@@ -167,6 +176,8 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
         int result = -1;
         UnsignedWord remainingSize = initialRemainingSize;
 
+        patchLayeredImageHeap();
+
         int layerCount = 0;
         Pointer currentSection = ImageLayerSection.getInitialLayerSection().get();
         Pointer currentHeapStart = firstHeapStart;
@@ -211,6 +222,47 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             layerCount++;
         }
         return result;
+    }
+
+    @Uninterruptible(reason = "Thread state not yet set up.")
+    public static void patchLayeredImageHeap() {
+        Word heapPatchStateAddr = IMAGE_HEAP_PATCHING_STATE.get();
+        boolean firstIsolate = heapPatchStateAddr.logicCompareAndSwapWord(0, ImageHeapPatchingState.UNINITIALIZED, ImageHeapPatchingState.IN_PROGRESS, NamedLocationIdentity.OFF_HEAP_LOCATION);
+
+        if (!firstIsolate) {
+            // spin-wait for first isolate
+            Word state = heapPatchStateAddr.readWordVolatile(0, LocationIdentity.ANY_LOCATION);
+            while (state.equal(ImageHeapPatchingState.IN_PROGRESS)) {
+                PauseNode.pause();
+                state = heapPatchStateAddr.readWordVolatile(0, LocationIdentity.ANY_LOCATION);
+            }
+
+            /* Patching has already been successfully completed, nothing needs to be done. */
+            return;
+        }
+
+        Pointer currentSection = ImageLayerSection.getInitialLayerSection().get();
+        Word heapBegin = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_BEGIN));
+
+        Word patches = ImageLayerSection.getHeapRelativeRelocationsStart().get();
+        int endOffset = Integer.BYTES + (patches.readInt(0) * Integer.BYTES);
+
+        int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+        int offset = Integer.BYTES;
+        while (offset < endOffset) {
+            int heapOffset = patches.readInt(offset);
+            int referenceEncoding = patches.readInt(offset + Integer.BYTES);
+
+            if (referenceSize == 4) {
+                heapBegin.writeInt(heapOffset, referenceEncoding);
+            } else {
+                heapBegin.writeLong(heapOffset, referenceEncoding);
+            }
+
+            offset += 2 * Integer.BYTES;
+        }
+
+        heapPatchStateAddr.writeWordVolatile(0, ImageHeapPatchingState.SUCCESSFUL);
     }
 
     @Override
@@ -262,7 +314,9 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
         basePointer.write(heapBase);
         Pointer imageHeapStart = heapBase.add(imageHeapOffsetInAddressSpace);
         remainingSize = remainingSize.subtract(imageHeapOffsetInAddressSpace);
-        if (!ImageLayerBuildingSupport.buildingImageLayer()) {
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            return initializeLayeredImage(imageHeapStart, selfReservedHeapBase, remainingSize, endPointer);
+        } else {
             int result = initializeImageHeap(imageHeapStart, remainingSize, endPointer,
                             CACHED_IMAGE_FD.get(), CACHED_IMAGE_HEAP_OFFSET.get(), CACHED_IMAGE_HEAP_RELOCATIONS.get(), MAGIC.get(),
                             IMAGE_HEAP_BEGIN.get(), IMAGE_HEAP_END.get(),
@@ -272,8 +326,6 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                 freeImageHeap(selfReservedHeapBase);
             }
             return result;
-        } else {
-            return initializeLayeredImage(imageHeapStart, selfReservedHeapBase, remainingSize, endPointer);
         }
     }
 
