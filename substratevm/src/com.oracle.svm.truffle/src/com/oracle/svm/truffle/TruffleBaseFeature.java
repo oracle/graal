@@ -32,7 +32,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
-import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -1673,46 +1672,65 @@ final class Target_jdk_incubator_vector_VectorMask {
 @TargetClass(className = "jdk.incubator.vector.AbstractVector", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_AbstractVector {
 
+    // Slow-path method.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native ArrayIndexOutOfBoundsException wrongPart(Target_jdk_incubator_vector_AbstractSpecies dsp, Target_jdk_incubator_vector_AbstractSpecies rsp, boolean lanewise, int part);
 
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    native Target_jdk_incubator_vector_AbstractVector defaultReinterpret(Target_jdk_incubator_vector_AbstractSpecies rsp);
-
+    // Called on the fast-path from `reinterpretAsBytes` (used all the time by GraalWasm). The
+    // impossible switch case throws an AssertionError, which is forbidden in PE code. Ideally,
+    // SubstrateVM should see that `reinterpretAsBytes` always calls `convert0` with `kind` = 'X'.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     native Target_jdk_incubator_vector_AbstractVector convert0(char kind, Target_jdk_incubator_vector_AbstractSpecies rsp);
 
+    // Called on the fast-path from `convert` (used by some less common operations). The impossible
+    // switch case throws an AssertionError, which is forbidden in PE code. Ideally, SubstrateVM
+    // should see that `convert` is always called with a fixed conversion.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    native Target_jdk_incubator_vector_AbstractVector convertShapeTemplate(Target_jdk_incubator_vector_VectorOperators.Conversion conv, Target_jdk_incubator_vector_VectorSpecies toSpecies, int part);
+    native Target_jdk_incubator_vector_AbstractVector convertShapeTemplate(Target_jdk_incubator_vector_VectorOperators.Target_jdk_incubator_vector_VectorOperators_Conversion conv, Target_jdk_incubator_vector_VectorSpecies toSpecies, int part);
 }
 
 @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_internal_vm_vector_VectorSupport {
 
     @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorMask", onlyWith = VectorAPIEnabled.class)
-    private static final class Target_jdk_incubator_vector_VectorSupport_VectorMask {
+    static final class Target_jdk_internal_vm_vector_VectorSupport_VectorMask {
     }
 
     @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorSpecies", onlyWith = VectorAPIEnabled.class)
-    static final class VectorSpecies {}
+    static final class Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies {
+    }
 
     @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorPayload", onlyWith = VectorAPIEnabled.class)
-    static final class VectorPayload {}
+    static final class Target_jdk_internal_vm_vector_VectorSupport_VectorPayload {
+    }
 
     @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorConvertOp", onlyWith = VectorAPIEnabled.class)
-    interface VectorConvertOp {}
+    interface Target_jdk_internal_vm_vector_VectorSupport_VectorConvertOp {
+    }
 
+    // This is problematic because of the `lanewiseTemplate` for binary operations on integral
+    // vectors. These have error handling for division by zero, where the input vector is tested
+    // for zeroes. The `anyTrue` predicate is used on the result of that test. `anyTrue` passes a
+    // lambda that implements `BiFunction` to `VectorSupport.test`. However, SubstrateVM cannot
+    // pinpoint the precise type of the mask (the test result), which makes the call site
+    // polymorphic. Given a precise type for the mask that results from comparing the input vector
+    // to 0, there should only be one admissible candidate for the `BiFunction` parameter.
+    // Furthermore, this should only show up in compilations of the `DIV` operator, but it
+    // contaminates compilations of other operators too.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native boolean test(int cond, Class<?> mClass, Class<?> eClass, int length, Target_jdk_incubator_vector_VectorSupport_VectorMask m1, Target_jdk_incubator_vector_VectorSupport_VectorMask m2, BiFunction<Target_jdk_incubator_vector_VectorSupport_VectorMask, Target_jdk_incubator_vector_VectorSupport_VectorMask, Boolean> defaultImpl);
+    static native boolean test(int cond, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m1, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m2, BiFunction<Target_jdk_internal_vm_vector_VectorSupport_VectorMask, Target_jdk_internal_vm_vector_VectorSupport_VectorMask, Boolean> defaultImpl);
 
+    // This is called internally by, e.g., `Long128Mask.cast`. `VectorSupport.convert` then calls
+    // a function using the `VectorConvertOp` functional interface. Even though `Long128Mask` passes
+    // in a fixed lambda, SubstrateVM sees multiple potential call targets, some of which throw
+    // AssertionErrors in impossible switch cases.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    native static VectorPayload convert(int oprId, Class<?> fromVectorClass, Class<?> fromeClass, int fromVLen, Class<?>   toVectorClass, Class<?>   toeClass, int   toVLen, VectorPayload v, VectorSpecies s, VectorConvertOp defaultImpl);
+    native static Target_jdk_internal_vm_vector_VectorSupport_VectorPayload convert(int oprId, Class<?> fromVectorClass, Class<?> fromeClass, int fromVLen, Class<?> toVectorClass, Class<?> toeClass, int toVLen, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_VectorConvertOp defaultImpl);
 }
 
 @TargetClass(className = "jdk.incubator.vector.VectorSpecies", onlyWith = VectorAPIEnabled.class)
@@ -1721,25 +1739,33 @@ final class Target_jdk_incubator_vector_VectorSpecies {
 
 @TargetClass(className = "jdk.incubator.vector.AbstractSpecies", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_AbstractSpecies {
+
     @Alias private Target_jdk_incubator_vector_AbstractVector dummyVector;
 
+    // We initialize the `dummyVector` fields during image build-time using VectorAPIFeature. We
+    // can have the getter method return the precomputed dummy vector directly.
     @Substitute
-    public Target_jdk_incubator_vector_AbstractVector dummyVector() {
+    Target_jdk_incubator_vector_AbstractVector dummyVector() {
         return dummyVector;
     }
 
+    // Slow-path method.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native ClassCastException checkFailed(Object what, Object required);
 
+    // Slow-path method.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     native IllegalArgumentException badElementBits(long iv, Object cv);
 
+    // Slow-path method.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native IllegalArgumentException badArrayBits(Object iv, boolean isInt, long cv);
 
+    // We pre-compute the vector species lookup table during image build-time using
+    // VectorAPIFeature. We do not call `computeSpecies` at runtime.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native Target_jdk_incubator_vector_AbstractSpecies computeSpecies(Target_jdk_incubator_vector_LaneType laneType, Target_jdk_incubator_vector_VectorShape shape);
@@ -1748,78 +1774,28 @@ final class Target_jdk_incubator_vector_AbstractSpecies {
 @TargetClass(className = "jdk.incubator.vector.VectorOperators", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_VectorOperators {
 
+    @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "Conversion", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_incubator_vector_VectorOperators_Conversion {
+    }
+
+    @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "Test", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_incubator_vector_VectorOperators_Test {
+    }
+
     @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "OperatorImpl", onlyWith = VectorAPIEnabled.class)
     private static final class Target_jdk_incubator_vector_VectorOperators_OperatorImpl {
 
+        // Slow-path method.
         @AnnotateOriginal
         @CompilerDirectives.TruffleBoundary
         native UnsupportedOperationException illegalOperation(int requireKind, int forbidKind);
     }
-
-    @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "Conversion", onlyWith = VectorAPIEnabled.class)
-    public interface Conversion {
-    }
-
-    @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "Test", onlyWith = VectorAPIEnabled.class)
-    public interface Test {
-    }
-}
-
-@TargetClass(className = "jdk.internal.foreign.AbstractMemorySegmentImpl", onlyWith = VectorAPIEnabled.class)
-final class Target_jdk_internal_foreign_AbstractMemorySegmentImpl {
-
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    native byte get(ValueLayout.OfByte layout, long offset);
-
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    native void set(ValueLayout.OfByte layout, long offset, byte value);
-
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    native short get(ValueLayout.OfShort layout, long offset);
-
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    native void set(ValueLayout.OfShort layout, long offset, short value);
-
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    native int get(ValueLayout.OfInt layout, long offset);
-
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    native void set(ValueLayout.OfInt layout, long offset, int value);
-
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    native long get(ValueLayout.OfLong layout, long offset);
-
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    native void set(ValueLayout.OfLong layout, long offset, long value);
-
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    native float get(ValueLayout.OfFloat layout, long offset);
-
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    native void set(ValueLayout.OfFloat layout, long offset, float value);
-
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    native double get(ValueLayout.OfDouble layout, long offset);
-
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    native void set(ValueLayout.OfDouble layout, long offset, double value);
 }
 
 @TargetClass(className = "jdk.incubator.vector.LaneType", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_LaneType {
 
+    // Slow-path method.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native RuntimeException badElementType(Class<?> elementType, Object expected);
@@ -1830,8 +1806,9 @@ final class Target_jdk_incubator_vector_VectorShape {
 }
 
 @TargetClass(className = "jdk.incubator.vector.AbstractMask", onlyWith = VectorAPIEnabled.class)
-final class Target_jdk_incubator_vector_AbstractMask<E> {
+final class Target_jdk_incubator_vector_AbstractMask {
 
+    // Slow-path method.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     private native IndexOutOfBoundsException checkIndexFailed(long offset, int lane, long length, int esize);
@@ -1840,6 +1817,7 @@ final class Target_jdk_incubator_vector_AbstractMask<E> {
 @TargetClass(className = "jdk.incubator.vector.VectorIntrinsics", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_VectorIntrinsics {
 
+    // Slow-path method.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native IllegalArgumentException requireLengthFailed(int haveLength, int length);
@@ -1849,13 +1827,20 @@ final class Target_jdk_incubator_vector_VectorIntrinsics {
 final class Target_jdk_incubator_vector_ByteVector {
 
     @TargetClass(className = "jdk.incubator.vector.ByteVector", innerClass = "ByteSpecies", onlyWith = VectorAPIEnabled.class)
-    static final class Target_jdk_incubator_vector_ByteSpecies {
+    static final class Target_jdk_incubator_vector_ByteVector_ByteSpecies {
 
+        // Dispatches using a switch statement on the (@Stable) vector species' bit size. In the
+        // impossible case, an AssertionError is throw. Even with the vector bit sizes precomputed
+        // during image build-time, we still see the AssertionErrors in SubstrateVM stack traces.
         @AnnotateOriginal
         @CompilerDirectives.TruffleBoundary
         native Target_jdk_incubator_vector_ByteVector zero();
     }
 
+    // Fast-path method which dispatches to the correct vector element comparison predicate.
+    // The switch uses AssertionError in the impossible case, which show up in the stack traces,
+    // even though the comparison operator should be fixed for any given invocation. Nevertheless,
+    // this method should only matter when a SIMD intrinsic could not be used.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native boolean compareWithOp(int cond, byte a, byte b);
@@ -1865,13 +1850,15 @@ final class Target_jdk_incubator_vector_ByteVector {
 final class Target_jdk_incubator_vector_ShortVector {
 
     @TargetClass(className = "jdk.incubator.vector.ShortVector", innerClass = "ShortSpecies", onlyWith = VectorAPIEnabled.class)
-    static final class Target_jdk_incubator_vector_ShortSpecies {
+    static final class Target_jdk_incubator_vector_ShortVector_ShortSpecies {
 
+        // See the comment on Target_jdk_incubator_vector_ByteVector_ByteSpecies.zero.
         @AnnotateOriginal
         @CompilerDirectives.TruffleBoundary
         native Target_jdk_incubator_vector_ShortVector zero();
     }
 
+    // See the comment on Target_jdk_incubator_vector_ByteVector.compareWithOp.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native boolean compareWithOp(int cond, short a, short b);
@@ -1881,13 +1868,15 @@ final class Target_jdk_incubator_vector_ShortVector {
 final class Target_jdk_incubator_vector_IntVector {
 
     @TargetClass(className = "jdk.incubator.vector.IntVector", innerClass = "IntSpecies", onlyWith = VectorAPIEnabled.class)
-    static final class Target_jdk_incubator_vector_IntSpecies {
+    static final class Target_jdk_incubator_vector_IntVector_IntSpecies {
 
+        // See the comment on Target_jdk_incubator_vector_ByteVector_ByteSpecies.zero.
         @AnnotateOriginal
         @CompilerDirectives.TruffleBoundary
         native Target_jdk_incubator_vector_IntVector zero();
     }
 
+    // See the comment on Target_jdk_incubator_vector_ByteVector.compareWithOp.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native boolean compareWithOp(int cond, int a, int b);
@@ -1897,13 +1886,15 @@ final class Target_jdk_incubator_vector_IntVector {
 final class Target_jdk_incubator_vector_LongVector {
 
     @TargetClass(className = "jdk.incubator.vector.LongVector", innerClass = "LongSpecies", onlyWith = VectorAPIEnabled.class)
-    static final class Target_jdk_incubator_vector_LongSpecies {
+    static final class Target_jdk_incubator_vector_LongVector_LongSpecies {
 
+        // See the comment on Target_jdk_incubator_vector_ByteVector_ByteSpecies.zero.
         @AnnotateOriginal
         @CompilerDirectives.TruffleBoundary
         native Target_jdk_incubator_vector_LongVector zero();
     }
 
+    // See the comment on Target_jdk_incubator_vector_ByteVector.compareWithOp.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native boolean compareWithOp(int cond, long a, long b);
@@ -1913,50 +1904,59 @@ final class Target_jdk_incubator_vector_LongVector {
 final class Target_jdk_incubator_vector_FloatVector {
 
     @TargetClass(className = "jdk.incubator.vector.FloatVector", innerClass = "FloatSpecies", onlyWith = VectorAPIEnabled.class)
-    static final class Target_jdk_incubator_vector_FloatSpecies {
+    static final class Target_jdk_incubator_vector_FloatVector_FloatSpecies {
 
+        // See the comment on Target_jdk_incubator_vector_ByteVector_ByteSpecies.zero.
         @AnnotateOriginal
         @CompilerDirectives.TruffleBoundary
         native Target_jdk_incubator_vector_FloatVector zero();
     }
 
+    // See the comment on Target_jdk_incubator_vector_ByteVector.compareWithOp.
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native boolean compareWithOp(int cond, float a, float b);
+
     @TargetClass(className = "jdk.incubator.vector.FloatVector", innerClass = "FTriOp", onlyWith = VectorAPIEnabled.class)
     interface Target_jdk_incubator_vector_FloatVector_FTriOp {
     }
 
+    // This is a fast-path method for the (scalar) implementation of a ternary operator. The only
+    // supported operator is fused-multiply-add, which uses `java.lang.Math.fma`, which in turn
+    // relies on `BigDecimal`. We need to keep `BigDecimal` methods out of PE code.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     native Target_jdk_incubator_vector_FloatVector tOpTemplate(Target_jdk_incubator_vector_Vector o1, Target_jdk_incubator_vector_Vector o2, Target_jdk_incubator_vector_FloatVector_FTriOp f);
-
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    static native boolean compareWithOp(int cond, float a, float b);
 }
 
 @TargetClass(className = "jdk.incubator.vector.DoubleVector", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_DoubleVector {
 
     @TargetClass(className = "jdk.incubator.vector.DoubleVector", innerClass = "DoubleSpecies", onlyWith = VectorAPIEnabled.class)
-    static final class Target_jdk_incubator_vector_DoubleSpecies {
+    static final class Target_jdk_incubator_vector_DoubleVector_DoubleSpecies {
 
+        // See the comment on Target_jdk_incubator_vector_ByteVector_ByteSpecies.zero.
         @AnnotateOriginal
         @CompilerDirectives.TruffleBoundary
         native Target_jdk_incubator_vector_DoubleVector zero();
     }
 
-    @TargetClass(className = "jdk.incubator.vector.DoubleVector", innerClass = "FTriOp", onlyWith = VectorAPIEnabled.class)
-    interface Target_jdk_incubator_vector_DoubleVector_FTriOp {
-    }
-
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    native Target_jdk_incubator_vector_DoubleVector tOpTemplate(Target_jdk_incubator_vector_Vector o1, Target_jdk_incubator_vector_Vector o2, Target_jdk_incubator_vector_DoubleVector_FTriOp f);
-
+    // See the comment on Target_jdk_incubator_vector_ByteVector.compareWithOp.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native boolean compareWithOp(int cond, double a, double b);
 
+    @TargetClass(className = "jdk.incubator.vector.DoubleVector", innerClass = "FTriOp", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_incubator_vector_DoubleVector_FTriOp {
+    }
+
+    // See the comment on Target_jdk_incubator_vector_FloatVector.tOpTemplate.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    native Target_jdk_incubator_vector_VectorMask testTemplate(Class<? extends Target_jdk_incubator_vector_VectorMask> maskType, Target_jdk_incubator_vector_VectorOperators.Test op);
+    native Target_jdk_incubator_vector_DoubleVector tOpTemplate(Target_jdk_incubator_vector_Vector o1, Target_jdk_incubator_vector_Vector o2, Target_jdk_incubator_vector_DoubleVector_FTriOp f);
+
+    // Throws AssertionError from some of the (inlined) switch statements' impossible cases.
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native Target_jdk_incubator_vector_VectorMask testTemplate(Class<? extends Target_jdk_incubator_vector_VectorMask> maskType, Target_jdk_incubator_vector_VectorOperators.Target_jdk_incubator_vector_VectorOperators_Test op);
 }
