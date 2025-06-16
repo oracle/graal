@@ -1662,6 +1662,14 @@ final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
 
 }
 
+@TargetClass(className = "jdk.incubator.vector.Vector", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_Vector {
+}
+
+@TargetClass(className = "jdk.incubator.vector.VectorMask", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_VectorMask {
+}
+
 @TargetClass(className = "jdk.incubator.vector.AbstractVector", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_AbstractVector {
 
@@ -1689,9 +1697,22 @@ final class Target_jdk_internal_vm_vector_VectorSupport {
     private static final class Target_jdk_incubator_vector_VectorSupport_VectorMask {
     }
 
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorSpecies", onlyWith = VectorAPIEnabled.class)
+    static final class VectorSpecies {}
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorPayload", onlyWith = VectorAPIEnabled.class)
+    static final class VectorPayload {}
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorConvertOp", onlyWith = VectorAPIEnabled.class)
+    interface VectorConvertOp {}
+
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native <M extends Target_jdk_incubator_vector_VectorSupport_VectorMask, E> boolean test(int cond, Class<?> mClass, Class<?> eClass, int length, M m1, M m2, BiFunction<M, M, Boolean> defaultImpl);
+    static native boolean test(int cond, Class<?> mClass, Class<?> eClass, int length, Target_jdk_incubator_vector_VectorSupport_VectorMask m1, Target_jdk_incubator_vector_VectorSupport_VectorMask m2, BiFunction<Target_jdk_incubator_vector_VectorSupport_VectorMask, Target_jdk_incubator_vector_VectorSupport_VectorMask, Boolean> defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native static VectorPayload convert(int oprId, Class<?> fromVectorClass, Class<?> fromeClass, int fromVLen, Class<?>   toVectorClass, Class<?>   toeClass, int   toVLen, VectorPayload v, VectorSpecies s, VectorConvertOp defaultImpl);
 }
 
 @TargetClass(className = "jdk.incubator.vector.VectorSpecies", onlyWith = VectorAPIEnabled.class)
@@ -1737,6 +1758,10 @@ final class Target_jdk_incubator_vector_VectorOperators {
 
     @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "Conversion", onlyWith = VectorAPIEnabled.class)
     public interface Conversion {
+    }
+
+    @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "Test", onlyWith = VectorAPIEnabled.class)
+    public interface Test {
     }
 }
 
@@ -1895,6 +1920,14 @@ final class Target_jdk_incubator_vector_FloatVector {
         native Target_jdk_incubator_vector_FloatVector zero();
     }
 
+    @TargetClass(className = "jdk.incubator.vector.FloatVector", innerClass = "FTriOp", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_incubator_vector_FloatVector_FTriOp {
+    }
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native Target_jdk_incubator_vector_FloatVector tOpTemplate(Target_jdk_incubator_vector_Vector o1, Target_jdk_incubator_vector_Vector o2, Target_jdk_incubator_vector_FloatVector_FTriOp f);
+
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native boolean compareWithOp(int cond, float a, float b);
@@ -1911,7 +1944,19 @@ final class Target_jdk_incubator_vector_DoubleVector {
         native Target_jdk_incubator_vector_DoubleVector zero();
     }
 
+    @TargetClass(className = "jdk.incubator.vector.DoubleVector", innerClass = "FTriOp", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_incubator_vector_DoubleVector_FTriOp {
+    }
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native Target_jdk_incubator_vector_DoubleVector tOpTemplate(Target_jdk_incubator_vector_Vector o1, Target_jdk_incubator_vector_Vector o2, Target_jdk_incubator_vector_DoubleVector_FTriOp f);
+
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native boolean compareWithOp(int cond, double a, double b);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native Target_jdk_incubator_vector_VectorMask testTemplate(Class<? extends Target_jdk_incubator_vector_VectorMask> maskType, Target_jdk_incubator_vector_VectorOperators.Test op);
 }
