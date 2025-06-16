@@ -32,6 +32,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -1693,4 +1695,108 @@ final class Target_jdk_incubator_vector_AbstractSpecies {
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native ClassCastException checkFailed(Object what, Object required);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native IllegalArgumentException badElementBits(long iv, Object cv);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native IllegalArgumentException badArrayBits(Object iv, boolean isInt, long cv);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_incubator_vector_AbstractSpecies computeSpecies(Target_jdk_incubator_vector_LaneType laneType, Target_jdk_incubator_vector_VectorShape shape);
+}
+
+@TargetClass(className = "jdk.incubator.vector.VectorOperators", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_VectorOperators {
+
+    @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "OperatorImpl", onlyWith = VectorAPIEnabled.class)
+    private static final class Target_jdk_incubator_vector_VectorOperators_OperatorImpl {
+
+        @AnnotateOriginal
+        @CompilerDirectives.TruffleBoundary
+        native UnsupportedOperationException illegalOperation(int requireKind, int forbidKind);
+    }
+}
+
+@TargetClass(className = "jdk.internal.foreign.AbstractMemorySegmentImpl", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_internal_foreign_AbstractMemorySegmentImpl {
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native byte get(ValueLayout.OfByte layout, long offset);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native void set(ValueLayout.OfByte layout, long offset, byte value);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native short get(ValueLayout.OfShort layout, long offset);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native void set(ValueLayout.OfShort layout, long offset, short value);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native int get(ValueLayout.OfInt layout, long offset);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native void set(ValueLayout.OfInt layout, long offset, int value);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native long get(ValueLayout.OfLong layout, long offset);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native void set(ValueLayout.OfLong layout, long offset, long value);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native float get(ValueLayout.OfFloat layout, long offset);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native void set(ValueLayout.OfFloat layout, long offset, float value);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native double get(ValueLayout.OfDouble layout, long offset);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    native void set(ValueLayout.OfDouble layout, long offset, double value);
+}
+
+@TargetClass(className = "jdk.incubator.vector.LaneType", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_LaneType {
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native RuntimeException badElementType(Class<?> elementType, Object expected);
+}
+
+@TargetClass(className = "jdk.incubator.vector.VectorShape", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_VectorShape {
+}
+
+@TargetClass(className = "jdk.incubator.vector.AbstractMask", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_AbstractMask<E> {
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    private native IndexOutOfBoundsException checkIndexFailed(long offset, int lane, long length, int esize);
+}
+
+@TargetClass(className = "jdk.incubator.vector.VectorIntrinsics", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_VectorIntrinsics {
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native IllegalArgumentException requireLengthFailed(int haveLength, int length);
 }
