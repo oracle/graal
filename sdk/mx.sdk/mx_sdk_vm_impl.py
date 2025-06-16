@@ -109,31 +109,6 @@ def svm_experimental_options(experimental_options):
     return ['-H:+UnlockExperimentalVMOptions'] + experimental_options + ['-H:-UnlockExperimentalVMOptions']
 
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-    suite=_suite,
-    name='Polyglot Launcher',
-    short_name='poly',
-    license_files=[],
-    third_party_license_files=[],
-    dir_name='polyglot',
-    launcher_configs=[mx_sdk_vm.LauncherConfig(
-        destination='bin/<exe:polyglot>',
-        jar_distributions=['sdk:LAUNCHER_COMMON'],
-        main_class='org.graalvm.launcher.PolyglotLauncher',
-        build_args=[
-            '--features=org.graalvm.launcher.PolyglotLauncherFeature',
-            '--tool:all',
-        ] + svm_experimental_options(['-H:-ParseRuntimeOptions']),
-        # No need to pass --enable-native-access=org.graalvm.shadowed.jline, because the polyglot bash launcher
-        # script adds JLine to class-path, not module-path, so we do not need to enable native access
-        is_main_launcher=True,
-        default_symlinks=True,
-        is_sdk_launcher=True,
-        is_polyglot=True,
-    )],
-))
-
-
 def gate_body(args, tasks):
     with mx_gate.Task('Sdk: GraalVM dist names', tasks, tags=['names']) as t:
         if t:
@@ -178,44 +153,6 @@ def registered_graalvm_components(stage1=False):
         # Expand dependencies
         add_dependencies([mx_sdk.graalvm_component_by_name(name) for name in default_components], excludes=True)
         add_dependencies(components_include_list, excludes=True)
-
-        # The polyglot library must be the last component that we register, since it depends on the other ones.
-        # To avoid registering it twice (once when `stage1 == False` and once when `stage1 == True`), we check that
-        # `libpoly` is not part of `registered_short_names`.
-        # Even when the polyglot library is already registered, we still need to add its dependencies to the current
-        # GraalVM (see call to `add_dependencies()`.
-        registered_short_names = [c.short_name for c in mx_sdk_vm.graalvm_components()]
-        if _with_polyglot_lib_project() and libpoly_has_entrypoints:
-            if 'libpoly' in registered_short_names:
-                libpolyglot_component = mx_sdk_vm.graalvm_component_by_name('libpoly')
-            else:
-                libpolyglot_component = mx_sdk_vm.GraalVmJreComponent(
-                    suite=_suite,
-                    name='Polyglot Library',
-                    short_name='libpoly',
-                    license_files=[],
-                    third_party_license_files=[],
-                    dir_name='polyglot',
-                    library_configs=[mx_sdk_vm.LibraryConfig(
-                        destination='<lib:polyglot>',
-                        # We can ignore `component.polyglot_lib_jar_dependencies` because, when building a native image,
-                        # the `GraalVmNativeImage` project has a build-time dependency to Stage1
-                        jar_distributions=[],
-                        build_args=[
-                               '-J-Xms20G',
-                               '-Dgraalvm.libpolyglot=true',
-                               '-Dorg.graalvm.polyglot.install_name_id=@rpath/<jre_home>/lib/polyglot/<lib:polyglot>',
-                               '--tool:all',
-                           ],
-                        is_polyglot=True,
-                        build_time=25,
-                    )],
-                )
-                mx_sdk_vm.register_graalvm_component(libpolyglot_component)
-            add_dependencies([libpolyglot_component])
-
-            if libpoly_build_dependencies:
-                mx.warn("Ignoring build dependency '{}' of '{}'. It should be already part of stage 1.".format(libpoly_build_dependencies, libpolyglot_component.name))
 
         ni_component = mx_sdk_vm.graalvm_component_by_name('ni', fatalIfMissing=False)
         niee_component = mx_sdk_vm.graalvm_component_by_name('niee', fatalIfMissing=False)
@@ -3759,8 +3696,6 @@ def _components_include_list():
 
 def _excluded_components():
     excluded = _parse_cmd_arg('exclude_components', parse_bool=False, default_value='')
-    if mx.get_opts().disable_polyglot or _env_var_to_bool('DISABLE_POLYGLOT'):
-        excluded.append('poly')
 
     expanded = []
     for name in excluded:
@@ -3803,10 +3738,6 @@ def _no_licenses():
 
 def graalvm_skip_archive():
     return mx.get_opts().graalvm_skip_archive or _env_var_to_bool('GRAALVM_SKIP_ARCHIVE')
-
-
-def _with_polyglot_lib_project():
-    return not (mx.get_opts().disable_libpolyglot or _env_var_to_bool('DISABLE_LIBPOLYGLOT'))
 
 
 def _expand_native_images_list(only):
