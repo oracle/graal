@@ -77,6 +77,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.DeoptimizationFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageGenerator;
+import com.oracle.svm.hosted.SymbolsFeature;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.image.NativeImageHeap;
@@ -151,7 +152,8 @@ public class DebuggerFeature implements InternalFeature {
         return Arrays.asList(
                         DeoptimizationFeature.class,
                         InterpreterFeature.class,
-                        IdentityMethodAddressResolverFeature.class);
+                        IdentityMethodAddressResolverFeature.class,
+                        SymbolsFeature.class);
     }
 
     private static Class<?> getArgumentClass(GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, ValueNode arg) {

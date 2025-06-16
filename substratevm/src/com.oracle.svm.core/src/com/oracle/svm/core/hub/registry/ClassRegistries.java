@@ -53,13 +53,9 @@ import com.oracle.svm.espresso.classfile.ParsingContext;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.ModifiedUTF8;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
-import com.oracle.svm.espresso.classfile.descriptors.NameSymbols;
-import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
-import com.oracle.svm.espresso.classfile.descriptors.Symbols;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
-import com.oracle.svm.espresso.classfile.descriptors.Utf8Symbols;
 import com.oracle.svm.espresso.classfile.perf.TimerCollection;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -92,9 +88,6 @@ public final class ClassRegistries implements ParsingContext {
     @Platforms(Platform.HOSTED_ONLY.class)//
     private final ConcurrentHashMap<ClassLoader, AbstractClassRegistry> buildTimeRegistries;
 
-    private final Utf8Symbols utf8;
-    private final NameSymbols names;
-    private final TypeSymbols types;
     private final AbstractClassRegistry bootRegistry;
     private final EconomicMap<String, String> bootPackageToModule;
 
@@ -105,13 +98,6 @@ public final class ClassRegistries implements ParsingContext {
         } else {
             bootRegistry = new AOTClassRegistry(null);
         }
-        ParserSymbols.ensureInitialized();
-        int initialSymbolTableCapacity = 4 * 1024;
-        Symbols symbols = Symbols.fromExisting(ParserSymbols.SYMBOLS.freeze(), initialSymbolTableCapacity, 0);
-        // let this resize when first used at runtime
-        utf8 = new Utf8Symbols(symbols);
-        names = new NameSymbols(symbols);
-        types = new TypeSymbols(symbols);
         buildTimeRegistries = new ConcurrentHashMap<>();
         bootPackageToModule = computeBootPackageToModuleMap();
     }
@@ -149,10 +135,6 @@ public final class ClassRegistries implements ParsingContext {
         return result;
     }
 
-    TypeSymbols getTypes() {
-        return types;
-    }
-
     public static Class<?> findBootstrapClass(String name) {
         try {
             return singleton().resolve(name, null);
@@ -167,7 +149,7 @@ public final class ClassRegistries implements ParsingContext {
             return null;
         }
         ByteSequence typeBytes = ByteSequence.createTypeFromName(name);
-        Symbol<Type> type = singleton().getTypes().lookupValidType(typeBytes);
+        Symbol<Type> type = SymbolsSupport.getTypes().lookupValidType(typeBytes);
         Class<?> result = null;
         if (type != null) {
             result = singleton().getRegistry(loader).findLoadedClass(type);
@@ -285,7 +267,7 @@ public final class ClassRegistries implements ParsingContext {
     }
 
     private Class<?> resolveInstanceType(ClassLoader loader, ByteSequence elementalType) throws ClassNotFoundException {
-        Symbol<Type> type = getTypes().getOrCreateValidType(elementalType);
+        Symbol<Type> type = SymbolsSupport.getTypes().getOrCreateValidType(elementalType);
         if (type == null) {
             return null;
         }
@@ -321,7 +303,7 @@ public final class ClassRegistries implements ParsingContext {
             throw sneakyThrow(new ClassNotFoundException(name));
         }
         ByteSequence typeBytes = ByteSequence.createTypeFromName(name);
-        Symbol<Type> type = singleton().getTypes().getOrCreateValidType(typeBytes);
+        Symbol<Type> type = SymbolsSupport.getTypes().getOrCreateValidType(typeBytes);
         if (type == null) {
             throw new NoClassDefFoundError(name);
         }
@@ -439,17 +421,17 @@ public final class ClassRegistries implements ParsingContext {
 
     @Override
     public Symbol<Name> getOrCreateName(ByteSequence byteSequence) {
-        return ClassRegistries.singleton().names.getOrCreate(byteSequence);
+        return SymbolsSupport.getNames().getOrCreate(byteSequence);
     }
 
     @Override
     public Symbol<Type> getOrCreateTypeFromName(ByteSequence byteSequence) {
-        return ClassRegistries.singleton().getTypes().getOrCreateValidType(TypeSymbols.nameToType(byteSequence));
+        return SymbolsSupport.getTypes().getOrCreateValidType(TypeSymbols.nameToType(byteSequence));
     }
 
     @Override
     public Symbol<? extends ModifiedUTF8> getOrCreateUtf8(ByteSequence byteSequence) {
         // Note: all symbols are strong for now
-        return ClassRegistries.singleton().utf8.getOrCreateValidUtf8(byteSequence, true);
+        return SymbolsSupport.getUtf8().getOrCreateValidUtf8(byteSequence, true);
     }
 }
