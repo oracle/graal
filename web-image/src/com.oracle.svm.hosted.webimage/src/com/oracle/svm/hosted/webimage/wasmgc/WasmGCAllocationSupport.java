@@ -95,7 +95,7 @@ public class WasmGCAllocationSupport {
         } else if (componentType == DynamicHub.fromClass(void.class)) {
             throw new IllegalArgumentException("Cannot allocate void array.");
         } else if (componentType.getArrayHub() == null || !componentType.getArrayHub().isInstantiated()) {
-            throw MissingReflectionRegistrationUtils.errorForArray(DynamicHub.toClass(componentType), 1);
+            throw MissingReflectionRegistrationUtils.reportArrayInstantiation(DynamicHub.toClass(componentType), 1);
         } else {
             throw VMError.shouldNotReachHereUnexpectedInput(componentType); // ExcludeFromJacocoGeneratedReport
         }

@@ -120,7 +120,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         public final Set<String> locales = ConcurrentHashMap.newKeySet();
         public final Set<String> classNames = ConcurrentHashMap.newKeySet();
 
-        private BundleConfiguration(UnresolvedConfigurationCondition condition, String baseName) {
+        public BundleConfiguration(UnresolvedConfigurationCondition condition, String baseName) {
             this.condition = condition;
             this.baseName = baseName;
         }
@@ -386,7 +386,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         return ResourceConfigurationParser.create(combinedFileSchema, ConfigurationConditionResolver.identityResolver(), new ParserAdapter(this), parserOptions);
     }
 
-    private static void printResourceBundle(BundleConfiguration config, JsonWriter writer, boolean combinedFile) throws IOException {
+    public static void printResourceBundle(BundleConfiguration config, JsonWriter writer, boolean combinedFile) throws IOException {
         writer.appendObjectStart();
         ConfigurationConditionPrintable.printConditionAttribute(config.condition, writer, combinedFile);
         writer.quote(combinedFile ? BUNDLE_KEY : NAME_KEY).appendFieldSeparator().quote(config.baseName);
@@ -419,7 +419,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         return true;
     }
 
-    private static void conditionalGlobElementJson(ConditionalElement<ResourceEntry> p, JsonWriter w, boolean combinedFile) throws IOException {
+    public static void conditionalGlobElementJson(ConditionalElement<ResourceEntry> p, JsonWriter w, boolean combinedFile) throws IOException {
         String pattern = p.element().pattern();
         String module = p.element().module();
         w.appendObjectStart();

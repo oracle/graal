@@ -713,7 +713,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             traceClassFlagQuery(mask);
         }
         if (throwMissingRegistrationErrors() && !(isClassFlagSet(mask) && getConditions().satisfied())) {
-            MissingReflectionRegistrationUtils.forBulkQuery(DynamicHub.toClass(this), methodName);
+            MissingReflectionRegistrationUtils.reportClassQuery(DynamicHub.toClass(this), methodName);
         }
     }
 
@@ -1321,7 +1321,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         if (field == null) {
             if (throwMissingErrors && !allElementsRegistered(publicOnly, ALL_DECLARED_FIELDS_FLAG, ALL_FIELDS_FLAG)) {
-                MissingReflectionRegistrationUtils.forField(clazz, fieldName);
+                MissingReflectionRegistrationUtils.reportFieldQuery(clazz, fieldName);
             }
             /*
              * If getDeclaredFields (or getFields for a public field) is registered, we know for
@@ -1334,7 +1334,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             boolean negative = decoder.isNegative(fieldModifiers);
             boolean hiding = decoder.isHiding(fieldModifiers);
             if (throwMissingErrors && hiding) {
-                MissingReflectionRegistrationUtils.forField(clazz, fieldName);
+                MissingReflectionRegistrationUtils.reportFieldQuery(clazz, fieldName);
             }
             if (negative || hiding) {
                 throw new NoSuchFieldException(fieldName);
@@ -1407,7 +1407,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             int allPublicFlag = isConstructor ? ALL_CONSTRUCTORS_FLAG : ALL_METHODS_FLAG;
             if (throwMissingErrors && !allElementsRegistered(publicOnly, allDeclaredFlag, allPublicFlag) &&
                             !(isConstructor && isInterface())) {
-                MissingReflectionRegistrationUtils.forMethod(clazz, methodName, parameterTypes);
+                MissingReflectionRegistrationUtils.reportMethodQuery(clazz, methodName, parameterTypes);
             }
             /*
              * If getDeclaredMethods (or getMethods for a public method) is registered, we know for
@@ -1421,7 +1421,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             boolean negative = decoder.isNegative(methodModifiers);
             boolean hiding = decoder.isHiding(methodModifiers);
             if (throwMissingErrors && hiding) {
-                MissingReflectionRegistrationUtils.forMethod(clazz, methodName, parameterTypes);
+                MissingReflectionRegistrationUtils.reportMethodQuery(clazz, methodName, parameterTypes);
             }
             return !(negative || hiding);
         }
@@ -1974,7 +1974,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             throw new UnsupportedOperationException(new IllegalArgumentException());
         }
         if (companion.arrayHub == null) {
-            MissingReflectionRegistrationUtils.forClass(getTypeName() + "[]");
+            MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]");
         } else if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
             MetadataTracer.singleton().traceReflectionType(companion.arrayHub.getTypeName());
         }

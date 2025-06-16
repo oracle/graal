@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.reflect;
 
-import static com.oracle.svm.core.MissingRegistrationUtils.ERROR_EMPHASIS_INDENT;
-
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -38,56 +36,77 @@ import java.util.StringJoiner;
 
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 
+import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 
-public final class MissingReflectionRegistrationUtils {
+public final class MissingReflectionRegistrationUtils extends MissingRegistrationUtils {
 
-    public static void forClass(String className) {
-        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access class", className),
+    public static void reportClassAccess(String className) {
+        String json = elementToJSON(namedConfigurationType(className));
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
+                        reflectionError("access the class", quote(className), json),
                         Class.class, null, className, null);
         report(exception);
     }
 
-    public static void forUnsafeAllocation(String className) {
-        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("unsafe instantiate class", className),
-                        Class.class, null, className, null);
+    public static void reportUnsafeAllocation(Class<?> clazz) {
+        ConfigurationType type = getConfigurationType(clazz);
+        type.setUnsafeAllocated();
+        String json = elementToJSON(type);
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
+                        reflectionError("unsafe instantiate", typeDescriptor(clazz), json),
+                        Class.class, null, clazz.getTypeName(), null);
         report(exception);
     }
 
-    public static void forField(Class<?> declaringClass, String fieldName) {
-        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access field",
-                        declaringClass.getTypeName() + "#" + fieldName),
+    public static void reportFieldQuery(Class<?> declaringClass, String fieldName) {
+        ConfigurationType type = getConfigurationType(declaringClass);
+        String json = elementToJSON(type);
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
+                        reflectionError("access field", quote(declaringClass.getTypeName() + "#" + fieldName), json),
                         Field.class, declaringClass, fieldName, null);
         report(exception);
     }
 
-    public static MissingReflectionRegistrationError errorForQueriedOnlyField(Field field) {
-        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("read or write field", field.toString()),
+    public static MissingReflectionRegistrationError reportAccessedField(Field field) {
+        ConfigurationType type = getConfigurationType(field.getDeclaringClass());
+        addField(type, field.getName());
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
+                        reflectionError("read or write field", quote(field.toString()), elementToJSON(type)),
                         field.getClass(), field.getDeclaringClass(), field.getName(), null);
         report(exception);
         /*
          * If report doesn't throw, we throw the exception anyway since this is a Native
          * Image-specific error that is unrecoverable in any case.
          */
-        return exception;
+        throw exception;
     }
 
-    public static void forMethod(Class<?> declaringClass, String methodName, Class<?>[] paramTypes) {
+    public static void reportMethodQuery(Class<?> declaringClass, String methodName, Class<?>[] paramTypes) {
         StringJoiner paramTypeNames = new StringJoiner(", ", "(", ")");
         if (paramTypes != null) {
             for (Class<?> paramType : paramTypes) {
                 paramTypeNames.add(paramType.getTypeName());
             }
         }
-        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access method",
-                        declaringClass.getTypeName() + "#" + methodName + paramTypeNames),
+        ConfigurationType type = getConfigurationType(declaringClass);
+        String json = elementToJSON(type);
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
+                        reflectionError("access method", quote(declaringClass.getTypeName() + "#" + methodName + paramTypeNames), json),
                         Method.class, declaringClass, methodName, paramTypes);
         report(exception);
     }
 
-    public static MissingReflectionRegistrationError errorForQueriedOnlyExecutable(Executable executable) {
-        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("invoke method", executable.toString()),
+    public static MissingReflectionRegistrationError reportInvokedExecutable(Executable executable) {
+        ConfigurationType type = getConfigurationType(executable.getDeclaringClass());
+        var methodName = executable instanceof Constructor<?> ? "<init>" : executable.getName();
+        var executableType = executable instanceof Constructor<?> ? "constructor" : "method";
+        addMethod(type, methodName, executable.getParameterTypes());
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
+                        reflectionError("invoke " + executableType, quote(executable.toString()), elementToJSON(type)),
                         executable.getClass(), executable.getDeclaringClass(), executable.getName(), executable.getParameterTypes());
         report(exception);
         /*
@@ -97,17 +116,19 @@ public final class MissingReflectionRegistrationUtils {
         return exception;
     }
 
-    public static void forBulkQuery(Class<?> declaringClass, String methodName) {
-        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access",
-                        declaringClass.getTypeName() + "." + methodName + "()"),
+    public static void reportClassQuery(Class<?> declaringClass, String methodName) {
+        ConfigurationType type = getConfigurationType(declaringClass);
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
+                        reflectionError("access the", typeDescriptor(declaringClass), elementToJSON(type)),
                         null, declaringClass, methodName, null);
         report(exception);
     }
 
-    public static MissingReflectionRegistrationError errorForProxy(Class<?>... interfaces) {
-        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access the proxy class inheriting",
-                        Arrays.toString(Arrays.stream(interfaces).map(Class::getTypeName).toArray()),
-                        "The order of interfaces used to create proxies matters.", "dynamic-proxy"),
+    public static MissingReflectionRegistrationError reportProxyAccess(Class<?>... interfaces) {
+        var interfaceList = Arrays.stream(interfaces).map(Class::getTypeName).toList();
+        ConfigurationType type = new ConfigurationType(UnresolvedConfigurationCondition.alwaysTrue(), new ProxyConfigurationTypeDescriptor(interfaceList), true);
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
+                        reflectionError("access the proxy class inheriting", interfacesString(interfaces), elementToJSON(type)),
                         Proxy.class, null, null, interfaces);
         report(exception);
         /*
@@ -117,10 +138,11 @@ public final class MissingReflectionRegistrationUtils {
         return exception;
     }
 
-    public static MissingReflectionRegistrationError errorForArray(Class<?> elementClass, int dimension) {
-        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("instantiate the array class",
-                        elementClass.getTypeName() + "[]".repeat(dimension),
-                        "Add \"unsafeAllocated\" to the array class registration to enable runtime instantiation.", "reflection"),
+    public static MissingReflectionRegistrationError reportArrayInstantiation(Class<?> elementClass, int dimension) {
+        String typeName = elementClass.getTypeName() + "[]".repeat(dimension);
+        ConfigurationType type = namedConfigurationType(typeName);
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
+                        reflectionError("instantiate the array class", quote(typeName), elementToJSON(type)),
                         null, null, null, null);
         report(exception);
         /*
@@ -130,21 +152,8 @@ public final class MissingReflectionRegistrationUtils {
         return exception;
     }
 
-    private static String errorMessage(String failedAction, String elementDescriptor) {
-        return errorMessage(failedAction, elementDescriptor, null, "reflection");
-    }
-
-    private static String errorMessage(String failedAction, String elementDescriptor, String note, String helpLink) {
-        /* Can't use multi-line strings as they pull in format and bloat "Hello, World!" */
-        return "The program tried to reflectively " + failedAction +
-                        System.lineSeparator() +
-                        System.lineSeparator() +
-                        ERROR_EMPHASIS_INDENT + elementDescriptor +
-                        System.lineSeparator() +
-                        System.lineSeparator() +
-                        "without it being registered for runtime reflection. Add " + elementDescriptor + " to the " + helpLink + " metadata to solve this problem. " +
-                        (note != null ? "Note: " + note + " " : "") +
-                        "See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#" + helpLink + " for help.";
+    private static String reflectionError(String failedAction, String elementDescriptor, String json) {
+        return registrationMessage(failedAction, elementDescriptor, json, "reflectively", "reflection", "reflection");
     }
 
     private static void report(MissingReflectionRegistrationError exception) {

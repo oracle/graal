@@ -330,7 +330,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
             }
         } else if (result == null) {
             if (throwMissingRegistrationErrors()) {
-                MissingReflectionRegistrationUtils.forClass(className);
+                MissingReflectionRegistrationUtils.reportClassAccess(className);
             }
 
             if (returnNullOnException) {

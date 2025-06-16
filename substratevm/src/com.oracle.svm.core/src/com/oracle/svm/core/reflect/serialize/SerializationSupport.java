@@ -280,8 +280,8 @@ public class SerializationSupport implements MultiLayeredImageSingleton, Seriali
 
         String targetConstructorClassName = targetConstructorClass.getName();
         if (ThrowMissingRegistrationErrors.hasBeenSet()) {
-            MissingSerializationRegistrationUtils.missingSerializationRegistration(declaringClass,
-                            "type " + declaringClass.getTypeName() + " with target constructor class: " + targetConstructorClassName);
+            MissingSerializationRegistrationUtils.reportSerialization(declaringClass,
+                            "type '" + declaringClass.getTypeName() + "' with target constructor class '" + targetConstructorClassName + "'");
         } else {
             throw VMError.unsupportedFeature("SerializationConstructorAccessor class not found for declaringClass: " + declaringClass.getName() +
                             " (targetConstructorClass: " + targetConstructorClassName + "). Usually adding " + declaringClass.getName() +
