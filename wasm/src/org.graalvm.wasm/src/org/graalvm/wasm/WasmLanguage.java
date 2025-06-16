@@ -255,7 +255,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         super.finalizeContext(context);
         context.memoryContext().close();
         try {
-            context.contextStore().fdManager().close();
+            context.fdManager().close();
         } catch (IOException e) {
             throw new RuntimeException("Error while closing WasmFilesManager.");
         }

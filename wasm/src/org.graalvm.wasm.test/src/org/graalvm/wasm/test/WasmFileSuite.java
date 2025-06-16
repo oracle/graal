@@ -165,11 +165,25 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         return inCI() || inWindows();
     }
 
-    private static Value findMain(WasmStore wasmStore) {
-        for (final WasmInstance instance : wasmStore.moduleInstances().values()) {
-            final WasmFunctionInstance function = instance.inferEntryPoint();
+    private static WasmInstance toWasmInstance(Value instance) {
+        final WasmContext wasmContext = WasmContext.get(null);
+        return (WasmInstance) wasmContext.environment().asGuestValue(instance);
+    }
+
+    private static Value inferEntryPoint(Value moduleInstance) {
+        final WasmInstance wasmInstance = toWasmInstance(moduleInstance);
+        final WasmFunctionInstance function = wasmInstance.inferEntryPoint();
+        if (function != null) {
+            return Value.asValue(function);
+        }
+        return null;
+    }
+
+    private static Value findMain(List<Value> moduleInstances) {
+        for (final Value instance : moduleInstances) {
+            final Value function = inferEntryPoint(instance);
             if (function != null) {
-                return Value.asValue(function);
+                return function;
             }
         }
         throw new AssertionFailedError("No start function exported.");
@@ -185,16 +199,18 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             // This is needed so that we can call WasmContext.getCurrent().
             context.enter();
 
+            final List<Value> moduleInstances;
             try {
-                sources.forEach(context::eval);
+                moduleInstances = sources.stream().map(context::eval).toList();
             } catch (PolyglotException e) {
                 validateThrown(testCase.data(), WasmCaseData.ErrorType.Validation, e);
                 return;
             }
 
             final WasmContext wasmContext = WasmContext.get(null);
-            final var contextStore = wasmContext.contextStore();
-            final Value mainFunction = findMain(contextStore);
+            final Value mainFunction = findMain(moduleInstances);
+            final List<WasmInstance> instanceList = moduleInstances.stream().map(i -> toWasmInstance(i)).toList();
+            final var contextStore = instanceList.get(0).store();
 
             resetStatus(System.out, phaseIcon, phaseLabel);
 
@@ -246,11 +262,10 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                                 contextStore.tables().table(j).reset();
                             }
                         }
-                        List<WasmInstance> instanceList = new ArrayList<>(contextStore.moduleInstances().values());
-                        instanceList.sort(Comparator.comparingInt(RuntimeState::startFunctionIndex));
-                        for (WasmInstance instance : instanceList) {
-                            if (!instance.isBuiltin()) {
-                                contextStore.reinitInstance(instance, reinitMemory);
+
+                        for (WasmInstance instance : instanceList.stream().sorted(Comparator.comparingInt(RuntimeState::startFunctionIndex)).toList()) {
+                            if (!instance.module().isBuiltin()) {
+                                instance.store().reinitInstance(instance, reinitMemory);
                             }
                         }
 
@@ -546,7 +561,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             }
             System.err.printf("\uD83D\uDCA5\u001B[31m %d/%d Wasm tests passed.\u001B[0m%n", qualifyingTestCases.size() - errors.size(), qualifyingTestCases.size());
             System.out.println();
-            fail();
+            fail("Some tests failed. See errors above.");
         } else {
             System.out.printf("\uD83C\uDF40\u001B[32m %d/%d Wasm tests passed.\u001B[0m%n", qualifyingTestCases.size() - errors.size(), qualifyingTestCases.size());
             System.out.println();
