@@ -1823,6 +1823,14 @@ final class Target_jdk_incubator_vector_VectorIntrinsics {
 @TargetClass(className = "jdk.incubator.vector.ByteVector", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_ByteVector {
 
+    @TargetClass(className = "jdk.incubator.vector.ByteVector", innerClass = "ByteSpecies", onlyWith = VectorAPIEnabled.class)
+    static final class Target_jdk_incubator_vector_ByteSpecies {
+
+        @AnnotateOriginal
+        @CompilerDirectives.TruffleBoundary
+        native Target_jdk_incubator_vector_ByteVector zero();
+    }
+
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native boolean compareWithOp(int cond, byte a, byte b);
@@ -1830,6 +1838,14 @@ final class Target_jdk_incubator_vector_ByteVector {
 
 @TargetClass(className = "jdk.incubator.vector.ShortVector", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_ShortVector {
+
+    @TargetClass(className = "jdk.incubator.vector.ShortVector", innerClass = "ShortSpecies", onlyWith = VectorAPIEnabled.class)
+    static final class Target_jdk_incubator_vector_ShortSpecies {
+
+        @AnnotateOriginal
+        @CompilerDirectives.TruffleBoundary
+        native Target_jdk_incubator_vector_ShortVector zero();
+    }
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
@@ -1839,6 +1855,14 @@ final class Target_jdk_incubator_vector_ShortVector {
 @TargetClass(className = "jdk.incubator.vector.IntVector", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_IntVector {
 
+    @TargetClass(className = "jdk.incubator.vector.IntVector", innerClass = "IntSpecies", onlyWith = VectorAPIEnabled.class)
+    static final class Target_jdk_incubator_vector_IntSpecies {
+
+        @AnnotateOriginal
+        @CompilerDirectives.TruffleBoundary
+        native Target_jdk_incubator_vector_IntVector zero();
+    }
+
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native boolean compareWithOp(int cond, int a, int b);
@@ -1846,6 +1870,14 @@ final class Target_jdk_incubator_vector_IntVector {
 
 @TargetClass(className = "jdk.incubator.vector.LongVector", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_LongVector {
+
+    @TargetClass(className = "jdk.incubator.vector.LongVector", innerClass = "LongSpecies", onlyWith = VectorAPIEnabled.class)
+    static final class Target_jdk_incubator_vector_LongSpecies {
+
+        @AnnotateOriginal
+        @CompilerDirectives.TruffleBoundary
+        native Target_jdk_incubator_vector_LongVector zero();
+    }
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
@@ -1855,6 +1887,14 @@ final class Target_jdk_incubator_vector_LongVector {
 @TargetClass(className = "jdk.incubator.vector.FloatVector", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_FloatVector {
 
+    @TargetClass(className = "jdk.incubator.vector.FloatVector", innerClass = "FloatSpecies", onlyWith = VectorAPIEnabled.class)
+    static final class Target_jdk_incubator_vector_FloatSpecies {
+
+        @AnnotateOriginal
+        @CompilerDirectives.TruffleBoundary
+        native Target_jdk_incubator_vector_FloatVector zero();
+    }
+
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native boolean compareWithOp(int cond, float a, float b);
@@ -1862,6 +1902,14 @@ final class Target_jdk_incubator_vector_FloatVector {
 
 @TargetClass(className = "jdk.incubator.vector.DoubleVector", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_DoubleVector {
+
+    @TargetClass(className = "jdk.incubator.vector.DoubleVector", innerClass = "DoubleSpecies", onlyWith = VectorAPIEnabled.class)
+    static final class Target_jdk_incubator_vector_DoubleSpecies {
+
+        @AnnotateOriginal
+        @CompilerDirectives.TruffleBoundary
+        native Target_jdk_incubator_vector_DoubleVector zero();
+    }
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
