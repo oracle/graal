@@ -34,10 +34,13 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.cds.ArchivedRegistryData;
+import com.oracle.truffle.espresso.cds.CDSSupport;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.classfile.tables.AbstractModuleTable;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -70,19 +73,37 @@ public final class ClassRegistries {
 
     public ClassRegistries(EspressoContext context) {
         this.context = context;
-        this.bootClassRegistry = new BootClassRegistry(context.getClassLoadingEnv().getNewLoaderId());
+        this.bootClassRegistry = createBootClassRegistry(context);
         this.constraints = new LoadingConstraints(context);
     }
 
+    private static BootClassRegistry createBootClassRegistry(EspressoContext context) {
+        ArchivedRegistryData archivedRegistryData = null;
+        CDSSupport cds = context.getCDS();
+        if (cds != null && cds.isUsingArchive()) {
+            archivedRegistryData = cds.getBootClassRegistryData();
+        }
+        return new BootClassRegistry(context.getClassLoadingEnv().getNewLoaderId(), archivedRegistryData);
+    }
+
     public void initJavaBaseModule() {
-        this.javaBaseModule = bootClassRegistry.modules().createAndAddEntry(Names.java_base, null, null, false, null);
+        // Do not create java.base new if already (partially) loaded from CDS archive.
+        CDSSupport cds = context.getCDS();
+        // java.base is already registered in the boot registry IFF CDS is enabled.
+        assert (cds == null || !cds.isUsingArchive()) == (bootClassRegistry.modules().lookup(Names.java_base) == null);
+        this.javaBaseModule = bootClassRegistry.modules().lookupOrCreate(Names.java_base, new AbstractModuleTable.ModuleData<>(null, null, null, 0, false));
     }
 
     public ClassRegistry getClassRegistry(@JavaType(ClassLoader.class) StaticObject classLoader) {
         if (StaticObject.isNull(classLoader)) {
             return bootClassRegistry;
         }
+        ClassRegistry classRegistry = getOrInitializeClassRegistry(classLoader, null);
+        assert classRegistry != null;
+        return classRegistry;
+    }
 
+    public ClassRegistry getOrInitializeClassRegistry(StaticObject classLoader, ArchivedRegistryData archivedRegistryData) {
         // Double-checked locking to attach class registry to guest instance.
         ClassRegistry classRegistry = (ClassRegistry) context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY.getHiddenObject(classLoader, true);
         if (classRegistry == null) {
@@ -95,20 +116,18 @@ public final class ClassRegistries {
             synchronized (weakClassLoaderSet) {
                 classRegistry = (ClassRegistry) context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY.getHiddenObject(classLoader, true);
                 if (classRegistry == null) {
-                    classRegistry = registerRegistry(classLoader);
+                    classRegistry = registerRegistry(classLoader, archivedRegistryData);
                 }
             }
         }
-
-        assert classRegistry != null;
         return classRegistry;
     }
 
     @TruffleBoundary
-    private ClassRegistry registerRegistry(@JavaType(ClassLoader.class) StaticObject classLoader) {
+    private ClassRegistry registerRegistry(@JavaType(ClassLoader.class) StaticObject classLoader, ArchivedRegistryData archivedRegistryData) {
         assert Thread.holdsLock(weakClassLoaderSet);
         ClassRegistry classRegistry;
-        classRegistry = new GuestClassRegistry(context.getClassLoadingEnv(), classLoader);
+        classRegistry = new GuestClassRegistry(context.getClassLoadingEnv(), classLoader, archivedRegistryData);
         context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY.setHiddenObject(classLoader, classRegistry, true);
         // Register the class loader in the weak set.
         weakClassLoaderSet.add(classLoader);
