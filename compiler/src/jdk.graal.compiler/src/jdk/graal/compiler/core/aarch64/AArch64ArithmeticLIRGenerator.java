@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -286,24 +286,13 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     protected static AArch64Kind getFloatConvertResultKind(FloatConvert op) {
-        switch (op) {
-            case F2I:
-            case D2I:
-                return AArch64Kind.DWORD;
-            case F2L:
-            case D2L:
-                return AArch64Kind.QWORD;
-            case I2F:
-            case L2F:
-            case D2F:
-                return AArch64Kind.SINGLE;
-            case I2D:
-            case L2D:
-            case F2D:
-                return AArch64Kind.DOUBLE;
-            default:
-                throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
-        }
+        return switch (op) {
+            case F2I, D2I, F2UI, D2UI -> AArch64Kind.DWORD;
+            case F2L, D2L, F2UL, D2UL -> AArch64Kind.QWORD;
+            case D2F, I2F, L2F, UI2F, UL2F -> AArch64Kind.SINGLE;
+            case F2D, I2D, L2D, UI2D, UL2D -> AArch64Kind.DOUBLE;
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
+        };
     }
 
     @Override

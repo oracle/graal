@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,17 @@ public enum FloatConvert {
     D2F(FloatConvertCategory.FloatingPointToFloatingPoint, 64),
     I2D(FloatConvertCategory.IntegerToFloatingPoint, 32),
     L2D(FloatConvertCategory.IntegerToFloatingPoint, 64),
-    F2D(FloatConvertCategory.FloatingPointToFloatingPoint, 32);
+    F2D(FloatConvertCategory.FloatingPointToFloatingPoint, 32),
+
+    // to or from unsigned integer
+    F2UI(FloatConvertCategory.FloatingPointToInteger, 32),
+    D2UI(FloatConvertCategory.FloatingPointToInteger, 64),
+    F2UL(FloatConvertCategory.FloatingPointToInteger, 32),
+    D2UL(FloatConvertCategory.FloatingPointToInteger, 64),
+    UI2F(FloatConvertCategory.IntegerToFloatingPoint, 32),
+    UL2F(FloatConvertCategory.IntegerToFloatingPoint, 64),
+    UI2D(FloatConvertCategory.IntegerToFloatingPoint, 32),
+    UL2D(FloatConvertCategory.IntegerToFloatingPoint, 64);
 
     private final FloatConvertCategory category;
     private final int inputBits;
@@ -55,30 +65,27 @@ public enum FloatConvert {
     }
 
     public FloatConvert reverse() {
-        switch (this) {
-            case D2F:
-                return F2D;
-            case D2I:
-                return I2D;
-            case D2L:
-                return L2D;
-            case F2D:
-                return D2F;
-            case F2I:
-                return I2F;
-            case F2L:
-                return L2F;
-            case I2D:
-                return D2I;
-            case I2F:
-                return F2I;
-            case L2D:
-                return D2L;
-            case L2F:
-                return F2L;
-            default:
-                throw GraalError.shouldNotReachHereUnexpectedValue(this); // ExcludeFromJacocoGeneratedReport
-        }
+        return switch (this) {
+            case D2F -> F2D;
+            case D2I -> I2D;
+            case D2L -> L2D;
+            case F2D -> D2F;
+            case F2I -> I2F;
+            case F2L -> L2F;
+            case I2D -> D2I;
+            case I2F -> F2I;
+            case L2D -> D2L;
+            case L2F -> F2L;
+            case F2UI -> UI2F;
+            case D2UI -> UI2D;
+            case F2UL -> UL2F;
+            case D2UL -> UL2D;
+            case UI2F -> F2UI;
+            case UL2F -> F2UL;
+            case UI2D -> D2UI;
+            case UL2D -> D2UL;
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(this); // ExcludeFromJacocoGeneratedReport
+        };
     }
 
     public int getInputBits() {
