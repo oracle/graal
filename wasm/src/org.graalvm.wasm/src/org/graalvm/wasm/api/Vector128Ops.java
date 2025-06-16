@@ -835,7 +835,7 @@ public class Vector128Ops {
         DoubleVector z = F64X2.reinterpret(zBytes);
         DoubleVector result = switch (vectorOpcode) {
             case Bytecode.VECTOR_F64X2_RELAXED_MADD -> x.lanewise(VectorOperators.FMA, y, z);
-            case Bytecode.VECTOR_F64X2_RELAXED_NMADD -> x.neg().lanewise(VectorOperators.FMA, y, z);
+            case Bytecode.VECTOR_F64X2_RELAXED_NMADD -> castDouble128(x.neg()).lanewise(VectorOperators.FMA, y, z);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
         return result.reinterpretAsBytes();
