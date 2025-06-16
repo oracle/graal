@@ -4,4 +4,4 @@ OpenIDE-Module-Install: org/graalvm/visualizer/coordinator/impl/Installer.class
 OpenIDE-Module-Layer: org/graalvm/visualizer/coordinator/layer.xml
 OpenIDE-Module-Localizing-Bundle: org/graalvm/visualizer/coordinator/Bundle.properties
 OpenIDE-Module-Specification-Version: 1.2
-
+OpenIDE-Module-Hide-Classpath-Packages: jdk.graal.compiler.graphio.**

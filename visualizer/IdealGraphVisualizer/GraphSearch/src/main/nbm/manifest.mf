@@ -4,4 +4,4 @@ OpenIDE-Module: org.graalvm.visualizer.search
 OpenIDE-Module-Layer: org/graalvm/visualizer/search/layer.xml
 OpenIDE-Module-Localizing-Bundle: org/graalvm/visualizer/search/Bundle.properties
 OpenIDE-Module-Specification-Version: 1
-
+OpenIDE-Module-Hide-Classpath-Packages: jdk.graal.compiler.graphio.**

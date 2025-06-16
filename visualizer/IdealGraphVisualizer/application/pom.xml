@@ -86,7 +86,6 @@
                     <systemPropertyVariables>
                         <all.clusters>${all.clusters}</all.clusters>
                         <branding.token>${brandingToken}</branding.token>
-                        <java.awt.headless>true</java.awt.headless>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
