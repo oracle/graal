@@ -176,9 +176,9 @@ def _run_java_truffle(args=None, cwd=None, nonZeroIsFatal=True, out=None, err=No
 
 def _run_espresso(args=None, cwd=None, nonZeroIsFatal=True, out=None, err=None, timeout=None):
     if _has_native_espresso_standalone():
-        _run_java_truffle(args, cwd, nonZeroIsFatal, out, err, timeout)
+        return _run_java_truffle(args, cwd, nonZeroIsFatal, out, err, timeout)
     else:
-        _run_espresso_launcher(args, cwd, nonZeroIsFatal, out, err, timeout)
+        return _run_espresso_launcher(args, cwd, nonZeroIsFatal, out, err, timeout)
 
 
 def _run_espresso_meta(args, nonZeroIsFatal=True, timeout=None):

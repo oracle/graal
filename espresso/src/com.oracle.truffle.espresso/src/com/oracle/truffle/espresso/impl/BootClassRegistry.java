@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.espresso.cds.ArchivedRegistryData;
 import com.oracle.truffle.espresso.classfile.ClasspathFile;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
@@ -53,8 +54,8 @@ public final class BootClassRegistry extends ClassRegistry {
         loadKlassCacheHits.inc();
     }
 
-    public BootClassRegistry(long loaderID) {
-        super(loaderID);
+    public BootClassRegistry(long loaderID, ArchivedRegistryData archivedRegistryData) {
+        super(loaderID, archivedRegistryData);
     }
 
     @Override
