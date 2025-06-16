@@ -27,6 +27,7 @@ package com.oracle.svm.core.jfr;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.svm.core.os.RawFileOperationSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -750,7 +751,15 @@ public class SubstrateJVM {
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
             boolean existingFile = chunkWriter.hasOpenFile();
-            if (existingFile) {
+            if (!existingFile) {
+                Log.log().string("no existing chunk file.").newline();
+                // If no chunkfile is open, create one.
+                // TODO when would a file not already be open? must be open for flushes.
+                // RawFileOperationSupport.RawFileDescriptor fd = JfrEmergencyDumpSupport.singleton().chunkPath();
+                // chunkWriter.openFile(fd);
+                // chunkWriter.closeFileForEmergencyDump();
+            } else {
+                assert chunkWriter.hasOpenFile();
                 chunkWriter.closeFileForEmergencyDump();
             }
             JfrEmergencyDumpSupport.singleton().onVmError();

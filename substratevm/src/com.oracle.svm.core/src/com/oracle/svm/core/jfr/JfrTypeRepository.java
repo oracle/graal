@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -65,7 +64,10 @@ public class JfrTypeRepository implements JfrRepository {
     private final JfrClassLoaderInfoTable flushedClassLoaders;
     private final TypeInfo typeInfo;
 
-    // epochTypeData tables are written to from threads emitting events and read from the flushing/rotating thread
+    // epochTypeData tables are written to from threads emitting events and read from the
+    // flushing/rotating thread
+    // Their purpose is to lazily collect tagged JFR classes, which may later be serialized during
+    // flush/rotation.
     private final JfrClassInfoTable epochTypeData0;
     private final JfrClassInfoTable epochTypeData1;
 
@@ -110,7 +112,6 @@ public class JfrTypeRepository implements JfrRepository {
         classInfoRaw.setInstance(clazz);
         classInfoTable.putIfAbsent(classInfoRaw);
 
-        /* Tagging the traceID epoch bits is not actually required for this class to serialize types.*/
         return JfrTraceId.load(clazz);
     }
 
@@ -137,12 +138,12 @@ public class JfrTypeRepository implements JfrRepository {
      * Visit all used classes, and collect their packages, modules, classloaders and possibly
      * referenced classes.
      *
-     * This method does not need to be marked uninterruptible since the epoch cannot change while the chunkwriter
-     * lock is held.
-     * Unlike other JFR repositories, locking is not needed to protect a data buffer. Similar to other constant repositories,
-     * writes/reads to the current epochData are allowed to race at flushpoints.
-     * There is no risk of separating events from constant data due to the write order
-     * (constants before events during emission, and events before constants during flush).
+     * This method does not need to be marked uninterruptible since the epoch cannot change while
+     * the chunkwriter lock is held. Unlike other JFR repositories, locking is not needed to protect
+     * a data buffer. Similar to other constant repositories, writes/reads to the current epochData
+     * are allowed to race at flushpoints. There is no risk of separating events from constant data
+     * due to the write order (constants before events during emission, and events before constants
+     * during flush). The epochData tables are only cleared at rotation safepoints.
      */
     private void collectTypeInfo(boolean flushpoint) {
         JfrClassInfoTable classInfoTable = getEpochData(!flushpoint);
@@ -154,13 +155,16 @@ public class JfrTypeRepository implements JfrRepository {
                 Class<?> clazz = entry.getInstance();
                 assert DynamicHub.fromClass(clazz).isLoaded();
                 if (flushpoint) {
-                    assert JfrTraceId.isUsedCurrentEpoch(clazz);
-                    visitClass(typeInfo, clazz);
-
+                    // Still must check the bit is set since we don't clear the epoch data tables
+                    // until safepoint.
+                    if (JfrTraceId.isUsedCurrentEpoch(clazz)) {
+                        visitClass(typeInfo, clazz);
+                    }
                 } else {
-                    assert JfrTraceId.isUsedPreviousEpoch(clazz);
-                    JfrTraceId.clearUsedPreviousEpoch(clazz);
-                    visitClass(typeInfo, clazz);
+                    if (JfrTraceId.isUsedPreviousEpoch(clazz)) {
+                        JfrTraceId.clearUsedPreviousEpoch(clazz);
+                        visitClass(typeInfo, clazz);
+                    }
                 }
                 entry = entry.getNext();
             }
@@ -206,7 +210,7 @@ public class JfrTypeRepository implements JfrRepository {
         writer.writeCompressedLong(JfrType.Class.getId());
         writer.writeCompressedInt(size);
 
-        //  Nested loops since the visitor pattern may allocate.
+        // Nested loops since the visitor pattern may allocate.
         for (int i = 0; i < table.length; i++) {
             ClassInfoRaw entry = table[i];
             while (entry.isNonNull()) {
@@ -226,14 +230,14 @@ public class JfrTypeRepository implements JfrRepository {
 
         boolean hasClassLoader = clazz.getClassLoader() != null;
         writer.writeCompressedLong(classInfoRaw.getId());
-        writer.writeCompressedLong(getClassLoaderId(typeInfo, hasClassLoader ? clazz.getClassLoader().getName() : null,  hasClassLoader));
+        writer.writeCompressedLong(getClassLoaderId(typeInfo, hasClassLoader ? clazz.getClassLoader().getName() : null, hasClassLoader));
         writer.writeCompressedLong(getSymbolId(writer, clazz.getName(), flushpoint, true));
         writer.writeCompressedLong(getPackageId(typeInfo, packageInfoRaw));
         writer.writeCompressedLong(clazz.getModifiers());
         writer.writeBoolean(clazz.isHidden());
 
         // We no longer need the buffer.
-        if(packageInfoRaw.getModifiedUTF8Name().isNonNull()){
+        if (packageInfoRaw.getModifiedUTF8Name().isNonNull()) {
             NullableNativeMemory.free(packageInfoRaw.getModifiedUTF8Name());
         }
     }
@@ -248,7 +252,8 @@ public class JfrTypeRepository implements JfrRepository {
         return SubstrateJVM.getSymbolRepository().getSymbolId(symbol, !flushpoint, replaceDotWithSlash);
     }
 
-    // Copy to a new buffer so each table has its own copy of the data. This simplifies cleanup and mitigates double frees.
+    // Copy to a new buffer so each table has its own copy of the data. This simplifies cleanup and
+    // mitigates double frees.
     @Uninterruptible(reason = "Needed for JfrSymbolRepository.getSymbolId().")
     private static long getSymbolId(JfrChunkWriter writer, PointerBase source, UnsignedWord length, int hash, boolean flushpoint) {
         Pointer destination = NullableNativeMemory.malloc(length, NmtCategory.JFR);
@@ -283,8 +288,10 @@ public class JfrTypeRepository implements JfrRepository {
     private void writePackage(TypeInfo typeInfo, JfrChunkWriter writer, PackageInfoRaw packageInfoRaw, boolean flushpoint) {
         assert packageInfoRaw.getHash() != 0;
         writer.writeCompressedLong(packageInfoRaw.getId());  // id
-        // Packages with the same name use the same buffer for the whole epoch so it's fine to use that address as the symbol repo hash. No further need to deduplicate.
-        writer.writeCompressedLong(getSymbolId(writer, packageInfoRaw.getModifiedUTF8Name(), packageInfoRaw.getNameLength(), UninterruptibleUtils.Long.hashCode(packageInfoRaw.getModifiedUTF8Name().rawValue()), flushpoint));
+        // Packages with the same name use the same buffer for the whole epoch so it's fine to use
+        // that address as the symbol repo hash. No further need to deduplicate.
+        writer.writeCompressedLong(getSymbolId(writer, packageInfoRaw.getModifiedUTF8Name(), packageInfoRaw.getNameLength(),
+                        UninterruptibleUtils.Long.hashCode(packageInfoRaw.getModifiedUTF8Name().rawValue()), flushpoint));
         writer.writeCompressedLong(getModuleId(typeInfo, packageInfoRaw.getModuleName(), packageInfoRaw.getHasModule()));
         writer.writeBoolean(false); // exported
     }
@@ -370,14 +377,17 @@ public class JfrTypeRepository implements JfrRepository {
         packageInfoRaw.setName(null); // No allocation free way to get the name String.
         setPackageNameAndLength(clazz, packageInfoRaw);
 
-        /* The empty/null package represented by "" is always traced with id 0.
-        The id 0 is reserved and does not need to be serialized. */
+        /*
+         * The empty/null package represented by "" is always traced with id 0. The id 0 is reserved
+         * and does not need to be serialized.
+         */
         if (packageInfoRaw.getNameLength().equal(0)) {
             return false;
         }
         packageInfoRaw.setHash(getHash(packageInfoRaw));
         if (isPackageVisited(typeInfo, packageInfoRaw)) {
-            assert moduleName == (flushedPackages.contains(packageInfoRaw) ? ((PackageInfoRaw)flushedPackages.get(packageInfoRaw)).getModuleName() : ((PackageInfoRaw)typeInfo.packages.get(packageInfoRaw)).getModuleName());
+            assert moduleName == (flushedPackages.contains(packageInfoRaw) ? ((PackageInfoRaw) flushedPackages.get(packageInfoRaw)).getModuleName()
+                            : ((PackageInfoRaw) typeInfo.packages.get(packageInfoRaw)).getModuleName());
             NullableNativeMemory.free(packageInfoRaw.getModifiedUTF8Name());
             return false;
         }
@@ -386,7 +396,8 @@ public class JfrTypeRepository implements JfrRepository {
         packageInfoRaw.setHasModule(hasModule);
         packageInfoRaw.setModuleName(moduleName);
         assert !typeInfo.packages.contains(packageInfoRaw); // *** remove later
-        typeInfo.packages.putNew(packageInfoRaw); // *** Do not free the buffer. A pointer to it is shallow copied into the hash map.
+        typeInfo.packages.putNew(packageInfoRaw); // *** Do not free the buffer. A pointer to it is
+                                                  // shallow copied into the hash map.
         assert typeInfo.packages.contains(packageInfoRaw);
         return true;
     }
@@ -408,7 +419,7 @@ public class JfrTypeRepository implements JfrRepository {
     }
 
     private boolean addModule(TypeInfo typeInfo, Module module) {
-        ModuleInfoRaw moduleInfoRaw =  StackValue.get(ModuleInfoRaw.class);
+        ModuleInfoRaw moduleInfoRaw = StackValue.get(ModuleInfoRaw.class);
         moduleInfoRaw.setName(module.getName());
         moduleInfoRaw.setHash(getHash(module.getName()));
         if (isModuleVisited(typeInfo, moduleInfoRaw)) {
@@ -427,7 +438,7 @@ public class JfrTypeRepository implements JfrRepository {
 
     private long getModuleId(TypeInfo typeInfo, String moduleName, boolean hasModule) {
         if (hasModule) {
-            ModuleInfoRaw moduleInfoRaw =  StackValue.get(ModuleInfoRaw.class);
+            ModuleInfoRaw moduleInfoRaw = StackValue.get(ModuleInfoRaw.class);
             moduleInfoRaw.setName(moduleName);
             moduleInfoRaw.setHash(getHash(moduleName));
             if (flushedModules.contains(moduleInfoRaw)) {
@@ -440,7 +451,7 @@ public class JfrTypeRepository implements JfrRepository {
     }
 
     private boolean addClassLoader(TypeInfo typeInfo, ClassLoader classLoader) {
-        ClassLoaderInfoRaw classLoaderInfoRaw =  StackValue.get(ClassLoaderInfoRaw.class);
+        ClassLoaderInfoRaw classLoaderInfoRaw = StackValue.get(ClassLoaderInfoRaw.class);
         if (classLoader == null) {
             classLoaderInfoRaw.setName(BOOTSTRAP_NAME);
         } else {
@@ -471,7 +482,7 @@ public class JfrTypeRepository implements JfrRepository {
 
     private long getClassLoaderId(TypeInfo typeInfo, String classLoaderName, boolean hasClassLoader) {
         if (hasClassLoader) {
-            ClassLoaderInfoRaw classLoaderInfoRaw =  StackValue.get(ClassLoaderInfoRaw.class);
+            ClassLoaderInfoRaw classLoaderInfoRaw = StackValue.get(ClassLoaderInfoRaw.class);
             classLoaderInfoRaw.setName(classLoaderName);
             classLoaderInfoRaw.setHash(getHash(classLoaderName));
             if (flushedClassLoaders.contains(classLoaderInfoRaw)) {
@@ -499,6 +510,7 @@ public class JfrTypeRepository implements JfrRepository {
         final JfrPackageInfoTable packages = new JfrPackageInfoTable();
         final JfrModuleInfoTable modules = new JfrModuleInfoTable();
         final JfrClassLoaderInfoTable classLoaders = new JfrClassLoaderInfoTable();
+
         void reset() {
             classes.clear();
             packages.clear();
@@ -514,7 +526,10 @@ public class JfrTypeRepository implements JfrRepository {
         }
     }
 
-    /** This method sets the package name and length. packageInfoRaw may be on the stack or native memory.*/
+    /**
+     * This method sets the package name and length. packageInfoRaw may be on the stack or native
+     * memory.
+     */
     private void setPackageNameAndLength(Class<?> clazz, PackageInfoRaw packageInfoRaw) {
         DynamicHub hub = DynamicHub.fromClass(clazz);
         if (!LayoutEncoding.isHybrid(hub.getLayoutEncoding())) {
@@ -523,8 +538,10 @@ public class JfrTypeRepository implements JfrRepository {
             }
         }
 
-        /* Primitives have the null package, which technically has the name "java.lang",
-        but JFR still assigns these the reserved 0 id. */
+        /*
+         * Primitives have the null package, which technically has the name "java.lang", but JFR
+         * still assigns these the reserved 0 id.
+         */
         if (hub.isPrimitive()) {
             packageInfoRaw.setModifiedUTF8Name(WordFactory.nullPointer());
             packageInfoRaw.setNameLength(WordFactory.unsigned(0));
@@ -550,7 +567,8 @@ public class JfrTypeRepository implements JfrRepository {
 
         assert buffer.add(dot).belowOrEqual(bufferEnd);
 
-        // Since we're serializing now, we must do replacements here, instead of the symbol repository.
+        // Since we're serializing now, we must do replacements here, instead of the symbol
+        // repository.
         Pointer packageNameEnd = UninterruptibleUtils.String.toModifiedUTF8(str, dot, buffer, bufferEnd, false, dotWithSlash);
         packageInfoRaw.setModifiedUTF8Name(buffer);
 
@@ -564,21 +582,23 @@ public class JfrTypeRepository implements JfrRepository {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static int getHash(String imageHeapString) {
         // It's possible the type exists, but has no name.
-        if (imageHeapString == null){
+        if (imageHeapString == null) {
             return 0;
         }
         long rawPointerValue = Word.objectToUntrackedPointer(imageHeapString).rawValue();
         return UninterruptibleUtils.Long.hashCode(rawPointerValue);
     }
 
-    /** We do not have access to an image heap String for packages.
-     * Instead, sum the value of the serialized String and use that for the hash.*/
+    /**
+     * We do not have access to an image heap String for packages. Instead, sum the value of the
+     * serialized String and use that for the hash.
+     */
     private static int getHash(PackageInfoRaw packageInfoRaw) {
         if (packageInfoRaw.getModifiedUTF8Name().isNull() || packageInfoRaw.getNameLength().belowOrEqual(0)) {
             return 0;
         }
         long sum = 0;
-        for (int i = 0; packageInfoRaw.getNameLength().aboveThan(i); i++){
+        for (int i = 0; packageInfoRaw.getNameLength().aboveThan(i); i++) {
             sum += ((Pointer) packageInfoRaw.getModifiedUTF8Name()).readByte(i);
         }
         return UninterruptibleUtils.Long.hashCode(sum);
@@ -589,21 +609,24 @@ public class JfrTypeRepository implements JfrRepository {
         @PinnedObjectField
         @RawField
         void setName(String value);
+
         @PinnedObjectField
         @RawField
         String getName();
+
         @RawField
         void setId(long value);
+
         @RawField
         long getId();
     }
-
 
     @RawStructure
     private interface ClassInfoRaw extends JfrTypeInfo {
         @PinnedObjectField
         @RawField
         void setInstance(Class<?> value);
+
         @PinnedObjectField
         @RawField
         Class<?> getInstance();
@@ -614,19 +637,26 @@ public class JfrTypeRepository implements JfrRepository {
         @PinnedObjectField
         @RawField
         void setModuleName(String value);
+
         @PinnedObjectField
         @RawField
         String getModuleName();
+
         @RawField
         void setHasModule(boolean value);
+
         @RawField
         boolean getHasModule();
+
         @RawField
         void setNameLength(UnsignedWord value);
+
         @RawField
         UnsignedWord getNameLength();
+
         @RawField
         void setModifiedUTF8Name(PointerBase value);
+
         @RawField
         PointerBase getModifiedUTF8Name();
     }
@@ -636,11 +666,15 @@ public class JfrTypeRepository implements JfrRepository {
         @PinnedObjectField
         @RawField
         void setClassLoaderName(String value);
+
         @PinnedObjectField
         @RawField
         String getClassLoaderName();
+
         @RawField
-        void setHasClassLoader(boolean value); // Needed because CL name may be empty or null, even if CL is non-null
+        void setHasClassLoader(boolean value); // Needed because CL name may be empty or null, even
+                                               // if CL is non-null
+
         @RawField
         boolean getHasClassLoader();
     }
@@ -649,12 +683,13 @@ public class JfrTypeRepository implements JfrRepository {
     private interface ClassLoaderInfoRaw extends JfrTypeInfo {
         @RawField
         void setClassTraceId(long value);
+
         @RawField
         long getClassTraceId();
     }
 
     private abstract class JfrTypeInfoTable extends AbstractUninterruptibleHashtable {
-        public JfrTypeInfoTable(NmtCategory nmtCategory) {
+        JfrTypeInfoTable(NmtCategory nmtCategory) {
             super(nmtCategory);
         }
 
@@ -683,11 +718,13 @@ public class JfrTypeRepository implements JfrRepository {
         public JfrClassInfoTable() {
             super(NmtCategory.JFR);
         }
+
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected ClassInfoRaw[] createTable(int size) {
             return new ClassInfoRaw[size];
         }
+
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected boolean isEqual(UninterruptibleEntry v0, UninterruptibleEntry v1) {
@@ -705,7 +742,7 @@ public class JfrTypeRepository implements JfrRepository {
 
     private final class JfrPackageInfoTable extends JfrTypeInfoTable {
         @Platforms(Platform.HOSTED_ONLY.class)
-        public JfrPackageInfoTable() {
+        JfrPackageInfoTable() {
             super(NmtCategory.JFR);
         }
 
@@ -720,6 +757,7 @@ public class JfrTypeRepository implements JfrRepository {
         protected UninterruptibleEntry copyToHeap(UninterruptibleEntry visitedOnStack) {
             return copyToHeap(visitedOnStack, SizeOf.unsigned(PackageInfoRaw.class));
         }
+
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected boolean isEqual(UninterruptibleEntry v0, UninterruptibleEntry v1) {
@@ -764,9 +802,10 @@ public class JfrTypeRepository implements JfrRepository {
 
     private final class JfrModuleInfoTable extends JfrTypeInfoTable {
         @Platforms(Platform.HOSTED_ONLY.class)
-        public JfrModuleInfoTable() {
+        JfrModuleInfoTable() {
             super(NmtCategory.JFR);
         }
+
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected ModuleInfoRaw[] createTable(int size) {
@@ -782,9 +821,10 @@ public class JfrTypeRepository implements JfrRepository {
 
     private final class JfrClassLoaderInfoTable extends JfrTypeInfoTable {
         @Platforms(Platform.HOSTED_ONLY.class)
-        public JfrClassLoaderInfoTable() {
+        JfrClassLoaderInfoTable() {
             super(NmtCategory.JFR);
         }
+
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected ClassLoaderInfoRaw[] createTable(int size) {

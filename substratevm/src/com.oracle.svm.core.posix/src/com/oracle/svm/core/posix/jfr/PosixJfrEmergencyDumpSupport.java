@@ -36,22 +36,26 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import org.graalvm.word.Pointer;
 import jdk.graal.compiler.word.Word;
 import org.graalvm.word.WordFactory;
-//import jdk.jfr.internal.LogLevel;
-//import jdk.jfr.internal.LogTag;
-//import jdk.jfr.internal.Logger;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jfr.JfrEmergencyDumpFeature;
+import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
+import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.core.collections.GrowableWordArray;
+import com.oracle.svm.core.collections.GrowableWordArrayAccess;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -61,11 +65,16 @@ import static com.oracle.svm.core.posix.headers.Fcntl.O_NOFOLLOW;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_RDONLY;
 
 public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.JfrEmergencyDumpSupport {
-    private static final int CHUNK_FILE_HEADER_SIZE = 68;// TODO based on jdk file
-    private static final int JVM_MAXPATHLEN = 4096;// TODO based on jdk file
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L49") //
+    private static final int CHUNK_FILE_HEADER_SIZE = 68;
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/os/posix/include/jvm_md.h#L57") //
+    private static final int JVM_MAXPATHLEN = 4096;
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L47") //
+    private static int ISO8601_LEN = 19;
     private static final byte FILE_SEPARATOR = "/".getBytes(StandardCharsets.UTF_8)[0];
+    private static final byte DOT = ".".getBytes(StandardCharsets.UTF_8)[0];
     private static final byte[] DUMP_FILE_PREFIX = "hs_oom_pid_".getBytes(StandardCharsets.UTF_8);
-    private static final byte[] CHUNKFILE_EXTENSION_BYTES = ".jfr".getBytes(StandardCharsets.UTF_8); // TODO double check its utf8 you want.
+    private static final byte[] CHUNKFILE_EXTENSION_BYTES = ".jfr".getBytes(StandardCharsets.UTF_8);
     private Dirent.DIR directory;
     private byte[] pidBytes;
     private byte[] dumpPathBytes;
@@ -80,8 +89,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
     public void initialize() {
         pidBytes = String.valueOf(ProcessHandle.current().pid()).getBytes(StandardCharsets.UTF_8);
         pathBuffer = NativeMemory.calloc(JVM_MAXPATHLEN, NmtCategory.JFR);
-        directory = WordFactory.nullPointer(); // *** maybe not necessary.
-        //TODO need to terminate the string with 0. otherwise length function will not work.
+        directory = WordFactory.nullPointer();
     }
 
     public void setRepositoryLocation(String dirText) {
@@ -94,42 +102,79 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
 
     public String getDumpPath() {
         if (dumpPathBytes != null) {
-            return new String(dumpPathBytes,StandardCharsets.UTF_8);
+            return new String(dumpPathBytes, StandardCharsets.UTF_8);
         }
         return "";
     }
 
-    /** See JfrEmergencyDump::on_vm_error*/
-    public void onVmError(){
+    // Either use create and use the dumpfile itself, or create a new file in the repository
+    // location.
+    public RawFileDescriptor chunkPath() {
+        if (repositoryLocationBytes == null) {
+            if (!openEmergencyDumpFile()) {
+                return WordFactory.nullPointer();
+            }
+            // We can directly use the emergency dump file name as the chunk.
+            return emergencyFd;
+        }
+        return createEmergencyChunkPath();
+    }
+
+    private RawFileDescriptor createEmergencyChunkPath() {
+        int idx = 0;
+        clearPathBuffer();
+        for (int i = 0; i < repositoryLocationBytes.length; i++) {
+            getPathBuffer().write(idx++, repositoryLocationBytes[i]);
+        }
+        getPathBuffer().write(idx++, FILE_SEPARATOR);
+
+        for (int i = 0; i < CHUNKFILE_EXTENSION_BYTES.length; i++) {
+            getPathBuffer().write(idx++, CHUNKFILE_EXTENSION_BYTES[i]);
+        }
+        // TODO what about date time? Need that for sorting.
+        // repository path + file separator + date time + extension
+        return getFileSupport().create(getPathBuffer(), FileCreationMode.CREATE, FileAccessMode.READ_WRITE);
+    }
+
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L409-L416")
+    public void onVmError() {
+        Log.log().string("Attempting JFR Emergency Dump").newline();
         if (openEmergencyDumpFile()) {
-            writeEmergencyDumpFile();
-            getFileSupport().close(emergencyFd);
-            emergencyFd = WordFactory.nullPointer();
+            GrowableWordArray sortedChunkFilenames = StackValue.get(GrowableWordArray.class);
+            GrowableWordArrayAccess.initialize(sortedChunkFilenames);
+            try {
+                iterateRepository(sortedChunkFilenames);
+                writeEmergencyDumpFile(sortedChunkFilenames);
+                closeEmergencyDumpFile();
+            } finally {
+                GrowableWordArrayAccess.freeData(sortedChunkFilenames);
+                sortedChunkFilenames = Word.nullPointer();
+            }
         }
     }
 
-    /** See open_emergency_dump_file */
-    private boolean openEmergencyDumpFile(){
-        if (getFileSupport().isValid(emergencyFd)){
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L131-L146")
+    private boolean openEmergencyDumpFile() {
+        if (getFileSupport().isValid(emergencyFd)) {
             return true;
         }
-        emergencyFd = getFileSupport().create(createEmergencyDumpPath(), FileCreationMode.CREATE, FileAccessMode.READ_WRITE); //gives us O_CREAT | O_RDWR for creation mode and S_IREAD | S_IWRITE permissions
+        // O_CREAT | O_RDWR and S_IREAD | S_IWRITE permissions
+        emergencyFd = getFileSupport().create(createEmergencyDumpPath(), FileCreationMode.CREATE, FileAccessMode.READ_WRITE);
         if (!getFileSupport().isValid(emergencyFd)) {
             // Fallback. Try to create it in the current directory.
             dumpPathBytes = null;
             emergencyFd = getFileSupport().create(createEmergencyDumpPath(), FileCreationMode.CREATE, FileAccessMode.READ_WRITE);
         }
-//        System.out.println("openEmergencyDumpFile pathBuffer: "+ CTypeConversion.toJavaString(getPathBuffer()));
         return getFileSupport().isValid(emergencyFd);
     }
 
-    /** See create_emergency_dump_path */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L110-L129")
     private CCharPointer createEmergencyDumpPath() {
         int idx = 0;
 
         clearPathBuffer();
 
-        if(dumpPathBytes != null) {
+        if (dumpPathBytes != null) {
             for (int i = 0; i < dumpPathBytes.length; i++) {
                 getPathBuffer().write(idx++, dumpPathBytes[i]);
             }
@@ -152,69 +197,107 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         return getPathBuffer();
     }
 
-    private void writeEmergencyDumpFile() {
-        if (openDirectorySecure()) {
+    private GrowableWordArray iterateRepository(GrowableWordArray gwa) {
+        int count = 0;
+        // Open directory
+        if (openDirectory()) {
             if (directory.isNull()) {
-                return;
+                return WordFactory.nullPointer();
             }
-            int blockSize = 1024 * 1024;
-            Pointer copyBlock = NullableNativeMemory.malloc(blockSize, NmtCategory.JFR);
-            if (copyBlock.isNull()) {
-                    // TODO trouble importing these internal methods
-//                Logger.log(LogTag.JFR_SYSTEM, LogLevel.ERROR, "Emergency dump failed. Could not allocate copy block.");
-                return;
-            }
-
+            // Iterate files in the repository and append filtered file names to the files array
             Dirent.dirent entry;
             while ((entry = Dirent.readdir(directory)).isNonNull()) {
-                RawFileDescriptor chunkFd = filter(entry.d_name());
-                if (getFileSupport().isValid(chunkFd)){
-//                    String name = CTypeConversion.toJavaString(entry.d_name());
-//                    System.out.println("Filter checks passed. Chunk file name: "+ name);
-
-                    // Read it's size
-                    long chunkFileSize = getFileSupport().size(chunkFd);
-                    long bytesRead = 0;
-                    long bytesWritten = 0;
-                    while (bytesRead < chunkFileSize){
-                        // Start at beginning
-                        getFileSupport().seek(chunkFd, 0); // seems unneeded. idk why???
-                        // Read from chunk file to copy block
-                        long readResult = getFileSupport().read(chunkFd, copyBlock, WordFactory.unsigned(blockSize));// *** i think this already retries until fully read[no just retries until gets a sucessful read]
-                        if (readResult < 0){ // -1 if read failed
-//                            System.out.println("Log ERROR. Read failed.");
-                            break;
-                        }
-                        bytesRead += readResult;
-                        assert bytesRead - bytesWritten <= blockSize;
-                        // Write from copy block to dump file
-                        if (!getFileSupport().write(emergencyFd, copyBlock, WordFactory.unsigned(bytesRead - bytesWritten))) { // *** may iterate until fully writtem
-//                            System.out.println("Log ERROR. Write failed.");
-                            break;
-                        }
-                        bytesWritten = bytesRead;
-//                        System.out.println("bytesWritten " + bytesWritten);
-                    }
-                    getFileSupport().close(chunkFd);
+                // Filter files
+                CCharPointer fn = entry.d_name();
+                if (filter(fn)) {
+                    // Append filtered files to list
+                    GrowableWordArrayAccess.add(gwa, (Word) fn, NmtCategory.JFR);
+                    count++;
                 }
             }
-            NullableNativeMemory.free(copyBlock);
+            closeDirectory();
+            if (count > 0) {
+                GrowableWordArrayAccess.qsort(gwa, 0, count - 1, PosixJfrEmergencyDumpSupport::compare);
+            }
+// for (int i=0; i < count; i ++){ // todo remove
+// String name =
+// org.graalvm.nativeimage.c.type.CTypeConversion.toJavaString(GrowableWordArrayAccess.read(gwa,
+// i));
+// System.out.println("chunk file: "+ name);
+// }
         }
+        return WordFactory.nullPointer();
     }
 
-    // *** copied from PosixPerfMemoryProvider
-    private boolean openDirectorySecure() {
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L191-L212")
+    static int compare(Word a, Word b) {
+        CCharPointer filenameA = (CCharPointer) a;
+        CCharPointer filenameB = (CCharPointer) b;
+        int cmp = LibC.strncmp(filenameA, filenameB, WordFactory.unsigned(ISO8601_LEN));
+        if (cmp == 0) {
+            CCharPointer aDot = SubstrateUtil.strchr(filenameA, DOT);
+            CCharPointer bDot = SubstrateUtil.strchr(filenameB, DOT);
+            long aLen = aDot.rawValue() - a.rawValue();
+            long bLen = bDot.rawValue() - b.rawValue();
+            if (aLen < bLen) {
+                return -1;
+            }
+            if (aLen > bLen) {
+                return 1;
+            }
+            cmp = LibC.strncmp(filenameA, filenameB, WordFactory.unsigned(aLen));
+        }
+        return cmp;
+    }
+
+    private void writeEmergencyDumpFile(GrowableWordArray sortedChunkFilenames) {
+        int blockSize = 1024 * 1024;
+        Pointer copyBlock = NullableNativeMemory.malloc(blockSize, NmtCategory.JFR);
+        if (copyBlock.isNull()) {
+            Log.log().string("Emergency dump failed. Could not allocate copy block.");
+            return;
+        }
+
+        for (int i = 0; i < sortedChunkFilenames.getSize(); i++) {
+            CCharPointer fn = GrowableWordArrayAccess.read(sortedChunkFilenames, i);
+            RawFileDescriptor chunkFd = getFileSupport().open(fullyQualified(fn), FileAccessMode.READ_WRITE);
+            if (getFileSupport().isValid(chunkFd)) {
+
+                // Read it's size
+                long chunkFileSize = getFileSupport().size(chunkFd);
+                long bytesRead = 0;
+                long bytesWritten = 0;
+                while (bytesRead < chunkFileSize) {
+                    // Start at beginning
+                    getFileSupport().seek(chunkFd, 0); // seems unneeded. idk why???
+                    // Read from chunk file to copy block
+                    long readResult = getFileSupport().read(chunkFd, copyBlock, WordFactory.unsigned(blockSize));
+                    if (readResult < 0) { // -1 if read failed
+                        Log.log().string("Emergency dump failed. Chunk file read failed.");
+                        break;
+                    }
+                    bytesRead += readResult;
+                    assert bytesRead - bytesWritten <= blockSize;
+                    // Write from copy block to dump file
+                    if (!getFileSupport().write(emergencyFd, copyBlock, WordFactory.unsigned(bytesRead - bytesWritten))) {
+                        Log.log().string("Emergency dump failed. Dump file write failed.");
+                        break;
+                    }
+                    bytesWritten = bytesRead;
+                }
+                getFileSupport().close(chunkFd);
+            }
+        }
+        NullableNativeMemory.free(copyBlock);
+    }
+
+    private boolean openDirectory() {
         int fd = restartableOpen(getRepositoryLocation(), O_RDONLY() | O_NOFOLLOW(), 0);
         if (fd == -1) {
             return false;
         }
 
-//        if (!isDirFdSecure(fd)) { //TODO do we need this?
-//            com.oracle.svm.core.posix.headers.Unistd.NoTransitions.close(fd);
-//            return null;
-//        }
-
-        this.directory = Dirent.fdopendir(fd);
+        directory = Dirent.fdopendir(fd);
         if (directory.isNull()) {
             Unistd.NoTransitions.close(fd);
             return false;
@@ -230,7 +313,10 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         return getPathBuffer();
     }
 
-    // *** copied from PosixPerfMemoryProvider
+    /**
+     * See
+     * {@link com.oracle.svm.core.posix.jvmstat.PosixPerfMemoryProvider#restartableOpen(CCharPointer, int, int)}
+     */
     @Uninterruptible(reason = "LibC.errno() must not be overwritten accidentally.")
     private static int restartableOpen(CCharPointer directory, int flags, int mode) {
         int result;
@@ -241,13 +327,13 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         return result;
     }
 
-    /** See RepositoryIterator::filter */
-    private RawFileDescriptor filter(CCharPointer fn){
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L276-L308")
+    private boolean filter(CCharPointer fn) {
 
-        // check filename extension
+        // Check filename length
         int filenameLength = (int) SubstrateUtil.strlen(fn).rawValue();
-        if (filenameLength <= CHUNKFILE_EXTENSION_BYTES.length){
-            return WordFactory.nullPointer();
+        if (filenameLength <= CHUNKFILE_EXTENSION_BYTES.length) {
+            return false;
         }
 
         // Verify file extension
@@ -255,40 +341,39 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
             int idx1 = CHUNKFILE_EXTENSION_BYTES.length - i - 1;
             int idx2 = filenameLength - i - 1;
             if (CHUNKFILE_EXTENSION_BYTES[idx1] != ((Pointer) fn).readByte(idx2)) {
-//                System.out.println("failed extension check");
-                return WordFactory.nullPointer();
+                return false;
             }
         }
-
-//        String name = CTypeConversion.toJavaString(fullyQualified(fn));
-//        System.out.println("fully qualified: "+ name);
 
         // Verify if you can open it and receive a valid file descriptor
         RawFileDescriptor chunkFd = getFileSupport().open(fullyQualified(fn), FileAccessMode.READ_WRITE);
         if (!getFileSupport().isValid(chunkFd)) {
-//            System.out.println("failed open check");
-            return WordFactory.nullPointer();
+            return false;
         }
 
         // Verify file size
         long chunkFileSize = getFileSupport().size(chunkFd);
         if (chunkFileSize < CHUNK_FILE_HEADER_SIZE) {
-//            System.out.println("failed size check");
-            return WordFactory.nullPointer();
+            return false;
         }
-
-        return chunkFd;
+        getFileSupport().close(chunkFd);
+        return true;
     }
 
-    /** Given a chunk file name, it returns the fully qualified filename. See RepositoryIterator::fully_qualified */
-    private CCharPointer fullyQualified(CCharPointer fn){
-        long fnLength =  SubstrateUtil.strlen(fn).rawValue() ;
+    /**
+     * Given a chunk file name, it returns the fully qualified filename. See
+     * RepositoryIterator::fully_qualified
+     */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L263-L273")
+    private CCharPointer fullyQualified(CCharPointer fn) {
+        long fnLength = SubstrateUtil.strlen(fn).rawValue();
         int idx = 0;
 
         clearPathBuffer();
 
-        // TODO HS uses _path_buffer_file_name_offset to avoid building this part of th path each time.
-        //  Cached in RepositoryIterator::RepositoryIterator and used in fully_qualified
+        // TODO HS uses _path_buffer_file_name_offset to avoid building this part of th path each
+        // time.
+        // Cached in RepositoryIterator::RepositoryIterator and used in fully_qualified
         for (int i = 0; i < repositoryLocationBytes.length; i++) {
             getPathBuffer().write(idx++, repositoryLocationBytes[i]);
         }
@@ -296,18 +381,18 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         // Add delimiter
         getPathBuffer().write(idx++, FILE_SEPARATOR);
 
-
         for (int i = 0; i < fnLength; i++) {
             getPathBuffer().write(idx++, fn.read(i));
         }
         return getPathBuffer();
     }
 
-    private CCharPointer getPathBuffer(){
-        return  pathBuffer;
+    private CCharPointer getPathBuffer() {
+        return pathBuffer;
     }
 
-    private void clearPathBuffer(){
+    private void clearPathBuffer() {
+        // Terminate the string with 0.
         LibC.memset(getPathBuffer(), Word.signed(0), Word.unsigned(JVM_MAXPATHLEN));
     }
 
@@ -316,20 +401,34 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         return RawFileOperationSupport.bigEndian();
     }
 
+    private void closeEmergencyDumpFile() {
+        if (getFileSupport().isValid(emergencyFd)) {
+            getFileSupport().close(emergencyFd);
+            emergencyFd = WordFactory.nullPointer();
+        }
+    }
+
+    private void closeDirectory() {
+        if (directory.isNonNull()) {
+            Dirent.closedir(directory);
+            directory = WordFactory.nullPointer();
+        }
+    }
+
     public void teardown() {
-        // *** this must survive as long as we need the dump path c pointer.
-        Dirent.closedir(directory);
+        closeEmergencyDumpFile();
+        closeDirectory();
         NativeMemory.free(pathBuffer);
     }
 }
 
-@com.oracle.svm.core.feature.AutomaticallyRegisteredFeature
-class PosixJfrEmergencyDumpFeature extends com.oracle.svm.core.jfr.JfrEmergencyDumpFeature {
+@AutomaticallyRegisteredFeature
+class PosixJfrEmergencyDumpFeature extends JfrEmergencyDumpFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         PosixJfrEmergencyDumpSupport support = new PosixJfrEmergencyDumpSupport();
-        ImageSingletons.add(com.oracle.svm.core.jfr.JfrEmergencyDumpSupport.class, support);
+        ImageSingletons.add(JfrEmergencyDumpSupport.class, support);
         ImageSingletons.add(PosixJfrEmergencyDumpSupport.class, support);
     }
 }

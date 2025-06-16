@@ -25,16 +25,9 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.SigQuitFeature;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.jdk.RuntimeSupportFeature;
-import org.graalvm.nativeimage.hosted.Feature;
-
-import java.util.Collections;
-import java.util.List;
 
 /**
  * The JFR emergency dump mechanism uses platform-specific implementations (see {@link JfrEmergencyDumpSupport}).

@@ -41,10 +41,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.sampler.JfrRecurringCallbackExecutionSampler;
@@ -64,7 +61,6 @@ import com.oracle.svm.core.thread.VMThreads;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.word.Word;
 
 /**
  * This class is used when writing the in-memory JFR data to a file. For all operations, except
@@ -171,7 +167,19 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         assert lock.isOwner();
         filename = outputFile;
         fd = getFileSupport().create(filename, FileCreationMode.CREATE_OR_REPLACE, FileAccessMode.READ_WRITE);
+        openFile0();
+    }
 
+    // Used by JFR emergency dump
+    @Override
+    public void openFile(RawFileDescriptor fd) {
+        assert lock.isOwner();
+        filename = null;
+        this.fd = fd;
+        openFile0();
+    }
+
+    private void openFile0() {
         chunkStartTicks = JfrTicks.elapsedTicks();
         chunkStartNanos = JfrTicks.currentTimeNanos();
         nextGeneration = 1;
@@ -251,9 +259,12 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         fd = Word.nullPointer();
     }
 
-    /** Similar to a regular chunk rotation but we do not safepoint, start a new epoch, or re-register threads.
-     * Similar to a flushpoint but we close the file and also process full sampler buffers.
-     * Unfortunately, it's not possible to process the active buffers since we are not stopping for a safepoint.*/
+    /**
+     * Similar to a regular chunk rotation but we do not safepoint, start a new epoch, or
+     * re-register threads. Similar to a flushpoint but we close the file and also process full
+     * sampler buffers. Unfortunately, it's not possible to process the active buffers since we are
+     * not stopping for a safepoint.
+     */
     @Override
     public void closeFileForEmergencyDump() {
         assert lock.isOwner();
@@ -385,7 +396,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
 
     private int writeSerializers() {
         JfrSerializer[] serializers = JfrSerializerSupport.get().getSerializers();
-        for (int i =0; i <serializers.length; i++) {
+        for (int i = 0; i < serializers.length; i++) {
             serializers[i].write(this);
         }
         return serializers.length;
@@ -558,7 +569,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
 
             int length = UninterruptibleUtils.String.modifiedUTF8Length(str, false);
             Pointer buffer = NullableNativeMemory.malloc(length, NmtCategory.JFR);
-            if (buffer.isNull()){
+            if (buffer.isNull()) {
                 return;
             }
             writeCompressedInt(length);
