@@ -24,8 +24,10 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
+import jdk.internal.vm.annotation.ForceInline;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.AlwaysInline;
@@ -108,6 +110,24 @@ final class Target_jdk_incubator_vector_VectorOperators {
         @AnnotateOriginal
         @AlwaysInline("Vector API performance")
         private static native Target_jdk_incubator_vector_VectorOperators_ConversionImpl<?, ?> ofReinterpret(Target_jdk_incubator_vector_LaneType dom, Target_jdk_incubator_vector_LaneType ran);
+    }
+
+    @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "Operator", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_incubator_vector_VectorOperators_Operator {
+    }
+
+    @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "ImplCache", onlyWith = VectorAPIEnabled.class)
+    static final class Target_jdk_incubator_vector_VectorOperators_ImplCache<OP extends Target_jdk_incubator_vector_VectorOperators_Operator, T> {
+
+        @Alias
+        Object[] cache;
+
+        @Substitute
+        @ForceInline
+        public T find(OP op, int opc, IntFunction<T> supplier) {
+            T fn = (T) cache[opc];
+            return fn;
+        }
     }
 }
 
