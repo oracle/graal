@@ -117,7 +117,7 @@ public class VectorAPIFeature implements InternalFeature {
         int maxVectorBits = Math.max(VectorAPISupport.singleton().getMaxVectorBytes() * Byte.SIZE, 64);
 
         Class<?>[] vectorElements = new Class<?>[]{byte.class, short.class, int.class, float.class, double.class};
-        String[] vectorElementNames = new String[]{"Byte", "Short", "Int", "Long", "Float", "Double"};
+        String[] vectorElementNames = new String[]{"Float", "Double", "Byte", "Short", "Int", "Long"};
         String[] vectorSizes = new String[]{"64", "128", "256", "512", "Max"};
 
         Object maxBitShape = ReflectionUtil.readStaticField(vectorShapeClass, "S_Max_BIT");
@@ -141,8 +141,10 @@ public class VectorAPIFeature implements InternalFeature {
          */
         EconomicMap<Object, MaxVectorSizes> maxVectorSizes = EconomicMap.create();
         EconomicMap<Object, Object> dummyVectors = EconomicMap.create();
+        EconomicMap<Object, Object> laneTypes = EconomicMap.create();
 
         Class<?> speciesClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".AbstractSpecies");
+        Object speciesCache = Array.newInstance(speciesClass, 7, 6);
         UNSAFE.ensureClassInitialized(speciesClass);
 
         for (Class<?> vectorElement : vectorElements) {
@@ -174,16 +176,25 @@ public class VectorAPIFeature implements InternalFeature {
                             (receiver, originalValue) -> makeIotaVector(maxVectorClass, vectorElement, laneCount));
         }
 
-        for (String elementName : vectorElementNames) {
+        Class<?> laneTypeClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".LaneType");
+
+        for (int laneTypeIndex = 0; laneTypeIndex < vectorElementNames.length; laneTypeIndex++) {
+            String elementName = vectorElementNames[laneTypeIndex];
+            int laneTypeSwitchKey = laneTypeIndex + 1;
             String vectorClassName = VECTOR_API_PACKAGE_NAME + "." + elementName + "Vector";
             Class<?> vectorClass = ReflectionUtil.lookupClass(vectorClassName);
             UNSAFE.ensureClassInitialized(vectorClass);
-            for (String size : vectorSizes) {
+            for (int vectorShapeIndex = 0; vectorShapeIndex < vectorSizes.length; vectorShapeIndex++) {
+                String size = vectorSizes[vectorShapeIndex];
+                int vectorShapeSwitchKey = vectorShapeIndex + 1;
                 String fieldName = "SPECIES_" + size.toUpperCase(Locale.ROOT);
                 Object species = ReflectionUtil.readStaticField(vectorClass, fieldName);
                 Method makeDummyVector = ReflectionUtil.lookupMethod(speciesClass, "makeDummyVector");
                 Object dummyVector = ReflectionUtil.invokeMethod(makeDummyVector, species);
                 dummyVectors.put(species, dummyVector);
+                Object laneType = ReflectionUtil.readStaticField(laneTypeClass, elementName.toUpperCase());
+                laneTypes.put(species, laneType);
+                Array.set(Array.get(speciesCache, laneTypeSwitchKey), vectorShapeSwitchKey, species);
             }
         }
 
@@ -192,6 +203,8 @@ public class VectorAPIFeature implements InternalFeature {
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "vectorBitSize"), new OverrideFromMap<>(maxVectorSizes, MaxVectorSizes::vectorBitSize));
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "vectorByteSize"), new OverrideFromMap<>(maxVectorSizes, MaxVectorSizes::vectorByteSize));
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "dummyVector"), new OverrideFromMapSimple(dummyVectors));
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "laneType"), new OverrideFromMapSimple(laneTypes));
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "CACHES"), (receiver, originalValue) -> speciesCache);
 
         /*
          * Manually initialize some inner classes and mark them as reachable. Due to the way we
