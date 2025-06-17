@@ -1676,20 +1676,6 @@ final class Target_jdk_incubator_vector_AbstractVector {
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native ArrayIndexOutOfBoundsException wrongPart(Target_jdk_incubator_vector_AbstractSpecies dsp, Target_jdk_incubator_vector_AbstractSpecies rsp, boolean lanewise, int part);
-
-    // Called on the fast-path from `reinterpretAsBytes` (used all the time by GraalWasm). The
-    // impossible switch case throws an AssertionError, which is forbidden in PE code. Ideally,
-    // SubstrateVM should see that `reinterpretAsBytes` always calls `convert0` with `kind` = 'X'.
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    native Target_jdk_incubator_vector_AbstractVector convert0(char kind, Target_jdk_incubator_vector_AbstractSpecies rsp);
-
-    // Called on the fast-path from `convert` (used by some less common operations). The impossible
-    // switch case throws an AssertionError, which is forbidden in PE code. Ideally, SubstrateVM
-    // should see that `convert` is always called with a fixed conversion.
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    native Target_jdk_incubator_vector_AbstractVector convertShapeTemplate(Target_jdk_incubator_vector_VectorOperators.Target_jdk_incubator_vector_VectorOperators_Conversion conv, Target_jdk_incubator_vector_VectorSpecies toSpecies, int part);
 }
 
 @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", onlyWith = VectorAPIEnabled.class)
@@ -1727,7 +1713,8 @@ final class Target_jdk_internal_vm_vector_VectorSupport {
     // This is called internally by, e.g., `Long128Mask.cast`. `VectorSupport.convert` then calls
     // a function using the `VectorConvertOp` functional interface. Even though `Long128Mask` passes
     // in a fixed lambda, SubstrateVM sees multiple potential call targets, some of which throw
-    // AssertionErrors in impossible switch cases.
+    // AssertionErrors in impossible switch cases. Also, dropping this leads to blocklist violations
+    // with the MemorySegment API.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     native static Target_jdk_internal_vm_vector_VectorSupport_VectorPayload convert(int oprId, Class<?> fromVectorClass, Class<?> fromeClass, int fromVLen, Class<?> toVectorClass, Class<?> toeClass, int toVLen, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_VectorConvertOp defaultImpl);
@@ -1823,99 +1810,8 @@ final class Target_jdk_incubator_vector_VectorIntrinsics {
     static native IllegalArgumentException requireLengthFailed(int haveLength, int length);
 }
 
-@TargetClass(className = "jdk.incubator.vector.ByteVector", onlyWith = VectorAPIEnabled.class)
-final class Target_jdk_incubator_vector_ByteVector {
-
-    @TargetClass(className = "jdk.incubator.vector.ByteVector", innerClass = "ByteSpecies", onlyWith = VectorAPIEnabled.class)
-    static final class Target_jdk_incubator_vector_ByteVector_ByteSpecies {
-
-        // Dispatches using a switch statement on the (@Stable) vector species' bit size. In the
-        // impossible case, an AssertionError is throw. Even with the vector bit sizes precomputed
-        // during image build-time, we still see the AssertionErrors in SubstrateVM stack traces.
-        @AnnotateOriginal
-        @CompilerDirectives.TruffleBoundary
-        native Target_jdk_incubator_vector_ByteVector zero();
-    }
-
-    // Fast-path method which dispatches to the correct vector element comparison predicate.
-    // The switch uses AssertionError in the impossible case, which show up in the stack traces,
-    // even though the comparison operator should be fixed for any given invocation. Nevertheless,
-    // this method should only matter when a SIMD intrinsic could not be used.
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    static native boolean compareWithOp(int cond, byte a, byte b);
-}
-
-@TargetClass(className = "jdk.incubator.vector.ShortVector", onlyWith = VectorAPIEnabled.class)
-final class Target_jdk_incubator_vector_ShortVector {
-
-    @TargetClass(className = "jdk.incubator.vector.ShortVector", innerClass = "ShortSpecies", onlyWith = VectorAPIEnabled.class)
-    static final class Target_jdk_incubator_vector_ShortVector_ShortSpecies {
-
-        // See the comment on Target_jdk_incubator_vector_ByteVector_ByteSpecies.zero.
-        @AnnotateOriginal
-        @CompilerDirectives.TruffleBoundary
-        native Target_jdk_incubator_vector_ShortVector zero();
-    }
-
-    // See the comment on Target_jdk_incubator_vector_ByteVector.compareWithOp.
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    static native boolean compareWithOp(int cond, short a, short b);
-}
-
-@TargetClass(className = "jdk.incubator.vector.IntVector", onlyWith = VectorAPIEnabled.class)
-final class Target_jdk_incubator_vector_IntVector {
-
-    @TargetClass(className = "jdk.incubator.vector.IntVector", innerClass = "IntSpecies", onlyWith = VectorAPIEnabled.class)
-    static final class Target_jdk_incubator_vector_IntVector_IntSpecies {
-
-        // See the comment on Target_jdk_incubator_vector_ByteVector_ByteSpecies.zero.
-        @AnnotateOriginal
-        @CompilerDirectives.TruffleBoundary
-        native Target_jdk_incubator_vector_IntVector zero();
-    }
-
-    // See the comment on Target_jdk_incubator_vector_ByteVector.compareWithOp.
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    static native boolean compareWithOp(int cond, int a, int b);
-}
-
-@TargetClass(className = "jdk.incubator.vector.LongVector", onlyWith = VectorAPIEnabled.class)
-final class Target_jdk_incubator_vector_LongVector {
-
-    @TargetClass(className = "jdk.incubator.vector.LongVector", innerClass = "LongSpecies", onlyWith = VectorAPIEnabled.class)
-    static final class Target_jdk_incubator_vector_LongVector_LongSpecies {
-
-        // See the comment on Target_jdk_incubator_vector_ByteVector_ByteSpecies.zero.
-        @AnnotateOriginal
-        @CompilerDirectives.TruffleBoundary
-        native Target_jdk_incubator_vector_LongVector zero();
-    }
-
-    // See the comment on Target_jdk_incubator_vector_ByteVector.compareWithOp.
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    static native boolean compareWithOp(int cond, long a, long b);
-}
-
 @TargetClass(className = "jdk.incubator.vector.FloatVector", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_FloatVector {
-
-    @TargetClass(className = "jdk.incubator.vector.FloatVector", innerClass = "FloatSpecies", onlyWith = VectorAPIEnabled.class)
-    static final class Target_jdk_incubator_vector_FloatVector_FloatSpecies {
-
-        // See the comment on Target_jdk_incubator_vector_ByteVector_ByteSpecies.zero.
-        @AnnotateOriginal
-        @CompilerDirectives.TruffleBoundary
-        native Target_jdk_incubator_vector_FloatVector zero();
-    }
-
-    // See the comment on Target_jdk_incubator_vector_ByteVector.compareWithOp.
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    static native boolean compareWithOp(int cond, float a, float b);
 
     @TargetClass(className = "jdk.incubator.vector.FloatVector", innerClass = "FTriOp", onlyWith = VectorAPIEnabled.class)
     interface Target_jdk_incubator_vector_FloatVector_FTriOp {
@@ -1932,20 +1828,6 @@ final class Target_jdk_incubator_vector_FloatVector {
 @TargetClass(className = "jdk.incubator.vector.DoubleVector", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_DoubleVector {
 
-    @TargetClass(className = "jdk.incubator.vector.DoubleVector", innerClass = "DoubleSpecies", onlyWith = VectorAPIEnabled.class)
-    static final class Target_jdk_incubator_vector_DoubleVector_DoubleSpecies {
-
-        // See the comment on Target_jdk_incubator_vector_ByteVector_ByteSpecies.zero.
-        @AnnotateOriginal
-        @CompilerDirectives.TruffleBoundary
-        native Target_jdk_incubator_vector_DoubleVector zero();
-    }
-
-    // See the comment on Target_jdk_incubator_vector_ByteVector.compareWithOp.
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    static native boolean compareWithOp(int cond, double a, double b);
-
     @TargetClass(className = "jdk.incubator.vector.DoubleVector", innerClass = "FTriOp", onlyWith = VectorAPIEnabled.class)
     interface Target_jdk_incubator_vector_DoubleVector_FTriOp {
     }
@@ -1954,9 +1836,4 @@ final class Target_jdk_incubator_vector_DoubleVector {
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     native Target_jdk_incubator_vector_DoubleVector tOpTemplate(Target_jdk_incubator_vector_Vector o1, Target_jdk_incubator_vector_Vector o2, Target_jdk_incubator_vector_DoubleVector_FTriOp f);
-
-    // Throws AssertionError from some of the (inlined) switch statements' impossible cases.
-    @AnnotateOriginal
-    @CompilerDirectives.TruffleBoundary
-    native Target_jdk_incubator_vector_VectorMask testTemplate(Class<? extends Target_jdk_incubator_vector_VectorMask> maskType, Target_jdk_incubator_vector_VectorOperators.Target_jdk_incubator_vector_VectorOperators_Test op);
 }
