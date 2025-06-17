@@ -164,7 +164,8 @@ public final class MetadataTracer {
     }
 
     /**
-     * Marks the given resource within the given (optional) module as reachable.
+     * Marks the given resource within the given (optional) module as reachable. Use this method to
+     * trace resource lookups covered by image metadata (including negative queries).
      */
     public void traceResource(String resourceName, String moduleName) {
         assert enabled();
