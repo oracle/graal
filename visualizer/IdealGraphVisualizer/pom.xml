@@ -3,13 +3,13 @@
     <name>IdealGraphVisualizer-parent</name>
     <groupId>org.graalvm.visualizer</groupId>
     <artifactId>IdealGraphVisualizer-parent</artifactId>
-    <version>1.22</version>
+    <version>1.23-SNAPSHOT</version>
     <packaging>pom</packaging>
     <scm>
         <developerConnection>
             scm:git:git@github.com:oracle/graal.git
         </developerConnection>
-      <tag>idealgraphvisualizer-1.22</tag>
+      <tag>HEAD</tag>
   </scm>
     <build>
         <pluginManagement>
