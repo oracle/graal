@@ -52,6 +52,7 @@ import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.buffer.LongArrayBuffer;
 import com.oracle.truffle.regex.tregex.nfa.ASTStepVisitor;
 import com.oracle.truffle.regex.tregex.nfa.TransitionGuard;
+import com.oracle.truffle.regex.tregex.parser.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -65,7 +66,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
-import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.util.TBitSet;
 
 /**

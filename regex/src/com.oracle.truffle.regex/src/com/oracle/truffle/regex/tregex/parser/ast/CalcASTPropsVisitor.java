@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,10 +52,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
-import com.oracle.truffle.regex.errors.PyErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
-import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 /**
@@ -486,8 +484,8 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
             }
         }
         leaveLookAroundAssertion(assertion);
-        if (isForward() && !assertion.isDead() && ast.getFlavor() == PythonFlavor.INSTANCE && !assertion.isFixedWidth()) {
-            throw RegexSyntaxException.createPattern(ast.getSource(), PyErrorMessages.LOOK_BEHIND_REQUIRES_FIXED_WIDTH_PATTERN, 0, RegexSyntaxException.ErrorCode.InvalidLookbehind);
+        if (isForward() && !assertion.isDead() && ast.getFlavor().lookBehindsRequireFixedWidthPattern() && !assertion.isFixedWidth()) {
+            throw RegexSyntaxException.createPattern(ast.getSource(), "look-behind requires fixed-width pattern", 0, RegexSyntaxException.ErrorCode.InvalidLookbehind);
         }
     }
 

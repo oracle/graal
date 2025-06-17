@@ -49,7 +49,6 @@ import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
 import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
@@ -66,7 +65,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  * Note that {@link CharacterClass} nodes and the {@link CodePointSet}s that they rely on can only
  * match characters from the Basic Multilingual Plane (and whose code point fits into 16-bit
  * integers). Any term which matches characters outside of the Basic Multilingual Plane is expanded
- * by {@link JSRegexParser} into a more complex expression which matches the individual code units
+ * by {@code JSRegexParser} into a more complex expression which matches the individual code units
  * that would make up the UTF-16 encoding of those characters.
  */
 public class CharacterClass extends QuantifiableTerm {

@@ -45,7 +45,7 @@ import java.util.Map;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.regex.errors.RbErrorMessages;
+import com.oracle.truffle.regex.flavor.ruby.RbErrorMessages;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class RubyTests extends RegexTestBase {
