@@ -140,11 +140,6 @@ def jvm_standalone_deps():
             "sulong:SULONG_NATIVE",
             "sulong:SULONG_NFI",
         ]
-        if mx.suite('sulong-managed', fatalIfMissing=False):
-            result += [
-                'sulong-managed:SULONG_ENTERPRISE',
-                'sulong-managed:SULONG_ENTERPRISE_NATIVE',
-            ]
     if mx.suite('truffle-enterprise', fatalIfMissing=False):
         result.append('truffle-enterprise:TRUFFLE_ENTERPRISE')
     return result
