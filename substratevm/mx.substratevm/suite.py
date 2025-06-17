@@ -216,6 +216,13 @@ suite = {
                 "version" : "0.1.16",
             },
         },
+
+        "ZLIB_SRC" : {
+          "version" : "1.3.1",
+          "digest": "sha512:580677aad97093829090d4b605ac81c50327e74a6c2de0b85dd2e8525553f3ddde17556ea46f8f007f89e435493c9a20bc997d1ef1c1c2c23274528e3c46b94f",
+          "urls" : ["https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz"],
+          "license" : "MIT",
+        },
     },
 
     "projects": {
@@ -2871,6 +2878,16 @@ suite = {
             },
         },
 
+        "NATIVE_IMAGE_ZLIB_SUPPORT" : {
+            "native" : True,
+            "platformDependent" : False,
+            "description" : "Native Image zlib distribution for the GraalVM",
+            "layout" : {
+                "./lib/libz/build.zig": "file:3p/zlib/build.zig",
+                "./lib/libz/src/" : "extracted-dependency:ZLIB_SRC/zlib-*/**",
+            },
+        },
+
         "NATIVE_IMAGE_LICENSE_GRAALVM_SUPPORT" : {
             "native" : True,
             "platformDependent" : False,
@@ -2943,8 +2960,7 @@ suite = {
             "description" : "LLVM backend for Native Image",
             "dependencies" : ["com.oracle.svm.core.graal.llvm"],
             "distDependencies" : [
-                "SVM",
-                "sdk:LLVM_TOOLCHAIN"
+                "SVM"
             ],
             "javaProperties": {
                 "llvm.bin.dir": "<path:LLVM_TOOLCHAIN>/bin/",

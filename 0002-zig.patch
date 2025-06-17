@@ -1,0 +1,338 @@
+diff --git a/sdk/mx.sdk/mx_sdk_toolchain.py b/sdk/mx.sdk/mx_sdk_toolchain.py
+index 79c1a1daa61..87be371fb16 100644
+--- a/sdk/mx.sdk/mx_sdk_toolchain.py
++++ b/sdk/mx.sdk/mx_sdk_toolchain.py
+@@ -98,9 +98,8 @@ class ToolchainTestBuildTask(mx.BuildTask):
+     def build(self):
+         mx_util.ensure_dir_exists(self.subject.get_output_root())
+ 
+-        toolchainPath = mx.distribution('LLVM_TOOLCHAIN').output
+-        clang = os.path.join(toolchainPath, 'bin', 'clang')
+-        clangxx = os.path.join(toolchainPath, 'bin', 'clang++')
++        toolchainPath = mx.distribution('ZIG_DIR').output
++        zig = os.path.join(toolchainPath, 'zig')
+ 
+         def runTest(cmd, onError=None, rerunOnFailure=False):
+             out = mx.OutputCapture()
+@@ -117,11 +116,7 @@ class ToolchainTestBuildTask(mx.BuildTask):
+         def runCompile(compiler, src, binary, onError):
+             sourceFile = self.subject.getSource(src)
+             binFile = self.subject.getOutput(binary)
+-            if mx.is_darwin():
+-                compileCmd = ["xcrun", compiler]
+-            else:
+-                compileCmd = [compiler, "-fuse-ld=lld"]
+-            runTest(compileCmd + [sourceFile, '-o', binFile], onError=onError, rerunOnFailure=True)
++            runTest([zig, compiler, sourceFile, '-o', binFile], onError=onError, rerunOnFailure=True)
+             out = runTest([binFile], onError=lambda status:
+                 mx.abort(f"{os.path.basename(compiler)} could compile {src}, but the result doesn't work. It returned with exit code {status}.")
+             )
+@@ -130,11 +125,11 @@ class ToolchainTestBuildTask(mx.BuildTask):
+             if result != expected:
+                 mx.abort(f"{os.path.basename(compiler)} could compile {src}, but the result does not match (expected: \"{expected}\", got: \"{result}\").")
+ 
+-        runCompile(clang, "hello.c", "hello", onError=lambda status:
++        runCompile("cc", "hello.c", "hello", onError=lambda status:
+             mx.abort("The LLVM toolchain does not work. Do you have development packages installed?")
+         )
+ 
+-        runCompile(clangxx, "hello.cc", "hello-cxx", onError=lambda status: check_multiple_gcc_issue(clang))
++        runCompile("c++", "hello.cc", "hello-cxx", onError=lambda status: check_multiple_gcc_issue("c++"))
+ 
+     def clean(self, forBuild=False):
+         if os.path.exists(self.subject.get_output_root()):
+diff --git a/sdk/mx.sdk/mx_sdk_vm_impl.py b/sdk/mx.sdk/mx_sdk_vm_impl.py
+index cdd7909fcba..dcae2aa589b 100644
+--- a/sdk/mx.sdk/mx_sdk_vm_impl.py
++++ b/sdk/mx.sdk/mx_sdk_vm_impl.py
+@@ -2677,9 +2677,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
+         self.jvm_launcher = _skip_libraries(self.language_library_config) or not _get_svm_support().is_supported()
+         _dependencies = [] if (self.jvm_launcher) else [GraalVmNativeImage.project_name(self.language_library_config)]
+         self.jre_base = get_final_graalvm_distribution().path_substitutions.substitute('<jre_base>')
+-        # We use our LLVM toolchain on Linux because we want to statically link the C++ standard library,
+-        # and the system toolchain rarely has libstdc++.a installed (it would be an extra CI & dev dependency).
+-        toolchain = 'sdk:LLVM_NINJA_TOOLCHAIN' if mx.is_linux() else 'mx:DEFAULT_NINJA_TOOLCHAIN'
++
++        toolchain = 'mx:DEFAULT_NINJA_TOOLCHAIN'
+         super(NativeLibraryLauncherProject, self).__init__(
+             _suite,
+             NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config),
+diff --git a/sdk/mx.sdk/mx_sdk_vm_ng.py b/sdk/mx.sdk/mx_sdk_vm_ng.py
+index 21476855589..632a3945f6f 100644
+--- a/sdk/mx.sdk/mx_sdk_vm_ng.py
++++ b/sdk/mx.sdk/mx_sdk_vm_ng.py
+@@ -565,9 +565,8 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
+         self.relative_extracted_lib_paths = {k: v.replace('/', os.sep) for k, v in kw_args.pop('relative_extracted_lib_paths', {}).items()}
+         self.liblang_relpath = _pop_path(kw_args, 'relative_liblang_path', None)
+         self.setup_relative_resources = kw_args.pop('setup_relative_resources', None)
+-        # We use our LLVM toolchain on Linux because we want to statically link the C++ standard library,
+-        # and the system toolchain rarely has libstdc++.a installed (it would be an extra CI & dev dependency).
+-        toolchain = 'sdk:LLVM_NINJA_TOOLCHAIN' if mx.is_linux() else 'mx:DEFAULT_NINJA_TOOLCHAIN'
++
++        toolchain = 'mx:DEFAULT_NINJA_TOOLCHAIN'
+         super().__init__(
+             suite,
+             name,
+diff --git a/sdk/mx.sdk/suite.py b/sdk/mx.sdk/suite.py
+index 3922b2820a6..f05c9cd40d1 100644
+--- a/sdk/mx.sdk/suite.py
++++ b/sdk/mx.sdk/suite.py
+@@ -223,29 +223,6 @@ suite = {
+       "digest" : "sha512:9c83d01eb6745a3e20e3426d8334728a977da11528819cdc835bb2d62925b4d15cd167a549e08c4f263d15461771be2bc92d1ea36c1fd99ab7888740733c534c",
+       "license" : "Apache-2.0-LLVM",
+     },
+-    "MUSL_GCC_TOOLCHAIN" : {
+-      "packedResource": True,
+-      "os_arch": {
+-        "linux": {
+-          "amd64": {
+-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/toolchain-gcc-musl/toolchain-gcc-10.2.1-musl-1.2.2-linux-amd64.tar.gz"],
+-            "digest" : "sha512:8f49b04d4826c560c791e5223f504046fa0daa6b79e581ea1781a2d01f4efe2de4a0fb6771dc1b07318ab0109a61ea3b04255eadf36191a76687f873931eb283",
+-          },
+-          "aarch64": {
+-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/toolchain-gcc-musl/toolchain-gcc-10.2.1-musl-1.2.2-linux-aarch64.tar.gz"],
+-            "digest" : "sha512:f5545f6b36c2306861c026895d437a57357515e8dfefb0e8419413f61b146f42dc072f8a8a7a9f4885d6448396d656f59264e61e3f5eedd278486228aa58904e",
+-          },
+-          "<others>": {
+-            "optional": True,
+-          },
+-        },
+-        "<others>": {
+-          "<others>": {
+-            "optional": True,
+-          }
+-        }
+-      },
+-    },
+     "TIKA_1.0.11": {
+       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.11.zip"],
+       "digest": "sha512:0d45935c428bb3226b0d22b8ea8a8f2eb9e145a72225c6320eeb7c7d1cebc644921f6b77d379a9356bfcbdb66e9daf351d2aef18ff47fa67dad2d5cb15def875",
+@@ -671,9 +648,8 @@ suite = {
+         },
+         "linux": {
+           "<others>": {
+-            "toolchain": "sdk:LLVM_NINJA_TOOLCHAIN",
+-            "cflags": ["-std=c++17", "-g", "-Wall", "-Werror", "-D_GNU_SOURCE", "-stdlib=libc++"],
+-            "ldlibs": ["-ldl", "-pthread", "-stdlib=libc++", "-static-libstdc++", "-l:libc++abi.a"],
++            "cflags": ["-std=c++17", "-g", "-Wall", "-Werror", "-D_GNU_SOURCE"],
++            "ldlibs": ["-ldl", "-pthread"],
+           },
+         },
+         "darwin": {
+@@ -1538,190 +1514,5 @@ suite = {
+       "defaultBuild" : False,
+       "graalCompilerSourceEdition": "ignore",
+     },
+-    "LLVM_NINJA_TOOLCHAIN": {
+-      "native": True,
+-      "platformDependent": True,
+-      "os": {
+-        "linux": {
+-          "layout": {
+-            "toolchain.ninja": {
+-              "source_type": "string",
+-              "value": '''
+-include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
+-CC=<path:LLVM_TOOLCHAIN>/bin/clang
+-CXX=<path:LLVM_TOOLCHAIN>/bin/clang++
+-AR=<path:LLVM_TOOLCHAIN>/bin/llvm-ar
+-CFLAGS=
+-CXXFLAGS=
+-LDFLAGS=-fuse-ld=lld
+-'''
+-            },
+-          },
+-          "dependencies": [
+-            "mx:GCC_NINJA_TOOLCHAIN",
+-          ],
+-        },
+-        "darwin": {
+-          "layout": {
+-            "toolchain.ninja": {
+-              "source_type": "string",
+-              "value": '''
+-include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
+-CC=xcrun <path:LLVM_TOOLCHAIN>/bin/clang
+-CXX=xcrun <path:LLVM_TOOLCHAIN>/bin/clang++
+-AR=xcrun <path:LLVM_TOOLCHAIN>/bin/llvm-ar
+-CFLAGS=
+-CXXFLAGS=
+-LDFLAGS=-fuse-ld=lld
+-'''
+-            },
+-          },
+-          "dependencies": [
+-            "mx:GCC_NINJA_TOOLCHAIN",
+-          ],
+-        },
+-        "windows": {
+-          "layout": {
+-            "toolchain.ninja": {
+-              "source_type": "string",
+-              "value": '''
+-include <ninja-toolchain:MSVC_NINJA_TOOLCHAIN>
+-CL=<path:LLVM_TOOLCHAIN>\\bin\\clang-cl
+-LINK=<path:LLVM_TOOLCHAIN>\\bin\\lld-link
+-LIB=<path:LLVM_TOOLCHAIN>\\bin\\llvm-lib
+-ML=<path:LLVM_TOOLCHAIN>\\bin\\llvm-ml
+-CFLAGS=
+-CXXFLAGS=
+-LDFLAGS=
+-'''
+-            },
+-          },
+-          "dependencies": [
+-            "mx:MSVC_NINJA_TOOLCHAIN",
+-          ],
+-        },
+-      },
+-      "dependencies": [
+-        "LLVM_TOOLCHAIN",
+-        "org.graalvm.toolchain.test",
+-      ],
+-      "graalCompilerSourceEdition": "ignore",
+-    },
+-    "MUSL_NINJA_TOOLCHAIN" : {
+-      "native" : True,
+-      "platformDependent" : True,
+-      "native_toolchain" : {
+-        "kind": "ninja",
+-        "compiler": "gcc",
+-        "target": {
+-          # host os/arch
+-          "libc": "musl",
+-        },
+-      },
+-      "os_arch": {
+-        "linux": {
+-          "amd64": {
+-            "layout" : {
+-              "toolchain.ninja" : {
+-                "source_type": "string",
+-                "value": '''
+-include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
+-CC=<path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/gcc
+-CXX=<path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/g++
+-AR=<path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/ar
+-CFLAGS=
+-CXXFLAGS=
+-LDFLAGS=
+-'''
+-              },
+-            },
+-            "dependencies": [
+-              "MUSL_GCC_TOOLCHAIN",
+-              "mx:GCC_NINJA_TOOLCHAIN",
+-            ],
+-          },
+-          "aarch64": {
+-            "layout" : {
+-              "toolchain.ninja" : {
+-                "source_type": "string",
+-                "value": '''
+-include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
+-CC=<path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/gcc
+-CXX=<path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/g++
+-AR=<path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/ar
+-CFLAGS=
+-CXXFLAGS=
+-LDFLAGS=
+-'''
+-              },
+-            },
+-            "dependencies": [
+-              "MUSL_GCC_TOOLCHAIN",
+-              "mx:GCC_NINJA_TOOLCHAIN",
+-            ],
+-          },
+-        },
+-        "<others>": {
+-          "<others>": {
+-            "optional": True,
+-          }
+-        },
+-      },
+-      "maven" : False,
+-      "graalCompilerSourceEdition": "ignore",
+-    },
+-    "MUSL_CMAKE_TOOLCHAIN" : {
+-      "native" : True,
+-      "platformDependent" : True,
+-      "native_toolchain" : {
+-        "kind": "cmake",
+-        "compiler": "gcc",
+-        "target": {
+-          # host os/arch
+-          "libc": "musl",
+-        },
+-      },
+-      "os_arch": {
+-        "linux": {
+-          "amd64": {
+-            "layout" : {
+-              "toolchain.cmake" : {
+-                "source_type": "string",
+-                "value": '''
+-set(CMAKE_C_COMPILER   <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/gcc)
+-set(CMAKE_CXX_COMPILER <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/g++)
+-set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/ar)
+-'''
+-              },
+-            },
+-            "dependencies": [
+-              "MUSL_GCC_TOOLCHAIN",
+-            ],
+-          },
+-          "aarch64": {
+-            "layout" : {
+-              "toolchain.cmake" : {
+-                "source_type": "string",
+-                "value": '''
+-set(CMAKE_C_COMPILER   <path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/gcc)
+-set(CMAKE_CXX_COMPILER <path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/g++)
+-set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/ar)
+-'''
+-              },
+-            },
+-            "dependencies": [
+-              "MUSL_GCC_TOOLCHAIN",
+-            ],
+-          },
+-        },
+-        "<others>": {
+-          "<others>": {
+-            "optional": True,
+-          }
+-        },
+-      },
+-      "maven" : False,
+-      "graalCompilerSourceEdition": "ignore",
+-    },
+   },
+ }
+diff --git a/truffle/mx.truffle/mx_truffle.py b/truffle/mx.truffle/mx_truffle.py
+index 7851eac0ecb..0e4d6a17a5c 100644
+--- a/truffle/mx.truffle/mx_truffle.py
++++ b/truffle/mx.truffle/mx_truffle.py
+@@ -1836,8 +1836,7 @@ class LibffiBuilderProject(mx_native.MultitargetProject):
+                 configure_libc = {'glibc': 'gnu', 'musl': 'musl'}.get(toolchain.spec.target.libc)
+                 assert configure_libc, "translation to configure style libc is not supported yet for" + str(toolchain.spec.target.libc)
+ 
+-                configure_args += ['--host={}-pc-linux-{}'.format(configure_arch, configure_libc)]
+-
++            # Pass '-target', ... if needed
+             configure_args += [' CFLAGS="{}"'.format(' '.join(['-g', '-O3', '-fvisibility=hidden'] + (['-m64'] if mx.get_os() == 'solaris' else []))),
+                                'CPPFLAGS="-DNO_JAVA_RAW_API"']
+ 
+diff --git a/truffle/mx.truffle/suite.py b/truffle/mx.truffle/suite.py
+index ecf970ce7c2..25993d67b71 100644
+--- a/truffle/mx.truffle/suite.py
++++ b/truffle/mx.truffle/suite.py
+@@ -1078,7 +1078,6 @@ suite = {
+     "com.oracle.truffle.nfi.test.native" : {
+       "subDir" : "src",
+       "native" : "shared_lib",
+-      "toolchain" : "sdk:LLVM_NINJA_TOOLCHAIN",
+       "deliverable" : "nativetest",
+       "buildDependencies" : [
+         "com.oracle.truffle.nfi.native",

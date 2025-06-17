@@ -1,0 +1,635 @@
+diff --git a/sdk/mx.sdk/mx_sdk.py b/sdk/mx.sdk/mx_sdk.py
+index b7b810dbaa5..3c0d9442d0d 100644
+--- a/sdk/mx.sdk/mx_sdk.py
++++ b/sdk/mx.sdk/mx_sdk.py
+@@ -161,6 +161,8 @@ graalvm_sdk_native_image_component = mx_sdk_vm.GraalVmJreComponent(
+     license_files=[],
+     third_party_license_files=[],
+     dependencies=['sdkc'],
++    # TODO(@izaakschroeder): Better way of doing this?
++    support_distributions=["mx:ZIG_DIR", "substratevm:NATIVE_IMAGE_ZLIB_SUPPORT"],
+     jar_distributions=[],
+     boot_jars=['sdk:NATIVEIMAGE', 'sdk:NATIVEIMAGE_LIBGRAAL', 'sdk:WEBIMAGE_PREVIEW'],
+     stability="supported",
+diff --git a/substratevm/3p/zlib/build.zig b/substratevm/3p/zlib/build.zig
+new file mode 100644
+index 00000000000..8773d0c142a
+--- /dev/null
++++ b/substratevm/3p/zlib/build.zig
+@@ -0,0 +1,44 @@
++const std = @import("std");
++
++pub fn build(b: *std.Build) !void {
++    const target = b.standardTargetOptions(.{});
++    const optimize = b.standardOptimizeOption(.{});
++
++    const lib = b.addStaticLibrary(.{
++        .name = "z",
++        .target = target,
++        .optimize = optimize,
++    });
++    lib.linkLibC();
++    lib.addIncludePath(b.path("src"));
++    lib.installHeadersDirectory(b.path("src"), "", .{});
++
++    var flags = std.ArrayList([]const u8).init(b.allocator);
++    defer flags.deinit();
++    try flags.appendSlice(&.{
++        "-DHAVE_SYS_TYPES_H",
++        "-DHAVE_STDINT_H",
++        "-DHAVE_STDDEF_H",
++        "-DZ_HAVE_UNISTD_H",
++    });
++    lib.addCSourceFiles(.{ .files = srcs, .flags = flags.items });
++    b.installArtifact(lib);
++}
++
++const srcs = &.{
++    "src/adler32.c",
++    "src/compress.c",
++    "src/crc32.c",
++    "src/deflate.c",
++    "src/gzclose.c",
++    "src/gzlib.c",
++    "src/gzread.c",
++    "src/gzwrite.c",
++    "src/inflate.c",
++    "src/infback.c",
++    "src/inftrees.c",
++    "src/inffast.c",
++    "src/trees.c",
++    "src/uncompr.c",
++    "src/zutil.c",
++};
+diff --git a/substratevm/mx.substratevm/suite.py b/substratevm/mx.substratevm/suite.py
+index 5de8076ee0e..e0be4455694 100644
+--- a/substratevm/mx.substratevm/suite.py
++++ b/substratevm/mx.substratevm/suite.py
+@@ -237,6 +237,13 @@ suite = {
+                 "version" : "0.1.16",
+             },
+         },
++
++        "ZLIB_SRC" : {
++          "version" : "1.3.1",
++          "digest": "sha512:580677aad97093829090d4b605ac81c50327e74a6c2de0b85dd2e8525553f3ddde17556ea46f8f007f89e435493c9a20bc997d1ef1c1c2c23274528e3c46b94f",
++          "urls" : ["https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz"],
++          "license" : "MIT",
++        },
+     },
+ 
+     "projects": {
+@@ -2529,6 +2536,16 @@ suite = {
+             },
+         },
+ 
++        "NATIVE_IMAGE_ZLIB_SUPPORT" : {
++            "native" : True,
++            "platformDependent" : False,
++            "description" : "Native Image zlib distribution for the GraalVM",
++            "layout" : {
++                "./lib/libz/build.zig": "file:3p/zlib/build.zig",
++                "./lib/libz/src/" : "extracted-dependency:ZLIB_SRC/zlib-*/**",
++            },
++        },
++
+         "NATIVE_IMAGE_LICENSE_GRAALVM_SUPPORT" : {
+             "native" : True,
+             "platformDependent" : False,
+diff --git a/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/jdk/JNIPlatformNativeLibrarySupport.java b/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/jdk/JNIPlatformNativeLibrarySupport.java
+index f74a997579f..07a22890027 100644
+--- a/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/jdk/JNIPlatformNativeLibrarySupport.java
++++ b/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/jdk/JNIPlatformNativeLibrarySupport.java
+@@ -111,4 +111,5 @@ final class Target_java_io_FileOutputStream_JNI {
+ @Platforms({Platform.DARWIN.class, Platform.LINUX.class})
+ @CLibrary("z")
+ class ZLib {
++
+ }
+diff --git a/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGenerator.java b/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGenerator.java
+index 32e85f41a04..8a26fea2587 100644
+--- a/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGenerator.java
++++ b/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGenerator.java
+@@ -652,6 +652,11 @@ public class NativeImageGenerator {
+             NativeImageCodeCache codeCache;
+             CompileQueue compileQueue;
+             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.COMPILE_TOTAL)) {
++                if (ImageSingletons.contains(CCompilerInvoker.class)) {
++                    CCompilerInvoker compilerInvoker = ImageSingletons.lookup(CCompilerInvoker.class);
++                    compilerInvoker.beforeCompilation();
++                } 
++
+                 compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtimeConfiguration, DeoptTester.enabled());
+                 if (ImageSingletons.contains(RuntimeCompilationCallbacks.class)) {
+                     ImageSingletons.lookup(RuntimeCompilationCallbacks.class).onCompileQueueCreation(bb, hUniverse, compileQueue);
+diff --git a/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/c/codegen/CCompilerInvoker.java b/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/c/codegen/CCompilerInvoker.java
+index 8d0cf363317..766d9f2b8ba 100644
+--- a/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/c/codegen/CCompilerInvoker.java
++++ b/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/c/codegen/CCompilerInvoker.java
+@@ -47,10 +47,14 @@ import com.oracle.svm.core.OS;
+ import com.oracle.svm.core.SubstrateOptions;
+ import com.oracle.svm.core.SubstrateTargetDescription;
+ import com.oracle.svm.core.SubstrateUtil;
++import com.oracle.svm.core.c.libc.LibCBase;
++import com.oracle.svm.core.c.libc.GLibC;
++import com.oracle.svm.core.c.libc.MuslLibC;
+ import com.oracle.svm.core.option.SubstrateOptionsParser;
+ import com.oracle.svm.core.util.InterruptImageBuilding;
+ import com.oracle.svm.core.util.UserError;
+ import com.oracle.svm.core.util.VMError;
++import com.oracle.svm.hosted.c.NativeLibraries;
+ import com.oracle.svm.hosted.c.libc.HostedLibCBase;
+ import com.oracle.svm.hosted.c.util.FileUtils;
+ import com.oracle.svm.util.ClassUtil;
+@@ -79,6 +83,10 @@ public abstract class CCompilerInvoker {
+     }
+ 
+     public static CCompilerInvoker create(Path tempDirectory) {
++        String userDefinedPath = SubstrateOptions.CCompilerPath.getValue();
++        if (userDefinedPath == null) {
++            return new ZigCCompilerInvoker(tempDirectory);
++        }
+         OS hostOS = OS.getCurrent();
+         switch (hostOS) {
+             case LINUX:
+@@ -88,7 +96,10 @@ public abstract class CCompilerInvoker {
+             case WINDOWS:
+                 return new WindowsCCompilerInvoker(tempDirectory);
+             default:
+-                throw UserError.abort("No CCompilerInvoker for operating system %s", hostOS.name());
++                throw UserError.abort(
++                    "No CCompilerInvoker for operating system %s",
++                    hostOS.name()
++                );
+         }
+     }
+ 
+@@ -102,6 +113,10 @@ public abstract class CCompilerInvoker {
+         }
+     }
+ 
++    public void beforeCompilation() {
++        // Can be overridden.
++    }
++
+     private static UserError.UserException addSkipCheckingInfo(UserError.UserException err) {
+         List<String> messages = new ArrayList<>();
+         err.getMessages().forEach(messages::add);
+@@ -109,6 +124,200 @@ public abstract class CCompilerInvoker {
+         return UserError.abort(messages);
+     }
+ 
++    public static class ZigCCompilerInvoker extends CCompilerInvoker {
++
++        ZigCCompilerInvoker(Path tempDirectory) {
++            super(tempDirectory);
++        }
++
++        @Override
++        public List<String> createCompilerCommand(
++            List<String> options,
++            Path target,
++            Path... input
++        ) {
++            List<String> wrappedOptions = new ArrayList<String>(options);
++            wrappedOptions.addFirst(getTarget());
++            wrappedOptions.addFirst("-target");
++            wrappedOptions.addFirst("cc");
++            return super.createCompilerCommand(
++                compilerInfo.compilerPath,
++                wrappedOptions,
++                target,
++                input
++            );
++        }
++
++        protected String getArch() {
++            if (Platform.includedIn(Platform.AARCH64.class)) {
++                return "aarch64";
++            }
++            if (Platform.includedIn(Platform.AMD64.class)) {
++                return "x86_64";
++            }
++            if (Platform.includedIn(Platform.RISCV64.class)) {
++                return "riscv64";
++            }
++            throw UserError.abort("Unsupported platform");
++        }
++
++        protected String getOs() {
++            if (Platform.includedIn(Platform.LINUX.class)) {
++                return "linux";
++            }
++            if (Platform.includedIn(Platform.WINDOWS.class)) {
++                return "windows";
++            }
++            if (Platform.includedIn(Platform.MACOS.class)) {
++                return "macos";
++            }
++            throw UserError.abort("Unsupported platform");
++        }
++
++        protected String getLibc() {
++            if (Platform.includedIn(Platform.MACOS.class)) {
++                return "none";
++            }
++            if (Platform.includedIn(Platform.WINDOWS.class)) {
++                return "gnu";
++            }
++            if (Platform.includedIn(Platform.LINUX.class)) {
++                if (LibCBase.targetLibCIs(MuslLibC.class)) {
++                    return "musl";
++                }
++                if (LibCBase.targetLibCIs(GLibC.class)) {
++                    return "gnu";
++                }
++            }
++            throw UserError.abort("Unsupported platform");
++        }
++
++        protected String getTarget() {
++            return getArch() + "-" + getOs() + "-" + getLibc();
++        }
++
++        @Override
++        protected void verify() {
++            // No-op
++        }
++        
++        @Override
++        public void beforeCompilation() {
++            NativeLibraries nativeLibraries = NativeLibraries.singleton();
++            if (nativeLibraries == null) {
++                return;
++            }
++            File prefixDir = tempDirectory.resolve("root").toAbsolutePath().toFile();
++            prefixDir.mkdirs();
++            String prefix = prefixDir.toString();
++            for (String lib : nativeLibraries.getLibraries()) {
++                this.compileLib(prefix, lib);
++            }
++        }
++
++        protected Path getLibPath(String name) {
++            String libDir = System.getProperty("sun.boot.library.path");
++            if (libDir != null) {
++                Path libPath = Paths.get(libDir, "graalvm", "lib", "lib"+name);
++                if (Files.exists(libPath)) {
++                    return libPath;
++                }
++                return null;
++            }
++            return null;
++        }
++
++        protected void compileLib(String prefix, String name) {
++            Path libPath = getLibPath(name);
++            if (libPath == null) {
++                return;
++            }
++            Process compilerProcess = null;
++            
++            List<String> compilerCommand = Arrays.asList(
++                getDefaultCompiler(),
++                "build", 
++                "--release=fast", 
++                "--search-prefix", prefix, 
++                "--prefix", prefix,
++                "-Dtarget="+getTarget()
++            );
++            try {
++                ProcessBuilder processBuilder = FileUtils.prepareCommand(compilerCommand, libPath);
++                processBuilder.redirectErrorStream(true);
++                processBuilder.environment().put("LC_ALL", "C");
++                FileUtils.traceCommand(processBuilder);
++                compilerProcess = processBuilder.start();
++
++                List<String> lines;
++                try (InputStream inputStream = compilerProcess.getInputStream()) {                    
++                    lines = FileUtils.readAllLines(inputStream);
++                    FileUtils.traceCommandOutput(lines);
++                }
++                compilerProcess.waitFor();
++
++                if (compilerProcess.exitValue() != 0) {
++                    String errorMessage = "Unable to compile %s library %s:%n%s";
++                    throw UserError.abort(errorMessage, name, SubstrateUtil.getShellCommandString(compilerCommand, false), lines.stream().map(str -> "  " + str).collect(Collectors.joining(System.lineSeparator())));
++                }
++                return;
++            } catch (InterruptedException ex) {
++                throw new InterruptImageBuilding("Interrupted during building library " + name);
++            } catch (IOException e) {
++                throw UserError.abort(e, "Building library %s failed: %s", name, SubstrateUtil.getShellCommandString(compilerCommand, false));
++            } finally {
++                if (compilerProcess != null) {
++                    compilerProcess.destroy();
++                }
++            }
++            
++
++        }
++
++        @Override
++        protected String getDefaultCompiler() {
++            // sun.boot.library.path
++            String libDir = System.getProperty("sun.boot.library.path");
++            if (libDir != null) {
++                Path binPath = Paths.get(libDir, "graalvm", "zig");
++                return binPath.toAbsolutePath().toString();
++            }
++            return "zig";
++        }
++
++        @Override
++        protected CompilerInfo createCompilerInfo(
++            Path compilerPath,
++            Scanner scanner
++        ) {
++            try {
++                
++                scanner.useDelimiter("[. -]");
++                scanner.skip("\\p{Zs}*");
++                int major = scanner.nextInt();
++                int minor0 = scanner.nextInt();
++                int minor1 = scanner.nextInt();
++                return new CompilerInfo(
++                    compilerPath,
++                    "zig",
++                    "Zig Compiler",
++                    "zig",
++                    major,
++                    minor0,
++                    minor1,
++                    getTarget()
++                );
++            } catch (NoSuchElementException e) {
++                return null;
++            }
++        }
++
++        @Override
++        protected List<String> getVersionInfoOptions() {
++            return List.of("version");
++        }
++    }
++
+     private static class WindowsCCompilerInvoker extends CCompilerInvoker {
+ 
+         WindowsCCompilerInvoker(Path tempDirectory) {
+@@ -487,6 +696,7 @@ public abstract class CCompilerInvoker {
+             try (InputStream compilerErrors = getCompilerErrorStream(compilingProcess)) {
+                 lines = FileUtils.readAllLines(compilerErrors);
+                 FileUtils.traceCommandOutput(lines);
++                
+             }
+             boolean errorReported = false;
+             for (String line : lines) {
+@@ -546,12 +756,15 @@ public abstract class CCompilerInvoker {
+         if (userDefinedPath != null) {
+             compilerPath = Paths.get(userDefinedPath);
+         } else {
+-            String executableName = asExecutableName(getDefaultCompiler());
+-            Optional<Path> optCompilerPath = lookupSearchPath(executableName);
++            compilerPath = Paths.get(asExecutableName(getDefaultCompiler()));
++            
++        }
++        if (!compilerPath.isAbsolute()) {
++            Optional<Path> optCompilerPath = lookupSearchPath(compilerPath.getFileName().toString());
+             if (optCompilerPath.isPresent()) {
+                 compilerPath = optCompilerPath.get();
+             } else {
+-                throw UserError.abort("Default native-compiler executable '%s' not found via environment variable PATH", executableName);
++                throw UserError.abort("Default native-compiler executable '%s' not found via environment variable PATH", compilerPath);
+             }
+         }
+         if (Files.isDirectory(compilerPath) || !Files.isExecutable(compilerPath)) {
+diff --git a/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/CCLinkerInvocation.java b/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/CCLinkerInvocation.java
+index 82331bbef00..d907448960e 100644
+--- a/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/CCLinkerInvocation.java
++++ b/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/CCLinkerInvocation.java
+@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.image;
+ import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
+ 
+ import java.io.IOException;
++import java.io.InputStream;
+ import java.nio.file.Files;
+ import java.nio.file.Path;
+ import java.util.ArrayList;
+@@ -56,6 +57,7 @@ import com.oracle.svm.core.util.VMError;
+ import com.oracle.svm.hosted.c.CGlobalDataFeature;
+ import com.oracle.svm.hosted.c.NativeLibraries;
+ import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
++import com.oracle.svm.hosted.c.codegen.CCompilerInvoker.ZigCCompilerInvoker;
+ import com.oracle.svm.hosted.c.libc.HostedLibCBase;
+ import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
+ import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
+@@ -65,10 +67,11 @@ import jdk.graal.compiler.options.OptionStability;
+ 
+ public abstract class CCLinkerInvocation implements LinkerInvocation {
+ 
+-    protected CCLinkerInvocation(AbstractImage.NativeImageKind imageKind, NativeLibraries nativeLibs, List<ObjectFile.Symbol> imageSymbols) {
++    protected CCLinkerInvocation(AbstractImage.NativeImageKind imageKind, NativeLibraries nativeLibs, List<ObjectFile.Symbol> imageSymbols, Path tempDirectory) {
+         this.imageKind = imageKind;
+         this.nativeLibs = nativeLibs;
+         this.imageSymbols = imageSymbols;
++        this.tempDirectory = tempDirectory;
+     }
+ 
+     public static class Options {
+@@ -166,10 +169,6 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
+         outputFile = out;
+     }
+ 
+-    public void setTempDirectory(Path tempDirectory) {
+-        this.tempDirectory = tempDirectory;
+-    }
+-
+     @Override
+     public Path getTempDirectory() {
+         return tempDirectory;
+@@ -251,14 +250,120 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
+                         .collect(Collectors.toList());
+     }
+ 
++    private static class ZigCCLinkerInvocation extends CCLinkerInvocation {
++
++
++        ZigCCLinkerInvocation(AbstractImage.NativeImageKind imageKind, NativeLibraries nativeLibs, List<ObjectFile.Symbol> symbols, Path tempDirectory) {
++            super(imageKind, nativeLibs, symbols, tempDirectory);
++
++            Path prefix = tempDirectory.resolve("root");
++            additionalPreOptions.add("-L" + prefix.resolve("lib").toAbsolutePath().toString());
++            additionalPreOptions.add("-isystem" + prefix.resolve("include").toAbsolutePath().toString());
++
++            additionalPreOptions.add("-Wa,--noexecstack");
++            additionalPreOptions.add("-Wl,-z,noexecstack");
++
++            // The linker should fail if DT_TEXTREL is needed, otherwise the image won't work on
++            // SELinux. If SpawnIsolates are disabled, this won't work as dynamic relocations
++            // are needed for heap access.
++            if (!SpawnIsolates.getValue()) {
++                additionalPreOptions.add("-Wl,-z,notext");
++            }
++
++            if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
++                /* Perform garbage collection of unused input sections. */
++                additionalPreOptions.add("-Wl,--gc-sections");
++            }
++
++            if (imageKind.isImageLayer) {
++                /*
++                 * We do not want interposition to affect the resolution of symbols we define and
++                 * reference within this library.
++                 */
++                additionalPreOptions.add("-Wl,-Bsymbolic");
++            }
++
++            /* Use --version-script to control the visibility of image symbols. */
++            try {
++                StringBuilder exportedSymbols = new StringBuilder();
++                exportedSymbols.append("{\n");
++                /* Only exported symbols are global ... */
++                Set<String> globalSymbols = Stream.concat(getImageSymbols(true).stream(), JNIRegistrationSupport.getShimLibrarySymbols()).collect(Collectors.toSet());
++                if (!globalSymbols.isEmpty()) {
++                    exportedSymbols.append("global:\n");
++                    globalSymbols.forEach(symbol -> exportedSymbols.append('\"').append(symbol).append("\";\n"));
++                }
++                /* ... everything else is local. */
++                exportedSymbols.append("local: *;\n");
++                exportedSymbols.append("};");
++
++                Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
++                Files.write(exportedSymbolsPath, Collections.singleton(exportedSymbols.toString()));
++                additionalPreOptions.add("-Wl,--version-script," + exportedSymbolsPath.toAbsolutePath());
++            } catch (IOException e) {
++                VMError.shouldNotReachHere(e);
++            }
++
++            additionalPreOptions.addAll(HostedLibCBase.singleton().getAdditionalLinkerOptions(imageKind));
++
++            if (SubstrateOptions.DeleteLocalSymbols.getValue() && !SubstrateOptions.StripDebugInfo.getValue()) {
++                additionalPreOptions.add("-Wl,-x");
++            }
++        }
++
++        @Override
++        String getSymbolName(ObjectFile.Symbol symbol) {
++            return symbol.getName();
++        }
++
++        @Override
++        protected void setOutputKind(List<String> cmd) {
++            switch (imageKind) {
++                case EXECUTABLE:
++                    /* Export global symbols. */
++                    cmd.add("-Wl,--export-dynamic");
++                    break;
++                case STATIC_EXECUTABLE:
++                    cmd.add("-static");
++                    break;
++                case IMAGE_LAYER:
++                case SHARED_LIBRARY:
++                    cmd.add("-shared");
++                    break;
++                default:
++                    VMError.shouldNotReachHereUnexpectedInput(imageKind); // ExcludeFromJacocoGeneratedReport
++            }
++        }
++
++        @Override
++        protected List<String> getLibrariesCommand() {
++            List<String> cmd = new ArrayList<>();
++            String previousLayerLib = null;
++            for (String lib : libs) {
++                String linkingMode = null;
++                if (ImageLayerBuildingSupport.buildingExtensionLayer() && HostedDynamicLayerInfo.singleton().isImageLayerLib(lib)) {
++                    VMError.guarantee(!lib.isEmpty());
++                    VMError.guarantee(previousLayerLib == null, "We currently only support one previous layer."); // GR-58631
++                    previousLayerLib = lib;
++                }
++                cmd.add("-l" + lib);
++            }
++
++            if (previousLayerLib != null) {
++                cmd.add("-l" + previousLayerLib);
++            }
++            return cmd;
++        }
++    }
++
+     private static class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
+ 
+         private final boolean dynamicLibC = SubstrateOptions.StaticExecutableWithDynamicLibC.getValue();
+         private final boolean staticLibCpp = SubstrateOptions.StaticLibStdCpp.getValue();
+         private final boolean customStaticLibs = dynamicLibC || staticLibCpp;
+ 
+-        BinutilsCCLinkerInvocation(AbstractImage.NativeImageKind imageKind, NativeLibraries nativeLibs, List<ObjectFile.Symbol> symbols) {
+-            super(imageKind, nativeLibs, symbols);
++        BinutilsCCLinkerInvocation(AbstractImage.NativeImageKind imageKind, NativeLibraries nativeLibs, List<ObjectFile.Symbol> symbols, Path tempDirectory) {
++            super(imageKind, nativeLibs, symbols, tempDirectory);
+             additionalPreOptions.add("-z");
+             additionalPreOptions.add("noexecstack");
+ 
+@@ -383,9 +488,9 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
+ 
+     private static class DarwinCCLinkerInvocation extends CCLinkerInvocation {
+ 
+-        DarwinCCLinkerInvocation(AbstractImage.NativeImageKind imageKind, NativeLibraries nativeLibs, List<ObjectFile.Symbol> symbols) {
++        DarwinCCLinkerInvocation(AbstractImage.NativeImageKind imageKind, NativeLibraries nativeLibs, List<ObjectFile.Symbol> symbols, Path tempDirectory) {
+             // Workaround building images with older Xcode with new libraries
+-            super(imageKind, nativeLibs, symbols);
++            super(imageKind, nativeLibs, symbols, tempDirectory);
+             setLinkerFlags(nativeLibs, false);
+         }
+ 
+@@ -486,8 +591,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
+ 
+         private final String imageName;
+ 
+-        WindowsCCLinkerInvocation(AbstractImage.NativeImageKind imageKind, NativeLibraries nativeLibs, List<ObjectFile.Symbol> symbols, String imageName) {
+-            super(imageKind, nativeLibs, symbols);
++        WindowsCCLinkerInvocation(AbstractImage.NativeImageKind imageKind, NativeLibraries nativeLibs, List<ObjectFile.Symbol> symbols, String imageName, Path tempDirectory) {
++            super(imageKind, nativeLibs, symbols, tempDirectory);
+             this.imageName = imageName;
+         }
+ 
+@@ -590,23 +695,27 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
+                     Path outputDirectory, Path tempDirectory, String imageName, List<ObjectFile.Symbol> symbols) {
+         CCLinkerInvocation inv;
+ 
+-        switch (ObjectFile.getNativeFormat()) {
+-            case MACH_O:
+-                inv = new DarwinCCLinkerInvocation(imageKind, nativeLibs, symbols);
+-                break;
+-            case PECOFF:
+-                inv = new WindowsCCLinkerInvocation(imageKind, nativeLibs, symbols, imageName);
+-                break;
+-            case ELF:
+-            default:
+-                inv = new BinutilsCCLinkerInvocation(imageKind, nativeLibs, symbols);
+-                break;
++        if (ImageSingletons.lookup(CCompilerInvoker.class) instanceof CCompilerInvoker.ZigCCompilerInvoker) {
++            inv = new ZigCCLinkerInvocation(imageKind, nativeLibs, symbols, tempDirectory);
++        } else {
++            switch (ObjectFile.getNativeFormat()) {
++                case MACH_O:
++                    inv = new DarwinCCLinkerInvocation(imageKind, nativeLibs, symbols, tempDirectory);
++                    break;
++                case PECOFF:
++                    inv = new WindowsCCLinkerInvocation(imageKind, nativeLibs, symbols, imageName, tempDirectory);
++                    break;
++                case ELF:
++                default:
++                    inv = new BinutilsCCLinkerInvocation(imageKind, nativeLibs, symbols, tempDirectory);
++                    break;
++            }
+         }
++        
+ 
+         Path outputFile = outputDirectory.resolve(imageKind.getOutputFilename(imageName));
+         UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory (use '-o /path/to/image').", outputFile);
+         inv.setOutputFile(outputFile);
+-        inv.setTempDirectory(tempDirectory);
+ 
+         inv.addLibPath(tempDirectory.toString());
+         for (String libraryPath : nativeLibs.getLibraryPaths()) {

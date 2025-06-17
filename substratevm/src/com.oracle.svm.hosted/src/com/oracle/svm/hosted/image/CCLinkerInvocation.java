@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.image;
 import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -54,6 +55,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
+import com.oracle.svm.hosted.c.codegen.CCompilerInvoker.ZigCCompilerInvoker;
 import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
@@ -261,6 +263,112 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         return Stream.of(nativeLinkerOptions, Options.NativeLinkerOption.getValue().values())
                         .flatMap(Collection::stream)
                         .collect(Collectors.toList());
+    }
+
+    private static class ZigCCLinkerInvocation extends CCLinkerInvocation {
+
+
+        ZigCCLinkerInvocation(AbstractImage.NativeImageKind imageKind, NativeLibraries nativeLibs, List<ObjectFile.Symbol> symbols) {
+            super(imageKind, nativeLibs, symbols);
+
+            Path prefix = tempDirectory.resolve("root");
+            additionalPreOptions.add("-L" + prefix.resolve("lib").toAbsolutePath().toString());
+            additionalPreOptions.add("-isystem" + prefix.resolve("include").toAbsolutePath().toString());
+
+            additionalPreOptions.add("-Wa,--noexecstack");
+            additionalPreOptions.add("-Wl,-z,noexecstack");
+
+            // The linker should fail if DT_TEXTREL is needed, otherwise the image won't work on
+            // SELinux. If SpawnIsolates are disabled, this won't work as dynamic relocations
+            // are needed for heap access.
+            if (!SpawnIsolates.getValue()) {
+                additionalPreOptions.add("-Wl,-z,notext");
+            }
+
+            if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
+                /* Perform garbage collection of unused input sections. */
+                additionalPreOptions.add("-Wl,--gc-sections");
+            }
+
+            if (imageKind.isImageLayer) {
+                /*
+                 * We do not want interposition to affect the resolution of symbols we define and
+                 * reference within this library.
+                 */
+                additionalPreOptions.add("-Wl,-Bsymbolic");
+            }
+
+            /* Use --version-script to control the visibility of image symbols. */
+            try {
+                StringBuilder exportedSymbols = new StringBuilder();
+                exportedSymbols.append("{\n");
+                /* Only exported symbols are global ... */
+                Set<String> globalSymbols = Stream.concat(getImageSymbols(true).stream(), JNIRegistrationSupport.getShimLibrarySymbols()).collect(Collectors.toSet());
+                if (!globalSymbols.isEmpty()) {
+                    exportedSymbols.append("global:\n");
+                    globalSymbols.forEach(symbol -> exportedSymbols.append('\"').append(symbol).append("\";\n"));
+                }
+                /* ... everything else is local. */
+                exportedSymbols.append("local: *;\n");
+                exportedSymbols.append("};");
+
+                Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
+                Files.write(exportedSymbolsPath, Collections.singleton(exportedSymbols.toString()));
+                additionalPreOptions.add("-Wl,--version-script," + exportedSymbolsPath.toAbsolutePath());
+            } catch (IOException e) {
+                VMError.shouldNotReachHere(e);
+            }
+
+            additionalPreOptions.addAll(HostedLibCBase.singleton().getAdditionalLinkerOptions(imageKind));
+
+            if (SubstrateOptions.DeleteLocalSymbols.getValue() && !SubstrateOptions.StripDebugInfo.getValue()) {
+                additionalPreOptions.add("-Wl,-x");
+            }
+        }
+
+        @Override
+        String getSymbolName(ObjectFile.Symbol symbol) {
+            return symbol.getName();
+        }
+
+        @Override
+        protected void setOutputKind(List<String> cmd) {
+            switch (imageKind) {
+                case EXECUTABLE:
+                    /* Export global symbols. */
+                    cmd.add("-Wl,--export-dynamic");
+                    break;
+                case STATIC_EXECUTABLE:
+                    cmd.add("-static");
+                    break;
+                case IMAGE_LAYER:
+                case SHARED_LIBRARY:
+                    cmd.add("-shared");
+                    break;
+                default:
+                    VMError.shouldNotReachHereUnexpectedInput(imageKind); // ExcludeFromJacocoGeneratedReport
+            }
+        }
+
+        @Override
+        protected List<String> getLibrariesCommand() {
+            List<String> cmd = new ArrayList<>();
+            String previousLayerLib = null;
+            for (String lib : libs) {
+                String linkingMode = null;
+                if (ImageLayerBuildingSupport.buildingExtensionLayer() && HostedDynamicLayerInfo.singleton().isImageLayerLib(lib)) {
+                    VMError.guarantee(!lib.isEmpty());
+                    VMError.guarantee(previousLayerLib == null, "We currently only support one previous layer."); // GR-58631
+                    previousLayerLib = lib;
+                }
+                cmd.add("-l" + lib);
+            }
+
+            if (previousLayerLib != null) {
+                cmd.add("-l" + previousLayerLib);
+            }
+            return cmd;
+        }
     }
 
     private static class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
@@ -691,23 +799,27 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                     Path outputDirectory, Path tempDirectory, String imageName, List<ObjectFile.Symbol> symbols) {
         CCLinkerInvocation inv;
 
-        switch (ObjectFile.getNativeFormat()) {
-            case MACH_O:
-                inv = new DarwinCCLinkerInvocation(imageKind, nativeLibs, symbols);
-                break;
-            case PECOFF:
-                inv = new WindowsCCLinkerInvocation(imageKind, nativeLibs, symbols, imageName);
-                break;
-            case ELF:
-            default:
-                inv = new BinutilsCCLinkerInvocation(imageKind, nativeLibs, symbols);
-                break;
+        if (ImageSingletons.lookup(CCompilerInvoker.class) instanceof CCompilerInvoker.ZigCCompilerInvoker) {
+            inv = new ZigCCLinkerInvocation(imageKind, nativeLibs, symbols);
+        } else {
+            switch (ObjectFile.getNativeFormat()) {
+                case MACH_O:
+                    inv = new DarwinCCLinkerInvocation(imageKind, nativeLibs, symbols);
+                    break;
+                case PECOFF:
+                    inv = new WindowsCCLinkerInvocation(imageKind, nativeLibs, symbols, imageName);
+                    break;
+                case ELF:
+                default:
+                    inv = new BinutilsCCLinkerInvocation(imageKind, nativeLibs, symbols);
+                    break;
+            }
         }
+
 
         Path outputFile = outputDirectory.resolve(imageKind.getOutputFilename(imageName));
         UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory (use '-o /path/to/image').", outputFile);
         inv.setOutputFile(outputFile);
-        inv.setTempDirectory(tempDirectory);
 
         inv.addLibPath(tempDirectory.toString());
         for (String libraryPath : nativeLibs.getLibraryPaths()) {

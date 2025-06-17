@@ -591,6 +591,7 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
         self.liblang_relpath = _pop_path(kw_args, 'relative_liblang_path', None)
         self.setup_relative_resources = kw_args.pop('setup_relative_resources', None)
 
+        # toolchain = 'mx:DEFAULT_NINJA_TOOLCHAIN'
         if not kw_args.get('multitarget'):
             # We use our LLVM toolchain on Linux by default because we want to statically link the C++ standard library,
             # and the system toolchain rarely has libstdc++.a installed (it would be an extra CI & dev dependency).

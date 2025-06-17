@@ -162,6 +162,8 @@ graalvm_sdk_native_image_component = mx_sdk_vm.GraalVmJreComponent(
     license_files=[],
     third_party_license_files=[],
     dependencies=['sdkc'],
+    # TODO(@izaakschroeder): Better way of doing this?
+    support_distributions=["mx:ZIG_DIR", "substratevm:NATIVE_IMAGE_ZLIB_SUPPORT"],
     jar_distributions=[],
     boot_jars=['sdk:NATIVEIMAGE', 'sdk:NATIVEIMAGE_LIBGRAAL', 'sdk:WEBIMAGE_PREVIEW'],
     stability="supported",
