@@ -65,6 +65,11 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       "ESPRESSO_LLVM_JAVA_HOME": graal_common.labsjdk21LLVM.downloads["LLVM_JAVA_HOME"],
     },
   },
+  espresso_jdkLatest_llvm: {
+    downloads+: {
+      "ESPRESSO_LLVM_JAVA_HOME": graal_common.labsjdkLatestLLVM.downloads["LLVM_JAVA_HOME"],
+    },
+  },
 
   predicates(with_compiler, with_native_image, with_vm, with_espresso=true): {
     assert !with_native_image || with_compiler,
@@ -117,9 +122,10 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   darwin_aarch64_21: self.espresso_jdk_21 + graal_common.labsjdkLatest                             + self.darwin_aarch64,
   windows_21:        self.espresso_jdk_21 + graal_common.labsjdkLatest                             + self.windows + devkits["windows-jdk-latest"],
 
-  linux_amd64_latest:                       graal_common.labsjdkLatest                             + self.linux_amd64,
+  linux_amd64_latest:                       graal_common.labsjdkLatest + self.espresso_jdkLatest_llvm + self.linux_amd64,
+  linux_aarch64_latest:                     graal_common.labsjdkLatest                                + self.linux_aarch64,
 
-  linux_amd64_graalvm21: self.espresso_jdk_21 + graal_common.graalvmee21 + self.espresso_jdk_21_llvm + self.linux_amd64,
+  linux_amd64_graalvm21: self.espresso_jdk_21 + graal_common.graalvmee21 + self.espresso_jdk_21_llvm  + self.linux_amd64,
 
 
 
@@ -163,9 +169,11 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk21_on_demand_bench_linux   : self.onDemandBench + self.linux_amd64_21 + self.x52,
   jdk21_on_demand_bench_darwin  : self.onDemandBench + self.darwin_amd64_21,
   jdk21_on_demand_bench_windows : self.onDemandBench + self.windows_21,
+
   jdkLatest_gate_linux_amd64    : self.gate          + self.linux_amd64_latest,
   jdkLatest_daily_linux_amd64   : self.daily         + self.linux_amd64_latest,
   jdkLatest_weekly_linux_amd64  : self.weekly        + self.linux_amd64_latest,
+  jdkLatest_weekly_linux_aarch64: self.weekly        + self.linux_aarch64_latest,
 
   // shared snippets
   eclipse: graal_common.deps.eclipse,
