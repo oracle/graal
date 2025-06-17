@@ -71,7 +71,7 @@ import static java.lang.System.lineSeparator;
 @AutomaticallyRegisteredFeature
 public final class DynamicAccessDetectionFeature implements InternalFeature {
 
-    private record MethodsByAccessKind(Map<DynamicAccessDetectionPhase.DynamicAccessKind, CallLocationsByMethod> methodsByAccessKind) {
+    public record MethodsByAccessKind(Map<DynamicAccessDetectionPhase.DynamicAccessKind, CallLocationsByMethod> methodsByAccessKind) {
         MethodsByAccessKind() {
             this(new ConcurrentSkipListMap<>());
         }
@@ -85,7 +85,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         }
     }
 
-    private record CallLocationsByMethod(Map<String, ConcurrentLinkedQueue<String>> callLocationsByMethod) {
+    public record CallLocationsByMethod(Map<String, ConcurrentLinkedQueue<String>> callLocationsByMethod) {
         CallLocationsByMethod() {
             this(new ConcurrentSkipListMap<>());
         }
@@ -113,6 +113,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
     private static final String OUTPUT_DIR_NAME = "dynamic-access";
     private static final String TRACK_NONE = "none";
     private static final String TO_CONSOLE = "to-console";
+    private static final String NO_DUMP = "no-dump";
 
     private UnmodifiableEconomicSet<String> sourceEntries; // Class path entries and module or
     // package names
@@ -122,6 +123,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
     private final OptionValues hostedOptionValues = HostedOptionValues.singleton();
 
     private boolean printToConsole;
+    private boolean dumpJsonFiles = true;
 
     public DynamicAccessDetectionFeature() {
         callsBySourceEntry = new ConcurrentSkipListMap<>();
@@ -169,7 +171,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         }
     }
 
-    public static Path getOrCreateDirectory(Path directory) throws IOException {
+    private static Path getOrCreateDirectory(Path directory) throws IOException {
         if (Files.exists(directory)) {
             if (!Files.isDirectory(directory)) {
                 throw new NoSuchFileException(directory.toString(), null,
@@ -225,7 +227,9 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
     public void reportDynamicAccess() {
         for (String entry : sourceEntries) {
             if (callsBySourceEntry.containsKey(entry)) {
-                dumpReportForEntry(entry);
+                if (dumpJsonFiles) {
+                    dumpReportForEntry(entry);
+                }
                 if (printToConsole) {
                     printReportForEntry(entry);
                 }
@@ -299,10 +303,13 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
 
         AccumulatingLocatableMultiOptionValue.Strings options = SubstrateOptions.TrackDynamicAccess.getValue();
         for (String optionValue : options.values()) {
-            if (optionValue.equals(TO_CONSOLE)) {
-                printToConsole = true;
-            } else if (optionValue.equals(TRACK_NONE)) {
-                printToConsole = false;
+            switch (optionValue) {
+                case TO_CONSOLE -> printToConsole = true;
+                case NO_DUMP -> dumpJsonFiles = false;
+                case TRACK_NONE -> {
+                    printToConsole = false;
+                    dumpJsonFiles = true;
+                }
             }
         }
 
@@ -324,8 +331,8 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
     }
 
     private static String dynamicAccessPossibleOptions() {
-        return String.format("[%s, %s, %s, %s]",
-                        TRACK_ALL, TRACK_NONE, TO_CONSOLE, IncludeOptionsSupport.possibleExtendedOptions());
+        return String.format("[%s, %s, %s, %s, %s]",
+                        TRACK_ALL, TRACK_NONE, TO_CONSOLE, NO_DUMP, IncludeOptionsSupport.possibleExtendedOptions());
     }
 
     public static void parseDynamicAccessOptions(EconomicMap<OptionKey<?>, Object> hostedValues, NativeImageClassLoaderSupport classLoaderSupport) {
@@ -340,8 +347,8 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
                 switch (option) {
                     case TRACK_ALL -> classLoaderSupport.setTrackAllDynamicAccess(valueWithOrigin);
                     case TRACK_NONE -> classLoaderSupport.clearDynamicAccessSelectors();
-                    case TO_CONSOLE -> {
-                        // This option is parsed later in the afterRegistration hook
+                    case TO_CONSOLE, NO_DUMP -> {
+                        // These options are parsed later in the afterRegistration hook
                     }
                     default -> parseIncludeSelector(optionArgument, valueWithOrigin, classLoaderSupport.getDynamicAccessSelectors(), IncludeOptionsSupport.ExtendedOption.parse(option),
                                     dynamicAccessPossibleOptions());
