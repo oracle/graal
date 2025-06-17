@@ -26,7 +26,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
   local truffle_maven_downloader = graal_common.deps.svm + graal_common.deps.sulong + {
     run+: [
-      ['export', 'SVM_SUITE=' + vm.svm_suite],
       ['mx', '--env', 'ce-llvm', '--native-images=', 'gate', '--no-warning-as-error', '--tags', 'build,maven-downloader'],
     ],
     notify_groups: ["truffle"],
@@ -41,8 +40,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   local builds = [
     vm.vm_java_Latest + graal_common.deps.svm + graal_common.deps.sulong + graal_common.deps.graalpy + vm.custom_vm + vm_common.vm_base('linux', 'amd64', 'gate') + {
      run+: [
-       ['export', 'SVM_SUITE=' + vm.svm_suite],
-       ['mx', '--dynamicimports', '$SVM_SUITE,graalpython', '--disable-polyglot', '--disable-libpolyglot', '--force-bash-launchers=lli,native-image', 'gate', '--no-warning-as-error', '--tags', 'build,python'],
+       ['mx', '--env', vm.edition, '--native-images=true', '--dy', 'graalpython', 'gate', '-B--targets=GRAALPY_NATIVE_STANDALONE', '--no-warning-as-error', '--tags', 'build,python'],
      ],
      timelimit: '45:00',
      name: 'gate-vm-native-graalpython-linux-amd64',
