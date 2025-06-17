@@ -44,6 +44,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import com.oracle.truffle.regex.flavor.python.PythonFlags;
+
 public class PythonFlagsTest {
 
     private static PythonFlags parse(String flags) {

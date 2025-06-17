@@ -48,7 +48,7 @@ import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.regex.errors.PyErrorMessages;
+import com.oracle.truffle.regex.flavor.python.PyErrorMessages;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 

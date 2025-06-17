@@ -41,14 +41,13 @@
 package com.oracle.truffle.regex.charset;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.chardata.CharacterSet;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 /**
  * A storage-agnostic implementation of a sorted list of disjoint integer ranges with inclusive
  * lower and upper bounds. Holds the invariant {@link #rangesAreSortedNonAdjacentAndDisjoint()}.
  */
-public interface SortedListOfRanges extends CharacterSet {
+public interface SortedListOfRanges {
 
     /**
      * Returns the inclusive lower bound of the range stored at index {@code i}.
@@ -457,7 +456,6 @@ public interface SortedListOfRanges extends CharacterSet {
     /**
      * Returns {@code true} if this list contains the given {@code codePoint}.
      */
-    @Override
     default boolean contains(int codePoint) {
         int low = 0;
         int high = size() - 1;
