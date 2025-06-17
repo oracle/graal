@@ -280,9 +280,8 @@ class ReflectionProcessor extends AbstractProcessor {
             case "getBundleImpl": {
                 expectSize(args, 5);
                 String baseName = (String) args.get(2);
-                String queriedLocale = (String) args.get(3);
                 if (baseName != null) {
-                    resourceConfiguration.addBundle(condition, baseName, queriedLocale);
+                    resourceConfiguration.addBundle(condition, baseName);
                 }
                 break;
             }

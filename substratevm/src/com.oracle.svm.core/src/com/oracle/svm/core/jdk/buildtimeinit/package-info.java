@@ -23,29 +23,12 @@
  * questions.
  */
 
-package com.oracle.svm.core.jdk;
-
-import java.nio.file.spi.FileSystemProvider;
-
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.FutureDefaultsOptions;
-import com.oracle.svm.core.jdk.buildtimeinit.FileSystemProviderBuildTimeInitSupport;
-import com.oracle.svm.core.util.VMError;
-
 /**
- * Legacy delegate for backwards compatibility. It should go away eventually (GR-65809).
- * 
- * @see com.oracle.svm.core.jdk.buildtimeinit.FileSystemProviderBuildTimeInitSupport
+ * This package contains "legacy" substitutions and features that are required to support
+ * initializing certain parts of the JDK at image
+ * {@linkplain com.oracle.svm.core.jdk.JDKInitializedAtBuildTime build time}. Those parts of the JDK
+ * are planned to be initialized at {@linkplain com.oracle.svm.core.jdk.JDKInitializedAtRunTime run
+ * time} in the {@linkplain com.oracle.svm.core.FutureDefaultsOptions future}. Once run time
+ * initialization is the default, this package will be removed.
  */
-@SuppressWarnings("unused")
-public final class FileSystemProviderSupport {
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void register(FileSystemProvider provider) {
-        VMError.guarantee(!FutureDefaultsOptions.isJDKInitializedAtRunTime(), "No need to register FileSystemProvider if the JDK is initialized at run time.");
-        FileSystemProviderBuildTimeInitSupport.register(provider);
-    }
-
-}
+package com.oracle.svm.core.jdk.buildtimeinit;

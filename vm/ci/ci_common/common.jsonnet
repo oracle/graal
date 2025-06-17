@@ -73,23 +73,11 @@ local devkits = graal_common.devkits;
     },
   },
 
-  # SULONG
-  sulong: graal_common.deps.sulong,
-
-  # TRUFFLERUBY, needs OpenSSL 1.0.2+, so OracleLinux 7+
-  truffleruby: graal_common.deps.sulong + graal_common.deps.truffleruby,
-
   fastr_no_recommended: {
     environment+: {
       FASTR_NO_RECOMMENDED: 'true'
     },
   },
-
-  # GRAALPYTHON
-  graalpy: self.sulong + graal_common.deps.graalpy,
-
-  # WASM
-  wasm: graal_common.deps.wasm,
 
   vm_linux_amd64_common: graal_common.deps.svm {
     capabilities+: ['manycores', 'ram16gb', 'fast'],
@@ -146,8 +134,7 @@ local devkits = graal_common.devkits;
   mx_vm_complete: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}-complete'] + self.mx_vm_cmd_suffix,
 
   // svm_common includes the dependencies for all platforms besides windows amd64
-  svm_common: graal_common.deps.svm,
-  svm_common_windows_amd64(jdk): self.svm_common + graal_common.devkits["windows-jdk" + jdk],
+  svm_common_windows_amd64(jdk): graal_common.deps.svm + graal_common.devkits["windows-jdk" + jdk],
 
   maven_deploy_sdk:      ['--suite', 'sdk', 'maven-deploy', '--validate', 'none', '--all-distribution-types', '--with-suite-revisions-metadata'],
   deploy_artifacts_sdk(os, base_dist_name=null): (if base_dist_name != null then ['--base-dist-name=' + base_dist_name] else []) + ['--suite', 'sdk', 'deploy-artifacts', '--uploader', if os == 'windows' then 'artifact_uploader.cmd' else 'artifact_uploader'],
@@ -176,9 +163,7 @@ local devkits = graal_common.devkits;
     $.mx_vm_complete + self.artifact_deploy_standalones_dry_run(os)
   ],
 
-  ruby_vm_build: self.svm_common + self.sulong + self.truffleruby + vm.custom_vm,
-  ruby_python_vm_build: self.ruby_vm_build + self.graalpy,
-  full_vm_build: self.ruby_python_vm_build + graal_common.deps.fastr,
+  full_vm_build: graal_common.deps.svm + graal_common.deps.sulong + graal_common.deps.truffleruby + graal_common.deps.graalpy + graal_common.deps.fastr + vm.custom_vm,
 
   graalvm_complete_build_deps(edition, os, arch, java_version):
       local java_deps(edition) = {
@@ -201,7 +186,7 @@ local devkits = graal_common.devkits;
       if (os == 'windows') then
         if (arch == 'amd64') then
           # Windows/AMD64
-          java_deps(edition) + (if (java_version == 'latest') then self.svm_common_windows_amd64("Latest") else self.svm_common_windows_amd64(java_version)) + self.js_windows_common + self.sulong
+          java_deps(edition) + (if (java_version == 'latest') then self.svm_common_windows_amd64("Latest") else self.svm_common_windows_amd64(java_version)) + self.js_windows_common + graal_common.deps.sulong
         else
           error 'Unknown windows arch: ' + arch
       else if (os == 'linux' || os == 'darwin') then
@@ -567,9 +552,9 @@ local devkits = graal_common.devkits;
   # Darwin/AARCH64
   deploy_vm_standalones_javaLatest_darwin_aarch64: vm.vm_java_Latest + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'aarch64', 'post-merge', deploy=true) + self.deploy_graalvm_standalones('latest') + {name: 'post-merge-deploy-vm-standalones-java-latest-darwin-aarch64', notify_groups:: ["deploy"], notify_emails+: ["bernhard.urban-forster@oracle.com"], timelimit: '3:00:00'},
   # Windows/AMD64
-  deploy_vm_standalones_javaLatest_windows_amd64: vm.vm_java_Latest + self.svm_common_windows_amd64('Latest') + self.js_windows_common + self.sulong + self.vm_base('windows', 'amd64', 'post-merge', deploy=true, jdk_hint='Latest') + self.deploy_graalvm_standalones('latest') + self.deploy_build + {name: 'post-merge-deploy-vm-standalones-java-latest-windows-amd64', timelimit: '2:30:00', notify_groups:: ["deploy"]},
+  deploy_vm_standalones_javaLatest_windows_amd64: vm.vm_java_Latest + self.svm_common_windows_amd64('Latest') + self.js_windows_common + graal_common.deps.sulong + self.vm_base('windows', 'amd64', 'post-merge', deploy=true, jdk_hint='Latest') + self.deploy_graalvm_standalones('latest') + self.deploy_build + {name: 'post-merge-deploy-vm-standalones-java-latest-windows-amd64', timelimit: '2:30:00', notify_groups:: ["deploy"]},
 
-  local sulong_vm_tests = self.svm_common + self.sulong + vm.custom_vm + self.vm_base('linux', 'amd64', 'gate') + {
+  local sulong_vm_tests = graal_common.deps.svm + graal_common.deps.sulong + vm.custom_vm + self.vm_base('linux', 'amd64', 'gate') + {
      run: [
        ['export', 'SVM_SUITE=' + vm.svm_suite],
        ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],

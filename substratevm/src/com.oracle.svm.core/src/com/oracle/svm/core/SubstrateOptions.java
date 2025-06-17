@@ -790,9 +790,6 @@ public class SubstrateOptions {
 
     public static final String NATIVE_IMAGE_OPTIONS_ENV_VAR = "NATIVE_IMAGE_OPTIONS";
 
-    @Option(help = "Internal option to forward the value of " + NATIVE_IMAGE_OPTIONS_ENV_VAR)//
-    public static final HostedOptionKey<String> BuildOutputNativeImageOptionsEnvVarValue = new HostedOptionKey<>(null);
-
     public static final String BUILD_MEMORY_USAGE_REASON_TEXT_PROPERTY = "svm.build.memoryUsageReasonText";
 
     /*
@@ -1560,7 +1557,7 @@ public class SubstrateOptions {
         return !Platform.includedIn(Platform.WINDOWS.class) && ConcealedOptions.DumpRuntimeCompiledMethods.getValue();
     }
 
-    @Option(help = "file:doc-files/TrackDynamicAccessHelp.txt")//
+    @Option(help = "file:doc-files/TrackDynamicAccessHelp.txt", stability = OptionStability.EXPERIMENTAL)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> TrackDynamicAccess = new HostedOptionKey<>(
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 

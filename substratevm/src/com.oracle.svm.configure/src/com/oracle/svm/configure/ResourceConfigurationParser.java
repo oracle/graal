@@ -62,16 +62,17 @@ public abstract class ResourceConfigurationParser<C> extends ConditionalConfigur
     protected void parseBundlesObject(Object bundlesObject) {
         List<Object> bundles = asList(bundlesObject, "Attribute 'bundles' must be a list of bundles");
         for (Object bundle : bundles) {
-            parseBundle(bundle);
+            parseBundle(bundle, false);
         }
     }
 
     protected abstract UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> condition);
 
-    private void parseBundle(Object bundle) {
+    protected void parseBundle(Object bundle, boolean inResourcesSection) {
         EconomicMap<String, Object> resource = asMap(bundle, "Elements of 'bundles' list must be a bundle descriptor object");
-        checkAttributes(resource, "bundle descriptor object", Collections.singletonList("name"), Arrays.asList("locales", "classNames", "condition"));
-        String basename = asString(resource.get("name"));
+        String bundleNameAttribute = inResourcesSection ? BUNDLE_KEY : NAME_KEY;
+        checkAttributes(resource, "bundle descriptor object", Collections.singletonList(bundleNameAttribute), Arrays.asList("locales", "classNames", "condition"));
+        String basename = asString(resource.get(bundleNameAttribute));
         TypeResult<C> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(resource));
         if (!resolvedConfigurationCondition.isPresent()) {
             return;
@@ -121,7 +122,7 @@ public abstract class ResourceConfigurationParser<C> extends ConditionalConfigur
         void accept(T a, String b, String c);
     }
 
-    private void parseGlobEntry(Object data, GlobPatternConsumer<C> resourceRegistry) {
+    protected void parseGlobEntry(Object data, GlobPatternConsumer<C> resourceRegistry) {
         EconomicMap<String, Object> globObject = asMap(data, "Elements of 'globs' list must be a glob descriptor objects");
         checkAttributes(globObject, "glob resource descriptor object", Collections.singletonList(GLOB_KEY),
                         List.of(CONDITIONAL_KEY, MODULE_KEY));
