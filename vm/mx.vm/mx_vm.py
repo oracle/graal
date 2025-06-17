@@ -275,7 +275,7 @@ def _create_deprecated_vendor_specific_distribution(base_distribution):
 
 def register_tools_distribution(owner_suite, register_distribution):
     """
-    Creates a dynamic TOOLS meta-POM distribution containing all tool meta POMs.
+    Registers a dynamic TOOLS meta-POM distribution that aggregates all individual tool meta-POMs.
     For compatibility reasons, it also creates a legacy <TOOL>_COMMUNITY_DEPRECATED distribution
     with `<tool>-community` Maven artifact id for each tool.
     :type register_distribution: (mx.Distribution) -> None
