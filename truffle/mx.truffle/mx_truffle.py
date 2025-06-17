@@ -479,7 +479,9 @@ def _truffle_gate_runner(args, tasks):
     with Task('Truffle Signature Tests', tasks, tags=TruffleGateTags.sigtest) as t:
         if t: sigtest(['--check', 'binary'])
     with Task('Truffle UnitTests', tasks, tags=TruffleGateTags.truffle_test) as t:
-        if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25']))
+        if t:
+            unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25'])
+            unittest(['--suite', 'truffle', '--enable-timing', '-Dtruffle.object.LayoutFactory=com.oracle.truffle.api.object.CoreLayoutFactory', 'com.oracle.truffle.object'])
     if jdk.javaCompliance >= '22':
         with Task('Truffle NFI tests with Panama Backend', tasks, tags=TruffleGateTags.panama_test) as t:
             if t:
