@@ -201,13 +201,16 @@ public class HeapDumpSupportImpl extends HeapDumping {
         }
 
         @Override
-        @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
         protected void operate(NativeVMOperationData d) {
             HeapDumpVMOperationData data = (HeapDumpVMOperationData) d;
             if (data.getGCBefore()) {
                 Heap.getHeap().getGC().collectCompletely(GCCause.HeapDump);
             }
+            dumpHeap(data);
+        }
 
+        @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
+        private void dumpHeap(HeapDumpVMOperationData data) {
             try {
                 boolean success = writer.dumpHeap(data.getRawFileDescriptor());
                 data.setSuccess(success);
