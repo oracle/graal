@@ -172,20 +172,6 @@ public interface BytecodeOSRNode extends NodeInterface {
     void setOSRMetadata(Object osrMetadata);
 
     /**
-     * Note that if this method is implemented, the
-     * {@link #copyIntoOSRFrame(VirtualFrame, VirtualFrame, int, Object) preferred one} will not be
-     * used.
-     *
-     * @since 21.3
-     * @deprecated since 22.2
-     * @see #copyIntoOSRFrame(VirtualFrame, VirtualFrame, int, Object)
-     */
-    @Deprecated(since = "22.2")
-    default void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
-        NodeAccessor.RUNTIME.transferOSRFrame(this, parentFrame, osrFrame, target);
-    }
-
-    /**
      * Copies the contents of the {@code parentFrame} into the {@code osrFrame} used to execute OSR.
      * By default, performs a slot-wise copy of the frame.
      *
