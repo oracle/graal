@@ -53,6 +53,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -89,6 +90,11 @@ public final class MetadataTracer {
     }
 
     private RecordOptions options;
+
+    /**
+     * The configuration set to trace with. Do not read this field directly when tracing; instead
+     * use {@link #getConfigurationSetForTracing()} to acquire it.
+     */
     private volatile ConfigurationSet config;
 
     @Fold
@@ -102,6 +108,18 @@ public final class MetadataTracer {
     public boolean enabled() {
         VMError.guarantee(Options.MetadataTracingSupport.getValue());
         return options != null;
+    }
+
+    /**
+     * Returns the configuration set to trace with. Returns {@code null} if tracing should not be
+     * performed for some reason.
+     */
+    private ConfigurationSet getConfigurationSetForTracing() {
+        if (VMOperation.isInProgress()) {
+            // Do not trace during VM operations.
+            return null;
+        }
+        return config;
     }
 
     /**
@@ -123,7 +141,7 @@ public final class MetadataTracer {
 
     private ConfigurationType traceReflectionTypeImpl(ConfigurationTypeDescriptor typeDescriptor) {
         assert enabled();
-        ConfigurationSet configurationSet = config;
+        ConfigurationSet configurationSet = getConfigurationSetForTracing();
         if (configurationSet != null) {
             return configurationSet.getReflectionConfiguration().getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), typeDescriptor);
         }
@@ -150,7 +168,7 @@ public final class MetadataTracer {
      */
     public void traceResource(String resourceName, String moduleName) {
         assert enabled();
-        ConfigurationSet configurationSet = config;
+        ConfigurationSet configurationSet = getConfigurationSetForTracing();
         if (configurationSet != null) {
             configurationSet.getResourceConfiguration().addGlobPattern(UnresolvedConfigurationCondition.alwaysTrue(), resourceName, moduleName);
         }
@@ -161,7 +179,7 @@ public final class MetadataTracer {
      */
     public void traceResourceBundle(String baseName) {
         assert enabled();
-        ConfigurationSet configurationSet = config;
+        ConfigurationSet configurationSet = getConfigurationSetForTracing();
         if (configurationSet != null) {
             configurationSet.getResourceConfiguration().addBundle(UnresolvedConfigurationCondition.alwaysTrue(), baseName, List.of());
         }
