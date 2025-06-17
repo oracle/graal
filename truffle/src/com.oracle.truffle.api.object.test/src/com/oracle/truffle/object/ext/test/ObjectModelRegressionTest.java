@@ -42,6 +42,7 @@ package com.oracle.truffle.object.ext.test;
 
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertObjectLocation;
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertPrimitiveLocation;
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.assumeExtLayout;
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeGetter;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -67,7 +68,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
@@ -386,7 +386,7 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testTryMergeShapes() {
-        TruffleTestAssumptions.assumeEnterpriseRuntime();
+        assumeExtLayout();
 
         // Assume (MaxMergeDepth >= 5)
         Shape emptyShape = Shape.newBuilder().allowImplicitCastIntToDouble(true).build();
@@ -437,7 +437,7 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testTryMergeShapes2() {
-        TruffleTestAssumptions.assumeEnterpriseRuntime();
+        assumeExtLayout();
 
         // Assume (MaxMergeDepth >= 5 && MaxMergeDiff >= 2)
 
