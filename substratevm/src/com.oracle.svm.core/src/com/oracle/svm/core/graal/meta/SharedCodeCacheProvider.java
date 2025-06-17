@@ -46,7 +46,7 @@ public abstract class SharedCodeCacheProvider implements CodeCacheProvider {
     }
 
     @Override
-    public void invalidateInstalledCode(InstalledCode installedCode, int changeReason) {
+    public void invalidateInstalledCode(InstalledCode installedCode) {
         throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
