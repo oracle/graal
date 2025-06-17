@@ -54,6 +54,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.ClassLoaderSupport.ConditionWithOrigin;
 import com.oracle.svm.core.MissingRegistrationUtils;
@@ -437,6 +438,10 @@ public final class Resources implements MultiLayeredImageSingleton {
      * The {@code probe} parameter indicates whether the caller is probing for the existence of a
      * resource. If {@code probe} is true, failed resource lookups return will not throw missing
      * registration errors and may instead return {@link #MISSING_METADATA_MARKER}.
+     * <p>
+     * Tracing note: When this method is used for probing, only successful metadata matches will be
+     * traced. If a probing result is {@link #MISSING_METADATA_MARKER}, the caller must explicitly
+     * trace the missing metadata.
      */
     public static ResourceStorageEntryBase getAtRuntime(Module module, String resourceName, boolean probe) {
         VMError.guarantee(ImageInfo.inImageRuntimeCode(), "This function should be used only at runtime.");
@@ -448,16 +453,20 @@ public final class Resources implements MultiLayeredImageSingleton {
                 if (missingResourceMatchesIncludePattern(resourceName, moduleName) || missingResourceMatchesIncludePattern(canonicalResourceName, moduleName)) {
                     // This resource name matches a pattern/glob from the provided metadata, but no
                     // resource with the name actually exists. Do not report missing metadata.
+                    traceResource(resourceName, moduleName);
                     return null;
                 }
+                traceResourceMissingMetadata(resourceName, moduleName, probe);
                 return missingMetadata(module, resourceName, probe);
             } else {
+                // NB: Without exact reachability metadata, resource include patterns are not
+                // stored in the image heap, so we cannot reliably identify if the resource was
+                // included at build time. Assume it is missing.
+                traceResourceMissingMetadata(resourceName, moduleName, probe);
                 return null;
             }
         }
-        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
-            MetadataTracer.singleton().traceResource(resourceName, moduleName);
-        }
+        traceResource(resourceName, moduleName);
         if (!entry.getConditions().satisfied()) {
             return missingMetadata(module, resourceName, probe);
         }
@@ -485,6 +494,28 @@ public final class Resources implements MultiLayeredImageSingleton {
             return null;
         }
         return unconditionalEntry;
+    }
+
+    @AlwaysInline("tracing should fold away when disabled")
+    private static void traceResource(String resourceName, String moduleName) {
+        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+            MetadataTracer.singleton().traceResource(resourceName, moduleName);
+        }
+    }
+
+    @AlwaysInline("tracing should fold away when disabled")
+    private static void traceResourceMissingMetadata(String resourceName, String moduleName) {
+        traceResourceMissingMetadata(resourceName, moduleName, false);
+    }
+
+    @AlwaysInline("tracing should fold away when disabled")
+    private static void traceResourceMissingMetadata(String resourceName, String moduleName, boolean probe) {
+        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled() && !probe) {
+            // Do not trace missing metadata for probing queries, otherwise we'll trace an entry for
+            // every module. The caller is responsible for tracing missing entries if it uses
+            // probing.
+            MetadataTracer.singleton().traceResource(resourceName, moduleName);
+        }
     }
 
     /**
@@ -558,6 +589,7 @@ public final class Resources implements MultiLayeredImageSingleton {
         }
         ResourceStorageEntryBase entry = findResourceForInputStream(module, resourceName);
         if (entry == MISSING_METADATA_MARKER) {
+            traceResourceMissingMetadata(resourceName, moduleName(module));
             MissingResourceRegistrationUtils.reportResourceAccess(module, resourceName);
             return null;
         } else if (entry == null) {
