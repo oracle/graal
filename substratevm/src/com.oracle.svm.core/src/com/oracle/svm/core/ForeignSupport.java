@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.image.DisallowedImageHeapObjects.DisallowedObjectReporter;
@@ -33,9 +36,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 public interface ForeignSupport {
     @Fold
     static boolean isAvailable() {
-        boolean result = ImageSingletons.contains(ForeignSupport.class);
-        assert result || !SubstrateOptions.isForeignAPIEnabled();
-        return result;
+        return ImageSingletons.contains(ForeignSupport.class);
     }
 
     @Fold
@@ -48,4 +49,14 @@ public interface ForeignSupport {
     void onMemorySegmentReachable(Object obj, DisallowedObjectReporter reporter);
 
     void onScopeReachable(Object obj, DisallowedObjectReporter reporter);
+
+    /**
+     * This annotation is used to mark substitution methods that substitute an
+     * {@code jdk.internal.misc.ScopedMemoryAccess.Scoped}-annotated method. This will signal the
+     * bytecode parser that special instrumentation support is required. Such substitution methods
+     * are expected to already have a certain structure.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @interface Scoped {
+    }
 }
