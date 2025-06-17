@@ -267,6 +267,10 @@ Use `--enable-sbom` to activate this feature which defaults to the `embed` optio
 When embedded, the SBOM size is displayed. 
 The number of components is always displayed.
 
+Unassociated types are displayed when certain types (such as classes, interfaces, or annotations) cannot be linked to an SBOM component.
+If these types contain vulnerabilities, SBOM scanning will not detect them.
+To fix this, ensure that proper GAV coordinates (Group ID, Artifact ID, and Version) are defined in the project POM's properties or in _MANIFEST.MF_ using standard formats.
+
 For more information, see [Software Bill of Materials](../../security/native-image.md).
 
 #### <a name="glossary-backwards-edge-cfi"></a>Backwards-Edge Control-Flow Integrity (CFI)
