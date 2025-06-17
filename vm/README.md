@@ -33,8 +33,6 @@ The base GraalVM CE image includes:
 - Sulong
 - Graal.nodejs
 - Graal.js (imported as a dependency of `graal-nodejs`)
-- the `polyglot` launcher
-- the `libpolyglot` shared library
 
 In our CI, we build it using:
 - the latest JVMCI-enabled JDK8 ([pre-built archives](https://github.com/graalvm/openjdk8-jvmci-builder/releases); [build instructions](https://github.com/graalvm/openjdk8-jvmci-builder)). The `JAVA_HOME` environment variable must point to it.
@@ -54,21 +52,19 @@ Which uses the settings in the env file in `mx.vm/ce`. Note that you can add cus
 
 2.
 ```bash
-$ mx --dynamicimports /substratevm,/tools,/sulong,/graal-nodejs --exclude-components=nju,nic,ni,nil,llp --force-bash-launchers=polyglot build
+$ mx --dynamicimports /substratevm,/tools,/sulong,/graal-nodejs --exclude-components=nju,nic,ni,nil,llp build
 ```
 
 3.
 ```bash
 $ export DEFAULT_DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-nodejs
 $ export EXCLUDE_COMPONENTS=nju,nic,ni,nil,llp
-$ export FORCE_BASH_LAUNCHERS=polyglot
 $ mx build
 ```
 or:
 ```bash
 $ export DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-nodejs
 $ export EXCLUDE_COMPONENTS=nju,nic,ni,nil,llp
-$ export FORCE_BASH_LAUNCHERS=polyglot
 $ mx build
 ```
 Note that the suites listed in:
@@ -88,41 +84,26 @@ creates:
 
 
 ## Native images
-When `substratevm` is imported, the build system creates native launchers for the supported languages and for `polyglot`, plus the shared polyglot library (`libpolyglot`).
-Otherwise, it creates bash launchers for the languages and for `polyglot`, and does not create the shared polyglot library.
+When `substratevm` is imported, the build system creates native launchers for the supported languages.
+Otherwise, it creates bash launchers for the languages.
 
 To override the default behavior, the `vm` suite defines the following `mx` arguments:
 ```
-  --native-images=...           Comma-separated list of launchers and libraries (syntax: lib:polyglot) to build with Native Image.
-  --disable-libpolyglot         Disable the 'polyglot' library project
-  --disable-polyglot            Disable the 'polyglot' launcher project
+  --native-images=...           Comma-separated list of launchers and libraries (syntax: lib:jsvm) to build with Native Image.
   --force-bash-launchers=...    Force the use of bash launchers instead of native images.
                                 This can be a comma-separated list of disabled launchers or `true` to disable all native launchers.
 ```
 And the following environment variables:
 ```
   NATIVE_IMAGES                 Same as '--native-images'
-  DISABLE_LIBPOLYGLOT           Same as '--disable-libpolyglot'
-  DISABLE_POLYGLOT              Same as '--disable-polyglot'
   FORCE_BASH_LAUNCHERS          Same as '--force-bash-launchers'
 ```
-
-Note that when the shared polyglot library is not built, Graal.nodejs can only work in JVM-mode (`node --jvm [args]`).
-
-
-### Example: avoid building the polyglot image and the polyglot shared library
-
-```bash
-$ mx --disable-polyglot --disable-libpolyglot --dynamicimports /substratevm,/tools,/sulong,/graal-js build
-```
-builds the native SubstrateVM launchers for native-image, Graal.js, and Sulong, but no polyglot launcher and polyglot library.
-
 
 ### Example: force bash launchers
 ```bash
 $ mx --force-bash-launchers=true --dynamicimports /substratevm,/tools,/sulong,/graal-nodejs build
 ```
-builds the native SubstrateVM launcher for native-image, and creates bash launchers for Sulong, Graal.js, and `polyglot`
+builds the native SubstrateVM launcher for native-image, and creates bash launchers for Sulong and Graal.js
 
 ### Example: build only TruffleRuby with bash launchers
 ```bash

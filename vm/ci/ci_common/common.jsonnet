@@ -557,7 +557,7 @@ local devkits = graal_common.devkits;
   local sulong_vm_tests = graal_common.deps.svm + graal_common.deps.sulong + vm.custom_vm + self.vm_base('linux', 'amd64', 'gate') + {
      run: [
        ['export', 'SVM_SUITE=' + vm.svm_suite],
-       ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],
+       ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],
      ],
      timelimit: '1:00:00',
      name: 'gate-vm-native-sulong-' + self.jdk_name + '-linux-amd64',
