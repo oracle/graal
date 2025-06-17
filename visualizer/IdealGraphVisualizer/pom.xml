@@ -155,6 +155,7 @@
                             <configuration>
                                 <!-- Avoid potential problems with jargraal and importing jdk.graal.compiler.graphio -->
                                 <argLine>
+                                    -XX:+UnlockExperimentalVMOptions
                                     -XX:-UseJVMCICompiler
                                     -XX:-EnableJVMCI
                                 </argLine>
