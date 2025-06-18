@@ -201,8 +201,9 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     run+: [
       ['mx'] + extra_dynamic_imports_args + ['sversions'],
       that._mx(env, (if debug then ['--debug-images'] else []) + extra_mx_args + extra_dynamic_imports_args + ['build'] + targets_args),
-      ['set-export', 'ESPRESSO_HOME', that._mx(env, ['--quiet', '--no-warning'] + extra_mx_args + extra_dynamic_imports_args + ['path', '--output', standalone])],
-    ],
+    ] + if default_env_traget then [
+      ['set-export', 'ESPRESSO_HOME', that._mx(env, ['--quiet', '--no-warning'] + extra_mx_args + extra_dynamic_imports_args + ['path', '--output', standalone])]
+    ] else [],
   },
 
   // LD_DEBUG=unused is a workaround for: symbol lookup error: jre/lib/amd64/libnio.so: undefined symbol: fstatat64
