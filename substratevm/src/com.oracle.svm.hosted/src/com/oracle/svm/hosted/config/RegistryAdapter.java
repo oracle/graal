@@ -32,6 +32,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -42,13 +43,16 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.svm.configure.ClassNameSupport;
+import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.configure.LambdaConfigurationTypeDescriptor;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
 import com.oracle.svm.configure.ReflectionConfigurationParserDelegate;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.lambda.LambdaParser;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.TypeResult;
 
@@ -79,16 +83,24 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
 
     @Override
     public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean jniAccessible) {
+        return TypeResult.toSingleElement(resolveTypes(condition, typeDescriptor, allowPrimitives, jniAccessible));
+    }
+
+    @Override
+    public TypeResult<List<Class<?>>> resolveTypes(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean jniAccessible) {
+        TypeResult<List<Class<?>>> result = resolveTypesInternal(typeDescriptor, allowPrimitives);
+        if (typeDescriptor.getDescriptorType() == ConfigurationTypeDescriptor.Kind.NAMED && !result.isPresent()) {
+            if (throwMissingRegistrationErrors() && result.getException() instanceof ClassNotFoundException) {
+                registry.registerClassLookup(condition, result.getName());
+            }
+        }
+        return result;
+    }
+
+    private TypeResult<Class<?>> resolveTypeInternal(ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
         switch (typeDescriptor.getDescriptorType()) {
             case NAMED -> {
-                String reflectionName = ClassNameSupport.typeNameToReflectionName(((NamedConfigurationTypeDescriptor) typeDescriptor).name());
-                TypeResult<Class<?>> result = resolveNamedType(reflectionName, allowPrimitives);
-                if (!result.isPresent()) {
-                    if (throwMissingRegistrationErrors() && result.getException() instanceof ClassNotFoundException) {
-                        registry.registerClassLookup(condition, reflectionName);
-                    }
-                }
-                return result;
+                return resolveNamedType((NamedConfigurationTypeDescriptor) typeDescriptor, allowPrimitives);
             }
             case PROXY -> {
                 return resolveProxyType((ProxyConfigurationTypeDescriptor) typeDescriptor);
@@ -99,7 +111,15 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
         }
     }
 
-    private TypeResult<Class<?>> resolveNamedType(String reflectionName, boolean allowPrimitives) {
+    private TypeResult<List<Class<?>>> resolveTypesInternal(ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
+        if (Objects.requireNonNull(typeDescriptor.getDescriptorType()) == ConfigurationTypeDescriptor.Kind.LAMBDA) {
+            return resolveLambdaType((LambdaConfigurationTypeDescriptor) typeDescriptor);
+        }
+        return TypeResult.toList(resolveTypeInternal(typeDescriptor, allowPrimitives));
+    }
+
+    private TypeResult<Class<?>> resolveNamedType(NamedConfigurationTypeDescriptor namedDescriptor, boolean allowPrimitives) {
+        String reflectionName = ClassNameSupport.typeNameToReflectionName(namedDescriptor.name());
         TypeResult<Class<?>> result = classLoader.findClass(reflectionName, allowPrimitives);
         if (!result.isPresent() && result.getException() instanceof NoClassDefFoundError) {
             /*
@@ -121,7 +141,7 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     private TypeResult<Class<?>> resolveProxyType(ProxyConfigurationTypeDescriptor typeDescriptor) {
         String typeName = typeDescriptor.toString();
         List<TypeResult<Class<?>>> interfaceResults = typeDescriptor.interfaceNames().stream()
-                        .map(interfaceTypeName -> resolveNamedType(ClassNameSupport.typeNameToReflectionName(interfaceTypeName), false)).toList();
+                        .map(interfaceTypeName -> resolveNamedType(NamedConfigurationTypeDescriptor.fromTypeName(interfaceTypeName), false)).toList();
         List<Class<?>> interfaces = new ArrayList<>();
         for (TypeResult<Class<?>> intf : interfaceResults) {
             if (!intf.isPresent()) {
@@ -135,6 +155,68 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
             return TypeResult.forType(typeName, proxyClass);
         } catch (Throwable t) {
             return TypeResult.forException(typeName, t);
+        }
+    }
+
+    private TypeResult<List<Class<?>>> resolveLambdaType(LambdaConfigurationTypeDescriptor typeDescriptor) {
+        TypeResult<Class<?>> declaringClass = resolveTypeInternal(typeDescriptor.declaringClass(), false);
+        if (!declaringClass.isPresent()) {
+            return TypeResult.forException(typeDescriptor.toString(), declaringClass.getException());
+        }
+        TypeResult<Method> declaringMethod = null;
+        if (typeDescriptor.declaringMethod() != null) {
+            declaringMethod = resolveMethod(declaringClass.get(), typeDescriptor.declaringMethod());
+            if (!declaringMethod.isPresent()) {
+                return TypeResult.forException(typeDescriptor.toString(), declaringMethod.getException());
+            }
+        }
+        List<Class<?>> implementedInterfaces = new ArrayList<>();
+        for (NamedConfigurationTypeDescriptor interfaceDescriptor : typeDescriptor.interfaces()) {
+            TypeResult<Class<?>> intf = resolveNamedType(interfaceDescriptor, false);
+            if (!intf.isPresent()) {
+                return TypeResult.forException(typeDescriptor.toString(), intf.getException());
+            }
+            implementedInterfaces.add(intf.get());
+        }
+
+        List<Class<?>> lambdaClasses;
+        try {
+            if (declaringMethod == null) {
+                lambdaClasses = LambdaParser.getLambdaClassesInClass(declaringClass.get(), implementedInterfaces);
+            } else {
+                lambdaClasses = LambdaParser.getLambdaClassesInMethod(declaringMethod.get(), implementedInterfaces);
+            }
+            return !lambdaClasses.isEmpty() ? TypeResult.forType(typeDescriptor.toString(), lambdaClasses)
+                            : exceptionResult(typeDescriptor, declaringClass, declaringMethod, implementedInterfaces, null);
+        } catch (Throwable t) {
+            return exceptionResult(typeDescriptor, declaringClass, declaringMethod, implementedInterfaces, t);
+        }
+    }
+
+    private static TypeResult<List<Class<?>>> exceptionResult(ConfigurationTypeDescriptor typeDescriptor, TypeResult<Class<?>> declaringClass, TypeResult<Method> declaringMethod,
+                    List<Class<?>> implementedInterfaces, Throwable cause) {
+        NoClassDefFoundError error = new NoClassDefFoundError(
+                        "No lambda class found in " + (declaringMethod != null ? declaringMethod.get() : declaringClass.get()) + " implementing " + implementedInterfaces);
+        if (cause != null) {
+            error.initCause(cause);
+        }
+        return TypeResult.forException(typeDescriptor.toString(), error);
+    }
+
+    private TypeResult<Method> resolveMethod(Class<?> declaringClass, ConfigurationParser.ConfigurationMethodDescriptor methodDescriptor) {
+        String name = methodDescriptor.name();
+        List<Class<?>> parameterTypes = new ArrayList<>();
+        for (NamedConfigurationTypeDescriptor parameterType : methodDescriptor.parameterTypes()) {
+            TypeResult<Class<?>> resolvedParameterType = resolveNamedType(parameterType, true);
+            if (!resolvedParameterType.isPresent()) {
+                return TypeResult.forException(resolvedParameterType.getName(), resolvedParameterType.getException());
+            }
+            parameterTypes.add(resolvedParameterType.get());
+        }
+        try {
+            return TypeResult.forType(methodDescriptor.toString(), declaringClass.getDeclaredMethod(name, parameterTypes.toArray(Class<?>[]::new)));
+        } catch (NoSuchMethodException e) {
+            return TypeResult.forException(methodDescriptor.toString(), e);
         }
     }
 
