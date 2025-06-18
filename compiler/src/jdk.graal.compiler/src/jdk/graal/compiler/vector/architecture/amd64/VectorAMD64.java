@@ -623,6 +623,17 @@ public final class VectorAMD64 extends VectorArchitecture {
     }
 
     @Override
+    public int getSupportedVectorCompressExpandLength(Stamp elementStamp, int maxLength) {
+        if (!hasMinimumVectorizationRequirements(maxLength)) {
+            return 1;
+        }
+
+        AVXSize avxSize = compressExpandOps.getSupportedAVXSize(elementStamp, maxLength);
+        int supportedLength = getSupportedVectorLength(elementStamp, maxLength, avxSize);
+        return Math.min(supportedLength, maxLength);
+    }
+
+    @Override
     public int getObjectAlignment() {
         return objectAlignment;
     }
@@ -1181,6 +1192,41 @@ public final class VectorAMD64 extends VectorArchitecture {
         public AVXSize getSupportedAVXSize(Stamp stamp, int maxLength) {
             if (stamp instanceof AbstractObjectStamp) {
                 // For blends, treat pointers like integers of the appropriate size.
+                return getEntry(IntegerStamp.class, oopBits((AbstractObjectStamp) stamp), maxLength);
+            }
+            return getEntry(stamp.getClass(), PrimitiveStamp.getBits(stamp), maxLength);
+        }
+    }
+
+    private final AMD64SupportedCompressExpandVectorInstructionsTable compressExpandOps = new AMD64SupportedCompressExpandVectorInstructionsTable(this);
+
+    private static final class AMD64VectorCompressExpandInstructionsMap extends AMD64SimpleVectorInstructionsTable.AMD64SimpleVectorInstructionsMap {
+        @SuppressWarnings("unchecked")
+        AMD64VectorCompressExpandInstructionsMap() {
+            super(
+                            entry(IntegerStamp.class,
+                                            op(BYTE_BITS, VectorFeatureAssertion.AVX512_VBMI2_VL),
+                                            op(WORD_BITS, VectorFeatureAssertion.AVX512_VBMI2_VL),
+                                            op(DWORD_BITS, VectorFeatureAssertion.AVX512F_VL),
+                                            op(QWORD_BITS, VectorFeatureAssertion.AVX512F_VL)),
+
+                            entry(FloatStamp.class,
+                                            op(SINGLE_BITS, VectorFeatureAssertion.AVX512F_VL),
+                                            op(DOUBLE_BITS, VectorFeatureAssertion.AVX512F_VL)));
+        }
+    }
+
+    private static final class AMD64SupportedCompressExpandVectorInstructionsTable extends AMD64SimpleVectorInstructionsTable {
+
+        private static final AMD64VectorCompressExpandInstructionsMap COMPRESS_EXPAND_INSTRUCTIONS_MAP = new AMD64VectorCompressExpandInstructionsMap();
+
+        private AMD64SupportedCompressExpandVectorInstructionsTable(VectorAMD64 vectorAMD64) {
+            super(vectorAMD64, COMPRESS_EXPAND_INSTRUCTIONS_MAP);
+        }
+
+        public AVXSize getSupportedAVXSize(Stamp stamp, int maxLength) {
+            if (stamp instanceof AbstractObjectStamp) {
+                // For compress/expand, treat pointers like integers of the appropriate size.
                 return getEntry(IntegerStamp.class, oopBits((AbstractObjectStamp) stamp), maxLength);
             }
             return getEntry(stamp.getClass(), PrimitiveStamp.getBits(stamp), maxLength);

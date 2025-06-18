@@ -286,6 +286,11 @@ public final class VectorAArch64 extends VectorArchitecture {
     }
 
     @Override
+    public int getSupportedVectorCompressExpandLength(Stamp elementStamp, int maxLength) {
+        return 1;
+    }
+
+    @Override
     public int getObjectAlignment() {
         return objectAlignment;
     }
