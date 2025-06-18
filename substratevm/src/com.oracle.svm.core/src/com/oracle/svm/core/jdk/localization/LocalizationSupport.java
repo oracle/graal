@@ -294,10 +294,10 @@ public class LocalizationSupport {
             /* Those cases will throw a NullPointerException before any lookup */
             return true;
         }
+        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+            MetadataTracer.singleton().traceResourceBundle(baseName);
+        }
         if (registeredBundles.containsKey(baseName)) {
-            if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
-                MetadataTracer.singleton().traceResourceBundle(baseName);
-            }
             return registeredBundles.get(baseName).satisfied();
         }
         return false;

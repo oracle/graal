@@ -65,11 +65,11 @@ final class Target_java_io_ObjectStreamClass {
         }
 
         if (Serializable.class.isAssignableFrom(cl) && !cl.isArray()) {
-            if (!DynamicHub.fromClass(cl).isRegisteredForSerialization()) {
-                MissingSerializationRegistrationUtils.reportSerialization(cl);
-            }
             if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
                 MetadataTracer.singleton().traceSerializationType(cl.getName());
+            }
+            if (!DynamicHub.fromClass(cl).isRegisteredForSerialization()) {
+                MissingSerializationRegistrationUtils.reportSerialization(cl);
             }
         }
 
