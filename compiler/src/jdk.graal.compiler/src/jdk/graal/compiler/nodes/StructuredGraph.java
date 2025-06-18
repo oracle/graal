@@ -861,6 +861,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return null;
     }
 
+    /**
+     * Returns an iterable for looping over all {@link Invoke}s that are associated with
+     * {@link MethodCallTargetNode}s. Note that since the internal iteration is based on
+     * {@link MethodCallTargetNode}s, it <b>does not</b> cover other kinds of invokes in the graph.
+     * If accessing all invokes is necessary for correctness, use a loop over all nodes with
+     * {@link #getNodes()} and an {@code instanceof} check instead.
+     */
     public Iterable<Invoke> getInvokes() {
         final Iterator<MethodCallTargetNode> callTargets = getNodes(MethodCallTargetNode.TYPE).iterator();
         return new Iterable<>() {
