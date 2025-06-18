@@ -284,6 +284,12 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         reflectionData = new ReflectionDataBuilder((SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class));
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
         ImageSingletons.add(ReflectionHostedSupport.class, reflectionData);
+
+        /*
+         * Querying Object members is allowed to enable these accesses on array classes, since those
+         * don't define any additional members.
+         */
+        reflectionData.registerClassMetadata(ConfigurationCondition.alwaysTrue(), Object.class);
     }
 
     @Override
