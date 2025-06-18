@@ -1973,12 +1973,17 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (toClass(this) == void.class) {
             throw new UnsupportedOperationException(new IllegalArgumentException());
         }
+        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+            MetadataTracer.singleton().traceReflectionType(arrayTypeName());
+        }
         if (companion.arrayHub == null) {
-            MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]");
-        } else if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
-            MetadataTracer.singleton().traceReflectionType(companion.arrayHub.getTypeName());
+            MissingReflectionRegistrationUtils.reportClassAccess(arrayTypeName());
         }
         return companion.arrayHub;
+    }
+
+    private String arrayTypeName() {
+        return getTypeName() + "[]";
     }
 
     @KeepOriginal
