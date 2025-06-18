@@ -211,10 +211,10 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     @Override
     public void printTimerStatistics(PrintWriter out) {
-        StatisticsPrinter.print(out, "typeflow_time_ms", typeFlowTimer.getTotalTime());
-        StatisticsPrinter.print(out, "verify_time_ms", verifyHeapTimer.getTotalTime());
-        StatisticsPrinter.print(out, "features_time_ms", processFeaturesTimer.getTotalTime());
-        StatisticsPrinter.print(out, "total_analysis_time_ms", analysisTimer.getTotalTime());
+        StatisticsPrinter.print(out, "typeflow_time_ms", typeFlowTimer.getTotalTimeMs());
+        StatisticsPrinter.print(out, "verify_time_ms", verifyHeapTimer.getTotalTimeMs());
+        StatisticsPrinter.print(out, "features_time_ms", processFeaturesTimer.getTotalTimeMs());
+        StatisticsPrinter.print(out, "total_analysis_time_ms", analysisTimer.getTotalTimeMs());
 
         StatisticsPrinter.printLast(out, "total_memory_bytes", analysisTimer.getTotalMemory());
     }
