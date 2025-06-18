@@ -25,6 +25,7 @@
 package jdk.graal.compiler.nodes.spi;
 
 import java.util.BitSet;
+import java.util.Map;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.SnippetTemplateCache;
@@ -39,6 +40,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -54,6 +56,12 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
      * bytecode into a graph.
      */
     GraphBuilderConfiguration.Plugins getGraphBuilderPlugins();
+
+    /**
+     * Least recently used cache for snippet templates. When a new element is added to this map, it evicts the least
+     * recently used element in case of full capacity.
+     */
+    Map<SnippetTemplate.CacheKey, SnippetTemplate> getTemplatesCache();
 
     /**
      * Gets the plugin type that intrinsifies calls to {@code method}.
