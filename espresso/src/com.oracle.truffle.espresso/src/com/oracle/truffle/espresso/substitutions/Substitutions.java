@@ -53,8 +53,8 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 /**
  * Substitutions/intrinsics for Espresso.
  * <p>
- * Some substitutions are statically defined, others runtime-dependent. The static ones are loaded
- * via {@link ServiceLoader}. Iterating over the collection in this class allows to register them
+ * Some substitutions are globally defined, others runtime-dependent. The global ones are loaded via
+ * {@link ServiceLoader}. Iterating over the collection in this class allows to register them
  * directly, and assign to each of them a node, which will dispatch them directly, without the need
  * for reflection. In practice, this allows inlining.
  * <p>
@@ -136,7 +136,7 @@ public final class Substitutions extends ContextAccessImpl {
         }
     }
 
-    private static final EconomicMap<MethodKey, JavaSubstitution.Factory> STATIC_SUBSTITUTIONS = EconomicMap.create();
+    private static final EconomicMap<MethodKey, JavaSubstitution.Factory> GLOBAL_SUBSTITUTIONS = EconomicMap.create();
 
     private final ConcurrentHashMap<MethodKey, EspressoRootNodeFactory> runtimeSubstitutions = new ConcurrentHashMap<>();
 
@@ -176,17 +176,17 @@ public final class Substitutions extends ContextAccessImpl {
 
     private static void registerStaticSubstitution(Symbol<Type> type, Symbol<Name> methodName, Symbol<Signature> signature, JavaSubstitution.Factory factory, boolean throwIfPresent) {
         MethodKey key = new MethodKey(type, methodName, signature, !factory.hasReceiver());
-        if (throwIfPresent && STATIC_SUBSTITUTIONS.containsKey(key)) {
+        if (throwIfPresent && GLOBAL_SUBSTITUTIONS.containsKey(key)) {
             throw EspressoError.shouldNotReachHere("substitution already registered" + key);
         }
-        STATIC_SUBSTITUTIONS.put(key, factory);
+        GLOBAL_SUBSTITUTIONS.put(key, factory);
     }
 
     public void registerRuntimeSubstitution(Symbol<Type> type, Symbol<Name> methodName, Symbol<Signature> signature, boolean isStatic, EspressoRootNodeFactory factory, boolean throwIfPresent) {
         MethodKey key = new MethodKey(type, methodName, signature, isStatic);
 
-        if (STATIC_SUBSTITUTIONS.containsKey(key)) {
-            getLogger().log(Level.FINE, "Runtime substitution shadowed by static one: " + key);
+        if (GLOBAL_SUBSTITUTIONS.containsKey(key)) {
+            getLogger().log(Level.FINE, "Runtime substitution shadowed by global one: " + key);
         }
 
         if (throwIfPresent && runtimeSubstitutions.containsKey(key)) {
@@ -201,7 +201,7 @@ public final class Substitutions extends ContextAccessImpl {
     }
 
     public static JavaSubstitution.Factory lookupSubstitution(Method m) {
-        return STATIC_SUBSTITUTIONS.get(getMethodKey(m));
+        return GLOBAL_SUBSTITUTIONS.get(getMethodKey(m));
     }
 
     /**
@@ -211,7 +211,7 @@ public final class Substitutions extends ContextAccessImpl {
     public EspressoRootNode get(Method method) {
         // Look into the static substitutions.
         MethodKey key = getMethodKey(method);
-        JavaSubstitution.Factory staticSubstitutionFactory = STATIC_SUBSTITUTIONS.get(key);
+        JavaSubstitution.Factory staticSubstitutionFactory = GLOBAL_SUBSTITUTIONS.get(key);
         if (staticSubstitutionFactory != null && staticSubstitutionFactory.isValidFor(method.getLanguage())) {
             EspressoRootNode root = createRootNodeFromSubstitution(method, staticSubstitutionFactory);
             if (root != null) {
@@ -250,6 +250,6 @@ public final class Substitutions extends ContextAccessImpl {
     @TruffleBoundary
     public boolean hasSubstitutionFor(Method method) {
         MethodKey key = getMethodKey(method);
-        return STATIC_SUBSTITUTIONS.containsKey(key) || runtimeSubstitutions.containsKey(key);
+        return GLOBAL_SUBSTITUTIONS.containsKey(key) || runtimeSubstitutions.containsKey(key);
     }
 }
