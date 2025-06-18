@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-final class DebuggerCommand {
+public final class DebuggerCommand {
 
-    enum Kind {
+    public enum Kind {
         STEP_INTO,
         STEP_OVER,
         STEP_OUT,
@@ -37,19 +37,10 @@ final class DebuggerCommand {
     private final RequestFilter requestFilter;
     private SourceLocation location;
     private BreakpointInfo breakpointInfo;
-    private volatile boolean submitted;
 
     DebuggerCommand(Kind kind, RequestFilter filter) {
         this.kind = kind;
         this.requestFilter = filter;
-    }
-
-    public boolean isSubmitted() {
-        return submitted;
-    }
-
-    public void markSubmitted() {
-        submitted = true;
     }
 
     void setSourceLocation(SourceLocation location) {
