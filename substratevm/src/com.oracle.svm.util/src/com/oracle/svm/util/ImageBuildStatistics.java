@@ -129,6 +129,7 @@ public class ImageBuildStatistics {
             }
             out.print(json);
             printTimerStats(out);
+            printTesaStats(out);
             out.format("}%n");
         }
 
@@ -137,10 +138,20 @@ public class ImageBuildStatistics {
             dumper.printTimerStats(out);
         }
 
+        private void printTesaStats(PrintWriter out) {
+            if (ImageSingletons.contains(TransitiveEffectSummaryAnalysisPrinter.class)) {
+                ImageSingletons.lookup(TransitiveEffectSummaryAnalysisPrinter.class).printTesaResults(out);
+            }
+        }
+
         static final String INDENT = "   ";
     }
 
     public interface TimerCollectionPrinter {
         void printTimerStats(PrintWriter out);
+    }
+
+    public interface TransitiveEffectSummaryAnalysisPrinter {
+        void printTesaResults(PrintWriter out);
     }
 }
