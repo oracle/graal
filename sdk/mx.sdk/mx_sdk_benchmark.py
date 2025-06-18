@@ -2883,6 +2883,9 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
                      "Barista benchmark suite directory.")
         return barista_home
 
+    def baristaApplicationDirectoryPath(self, benchmark: str) -> Path:
+        return Path(self.baristaDirectoryPath()) / "benchmarks" / benchmark
+
     def baristaFilePath(self, file_name):
         barista_home = self.baristaDirectoryPath()
         file_path = os.path.abspath(os.path.join(barista_home, file_name))
