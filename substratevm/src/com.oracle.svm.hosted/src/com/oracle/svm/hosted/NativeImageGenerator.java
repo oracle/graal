@@ -138,6 +138,7 @@ import com.oracle.svm.core.c.struct.OffsetOf;
 import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheck;
 import com.oracle.svm.core.graal.EconomyGraalConfiguration;
 import com.oracle.svm.core.graal.GraalConfiguration;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.jdk.SubstrateArraycopySnippets;
@@ -206,6 +207,7 @@ import com.oracle.svm.hosted.analysis.NativeImageReachabilityAnalysisEngine;
 import com.oracle.svm.hosted.analysis.ReachabilityTracePrinter;
 import com.oracle.svm.hosted.analysis.SVMAnalysisMetaAccess;
 import com.oracle.svm.hosted.analysis.SubstrateUnsupportedFeatures;
+import com.oracle.svm.hosted.analysis.tesa.TesaEngine;
 import com.oracle.svm.hosted.c.CAnnotationProcessorCache;
 import com.oracle.svm.hosted.c.CConstantValueSupportImpl;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -263,6 +265,7 @@ import com.oracle.svm.hosted.phases.PruneFrameStateValuesPhase;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.phases.VerifyDeoptLIRFrameStatesPhase;
 import com.oracle.svm.hosted.phases.VerifyNoGuardsPhase;
+import com.oracle.svm.hosted.pltgot.PLTGOTOptions;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
@@ -691,6 +694,15 @@ public class NativeImageGenerator {
                 new UniverseBuilder(aUniverse, bb.getMetaAccess(), hUniverse, hMetaAccess, HostedConfiguration.instance().createStrengthenGraphs(bb, hUniverse),
                                 bb.getUnsupportedFeatures()).build(debug);
 
+                if (TesaEngine.enabled()) {
+                    /*
+                     * Fixed-point loops are started after universe building, because the initial
+                     * state for each method is computed after strengthen graphs, which is executed
+                     * in UniverseBuilder.
+                     */
+                    TesaEngine.get().runFixedPointLoops(bb);
+                }
+
                 BuildPhaseProviderImpl.markHostedUniverseBuilt();
                 ClassInitializationSupport classInitializationSupport = bb.getHostVM().getClassInitializationSupport();
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(hMetaAccess);
@@ -959,6 +971,16 @@ public class NativeImageGenerator {
                         HostedImageLayerBuildingSupport.singleton().getWriter().initializeExternalValues();
                     }
                 }
+                if (TesaEngine.enabled()) {
+                    /*
+                     * Seal the TESA engine, prevent more analyses from being registered.
+                     * Technically, we could currently allow registrations even during the
+                     * Feature#beforeUniverseBuilding callbacks. But we are intentionally being
+                     * stricter about registrations in case we would like to perform some TESA steps
+                     * already during or immediately after PTA in the future.
+                     */
+                    TesaEngine.get().seal();
+                }
             }
 
             try (ReporterClosable _ = ProgressReporter.singleton().printAnalysis(bb.getUniverse(), nativeLibraries.getLibraries())) {
@@ -1014,6 +1036,10 @@ public class NativeImageGenerator {
                 /* report the unsupported features by throwing UnsupportedFeatureException */
                 bb.getUnsupportedFeatures().report(bb);
                 bb.checkUserLimitations();
+
+                if (TesaEngine.enabled()) {
+                    TesaEngine.get().saveCallGraph(bb);
+                }
 
                 bb.afterAnalysis();
             } catch (UnsupportedFeatureException ufe) {
@@ -1205,6 +1231,18 @@ public class NativeImageGenerator {
 
                 bb = createBigBang(debug, options, aUniverse, aMetaAccess, aProviders, annotationSubstitutions);
                 aUniverse.setBigBang(bb);
+                if (TesaEngine.Options.TransitiveEffectSummaryAnalysis.getValue()) {
+                    /*
+                     * Tesa only works in ClosedTypeWorld and does not support runtime compilation.
+                     * GR-72057 Investigate the usage of TESA with PLT-GOT.
+                     */
+                    if (SubstrateOptions.useClosedTypeWorld() && !RuntimeCompilation.isEnabled() && !PLTGOTOptions.EnablePLTGOT.getValue()) {
+                        TesaEngine engine = new TesaEngine();
+                        ImageSingletons.add(TesaEngine.class, engine);
+                        /* Register the engine in ImageBuildStatistics for reporting. */
+                        ImageSingletons.add(ImageBuildStatistics.TesaPrinter.class, engine);
+                    }
+                }
                 if (imageLayerLoader != null) {
                     imageLayerLoader.initNodeClassMap();
                 }
