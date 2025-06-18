@@ -113,30 +113,22 @@ public class JavaMainWrapper {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         public JavaMainSupport(Method javaMainMethod) throws IllegalAccessException {
-            if (instanceMainMethodSupported()) {
-                javaMainMethod.setAccessible(true);
-                int mods = javaMainMethod.getModifiers();
-                this.mainNonstatic = !Modifier.isStatic(mods);
-                this.mainWithoutArgs = javaMainMethod.getParameterCount() == 0;
-                MethodHandle mainHandle = MethodHandles.lookup().unreflect(javaMainMethod);
-                MethodHandle ctorHandle = null;
-                if (mainNonstatic) {
-                    // Instance main
-                    try {
-                        Constructor<?> ctor = ReflectionUtil.lookupConstructor(javaMainMethod.getDeclaringClass());
-                        ctorHandle = MethodHandles.lookup().unreflectConstructor(ctor);
-                    } catch (ReflectionUtil.ReflectionUtilError ex) {
-                        throw UserError.abort(ex, "No non-private zero argument constructor found in class %s", ClassUtil.getUnqualifiedName(javaMainMethod.getDeclaringClass()));
-                    }
+            int mods = javaMainMethod.getModifiers();
+            this.mainNonstatic = !Modifier.isStatic(mods);
+            this.mainWithoutArgs = javaMainMethod.getParameterCount() == 0;
+            MethodHandle mainHandle = MethodHandles.lookup().unreflect(javaMainMethod);
+            MethodHandle ctorHandle = null;
+            if (mainNonstatic) {
+                // Instance main
+                try {
+                    Constructor<?> ctor = ReflectionUtil.lookupConstructor(javaMainMethod.getDeclaringClass());
+                    ctorHandle = MethodHandles.lookup().unreflectConstructor(ctor);
+                } catch (ReflectionUtil.ReflectionUtilError ex) {
+                    throw UserError.abort(ex, "No non-private zero argument constructor found in class %s", ClassUtil.getUnqualifiedName(javaMainMethod.getDeclaringClass()));
                 }
-                this.javaMainHandle = mainHandle;
-                this.javaMainClassCtorHandle = ctorHandle;
-            } else {
-                this.mainNonstatic = false;
-                this.mainWithoutArgs = false;
-                this.javaMainHandle = MethodHandles.lookup().unreflect(javaMainMethod);
-                this.javaMainClassCtorHandle = null;
             }
+            this.javaMainHandle = mainHandle;
+            this.javaMainClassCtorHandle = ctorHandle;
             this.javaMainClassName = javaMainMethod.getDeclaringClass().getName();
         }
 
@@ -196,20 +188,6 @@ public class JavaMainWrapper {
                 /* We really need to pass a String[] without any casting. */
                 javaMainSupport.javaMainHandle.invokeExact(mainArgs);
             }
-        }
-    }
-
-    /**
-     * Determines whether instance main methodes are enabled. See JDK-8306112: Implementation of JEP
-     * 445: Unnamed Classes and Instance Main Methods (Preview).
-     */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static boolean instanceMainMethodSupported() {
-        var previewFeature = ReflectionUtil.lookupClass(true, "jdk.internal.misc.PreviewFeatures");
-        try {
-            return previewFeature != null && (Boolean) previewFeature.getDeclaredMethod("isEnabled").invoke(null);
-        } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere(e);
         }
     }
 
