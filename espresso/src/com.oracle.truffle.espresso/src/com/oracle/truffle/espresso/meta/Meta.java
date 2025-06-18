@@ -2449,7 +2449,7 @@ public final class Meta extends ContextAccessImpl
         public final Method Services_openJVMCITo;
 
         public final ObjectKlass UnresolvedJavaType;
-        public final Method UnresolvedJavaType_init;
+        public final Method UnresolvedJavaType_create;
         public final Field UnresolvedJavaType_name;
 
         public final ObjectKlass UnresolvedJavaField;
@@ -2522,7 +2522,7 @@ public final class Meta extends ContextAccessImpl
             Services_openJVMCITo = Services.requireDeclaredMethod(Names.openJVMCITo, Signatures._void_Module);
 
             UnresolvedJavaType = knownKlass(Types.jdk_vm_ci_meta_UnresolvedJavaType);
-            UnresolvedJavaType_init = UnresolvedJavaType.requireDeclaredMethod(Names._init_, Signatures._void_String);
+            UnresolvedJavaType_create = UnresolvedJavaType.requireDeclaredMethod(Names.create, Signatures.UnresolvedJavaType_String);
             UnresolvedJavaType_name = UnresolvedJavaType.requireDeclaredField(Names.name, Types.java_lang_String);
 
             UnresolvedJavaField = knownKlass(Types.jdk_vm_ci_meta_UnresolvedJavaField);

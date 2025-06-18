@@ -1400,6 +1400,7 @@ public class EspressoSymbols {
         public static final Symbol<Signature> PrimitiveConstant_char_long = SYMBOLS.putSignature(Types.jdk_vm_ci_meta_PrimitiveConstant, Types._char, Types._long);
         public static final Symbol<Signature> _void_boolean_EspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array = SYMBOLS.putSignature(Types._void, Types._boolean,
                         Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMethod, Types.java_lang_String, Types.jdk_vm_ci_meta_JavaConstant, Types.jdk_vm_ci_meta_JavaConstant_array);
+        public static final Symbol<Signature> UnresolvedJavaType_String = SYMBOLS.putSignature(Types.jdk_vm_ci_meta_UnresolvedJavaType, Types.java_lang_String);
 
         public static final Symbol<Signature> _void_sun_misc_Signal = SYMBOLS.putSignature(Types._void, Types.sun_misc_Signal);
         public static final Symbol<Signature> _void_jdk_internal_misc_Signal = SYMBOLS.putSignature(Types._void, Types.jdk_internal_misc_Signal);
