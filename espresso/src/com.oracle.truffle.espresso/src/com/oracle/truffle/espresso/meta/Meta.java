@@ -2638,7 +2638,7 @@ public final class Meta extends ContextAccessImpl
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public @JavaType(Throwable.class) static StaticObject initExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(String.class) StaticObject message) {
+    public static @JavaType(Throwable.class) StaticObject initExceptionWithMessage(ObjectKlass exceptionKlass, @JavaType(String.class) StaticObject message) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         assert StaticObject.isNull(message) || exceptionKlass.getMeta().java_lang_String.isAssignableFrom(message.getKlass());
         return exceptionKlass.getMeta().dispatch.initEx(exceptionKlass, message, null);
@@ -2655,7 +2655,7 @@ public final class Meta extends ContextAccessImpl
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public @JavaType(Throwable.class) static StaticObject initExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, String message) {
+    public static @JavaType(Throwable.class) StaticObject initExceptionWithMessage(ObjectKlass exceptionKlass, String message) {
         return initExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(message));
     }
 
@@ -2669,7 +2669,7 @@ public final class Meta extends ContextAccessImpl
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public @JavaType(Throwable.class) static StaticObject initException(@JavaType(Throwable.class) ObjectKlass exceptionKlass) {
+    public static @JavaType(Throwable.class) StaticObject initException(ObjectKlass exceptionKlass) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         return exceptionKlass.getMeta().dispatch.initEx(exceptionKlass, null, null);
     }
@@ -2685,10 +2685,28 @@ public final class Meta extends ContextAccessImpl
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public @JavaType(Throwable.class) static StaticObject initExceptionWithCause(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(Throwable.class) StaticObject cause) {
+    public static @JavaType(Throwable.class) StaticObject initExceptionWithCause(ObjectKlass exceptionKlass, @JavaType(Throwable.class) StaticObject cause) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         assert StaticObject.isNull(cause) || exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(cause.getKlass());
         return exceptionKlass.getMeta().dispatch.initEx(exceptionKlass, null, cause);
+    }
+
+    /**
+     * Allocate and initializes an exception of the given guest klass.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the
+     * {@link Throwable#Throwable(String, Throwable) constructor with message and cause}. The given
+     * guest class must have such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    public static @JavaType(Throwable.class) StaticObject initException(ObjectKlass exceptionKlass, @JavaType(String.class) StaticObject message, @JavaType(Throwable.class) StaticObject cause) {
+        assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
+        assert StaticObject.isNull(cause) || exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(cause.getKlass());
+        assert StaticObject.isNull(message) || exceptionKlass.getMeta().java_lang_String.isAssignableFrom(message.getKlass());
+        return exceptionKlass.getMeta().dispatch.initEx(exceptionKlass, message, cause);
     }
 
     /**
@@ -2782,6 +2800,32 @@ public final class Meta extends ContextAccessImpl
     @HostCompilerDirectives.InliningCutoff
     public EspressoException throwExceptionWithCause(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(Throwable.class) StaticObject cause) {
         throw throwException(initExceptionWithCause(exceptionKlass, cause));
+    }
+
+    /**
+     * Initializes and throws an exception of the given guest klass. A guest instance is allocated
+     * and initialized by calling the {@link Throwable#Throwable(String, Throwable) constructor with
+     * cause}. The given guest class must have such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    @HostCompilerDirectives.InliningCutoff
+    public EspressoException throwException(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(String.class) StaticObject message, @JavaType(Throwable.class) StaticObject cause) {
+        throw throwException(initException(exceptionKlass, message, cause));
+    }
+
+    /**
+     * Initializes and throws an exception of the given guest klass. A guest instance is allocated
+     * and initialized by calling the {@link Throwable#Throwable(String, Throwable) constructor with
+     * cause}. The given guest class must have such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    @HostCompilerDirectives.InliningCutoff
+    public EspressoException throwException(@JavaType(Throwable.class) ObjectKlass exceptionKlass, String message, @JavaType(Throwable.class) StaticObject cause) {
+        throw throwException(initException(exceptionKlass, exceptionKlass.getMeta().toGuestString(message), cause));
     }
 
     /**
