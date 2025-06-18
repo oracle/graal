@@ -72,6 +72,7 @@ import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.analysis.tesa.TesaEngine;
 import com.oracle.svm.hosted.diagnostic.HostedHeapDumpFeature;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
@@ -1396,6 +1397,10 @@ public class CompileQueue {
 
             /* Check that graph is in good shape before compilation. */
             assert GraphOrder.assertSchedulableGraph(graph);
+
+            if (TesaEngine.enabled()) {
+                TesaEngine.get().applyResults(universe, method, graph);
+            }
 
             try (DebugContext.Scope _ = debug.scope("Compiling", graph, method, this);
                             DebugCloseable _ = GraalServices.GCTimerScope.create(debug)) {

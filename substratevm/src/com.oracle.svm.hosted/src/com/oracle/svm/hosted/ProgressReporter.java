@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted;
 
 import static com.oracle.svm.hosted.ProgressReporterJsonHelper.UNAVAILABLE_METRIC;
+import static com.oracle.svm.hosted.analysis.tesa.TesaEngine.Options.TesaPrintToConsole;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -100,6 +101,8 @@ import com.oracle.svm.hosted.ProgressReporterJsonHelper.GeneralInfo;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.ImageDetailKey;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.JsonMetric;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.ResourceUsageKey;
+import com.oracle.svm.hosted.analysis.tesa.AbstractTesa;
+import com.oracle.svm.hosted.analysis.tesa.TesaEngine;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageDebugInfoStripFeature;
@@ -107,6 +110,7 @@ import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.util.CPUType;
 import com.oracle.svm.hosted.util.DiagnosticUtils;
 import com.oracle.svm.hosted.util.VMErrorReporter;
+import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.LogUtils;
 import com.sun.management.OperatingSystemMXBean;
@@ -243,7 +247,7 @@ public class ProgressReporter {
     }
 
     public void printInitializeEnd(List<Feature> features, ImageClassLoader classLoader) {
-        stagePrinter.end(getTimer(TimerCollection.Registry.CLASSLIST).getTotalTime() + getTimer(TimerCollection.Registry.SETUP).getTotalTime());
+        stagePrinter.end(getTimer(TimerCollection.Registry.CLASSLIST).getTotalTimeMs() + getTimer(TimerCollection.Registry.SETUP).getTotalTimeMs());
         VM vm = ImageSingletons.lookup(VM.class);
         recordJsonMetric(GeneralInfo.JAVA_VERSION, vm.version);
         recordJsonMetric(GeneralInfo.VENDOR_VERSION, vm.vendorVersion);
@@ -601,7 +605,7 @@ public class ProgressReporter {
         Timer imageTimer = getTimer(TimerCollection.Registry.IMAGE);
         Timer writeTimer = getTimer(TimerCollection.Registry.WRITE);
         Timer archiveTimer = getTimer(TimerCollection.Registry.ARCHIVE_LAYER);
-        stagePrinter.end(imageTimer.getTotalTime() + writeTimer.getTotalTime() + archiveTimer.getTotalTime());
+        stagePrinter.end(imageTimer.getTotalTimeMs() + writeTimer.getTotalTimeMs() + archiveTimer.getTotalTimeMs());
         creationStageEndCompleted = true;
         String format = BYTES_TO_HUMAN_FORMAT + " (%5.2f%%) for ";
         l().a(format, ByteFormattingUtil.bytesToHuman(codeAreaSize), ProgressReporterUtils.toPercentage(codeAreaSize, imageFileSize))
@@ -622,7 +626,7 @@ public class ProgressReporter {
 
                             .doclink("debug info", "#glossary-debug-info");
             if (debugInfoTimer != null) {
-                l.a(" generated in %.1fs", ProgressReporterUtils.millisToSeconds(debugInfoTimer.getTotalTime()));
+                l.a(" generated in %.1fs", ProgressReporterUtils.millisToSeconds(debugInfoTimer.getTotalTimeMs()));
             }
             l.println();
             if (!(ImageSingletons.contains(NativeImageDebugInfoStripFeature.class) && ImageSingletons.lookup(NativeImageDebugInfoStripFeature.class).hasStrippedSuccessfully())) {
@@ -642,6 +646,9 @@ public class ProgressReporter {
             l().a(", %s in total file size", ByteFormattingUtil.bytesToHuman(imageDiskFileSize));
         }
         l().println();
+        if (TesaEngine.enabled() && TesaPrintToConsole.getValue()) {
+            printTesaStatistics();
+        }
         printBreakdowns();
         ImageSingletons.lookup(ProgressReporterFeature.class).afterBreakdowns();
         printRecommendations();
@@ -756,6 +763,42 @@ public class ProgressReporter {
         }
     }
 
+    private void printTesaStatistics() {
+        TesaEngine engine = TesaEngine.get();
+
+        /* Separate the text from the previous section. */
+        l().printLineSeparator();
+
+        /* Print high-level overview. */
+        l().yellowBold().a("Transitive Effect Summary Analysis Results:").reset().println();
+        l().a("  - Scope: %d methods, %d invokes", engine.getTotalMethods(), engine.getTotalInvokes()).println();
+        l().a("  - Call graph initialization: %.2f ms", engine.getCallGraph().getCallGraphInitializationTimer().getTotalTimeMs()).println();
+        double worstCaseTesaTime = engine.getAllAnalyses().stream().mapToDouble(AbstractTesa::getFixedPointLoopTimeMs).max().getAsDouble();
+        l().a("  - Worst case TESA time (analyses run in parallel): %.2f ms", worstCaseTesaTime).println();
+        l().a("  - Results per analysis (methods and invokes with more precise results than Any):").println();
+
+        /* Print details table header. */
+        l().a("    %-25s | %10s | %10s | %6s", "-".repeat(25), "-".repeat(19), "-".repeat(19), "-".repeat(9)).println();
+        l().a("    %-25s | %10s (%%)      | %10s (%%)      | %6s", "Analysis", "Methods", "Invokes", "Time (ms)").println();
+        l().a("    %-25s | %10s | %10s | %6s", "-".repeat(25), "-".repeat(19), "-".repeat(19), "-".repeat(9)).println();
+
+        /* Print statistics for each TESA instance. */
+        for (AbstractTesa<?> analysis : engine.getAllAnalyses()) {
+            String classname = ClassUtil.getUnqualifiedName(analysis.getClass());
+            int optimizableMethods = analysis.getOptimizableMethods();
+            int optimizableInvokes = analysis.getOptimizableInvokes();
+            double timeMs = analysis.getFixedPointLoopTimeMs();
+            double methodsPercentage = (double) optimizableMethods / engine.getTotalMethods() * 100;
+            double invokesPercentage = (double) optimizableInvokes / engine.getTotalInvokes() * 100;
+
+            l().a("    %-25s | %10d (%5.2f%%) | %10d (%5.2f%%) | %8.2f",
+                            classname,
+                            optimizableMethods, methodsPercentage,
+                            optimizableInvokes, invokesPercentage,
+                            timeMs).println();
+        }
+    }
+
     public void printEpilog(Optional<String> optionalImageName, Optional<NativeImageGenerator> optionalGenerator, ImageClassLoader classLoader, NativeImageGeneratorRunner.BuildOutcome buildOutcome,
                     Optional<Throwable> optionalUnhandledThrowable, OptionValues parsedHostedOptions) {
         executor.shutdown();
@@ -784,7 +827,7 @@ public class ProgressReporter {
         l().printLineSeparator();
         printResourceStatistics();
 
-        double totalSeconds = ProgressReporterUtils.millisToSeconds(getTimer(TimerCollection.Registry.TOTAL).getTotalTime());
+        double totalSeconds = ProgressReporterUtils.millisToSeconds(getTimer(TimerCollection.Registry.TOTAL).getTotalTimeMs());
         recordJsonMetric(ResourceUsageKey.TOTAL_SECS, totalSeconds);
 
         createAdditionalArtifacts(imageName, generator, buildOutcome.successful(), parsedHostedOptions);
@@ -1291,7 +1334,7 @@ public class ProgressReporter {
         }
 
         final void end(Timer timer) {
-            end(timer.getTotalTime());
+            end(timer.getTotalTimeMs());
         }
 
         void end(double totalTime) {

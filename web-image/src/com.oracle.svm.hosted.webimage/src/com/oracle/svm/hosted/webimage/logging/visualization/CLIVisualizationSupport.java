@@ -100,13 +100,13 @@ public class CLIVisualizationSupport extends VisualizationSupport {
     public static Map<String, Number> toMap() {
         TimerCollection timerCollection = TimerCollection.singleton();
         LinkedHashMap<String, Number> map = new LinkedHashMap<>();
-        map.put(TimerCollection.Registry.SETUP.name, timerCollection.get(TimerCollection.Registry.SETUP).getTotalTime());
-        map.put(TimerCollection.Registry.ANALYSIS.name, timerCollection.get(TimerCollection.Registry.ANALYSIS).getTotalTime());
-        map.put(TimerCollection.Registry.UNIVERSE.name, timerCollection.get(TimerCollection.Registry.UNIVERSE).getTotalTime());
-        map.put(TimerCollection.Registry.COMPILE_TOTAL.name, timerCollection.get(TimerCollection.Registry.COMPILE_TOTAL).getTotalTime());
-        map.put(WebImageEmitTimer, timerCollection.get(WebImageEmitTimer).getTotalTime());
+        map.put(TimerCollection.Registry.SETUP.name, timerCollection.get(TimerCollection.Registry.SETUP).getTotalTimeMs());
+        map.put(TimerCollection.Registry.ANALYSIS.name, timerCollection.get(TimerCollection.Registry.ANALYSIS).getTotalTimeMs());
+        map.put(TimerCollection.Registry.UNIVERSE.name, timerCollection.get(TimerCollection.Registry.UNIVERSE).getTotalTimeMs());
+        map.put(TimerCollection.Registry.COMPILE_TOTAL.name, timerCollection.get(TimerCollection.Registry.COMPILE_TOTAL).getTotalTimeMs());
+        map.put(WebImageEmitTimer, timerCollection.get(WebImageEmitTimer).getTotalTimeMs());
         if (WebImageOptions.ClosureCompiler.getValue()) {
-            map.put(WebImageJSCodeGen.ClosureTimer, timerCollection.get(WebImageJSCodeGen.ClosureTimer).getTotalTime());
+            map.put(WebImageJSCodeGen.ClosureTimer, timerCollection.get(WebImageJSCodeGen.ClosureTimer).getTotalTimeMs());
         }
         return map;
     }
@@ -198,7 +198,7 @@ public class CLIVisualizationSupport extends VisualizationSupport {
     }
 
     private static void visualizeStepTiming(LinkedHashMap<String, Widget> contents) {
-        BarPlotWidget buildTimes = new BarPlotWidget(toMap(), Optional.of(TimerCollection.singleton().get(WebImageTotalTime).getTotalTime()), "ms", label -> Color.BLUE_BRIGHT);
+        BarPlotWidget buildTimes = new BarPlotWidget(toMap(), Optional.of(TimerCollection.singleton().get(WebImageTotalTime).getTotalTimeMs()), "ms", label -> Color.BLUE_BRIGHT);
         contents.put("build timing", buildTimes);
     }
 
