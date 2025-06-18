@@ -1435,4 +1435,14 @@ public class AMD64SSEAVXArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
     public Variable emitVectorOpMaskOrTestMove(Value left, Value right, boolean allZeros, Value trueValue, Value falseValue) {
         throw GraalError.shouldNotReachHere("AVX/AVX2 does not support opmasks");
     }
+
+    @Override
+    public Variable emitVectorCompress(LIRKind resultKind, Value source, Value mask) {
+        throw GraalError.shouldNotReachHere("AVX/AVX2 does not support compress/expand");
+    }
+
+    @Override
+    public Variable emitVectorExpand(LIRKind resultKind, Value source, Value mask) {
+        throw GraalError.shouldNotReachHere("AVX/AVX2 does not support compress/expand");
+    }
 }
