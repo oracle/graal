@@ -112,13 +112,20 @@ public final class RuntimeConstantPool extends ConstantPool {
      * Returns the resolved, non-primitive, constant pool entry.
      */
     public ResolvedConstant resolvedAt(ObjectKlass accessingKlass, int index) {
+        return resolvedAt(accessingKlass, index, true);
+    }
+
+    public ResolvedConstant resolvedAt(ObjectKlass accessingKlass, int index, boolean allowStickyFailures) {
         ResolvedConstant c = resolvedConstants[index];
         if (c == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             synchronized (this) {
                 c = resolvedConstants[index];
                 if (c == null) {
-                    resolvedConstants[index] = c = resolve(index, accessingKlass);
+                    c = resolve(index, accessingKlass);
+                    if (allowStickyFailures || c.isSuccess()) {
+                        resolvedConstants[index] = c;
+                    }
                 }
             }
         }
@@ -136,7 +143,11 @@ public final class RuntimeConstantPool extends ConstantPool {
     }
 
     public Klass resolvedKlassAt(ObjectKlass accessingKlass, int index) {
-        ResolvedClassConstant resolved = (ResolvedClassConstant) resolvedAt(accessingKlass, index);
+        return resolvedKlassAt(accessingKlass, index, true);
+    }
+
+    public Klass resolvedKlassAt(ObjectKlass accessingKlass, int index, boolean allowStickyFailures) {
+        ResolvedClassConstant resolved = (ResolvedClassConstant) resolvedAt(accessingKlass, index, allowStickyFailures);
         return (Klass) resolved.value();
     }
 
