@@ -350,4 +350,21 @@ public final class GraalOptions {
 
     @Option(help = "Enables target-specific lowering and legalization of SIMD operations. Required for SIMD code generation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TargetVectorLowering = new OptionKey<>(true);
+
+    @Option(help = "Enable Instrumentation to collect profile information", type = OptionType.Debug)
+    public static final OptionKey<Boolean> EnableProfiler = new OptionKey<>(false);
+
+    @Option(help = "Min graph size to start instrumenting", type = OptionType.Debug)
+    public static final OptionKey<Integer> MinGraphSize = new OptionKey<>(1);
+
+    @Option(help = "Enable Instrumentation to count the amount of Compiled Methods", type = OptionType.Debug)
+    public static final OptionKey<Boolean> CountCompiledMethods = new OptionKey<>(false);
+
+    @Option(help = "Enable Bubo DebugMode to collect profile information, such as gragh stats", type = OptionType.Debug)
+    public static final OptionKey<Boolean> BuboDebugMode = new OptionKey<>(false);
+
+    @Option(help = "Enable Bubo Dump, print results to the parse file location", type = OptionType.Debug)
+    public static final OptionKey<String> BuboDump = new OptionKey<>("");
+
+
 }

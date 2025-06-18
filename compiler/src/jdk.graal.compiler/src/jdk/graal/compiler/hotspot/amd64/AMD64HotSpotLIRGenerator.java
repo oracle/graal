@@ -101,6 +101,9 @@ import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.Value;
 
+import jdk.graal.compiler.lir.amd64.AMD64ReadTimestampCounter;
+import jdk.graal.compiler.lir.amd64.AMD64ReadTimestampCounterWithProcid;
+
 /**
  * LIR generator specialized for AMD64 HotSpot.
  */
@@ -630,6 +633,26 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public boolean isReservedRegister(Register r) {
         return getProviders().getRegisters().isReservedRegister(r);
+    }
+
+    public Value emitTSC() {
+        AMD64ReadTimestampCounter timestamp = new AMD64ReadTimestampCounter();
+        append(timestamp);
+        // Combine RDX and RAX into a single 64-bit register.
+        AllocatableValue lo = timestamp.getLowResult();
+        Value hi = getArithmetic().emitZeroExtend(timestamp.getHighResult(), 32, 64);
+        return combineLoAndHi(lo, hi);
+    }
+
+    @Override
+    public Value emitTimeStamp() {
+        AMD64ReadTimestampCounterWithProcid timestamp = new AMD64ReadTimestampCounterWithProcid();
+        append(timestamp);
+        // Combine RDX and RAX into a single 64-bit register.
+        AllocatableValue lo = timestamp.getLowResult();
+        Value hi = getArithmetic().emitZeroExtend(timestamp.getHighResult(), 32, 64);
+        return combineLoAndHi(lo, hi);
+
     }
 
     // no need to call super because HotSpot already overrides the value according to the CPU

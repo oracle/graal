@@ -50,6 +50,8 @@ import jdk.graal.compiler.phases.common.TransplantGraphsPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
+import jdk.graal.compiler.phases.common.BuboInstrumentationLowTierPhase;
+import jdk.graal.compiler.phases.common.BuboInstrumentationLoweringPhase;
 
 public class LowTier extends BaseTier<LowTierContext> {
 
@@ -83,6 +85,11 @@ public class LowTier extends BaseTier<LowTierContext> {
         appendPhase(new ExpandLogicPhase(canonicalizerWithGVN));
 
         appendPhase(new OptimizeOffsetAddressPhase(canonicalizerWithGVN));
+
+        if (GraalOptions.EnableProfiler.getValue(options)) {
+            appendPhase(new BuboInstrumentationLowTierPhase(options));
+            appendPhase(new BuboInstrumentationLoweringPhase(canonicalizerWithGVN));
+        }
 
         appendPhase(new FixReadsPhase(true,
                         new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS)));

@@ -52,6 +52,7 @@ import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIExpansionPhase;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIIntrinsics;
 import jdk.graal.compiler.virtual.phases.ea.FinalPartialEscapePhase;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationPhase;
+import jdk.graal.compiler.phases.common.BuboInstrumentationHighTierPhase;
 
 public class HighTier extends BaseTier<HighTierContext> {
 
@@ -68,6 +69,9 @@ public class HighTier extends BaseTier<HighTierContext> {
     public HighTier(OptionValues options) {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         appendPhase(canonicalizer);
+        if (GraalOptions.EnableProfiler.getValue(options)) {
+            appendPhase(new BuboInstrumentationHighTierPhase());
+        }
 
         if (Options.Inline.getValue(options)) {
             appendPhase(new InliningPhase(new GreedyInliningPolicy(null), canonicalizer));
