@@ -329,8 +329,14 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         return self._application_nibs[benchmark]
 
     def get_bundle_path_for_benchmark_layer(self, benchmark, layer_info) -> str:
-        standalone_nib = Path(self.get_bundle_path_for_benchmark_standalone(benchmark))
-        return (standalone_nib.parent / f"layer{layer_info.index}-{standalone_nib.name}").absolute()
+        app_dir = self.baristaApplicationDirectoryPath(benchmark)
+        nib_candidates = list(app_dir.glob(f"**/layer{layer_info.index}-*.nib"))
+        if len(nib_candidates) == 0:
+            mx.abort(f"Expected to find exactly one 'layer{layer_info.index}-*.nib' file somewhere in the '{app_dir}' directory subtree, instead found none!")
+        if len(nib_candidates) > 1:
+            mx.abort(f"Expected to find exactly one 'layer{layer_info.index}-*.nib' file somewhere in the '{app_dir}' directory subtree, instead found "
+                     + "multiple: [" + ", ".join(str(path) for path in nib_candidates) + "]")
+        return str(nib_candidates[0])
 
     def get_latest_layer(self) -> Optional[Layer]:
         latest_image_stage = self.execution_context.virtual_machine.stages_info.get_latest_image_stage()
@@ -368,6 +374,12 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
     def extra_run_arg(self, benchmark, args, image_run_args):
         # Added by BaristaNativeImageCommand
         return []
+
+    def build_assertions(self, benchmark: str, is_gate: bool) -> List[str]:
+        # We cannot enable assertions along with emitting a build report for layered images, due to GR-65751
+        if self.stages_info.current_stage.is_layered:
+            return []
+        return super().build_assertions(benchmark, is_gate)
 
     def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
         return self.intercept_run(super(), benchmarks, bmSuiteArgs)
