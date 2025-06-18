@@ -70,6 +70,18 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     @Override
     public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean jniAccessible) {
         TypeResult<Class<?>> result = super.resolveType(condition, typeDescriptor, allowPrimitives, jniAccessible);
+        registerTypeResolutionErrors(result, condition, typeDescriptor, jniAccessible);
+        return result;
+    }
+
+    @Override
+    public TypeResult<List<Class<?>>> resolveTypes(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean jniAccessible) {
+        TypeResult<List<Class<?>>> result = super.resolveTypes(condition, typeDescriptor, allowPrimitives, jniAccessible);
+        registerTypeResolutionErrors(result, condition, typeDescriptor, jniAccessible);
+        return result;
+    }
+
+    private void registerTypeResolutionErrors(TypeResult<?> result, ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean jniAccessible) {
         if (!result.isPresent() && typeDescriptor instanceof NamedConfigurationTypeDescriptor namedDescriptor) {
             Throwable classLookupException = result.getException();
             if (classLookupException instanceof LinkageError) {
@@ -80,7 +92,6 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
                 jniSupport.registerClassLookup(condition, jniName);
             }
         }
-        return result;
     }
 
     @Override
