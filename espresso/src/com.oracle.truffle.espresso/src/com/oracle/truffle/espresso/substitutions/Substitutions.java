@@ -175,15 +175,15 @@ public final class Substitutions extends ContextAccessImpl {
     }
 
     private static void registerStaticSubstitution(Symbol<Type> type, Symbol<Name> methodName, Symbol<Signature> signature, JavaSubstitution.Factory factory, boolean throwIfPresent) {
-        MethodKey key = new MethodKey(type, methodName, signature);
+        MethodKey key = new MethodKey(type, methodName, signature, !factory.hasReceiver());
         if (throwIfPresent && STATIC_SUBSTITUTIONS.containsKey(key)) {
             throw EspressoError.shouldNotReachHere("substitution already registered" + key);
         }
         STATIC_SUBSTITUTIONS.put(key, factory);
     }
 
-    public void registerRuntimeSubstitution(Symbol<Type> type, Symbol<Name> methodName, Symbol<Signature> signature, EspressoRootNodeFactory factory, boolean throwIfPresent) {
-        MethodKey key = new MethodKey(type, methodName, signature);
+    public void registerRuntimeSubstitution(Symbol<Type> type, Symbol<Name> methodName, Symbol<Signature> signature, boolean isStatic, EspressoRootNodeFactory factory, boolean throwIfPresent) {
+        MethodKey key = new MethodKey(type, methodName, signature, isStatic);
 
         if (STATIC_SUBSTITUTIONS.containsKey(key)) {
             getLogger().log(Level.FINE, "Runtime substitution shadowed by static one: " + key);
