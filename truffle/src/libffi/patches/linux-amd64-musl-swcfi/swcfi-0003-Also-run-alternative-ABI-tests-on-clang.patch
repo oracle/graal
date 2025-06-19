@@ -1,0 +1,25 @@
+From b92f010761442c7a44fbf5972a259dedcdf27624 Mon Sep 17 00:00:00 2001
+From: Gilles Duboscq <gilles.m.duboscq@oracle.com>
+Date: Wed, 23 Apr 2025 21:28:04 +0200
+Subject: [PATCH 3/3] Also run alternative ABI tests on clang
+
+---
+ testsuite/lib/libffi.exp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/testsuite/lib/libffi.exp b/testsuite/lib/libffi.exp
+index b5731db..607013d 100644
+--- a/testsuite/lib/libffi.exp
++++ b/testsuite/lib/libffi.exp
+@@ -537,7 +537,7 @@ proc run-many-tests { testcases extra_flags } {
+     info exists env(LD_LIBRARY_PATH)
+ 
+     set targetabis { "" }
+-    if [string match $compiler_vendor "gnu"] {
++    if { [string match $compiler_vendor "gnu"] || [string match $compiler_vendor "clang"] } then {
+         if [libffi_feature_test "#ifdef __i386__"] {
+             set targetabis {
+                 ""
+-- 
+2.43.0
+
