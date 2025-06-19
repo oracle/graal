@@ -337,4 +337,27 @@ public class DebugContextTest {
         Assert.assertTrue(options2.toString().contains("MethodFilter=test"));
         Assert.assertTrue(options2.toString().contains("DumpOnError=true"));
     }
+
+    @Test
+    public void testIsCountEnabled1() {
+        EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
+        map.put(DebugOptions.Count, "");
+        OptionValues options = new OptionValues(map);
+        DebugContext debug = new Builder(options).build();
+        try (Scope _ = debug.scope("Scope")) {
+            Assert.assertTrue(debug.isCountEnabled());
+        }
+    }
+
+    @Test
+    public void testIsCountEnabled2() {
+        EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
+        map.put(DebugOptions.Counters, "");
+        OptionValues options = new OptionValues(map);
+        DebugContext debug = new Builder(options).build();
+        try (Scope _ = debug.scope("Scope")) {
+            Assert.assertTrue(debug.isCountEnabled());
+        }
+    }
+
 }

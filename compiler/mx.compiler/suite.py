@@ -493,6 +493,7 @@ suite = {
         "name" : "jdk.graal.compiler",
         "exports" : [
           """* to jdk.graal.compiler.libgraal,
+                  jdk.graal.compiler.management,
                   com.oracle.graal.graal_enterprise,
                   org.graalvm.nativeimage.pointsto,
                   org.graalvm.nativeimage.builder,
@@ -513,7 +514,7 @@ suite = {
           "jdk.graal.compiler.nodes.graphbuilderconf to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.librarysupport",
           "jdk.graal.compiler.options                to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.junitsupport",
           "jdk.graal.compiler.phases.common          to org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure",
-          "jdk.graal.compiler.serviceprovider        to jdk.graal.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.diagnostics",
+          "jdk.graal.compiler.serviceprovider        to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.diagnostics",
           "jdk.graal.compiler.util.json              to org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.driver",
         ],
         "uses" : [
