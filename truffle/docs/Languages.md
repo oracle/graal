@@ -23,8 +23,10 @@ The following language implementations exist already (in alphabetical order):
 * [TruffleRuby](https://github.com/graalvm/truffleruby), an implementation of Ruby. *
 * [TruffleSOM](https://github.com/SOM-st/TruffleSOM), a SOM Smalltalk implementation.
 * [TruffleSqueak](https://github.com/hpi-swa/trufflesqueak/), a Squeak/Smalltalk VM implementation and polyglot programming environment.
-* [Yona](https://yona-lang.org/), the reference implementation of a minimalistic, strongly and dynamically-typed, parallel and non-blocking, polyglot, strict, functional programming language.
 
+## Unmaintainted
+
+* [Yona](https://yona-lang.org/), the reference implementation of a minimalistic, strongly and dynamically-typed, parallel and non-blocking, polyglot, strict, functional programming language.
 
 \* Shipped as part of [GraalVM](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
 
