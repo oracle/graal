@@ -781,7 +781,7 @@ public final class Engine implements AutoCloseable {
                 for (Object systemKey : properties.keySet()) {
                     String key = (String) systemKey;
                     if ("polyglot.engine.AllowExperimentalOptions".equals(key) || key.equals("polyglot.engine.resourcePath") || key.startsWith("polyglot.engine.resourcePath.") ||
-                                    key.equals("polyglot.engine.userResourceCache")) {
+                                    key.equals("polyglot.engine.userResourceCache") || key.equals("polyglot.engine.allowUnsupportedPlatform")) {
                         continue;
                     }
                     if (key.startsWith(systemPropertyPrefix)) {
