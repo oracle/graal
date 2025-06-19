@@ -483,7 +483,7 @@ public abstract class NativeImageCodeCache {
                 HostedType hostedType = hUniverse.optionalLookup(analysisType);
                 if (hostedType != null) {
                     for (AnalysisMethod.Signature methodSignature : methodSignatures) {
-                        HostedType[] parameterTypes = hUniverse.optionalLookup(methodSignature.parameterTypes());
+                        HostedType[] parameterTypes = hUniverse.optionalLookup(methodSignature.parameterTypes().toArray(HostedType.EMPTY_ARRAY));
                         if (parameterTypes != null) {
                             runtimeMetadataEncoder.addNegativeMethodQueryMetadata(hostedType, methodSignature.name(), parameterTypes);
                         }

@@ -34,24 +34,26 @@ import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.List;
+
 @NodeInfo
 public class SubstrateIndirectCallTargetNode extends IndirectCallTargetNode {
     public static final NodeClass<SubstrateIndirectCallTargetNode> TYPE = NodeClass.create(SubstrateIndirectCallTargetNode.class);
 
     private final JavaMethodProfile methodProfile;
 
-    public SubstrateIndirectCallTargetNode(ValueNode computedAddress, ValueNode[] arguments, StampPair returnStamp, JavaType[] signature, ResolvedJavaMethod target,
+    public SubstrateIndirectCallTargetNode(ValueNode computedAddress, ValueNode[] arguments, StampPair returnStamp, List<JavaType> signature, ResolvedJavaMethod target,
                     CallingConvention.Type callType, InvokeKind invokeKind, JavaMethodProfile methodProfile) {
         this(TYPE, computedAddress, arguments, returnStamp, signature, target, callType, invokeKind, methodProfile);
     }
 
-    public SubstrateIndirectCallTargetNode(ValueNode computedAddress, ValueNode[] arguments, StampPair returnStamp, JavaType[] signature, ResolvedJavaMethod target,
+    public SubstrateIndirectCallTargetNode(ValueNode computedAddress, ValueNode[] arguments, StampPair returnStamp, List<JavaType> signature, ResolvedJavaMethod target,
                     CallingConvention.Type callType, InvokeKind invokeKind) {
         this(TYPE, computedAddress, arguments, returnStamp, signature, target, callType, invokeKind, null);
     }
 
     protected SubstrateIndirectCallTargetNode(NodeClass<? extends SubstrateIndirectCallTargetNode> type, ValueNode computedAddress, ValueNode[] arguments, StampPair returnStamp,
-                    JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind, JavaMethodProfile methodProfile) {
+                                              List<JavaType> signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind, JavaMethodProfile methodProfile) {
         super(type, computedAddress, arguments, returnStamp, signature, target, callType, invokeKind);
         this.methodProfile = methodProfile;
     }

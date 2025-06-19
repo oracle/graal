@@ -518,7 +518,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 registerMethod(cnd, true, declaringClass.getDeclaredConstructor(parameterTypes));
             } catch (NoSuchMethodException e) {
                 negativeConstructorLookups.computeIfAbsent(metaAccess.lookupJavaType(declaringClass), (key) -> ConcurrentHashMap.newKeySet())
-                                .add(metaAccess.lookupJavaTypes(parameterTypes));
+                                .add(metaAccess.lookupJavaTypes(parameterTypes).toArray(AnalysisType.EMPTY_ARRAY));
             } catch (LinkageError le) {
                 registerLinkageError(declaringClass, le, constructorLookupExceptions);
             }
@@ -691,8 +691,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
         try {
             Set<ResolvedJavaField> subClassFields = new HashSet<>();
-            subClassFields.addAll(Arrays.asList(subtype.getInstanceFields(false)));
-            subClassFields.addAll(Arrays.asList(subtype.getStaticFields()));
+            subClassFields.addAll(subtype.getInstanceFields(false));
+            subClassFields.addAll(subtype.getStaticFields());
             for (ResolvedJavaField javaField : subClassFields) {
                 for (AnalysisField registeredField : superclassFields) {
                     AnalysisField subclassField = (AnalysisField) javaField;

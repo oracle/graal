@@ -43,6 +43,8 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import java.util.List;
+
 /**
  * Verifies that code which uses {@link Node} implementing {@link IterableNodeType} uses
  * {@link StructuredGraph#getNodes(NodeClass)} and not {@linkplain NodeIterable#filter(Class)} to
@@ -63,18 +65,17 @@ public class VerifyIterableNodeType extends VerifyPhase<CoreProviders> {
             if (receiver instanceof Invoke) {
                 CallTargetNode receiverCallTarget = ((Invoke) receiver).callTarget();
                 ResolvedJavaMethod receiverMethod = receiverCallTarget.targetMethod();
-                if (receiverMethod.getDeclaringClass().equals(graphType) && receiverMethod.getName().equals("getNodes") && receiverMethod.getParameters().length == 0) {
+                if (receiverMethod.getDeclaringClass().equals(graphType) && receiverMethod.getName().equals("getNodes") && receiverMethod.getParameters().isEmpty()) {
                     ResolvedJavaMethod callee = t.targetMethod();
                     if (callee.getDeclaringClass().equals(nodeIterableType)) {
                         if (callee.getName().equals("filter")) {
-                            ResolvedJavaMethod.Parameter[] params = callee.getParameters();
-                            if (params.length == 1 && params[0].getType().equals(classType)) {
+                            List<ResolvedJavaMethod.Parameter> params = callee.getParameters();
+                            if (params.size() == 1 && params.getFirst().getType().equals(classType)) {
                                 // call to filter
                                 ValueNode v = t.arguments().get(1);
                                 ResolvedJavaType javaType = v.stamp(NodeView.DEFAULT).javaType(metaAccess);
                                 assert classType.isAssignableFrom(javaType) : "Need to have a class type parameter.";
-                                if (v instanceof ConstantNode) {
-                                    ConstantNode c = (ConstantNode) v;
+                                if (v instanceof ConstantNode c) {
                                     javaType = context.getConstantReflection().asJavaType(c.asConstant());
                                     if (iterableNodeType.isAssignableFrom(javaType)) {
                                         throw new VerificationError(

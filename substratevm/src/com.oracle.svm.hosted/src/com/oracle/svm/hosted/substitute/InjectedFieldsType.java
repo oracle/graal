@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.substitute;
 
 import java.lang.reflect.AnnotatedElement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -51,12 +52,14 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
 
     private final ResolvedJavaType original;
 
-    private final ResolvedJavaField[][] instanceFields;
+    private final List<ResolvedJavaField> instanceFieldsWithoutSuper;
+    private final List<ResolvedJavaField> instanceFieldsWithSuper;
 
     public InjectedFieldsType(ResolvedJavaType original) {
         this.original = original;
 
-        this.instanceFields = new ResolvedJavaField[][]{original.getInstanceFields(false), original.getInstanceFields(true)};
+        this.instanceFieldsWithoutSuper = new ArrayList<>(original.getInstanceFields(false));
+        this.instanceFieldsWithSuper = new ArrayList<>(original.getInstanceFields(true));
     }
 
     public ResolvedJavaType getOriginal() {
@@ -69,16 +72,13 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     }
 
     public void addInjectedField(ResolvedJavaField field) {
-        for (int i = 0; i < instanceFields.length; i++) {
-            ResolvedJavaField[] newFields = Arrays.copyOf(instanceFields[i], instanceFields[i].length + 1, ResolvedJavaField[].class);
-            newFields[newFields.length - 1] = field;
-            instanceFields[i] = newFields;
-        }
+        instanceFieldsWithoutSuper.add(field);
+        instanceFieldsWithSuper.add(field);
     }
 
     @Override
-    public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
-        return instanceFields[includeSuperclasses ? 1 : 0];
+    public List<ResolvedJavaField> getInstanceFields(boolean includeSuperclasses) {
+        return List.copyOf(includeSuperclasses ? instanceFieldsWithSuper : instanceFieldsWithoutSuper);
     }
 
     @Override
@@ -162,7 +162,7 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     }
 
     @Override
-    public ResolvedJavaType[] getInterfaces() {
+    public List<? extends ResolvedJavaType> getInterfaces() {
         return original.getInterfaces();
     }
 
@@ -207,7 +207,7 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     }
 
     @Override
-    public ResolvedJavaField[] getStaticFields() {
+    public List<? extends ResolvedJavaField> getStaticFields() {
         return original.getStaticFields();
     }
 
@@ -242,29 +242,29 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredConstructors() {
+    public List<? extends ResolvedJavaMethod> getDeclaredConstructors() {
         return getDeclaredConstructors(true);
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
+    public List<? extends ResolvedJavaMethod> getDeclaredConstructors(boolean forceLink) {
         VMError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
         return original.getDeclaredConstructors(forceLink);
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods() {
+    public List<? extends ResolvedJavaMethod> getDeclaredMethods() {
         return getDeclaredMethods(true);
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
+    public List<? extends ResolvedJavaMethod> getDeclaredMethods(boolean forceLink) {
         VMError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
         return original.getDeclaredMethods(forceLink);
     }
 
     @Override
-    public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
+    public List<? extends ResolvedJavaMethod> getAllMethods(boolean forceLink) {
         VMError.guarantee(forceLink == false, "only use getAllMethods without forcing to link, because linking can throw LinkageError");
         return original.getAllMethods(forceLink);
     }
@@ -297,12 +297,6 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     @Override
     public boolean isCloneableWithAllocation() {
         throw JVMCIError.unimplemented();
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        return original.getHostClass();
     }
 
     @Override

@@ -26,6 +26,7 @@ package jdk.graal.compiler.core.test;
 
 import java.lang.reflect.MalformedParametersException;
 import java.lang.reflect.Method;
+import java.util.List;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -62,13 +63,11 @@ public class VerifyGetOptionsUsage extends VerifyPhase<CoreProviders> {
         boolean hasTool = false;
         try {
             ResolvedJavaMethod method = graph.method();
-            Parameter[] parameters = method.getParameters();
-            if (parameters != null) {
-                for (ResolvedJavaMethod.Parameter parameter : parameters) {
-                    if (parameter.getType().getName().equals(canonicalizerToolClass.getName())) {
-                        hasTool = true;
-                        break;
-                    }
+            List<Parameter> parameters = method.getParameters();
+            for (ResolvedJavaMethod.Parameter parameter : parameters) {
+                if (parameter.getType().getName().equals(canonicalizerToolClass.getName())) {
+                    hasTool = true;
+                    break;
                 }
             }
         } catch (MalformedParametersException e) {

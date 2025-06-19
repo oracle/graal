@@ -37,6 +37,8 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.List;
+
 /**
  * Indirect call with a computed address. The address computation is emitted only after LIR
  * generation, which ensures that no other instructions get scheduled in between the computation and
@@ -94,7 +96,7 @@ public class ComputedIndirectCallTargetNode extends LoweredCallTargetNode {
     @Input protected ValueNode addressBase;
     private final Computation[] addressComputation;
 
-    public ComputedIndirectCallTargetNode(ValueNode addressBase, Computation[] addressComputation, ValueNode[] arguments, StampPair returnStamp, JavaType[] signature, ResolvedJavaMethod target) {
+    public ComputedIndirectCallTargetNode(ValueNode addressBase, Computation[] addressComputation, ValueNode[] arguments, StampPair returnStamp, List<JavaType> signature, ResolvedJavaMethod target) {
         super(TYPE, arguments, returnStamp, signature, target, SubstrateCallingConventionKind.Java.toType(true), InvokeKind.Static);
         this.addressBase = addressBase;
         this.addressComputation = addressComputation;

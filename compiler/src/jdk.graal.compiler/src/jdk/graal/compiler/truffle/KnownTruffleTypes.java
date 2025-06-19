@@ -146,7 +146,7 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField FrameWithoutBoxing_EMPTY_OBJECT_ARRAY = findField(FrameWithoutBoxing, "EMPTY_OBJECT_ARRAY");
     public final ResolvedJavaField FrameWithoutBoxing_EMPTY_LONG_ARRAY = findField(FrameWithoutBoxing, "EMPTY_LONG_ARRAY");
     public final ResolvedJavaField FrameWithoutBoxing_EMPTY_BYTE_ARRAY = findField(FrameWithoutBoxing, "EMPTY_BYTE_ARRAY");
-    public final ResolvedJavaField[] FrameWithoutBoxing_instanceFields = findInstanceFields(FrameWithoutBoxing);
+    public final List<? extends ResolvedJavaField> FrameWithoutBoxing_instanceFields = findInstanceFields(FrameWithoutBoxing);
     public final ResolvedJavaType AbstractAssumption = lookupTypeCached("com.oracle.truffle.api.impl.AbstractAssumption");
     public final ResolvedJavaField AbstractAssumption_isValid = findField(AbstractAssumption, "isValid");
 

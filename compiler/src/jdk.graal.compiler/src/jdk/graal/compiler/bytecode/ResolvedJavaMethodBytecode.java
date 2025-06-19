@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.bytecode;
 
+import java.util.List;
 import java.util.Objects;
 
 import jdk.vm.ci.meta.ConstantPool;
@@ -96,7 +97,7 @@ public class ResolvedJavaMethodBytecode implements Bytecode {
     }
 
     @Override
-    public ExceptionHandler[] getExceptionHandlers() {
+    public List<ExceptionHandler> getExceptionHandlers() {
         return method.getExceptionHandlers();
     }
 

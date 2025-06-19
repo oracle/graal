@@ -26,6 +26,7 @@ package com.oracle.svm.jdwp.server.impl;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.List;
 
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.jdwp.bridge.CheckedReader;
@@ -402,8 +403,8 @@ public final class ServerJDWP implements JDWP {
         // all others use one.
         writer.writeInt(slotsForArguments);
 
-        Local[] locals = table.getLocals();
-        writer.writeInt(locals.length);
+        List<Local> locals = table.getLocals();
+        writer.writeInt(locals.size());
         for (Local local : locals) {
             long codeIndex = local.getStartBCI();
             // First code index at which the variable is visible (unsigned). Used in conjunction
@@ -808,11 +809,11 @@ public final class ServerJDWP implements JDWP {
         Packet.Reader reader = packet.newDataReader();
         ResolvedJavaType type = CHECKED_READER.readTypeRef(reader);
 
-        ResolvedJavaType[] interfaces = type.getInterfaces();
+        List<? extends ResolvedJavaType> interfaces = type.getInterfaces();
         WritablePacket reply = WritablePacket.newReplyTo(packet);
         Packet.Writer writer = reply.dataWriter();
 
-        writer.writeInt(interfaces.length);
+        writer.writeInt(interfaces.size());
         for (ResolvedJavaType interfaceType : interfaces) {
             long typeId = SYMBOLIC_REFS.toTypeRef(interfaceType);
             writer.writeLong(typeId);

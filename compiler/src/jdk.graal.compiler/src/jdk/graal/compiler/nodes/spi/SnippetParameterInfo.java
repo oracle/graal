@@ -145,11 +145,12 @@ public final class SnippetParameterInfo {
             names[0] = "this";
             offset = 1;
         }
-        ResolvedJavaMethod.Parameter[] params = method.getParameters();
+        List<ResolvedJavaMethod.Parameter> params = method.getParameters();
         if (params != null) {
+            // TODO what does null array mean previously?
             for (int i = offset; i < names.length; i++) {
-                if (params[i - offset].isNamePresent()) {
-                    names[i] = params[i - offset].getName();
+                if (params.get(i - offset).isNamePresent()) {
+                    names[i] = params.get(i - offset).getName();
                 }
             }
         } else {

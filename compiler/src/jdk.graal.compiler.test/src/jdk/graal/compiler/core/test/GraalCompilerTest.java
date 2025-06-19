@@ -918,10 +918,10 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected void checkArgs(ResolvedJavaMethod method, Object[] args) {
-        JavaType[] sig = method.toParameterTypes();
-        Assert.assertEquals(sig.length, args.length);
+        List<JavaType> sig = method.toParameterTypes();
+        Assert.assertEquals(sig.size(), args.length);
         for (int i = 0; i < args.length; i++) {
-            JavaType javaType = sig[i];
+            JavaType javaType = sig.get(i);
             JavaKind kind = javaType.getJavaKind();
             Object arg = args[i];
             if (kind == JavaKind.Object) {
@@ -1617,12 +1617,12 @@ public abstract class GraalCompilerTest extends GraalTest {
         ResolvedJavaMethod m = graph.method();
         Object receiver = isStatic(m.getModifiers()) ? null : this;
         Object[] args = argsWithReceiver(receiver, argsToBind);
-        JavaType[] parameterTypes = m.toParameterTypes();
-        assert parameterTypes.length == args.length;
+        List<JavaType> parameterTypes = m.toParameterTypes();
+        assert parameterTypes.size() == args.length;
         for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
             Object arg = args[param.index()];
             if (arg != NO_BIND) {
-                JavaConstant c = getSnippetReflection().forBoxed(parameterTypes[param.index()].getJavaKind(), arg);
+                JavaConstant c = getSnippetReflection().forBoxed(parameterTypes.get(param.index()).getJavaKind(), arg);
                 ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
                 param.replaceAtUsages(replacement);
             }

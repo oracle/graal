@@ -296,6 +296,8 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
+import java.util.List;
+
 /**
  * Bytecode interpreter loop.
  */
@@ -1126,9 +1128,8 @@ public final class Interpreter {
     }
 
     private static ExceptionHandler resolveExceptionHandler(InterpreterResolvedJavaMethod method, int bci, Throwable ex) {
-        ExceptionHandler[] handlers = method.getExceptionHandlers();
         ExceptionHandler resolved = null;
-        for (ExceptionHandler toCheck : handlers) {
+        for (ExceptionHandler toCheck : method.getExceptionHandlers()) {
             if (bci >= toCheck.getStartBCI() && bci < toCheck.getEndBCI()) {
                 JavaType catchType = null;
                 if (!toCheck.isCatchAll()) {

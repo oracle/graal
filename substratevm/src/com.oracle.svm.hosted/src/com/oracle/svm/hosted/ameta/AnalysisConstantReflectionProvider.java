@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.ameta;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.ObjIntConsumer;
@@ -141,9 +142,9 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
         AnalysisType type = imageHeapConstant.getType();
         if (BOXING_CLASSES.contains(type.getJavaClass())) {
             imageHeapConstant.ensureReaderInstalled();
-            ResolvedJavaField[] fields = type.getInstanceFields(true);
-            assert fields.length == 1 && fields[0].getName().equals("value");
-            return ((ImageHeapInstance) imageHeapConstant).readFieldValue((AnalysisField) fields[0]);
+            List<ResolvedJavaField> fields = type.getInstanceFields(true);
+            assert fields.size() == 1 && fields.getFirst().getName().equals("value");
+            return ((ImageHeapInstance) imageHeapConstant).readFieldValue((AnalysisField) fields.getFirst());
         }
         /* Not a valid boxed primitive. */
         return null;

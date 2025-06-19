@@ -168,18 +168,18 @@ public class ProfilingInfoTest extends GraalCompilerTest {
         ProfilingInfo info = profile(testSnippet, "ABC");
         JavaTypeProfile typeProfile = info.getTypeProfile(bci);
         Assert.assertEquals(0.0, typeProfile.getNotRecordedProbability(), DELTA);
-        Assert.assertEquals(1, typeProfile.getTypes().length);
-        Assert.assertEquals(stringType, typeProfile.getTypes()[0].getType());
-        Assert.assertEquals(1.0, typeProfile.getTypes()[0].getProbability(), DELTA);
+        Assert.assertEquals(1, typeProfile.getTypes().size());
+        Assert.assertEquals(stringType, typeProfile.getTypes().getFirst().getType());
+        Assert.assertEquals(1.0, typeProfile.getTypes().getFirst().getProbability(), DELTA);
 
         continueProfiling(testSnippet, new StringBuilder());
         typeProfile = info.getTypeProfile(bci);
         Assert.assertEquals(0.0, typeProfile.getNotRecordedProbability(), DELTA);
-        Assert.assertEquals(2, typeProfile.getTypes().length);
-        Assert.assertEquals(stringType, typeProfile.getTypes()[0].getType());
-        Assert.assertEquals(stringBuilderType, typeProfile.getTypes()[1].getType());
-        Assert.assertEquals(0.5, typeProfile.getTypes()[0].getProbability(), DELTA);
-        Assert.assertEquals(0.5, typeProfile.getTypes()[1].getProbability(), DELTA);
+        Assert.assertEquals(2, typeProfile.getTypes().size());
+        Assert.assertEquals(stringType, typeProfile.getTypes().getFirst().getType());
+        Assert.assertEquals(stringBuilderType, typeProfile.getTypes().get(1).getType());
+        Assert.assertEquals(0.5, typeProfile.getTypes().getFirst().getProbability(), DELTA);
+        Assert.assertEquals(0.5, typeProfile.getTypes().get(1).getProbability(), DELTA);
 
         resetProfile(testSnippet);
         typeProfile = info.getTypeProfile(bci);

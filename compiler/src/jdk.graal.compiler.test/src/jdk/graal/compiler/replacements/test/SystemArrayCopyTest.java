@@ -43,6 +43,7 @@ import org.junit.runners.Parameterized.Parameters;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 import static java.lang.reflect.Modifier.isStatic;
 
@@ -106,12 +107,12 @@ public class SystemArrayCopyTest extends GraalCompilerTest {
             ResolvedJavaMethod m = graph.method();
             Object receiver = isStatic(m.getModifiers()) ? null : this;
             Object[] args = argsWithReceiver(receiver, argsToBind);
-            JavaType[] parameterTypes = m.toParameterTypes();
-            assert parameterTypes.length == args.length;
+            List<JavaType> parameterTypes = m.toParameterTypes();
+            assert parameterTypes.size() == args.length;
             for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
                 int index = param.index();
                 if (args[index] != null) {
-                    JavaConstant c = getSnippetReflection().forBoxed(parameterTypes[index].getJavaKind(), args[index]);
+                    JavaConstant c = getSnippetReflection().forBoxed(parameterTypes.get(index).getJavaKind(), args[index]);
                     ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
                     param.replaceAtUsages(replacement);
                 }

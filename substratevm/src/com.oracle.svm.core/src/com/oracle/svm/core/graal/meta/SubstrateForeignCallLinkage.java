@@ -25,6 +25,7 @@
 package com.oracle.svm.core.graal.meta;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -39,6 +40,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
+
+import java.util.List;
 
 public class SubstrateForeignCallLinkage implements ForeignCallLinkage {
 
@@ -59,7 +62,7 @@ public class SubstrateForeignCallLinkage implements ForeignCallLinkage {
     public CallingConvention getOutgoingCallingConvention() {
         if (outgoingCallingConvention == null) {
             JavaType resType = provider.metaAccess.lookupJavaType(descriptor.getResultType());
-            JavaType[] argTypes = provider.metaAccess.lookupJavaTypes(descriptor.getArgumentTypes());
+            var argTypes = provider.metaAccess.lookupJavaTypes(descriptor.getArgumentTypes());
             SubstrateCallingConventionKind callingConventionKind = ((SharedMethod) method).getCallingConventionKind();
             outgoingCallingConvention = provider.registerConfig.getCallingConvention(callingConventionKind.toType(true), resType, argTypes, provider);
         }

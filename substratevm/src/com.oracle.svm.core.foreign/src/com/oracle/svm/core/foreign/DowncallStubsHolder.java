@@ -39,7 +39,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public final class DowncallStubsHolder {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static ConstantPool getConstantPool(MetaAccessProvider metaAccess) {
-        return metaAccess.lookupJavaType(DowncallStubsHolder.class).getDeclaredConstructors()[0].getConstantPool();
+        return metaAccess.lookupJavaType(DowncallStubsHolder.class).getDeclaredConstructors().getFirst().getConstantPool();
     }
 
     /**

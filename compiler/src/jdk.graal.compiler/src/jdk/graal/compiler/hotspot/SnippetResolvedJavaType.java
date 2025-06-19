@@ -25,6 +25,7 @@
 package jdk.graal.compiler.hotspot;
 
 import java.lang.annotation.Annotation;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -56,7 +57,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  */
 public final class SnippetResolvedJavaType implements ResolvedJavaType {
     private final Class<?> javaClass;
-    private SnippetResolvedJavaMethod[] methods;
+    private List<SnippetResolvedJavaMethod> methods;
     private SnippetResolvedJavaType arrayOfType;
 
     public SnippetResolvedJavaType(Class<?> javaClass) {
@@ -71,19 +72,18 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
     @LibGraalSupport.HostedOnly
     synchronized SnippetResolvedJavaMethod add(SnippetResolvedJavaMethod method) {
         if (methods == null) {
-            methods = new SnippetResolvedJavaMethod[]{method};
+            methods = new ArrayList<>();
+            methods.add(method);
             return method;
         }
         // This in inefficient but is only used while building
         // libgraal for a small number of methods.
-        int index = Arrays.asList(methods).indexOf(method);
+        int index = methods.indexOf(method);
         if (index == -1) {
-            SnippetResolvedJavaMethod[] newMethods = Arrays.copyOf(methods, methods.length + 1);
-            newMethods[methods.length] = method;
-            methods = newMethods;
+            methods.add(method);
             return method;
         } else {
-            return methods[index];
+            return methods.get(index);
         }
     }
 
@@ -171,12 +171,6 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
         throw new NoClassDefFoundError();
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        throw new UnsupportedOperationException();
-    }
-
     @Override
     public boolean isInstance(JavaConstant obj) {
         if (obj instanceof SnippetObjectConstant) {
@@ -191,7 +185,7 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
     }
 
     @Override
-    public ResolvedJavaType[] getInterfaces() {
+    public List<? extends ResolvedJavaType> getInterfaces() {
         throw new UnsupportedOperationException();
     }
 
@@ -266,12 +260,12 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
     }
 
     @Override
-    public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
+    public List<? extends ResolvedJavaField> getInstanceFields(boolean includeSuperclasses) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public ResolvedJavaField[] getStaticFields() {
+    public List<? extends ResolvedJavaField> getStaticFields() {
         throw new UnsupportedOperationException();
     }
 
@@ -301,26 +295,26 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredConstructors() {
+    public List<? extends ResolvedJavaMethod> getDeclaredConstructors() {
         return getDeclaredConstructors(true);
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods() {
+    public List<? extends ResolvedJavaMethod> getDeclaredMethods() {
         return getDeclaredMethods(true);
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
+    public List<? extends ResolvedJavaMethod> getDeclaredMethods(boolean forceLink) {
         GraalError.guarantee(!forceLink, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
         if (methods == null) {
-            return new ResolvedJavaMethod[0];
+            return List.of();
         }
-        return methods.clone();
+        return List.copyOf(methods);
     }
 
     @Override
-    public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
+    public List<? extends ResolvedJavaMethod> getAllMethods(boolean forceLink) {
         throw new UnsupportedOperationException();
     }
 

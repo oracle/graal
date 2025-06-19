@@ -133,7 +133,7 @@ public abstract class AbstractKnownTruffleTypes {
         throw new NoSuchMethodError(declaringClass.toJavaName() + "." + name + descriptor);
     }
 
-    protected ResolvedJavaField[] findInstanceFields(ResolvedJavaType declaringClass) {
+    protected List<? extends ResolvedJavaField> findInstanceFields(ResolvedJavaType declaringClass) {
         return getTypeCache(declaringClass).instanceFields;
     }
 
@@ -160,17 +160,17 @@ public abstract class AbstractKnownTruffleTypes {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private TypeCache createTypeCache(ResolvedJavaType declaringClass) {
         GraalError.guarantee(this.typeCache == null || !declaringClass.equals(this.typeCache.declaringClass), "duplicate consecutive cached type lookup");
-        ResolvedJavaField[] instanceFields = declaringClass.getInstanceFields(false);
-        ResolvedJavaField[] staticFields = declaringClass.getStaticFields();
+        List<? extends ResolvedJavaField> instanceFields = declaringClass.getInstanceFields(false);
+        List<? extends ResolvedJavaField> staticFields = declaringClass.getStaticFields();
 
-        Map.Entry<String, ResolvedJavaField>[] entries = new Map.Entry[instanceFields.length + staticFields.length];
-        for (int i = 0; i < instanceFields.length; i++) {
-            ResolvedJavaField field = instanceFields[i];
+        Map.Entry<String, ResolvedJavaField>[] entries = new Map.Entry[instanceFields.size() + staticFields.size()];
+        for (int i = 0; i < instanceFields.size(); i++) {
+            ResolvedJavaField field = instanceFields.get(i);
             entries[i] = Map.entry(field.getName(), field);
         }
-        for (int i = 0; i < staticFields.length; i++) {
-            ResolvedJavaField field = staticFields[i];
-            entries[instanceFields.length + i] = Map.entry(field.getName(), field);
+        for (int i = 0; i < staticFields.size(); i++) {
+            ResolvedJavaField field = staticFields.get(i);
+            entries[instanceFields.size() + i] = Map.entry(field.getName(), field);
         }
         Map<String, ResolvedJavaField> fields = Map.ofEntries(entries);
         GraalError.guarantee(fields.size() == entries.length, "duplicate field name");
@@ -183,7 +183,7 @@ public abstract class AbstractKnownTruffleTypes {
     }
 
     private record TypeCache(ResolvedJavaType declaringClass,
-                    ResolvedJavaField[] instanceFields,
+                    List<? extends ResolvedJavaField> instanceFields,
                     Map<String, ResolvedJavaField> fields,
                     Map<String, List<ResolvedJavaMethod>> methods) {
     }

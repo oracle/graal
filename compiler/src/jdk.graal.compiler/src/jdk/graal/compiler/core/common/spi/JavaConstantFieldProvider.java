@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.core.common.spi;
 
-import java.util.Arrays;
+import java.util.List;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
@@ -57,13 +57,13 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
     }
 
     private static ResolvedJavaField findField(ResolvedJavaType type, String fieldName) {
-        ResolvedJavaField[] stringFields = type.getInstanceFields(false);
+        List<? extends ResolvedJavaField> stringFields = type.getInstanceFields(false);
         for (ResolvedJavaField field : stringFields) {
             if (field.getName().equals(fieldName)) {
                 return field;
             }
         }
-        throw new GraalError("missing field \"" + fieldName + "\" " + Arrays.toString(stringFields));
+        throw new GraalError("missing field \"" + fieldName + "\" " + stringFields);
     }
 
     @Override

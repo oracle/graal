@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.analysis;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -293,28 +294,28 @@ public class DynamicHubInitializer {
     }
 
     class InterfacesEncodingKey {
-        final AnalysisType[] aInterfaces;
+        final List<AnalysisType> aInterfaces;
 
-        InterfacesEncodingKey(AnalysisType[] aInterfaces) {
+        InterfacesEncodingKey(List<AnalysisType> aInterfaces) {
             this.aInterfaces = aInterfaces;
         }
 
         DynamicHub[] createHubs() {
-            DynamicHub[] hubs = new DynamicHub[aInterfaces.length];
+            DynamicHub[] hubs = new DynamicHub[aInterfaces.size()];
             for (int i = 0; i < hubs.length; i++) {
-                hubs[i] = hostVM.dynamicHub(aInterfaces[i]);
+                hubs[i] = hostVM.dynamicHub(aInterfaces.get(i));
             }
             return hubs;
         }
 
         @Override
         public boolean equals(Object obj) {
-            return obj instanceof InterfacesEncodingKey && Arrays.equals(aInterfaces, ((InterfacesEncodingKey) obj).aInterfaces);
+            return obj instanceof InterfacesEncodingKey other && aInterfaces.equals(other.aInterfaces);
         }
 
         @Override
         public int hashCode() {
-            return Arrays.hashCode(aInterfaces);
+            return aInterfaces.hashCode();
         }
     }
 
@@ -323,11 +324,11 @@ public class DynamicHubInitializer {
      */
     private void fillInterfaces(AnalysisType type, DynamicHub hub) {
         AnalysisError.guarantee(hub.getInterfacesEncoding() == null, "Interfaces already computed for %s.", type.toJavaName(true));
-        AnalysisType[] aInterfaces = type.getInterfaces();
-        if (aInterfaces.length == 0) {
+        List<AnalysisType> aInterfaces = type.getInterfaces();
+        if (aInterfaces.isEmpty()) {
             hub.setInterfacesEncoding(null);
-        } else if (aInterfaces.length == 1) {
-            hub.setInterfacesEncoding(hostVM.dynamicHub(aInterfaces[0]));
+        } else if (aInterfaces.size() == 1) {
+            hub.setInterfacesEncoding(hostVM.dynamicHub(aInterfaces.getFirst()));
         } else {
             /*
              * Many interfaces arrays are the same, e.g., all arrays implement the same two

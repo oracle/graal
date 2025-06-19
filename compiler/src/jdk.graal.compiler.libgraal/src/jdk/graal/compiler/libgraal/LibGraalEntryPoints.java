@@ -27,6 +27,7 @@ package jdk.graal.compiler.libgraal;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import jdk.graal.compiler.debug.GlobalMetrics;
@@ -234,7 +235,7 @@ final class LibGraalEntryPoints {
             JVMCIBackend backend = runtime.getHostJVMCIBackend();
             ConstantReflectionProvider constantReflection = backend.getConstantReflection();
             HotSpotResolvedJavaType type = runtime.unhand(HotSpotResolvedJavaType.class, typeHandle);
-            ResolvedJavaField[] staticFields = type.getStaticFields();
+            List<? extends ResolvedJavaField> staticFields = type.getStaticFields();
             JavaConstant receiver = null;
             long hash = 13;
 
