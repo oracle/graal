@@ -247,32 +247,6 @@ def _create_deprecated_community_distribution(base_distribution):
     return mx_pomdistribution.POMDistribution(_suite, dist_name, distDeps, runtimeDeps, sorted(list(licenses)), **attrs)
 
 
-def _create_deprecated_vendor_specific_distribution(base_distribution):
-    # GR-64088: Remove when changes in language repositories are merged
-    base_name = _trim_suffix(base_distribution.name, 'COMMUNITY')
-    dist_name = base_name + 'POM_COMPATIBILITY'
-    groupId = base_distribution.maven_group_id()
-    artifactId = base_distribution.maven_artifact_id()
-    artifactTags = 'default'
-    maven_data = getattr(base_distribution, 'maven')
-    if isinstance(maven_data, dict) and 'tag' in maven_data:
-        artifactTags = maven_data['tag']
-    description = getattr(base_distribution, 'description')
-    distDeps = []
-    runtimeDeps = [base_distribution]
-    licenses = set(_distribution_license(base_distribution))
-    artifactId = _trim_suffix(artifactId, '-community')
-    attrs = {
-        'maven': {
-            'groupId': groupId,
-            'artifactId': artifactId,
-            'tag': artifactTags,
-        },
-        'description': description,
-    }
-    return mx_pomdistribution.POMDistribution(_suite, dist_name, distDeps, runtimeDeps, sorted(list(licenses)), **attrs)
-
-
 def register_tools_distribution(owner_suite, register_distribution):
     """
     Registers a dynamic TOOLS meta-POM distribution that aggregates all individual tool meta-POMs.
@@ -413,23 +387,6 @@ def register_languages_distribution(owner_suite, register_distribution,
                     polyglot_language_distribution = create_polyglot_meta_pom_distribution_from_base_distribution(deprecated_community_language_distribution)
                     register_distribution(polyglot_language_distribution)
                     deprecated_languages_community_meta_poms.append(polyglot_language_distribution)
-        else:
-            # GR-64088: Remove when changes in language repositories are merged
-            legacy_community_name = _trim_suffix(distribution_name, 'POM') + 'COMMUNITY'
-            language_distribution = mx.distribution(legacy_community_name, fatalIfMissing=False)
-            if language_distribution:
-                # Language suite not yet migrated
-                assert language_distribution.maven_artifact_id().endswith("-community"), f'Unmigrated Language meta-POM distribution {language_distribution.name} must have *-community Maven artifact id.'
-                polyglot_language_distribution = create_polyglot_meta_pom_distribution_from_base_distribution(language_distribution)
-                register_distribution(polyglot_language_distribution)
-                deprecated_languages_community_meta_poms.append(polyglot_language_distribution)
-                languages_licenses.update(_distribution_license(language_distribution))
-
-                language_distribution = _create_deprecated_vendor_specific_distribution(language_distribution)
-                register_distribution(language_distribution)
-                polyglot_language_distribution = create_polyglot_meta_pom_distribution_from_base_distribution(language_distribution)
-                register_distribution(polyglot_language_distribution)
-                languages_meta_poms.append(polyglot_language_distribution)
 
     if languages_meta_poms:
         attrs = {
