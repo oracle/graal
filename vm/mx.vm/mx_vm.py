@@ -457,6 +457,19 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             # add wasm to the layout of the benchmark distribution
             _add_project_to_dist('./interpreter/', 'benchmarks.interpreter.wasm')
 
+            register_project(GraalVmWatProject(
+                suite=_suite,
+                name='benchmarks.wasm-simd.wasm',
+                deps=[],
+                workingSets=None,
+                subDir=join(_suite.dir, 'benchmarks', 'wasm-simd'),
+                theLicense=None,
+                testProject=True,
+                defaultBuild=False,
+            ))
+            # add wasm to the layout of the benchmark distribution
+            _add_project_to_dist('./wasm-simd/', 'benchmarks.wasm-simd.wasm')
+
         if mx_sdk_vm_impl.has_component('LLVM Runtime Native'):
             register_project(mx.NativeProject(
                 suite=_suite,
