@@ -23,7 +23,7 @@
 #
 >[0?] export TOOLCHAIN_PATH=`lli --print-toolchain-path`
 >[0?] ${TOOLCHAIN_PATH}/clang agent-sieve.c -g -O0 -lm -o ${TMP_DIR}/sieve
->[1] lli --polyglot --insight=agent-limit.js --experimental-options ${TMP_DIR}/sieve
+>[1] lli --jvm --polyglot --insight=agent-limit.js --experimental-options ${TMP_DIR}/sieve
 found new prime number (<unavailable>|2)
 found new prime number (<unavailable>|3)
 found new prime number (<unavailable>|5)
