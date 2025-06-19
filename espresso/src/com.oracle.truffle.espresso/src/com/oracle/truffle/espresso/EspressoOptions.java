@@ -640,7 +640,7 @@ public final class EspressoOptions {
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> EnableSignals = new OptionKey<>(false);
 
-    @Option(help = "Enables java agents. Support is currently very limited.", //
+    @Option(help = "Enables native JVMTI agents. Support is currently very limited.", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") //
