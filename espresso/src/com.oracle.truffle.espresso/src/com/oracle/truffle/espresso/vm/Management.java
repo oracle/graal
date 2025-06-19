@@ -31,6 +31,7 @@ import java.lang.management.MemoryManagerMXBean;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
 import java.lang.management.MemoryUsage;
+import java.lang.management.ThreadMXBean;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
@@ -73,11 +74,11 @@ import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
-import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.ThreadAccess;
+import com.oracle.truffle.espresso.vm.structs.JmmOptionalSupport;
 
 @GenerateNativeEnv(target = ManagementImpl.class, prependEnv = true)
 public final class Management extends NativeEnv {
@@ -162,6 +163,9 @@ public final class Management extends NativeEnv {
     @CompilationFinal //
     private int managementVersion;
 
+    private MemoryMXBean memoryMXBean;
+    private ThreadMXBean threadMXBean;
+
     private final @Pointer TruffleObject initializeManagementContext;
     private final @Pointer TruffleObject disposeManagementContext;
 
@@ -178,6 +182,22 @@ public final class Management extends NativeEnv {
     @Override
     protected TruffleLogger getLogger() {
         return LOGGER;
+    }
+
+    @TruffleBoundary
+    private MemoryMXBean getHostMemoryMXBean() {
+        if (memoryMXBean == null) {
+            memoryMXBean = ManagementFactory.getMemoryMXBean();
+        }
+        return memoryMXBean;
+    }
+
+    @TruffleBoundary
+    private ThreadMXBean getHostThreadMXBean() {
+        if (threadMXBean == null) {
+            threadMXBean = ManagementFactory.getThreadMXBean();
+        }
+        return threadMXBean;
     }
 
     /**
@@ -256,47 +276,48 @@ public final class Management extends NativeEnv {
 
     @ManagementImpl
     public int GetOptionalSupport(@Pointer TruffleObject /* jmmOptionalSupport **/ supportPtr) {
-        if (!getUncached().isNull(supportPtr)) {
-            ByteBuffer supportBuf = NativeUtils.directByteBuffer(supportPtr, 8);
-            supportBuf.putInt(0); // nothing optional is supported
-            return 0;
+        if (getUncached().isNull(supportPtr)) {
+            return -1;
         }
-        return -1;
+        ByteBuffer supportBuf = NativeUtils.directByteBuffer(supportPtr, 8);
+        supportBuf.putInt(0); // clear
+        JmmOptionalSupport.JmmOptionalSupportWrapper optionalSupport = getVM().getStructs().jmmOptionalSupport.wrap(getHandles(), supportPtr);
+        ThreadMXBean hostBean = getHostThreadMXBean();
+        optionalSupport.isOtherThreadCpuTimeSupported(hostBean.isThreadCpuTimeSupported() ? 1 : 0);
+        optionalSupport.isCurrentThreadCpuTimeSupported(hostBean.isCurrentThreadCpuTimeSupported() ? 1 : 0);
+        return 0;
     }
 
-    private static void validateThreadIdArray(EspressoLanguage language, Meta meta, @JavaType(long[].class) StaticObject threadIds, SubstitutionProfiler profiler) {
+    private static int validateThreadIdArray(EspressoLanguage language, Meta meta, @JavaType(long[].class) StaticObject threadIds) {
         assert threadIds.isArray();
         int numThreads = threadIds.length(language);
         for (int i = 0; i < numThreads; ++i) {
             long tid = threadIds.<long[]> unwrap(language)[i];
             if (tid <= 0) {
-                profiler.profile(3);
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid thread ID entry");
+                throw meta.throwIllegalArgumentExceptionBoundary("Invalid thread ID entry");
             }
         }
+        return numThreads;
     }
 
-    private static void validateThreadInfoArray(Meta meta, @JavaType(internalName = "[Ljava/lang/management/ThreadInfo;") StaticObject infoArray, SubstitutionProfiler profiler) {
+    private static void validateThreadInfoArray(Meta meta, @JavaType(internalName = "[Ljava/lang/management/ThreadInfo;") StaticObject infoArray) {
         // check if the element of infoArray is of type ThreadInfo class
         Klass infoArrayKlass = infoArray.getKlass();
         if (infoArray.isArray()) {
             Klass component = ((ArrayKlass) infoArrayKlass).getComponentType();
             if (!meta.java_lang_management_ThreadInfo.equals(component)) {
-                profiler.profile(4);
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "infoArray element type is not ThreadInfo class");
+                throw meta.throwIllegalArgumentExceptionBoundary("infoArray element type is not ThreadInfo class");
             }
         }
     }
 
     @ManagementImpl
-    public int GetThreadInfo(@JavaType(long[].class) StaticObject ids, int maxDepth, @JavaType(Object[].class) StaticObject infoArray, @Inject EspressoLanguage language, @Inject Meta meta,
-                    @Inject SubstitutionProfiler profiler) {
+    public int GetThreadInfo(@JavaType(long[].class) StaticObject ids, int maxDepth, @JavaType(Object[].class) StaticObject infoArray, @Inject EspressoLanguage language, @Inject Meta meta) {
         if (StaticObject.isNull(ids)) {
-            profiler.profile(0);
-            throw meta.throwNullPointerException();
+            throw meta.throwNullPointerExceptionBoundary();
         }
-        validateThreadIdArray(language, meta, ids, profiler);
-        validateThreadInfoArray(meta, infoArray, profiler);
+        validateThreadIdArray(language, meta, ids);
+        validateThreadInfoArray(meta, infoArray);
 
         int idsLength = ids.length(language);
         StaticObject[] activeThreads = getContext().getActiveThreads();
@@ -306,7 +327,7 @@ public final class Management extends NativeEnv {
             threads[i] = findThreadById(activeThreads, id);
         }
 
-        fillThreadInfos(threads, infoArray, maxDepth, language, meta, profiler, null);
+        fillThreadInfos(threads, infoArray, maxDepth, language, meta, null);
 
         return JNI_OK; // always 0
     }
@@ -322,21 +343,18 @@ public final class Management extends NativeEnv {
         return thread;
     }
 
-    private void fillThreadInfos(StaticObject[] threads, StaticObject infoArray, int maxDepth, EspressoLanguage language, Meta meta, SubstitutionProfiler profiler, Node node) {
+    private void fillThreadInfos(StaticObject[] threads, StaticObject infoArray, int maxDepth, EspressoLanguage language, Meta meta, Node node) {
         if (StaticObject.isNull(infoArray)) {
-            profiler.profile(0);
-            throw meta.throwNullPointerException();
+            throw meta.throwNullPointerExceptionBoundary();
         }
         if (maxDepth < -1) {
-            profiler.profile(1);
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid maxDepth");
+            throw meta.throwIllegalArgumentExceptionBoundary("Invalid maxDepth");
         }
         int actualMaxDepth = maxDepth < 0 ? InterpreterToVM.MAX_STACK_DEPTH : maxDepth;
-        validateThreadInfoArray(meta, infoArray, profiler);
+        validateThreadInfoArray(meta, infoArray);
 
         if (threads.length != infoArray.length(language)) {
-            profiler.profile(2);
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "The length of the given ThreadInfo array does not match the length of the given array of thread IDs");
+            throw meta.throwIllegalArgumentExceptionBoundary("The length of the given ThreadInfo array does not match the length of the given array of thread IDs");
         }
 
         Method init = meta.java_lang_management_ThreadInfo.lookupDeclaredMethod(Names._init_, getSignatures().makeRaw(
@@ -611,11 +629,11 @@ public final class Management extends NativeEnv {
     @TruffleBoundary
     public @JavaType(Object.class) StaticObject GetMemoryUsage(@SuppressWarnings("unused") boolean heap, @Inject Meta meta) {
         MemoryUsage usage;
-        MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+        MemoryMXBean hostBean = getHostMemoryMXBean();
         if (heap) {
-            usage = memoryMXBean.getHeapMemoryUsage();
+            usage = hostBean.getHeapMemoryUsage();
         } else {
-            usage = memoryMXBean.getNonHeapMemoryUsage();
+            usage = hostBean.getNonHeapMemoryUsage();
         }
         return asGuestUsage(usage, meta);
     }
@@ -744,24 +762,19 @@ public final class Management extends NativeEnv {
 
     @ManagementImpl
     public int GetVMGlobals(@JavaType(Object[].class) StaticObject names, /* jmmVMGlobal* */ @Pointer TruffleObject globalsPtr, @SuppressWarnings("unused") int count,
-                    @Inject EspressoLanguage language,
-                    @Inject Meta meta,
-                    @Inject SubstitutionProfiler profiler) {
+                    @Inject EspressoLanguage language, @Inject Meta meta) {
         if (getUncached().isNull(globalsPtr)) {
-            profiler.profile(0);
-            throw meta.throwNullPointerException();
+            throw meta.throwNullPointerExceptionBoundary();
         }
         if (StaticObject.notNull(names)) {
             if (!names.getKlass().equals(meta.java_lang_String.array())) {
-                profiler.profile(1);
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Array element type is not String class");
+                throw meta.throwIllegalArgumentExceptionBoundary("Array element type is not String class");
             }
 
             StaticObject[] entries = names.unwrap(language);
             for (StaticObject entry : entries) {
                 if (StaticObject.isNull(entry)) {
-                    profiler.profile(2);
-                    throw meta.throwNullPointerException();
+                    throw meta.throwNullPointerExceptionBoundary();
                 }
                 getLogger().fine(() -> "GetVMGlobals: " + meta.toHostString(entry));
             }
@@ -773,7 +786,7 @@ public final class Management extends NativeEnv {
     @SuppressWarnings("unused")
     public @JavaType(internalName = "[Ljava/lang/management/ThreadInfo;") StaticObject DumpThreads(@JavaType(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers,
                     int maybeMaxDepth,
-                    @Inject EspressoLanguage language, @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
+                    @Inject EspressoLanguage language, @Inject Meta meta) {
         int maxDepth;
         if (managementVersion >= JMM_VERSION_2) {
             maxDepth = maybeMaxDepth;
@@ -783,11 +796,11 @@ public final class Management extends NativeEnv {
         if (StaticObject.isNull(ids)) {
             StaticObject[] activeThreads = getContext().getActiveThreads();
             StaticObject result = getMeta().java_lang_management_ThreadInfo.allocateReferenceArray(activeThreads.length);
-            fillThreadInfos(activeThreads, result, maxDepth, language, meta, profiler, null);
+            fillThreadInfos(activeThreads, result, maxDepth, language, meta, null);
             return result;
         } else {
             StaticObject result = getMeta().java_lang_management_ThreadInfo.allocateReferenceArray(ids.length(language));
-            if (GetThreadInfo(ids, maxDepth, result, language, meta, profiler) != JNI_OK) {
+            if (GetThreadInfo(ids, maxDepth, result, language, meta) != JNI_OK) {
                 return StaticObject.NULL;
             }
             return result;
@@ -810,16 +823,13 @@ public final class Management extends NativeEnv {
                     @JavaType(long[].class) StaticObject ids,
                     @JavaType(long[].class) StaticObject sizeArray,
                     @Inject EspressoLanguage language,
-                    @Inject Meta meta,
-                    @Inject SubstitutionProfiler profiler) {
+                    @Inject Meta meta) {
         if (StaticObject.isNull(ids) || StaticObject.isNull(sizeArray)) {
-            profiler.profile(0);
-            throw meta.throwException(meta.java_lang_NullPointerException);
+            throw meta.throwNullPointerExceptionBoundary();
         }
-        validateThreadIdArray(language, meta, ids, profiler);
+        validateThreadIdArray(language, meta, ids);
         if (ids.length(language) != sizeArray.length(language)) {
-            profiler.profile(1);
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "The length of the given long array does not match the length of the given array of thread IDs");
+            throw meta.throwIllegalArgumentExceptionBoundary("The length of the given long array does not match the length of the given array of thread IDs");
         }
         StaticObject[] activeThreads = getContext().getActiveThreads();
 
@@ -897,6 +907,57 @@ public final class Management extends NativeEnv {
                 getLogger().warning(() -> "Calling ResetStatistic with unimplemented type (" + type + ")");
         }
         return false;
+    }
+
+    @ManagementImpl
+    public long GetThreadCpuTimeWithKind(long threadId, boolean withSysTime,
+                    @Inject Meta meta) {
+        if (threadId < 0) {
+            throw meta.throwIllegalArgumentExceptionBoundary("Invalid thread ID");
+        }
+        ThreadMXBean hostBean = getHostThreadMXBean();
+        if (threadId == 0) {
+            if (!hostBean.isCurrentThreadCpuTimeSupported()) {
+                return -1;
+            }
+            long id = EspressoThreadRegistry.getThreadId(Thread.currentThread());
+            return withSysTime ? hostBean.getThreadCpuTime(id) : hostBean.getThreadUserTime(id);
+        }
+        StaticObject[] activeThreads = getContext().getActiveThreads();
+        StaticObject thread = findThreadById(activeThreads, threadId);
+        if (getThreadAccess().isVirtualThread(thread)) {
+            return -1;
+        }
+        Thread host = getThreadAccess().getHost(thread);
+        long hostId = EspressoThreadRegistry.getThreadId(host);
+        return withSysTime ? hostBean.getThreadCpuTime(hostId) : hostBean.getThreadUserTime(hostId);
+    }
+
+    @ManagementImpl
+    public void GetThreadCpuTimesWithKind(@JavaType(long[].class) StaticObject threadIds, @JavaType(long[].class) StaticObject times, boolean withSysTime,
+                    @Inject EspressoLanguage language, @Inject Meta meta) {
+        if (StaticObject.isNull(threadIds) || StaticObject.isNull(times)) {
+            throw meta.throwNullPointerExceptionBoundary();
+        }
+        int length = validateThreadIdArray(language, meta, threadIds);
+        if (length != times.length(language)) {
+            throw meta.throwIllegalArgumentExceptionBoundary("The length of the given long array does not match the length of the given array of thread IDs");
+        }
+
+        StaticObject[] activeThreads = getContext().getActiveThreads();
+        InterpreterToVM interpreterToVM = getInterpreterToVM();
+        ThreadMXBean hostBean = getHostThreadMXBean();
+        for (int i = 0; i < length; i++) {
+            long guestId = interpreterToVM.getArrayLong(language, i, threadIds);
+            StaticObject thread = findThreadById(activeThreads, guestId);
+            if (getThreadAccess().isVirtualThread(thread)) {
+                continue;
+            }
+            Thread host = getThreadAccess().getHost(thread);
+            long hostId = EspressoThreadRegistry.getThreadId(host);
+            long time = withSysTime ? hostBean.getThreadCpuTime(hostId) : hostBean.getThreadUserTime(hostId);
+            interpreterToVM.setArrayLong(language, time, i, times);
+        }
     }
 
     // Checkstyle: resume method name check
