@@ -184,7 +184,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                 # If the GRAAL_TEST and POLYBENCH_EE (for instructions metric) distributions
                 # are present, the CompileTheWorld benchmark is available.
                 self._benchmarks = ['CompileTheWorld']
-            for group in ["interpreter", "compiler", "warmup", "nfi"]:
+            for group in ["interpreter", "compiler", "warmup", "nfi", "wasm-simd"]:
                 dir_path = os.path.join(self._get_benchmark_root(), group)
                 for f in os.listdir(dir_path):
                     f_path = os.path.join(dir_path, f)
