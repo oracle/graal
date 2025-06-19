@@ -925,7 +925,7 @@ public final class Management extends NativeEnv {
         }
         StaticObject[] activeThreads = getContext().getActiveThreads();
         StaticObject thread = findThreadById(activeThreads, threadId);
-        if (getThreadAccess().isVirtualThread(thread)) {
+        if (StaticObject.isNull(thread) || getThreadAccess().isVirtualThread(thread) || !getThreadAccess().isAlive(thread)) {
             return -1;
         }
         Thread host = getThreadAccess().getHost(thread);
@@ -950,7 +950,7 @@ public final class Management extends NativeEnv {
         for (int i = 0; i < length; i++) {
             long guestId = interpreterToVM.getArrayLong(language, i, threadIds);
             StaticObject thread = findThreadById(activeThreads, guestId);
-            if (getThreadAccess().isVirtualThread(thread)) {
+            if (StaticObject.isNull(thread) || getThreadAccess().isVirtualThread(thread) || !getThreadAccess().isAlive(thread)) {
                 continue;
             }
             Thread host = getThreadAccess().getHost(thread);
