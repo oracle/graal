@@ -32,6 +32,11 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
+/**
+ * Constant field provider used for Truffle partial evaluation.
+ *
+ * @see TruffleCachingConstantFieldProvider
+ */
 final class TruffleConstantFieldProvider implements ConstantFieldProvider {
 
     private final PartialEvaluator partialEvaluator;
