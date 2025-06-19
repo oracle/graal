@@ -961,7 +961,7 @@ public final class JniEnv extends NativeEnv {
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asObject(result);
     }
@@ -971,7 +971,7 @@ public final class JniEnv extends NativeEnv {
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asBoolean(result, true);
     }
@@ -981,7 +981,7 @@ public final class JniEnv extends NativeEnv {
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asChar(result, true);
     }
@@ -991,7 +991,7 @@ public final class JniEnv extends NativeEnv {
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asByte(result, true);
     }
@@ -1001,7 +1001,7 @@ public final class JniEnv extends NativeEnv {
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asShort(result, true);
     }
@@ -1011,7 +1011,7 @@ public final class JniEnv extends NativeEnv {
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asInt(result, true);
     }
@@ -1021,7 +1021,7 @@ public final class JniEnv extends NativeEnv {
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asFloat(result, true);
     }
@@ -1031,7 +1031,7 @@ public final class JniEnv extends NativeEnv {
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asDouble(result, true);
     }
@@ -1041,7 +1041,7 @@ public final class JniEnv extends NativeEnv {
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asLong(result, true);
     }
@@ -1051,7 +1051,7 @@ public final class JniEnv extends NativeEnv {
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         assert result instanceof StaticObject && StaticObject.isNull((StaticObject) result) : "void methods must return StaticObject.NULL";
     }
@@ -1064,7 +1064,7 @@ public final class JniEnv extends NativeEnv {
     public @JavaType(Object.class) StaticObject CallStaticObjectMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asObject(result);
     }
@@ -1073,7 +1073,7 @@ public final class JniEnv extends NativeEnv {
     public boolean CallStaticBooleanMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asBoolean(result, true);
     }
@@ -1082,7 +1082,7 @@ public final class JniEnv extends NativeEnv {
     public char CallStaticCharMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asChar(result, true);
     }
@@ -1091,7 +1091,7 @@ public final class JniEnv extends NativeEnv {
     public byte CallStaticByteMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asByte(result, true);
     }
@@ -1100,7 +1100,7 @@ public final class JniEnv extends NativeEnv {
     public short CallStaticShortMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asShort(result, true);
     }
@@ -1109,7 +1109,7 @@ public final class JniEnv extends NativeEnv {
     public int CallStaticIntMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asInt(result, true);
     }
@@ -1118,7 +1118,7 @@ public final class JniEnv extends NativeEnv {
     public float CallStaticFloatMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asFloat(result, true);
     }
@@ -1127,7 +1127,7 @@ public final class JniEnv extends NativeEnv {
     public double CallStaticDoubleMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asDouble(result, true);
     }
@@ -1136,7 +1136,7 @@ public final class JniEnv extends NativeEnv {
     public long CallStaticLongMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asLong(result, true);
     }
@@ -1145,7 +1145,7 @@ public final class JniEnv extends NativeEnv {
     public void CallStaticVoidMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds().getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
+        assert method.getDeclaringKlass().isAssignableFrom(clazz.getMirrorKlass(getMeta()));
         Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         assert result instanceof StaticObject && StaticObject.isNull((StaticObject) result) : "void methods must return StaticObject.NULL";
     }
