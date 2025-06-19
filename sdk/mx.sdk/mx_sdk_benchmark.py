@@ -4003,7 +4003,7 @@ class NativeImageBenchmarkMixin(object):
         # produced in the corresponding run stages.
         if not stage.is_image() and self.stages_info.should_produce_datapoints(stage.stage_name):
             final_command = self.apply_command_mapper_hooks(command, vm)
-        return mx.run(final_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+        return mx.run(final_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, env=self.get_stage_env())
 
     def is_native_mode(self, bm_suite_args: List[str]):
         """Checks whether the given arguments request a Native Image benchmark"""
@@ -4138,6 +4138,10 @@ class NativeImageBenchmarkMixin(object):
     # Override and return False if this suite should not check for samples in runs with PGO
     def checkSamplesInPgo(self):
         return True
+
+    def get_stage_env(self) -> Optional[dict]:
+        """Return the environment to be used when executing a stage."""
+        return None
 
 
 def measureTimeToFirstResponse(bmSuite):
