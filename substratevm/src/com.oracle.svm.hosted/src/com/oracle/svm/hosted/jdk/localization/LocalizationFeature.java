@@ -158,6 +158,8 @@ public class LocalizationFeature implements InternalFeature {
 
     private Function<String, Class<?>> findClassByName;
 
+    private Field baseLocaleCacheField;
+    private Field localeCacheField;
     private Field candidatesCacheField;
     private Field langAliasesCacheField;
     private Field parentLocalesMapField;
@@ -288,6 +290,8 @@ public class LocalizationFeature implements InternalFeature {
         langAliasesCacheField = access.findField(CLDRLocaleProviderAdapter.class, "langAliasesCache");
         parentLocalesMapField = access.findField(CLDRLocaleProviderAdapter.class, "parentLocalesMap");
         candidatesCacheField = access.findField("java.util.ResourceBundle$Control", "CANDIDATES_CACHE");
+        baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale", "CACHE");
+        localeCacheField = access.findField("java.util.Locale", "LOCALE_CACHE");
 
         String reason = "All ResourceBundleControlProvider that are registered as services end up as objects in the image heap, and are therefore registered to be initialized at image build time";
         ServiceLoader.load(ResourceBundleControlProvider.class).stream()
@@ -339,6 +343,9 @@ public class LocalizationFeature implements InternalFeature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+
+        access.rescanRoot(baseLocaleCacheField);
+        access.rescanRoot(localeCacheField);
         access.rescanRoot(candidatesCacheField);
         access.rescanRoot(langAliasesCacheField);
         access.rescanRoot(parentLocalesMapField);

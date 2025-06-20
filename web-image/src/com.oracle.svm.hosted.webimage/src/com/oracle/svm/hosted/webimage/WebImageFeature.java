@@ -35,7 +35,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -189,35 +188,12 @@ public class WebImageFeature implements InternalFeature {
          *
          * These caches can contribute ~1MB to the image size, clearing them avoids this overhead at
          * the cost of having to recreate the Locale and BaseLocale objects once when they're
-         * requested.
-         *
-         * On JDK21, ReferencedKeySet and ReferencedKeyMap don't exist. We have to go through
-         * reflection to access them because analysis tools like spotbugs still run on JDK21
+         * requested at run-time.
          */
-        Field baseLocaleCacheField = accessImpl.findField("sun.util.locale.BaseLocale$1InterningCache", "CACHE");
-        Field localeCacheField = accessImpl.findField("java.util.Locale$LocaleCache", "LOCALE_CACHE");
-
-        access.registerFieldValueTransformer(baseLocaleCacheField, (receiver, originalValue) -> {
-            /*
-             * Executes `ReferencedKeySet.create(true,
-             * ReferencedKeySet.concurrentHashMapSupplier())` with reflection.
-             */
-            Class<?> referencedKeySetClazz = ReflectionUtil.lookupClass("jdk.internal.util.ReferencedKeySet");
-            Method createMethod = ReflectionUtil.lookupMethod(referencedKeySetClazz, "create", boolean.class, Supplier.class);
-            Method concurrentHashMapSupplierMethod = ReflectionUtil.lookupMethod(referencedKeySetClazz, "concurrentHashMapSupplier");
-            return ReflectionUtil.invokeMethod(createMethod, null, true, ReflectionUtil.invokeMethod(concurrentHashMapSupplierMethod, null));
-        });
-
-        access.registerFieldValueTransformer(localeCacheField, (receiver, originalValue) -> {
-            /*
-             * Executes `ReferencedKeyMap.create(true,
-             * ReferencedKeyMap.concurrentHashMapSupplier())` with reflection.
-             */
-            Class<?> referencedKeyMapClazz = ReflectionUtil.lookupClass("jdk.internal.util.ReferencedKeyMap");
-            Method createMethod = ReflectionUtil.lookupMethod(referencedKeyMapClazz, "create", boolean.class, Supplier.class);
-            Method concurrentHashMapSupplierMethod = ReflectionUtil.lookupMethod(referencedKeyMapClazz, "concurrentHashMapSupplier");
-            return ReflectionUtil.invokeMethod(createMethod, null, true, ReflectionUtil.invokeMethod(concurrentHashMapSupplierMethod, null));
-        });
+        Field baseLocaleCacheField = accessImpl.findField("sun.util.locale.BaseLocale", "CACHE");
+        Field localeCacheField = accessImpl.findField("java.util.Locale", "LOCALE_CACHE");
+        access.registerFieldValueTransformer(baseLocaleCacheField, new ResetStableSupplierTransformer());
+        access.registerFieldValueTransformer(localeCacheField, new ResetStableSupplierTransformer());
     }
 
     @Override
@@ -341,4 +317,5 @@ public class WebImageFeature implements InternalFeature {
          */
         return AnnotationAccess.isAnnotationPresent(callee, JS.class);
     }
+
 }
