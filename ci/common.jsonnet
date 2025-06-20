@@ -142,6 +142,11 @@ local common_json = import "../common.json";
 
     common_catch_files: {
       catch_files+: [
+        # There are additional catch_files-like patterns in buildbot/graal/catcher.py for:
+        # * hs_err_pid*.log files
+        # * Dumping IGV graphs to (?P<filename>.+(\.gv\.xml|\.bgv))
+        # * CFGPrinter: Output to file (?P<filename>.*compilations-.+\.cfg)
+        # There are defined there for efficiency reasons.
         # Keep in sync with jdk.graal.compiler.debug.StandardPathUtilitiesProvider#DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP
         "Graal diagnostic output saved in '(?P<filename>[^']+)'",
         # Keep in sync with jdk.graal.compiler.debug.DebugContext#DUMP_FILE_MESSAGE_REGEXP
