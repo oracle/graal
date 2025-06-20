@@ -24,7 +24,25 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import org.graalvm.polyglot.Context;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+
+import jdk.graal.compiler.core.common.GraalBailoutException;
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.debug.TTY;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.replacements.PEGraphDecoder;
 import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
 import jdk.graal.compiler.truffle.test.nodes.AddTestNode;
 import jdk.graal.compiler.truffle.test.nodes.BlockTestNode;
@@ -53,24 +71,6 @@ import jdk.graal.compiler.truffle.test.nodes.explosion.LoopExplosionPhiNode;
 import jdk.graal.compiler.truffle.test.nodes.explosion.NestedExplodedLoopTestNode;
 import jdk.graal.compiler.truffle.test.nodes.explosion.TwoMergesExplodedLoopTestNode;
 import jdk.graal.compiler.truffle.test.nodes.explosion.UnrollingTestNode;
-import jdk.graal.compiler.core.common.GraalBailoutException;
-import jdk.graal.compiler.core.common.GraalOptions;
-import jdk.graal.compiler.core.common.PermanentBailoutException;
-import jdk.graal.compiler.debug.TTY;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.replacements.PEGraphDecoder;
-import org.graalvm.polyglot.Context;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.impl.FrameWithoutBoxing;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.runtime.OptimizedCallTarget;
-
 import jdk.vm.ci.code.BailoutException;
 
 public class SimplePartialEvaluationTest extends PartialEvaluationTest {
