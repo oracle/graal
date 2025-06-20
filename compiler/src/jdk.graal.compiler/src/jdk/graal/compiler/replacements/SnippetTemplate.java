@@ -45,7 +45,6 @@ import java.util.Formatter;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
@@ -799,7 +798,7 @@ public class SnippetTemplate {
         }
     }
 
-    static class CacheKey {
+    public static class CacheKey {
 
         private final ResolvedJavaMethod method;
         private final Object[] values;
@@ -857,9 +856,6 @@ public class SnippetTemplate {
     public static class Options {
         @Option(help = "Use a LRU cache for snippet templates.")//
         public static final OptionKey<Boolean> UseSnippetTemplateCache = new OptionKey<>(true);
-
-        @Option(help = "")//
-        public static final OptionKey<Integer> MaxTemplatesPerSnippet = new OptionKey<>(50);
     }
 
     /**
@@ -869,7 +865,6 @@ public class SnippetTemplate {
 
         protected final OptionValues options;
         protected final SnippetReflectionProvider snippetReflection;
-        private final Map<CacheKey, SnippetTemplate> templates;
 
         private final boolean shouldTrackNodeSourcePosition;
 
@@ -877,12 +872,6 @@ public class SnippetTemplate {
             this.options = options;
             this.snippetReflection = providers.getSnippetReflection();
             this.shouldTrackNodeSourcePosition = providers.getCodeCache() != null && providers.getCodeCache().shouldDebugNonSafepoints();
-            if (Options.UseSnippetTemplateCache.getValue(options)) {
-                int size = Options.MaxTemplatesPerSnippet.getValue(options);
-                this.templates = Collections.synchronizedMap(new LRUCache<>(size, size));
-            } else {
-                this.templates = null;
-            }
         }
 
         public static ResolvedJavaMethod findMethod(MetaAccessProvider metaAccess, Class<?> declaringClass, String methodName) {
@@ -981,7 +970,7 @@ public class SnippetTemplate {
         public SnippetTemplate template(CoreProviders context, ValueNode replacee, final Arguments args) {
             StructuredGraph graph = replacee.graph();
             DebugContext outer = graph.getDebug();
-            SnippetTemplate template = Options.UseSnippetTemplateCache.getValue(options) && args.cacheable ? templates.get(args.cacheKey) : null;
+            SnippetTemplate template = Options.UseSnippetTemplateCache.getValue(options) && args.cacheable ? context.getReplacements().getTemplatesCache().get(args.cacheKey) : null;
             if (template == null || (graph.trackNodeSourcePosition() && !template.snippet.trackNodeSourcePosition())) {
                 try (DebugContext debug = context.getReplacements().openSnippetDebugContext("SnippetTemplate_", args.cacheKey.method, outer, options)) {
                     try (DebugCloseable a = SnippetTemplateCreationTime.start(outer);
@@ -1002,7 +991,7 @@ public class SnippetTemplate {
                                         createMidTierPreLoweringPhases(),
                                         createMidTierPostLoweringPhases());
                         if (Options.UseSnippetTemplateCache.getValue(snippetOptions) && args.cacheable) {
-                            templates.put(args.cacheKey, template);
+                            context.getReplacements().getTemplatesCache().put(args.cacheKey, template);
                         }
                         if (outer.areMetricsEnabled()) {
                             DebugContext.counter("SnippetTemplateNodeCount[%#s]", args).add(outer, template.nodes.size());
@@ -1037,11 +1026,21 @@ public class SnippetTemplate {
 
     public static final class LRUCache<K, V> extends LinkedHashMap<K, V> {
         private static final long serialVersionUID = 1L;
+
+        /**
+         * Maximum capacity of the least-recently used snippet template cache. A higher number
+         * increases the total amount of memory used for snippet templates and a lower number
+         * increases the cache misses and thus decreases compilation speed. At a value of 64, the
+         * estimated misses are at 2% of lookups, at 80, they are at 1% of lookups, and at 100, they
+         * are at 0.5% of lookups.
+         */
+        public static final int SNIPPET_CACHE_CAPACITY = 64;
+
         private final int maxCacheSize;
 
-        public LRUCache(int initialCapacity, int maxCacheSize) {
-            super(initialCapacity, 0.75F, true);
-            this.maxCacheSize = maxCacheSize;
+        public LRUCache() {
+            super(SNIPPET_CACHE_CAPACITY, 0.75F, true);
+            this.maxCacheSize = SNIPPET_CACHE_CAPACITY;
         }
 
         @Override
