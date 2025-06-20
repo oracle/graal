@@ -567,12 +567,19 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         }, None, True, None, platforms='local', ignore=ignore_msg))
 
     register_espresso_runtime_resources(register_project, register_distribution, _suite)
+    deliverable_variant = mx.get_env('ESPRESSO_DELIVERABLE_VARIANT')
+    if deliverable_variant:
+        suffix = '-' + deliverable_variant.lower()
+        dist_suffix = '_' + deliverable_variant.upper()
+    else:
+        suffix = ''
+        dist_suffix = ''
     register_distribution(DeliverableStandaloneArchive(_suite,
         standalone_dist='ESPRESSO_NATIVE_STANDALONE',
-        community_archive_name=f"espresso-community-java{java_home_dep.major_version}",
-        enterprise_archive_name=f"espresso-java{java_home_dep.major_version}",
-        community_dist_name=f'GRAALVM_ESPRESSO_COMMUNITY_JAVA{java_home_dep.major_version}',
-        enterprise_dist_name=f'GRAALVM_ESPRESSO_JAVA{java_home_dep.major_version}'))
+        community_archive_name=f"espresso-community-java{java_home_dep.major_version}{suffix}",
+        enterprise_archive_name=f"espresso-java{java_home_dep.major_version}{suffix}",
+        community_dist_name=f'GRAALVM_ESPRESSO_COMMUNITY_JAVA{java_home_dep.major_version}{dist_suffix}',
+        enterprise_dist_name=f'GRAALVM_ESPRESSO_JAVA{java_home_dep.major_version}{dist_suffix}'))
 
 
 def espresso_resources_suite():
