@@ -50,4 +50,3 @@ final class Target_sun_util_resources_OpenListResourceBundle_SubstituteLoadLooku
     @Alias
     protected native <K, V> Map<K, V> createMap(int size);
 }
-
