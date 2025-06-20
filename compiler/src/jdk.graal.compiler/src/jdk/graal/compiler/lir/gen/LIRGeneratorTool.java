@@ -672,6 +672,15 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
         return getResult().getFrameMapBuilder().allocateStackMemory(sizeInBytes, alignmentInBytes);
     }
 
+    /**
+     * Emits Just RDTSC, without the PID
+     */
+    default Value emitTSC() {
+        throw new GraalError("Emitting code to return the current value of just timestamp counter is not currently supported on %s (Note this method is diffrent from emitTimeStamp)", target().arch);
+    }
+
+
+
     default Value emitTimeStamp() {
         throw new GraalError("Emitting code to return the current value of the timestamp counter is not currently supported on %s", target().arch);
     }

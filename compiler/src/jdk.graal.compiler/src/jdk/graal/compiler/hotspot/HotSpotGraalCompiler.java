@@ -81,6 +81,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.TriState;
 import jdk.vm.ci.runtime.JVMCICompiler;
+import java.io.FileWriter;
+import java.io.IOException;
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.hotspot.meta.Bubo.BuboMethodCache;
+
 
 public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JVMCICompilerShadow, GraalCompiler.RequestedCrashHandler {
 
@@ -184,6 +189,10 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
                     task.checkRecompileCycle = true;
                 }
             }
+            if (GraalOptions.EnableProfiler.getValue(options) || GraalOptions.CountCompiledMethods.getValue(options)) {
+                addMethodToCache(task.getCompilationIdentifier());
+            }
+
 
             HotSpotVMConfigAccess config = new HotSpotVMConfigAccess(graalRuntime.getVMConfig().getStore());
             LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
@@ -204,6 +213,9 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
             }
         }
     }
+    private void addMethodToCache(CompilationIdentifier id){
+        BuboMethodCache.add(id.toString(CompilationIdentifier.Verbosity.ID) + " " + id.toString(CompilationIdentifier.Verbosity.NAME));
+    } 
 
     private boolean shouldRetainLocalVariables(long envAddress) {
         GraalHotSpotVMConfig config = graalRuntime.getVMConfig();

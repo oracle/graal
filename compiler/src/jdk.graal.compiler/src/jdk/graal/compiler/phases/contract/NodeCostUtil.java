@@ -28,6 +28,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.CounterKey;
@@ -66,6 +69,48 @@ public class NodeCostUtil {
         assert NumUtil.assertNonNegativeInt(size);
         return size;
     }
+
+    /**
+     * Compute the weighted probabilist cost of each node and put it into a map
+     * 
+     */
+    @SuppressWarnings("try")
+    public static Map<Node, Double> computeGraphCyclesMap(StructuredGraph graph, boolean fullSchedule) {
+        Function<HIRBlock, Iterable<? extends Node>> blockToNodes;
+        ControlFlowGraph cfg;
+        if (fullSchedule) {
+            SchedulePhase.runWithoutContextOptimizations(graph, SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS,
+                    true);
+            cfg = graph.getLastSchedule().getCFG();
+            blockToNodes = b -> graph.getLastSchedule().getBlockToNodesMap().get(b);
+        } else {
+            cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeFrequency(true)
+                    .build();
+            BlockMap<List<FixedNode>> nodes = new BlockMap<>(cfg);
+            for (HIRBlock b : cfg.getBlocks()) {
+                ArrayList<FixedNode> curNodes = new ArrayList<>();
+                for (FixedNode node : b.getNodes()) {
+                    curNodes.add(node);
+                }
+                nodes.put(b, curNodes);
+            }
+            blockToNodes = b -> nodes.get(b);
+        }
+
+        Map<Node, Double> nodeCostMap = new HashMap<>();
+        DebugContext debug = graph.getDebug();
+        try (DebugContext.Scope s = debug.scope("NodeCostSummary")) {
+            for (HIRBlock block : cfg.getBlocks()) {
+                for (Node n : blockToNodes.apply(block)) {
+                    double probWeighted = n.estimatedNodeCycles().value * block.getRelativeFrequency();
+                    assert Double.isFinite(probWeighted);
+                    nodeCostMap.put(n, probWeighted);
+                }
+            }
+        }
+        return nodeCostMap;
+    }
+
 
     @SuppressWarnings("try")
     public static double computeGraphCycles(StructuredGraph graph, boolean fullSchedule) {
