@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import jdk.graal.compiler.bytecode.BytecodeStream;
 import jdk.graal.compiler.debug.GraalError;
@@ -42,6 +43,7 @@ import jdk.graal.compiler.util.Digest;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -78,12 +80,12 @@ public final class LambdaUtils {
      */
     @SuppressWarnings("try")
     public static String findStableLambdaName(ResolvedJavaType lambdaType) {
-        ResolvedJavaMethod[] lambdaProxyMethods = Arrays.stream(lambdaType.getDeclaredMethods(false)).filter(m -> !m.isBridge() && m.isPublic()).toArray(ResolvedJavaMethod[]::new);
+        List<? extends ResolvedJavaMethod> lambdaProxyMethods = lambdaType.getDeclaredMethods(false).stream().filter(m -> !m.isBridge() && m.isPublic()).collect(Collectors.toList());
         /*
          * Take only the first method to find invoked methods, because the result would be the same
          * for all other methods.
          */
-        List<JavaMethod> invokedMethods = findInvokedMethods(lambdaProxyMethods[0]);
+        List<JavaMethod> invokedMethods = findInvokedMethods(lambdaProxyMethods.getFirst());
         if (invokedMethods.isEmpty()) {
             StringBuilder sb = new StringBuilder();
             sb.append("Lambda without a target invoke: ").append(lambdaType.toClassName());

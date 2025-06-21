@@ -36,18 +36,20 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import java.util.List;
+
 @NodeInfo(nameTemplate = "VirtualInstance({p#objectId}) {p#type/s}")
 public class VirtualInstanceNode extends VirtualObjectNode {
 
     public static final NodeClass<VirtualInstanceNode> TYPE = NodeClass.create(VirtualInstanceNode.class);
     protected final ResolvedJavaType type;
-    protected final ResolvedJavaField[] fields;
+    protected final List<? extends ResolvedJavaField> fields;
 
     public VirtualInstanceNode(ResolvedJavaType type, boolean hasIdentity) {
         this(type, type.getInstanceFields(true), hasIdentity);
     }
 
-    public VirtualInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields, boolean hasIdentity) {
+    public VirtualInstanceNode(ResolvedJavaType type, List<? extends ResolvedJavaField> fields, boolean hasIdentity) {
         this(TYPE, type, fields, hasIdentity);
     }
 
@@ -55,7 +57,7 @@ public class VirtualInstanceNode extends VirtualObjectNode {
         this(c, type, type.getInstanceFields(true), hasIdentity);
     }
 
-    protected VirtualInstanceNode(NodeClass<? extends VirtualInstanceNode> c, ResolvedJavaType type, ResolvedJavaField[] fields, boolean hasIdentity) {
+    protected VirtualInstanceNode(NodeClass<? extends VirtualInstanceNode> c, ResolvedJavaType type, List<? extends ResolvedJavaField> fields, boolean hasIdentity) {
         super(c, type, hasIdentity);
         this.type = type;
         this.fields = fields;
@@ -68,14 +70,14 @@ public class VirtualInstanceNode extends VirtualObjectNode {
 
     @Override
     public int entryCount() {
-        return fields.length;
+        return fields.size();
     }
 
     public ResolvedJavaField field(int index) {
-        return fields[index];
+        return fields.get(index);
     }
 
-    public ResolvedJavaField[] getFields() {
+    public List<? extends ResolvedJavaField> getFields() {
         return fields;
     }
 
@@ -90,13 +92,13 @@ public class VirtualInstanceNode extends VirtualObjectNode {
 
     @Override
     public String entryName(int index) {
-        return fields[index].getName();
+        return fields.get(index).getName();
     }
 
     public int fieldIndex(ResolvedJavaField field) {
         // on average fields.length == ~6, so a linear search is fast enough
-        for (int i = 0; i < fields.length; i++) {
-            if (fields[i].equals(field)) {
+        for (int i = 0; i < fields.size(); i++) {
+            if (fields.get(i).equals(field)) {
                 return i;
             }
         }
@@ -110,8 +112,8 @@ public class VirtualInstanceNode extends VirtualObjectNode {
 
     @Override
     public JavaKind entryKind(MetaAccessExtensionProvider metaAccessExtensionProvider, int index) {
-        assert index >= 0 && index < fields.length : Assertions.errorMessageContext("index", index, "fields", fields);
-        return metaAccessExtensionProvider.getStorageKind(fields[index].getType());
+        assert index >= 0 && index < fields.size() : Assertions.errorMessageContext("index", index, "fields", fields);
+        return metaAccessExtensionProvider.getStorageKind(fields.get(index).getType());
     }
 
     @Override

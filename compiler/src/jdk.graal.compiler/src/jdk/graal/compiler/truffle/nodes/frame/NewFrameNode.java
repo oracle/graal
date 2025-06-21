@@ -214,7 +214,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
 
         ResolvedJavaType frameType = types.FrameWithoutBoxing;
 
-        ResolvedJavaField[] frameFields = frameType.getInstanceFields(true);
+        List<? extends ResolvedJavaField> frameFields = frameType.getInstanceFields(true);
         this.virtualFrame = graph.add(new VirtualInstanceNode(frameType, frameFields, true));
 
         ValueNode emptyObjectArray = constantObject(graph, b, types.FrameWithoutBoxing_EMPTY_OBJECT_ARRAY);
@@ -332,9 +332,9 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             tool.createVirtualObject((VirtualObjectNode) virtualFrameArrays.get(AUXILIARY_SLOTS_ARRAY), auxiliarySlotArrayEntryState, Collections.<MonitorIdNode> emptyList(), sourcePosition, false);
         }
 
-        assert types.FrameWithoutBoxing_instanceFields.length == 6 : "Must have 6 known fields but found " + types.FrameWithoutBoxing_instanceFields;
-        ValueNode[] frameEntryState = new ValueNode[types.FrameWithoutBoxing_instanceFields.length];
-        List<ResolvedJavaField> frameFieldList = Arrays.asList(types.FrameWithoutBoxing_instanceFields);
+        assert types.FrameWithoutBoxing_instanceFields.size() == 6 : "Must have 6 known fields but found " + types.FrameWithoutBoxing_instanceFields;
+        ValueNode[] frameEntryState = new ValueNode[types.FrameWithoutBoxing_instanceFields.size()];
+        List<? extends ResolvedJavaField> frameFieldList = types.FrameWithoutBoxing_instanceFields;
         frameEntryState[frameFieldList.indexOf(types.FrameWithoutBoxing_descriptor)] = getDescriptor();
         frameEntryState[frameFieldList.indexOf(types.FrameWithoutBoxing_indexedLocals)] = virtualFrameArrays.get(INDEXED_OBJECT_ARRAY);
         frameEntryState[frameFieldList.indexOf(types.FrameWithoutBoxing_indexedPrimitiveLocals)] = virtualFrameArrays.get(INDEXED_PRIMITIVE_ARRAY);

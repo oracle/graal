@@ -165,7 +165,7 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
                 return;
             }
 
-            int parameterLength = bootstrap.getMethod().getParameters().length;
+            int parameterLength = bootstrap.getMethod().getParameters().size();
             List<JavaConstant> staticArgumentsList = bootstrap.getStaticArguments();
             boolean isVarargs = bootstrap.getMethod().isVarArgs();
             int bci = bci();

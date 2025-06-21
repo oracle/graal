@@ -86,7 +86,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
     }
 
     public ImageHeapInstance(AnalysisType type) {
-        super(new InstanceData(type, null, new Object[type.getInstanceFields(true).length], -1, -1), false);
+        super(new InstanceData(type, null, new Object[type.getInstanceFields(true).size()], -1, -1), false);
     }
 
     private ImageHeapInstance(ConstantData data, boolean compressed) {

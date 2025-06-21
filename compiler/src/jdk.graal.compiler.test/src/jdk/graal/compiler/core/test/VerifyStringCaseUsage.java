@@ -49,7 +49,7 @@ public class VerifyStringCaseUsage extends VerifyPhase<CoreProviders> {
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod callee = t.targetMethod();
             if (callee.getDeclaringClass().equals(stringType)) {
-                if (callee.getParameters().length > 0) {
+                if (!callee.getParameters().isEmpty()) {
                     continue;
                 }
                 String calleeName = callee.getName();

@@ -34,11 +34,13 @@ import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.List;
+
 @NodeInfo
 public final class HotSpotDirectCallTargetNode extends DirectCallTargetNode {
     public static final NodeClass<HotSpotDirectCallTargetNode> TYPE = NodeClass.create(HotSpotDirectCallTargetNode.class);
 
-    public HotSpotDirectCallTargetNode(ValueNode[] arguments, StampPair returnStamp, JavaType[] signature, ResolvedJavaMethod target, Type callType, InvokeKind invokeKind) {
+    public HotSpotDirectCallTargetNode(ValueNode[] arguments, StampPair returnStamp, List<JavaType> signature, ResolvedJavaMethod target, Type callType, InvokeKind invokeKind) {
         super(TYPE, arguments, returnStamp, signature, target, callType, invokeKind);
     }
 

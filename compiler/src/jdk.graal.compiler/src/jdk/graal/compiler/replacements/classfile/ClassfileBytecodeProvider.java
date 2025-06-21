@@ -27,6 +27,7 @@ package jdk.graal.compiler.replacements.classfile;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import org.graalvm.collections.EconomicMap;
@@ -248,7 +249,7 @@ public final class ClassfileBytecodeProvider implements BytecodeProvider {
             }
         }
 
-        private static EconomicMap<MethodKey, ResolvedJavaMethod> createMethodMap(ResolvedJavaMethod[] methodArray) {
+        private static EconomicMap<MethodKey, ResolvedJavaMethod> createMethodMap(List<? extends ResolvedJavaMethod> methodArray) {
             EconomicMap<MethodKey, ResolvedJavaMethod> map = EconomicMap.create();
             for (ResolvedJavaMethod m : methodArray) {
                 map.put(new MethodKey(m.getName(), m.getSignature().toMethodDescriptor()), m);
@@ -282,9 +283,9 @@ public final class ClassfileBytecodeProvider implements BytecodeProvider {
             }
         }
 
-        private static EconomicMap<FieldKey, ResolvedJavaField> createFieldMap(ResolvedJavaField[] fieldArray) {
+        private static EconomicMap<FieldKey, ResolvedJavaField> createFieldMap(List<? extends ResolvedJavaField> fieldList) {
             EconomicMap<FieldKey, ResolvedJavaField> map = EconomicMap.create();
-            for (ResolvedJavaField f : fieldArray) {
+            for (ResolvedJavaField f : fieldList) {
                 map.put(new FieldKey(f.getName(), f.getType().getName()), f);
             }
             return map;

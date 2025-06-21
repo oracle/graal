@@ -883,7 +883,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 sig[i] = node.arguments().get(i).stamp(NodeView.DEFAULT).javaType(gen.getMetaAccess());
             }
 
-            CallingConvention convention = gen.getRegisterConfig().getCallingConvention(SubstrateCallingConventionKind.Java.toType(true), null, sig, gen);
+            CallingConvention convention = gen.getRegisterConfig().getCallingConvention(SubstrateCallingConventionKind.Java.toType(true), null, List.of(sig), gen);
             append(new AMD64BreakpointOp(visitInvokeArguments(convention, node.arguments())));
         }
 

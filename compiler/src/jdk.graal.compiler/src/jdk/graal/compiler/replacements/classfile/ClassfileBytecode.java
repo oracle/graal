@@ -27,6 +27,7 @@ package jdk.graal.compiler.replacements.classfile;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.util.List;
 
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
@@ -130,9 +131,9 @@ public class ClassfileBytecode implements Bytecode {
     }
 
     @Override
-    public ExceptionHandler[] getExceptionHandlers() {
+    public List<ExceptionHandler> getExceptionHandlers() {
         if (exceptionTableBytes == null) {
-            return new ExceptionHandler[0];
+            return List.of();
         }
 
         final int exceptionTableLength = exceptionTableBytes.length / EXCEPTION_HANDLER_TABLE_SIZE_IN_BYTES;
@@ -165,7 +166,7 @@ public class ClassfileBytecode implements Bytecode {
             }
         }
 
-        return handlers;
+        return List.of(handlers);
     }
 
     @Override

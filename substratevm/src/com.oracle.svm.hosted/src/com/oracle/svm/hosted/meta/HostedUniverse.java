@@ -420,12 +420,12 @@ public class HostedUniverse implements Universe {
         return methods.get(method);
     }
 
-    public HostedMethod[] lookup(JavaMethod[] inputs) {
-        HostedMethod[] result = new HostedMethod[inputs.length]; // EMPTY_ARRAY failing here
+    public List<HostedMethod> lookup(List<? extends JavaMethod> inputs) {
+        HostedMethod[] result = new HostedMethod[inputs.size()]; // EMPTY_ARRAY failing here
         for (int i = 0; i < result.length; i++) {
-            result[i] = lookup(inputs[i]);
+            result[i] = lookup(inputs.get(i));
         }
-        return result;
+        return List.of(result);
     }
 
     @Override
@@ -480,7 +480,7 @@ public class HostedUniverse implements Universe {
             if (type.getSuperclass() != null) {
                 writer.format("extends %d %s  ", type.getSuperclass().getTypeID(), type.getSuperclass().toJavaName(false));
             }
-            if (type.getInterfaces().length > 0) {
+            if (type.getInterfaces().size() > 0) {
                 writer.print("implements ");
                 String sep = "";
                 for (HostedInterface interf : type.getInterfaces()) {
@@ -542,8 +542,7 @@ public class HostedUniverse implements Universe {
 
             } else if (type.isInstanceClass()) {
 
-                HostedField[] instanceFields = type.getInstanceFields(false);
-                instanceFields = Arrays.copyOf(instanceFields, instanceFields.length);
+                HostedField[] instanceFields = type.getInstanceFields(false).toArray(new HostedField[0]);
                 Arrays.sort(instanceFields, Comparator.comparing(HostedField::toString));
                 for (HostedField field : instanceFields) {
                     writer.println("               f " + field.getLocation() + ": " + field.format("%T %n"));
@@ -603,7 +602,7 @@ public class HostedUniverse implements Universe {
             boolean isProxy = Proxy.isProxyClass(baseType.getJavaClass());
             assert isProxy == (baseType.toJavaName(false).startsWith("$Proxy") && !(type.getWrapped().getWrapped() instanceof BaseLayerType));
             if (isProxy) {
-                return Optional.of(baseType.getInterfaces());
+                return Optional.of(baseType.getInterfaces().toArray(new HostedType[0]));
             } else {
                 return Optional.empty();
             }

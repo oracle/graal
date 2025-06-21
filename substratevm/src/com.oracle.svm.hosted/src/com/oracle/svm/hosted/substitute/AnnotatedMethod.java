@@ -28,6 +28,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.List;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 
@@ -170,7 +171,7 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
     }
 
     @Override
-    public ExceptionHandler[] getExceptionHandlers() {
+    public List<ExceptionHandler> getExceptionHandlers() {
         return original.getExceptionHandlers();
     }
 
@@ -205,7 +206,7 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
     }
 
     @Override
-    public Type[] getGenericParameterTypes() {
+    public List<Type> getGenericParameterTypes() {
         return original.getGenericParameterTypes();
     }
 

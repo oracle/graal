@@ -894,7 +894,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
              * {sun.reflect,jdk.internal.reflect}.Reflection.fieldFilterMap. Try to find the field
              * via the ResolvedJavaType.
              */
-            ResolvedJavaField[] fields;
+            List<? extends ResolvedJavaField> fields;
             if (Modifier.isStatic(annotatedField.getModifiers())) {
                 fields = metaAccess.lookupJavaType(originalClass).getStaticFields();
             } else {

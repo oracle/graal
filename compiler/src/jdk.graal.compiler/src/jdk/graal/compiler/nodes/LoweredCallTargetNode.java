@@ -32,22 +32,23 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.List;
+
 @NodeInfo
 public abstract class LoweredCallTargetNode extends CallTargetNode {
 
     public static final NodeClass<LoweredCallTargetNode> TYPE = NodeClass.create(LoweredCallTargetNode.class);
-    protected final JavaType[] signature;
+    protected final List<JavaType> signature;
     protected final CallingConvention.Type callType;
 
-    protected LoweredCallTargetNode(NodeClass<? extends LoweredCallTargetNode> c, ValueNode[] arguments, StampPair returnStamp, JavaType[] signature,
-                    ResolvedJavaMethod target,
-                    CallingConvention.Type callType, InvokeKind invokeKind) {
+    protected LoweredCallTargetNode(NodeClass<? extends LoweredCallTargetNode> c, ValueNode[] arguments, StampPair returnStamp,
+                    List<JavaType> signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
         super(c, arguments, target, invokeKind, returnStamp);
         this.signature = signature;
         this.callType = callType;
     }
 
-    public JavaType[] signature() {
+    public List<JavaType> signature() {
         return signature;
     }
 

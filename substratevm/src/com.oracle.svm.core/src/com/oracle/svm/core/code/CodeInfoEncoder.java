@@ -29,12 +29,14 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput
 
 import java.util.BitSet;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
+import jdk.vm.ci.meta.ResolvedJavaField;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -830,11 +832,11 @@ class CodeInfoVerifier {
             assert expectedLength == actualLength : actualFrame;
 
         } else {
-            SharedField[] expectedFields = (SharedField[]) expectedType.getInstanceFields(true);
+            List<? extends ResolvedJavaField> expectedFields = expectedType.getInstanceFields(true);
             int fieldIdx = 0;
             int valueIdx = 0;
             while (valueIdx < expectedObject.getValues().length) {
-                SharedField expectedField = expectedFields[fieldIdx];
+                SharedField expectedField = (SharedField) expectedFields.get(fieldIdx);
                 fieldIdx += 1;
                 JavaValue expectedValue = expectedObject.getValues()[valueIdx];
                 JavaKind valueKind = expectedObject.getSlotKind(valueIdx);

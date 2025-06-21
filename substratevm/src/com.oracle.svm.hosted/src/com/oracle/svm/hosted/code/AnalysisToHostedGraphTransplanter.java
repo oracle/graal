@@ -171,9 +171,9 @@ public class AnalysisToHostedGraphTransplanter {
 
         for (VirtualInstanceNode node : graph.getNodes(VirtualInstanceNode.TYPE)) {
             AnalysisType aType = (AnalysisType) node.type();
-            ResolvedJavaField[] aFields = node.getFields();
-            assert Arrays.equals(aFields, aType.getInstanceFields(true));
-            HostedField[] hFields = universe.lookup(aType).getInstanceFields(true);
+            List<? extends ResolvedJavaField> aFields = node.getFields();
+            assert aFields.equals(aType.getInstanceFields(true));
+            List<HostedField> hFields = universe.lookup(aType).getInstanceFields(true);
             /*
              * We cannot directly write the final field `VirtualInstanceNode.fields`. So we rely on
              * the NodeClass mechanism, which is also used to transplant all other fields.
@@ -200,11 +200,11 @@ public class AnalysisToHostedGraphTransplanter {
              * `AnalysisField.getPosition` gives us the index of the field in the analysis-level
              * list of field values.
              */
-            assert virtualObject.entryCount() == aType.getInstanceFields(true).length;
-            HostedField[] hFields = universe.lookup(aType).getInstanceFields(true);
+            assert virtualObject.entryCount() == aType.getInstanceFields(true).size();
+            List<HostedField> hFields = universe.lookup(aType).getInstanceFields(true);
             for (HostedField hField : hFields) {
                 int aPosition = hField.wrapped.getPosition();
-                assert hField.wrapped.equals(aType.getInstanceFields(true)[aPosition]);
+                assert hField.wrapped.equals(aType.getInstanceFields(true).get(aPosition));
                 hValues.add(aValues.get(aObjectStartIndex + aPosition));
             }
         }

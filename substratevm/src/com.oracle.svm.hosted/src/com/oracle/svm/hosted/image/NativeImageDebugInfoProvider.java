@@ -495,9 +495,9 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
 
         @Override
         public Stream<DebugFieldInfo> fieldInfoProvider() {
-            Stream<DebugFieldInfo> instanceFieldsStream = Arrays.stream(hostedType.getInstanceFields(false)).map(this::createDebugFieldInfo);
-            if (hostedType instanceof HostedInstanceClass && hostedType.getStaticFields().length > 0) {
-                Stream<DebugFieldInfo> staticFieldsStream = Arrays.stream(hostedType.getStaticFields()).map(this::createDebugStaticFieldInfo);
+            Stream<DebugFieldInfo> instanceFieldsStream = hostedType.getInstanceFields(false).stream().map(this::createDebugFieldInfo);
+            if (hostedType instanceof HostedInstanceClass && !hostedType.getStaticFields().isEmpty()) {
+                Stream<DebugFieldInfo> staticFieldsStream = hostedType.getStaticFields().stream().map(this::createDebugStaticFieldInfo);
                 return Stream.concat(instanceFieldsStream, staticFieldsStream);
             } else {
                 return instanceFieldsStream;
@@ -525,7 +525,7 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         @Override
         public Stream<ResolvedJavaType> interfaces() {
             // map through getOriginal so we can use the result as an id type
-            return Arrays.stream(hostedType.getInterfaces()).map(interfaceType -> getOriginal(interfaceType));
+            return hostedType.getInterfaces().stream().map(interfaceType -> getOriginal(interfaceType));
         }
 
         private NativeImageDebugFieldInfo createDebugFieldInfo(HostedField field) {
@@ -2029,9 +2029,8 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
             LocalVariableTable lvt = method.getLocalVariableTable();
             Local[] nonEmptySortedLocals = null;
             if (lvt != null) {
-                Local[] locals = lvt.getLocalsAt(bci);
-                if (locals != null && locals.length > 0) {
-                    nonEmptySortedLocals = Arrays.copyOf(locals, locals.length);
+                nonEmptySortedLocals = lvt.getLocalsAt(bci).toArray(new Local[0]);
+                if (nonEmptySortedLocals != null && nonEmptySortedLocals.length > 0) {
                     Arrays.sort(nonEmptySortedLocals, (Local l1, Local l2) -> l1.getSlot() - l2.getSlot());
                 }
             }

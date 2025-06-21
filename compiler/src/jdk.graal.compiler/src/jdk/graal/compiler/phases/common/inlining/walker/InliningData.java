@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -264,8 +265,8 @@ public class InliningData {
             return null;
         }
 
-        JavaTypeProfile.ProfiledType[] ptypes = typeProfile.getTypes();
-        if (ptypes == null || ptypes.length <= 0) {
+        List<JavaTypeProfile.ProfiledType> ptypes = typeProfile.getTypes();
+        if (ptypes == null || ptypes.size() <= 0) {
             InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "no types in profile");
             graph.notifyInliningDecision(invoke, false, "InliningPhase", null, null, null, invoke.getTargetMethod(), "no types in profile");
             return null;
@@ -288,14 +289,14 @@ public class InliningData {
             }
         }
 
-        if (ptypes.length == 1 && notRecordedTypeProbability == 0 && !speculationFailed) {
+        if (ptypes.size() == 1 && notRecordedTypeProbability == 0 && !speculationFailed) {
             if (!optimisticOpts.inlineMonomorphicCalls(options)) {
                 InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "inlining monomorphic calls is disabled");
                 graph.notifyInliningDecision(invoke, false, "InliningPhase", null, null, null, invoke.getTargetMethod(), "inlining monomorphic calls is disabled");
                 return null;
             }
 
-            ResolvedJavaType type = ptypes[0].getType();
+            ResolvedJavaType type = ptypes.getFirst().getType();
             assert type.isArray() || type.isConcrete();
             ResolvedJavaMethod concrete = type.resolveConcreteMethod(targetMethod, contextType);
             if (!checkTargetConditions(invoke, concrete)) {
@@ -306,32 +307,32 @@ public class InliningData {
             invoke.setPolymorphic(true);
 
             if (!optimisticOpts.inlinePolymorphicCalls(options) && notRecordedTypeProbability == 0) {
-                InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "inlining polymorphic calls is disabled (%d types)", ptypes.length);
-                graph.notifyInliningDecision(invoke, false, "InliningPhase", null, null, null, invoke.getTargetMethod(), "inlining polymorphic calls is disabled (%d types)", ptypes.length);
+                InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "inlining polymorphic calls is disabled (%d types)", ptypes.size());
+                graph.notifyInliningDecision(invoke, false, "InliningPhase", null, null, null, invoke.getTargetMethod(), "inlining polymorphic calls is disabled (%d types)", ptypes.size());
                 return null;
             }
             if (!optimisticOpts.inlineMegamorphicCalls(options) && notRecordedTypeProbability > 0) {
                 // due to filtering impossible types, notRecordedTypeProbability can be > 0 although
                 // the number of types is lower than what can be recorded in a type profile
-                InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "inlining megamorphic calls is disabled (%d types, %f %% not recorded types)", ptypes.length,
+                InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "inlining megamorphic calls is disabled (%d types, %f %% not recorded types)", ptypes.size(),
                                 notRecordedTypeProbability * 100);
                 graph.notifyInliningDecision(invoke, false, "InliningPhase", null, null, null,
-                                invoke.getTargetMethod(), "inlining megamorphic calls is disabled (%d types, %f %% not recorded types)", ptypes.length, notRecordedTypeProbability);
+                                invoke.getTargetMethod(), "inlining megamorphic calls is disabled (%d types, %f %% not recorded types)", ptypes.size(), notRecordedTypeProbability);
                 return null;
             }
 
             // Find unique methods and their probabilities.
             ArrayList<ResolvedJavaMethod> concreteMethods = new ArrayList<>();
             ArrayList<Double> concreteMethodsProbabilities = new ArrayList<>();
-            for (int i = 0; i < ptypes.length; i++) {
-                ResolvedJavaMethod concrete = ptypes[i].getType().resolveConcreteMethod(targetMethod, contextType);
+            for (JavaTypeProfile.ProfiledType ptype : ptypes) {
+                ResolvedJavaMethod concrete = ptype.getType().resolveConcreteMethod(targetMethod, contextType);
                 if (concrete == null) {
                     InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "could not resolve method");
                     graph.notifyInliningDecision(invoke, false, "InliningPhase", null, null, null, invoke.getTargetMethod(), "could not resolve method");
                     return null;
                 }
                 int index = concreteMethods.indexOf(concrete);
-                double curProbability = ptypes[i].getProbability();
+                double curProbability = ptype.getProbability();
                 if (index < 0) {
                     index = concreteMethods.size();
                     concreteMethods.add(concrete);
@@ -388,9 +389,9 @@ public class InliningData {
 
             if (usedTypes.isEmpty()) {
                 // No type left that is worth checking for.
-                InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "no types remaining after filtering less frequent types (%d types previously)", ptypes.length);
+                InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "no types remaining after filtering less frequent types (%d types previously)", ptypes.size());
                 graph.notifyInliningDecision(invoke, false, "InliningPhase", null, null, null, invoke.getTargetMethod(), "no types remaining after filtering less frequent types (%d types previously)",
-                                ptypes.length);
+                                ptypes.size());
                 return null;
             }
 

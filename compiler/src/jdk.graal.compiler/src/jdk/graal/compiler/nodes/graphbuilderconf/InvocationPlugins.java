@@ -1249,7 +1249,7 @@ public class InvocationPlugins {
      * {@link ResolvedJavaType} and {@link ResolvedJavaMethod}.
      */
     public static ResolvedJavaMethod resolveJavaMethod(ResolvedJavaType declaringClass, InvocationPlugin plugin) {
-        ResolvedJavaMethod[] methods = declaringClass.getDeclaredMethods(false);
+        var methods = declaringClass.getDeclaredMethods(false);
         if (plugin.name.equals("<init>")) {
             for (ResolvedJavaMethod m : methods) {
                 if (m.getName().equals("<init>") && m.getSignature().toMethodDescriptor().startsWith(plugin.argumentsDescriptor)) {
@@ -1260,8 +1260,7 @@ public class InvocationPlugins {
         }
 
         ResolvedJavaMethod match = null;
-        for (int i = 0; i < methods.length; ++i) {
-            ResolvedJavaMethod m = methods[i];
+        for (ResolvedJavaMethod m : methods) {
             if (plugin.isSameType(m)) {
                 if (match == null) {
                     match = m;
@@ -1275,7 +1274,7 @@ public class InvocationPlugins {
                     } else {
                         if (!mReturnType.isAssignableFrom(matchReturnType)) {
                             throw new NoSuchMethodError(String.format(
-                                            "Found 2 methods with same name and parameter types but unrelated return types:%n %s%n %s", match, m));
+                                    "Found 2 methods with same name and parameter types but unrelated return types:%n %s%n %s", match, m));
                         }
                     }
                 }

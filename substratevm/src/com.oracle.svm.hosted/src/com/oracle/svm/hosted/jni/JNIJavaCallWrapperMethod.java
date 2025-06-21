@@ -96,7 +96,7 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
 
     public static ResolvedSignature<ResolvedJavaType> getGeneralizedSignatureForTarget(ResolvedJavaMethod targetMethod, MetaAccessProvider originalMetaAccess) {
         /* Note: does not include the receiver. */
-        JavaKind[] paramKinds = targetMethod.getSignature().toParameterKinds(false);
+        List<JavaKind> paramKinds = targetMethod.getSignature().toParameterKinds(false);
 
         JavaKind returnKind = targetMethod.getSignature().getReturnKind();
         if (targetMethod.isConstructor()) {
@@ -144,7 +144,7 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
         if (returnKind.isObject()) {
             returnKind = wordKind; // handle
         }
-        return ResolvedSignature.fromKinds(args, returnKind, originalMetaAccess);
+        return ResolvedSignature.fromKinds(List.of(args), returnKind, originalMetaAccess);
     }
 
     @Override
@@ -241,7 +241,7 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
         ValueNode[] argsWithReceiver = new ValueNode[1 + args.length];
         argsWithReceiver[0] = kit.maybeCreateExplicitNullCheck(receiver);
         System.arraycopy(args, 0, argsWithReceiver, 1, args.length);
-        JavaType[] paramTypes = invokeSignature.toParameterTypes(kit.getMetaAccess().lookupJavaType(Object.class));
+        List<JavaType> paramTypes = invokeSignature.toParameterTypes(kit.getMetaAccess().lookupJavaType(Object.class));
         return createMethodCall(kit, invokeSignature.getReturnType(), paramTypes, methodAddress, argsWithReceiver);
     }
 
@@ -258,7 +258,7 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
         return createMethodCall(kit, invokeSignature.getReturnType(), invokeSignature.toParameterTypes(null), newObjectAddress, args);
     }
 
-    private static ValueNode createMethodCall(JNIGraphKit kit, JavaType returnType, JavaType[] paramTypes, ValueNode methodAddress, ValueNode[] args) {
+    private static ValueNode createMethodCall(JNIGraphKit kit, JavaType returnType, List<JavaType> paramTypes, ValueNode methodAddress, ValueNode[] args) {
         StampPair returnStamp = StampFactory.forDeclaredType(kit.getAssumptions(), returnType, false);
         CallTargetNode callTarget = new SubstrateIndirectCallTargetNode(methodAddress, args, returnStamp, paramTypes,
                         null, SubstrateCallingConventionKind.Java.toType(true), CallTargetNode.InvokeKind.Static);

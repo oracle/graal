@@ -113,7 +113,7 @@ public class JNIFunctionTablesFeature implements Feature {
         AnalysisType invokes = metaAccess.lookupJavaType(JNIInvocationInterface.class);
         AnalysisType exports = metaAccess.lookupJavaType(JNIInvocationInterface.Exports.class);
         AnalysisType functions = metaAccess.lookupJavaType(JNIFunctions.class);
-        Stream<AnalysisMethod> analysisMethods = Stream.of(invokes, functions, exports).flatMap(type -> Stream.of(type.getDeclaredMethods(false)));
+        Stream<AnalysisMethod> analysisMethods = Stream.of(invokes, functions, exports).flatMap(type -> type.getDeclaredMethods(false).stream());
         Stream<AnalysisMethod> unimplementedMethods = Stream.of((AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJNIEnvArgument.class),
                         (AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJavaVMArgument.class));
         Stream.concat(analysisMethods, unimplementedMethods).forEach(method -> {
@@ -146,9 +146,9 @@ public class JNIFunctionTablesFeature implements Feature {
     }
 
     private static ResolvedJavaMethod getSingleMethod(MetaAccessProvider metaAccess, Class<?> holder) {
-        ResolvedJavaMethod[] methods = metaAccess.lookupJavaType(holder).getDeclaredMethods(false);
-        assert methods.length == 1;
-        return methods[0];
+        List<? extends ResolvedJavaMethod> methods = metaAccess.lookupJavaType(holder).getDeclaredMethods(false);
+        assert methods.size() == 1;
+        return methods.getFirst();
     }
 
     private static CFunctionPointer getStubFunctionPointer(CompilationAccessImpl access, HostedMethod method) {

@@ -31,6 +31,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -91,7 +92,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     private final HostedType holder;
     private final ResolvedSignature<HostedType> signature;
     private final ConstantPool constantPool;
-    private final ExceptionHandler[] handlers;
+    private final List<ExceptionHandler> handlers;
     /**
      * Contains the index of the method within the appropriate table.
      *
@@ -147,11 +148,11 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
                     ConstantPool constantPool, ExceptionHandler[] handlers) {
         LocalVariableTable localVariableTable = createLocalVariableTable(universe, wrapped);
 
-        return create0(wrapped, holder, signature, constantPool, handlers, wrapped.getMultiMethodKey(), null, localVariableTable);
+        return create0(wrapped, holder, signature, constantPool, List.of(handlers), wrapped.getMultiMethodKey(), null, localVariableTable);
     }
 
     private static HostedMethod create0(AnalysisMethod wrapped, HostedType holder, ResolvedSignature<HostedType> signature,
-                    ConstantPool constantPool, ExceptionHandler[] handlers, MultiMethodKey key, Map<MultiMethodKey, MultiMethod> multiMethodMap, LocalVariableTable localVariableTable) {
+                    ConstantPool constantPool, List<ExceptionHandler> handlers, MultiMethodKey key, Map<MultiMethodKey, MultiMethod> multiMethodMap, LocalVariableTable localVariableTable) {
         var generator = new HostedMethodNameFactory.NameGenerator() {
 
             @Override
@@ -186,10 +187,10 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
             return null;
         }
         try {
-            Local[] origLocals = lvt.getLocals();
-            Local[] newLocals = new Local[origLocals.length];
+            List<Local> origLocals = lvt.getLocals();
+            Local[] newLocals = new Local[origLocals.size()];
             for (int i = 0; i < newLocals.length; ++i) {
-                Local origLocal = origLocals[i];
+                Local origLocal = origLocals.get(i);
                 JavaType origType = origLocal.getType();
                 if (!universe.contains(origType)) {
                     throw new UnsupportedFeatureException("No HostedType for given AnalysisType");
@@ -204,7 +205,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     private HostedMethod(AnalysisMethod wrapped, HostedType holder, ResolvedSignature<HostedType> signature, ConstantPool constantPool,
-                    ExceptionHandler[] handlers, String name, String uniqueShortName, LocalVariableTable localVariableTable, MultiMethodKey multiMethodKey,
+                    List<ExceptionHandler> handlers, String name, String uniqueShortName, LocalVariableTable localVariableTable, MultiMethodKey multiMethodKey,
                     Map<MultiMethodKey, MultiMethod> multiMethodMap) {
         this.wrapped = wrapped;
         this.holder = holder;
@@ -314,7 +315,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
-    public Parameter[] getParameters() {
+    public List<Parameter> getParameters() {
         return wrapped.getParameters();
     }
 
@@ -413,7 +414,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
-    public JavaType[] toParameterTypes() {
+    public List<JavaType> toParameterTypes() {
         throw JVMCIError.shouldNotReachHere("ResolvedJavaMethod.toParameterTypes returns the wrong result for constructors.");
     }
 
@@ -490,7 +491,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
-    public ExceptionHandler[] getExceptionHandlers() {
+    public List<ExceptionHandler> getExceptionHandlers() {
         return handlers;
     }
 
@@ -515,7 +516,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
-    public Type[] getGenericParameterTypes() {
+    public List<Type> getGenericParameterTypes() {
         return wrapped.getGenericParameterTypes();
     }
 

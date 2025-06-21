@@ -550,8 +550,8 @@ public final class NativeLibraries {
     public ElementInfo findElementInfo(AnnotatedElement element) {
         Object element1 = unwrap(element);
         ElementInfo result = elementToInfo.get(element1);
-        if (result == null && element1 instanceof ResolvedJavaType && ((ResolvedJavaType) element1).getInterfaces().length == 1) {
-            result = findElementInfo(((ResolvedJavaType) element1).getInterfaces()[0]);
+        if (result == null && element1 instanceof ResolvedJavaType && ((ResolvedJavaType) element1).getInterfaces().size() == 1) {
+            result = findElementInfo(((ResolvedJavaType) element1).getInterfaces().getFirst());
         }
         return result;
     }

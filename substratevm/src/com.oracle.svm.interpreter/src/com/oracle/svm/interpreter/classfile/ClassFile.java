@@ -53,6 +53,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 import org.graalvm.collections.Pair;
@@ -451,14 +452,14 @@ public final class ClassFile {
         }
     }
 
-    private ResolvedJavaType[] getInterfaces(ResolvedJavaType type) {
+    private List<? extends ResolvedJavaType> getInterfaces(ResolvedJavaType type) {
         if (type instanceof InterpreterResolvedJavaType interpreterResolvedJavaType) {
             Class<?>[] interfaces = interpreterResolvedJavaType.getJavaClass().getInterfaces();
             ResolvedJavaType[] result = new InterpreterResolvedObjectType[interfaces.length];
             for (int i = 0; i < interfaces.length; i++) {
                 result[i] = universe.lookupType(interfaces[i]);
             }
-            return result;
+            return List.of(result);
         } else {
             return type.getInterfaces();
         }
@@ -476,29 +477,29 @@ public final class ClassFile {
         }
     }
 
-    private ResolvedJavaMethod[] getDeclaredConstructors(ResolvedJavaType type) {
+    private List<? extends ResolvedJavaMethod> getDeclaredConstructors(ResolvedJavaType type) {
         if (type instanceof InterpreterResolvedJavaType) {
             return universe.getAllDeclaredMethods(type)
                             .stream()
                             .filter(ResolvedJavaMethod::isConstructor)
-                            .toArray(InterpreterResolvedJavaMethod[]::new);
+                            .collect(Collectors.toList());
         } else {
             return type.getDeclaredConstructors();
         }
     }
 
-    private ResolvedJavaMethod[] getDeclaredMethods(ResolvedJavaType type) {
+    private List<? extends ResolvedJavaMethod> getDeclaredMethods(ResolvedJavaType type) {
         if (type instanceof InterpreterResolvedJavaType) {
             return universe.getAllDeclaredMethods(type)
                             .stream()
                             .filter(method -> !method.isConstructor() && !method.isClassInitializer())
-                            .toArray(ResolvedJavaMethod[]::new);
+                            .collect(Collectors.toList());
         } else {
             return type.getDeclaredMethods();
         }
     }
 
-    private ResolvedJavaField[] getInstanceFields(ResolvedJavaType type, boolean includeSuperclasses) {
+    private List<? extends ResolvedJavaField> getInstanceFields(ResolvedJavaType type, boolean includeSuperclasses) {
         if (type instanceof InterpreterResolvedJavaType) {
             if (includeSuperclasses) {
                 throw VMError.unimplemented("getInstanceFields with includeSuperclasses=true");
@@ -506,18 +507,18 @@ public final class ClassFile {
             return universe.getAllDeclaredFields(type)
                             .stream()
                             .filter(f -> !f.isStatic())
-                            .toArray(ResolvedJavaField[]::new);
+                            .collect(Collectors.toList());
         } else {
             return type.getInstanceFields(includeSuperclasses);
         }
     }
 
-    private ResolvedJavaField[] getStaticFields(ResolvedJavaType type) {
+    private List<? extends ResolvedJavaField> getStaticFields(ResolvedJavaType type) {
         if (type instanceof InterpreterResolvedJavaType) {
             return universe.getAllDeclaredFields(type)
                             .stream()
                             .filter(ModifiersProvider::isStatic)
-                            .toArray(ResolvedJavaField[]::new);
+                            .collect(Collectors.toList());
         } else {
             return type.getStaticFields();
         }
@@ -592,8 +593,8 @@ public final class ClassFile {
         if (getClassInitializer(type) != null) {
             allDeclaredMethods.add(getClassInitializer(type));
         }
-        allDeclaredMethods.addAll(Arrays.asList(getDeclaredConstructors(type)));
-        allDeclaredMethods.addAll(Arrays.asList(getDeclaredMethods(type)));
+        allDeclaredMethods.addAll(getDeclaredConstructors(type));
+        allDeclaredMethods.addAll(getDeclaredMethods(type));
 
         // Write all 1-byte CPIs first in the constant pool.
         processLDC(allDeclaredMethods);
@@ -613,7 +614,7 @@ public final class ClassFile {
         }
 
         // u2 interfaces_count;
-        classFile.writeU2(getInterfaces(type).length);
+        classFile.writeU2(getInterfaces(type).size());
 
         // u2 interfaces[interfaces_count];
         for (JavaType i : getInterfaces(type)) {
@@ -621,8 +622,8 @@ public final class ClassFile {
         }
 
         List<ResolvedJavaField> fields = new ArrayList<>();
-        fields.addAll(Arrays.asList(getStaticFields(type)));
-        fields.addAll(Arrays.asList(getInstanceFields(type, false)));
+        fields.addAll(getStaticFields(type));
+        fields.addAll(getInstanceFields(type, false));
         // u2 fields_count;
         classFile.writeU2(fields.size());
 
@@ -835,7 +836,7 @@ public final class ClassFile {
             ++attributeCount;
         }
 
-        ResolvedJavaMethod.Parameter[] methodParameters = method.getParameters();
+        List<ResolvedJavaMethod.Parameter> methodParameters = method.getParameters();
         if (methodParameters != null) {
             ++attributeCount;
         }
@@ -862,7 +863,7 @@ public final class ClassFile {
         // RuntimeVisibleTypeAnnotations, RuntimeInvisibleTypeAnnotations
     }
 
-    private void dumpMethodParameters(ResolvedJavaMethod.Parameter[] methodParameters) {
+    private void dumpMethodParameters(List<ResolvedJavaMethod.Parameter> methodParameters) {
         if (methodParameters == null) {
             return;
         }
@@ -877,7 +878,7 @@ public final class ClassFile {
         // }
 
         classFile.writeU2(utf8("MethodParameters"));
-        int attributeLength = 1 + methodParameters.length * 4;
+        int attributeLength = 1 + methodParameters.size() * 4;
         classFile.writeInt(attributeLength);
 
         classFile.writeU1(attributeLength);
@@ -938,12 +939,12 @@ public final class ClassFile {
         // }
 
         classFile.writeU2(utf8("LocalVariableTable"));
-        Local[] locals = localVariableTable.getLocals();
+        List<Local> locals = localVariableTable.getLocals();
 
-        int attributeLength = 2 + locals.length * 10;
+        int attributeLength = 2 + locals.size() * 10;
         classFile.writeInt(attributeLength);
 
-        classFile.writeU2(locals.length);
+        classFile.writeU2(locals.size());
         for (Local local : locals) {
             classFile.writeU2(local.getStartBCI());
             classFile.writeU2(local.getEndBCI() - local.getStartBCI());
@@ -992,12 +993,12 @@ public final class ClassFile {
             classFile.writeBytes(recomputeConstantPoolIndices(method));
         }
 
-        ExceptionHandler[] handlers = method.getExceptionHandlers();
-        if (handlers == null || handlers.length == 0) {
+        List<ExceptionHandler> handlers = method.getExceptionHandlers();
+        if (handlers == null || handlers.size() == 0) {
             classFile.writeU2(0);
             // empty
         } else {
-            classFile.writeU2(handlers.length);
+            classFile.writeU2(handlers.size());
             for (ExceptionHandler eh : handlers) {
                 classFile.writeU2(eh.getStartBCI());
                 classFile.writeU2(eh.getEndBCI());

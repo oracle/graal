@@ -25,6 +25,7 @@
 package com.oracle.svm.interpreter.metadata;
 
 import java.lang.reflect.Modifier;
+import java.util.List;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -95,8 +96,8 @@ public final class InterpreterResolvedPrimitiveType extends InterpreterResolvedJ
     }
 
     @Override
-    public ResolvedJavaType[] getInterfaces() {
-        return new ResolvedJavaType[0];
+    public List<? extends ResolvedJavaType> getInterfaces() {
+        return List.of();
     }
 
     @Override

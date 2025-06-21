@@ -59,9 +59,9 @@ public final class ResolvedSignature<T extends ResolvedJavaType> implements Sign
         return new ResolvedSignature<>(List.copyOf(parameterTypes), returnType);
     }
 
-    public static ResolvedSignature<ResolvedJavaType> fromKinds(JavaKind[] parameterKinds, JavaKind returnKind, MetaAccessProvider metaAccess) {
+    public static ResolvedSignature<ResolvedJavaType> fromKinds(List<JavaKind> parameterKinds, JavaKind returnKind, MetaAccessProvider metaAccess) {
         return new ResolvedSignature<>(
-                        Arrays.stream(parameterKinds).map(kind -> resolveType(kind, metaAccess)).collect(Collectors.toUnmodifiableList()),
+                        parameterKinds.stream().map(kind -> resolveType(kind, metaAccess)).collect(Collectors.toUnmodifiableList()),
                         resolveType(returnKind, metaAccess));
     }
 

@@ -92,7 +92,7 @@ public class VerifySnippetProbabilities extends VerifyPhase<CoreProviders> {
                 }
             }
         }
-        boolean[] specialParameters = new boolean[method.getParameters().length];
+        boolean[] specialParameters = new boolean[method.getParameters().size()];
         Annotation[][] parameterAnnotations = graph.method().getParameterAnnotations();
         for (int i = 0; i < parameterAnnotations.length; i++) {
             for (Annotation a : parameterAnnotations[i]) {

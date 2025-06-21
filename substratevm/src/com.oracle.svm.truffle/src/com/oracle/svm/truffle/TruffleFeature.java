@@ -923,8 +923,8 @@ public class TruffleFeature implements InternalFeature {
         truffleRuntime.initializeHostedKnownMethods(config.getMetaAccess());
 
         runtimeCompiledMethods = new LinkedHashSet<>();
-        runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerDirectives.class).getDeclaredMethods(false)));
-        runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerAsserts.class).getDeclaredMethods(false)));
+        runtimeCompiledMethods.addAll(config.getMetaAccess().lookupJavaType(CompilerDirectives.class).getDeclaredMethods(false));
+        runtimeCompiledMethods.addAll(config.getMetaAccess().lookupJavaType(CompilerAsserts.class).getDeclaredMethods(false));
 
         for (RuntimeCompiledMethod runtimeCompiledMethod : treeInfo.runtimeCompilations()) {
 

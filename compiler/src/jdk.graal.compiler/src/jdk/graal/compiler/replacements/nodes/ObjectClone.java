@@ -25,6 +25,7 @@
 package jdk.graal.compiler.replacements.nodes;
 
 import java.util.Collections;
+import java.util.List;
 
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
@@ -121,11 +122,11 @@ public interface ObjectClone extends StateSplit, VirtualizableAllocation, ArrayL
             }
             if (!type.isArray()) {
                 VirtualInstanceNode newVirtual = new VirtualInstanceNode(type, true);
-                ResolvedJavaField[] fields = newVirtual.getFields();
+                List<? extends ResolvedJavaField> fields = newVirtual.getFields();
 
-                ValueNode[] state = new ValueNode[fields.length];
-                for (int i = 0; i < fields.length; i++) {
-                    LoadFieldNode load = genLoadFieldNode(asNode().graph().getAssumptions(), originalAlias, fields[i]);
+                ValueNode[] state = new ValueNode[fields.size()];
+                for (int i = 0; i < fields.size(); i++) {
+                    LoadFieldNode load = genLoadFieldNode(asNode().graph().getAssumptions(), originalAlias, fields.get(i));
                     state[i] = load;
                     tool.addNode(load);
                 }

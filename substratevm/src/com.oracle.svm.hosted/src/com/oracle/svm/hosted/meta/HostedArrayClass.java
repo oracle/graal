@@ -28,6 +28,8 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.meta.JavaKind;
 
+import java.util.List;
+
 public class HostedArrayClass extends HostedClass {
 
     private final HostedType componentType;
@@ -80,8 +82,8 @@ public class HostedArrayClass extends HostedClass {
     }
 
     @Override
-    public HostedField[] getInstanceFields(boolean includeSuperclasses) {
-        return HostedField.EMPTY_ARRAY;
+    public List<HostedField> getInstanceFields(boolean includeSuperclasses) {
+        return List.of();
     }
 
     @Override

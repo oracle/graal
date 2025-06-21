@@ -26,6 +26,7 @@ package jdk.graal.compiler.hotspot;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
+import java.util.List;
 import java.util.Objects;
 
 import jdk.vm.ci.meta.Constant;
@@ -136,7 +137,7 @@ public final class SnippetResolvedJavaMethod implements ResolvedJavaMethod {
     }
 
     @Override
-    public ExceptionHandler[] getExceptionHandlers() {
+    public List<ExceptionHandler> getExceptionHandlers() {
         throw new UnsupportedOperationException();
     }
 
@@ -166,7 +167,7 @@ public final class SnippetResolvedJavaMethod implements ResolvedJavaMethod {
     }
 
     @Override
-    public Type[] getGenericParameterTypes() {
+    public List<Type> getGenericParameterTypes() {
         throw new UnsupportedOperationException();
     }
 

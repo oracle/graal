@@ -31,6 +31,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.List;
+
 public class HostedInstanceClass extends HostedClass {
 
     protected HostedField[] instanceFieldsWithoutSuper;
@@ -74,8 +76,8 @@ public class HostedInstanceClass extends HostedClass {
     }
 
     @Override
-    public HostedField[] getInstanceFields(boolean includeSuperclasses) {
-        return includeSuperclasses ? instanceFieldsWithSuper : instanceFieldsWithoutSuper;
+    public List<HostedField> getInstanceFields(boolean includeSuperclasses) {
+        return List.of(includeSuperclasses ? instanceFieldsWithSuper : instanceFieldsWithoutSuper);
     }
 
     @Override

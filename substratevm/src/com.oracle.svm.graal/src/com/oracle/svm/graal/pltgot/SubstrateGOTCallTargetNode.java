@@ -34,12 +34,14 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.List;
+
 @NodeInfo
 public final class SubstrateGOTCallTargetNode extends SubstrateIndirectCallTargetNode {
     public static final NodeClass<SubstrateGOTCallTargetNode> TYPE = NodeClass.create(SubstrateGOTCallTargetNode.class);
 
-    public SubstrateGOTCallTargetNode(ValueNode computedAddress, ValueNode[] arguments, StampPair returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType,
-                    InvokeKind invokeKind) {
+    public SubstrateGOTCallTargetNode(ValueNode computedAddress, ValueNode[] arguments, StampPair returnStamp, List<JavaType> signature, ResolvedJavaMethod target, CallingConvention.Type callType,
+                                      InvokeKind invokeKind) {
         super(TYPE, computedAddress, arguments, returnStamp, signature, target, callType, invokeKind, null);
     }
 }

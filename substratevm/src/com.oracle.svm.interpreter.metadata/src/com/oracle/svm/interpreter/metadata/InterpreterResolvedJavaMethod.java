@@ -29,6 +29,7 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.BREAKPOINT;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.graalvm.nativeimage.Platform;
@@ -76,7 +77,7 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod {
 
     private final LineNumberTable lineNumberTable;
 
-    private ExceptionHandler[] exceptionHandlers;
+    private List<ExceptionHandler> exceptionHandlers;
 
     private LocalVariableTable localVariableTable;
 
@@ -142,7 +143,7 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod {
         this.declaringClass = declaringClass;
         this.signature = signature;
         this.interpretedCode = code;
-        this.exceptionHandlers = exceptionHandlers;
+        this.exceptionHandlers = List.of(exceptionHandlers);
         this.lineNumberTable = lineNumberTable;
         this.localVariableTable = localVariableTable;
 
@@ -278,10 +279,8 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod {
     }
 
     @Override
-    public ExceptionHandler[] getExceptionHandlers() {
-        ExceptionHandler[] result = exceptionHandlers;
-        VMError.guarantee(result != null);
-        return result;
+    public List<ExceptionHandler> getExceptionHandlers() {
+        return exceptionHandlers;
     }
 
     @Override
@@ -311,7 +310,7 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setExceptionHandlers(ExceptionHandler[] exceptionHandlers) {
-        this.exceptionHandlers = MetadataUtil.requireNonNull(exceptionHandlers);
+        this.exceptionHandlers = List.of(MetadataUtil.requireNonNull(exceptionHandlers));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -493,7 +492,7 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod {
     }
 
     @Override
-    public Type[] getGenericParameterTypes() {
+    public List<Type> getGenericParameterTypes() {
         throw VMError.intentionallyUnimplemented();
     }
 

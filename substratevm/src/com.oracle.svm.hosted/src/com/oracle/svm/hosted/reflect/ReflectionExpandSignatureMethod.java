@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.reflect;
 
 import java.lang.reflect.Executable;
+import java.util.List;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -115,7 +116,7 @@ public class ReflectionExpandSignatureMethod extends NonBytecodeMethod {
             signature[i + receiverOffset] = kit.getMetaAccess().lookupJavaType(argTypes[i]);
         }
 
-        CallTargetNode callTarget = kit.append(new SubstrateIndirectCallTargetNode(invokedMethod, args, StampPair.createSingle(StampFactory.forKind(returnKind)), signature, null,
+        CallTargetNode callTarget = kit.append(new SubstrateIndirectCallTargetNode(invokedMethod, args, StampPair.createSingle(StampFactory.forKind(returnKind)), List.of(signature), null,
                         SubstrateCallingConventionKind.Java.toType(true), InvokeKind.Static));
 
         InvokeWithExceptionNode invoke = kit.startInvokeWithException(callTarget, kit.getFrameState(), kit.bci());

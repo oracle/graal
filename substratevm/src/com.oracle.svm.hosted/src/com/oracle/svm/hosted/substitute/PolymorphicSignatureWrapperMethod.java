@@ -80,7 +80,7 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
     PolymorphicSignatureWrapperMethod(SubstitutionMethod substitutionBaseMethod, ResolvedJavaMethod originalMethod) {
         this.substitutionBaseMethod = substitutionBaseMethod;
         this.originalMethod = originalMethod;
-        this.constantPool = substitutionBaseMethod.getDeclaringClass().getDeclaredConstructors(false)[0].getConstantPool();
+        this.constantPool = substitutionBaseMethod.getDeclaringClass().getDeclaredConstructors(false).getFirst().getConstantPool();
     }
 
     @Override
@@ -264,8 +264,8 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
     }
 
     @Override
-    public ExceptionHandler[] getExceptionHandlers() {
-        return new ExceptionHandler[0];
+    public List<ExceptionHandler> getExceptionHandlers() {
+        return List.of();
     }
 
     @Override
@@ -297,7 +297,7 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
     }
 
     @Override
-    public Type[] getGenericParameterTypes() {
+    public List<Type> getGenericParameterTypes() {
         throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 

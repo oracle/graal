@@ -59,6 +59,7 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -156,10 +157,10 @@ public final class HSTruffleCompilerRuntime extends HSObject implements TruffleC
     public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
         ResolvedJavaType enclosingType = field.getDeclaringClass();
         boolean isStatic = field.isStatic();
-        ResolvedJavaField[] declaredFields = isStatic ? enclosingType.getStaticFields() : enclosingType.getInstanceFields(false);
+        List<? extends ResolvedJavaField> declaredFields = isStatic ? enclosingType.getStaticFields() : enclosingType.getInstanceFields(false);
         int fieldIndex = -1;
-        for (int i = 0; i < declaredFields.length; i++) {
-            if (field.equals(declaredFields[i])) {
+        for (int i = 0; i < declaredFields.size(); i++) {
+            if (field.equals(declaredFields.get(i))) {
                 fieldIndex = i;
                 break;
             }
@@ -170,7 +171,7 @@ public final class HSTruffleCompilerRuntime extends HSObject implements TruffleC
                             isStatic ? "Static" : "Instance",
                             field,
                             enclosingType,
-                            Arrays.toString(declaredFields)));
+                            declaredFields));
         }
         long typeHandle = HotSpotJVMCIRuntime.runtime().translate(enclosingType);
         int rawValue = HSTruffleCompilerRuntimeGen.callGetConstantFieldInfo(calls, env(), getHandle(), typeHandle, isStatic, fieldIndex);

@@ -28,6 +28,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.util.Arrays;
+import java.util.List;
 
 import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -698,12 +699,12 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         }
         assert b.getInvokeKind() == InvokeKind.Interface;
 
-        JavaType[] parameterTypes = method.getSignature().toParameterTypes(null);
+        List<JavaType> parameterTypes = method.getSignature().toParameterTypes(null);
         // We "discard" the receiver from the signature by pretending we are a static method
         assert args.length >= 1;
         ValueNode methodAddress = args[0];
         ValueNode[] argsWithoutReceiver = Arrays.copyOfRange(args, 1, args.length);
-        assert argsWithoutReceiver.length == parameterTypes.length;
+        assert argsWithoutReceiver.length == parameterTypes.size();
 
         Stamp returnStamp;
         if (b.getWordTypes().isWord(b.getInvokeReturnType())) {

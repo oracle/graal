@@ -40,6 +40,8 @@ import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.vm.ci.meta.JavaKind;
 
+import java.util.List;
+
 public class KillWithUnusedFloatingInputsBenchmark extends GraalBenchmark {
 
     @Benchmark
@@ -152,7 +154,7 @@ public class KillWithUnusedFloatingInputsBenchmark extends GraalBenchmark {
             }
 
             for (int j = 0; j < sizeParam; j++) {
-                FrameState fs = fb.create(1, null, false, kinds, vals);
+                FrameState fs = fb.create(1, null, false, List.of(kinds), vals);
                 g.addOrUnique(fs);
             }
         }

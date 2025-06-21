@@ -28,6 +28,7 @@ import static com.oracle.graal.pointsto.util.AnalysisError.shouldNotReachHere;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.Optional;
 
 import com.oracle.graal.pointsto.heap.TypedConstant;
@@ -36,6 +37,7 @@ import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class AnalysisMetaAccess extends UniverseMetaAccess {
 
@@ -55,14 +57,14 @@ public class AnalysisMetaAccess extends UniverseMetaAccess {
     }
 
     @Override
-    public AnalysisType[] lookupJavaTypes(Class<?>[] classes) {
+    public List<AnalysisType> lookupJavaTypes(Class<?>[] classes) {
         AnalysisType[] result = new AnalysisType[classes.length];
 
         for (int i = 0; i < result.length; ++i) {
             result[i] = this.lookupJavaType(classes[i]);
         }
 
-        return result;
+        return List.of(result);
     }
 
     public Optional<AnalysisType> optionalLookupJavaType(Class<?> clazz) {

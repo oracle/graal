@@ -767,7 +767,7 @@ public class BciBlockMapping implements JavaMethodContext {
      */
     private boolean unresolvedExceptionHandlerReachability = false;
 
-    protected final ExceptionHandler[] exceptionHandlers;
+    protected final List<ExceptionHandler> exceptionHandlers;
     protected BitSet[] bciExceptionHandlerIDs;
     private BciBlock startBlock;
     private BciBlock[] loopHeaders;
@@ -787,7 +787,7 @@ public class BciBlockMapping implements JavaMethodContext {
     protected BciBlockMapping(Bytecode code, DebugContext debug) {
         this.code = code;
         this.debug = debug;
-        this.exceptionHandlers = code.getExceptionHandlers().length != 0 ? code.getExceptionHandlers() : null;
+        this.exceptionHandlers = code.getExceptionHandlers();
         this.blockMap = new BciBlock[code.getCodeSize()];
     }
 
@@ -801,7 +801,7 @@ public class BciBlockMapping implements JavaMethodContext {
     }
 
     public BciBlock getHandlerBlock(int handlerID) {
-        int handlerBci = exceptionHandlers[handlerID].getHandlerBCI();
+        int handlerBci = exceptionHandlers.get(handlerID).getHandlerBCI();
         assert blockMap[handlerBci] != null;
         return blockMap[handlerBci];
     }
@@ -967,8 +967,8 @@ public class BciBlockMapping implements JavaMethodContext {
         }
 
         /* Process which handlers can be taken from each bci. */
-        for (int handlerID = exceptionHandlers.length - 1; handlerID >= 0; handlerID--) {
-            ExceptionHandler h = exceptionHandlers[handlerID];
+        for (int handlerID = exceptionHandlers.size() - 1; handlerID >= 0; handlerID--) {
+            ExceptionHandler h = exceptionHandlers.get(handlerID);
             for (int bci = h.getStartBCI(); bci < h.getEndBCI(); bci++) {
                 BitSet currentIDs = bciExceptionHandlerIDs[bci];
                 if (currentIDs == null) {
@@ -1027,8 +1027,7 @@ public class BciBlockMapping implements JavaMethodContext {
 
         Set<BciBlock> requestedBlockStarts = new HashSet<>();
         // start basic blocks at all exception handler blocks and mark them as exception entries
-        for (int i = 0; i < exceptionHandlers.length; i++) {
-            ExceptionHandler h = exceptionHandlers[i];
+        for (ExceptionHandler h : exceptionHandlers) {
             BciBlock xhandler = startNewBlock(h.getHandlerBCI());
             xhandler.setIsExceptionEntry();
             requestedBlockStarts.add(xhandler);
@@ -1567,7 +1566,7 @@ public class BciBlockMapping implements JavaMethodContext {
                      * We do not reuse exception dispatch blocks, because nested exception handlers
                      * might have problems reasoning about the correct frame state.
                      */
-                    ExceptionDispatchBlock curHandler = new ExceptionDispatchBlock(exceptionHandlers[handlerID], handlerID, bci);
+                    ExceptionDispatchBlock curHandler = new ExceptionDispatchBlock(exceptionHandlers.get(handlerID), handlerID, bci);
                     dispatchBlocks++;
                     curHandler.addSuccessor(getHandlerBlock(handlerID));
                     if (lastHandler != null) {

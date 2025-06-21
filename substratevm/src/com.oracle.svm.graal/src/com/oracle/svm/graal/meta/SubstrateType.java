@@ -26,6 +26,7 @@ package com.oracle.svm.graal.meta;
 
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
+import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -233,13 +234,13 @@ public class SubstrateType implements SharedType {
     }
 
     @Override
-    public ResolvedJavaType[] getInterfaces() {
+    public List<? extends ResolvedJavaType> getInterfaces() {
         DynamicHub[] hubs = hub.getInterfaces();
         SubstrateType[] result = new SubstrateType[hubs.length];
         for (int i = 0; i < result.length; i++) {
             result[i] = SubstrateMetaAccess.singleton().lookupJavaTypeFromHub(hubs[i]);
         }
-        return result;
+        return List.of(result);
     }
 
     private SubstrateType getSuperType() {
@@ -296,7 +297,7 @@ public class SubstrateType implements SharedType {
     }
 
     @Override
-    public SubstrateField[] getInstanceFields(boolean includeSuperclasses) {
+    public List<SubstrateField> getInstanceFields(boolean includeSuperclasses) {
         if (rawAllInstanceFields == null) {
             /*
              * The type was created at run time from the Class, so we do not have field information.
@@ -307,7 +308,7 @@ public class SubstrateType implements SharedType {
 
         SubstrateType superclass = getSuperclass();
         if (includeSuperclasses || superclass == null) {
-            return rawAllInstanceFields;
+            return List.of(rawAllInstanceFields);
 
         } else {
             int totalCount = getInstanceFieldCount();
@@ -315,13 +316,13 @@ public class SubstrateType implements SharedType {
             assert totalCount >= superCount;
 
             if (totalCount == superCount) {
-                return SubstrateField.EMPTY_ARRAY;
+                return List.of();
             } else if (superCount == 0) {
-                return rawAllInstanceFields;
+                return List.of(rawAllInstanceFields);
             } else {
-                assert Arrays.equals(superclass.getInstanceFields(true),
+                assert Arrays.equals(superclass.getInstanceFields(true).toArray(),
                                 Arrays.copyOf(rawAllInstanceFields, superCount)) : "Superclass fields must be the first elements of the fields defined in this class";
-                return Arrays.copyOfRange(rawAllInstanceFields, superCount, totalCount);
+                return List.of(rawAllInstanceFields).subList(superCount, totalCount);
             }
         }
     }
@@ -331,7 +332,7 @@ public class SubstrateType implements SharedType {
     }
 
     @Override
-    public ResolvedJavaField[] getStaticFields() {
+    public List<? extends ResolvedJavaField> getStaticFields() {
         throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
@@ -411,22 +412,22 @@ public class SubstrateType implements SharedType {
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredConstructors() {
+    public List<? extends ResolvedJavaMethod> getDeclaredConstructors() {
         return getDeclaredConstructors(true);
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
+    public List<? extends ResolvedJavaMethod> getDeclaredConstructors(boolean forceLink) {
         throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods() {
+    public List<? extends ResolvedJavaMethod> getDeclaredMethods() {
         return getDeclaredMethods(true);
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
+    public List<? extends ResolvedJavaMethod> getDeclaredMethods(boolean forceLink) {
         throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
@@ -460,12 +461,6 @@ public class SubstrateType implements SharedType {
     @Override
     public boolean isCloneableWithAllocation() {
         return SubstrateMetaAccess.singleton().lookupJavaType(Cloneable.class).isAssignableFrom(this);
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

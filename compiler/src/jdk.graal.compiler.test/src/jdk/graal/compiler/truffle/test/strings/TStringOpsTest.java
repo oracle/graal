@@ -29,6 +29,7 @@ import java.lang.reflect.Field;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.List;
 
 import org.junit.Assert;
 
@@ -104,12 +105,12 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
         ByteBuffer[] byteBuffers = new ByteBuffer[2];
         int nByteBuffers = 0;
         try {
-            ResolvedJavaMethod.Parameter[] parameters = method.getParameters();
-            Assert.assertTrue(parameters.length <= 64);
-            for (int i = 0; i < parameters.length; i++) {
-                if (parameters[i].getType().getName().equals("[B") && (ignore & (1L << i)) == 0) {
+            List<ResolvedJavaMethod.Parameter> parameters = method.getParameters();
+            Assert.assertTrue(parameters.size() <= 64);
+            for (int i = 0; i < parameters.size(); i++) {
+                if (parameters.get(i).getType().getName().equals("[B") && (ignore & (1L << i)) == 0) {
                     Assert.assertTrue(argsWithNative[i].toString(), argsWithNative[i] instanceof byte[]);
-                    Assert.assertEquals("J", parameters[i + 1].getType().getName());
+                    Assert.assertEquals("J", parameters.get(i + 1).getType().getName());
                     byte[] array = (byte[]) argsWithNative[i];
                     byteBuffers[nByteBuffers] = ByteBuffer.allocateDirect(array.length);
                     long bufferAddress = getBufferAddress(byteBuffers[nByteBuffers++]);

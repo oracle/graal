@@ -355,7 +355,7 @@ public abstract class NativeImage extends AbstractImage {
 
         String sep = "";
         AnnotatedType[] annotatedParameterTypes = getAnnotatedParameterTypes(m);
-        Parameter[] parameters = m.getParameters();
+        List<Parameter> parameters = m.getParameters();
         assert parameters != null;
         for (int i = 0; i < m.getSignature().getParameterCount(false); i++) {
             writer.append(sep);
@@ -366,9 +366,9 @@ public abstract class NativeImage extends AbstractImage {
                             annotatedParameterTypes[i].isAnnotationPresent(CConst.class),
                             isUnsigned(annotatedParameterTypes[i]),
                             metaAccess, nativeLibs));
-            if (parameters[i].isNamePresent()) {
+            if (parameters.get(i).isNamePresent()) {
                 writer.append(" ");
-                writer.append(parameters[i].getName());
+                writer.append(parameters.get(i).getName());
             }
         }
         writer.appendln(");");

@@ -40,6 +40,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import java.util.List;
+
 /**
  * Information about a Vector API vector type, such as element type, vector length, and the
  * corresponding {@link SimdStamp}.
@@ -223,7 +225,7 @@ public final class VectorAPIType {
         ConstantReflectionProvider constantReflection = providers.getConstantReflection();
         int vLength = -1;
         ResolvedJavaType eType = null;
-        ResolvedJavaField[] staticFields;
+        List<? extends ResolvedJavaField> staticFields;
         try {
             staticFields = javaType.getStaticFields();
         } catch (Error e) {

@@ -26,6 +26,7 @@ package jdk.graal.compiler.nodes.java;
 
 import java.lang.ref.Reference;
 import java.util.Collections;
+import java.util.List;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
@@ -83,10 +84,10 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
         if (!tool.getMetaAccess().lookupJavaType(Reference.class).isAssignableFrom(instanceClass) &&
                         tool.getMetaAccessExtensionProvider().canVirtualize(instanceClass)) {
             VirtualInstanceNode virtualObject = new VirtualInstanceNode(instanceClass(), true);
-            ResolvedJavaField[] fields = virtualObject.getFields();
-            ValueNode[] state = new ValueNode[fields.length];
+            List<? extends ResolvedJavaField> fields = virtualObject.getFields();
+            ValueNode[] state = new ValueNode[fields.size()];
             for (int i = 0; i < state.length; i++) {
-                state[i] = ConstantNode.defaultForKind(tool.getMetaAccessExtensionProvider().getStorageKind(fields[i].getType()), graph());
+                state[i] = ConstantNode.defaultForKind(tool.getMetaAccessExtensionProvider().getStorageKind(fields.get(i).getType()), graph());
             }
             tool.createVirtualObject(virtualObject, state, Collections.<MonitorIdNode> emptyList(), getNodeSourcePosition(), false);
             tool.replaceWithVirtual(virtualObject);

@@ -336,7 +336,7 @@ public abstract class NonSnippetLowerings {
                     nodesToLower.add(nullCheck);
                 }
                 SharedMethod method = (SharedMethod) callTarget.targetMethod();
-                JavaType[] signature = method.getSignature().toParameterTypes(callTarget.isStatic() ? null : method.getDeclaringClass());
+                List<JavaType> signature = method.getSignature().toParameterTypes(callTarget.isStatic() ? null : method.getDeclaringClass());
                 CallingConvention.Type callType = method.getCallingConventionKind().toType(true);
                 InvokeKind invokeKind = callTarget.invokeKind();
                 SharedMethod[] implementations = method.getImplementations();
@@ -484,19 +484,19 @@ public abstract class NonSnippetLowerings {
         }
 
         @SuppressWarnings("unused")
-        protected LoweredCallTargetNode createDirectCall(StructuredGraph graph, MethodCallTargetNode callTarget, NodeInputList<ValueNode> parameters, JavaType[] signature,
+        protected LoweredCallTargetNode createDirectCall(StructuredGraph graph, MethodCallTargetNode callTarget, NodeInputList<ValueNode> parameters, List<JavaType> signature,
                         CallingConvention.Type callType, InvokeKind invokeKind, SharedMethod targetMethod, FixedNode node) {
             return graph.add(new DirectCallTargetNode(parameters.toArray(ValueNode.EMPTY_ARRAY),
                             callTarget.returnStamp(), signature, targetMethod, callType, invokeKind));
         }
 
-        protected IndirectCallTargetNode createIndirectCall(StructuredGraph graph, MethodCallTargetNode callTarget, NodeInputList<ValueNode> parameters, SharedMethod method, JavaType[] signature,
+        protected IndirectCallTargetNode createIndirectCall(StructuredGraph graph, MethodCallTargetNode callTarget, NodeInputList<ValueNode> parameters, SharedMethod method, List<JavaType> signature,
                         CallingConvention.Type callType, InvokeKind invokeKind, ValueNode entry) {
             JavaMethodProfile methodProfile = callTarget instanceof SubstrateMethodCallTargetNode substrateCallTarget ? substrateCallTarget.getMethodProfile() : null;
             return graph.add(new SubstrateIndirectCallTargetNode(entry, parameters.toArray(ValueNode.EMPTY_ARRAY), callTarget.returnStamp(), signature, method, callType, invokeKind, methodProfile));
         }
 
-        private static CallTargetNode createUnreachableCallTarget(LoweringTool tool, FixedNode node, NodeInputList<ValueNode> parameters, StampPair returnStamp, JavaType[] signature,
+        private static CallTargetNode createUnreachableCallTarget(LoweringTool tool, FixedNode node, NodeInputList<ValueNode> parameters, StampPair returnStamp, List<JavaType> signature,
                         SharedMethod method,
                         CallingConvention.Type callType, InvokeKind invokeKind) {
             StructuredGraph graph = node.graph();
