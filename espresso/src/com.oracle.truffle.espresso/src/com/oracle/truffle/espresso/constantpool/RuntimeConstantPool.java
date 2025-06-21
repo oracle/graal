@@ -378,21 +378,7 @@ public final class RuntimeConstantPool extends ConstantPool {
                                 "Access check of: " + checkedKlass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
                 StringBuilder errorMessage = new StringBuilder("failed to access class ");
                 errorMessage.append(checkedKlass.getExternalName()).append(" from class ").append(accessingKlass.getExternalName());
-                if (context.getJavaVersion().modulesEnabled()) {
-                    errorMessage.append(" (");
-                    if (accessingKlass.module() == checkedKlass.module()) {
-                        errorMessage.append(checkedKlass.getExternalName());
-                        errorMessage.append(" and ");
-                        ClassRegistry.classInModuleOfLoader(context.getClassLoadingEnv(), accessingKlass, true, errorMessage, meta);
-                    } else {
-                        // checkedKlass is not an array type (getElementalType) nor a
-                        // primitive type (it would have passed the access checks)
-                        ClassRegistry.classInModuleOfLoader(context.getClassLoadingEnv(), (ObjectKlass) checkedKlass, false, errorMessage, meta);
-                        errorMessage.append("; ");
-                        ClassRegistry.classInModuleOfLoader(context.getClassLoadingEnv(), accessingKlass, false, errorMessage, meta);
-                    }
-                    errorMessage.append(")");
-                }
+                ClassRegistry.appendModuleAndLoadersDetails(context.getClassLoadingEnv(), checkedKlass, accessingKlass, errorMessage, context);
                 throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, errorMessage.toString());
             }
             return new ResolvedFoundClassConstant(klass);
