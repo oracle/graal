@@ -3,3 +3,4 @@ OpenIDE-Module: org.graalvm.visualizer.bytecodes
 OpenIDE-Module-Layer: org/graalvm/visualizer/bytecodes/layer.xml
 OpenIDE-Module-Localizing-Bundle: org/graalvm/visualizer/bytecodes/Bundle.properties
 OpenIDE-Module-Specification-Version: 1.1
+OpenIDE-Module-Hide-Classpath-Packages: jdk.graal.compiler.graphio.**

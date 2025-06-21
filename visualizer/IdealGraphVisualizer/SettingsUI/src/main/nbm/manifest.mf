@@ -4,4 +4,4 @@ OpenIDE-Module: org.graalvm.visualizer.settings.ui
 OpenIDE-Module-Localizing-Bundle: org/graalvm/visualizer/settings/ui/Bundle.properties
 OpenIDE-Module-Provides: org.graalvm.visualizer.settings.ui
 OpenIDE-Module-Specification-Version: 1.0
-
+OpenIDE-Module-Hide-Classpath-Packages: jdk.graal.compiler.graphio.**
