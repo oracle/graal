@@ -672,7 +672,7 @@ The `returnValue` function is always available on the provided `ctx` object, but
 
 If you ask whether GraalVM Insight causes any performance overhead when the scripts are applied, the answer is "No" or "Minimal".
 The overhead depends on what your scripts do.
-When they add and spread complex computations all around your code base, then the price for the computation will be payed.
+When they add and spread complex computations all around your code base, then the price for the computation will be paid.
 However, that would be overhead of your code, not of the instrumentation.
 Using a simple _function-count.js_ script, measure overhead.
 
