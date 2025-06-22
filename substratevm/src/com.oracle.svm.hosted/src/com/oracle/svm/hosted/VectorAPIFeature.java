@@ -171,12 +171,21 @@ public class VectorAPIFeature implements InternalFeature {
         Class<?> laneTypeClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".LaneType");
         UNSAFE.ensureClassInitialized(laneTypeClass);
 
+        Class<?> valueLayoutClass = ReflectionUtil.lookupClass("java.lang.foreign.ValueLayout");
+        Method valueLayoutVarHandle = ReflectionUtil.lookupMethod(valueLayoutClass, "varHandle");
+
         for (int laneTypeIndex = 0; laneTypeIndex < vectorElementNames.length; laneTypeIndex++) {
             String elementName = vectorElementNames[laneTypeIndex];
             Class<?> vectorElement = vectorElements[laneTypeIndex];
             int laneTypeSwitchKey = laneTypeIndex + 1;
             String vectorClassName = VECTOR_API_PACKAGE_NAME + "." + elementName + "Vector";
             Class<?> vectorClass = ReflectionUtil.lookupClass(vectorClassName);
+
+            // Ensure VarHandle used by memorySegmentGet/Set is initialized.
+            // Java 22+: ValueLayout valueLayout = (...); valueLayout.varHandle();
+            Object valueLayout = ReflectionUtil.readStaticField(vectorClass, "ELEMENT_LAYOUT");
+            ReflectionUtil.invokeMethod(valueLayoutVarHandle, valueLayout);
+
             for (int vectorShapeIndex = 0; vectorShapeIndex < vectorSizes.length; vectorShapeIndex++) {
                 String size = vectorSizes[vectorShapeIndex];
                 int vectorShapeSwitchKey = vectorShapeIndex + 1;
