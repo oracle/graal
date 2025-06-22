@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
@@ -156,6 +158,19 @@ final class Target_jdk_incubator_vector_ByteVector {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.ArrayBaseOffset, declClass = byte[].class, isFinal = true) //
     @TargetElement(name = "ARRAY_BASE") //
     private static long arrayBase;
+
+    @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    @Alias static ValueLayout.OfByte ELEMENT_LAYOUT;
+
+    @Substitute
+    static void memorySegmentSet(MemorySegment ms, long o, int i, byte e) {
+        ELEMENT_LAYOUT.varHandle().set(ms, o + i * 1L, e);
+    }
+
+    @Substitute
+    static byte memorySegmentGet(MemorySegment ms, long o, int i) {
+        return (byte) ELEMENT_LAYOUT.varHandle().get(ms, o + i * 1L);
+    }
 }
 
 @TargetClass(className = "jdk.incubator.vector.ShortVector", onlyWith = VectorAPIEnabled.class)
@@ -166,6 +181,19 @@ final class Target_jdk_incubator_vector_ShortVector {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.ArrayBaseOffset, declClass = short[].class, isFinal = true) //
     @TargetElement(name = "ARRAY_BASE") //
     private static long arrayBase;
+
+    @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    @Alias static ValueLayout.OfShort ELEMENT_LAYOUT;
+
+    @Substitute
+    static void memorySegmentSet(MemorySegment ms, long o, int i, short e) {
+        ELEMENT_LAYOUT.varHandle().set(ms, o + i * 2L, e);
+    }
+
+    @Substitute
+    static short memorySegmentGet(MemorySegment ms, long o, int i) {
+        return (short) ELEMENT_LAYOUT.varHandle().get(ms, o + i * 2L);
+    }
 }
 
 @TargetClass(className = "jdk.incubator.vector.IntVector", onlyWith = VectorAPIEnabled.class)
@@ -176,6 +204,19 @@ final class Target_jdk_incubator_vector_IntVector {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.ArrayBaseOffset, declClass = int[].class, isFinal = true) //
     @TargetElement(name = "ARRAY_BASE") //
     private static long arrayBase;
+
+    @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    @Alias static ValueLayout.OfInt ELEMENT_LAYOUT;
+
+    @Substitute
+    static void memorySegmentSet(MemorySegment ms, long o, int i, int e) {
+        ELEMENT_LAYOUT.varHandle().set(ms, o + i * 4L, e);
+    }
+
+    @Substitute
+    static int memorySegmentGet(MemorySegment ms, long o, int i) {
+        return (int) ELEMENT_LAYOUT.varHandle().get(ms, o + i * 4L);
+    }
 }
 
 @TargetClass(className = "jdk.incubator.vector.LongVector", onlyWith = VectorAPIEnabled.class)
@@ -186,6 +227,19 @@ final class Target_jdk_incubator_vector_LongVector {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.ArrayBaseOffset, declClass = long[].class, isFinal = true) //
     @TargetElement(name = "ARRAY_BASE") //
     private static long arrayBase;
+
+    @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    @Alias static ValueLayout.OfLong ELEMENT_LAYOUT;
+
+    @Substitute
+    static void memorySegmentSet(MemorySegment ms, long o, int i, long e) {
+        ELEMENT_LAYOUT.varHandle().set(ms, o + i * 8L, e);
+    }
+
+    @Substitute
+    static long memorySegmentGet(MemorySegment ms, long o, int i) {
+        return (long) ELEMENT_LAYOUT.varHandle().get(ms, o + i * 8L);
+    }
 }
 
 @TargetClass(className = "jdk.incubator.vector.FloatVector", onlyWith = VectorAPIEnabled.class)
@@ -196,6 +250,19 @@ final class Target_jdk_incubator_vector_FloatVector {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.ArrayBaseOffset, declClass = float[].class, isFinal = true) //
     @TargetElement(name = "ARRAY_BASE") //
     private static long arrayBase;
+
+    @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    @Alias static ValueLayout.OfFloat ELEMENT_LAYOUT;
+
+    @Substitute
+    static void memorySegmentSet(MemorySegment ms, long o, int i, float e) {
+        ELEMENT_LAYOUT.varHandle().set(ms, o + i * 4L, e);
+    }
+
+    @Substitute
+    static float memorySegmentGet(MemorySegment ms, long o, int i) {
+        return (float) ELEMENT_LAYOUT.varHandle().get(ms, o + i * 4L);
+    }
 }
 
 @TargetClass(className = "jdk.incubator.vector.DoubleVector", onlyWith = VectorAPIEnabled.class)
@@ -206,4 +273,17 @@ final class Target_jdk_incubator_vector_DoubleVector {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.ArrayBaseOffset, declClass = double[].class, isFinal = true) //
     @TargetElement(name = "ARRAY_BASE") //
     private static long arrayBase;
+
+    @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    @Alias static ValueLayout.OfDouble ELEMENT_LAYOUT;
+
+    @Substitute
+    static void memorySegmentSet(MemorySegment ms, long o, int i, double e) {
+        ELEMENT_LAYOUT.varHandle().set(ms, o + i * 8L, e);
+    }
+
+    @Substitute
+    static double memorySegmentGet(MemorySegment ms, long o, int i) {
+        return (double) ELEMENT_LAYOUT.varHandle().get(ms, o + i * 8L);
+    }
 }
