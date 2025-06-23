@@ -78,7 +78,7 @@ import com.oracle.truffle.api.source.SourceSection;
                 contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
                 fileTypeDetectors = WasmFileDetector.class, //
                 website = "https://www.graalvm.org/webassembly/", //
-                sandbox = SandboxPolicy.CONSTRAINED)
+                sandbox = SandboxPolicy.UNTRUSTED)
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
 public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     public static final String ID = "wasm";
