@@ -46,12 +46,12 @@
     "oraclejdk24":       {"name": "jpg-jdk",   "version": "24", "build_id": "jdk-24.0.1+9", "platformspecific": true, "extrabundles": ["static-libs"]},
 
     "oraclejdk-latest":       {"name": "jpg-jdk",   "version": "26",      "build_id": "jdk-26+3", "platformspecific": true, "extrabundles": ["static-libs"]},
-    "labsjdk-ce-latest":      {"name": "labsjdk",   "version": "ce-26+3-jvmci-b01-20250620085128-4c06c4b7c3", "platformspecific": true },
-    "labsjdk-ce-latestDebug": {"name": "labsjdk",   "version": "ce-26+3-jvmci-b01-20250620085128-4c06c4b7c3-debug", "platformspecific": true },
-    "labsjdk-ce-latest-llvm": {"name": "labsjdk",   "version": "ce-26+3-jvmci-b01-20250620085128-4c06c4b7c3-sulong", "platformspecific": true },
-    "labsjdk-ee-latest":      {"name": "labsjdk",   "version": "ee-26+3-jvmci-b01-20250620085128-4c06c4b7c3+845647934d", "platformspecific": true },
-    "labsjdk-ee-latestDebug": {"name": "labsjdk",   "version": "ee-26+3-jvmci-b01-20250620085128-4c06c4b7c3+845647934d-debug", "platformspecific": true },
-    "labsjdk-ee-latest-llvm": {"name": "labsjdk",   "version": "ee-26+3-jvmci-b01-20250620085128-4c06c4b7c3+845647934d-sulong", "platformspecific": true }
+    "labsjdk-ce-latest":      {"name": "labsjdk",   "version": "ce-26+3-jvmci-b01-20250619180647-9d27805f9f", "platformspecific": true },
+    "labsjdk-ce-latestDebug": {"name": "labsjdk",   "version": "ce-26+3-jvmci-b01-20250619180647-9d27805f9f-debug", "platformspecific": true },
+    "labsjdk-ce-latest-llvm": {"name": "labsjdk",   "version": "ce-26+3-jvmci-b01-20250619180647-9d27805f9f-sulong", "platformspecific": true },
+    "labsjdk-ee-latest":      {"name": "labsjdk",   "version": "ee-26+3-jvmci-b01-20250619180647-9d27805f9f+0494f259b5", "platformspecific": true },
+    "labsjdk-ee-latestDebug": {"name": "labsjdk",   "version": "ee-26+3-jvmci-b01-20250619180647-9d27805f9f+0494f259b5-debug", "platformspecific": true },
+    "labsjdk-ee-latest-llvm": {"name": "labsjdk",   "version": "ee-26+3-jvmci-b01-20250619180647-9d27805f9f+0494f259b5-sulong", "platformspecific": true }
   },
 
   "eclipse": {
