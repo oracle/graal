@@ -51,19 +51,12 @@ import com.oracle.svm.webimage.jtt.testdispatcher.JSAnnotationTests;
 public class JS_JTT_JSAnnotation extends JTTTestSuite {
 
     // @formatter:off
-    // TODO GR-62854 Remove Runnable#run once JSBodyFeature is enabled for WasmGC and InterceptJSInvokeTypeFlow is used
     private static final String REFLECT_CONFIG = """
 [
   {
     "name" : "java.lang.String",
     "methods": [
         {"name" : "indexOf"}
-    ]
-  },
-  {
-    "name" : "java.lang.Runnable",
-    "methods": [
-        {"name" : "run"}
     ]
   }
 ]""";

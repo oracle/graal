@@ -24,11 +24,7 @@
  */
 package com.oracle.svm.hosted.webimage.codegen;
 
-import java.lang.reflect.Executable;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.List;
-import java.util.Set;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platforms;
@@ -46,11 +42,8 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.webimage.codegen.node.InterceptJSInvokeNode;
 import com.oracle.svm.hosted.webimage.codegen.oop.ClassWithMirrorLowerer;
 import com.oracle.svm.hosted.webimage.js.JSObjectAccessMethodSupport;
-import com.oracle.svm.hosted.webimage.util.ReflectUtil;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.webimage.api.Nothing;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
@@ -79,17 +72,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @AutomaticallyRegisteredFeature
 @Platforms(WebImageJSPlatform.class)
 public final class JSBodyFeature implements InternalFeature {
-    // The set of methods that are potentially overridden by a JS-annotated method.
-    private Set<Method> jsOverridden;
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        FeatureImpl.AfterRegistrationAccessImpl accessImpl = (FeatureImpl.AfterRegistrationAccessImpl) access;
-        ImageClassLoader imageClassLoader = accessImpl.getImageClassLoader();
-        List<Class<?>> allClasses = imageClassLoader.findSubclasses(Object.class, true);
-        jsOverridden = ReflectUtil.findBaseMethodsOfJSAnnotated(allClasses);
-    }
-
     @Override
     public void registerGraphBuilderPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
         plugins.appendNodePlugin(new NodePlugin() {
@@ -98,28 +80,6 @@ public final class JSBodyFeature implements InternalFeature {
                 if (AnnotationAccess.isAnnotationPresent(method.getDeclaringClass(), JS.Import.class)) {
                     ((AnalysisType) method.getDeclaringClass()).registerAsInstantiated("JS.Import classes might be allocated in JavaScript. We need to tell the static analysis about that");
                 }
-                if (canBeJavaScriptCall((AnalysisMethod) method)) {
-                    InterceptJSInvokeNode intercept = b.append(new InterceptJSInvokeNode(method, b.bci()));
-                    for (final ValueNode arg : args) {
-                        intercept.arguments().add(arg);
-                    }
-                }
-                return false;
-            }
-
-            private boolean canBeJavaScriptCall(AnalysisMethod method) {
-                Executable executable;
-                try {
-                    executable = method.getJavaMethod();
-                } catch (Throwable e) {
-                    // Either a substituted method, or a method with a malformed bytecode signature.
-                    // This is most likely not a JS-annotated method.
-                    return false;
-                }
-                if (executable instanceof Method) {
-                    return jsOverridden.contains(executable);
-                }
-                // Not a normal method (constructor).
                 return false;
             }
 
@@ -313,10 +273,5 @@ public final class JSBodyFeature implements InternalFeature {
         if (requireAnalysisIteration) {
             access.requireAnalysisIteration();
         }
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        jsOverridden = null;
     }
 }
