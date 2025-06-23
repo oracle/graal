@@ -238,6 +238,22 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
 
+    # This uses the lowest Multi-Release version possible,
+    # for checking that Multi-Release classes are used as expected (see CheckMultiReleaseSupport).
+    "com.oracle.truffle.api.jdk9" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+      ],
+      "overlayTarget" : "com.oracle.truffle.api",
+      "checkPackagePrefix" : "false",
+      "multiReleaseJarVersion" : "9",
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "9+",
+      "workingSets" : "API,Truffle",
+      "graalCompilerSourceEdition": "ignore",
+    },
+
     "com.oracle.truffle.api.jdk21" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],

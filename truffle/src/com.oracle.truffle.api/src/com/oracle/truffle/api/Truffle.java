@@ -48,6 +48,7 @@ import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
 
+import com.oracle.truffle.api.impl.CheckMultiReleaseSupport;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 
 /**
@@ -105,6 +106,55 @@ public final class Truffle {
     }
 
     private static TruffleRuntime createRuntime() throws InternalError {
+        if (!CheckMultiReleaseSupport.isSupported() && !Boolean.getBoolean("polyglotimpl.DisableMultiReleaseCheck")) {
+            throw new InternalError(
+                            """
+                                            Truffle cannot be loaded because Multi-Release classes are not loaded correctly.
+                                            This most likely means Truffle classes have been repackaged incorrectly and the `Multi-Release: true` attribute in META-INF/MANIFEST.MF has been lost.
+
+                                            If you are using the Maven shade plugin, use:
+                                            <plugin>
+                                              <groupId>org.apache.maven.plugins</groupId>
+                                              <artifactId>maven-shade-plugin</artifactId>
+                                              <executions>
+                                                <execution>
+                                                  ...
+                                                  <configuration>
+                                                    <transformers>
+                                                      <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                                      <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                                        <manifestEntries>
+                                                          <Multi-Release>true</Multi-Release>
+                                                        </manifestEntries>
+                                                      </transformer>
+                                                    </transformers>
+                                                  </configuration>
+                                                </execution>
+                                              </executions>
+                                            </plugin>
+
+                                            If you are using the Maven assembly plugin, use:
+                                            <plugin>
+                                              <groupId>org.apache.maven.plugins</groupId>
+                                              <artifactId>maven-assembly-plugin</artifactId>
+                                              <executions>
+                                                <execution>
+                                                  ...
+                                                  <configuration>
+                                                    <archive>
+                                                      <manifestEntries>
+                                                        <Multi-Release>true</Multi-Release>
+                                                      </manifestEntries>
+                                                    </archive>
+                                                  </configuration>
+                                                </execution>
+                                              </executions>
+                                            </plugin>
+
+                                            This check can be disabled with '-Dpolyglotimpl.DisableMultiReleaseCheck=true' to unblock things, however that will likely lead to incorrect behavior by using the wrong classes.
+                                            """);
+        }
+
         if (Boolean.getBoolean("truffle.UseFallbackRuntime")) {
             return new DefaultTruffleRuntime("The fallback runtime was explicitly selected using the -Dtruffle.UseFallbackRuntime option.");
         }
