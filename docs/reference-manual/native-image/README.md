@@ -148,13 +148,6 @@ The [Maven plugin for Native Image](https://graalvm.github.io/native-build-tools
                   </goals>
                   <phase>package</phase>
                 </execution>
-                <execution>
-                <id>test-native</id>
-                  <goals>
-                    <goal>test</goal>
-                  </goals>
-                  <phase>test</phase>
-                </execution>
               </executions>
             </plugin>
           </plugins>
@@ -206,6 +199,8 @@ The [Gradle plugin for Native Image](https://graalvm.github.io/native-build-tool
         ```
         Follow the prompts. 
         This command sets up a new Java application with the necessary directory structure and build files.
+        
+        > If caching was enabled by the project generator in the _gradle.properties_ file, comment out or remove the `org.gradle.configuration-cache=true` line.
 
 2. Enable the Gradle plugin for Native Image by adding the following to `plugins` section of your project’s _build.gradle_ file:
     ```
