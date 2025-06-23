@@ -63,6 +63,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
@@ -1777,6 +1778,30 @@ final class Target_jdk_internal_vm_vector_VectorSupport {
     interface Target_jdk_internal_vm_vector_VectorSupport_VectorMaskOp {
     }
 
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "IndexOperation", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_IndexOperation {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "SelectFromTwoVector", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_SelectFromTwoVector {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "LoadVectorOperationWithMap", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_LoadVectorOperationWithMap {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "StoreVectorOperationWithMap", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_StoreVectorOperationWithMap {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorSelectFromOp", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_VectorSelectFromOp {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "CompressExpandOperation", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_CompressExpandOperation {
+    }
+
     // The methods below have intrinsics in VectorAPIIntrinsics. On fast paths, those should be used
     // instead of the Java fallback implementation. Since we do not rely on these methods on fast
     // paths, we can omit them from PE and reduce the number of methods needed for runtime
@@ -1857,6 +1882,53 @@ final class Target_jdk_internal_vm_vector_VectorSupport {
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native long maskReductionCoerced(int oper, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_VectorMaskOp defaultImpl);
+
+    // The following methods are not yet intrinsified, but they pull in a lot of code into the
+    // native image nevertheless.
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector indexVector(Class<?> vClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v, int step, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_IndexOperation defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector libraryUnaryOp(long addr, Class<?> vClass, Class<?> eClass, int length, String debugName, Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_UnaryOperation defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload libraryBinaryOp(long addr, Class<?> vClass, Class<?> eClass, int length, String debugName, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v1, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v2, Target_jdk_internal_vm_vector_VectorSupport_BinaryOperation defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector selectFromTwoVectorOp(Class<?> vClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v1, Target_jdk_internal_vm_vector_VectorSupport_Vector v2, Target_jdk_internal_vm_vector_VectorSupport_Vector v3, Target_jdk_internal_vm_vector_VectorSupport_SelectFromTwoVector defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector loadWithMap(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Class<?> vectorIndexClass, Object base, long offset, Target_jdk_internal_vm_vector_VectorSupport_Vector index_vector, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Object container, int index, int[] indexMap, int indexM, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_LoadVectorOperationWithMap defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native void storeWithMap(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Class<?> vectorIndexClass, Object base, long offset, Target_jdk_internal_vm_vector_VectorSupport_Vector index_vector, Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Object container, int index, int[] indexMap, int indexM, Target_jdk_internal_vm_vector_VectorSupport_StoreVectorOperationWithMap defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector selectFromOp(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v1, Target_jdk_internal_vm_vector_VectorSupport_Vector v2, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_VectorSelectFromOp defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload compressExpandOp(int opr, Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_CompressExpandOperation defaultImpl);
+}
+
+@TargetClass(className = "jdk.incubator.vector.VectorMathLibrary", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_VectorMathLibrary {
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_incubator_vector_Vector unaryMathOp(Target_jdk_incubator_vector_VectorOperators.Target_jdk_incubator_vector_VectorOperators_Unary op, int opc, Target_jdk_incubator_vector_VectorSpecies vspecies, IntFunction<Target_jdk_internal_vm_vector_VectorSupport.Target_jdk_internal_vm_vector_VectorSupport_UnaryOperation> implSupplier, Target_jdk_incubator_vector_Vector v);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_incubator_vector_Vector binaryMathOp(Target_jdk_incubator_vector_VectorOperators.Target_jdk_incubator_vector_VectorOperators_Binary op, int opc, Target_jdk_incubator_vector_VectorSpecies vspecies, IntFunction<Target_jdk_internal_vm_vector_VectorSupport.Target_jdk_internal_vm_vector_VectorSupport_BinaryOperation> implSupplier, Target_jdk_incubator_vector_Vector v1, Target_jdk_incubator_vector_Vector v2);
 }
 
 @TargetClass(className = "jdk.incubator.vector.AbstractSpecies", onlyWith = VectorAPIEnabled.class)
@@ -1893,8 +1965,20 @@ final class Target_jdk_incubator_vector_AbstractSpecies {
     static native Target_jdk_incubator_vector_AbstractSpecies computeSpecies(Target_jdk_incubator_vector_LaneType laneType, Target_jdk_incubator_vector_VectorShape shape);
 }
 
+@TargetClass(className = "jdk.incubator.vector.VectorSpecies", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_VectorSpecies {
+}
+
 @TargetClass(className = "jdk.incubator.vector.VectorOperators", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_VectorOperators {
+
+    @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "Unary", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_incubator_vector_VectorOperators_Unary {
+    }
+
+    @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "Binary", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_incubator_vector_VectorOperators_Binary {
+    }
 
     @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "OperatorImpl", onlyWith = VectorAPIEnabled.class)
     private static final class Target_jdk_incubator_vector_VectorOperators_OperatorImpl {
