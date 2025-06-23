@@ -75,7 +75,13 @@ public final class EspressoConstantPool implements ConstantPool {
 
     @Override
     public JavaField lookupField(int cpi, ResolvedJavaMethod method, int opcode) {
-        EspressoResolvedJavaField field = lookupResolvedField(cpi, (EspressoResolvedJavaMethod) method, opcode);
+        EspressoResolvedJavaField field;
+        try {
+            field = lookupResolvedField(cpi, (EspressoResolvedJavaMethod) method, opcode);
+        } catch (Throwable t) {
+            // ignore errors that can happen during type resolution
+            field = null;
+        }
         if (field != null) {
             return field;
         }
@@ -90,7 +96,13 @@ public final class EspressoConstantPool implements ConstantPool {
 
     @Override
     public JavaMethod lookupMethod(int cpi, int opcode, ResolvedJavaMethod caller) {
-        EspressoResolvedJavaMethod method = lookupResolvedMethod(cpi, opcode, (EspressoResolvedJavaMethod) caller);
+        EspressoResolvedJavaMethod method;
+        try {
+            method = lookupResolvedMethod(cpi, opcode, (EspressoResolvedJavaMethod) caller);
+        } catch (Throwable t) {
+            // ignore errors that can happen during type resolution
+            method = null;
+        }
         if (method != null) {
             return method;
         }

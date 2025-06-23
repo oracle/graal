@@ -50,6 +50,8 @@ import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType.toJVMCIField;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType.toJVMCIMethod;
 
+import java.util.logging.Level;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.JavaKind;
@@ -77,6 +79,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoLinkResolver;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -209,13 +212,12 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         RuntimeConstantPool constantPool = getRuntimeConstantPool(self, meta);
         if (safeTagAt(constantPool, cpi, meta) == ConstantPool.Tag.CLASS) {
             ResolvedConstant resolvedConstant = constantPool.peekResolvedOrNull(cpi, meta);
-            if (resolvedConstant != null) {
-                Klass klass = (Klass) resolvedConstant.value();
-                LOGGER.finer(() -> "ECP.lookupType found " + klass);
-                return toJVMCIObjectType(klass, meta);
-            } else {
+            if (resolvedConstant == null || !resolvedConstant.isSuccess()) {
                 return toJVMCIUnresolvedType(TypeSymbols.nameToType(constantPool.className(cpi)), meta);
             }
+            Klass klass = (Klass) resolvedConstant.value();
+            LOGGER.finer(() -> "ECP.lookupType found " + klass);
+            return toJVMCIObjectType(klass, meta);
         }
         if (safeTagAt(constantPool, cpi, meta) == ConstantPool.Tag.UTF8) {
             return toJVMCIUnresolvedType(TypeSymbols.nameToType(constantPool.utf8At(cpi)), meta);
@@ -367,13 +369,12 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
             case LDC2_W:
                 if (safeTagAt(constantPool, cpi, meta) == ConstantPool.Tag.CLASS) {
                     ResolvedConstant resolvedConstant = constantPool.peekResolvedOrNull(cpi, meta);
-                    if (resolvedConstant != null) {
-                        Klass klass = (Klass) resolvedConstant.value();
-                        LOGGER.finer(() -> "ECP.lookupReferencedType found " + klass);
-                        return toJVMCIObjectType(klass, meta);
-                    } else {
+                    if (resolvedConstant == null || !resolvedConstant.isSuccess()) {
                         return toJVMCIUnresolvedType(TypeSymbols.nameToType(constantPool.className(cpi)), meta);
                     }
+                    Klass klass = (Klass) resolvedConstant.value();
+                    LOGGER.finer(() -> "ECP.lookupReferencedType found " + klass);
+                    return toJVMCIObjectType(klass, meta);
                 }
                 break;
             case GETSTATIC:
@@ -386,14 +387,20 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
             case INVOKEINTERFACE:
                 if (safeTagAt(constantPool, cpi, meta).isMember()) {
                     int holderClassIndex = constantPool.memberClassIndex(cpi);
-                    Klass holderKlass = findObjectType(holderClassIndex, constantPool, false, meta);
-                    if (holderKlass != null) {
-                        LOGGER.finer(() -> "ECP.lookupReferencedType found " + holderKlass);
-                        return toJVMCIObjectType(holderKlass, meta);
-                    } else {
+                    Klass holderKlass;
+                    try {
+                        holderKlass = findObjectType(holderClassIndex, constantPool, false, meta);
+                    } catch (EspressoException e) {
+                        LOGGER.log(Level.FINE, "ECP.lookupReferencedType exception during lookup", e);
+                        holderKlass = null;
+                    }
+                    if (holderKlass == null) {
                         Symbol<Name> holderName = constantPool.memberClassName(cpi);
                         return toJVMCIUnresolvedType(TypeSymbols.nameToType(holderName), meta);
                     }
+                    Klass finalHolderKlass = holderKlass;
+                    LOGGER.finer(() -> "ECP.lookupReferencedType found " + finalHolderKlass);
+                    return toJVMCIObjectType(holderKlass, meta);
                 }
                 break;
         }
@@ -499,15 +506,13 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         }
         switch (tag) {
             case CLASS -> {
-                if (resolvedConstantOrNull != null) {
-                    Klass klass = (Klass) resolvedConstantOrNull.value();
-                    LOGGER.finer(() -> "ECP.lookupConstant found " + klass);
-                    return toJVMCIObjectType(klass, meta);
-                } else if (resolve) {
-                    throw EspressoError.shouldNotReachHere();
-                } else {
+                if (resolvedConstantOrNull == null || !resolvedConstantOrNull.isSuccess()) {
+                    EspressoError.guarantee(!resolve || resolvedConstantOrNull != null, "Should have been resolved");
                     return toJVMCIUnresolvedType(TypeSymbols.nameToType(constantPool.className(cpi)), meta);
                 }
+                Klass klass = (Klass) resolvedConstantOrNull.value();
+                LOGGER.finer(() -> "ECP.lookupConstant found " + klass);
+                return toJVMCIObjectType(klass, meta);
             }
             case STRING -> {
                 return wrapEspressoObjectConstant(constantPool.resolvedStringAt(cpi), meta);
