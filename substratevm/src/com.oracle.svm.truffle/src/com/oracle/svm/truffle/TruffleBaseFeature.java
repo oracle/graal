@@ -1665,10 +1665,6 @@ final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
 final class Target_jdk_incubator_vector_Vector {
 }
 
-@TargetClass(className = "jdk.incubator.vector.VectorMask", onlyWith = VectorAPIEnabled.class)
-final class Target_jdk_incubator_vector_VectorMask {
-}
-
 @TargetClass(className = "jdk.incubator.vector.AbstractVector", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_AbstractVector {
 
@@ -1678,11 +1674,27 @@ final class Target_jdk_incubator_vector_AbstractVector {
     static native ArrayIndexOutOfBoundsException wrongPart(Target_jdk_incubator_vector_AbstractSpecies dsp, Target_jdk_incubator_vector_AbstractSpecies rsp, boolean lanewise, int part);
 }
 
+@TargetClass(className = "jdk.internal.vm.vector.Utils", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_internal_vm_vector_Utils {
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native boolean isNonCapturingLambda(Object o);
+}
+
 @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_internal_vm_vector_VectorSupport {
 
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "Vector", onlyWith = VectorAPIEnabled.class)
+    static final class Target_jdk_internal_vm_vector_VectorSupport_Vector {
+    }
+
     @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorMask", onlyWith = VectorAPIEnabled.class)
     static final class Target_jdk_internal_vm_vector_VectorSupport_VectorMask {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorShuffle", onlyWith = VectorAPIEnabled.class)
+    static final class Target_jdk_internal_vm_vector_VectorSupport_VectorShuffle {
     }
 
     @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorSpecies", onlyWith = VectorAPIEnabled.class)
@@ -1693,35 +1705,158 @@ final class Target_jdk_internal_vm_vector_VectorSupport {
     static final class Target_jdk_internal_vm_vector_VectorSupport_VectorPayload {
     }
 
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "FromBitsCoercedOperation", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_FromBitsCoercedOperation {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "IndexPartiallyInUpperRangeOperation", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_IndexPartiallyInUpperRangeOperation {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "ReductionOperation", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_ReductionOperation {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VecExtractOp", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_VecExtractOp {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VecInsertOp", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_VecInsertOp {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "UnaryOperation", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_UnaryOperation {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "BinaryOperation", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_BinaryOperation {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "TernaryOperation", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_TernaryOperation {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "LoadOperation", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_LoadOperation {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "LoadVectorMaskedOperation", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_LoadVectorMaskedOperation {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "StoreVectorOperation", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_StoreVectorOperation {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "StoreVectorMaskedOperation", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_StoreVectorMaskedOperation {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorCompareOp", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_VectorCompareOp {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorBlendOp", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_VectorBlendOp {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorBroadcastIntOp", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_VectorBroadcastIntOp {
+    }
+
     @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorConvertOp", onlyWith = VectorAPIEnabled.class)
     interface Target_jdk_internal_vm_vector_VectorSupport_VectorConvertOp {
     }
 
-    // This is problematic because of the `lanewiseTemplate` for binary operations on integral
-    // vectors. These have error handling for division by zero, where the input vector is tested
-    // for zeroes. The `anyTrue` predicate is used on the result of that test. `anyTrue` passes a
-    // lambda that implements `BiFunction` to `VectorSupport.test`. However, SubstrateVM cannot
-    // pinpoint the precise type of the mask (the test result), which makes the call site
-    // polymorphic. Given a precise type for the mask that results from comparing the input vector
-    // to 0, there should only be one admissible candidate for the `BiFunction` parameter.
-    // Furthermore, this should only show up in compilations of the `DIV` operator, but it
-    // contaminates compilations of other operators too.
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorRearrangeOp", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_VectorRearrangeOp {
+    }
+
+    @TargetClass(className = "jdk.internal.vm.vector.VectorSupport", innerClass = "VectorMaskOp", onlyWith = VectorAPIEnabled.class)
+    interface Target_jdk_internal_vm_vector_VectorSupport_VectorMaskOp {
+    }
+
+    // The methods below have intrinsics in VectorAPIIntrinsics. On fast paths, those should be used
+    // instead of the Java fallback implementation. Since we do not rely on these methods on fast
+    // paths, we can omit them from PE and reduce the number of methods needed for runtime
+    // compilation.
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload fromBitsCoerced(Class<?> vmClass, Class<?> eClass, int length, long bits, int mode, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_FromBitsCoercedOperation defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_VectorMask indexPartiallyInUpperRange(Class<?> mClass, Class<?> eClass, int length, long offset, long limit, Target_jdk_internal_vm_vector_VectorSupport_IndexPartiallyInUpperRangeOperation defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native long reductionCoerced(int oprId, Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_ReductionOperation defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native long extract(Class<?> vClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload vm, int i, Target_jdk_internal_vm_vector_VectorSupport_VecExtractOp defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector insert(Class<?> vClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v, int i, long val, Target_jdk_internal_vm_vector_VectorSupport_VecInsertOp defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector unaryOp(int oprId, Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_UnaryOperation defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload binaryOp(int oprId, Class<?> vmClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v1, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v2, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_BinaryOperation defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector ternaryOp(int oprId, Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v1, Target_jdk_internal_vm_vector_VectorSupport_Vector v2, Target_jdk_internal_vm_vector_VectorSupport_Vector v3, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_TernaryOperation defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload load(Class<?> vmClass, Class<?> eClass, int length, Object base, long offset, boolean fromSegment, Object container, long index, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_LoadOperation defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector loadMasked(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Object base, long offset, boolean fromSegment, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, int offsetInRange, Object container, long index, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_LoadVectorMaskedOperation defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native void store(Class<?> vClass, Class<?> eClass, int length, Object base, long offset, boolean fromSegment, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v, Object container, long index, Target_jdk_internal_vm_vector_VectorSupport_StoreVectorOperation defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native void storeMasked(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Object base, long offset, boolean fromSegment, Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Object container, long index, Target_jdk_internal_vm_vector_VectorSupport_StoreVectorMaskedOperation defaultImpl);
+
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
     static native boolean test(int cond, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m1, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m2, BiFunction<Target_jdk_internal_vm_vector_VectorSupport_VectorMask, Target_jdk_internal_vm_vector_VectorSupport_VectorMask, Boolean> defaultImpl);
 
-    // This is called internally by, e.g., `Long128Mask.cast`. `VectorSupport.convert` then calls
-    // a function using the `VectorConvertOp` functional interface. Even though `Long128Mask` passes
-    // in a fixed lambda, SubstrateVM sees multiple potential call targets, some of which throw
-    // AssertionErrors in impossible switch cases. Also, dropping this leads to blocklist violations
-    // with the MemorySegment API.
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    native static Target_jdk_internal_vm_vector_VectorSupport_VectorPayload convert(int oprId, Class<?> fromVectorClass, Class<?> fromeClass, int fromVLen, Class<?> toVectorClass, Class<?> toeClass, int toVLen, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_VectorConvertOp defaultImpl);
-}
+    static native Target_jdk_internal_vm_vector_VectorSupport_VectorMask compare(int cond, Class<?> vectorClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v1, Target_jdk_internal_vm_vector_VectorSupport_Vector v2, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_VectorCompareOp defaultImpl);
 
-@TargetClass(className = "jdk.incubator.vector.VectorSpecies", onlyWith = VectorAPIEnabled.class)
-final class Target_jdk_incubator_vector_VectorSpecies {
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector blend(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v1, Target_jdk_internal_vm_vector_VectorSupport_Vector v2, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_VectorBlendOp defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector broadcastInt(int opr, Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v, int n, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_VectorBroadcastIntOp defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload convert(int oprId, Class<?> fromVectorClass, Class<?> fromeClass, int fromVLen, Class<?> toVectorClass, Class<?> toeClass, int toVLen, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_VectorConvertOp defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector rearrangeOp(Class<?> vClass, Class<?> shClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_VectorShuffle sh, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_VectorRearrangeOp defaultImpl);
+
+    @AnnotateOriginal
+    @CompilerDirectives.TruffleBoundary
+    static native long maskReductionCoerced(int oper, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_VectorMaskOp defaultImpl);
 }
 
 @TargetClass(className = "jdk.incubator.vector.AbstractSpecies", onlyWith = VectorAPIEnabled.class)
@@ -1760,14 +1895,6 @@ final class Target_jdk_incubator_vector_AbstractSpecies {
 
 @TargetClass(className = "jdk.incubator.vector.VectorOperators", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_VectorOperators {
-
-    @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "Conversion", onlyWith = VectorAPIEnabled.class)
-    interface Target_jdk_incubator_vector_VectorOperators_Conversion {
-    }
-
-    @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "Test", onlyWith = VectorAPIEnabled.class)
-    interface Target_jdk_incubator_vector_VectorOperators_Test {
-    }
 
     @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "OperatorImpl", onlyWith = VectorAPIEnabled.class)
     private static final class Target_jdk_incubator_vector_VectorOperators_OperatorImpl {
