@@ -4,3 +4,4 @@ OpenIDE-Module: org.graalvm.visualizer.source.java
 OpenIDE-Module-Layer: org/graalvm/visualizer/source/java/resources/layer.xml
 OpenIDE-Module-Localizing-Bundle: org/graalvm/visualizer/source/java/impl/Bundle.properties
 OpenIDE-Module-Recommends: cnb.org.netbeans.modules.java.j2seproject
+OpenIDE-Module-Hide-Classpath-Packages: jdk.graal.compiler.graphio.**

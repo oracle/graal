@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.graalvm.visualizer</groupId>
         <artifactId>IdealGraphVisualizer-parent</artifactId>
-        <version>1.22-SNAPSHOT</version>
+        <version>1.23-SNAPSHOT</version>
     </parent>
     <artifactId>IdealGraphVisualizer-app</artifactId>
     <packaging>nbm-application</packaging>
@@ -86,7 +86,6 @@
                     <systemPropertyVariables>
                         <all.clusters>${all.clusters}</all.clusters>
                         <branding.token>${brandingToken}</branding.token>
-                        <java.awt.headless>true</java.awt.headless>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
