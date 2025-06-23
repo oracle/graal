@@ -686,8 +686,8 @@ public class Vector128Ops {
 
     private static ByteVector f64x2_convert_low_i32x4_u(ByteVector xBytes) {
         IntVector x = xBytes.reinterpretAsInts();
-        Vector<Long> xUnsignedLow = x.convert(VectorOperators.ZERO_EXTEND_I2L, 0);
-        Vector<Double> result = xUnsignedLow.convert(VectorOperators.L2D, 0);
+        Vector<Long> xUnsignedLow = castLong128(x.convert(VectorOperators.ZERO_EXTEND_I2L, 0));
+        Vector<Double> result = castDouble128(xUnsignedLow.convert(VectorOperators.L2D, 0));
         return result.reinterpretAsBytes();
     }
 
@@ -776,10 +776,10 @@ public class Vector128Ops {
     private static ByteVector i32x4_dot_i16x8_s(ByteVector xBytes, ByteVector yBytes) {
         ShortVector x = xBytes.reinterpretAsShorts();
         ShortVector y = yBytes.reinterpretAsShorts();
-        Vector<Integer> xEvens = x.compress(castShort128Mask(evens(I16X8))).convert(VectorOperators.S2I, 0);
-        Vector<Integer> xOdds = x.compress(castShort128Mask(odds(I16X8))).convert(VectorOperators.S2I, 0);
-        Vector<Integer> yEvens = y.compress(castShort128Mask(evens(I16X8))).convert(VectorOperators.S2I, 0);
-        Vector<Integer> yOdds = y.compress(castShort128Mask(odds(I16X8))).convert(VectorOperators.S2I, 0);
+        Vector<Integer> xEvens = castInt128(x.compress(castShort128Mask(evens(I16X8))).convert(VectorOperators.S2I, 0));
+        Vector<Integer> xOdds = castInt128(x.compress(castShort128Mask(odds(I16X8))).convert(VectorOperators.S2I, 0));
+        Vector<Integer> yEvens = castInt128(y.compress(castShort128Mask(evens(I16X8))).convert(VectorOperators.S2I, 0));
+        Vector<Integer> yOdds = castInt128(y.compress(castShort128Mask(odds(I16X8))).convert(VectorOperators.S2I, 0));
         Vector<Integer> xMulYEvens = xEvens.mul(yEvens);
         Vector<Integer> xMulYOdds = xOdds.mul(yOdds);
         Vector<Integer> dot = xMulYEvens.lanewise(VectorOperators.ADD, xMulYOdds);
@@ -801,10 +801,10 @@ public class Vector128Ops {
     }
 
     private static ByteVector i16x8_relaxed_dot_i8x16_i7x16_s(ByteVector x, ByteVector y) {
-        Vector<Short> xEvens = x.compress(castByte128Mask(evens(I8X16))).convert(VectorOperators.B2S, 0);
-        Vector<Short> xOdds = x.compress(castByte128Mask(odds(I8X16))).convert(VectorOperators.B2S, 0);
-        Vector<Short> yEvens = y.compress(castByte128Mask(evens(I8X16))).convert(VectorOperators.B2S, 0);
-        Vector<Short> yOdds = y.compress(castByte128Mask(odds(I8X16))).convert(VectorOperators.B2S, 0);
+        Vector<Short> xEvens = castShort128(x.compress(castByte128Mask(evens(I8X16))).convert(VectorOperators.B2S, 0));
+        Vector<Short> xOdds = castShort128(x.compress(castByte128Mask(odds(I8X16))).convert(VectorOperators.B2S, 0));
+        Vector<Short> yEvens = castShort128(y.compress(castByte128Mask(evens(I8X16))).convert(VectorOperators.B2S, 0));
+        Vector<Short> yOdds = castShort128(y.compress(castByte128Mask(odds(I8X16))).convert(VectorOperators.B2S, 0));
         Vector<Short> xMulYEvens = xEvens.mul(yEvens);
         Vector<Short> xMulYOdds = xOdds.mul(yOdds);
         Vector<Short> dot = xMulYEvens.lanewise(VectorOperators.SADD, xMulYOdds);
