@@ -203,6 +203,7 @@ suite = {
         "java.compiler" # javax.annotation.processing.*
       ],
       "checkPackagePrefix": "false",
+      "jacoco" : "exclude",
       "checkstyle" : "jdk.graal.compiler",
       "javaCompliance" : "21+",
     },
@@ -300,6 +301,7 @@ suite = {
           "jdk.vm.ci.code"
         ],
       },
+      "jacoco" : "exclude",
       "checkstyle" : "jdk.graal.compiler",
       "javaCompliance" : "24+",
       "forceJavac": True,
@@ -325,6 +327,7 @@ suite = {
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
+      "jacoco" : "exclude",
       "testProject" : True,
       "graalCompilerSourceEdition": "ignore",
     },
@@ -377,6 +380,7 @@ suite = {
       ],
       "checkstyle" : "jdk.graal.compiler",
       "javaCompliance" : "21+",
+      "jacoco" : "exclude",
       "workingSets" : "Graal,Test",
       "graalCompilerSourceEdition": "ignore",
     },
@@ -413,6 +417,8 @@ suite = {
           "jdk.vm.ci.hotspot",
         ],
       },
+      # Code coverage is not done when building libgraal
+      "jacoco" : "exclude",
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
       ],
@@ -439,6 +445,7 @@ suite = {
         ],
       },
       "spotbugs": "false",
+      "jacoco" : "exclude",
     },
   },
 
@@ -544,7 +551,7 @@ suite = {
         "truffle:TRUFFLE_COMPILER",
       ],
       "allowsJavadocWarnings": True,
-      "description":  "The GraalVM compiler and the Graal-truffle optimizer.",
+      "description": "The GraalVM compiler. This can be used to speed up Graal Languages on OpenJDK distributions that do not ship the Graal compiler. To enable it, -XX:+EnableJVMCI is required and the GraalVM compiler JAR and its dependencies need to be on the --upgrade-module-path.",
       "maven" : {
         "artifactId" : "compiler",
         "tag": ["default", "public"],
