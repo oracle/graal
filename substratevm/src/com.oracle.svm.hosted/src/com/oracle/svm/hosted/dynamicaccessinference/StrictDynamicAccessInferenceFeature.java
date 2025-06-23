@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.dynamicaccessinference;
 
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -36,8 +37,10 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
+import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -62,6 +65,7 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.TypeResult;
 
@@ -75,17 +79,25 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * Feature for controlling the optimization independent inference of invocations which would
+ * otherwise require an explicit reachability metadata entry. Unlike the graph-level inference
+ * scheme, this restricted inference is executed directly on method bytecode and does not depend on
+ * the inlining done by {@link com.oracle.graal.pointsto.phases.InlineBeforeAnalysis} and other IR
+ * graph optimizations.
+ */
 @AutomaticallyRegisteredFeature
-public class StrictDynamicAccessInferenceFeature implements InternalFeature {
+public final class StrictDynamicAccessInferenceFeature implements InternalFeature {
 
-    public static class Options {
+    static class Options {
 
-        public enum Mode {
+        enum Mode {
             Disable,
             Warn,
             Enforce
@@ -97,41 +109,60 @@ public class StrictDynamicAccessInferenceFeature implements InternalFeature {
                          "Disable" (default): Disable the strict mode and fall back to the optimization dependent inference for dynamic invocations;
                          "Warn": Use optimization dependent inference for dynamic invocations, but print a warning for invocations inferred outside of the strict mode;
                          "Enforce": Infer only dynamic invocations proven to be constant in the strict inference mode.""", stability = OptionStability.EXPERIMENTAL)//
-        public static final HostedOptionKey<Mode> StrictDynamicAccessInference = new HostedOptionKey<>(Mode.Disable);
+        static final HostedOptionKey<Mode> StrictDynamicAccessInference = new HostedOptionKey<>(Mode.Disable);
     }
 
-    public static boolean isDisabled() {
-        return Options.StrictDynamicAccessInference.getValue() == Options.Mode.Disable;
-    }
+    private ClassLoader applicationClassLoader;
+    private AnalysisUniverse analysisUniverse;
+
+    private ConstantExpressionRegistry registry;
+    private DynamicAccessInferenceLog inferenceLog;
 
     public static boolean isEnforced() {
         return Options.StrictDynamicAccessInference.getValue() == Options.Mode.Enforce;
     }
 
+    public static boolean shouldWarn() {
+        return Options.StrictDynamicAccessInference.getValue() == Options.Mode.Warn;
+    }
+
+    public static boolean isActive() {
+        return isEnforced() || shouldWarn();
+    }
+
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return !isDisabled();
+        return isActive();
+    }
+
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return shouldWarn() ? List.of(DynamicAccessInferenceLogFeature.class) : List.of();
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         FeatureImpl.AfterRegistrationAccessImpl accessImpl = (FeatureImpl.AfterRegistrationAccessImpl) access;
-
-        ConstantExpressionAnalyzer analyzer = new ConstantExpressionAnalyzer(GraalAccess.getOriginalProviders(), accessImpl.getImageClassLoader());
-        ConstantExpressionRegistry registry = new ConstantExpressionRegistry();
-        StrictDynamicAccessInferenceSupport support = new StrictDynamicAccessInferenceSupport(analyzer, registry);
-
+        applicationClassLoader = accessImpl.getApplicationClassLoader();
+        ConstantExpressionAnalyzer analyzer = new ConstantExpressionAnalyzer(GraalAccess.getOriginalProviders(), applicationClassLoader);
+        registry = new ConstantExpressionRegistry(analyzer);
         ImageSingletons.add(ConstantExpressionRegistry.class, registry);
-        ImageSingletons.add(StrictDynamicAccessInferenceSupport.class, support);
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
+        analysisUniverse = accessImpl.getUniverse();
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        inferenceLog = DynamicAccessInferenceLog.singletonOrNull();
         /*
          * The strict dynamic access inference mode disables constant folding through method
          * inlining, which leads to <clinit> of sun.nio.ch.DatagramChannelImpl throwing a missing
          * reflection registration error. This is a temporary fix until annotation guided analysis
-         * is implemented.
+         * is implemented (GR-66140).
          *
          * An alternative to this approach would be creating invocation plugins for the methods
          * defined in jdk.internal.invoke.MhUtil.
@@ -153,50 +184,380 @@ public class StrictDynamicAccessInferenceFeature implements InternalFeature {
     }
 
     @Override
+    public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+        /*
+         * Dynamic access inference should only be restricted during analysis. In other cases, we
+         * keep the inference unrestricted, as is done in ReflectionPlugins.
+         */
+        if (isEnforced() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
+            new StrictReflectionInferencePlugins().register(plugins, reason);
+            new StrictResourceInferencePlugins().register(plugins, reason);
+        }
+    }
+
+    @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
+        if (shouldWarn()) {
+            warnForNonStrictInference();
+        }
         /*
          * No more bytecode parsing should happen after analysis, so we can seal and clean up the
          * registry.
          */
-        ConstantExpressionRegistry.singleton().seal();
-    }
-}
-
-@AutomaticallyRegisteredFeature
-class StrictProxyInferenceFeature implements InternalFeature {
-
-    private ConstantExpressionRegistry registry;
-    private DynamicAccessInferenceLog inferenceLog;
-
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(StrictDynamicAccessInferenceFeature.class);
+        registry.seal();
     }
 
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return StrictDynamicAccessInferenceFeature.isEnforced();
+    private void warnForNonStrictInference() {
+        List<DynamicAccessInferenceLog.LogEntry> unsafeFoldingEntries = StreamSupport.stream(inferenceLog.getEntries().spliterator(), false)
+                        .filter(entry -> !entryIsInRegistry(entry, registry))
+                        .toList();
+        if (!unsafeFoldingEntries.isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("The following method invocations have been inferred outside of the strict constant expression mode:").append(System.lineSeparator());
+            for (int i = 0; i < unsafeFoldingEntries.size(); i++) {
+                sb.append((i + 1)).append(". ").append(unsafeFoldingEntries.get(i)).append(System.lineSeparator());
+            }
+            sb.delete(sb.length() - System.lineSeparator().length(), sb.length());
+            LogUtils.warning(sb.toString());
+        }
     }
 
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        registry = ConstantExpressionRegistry.singleton();
-        inferenceLog = ImageSingletons.contains(DynamicAccessInferenceLog.class) ? DynamicAccessInferenceLog.singleton() : null;
+    private static boolean entryIsInRegistry(DynamicAccessInferenceLog.LogEntry entry, ConstantExpressionRegistry registry) {
+        BytecodePosition callLocation = entry.getCallLocation();
+        ResolvedJavaMethod targetMethod = entry.getTargetMethod();
+        if (targetMethod.hasReceiver()) {
+            Object receiver = registry.getReceiver(callLocation.getMethod(), callLocation.getBCI(), targetMethod);
+            if (entry.getReceiver() != DynamicAccessInferenceLog.ignoreArgument() && receiver == null) {
+                return false;
+            }
+        }
+        Object[] arguments = entry.getArguments();
+        for (int i = 0; i < arguments.length; i++) {
+            Object argument = registry.getArgument(callLocation.getMethod(), callLocation.getBCI(), targetMethod, i);
+            if (arguments[i] != DynamicAccessInferenceLog.ignoreArgument() && argument == null) {
+                return false;
+            }
+        }
+        return true;
     }
 
-    @Override
-    public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        if (reason != ParsingReason.PointsToAnalysis) {
-            return;
+    private static Class<?>[] getArgumentTypesForPlugin(Method method) {
+        ArrayList<Class<?>> argumentTypes = new ArrayList<>();
+        if (!Modifier.isStatic(method.getModifiers())) {
+            argumentTypes.add(InvocationPlugin.Receiver.class);
+        }
+        argumentTypes.addAll(Arrays.asList(method.getParameterTypes()));
+        return argumentTypes.toArray(new Class<?>[0]);
+    }
+
+    private final class StrictReflectionInferencePlugins {
+
+        public void register(GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+            registerClassPlugins(plugins, reason);
+            registerMethodHandlePlugins(plugins, reason);
+            registerProxyPlugins(plugins, reason);
         }
 
-        InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
+        private void registerClassPlugins(GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+            InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
 
-        Method getProxyClass = ReflectionUtil.lookupMethod(Proxy.class, "getProxyClass", ClassLoader.class, Class[].class);
-        Method newProxyInstance = ReflectionUtil.lookupMethod(Proxy.class, "newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class);
+            registerForNameOnePlugin(plugins.getInvocationPlugins(), reason, plugins.getClassInitializationPlugin());
+            registerForNameThreePlugin(plugins.getInvocationPlugins(), reason, plugins.getClassInitializationPlugin());
 
-        for (Method method : List.of(getProxyClass, newProxyInstance)) {
-            invocationPlugins.register(method.getDeclaringClass(), new InvocationPlugin.RequiredInvocationPlugin(method.getName(), method.getParameterTypes()) {
+            Method getField = ReflectionUtil.lookupMethod(true, Class.class, "getField", String.class);
+            Method getDeclaredField = ReflectionUtil.lookupMethod(true, Class.class, "getDeclaredField", String.class);
+
+            Method getConstructor = ReflectionUtil.lookupMethod(true, Class.class, "getConstructor", Class[].class);
+            Method getDeclaredConstructor = ReflectionUtil.lookupMethod(true, Class.class, "getDeclaredConstructor", Class[].class);
+
+            Method getMethod = ReflectionUtil.lookupMethod(true, Class.class, "getMethod", String.class, Class[].class);
+            Method getDeclaredMethod = ReflectionUtil.lookupMethod(true, Class.class, "getDeclaredMethod", String.class, Class[].class);
+
+            Stream.of(getField, getDeclaredField, getConstructor, getDeclaredConstructor, getMethod, getDeclaredMethod)
+                            .filter(Objects::nonNull)
+                            .forEach(m -> registerFoldingPlugin(invocationPlugins, reason, m));
+
+            registerBulkPlugin(invocationPlugins, reason, "getClasses", RuntimeReflection::registerAllClasses);
+            registerBulkPlugin(invocationPlugins, reason, "getDeclaredClasses", RuntimeReflection::registerAllDeclaredClasses);
+            registerBulkPlugin(invocationPlugins, reason, "getConstructors", RuntimeReflection::registerAllConstructors);
+            registerBulkPlugin(invocationPlugins, reason, "getDeclaredConstructors", RuntimeReflection::registerAllDeclaredConstructors);
+            registerBulkPlugin(invocationPlugins, reason, "getFields", RuntimeReflection::registerAllFields);
+            registerBulkPlugin(invocationPlugins, reason, "getDeclaredFields", RuntimeReflection::registerAllDeclaredFields);
+            registerBulkPlugin(invocationPlugins, reason, "getMethods", RuntimeReflection::registerAllMethods);
+            registerBulkPlugin(invocationPlugins, reason, "getDeclaredMethods", RuntimeReflection::registerAllDeclaredMethods);
+            registerBulkPlugin(invocationPlugins, reason, "getNestMembers", RuntimeReflection::registerAllNestMembers);
+            registerBulkPlugin(invocationPlugins, reason, "getPermittedSubclasses", RuntimeReflection::registerAllPermittedSubclasses);
+            registerBulkPlugin(invocationPlugins, reason, "getRecordComponents", RuntimeReflection::registerAllRecordComponents);
+            registerBulkPlugin(invocationPlugins, reason, "getSigners", RuntimeReflection::registerAllSigners);
+        }
+
+        private void registerForNameOnePlugin(InvocationPlugins invocationPlugins, ParsingReason reason, ClassInitializationPlugin initializationPlugin) {
+            invocationPlugins.register(Class.class, new InvocationPlugin.RequiredInlineOnlyInvocationPlugin("forName", String.class) {
+                @Override
+                public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
+                    String className = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 0, String.class);
+                    ClassLoader classLoader = ClassForNameSupport.respectClassLoader()
+                                    ? OriginalClassProvider.getJavaClass(b.getMethod().getDeclaringClass()).getClassLoader()
+                                    : applicationClassLoader;
+                    return tryToFoldClassForName(b, reason, initializationPlugin, targetMethod, className, true, classLoader);
+                }
+            });
+        }
+
+        private void registerForNameThreePlugin(InvocationPlugins invocationPlugins, ParsingReason reason, ClassInitializationPlugin initializationPlugin) {
+            invocationPlugins.register(Class.class, new InvocationPlugin.RequiredInlineOnlyInvocationPlugin("forName", String.class, boolean.class, ClassLoader.class) {
+                @Override
+                public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
+                    String className = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 0, String.class);
+                    Boolean initialize = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 1, Boolean.class);
+                    ClassLoader classLoader;
+                    if (ClassForNameSupport.respectClassLoader()) {
+                        Object loader = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 2);
+                        if (loader == null) {
+                            return false;
+                        }
+                        classLoader = ConstantExpressionRegistry.isNull(loader) ? null : (ClassLoader) loader;
+                    } else {
+                        classLoader = applicationClassLoader;
+                    }
+                    return tryToFoldClassForName(b, reason, initializationPlugin, targetMethod, className, initialize, classLoader);
+                }
+            });
+        }
+
+        private boolean tryToFoldClassForName(GraphBuilderContext b, ParsingReason reason, ClassInitializationPlugin initializationPlugin, ResolvedJavaMethod targetMethod, String className,
+                        Boolean initialize, ClassLoader classLoader) {
+            if (className == null || initialize == null) {
+                return false;
+            }
+
+            Object[] argValues = targetMethod.getParameters().length == 1
+                            ? new Object[]{className}
+                            : new Object[]{className, initialize, ClassForNameSupport.respectClassLoader() ? classLoader : DynamicAccessInferenceLog.ignoreArgument()};
+
+            TypeResult<Class<?>> type = ImageClassLoader.findClass(className, false, classLoader);
+            if (!type.isPresent()) {
+                if (RuntimeClassLoading.isSupported()) {
+                    return false;
+                }
+                Throwable e = type.getException();
+                return throwException(b, reason, targetMethod, null, argValues, e.getClass(), e.getMessage());
+            }
+
+            Class<?> clazz = type.get();
+            if (PredefinedClassesSupport.isPredefined(clazz)) {
+                return false;
+            }
+
+            JavaConstant classConstant = pushConstant(b, reason, targetMethod, null, argValues, clazz);
+            if (classConstant == null) {
+                return false;
+            }
+
+            if (initialize) {
+                initializationPlugin.apply(b, b.getMetaAccess().lookupJavaType(clazz), () -> null);
+            }
+
+            return true;
+        }
+
+        private void registerFoldingPlugin(InvocationPlugins invocationPlugins, ParsingReason reason, Method method) {
+            invocationPlugins.register(method.getDeclaringClass(), new InvocationPlugin.RequiredInvocationPlugin(method.getName(), getArgumentTypesForPlugin(method)) {
+                @Override
+                public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
+                    Object receiverValue = targetMethod.hasReceiver() ? registry.getReceiver(b.getMethod(), b.bci(), targetMethod) : null;
+                    Object[] arguments = getArgumentsFromRegistry(b, targetMethod);
+                    return tryToFoldInvocationUsingReflection(b, reason, targetMethod, method, receiverValue, arguments);
+                }
+            });
+        }
+
+        private Object[] getArgumentsFromRegistry(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
+            Object[] argValues = new Object[targetMethod.getSignature().getParameterCount(false)];
+            for (int i = 0; i < argValues.length; i++) {
+                argValues[i] = registry.getArgument(b.getMethod(), b.bci(), targetMethod, i);
+                if (argValues[i] == null) {
+                    return null;
+                } else if (ConstantExpressionRegistry.isNull(argValues[i])) {
+                    argValues[i] = null;
+                }
+            }
+            return argValues;
+        }
+
+        private boolean tryToFoldInvocationUsingReflection(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Method reflectionMethod, Object receiverValue,
+                        Object[] argValues) {
+            if (!targetMethod.isStatic() && (receiverValue == null || ConstantExpressionRegistry.isNull(receiverValue))) {
+                return false;
+            }
+
+            if (argValues == null) {
+                return false;
+            }
+
+            Object returnValue;
+            try {
+                returnValue = reflectionMethod.invoke(receiverValue, argValues);
+            } catch (InvocationTargetException e) {
+                return throwException(b, reason, targetMethod, receiverValue, argValues, e.getTargetException().getClass(), e.getTargetException().getMessage());
+            } catch (Throwable e) {
+                return throwException(b, reason, targetMethod, receiverValue, argValues, e.getClass(), e.getMessage());
+            }
+
+            return pushConstant(b, reason, targetMethod, returnValue, argValues, returnValue) != null;
+        }
+
+        private JavaConstant pushConstant(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Object receiver, Object[] arguments, Object returnValue) {
+            Object intrinsicValue = getIntrinsic(b, returnValue);
+            if (intrinsicValue == null) {
+                return null;
+            }
+
+            JavaKind returnKind = targetMethod.getSignature().getReturnKind();
+
+            JavaConstant intrinsicConstant;
+            if (returnKind.isPrimitive()) {
+                intrinsicConstant = JavaConstant.forBoxedPrimitive(intrinsicValue);
+            } else if (ConstantExpressionRegistry.isNull(returnValue)) {
+                intrinsicConstant = JavaConstant.NULL_POINTER;
+            } else {
+                intrinsicConstant = b.getSnippetReflection().forObject(intrinsicValue);
+            }
+
+            b.addPush(returnKind, ConstantNode.forConstant(intrinsicConstant, b.getMetaAccess()));
+            if (inferenceLog != null) {
+                inferenceLog.logFolding(b, reason, targetMethod, receiver, arguments, returnValue);
+            }
+            return intrinsicConstant;
+        }
+
+        private boolean throwException(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Object receiver, Object[] arguments, Class<? extends Throwable> exceptionClass,
+                        String message) {
+            /* Get the exception throwing method that has a message parameter. */
+            Method exceptionMethod = ExceptionSynthesizer.throwExceptionMethodOrNull(exceptionClass, String.class);
+            if (exceptionMethod == null) {
+                return false;
+            }
+            Method intrinsic = getIntrinsic(b, exceptionMethod);
+            if (intrinsic == null) {
+                return false;
+            }
+
+            if (inferenceLog != null) {
+                inferenceLog.logException(b, reason, targetMethod, receiver, arguments, exceptionClass);
+            }
+
+            ExceptionSynthesizer.throwException(b, exceptionMethod, message);
+            return true;
+        }
+
+        @SuppressWarnings("unchecked")
+        private <T> T getIntrinsic(GraphBuilderContext context, T element) {
+            if (isDeleted(element, context.getMetaAccess())) {
+                /*
+                 * Should not intrinsify. Will fail during the reflective lookup at
+                 * runtime. @Delete-ed elements are ignored by the reflection plugins regardless of
+                 * the value of ReportUnsupportedElementsAtRuntime.
+                 */
+                return null;
+            }
+            return (T) analysisUniverse.replaceObject(element);
+        }
+
+        private static <T> boolean isDeleted(T element, MetaAccessProvider metaAccess) {
+            AnnotatedElement annotated = null;
+            try {
+                if (element instanceof Executable) {
+                    annotated = metaAccess.lookupJavaMethod((Executable) element);
+                } else if (element instanceof Field) {
+                    annotated = metaAccess.lookupJavaField((Field) element);
+                }
+            } catch (DeletedElementException ex) {
+                /*
+                 * If ReportUnsupportedElementsAtRuntime is *not* set looking up a @Delete-ed
+                 * element will result in a DeletedElementException.
+                 */
+                return true;
+            }
+            /*
+             * If ReportUnsupportedElementsAtRuntime is set looking up a @Delete-ed element will
+             * return a substitution method that has the @Delete annotation.
+             */
+            return annotated != null && annotated.isAnnotationPresent(Delete.class);
+        }
+
+        private void registerBulkPlugin(InvocationPlugins invocationPlugins, ParsingReason reason, String methodName, Consumer<Class<?>> registrationCallback) {
+            Method method = ReflectionUtil.lookupMethod(true, Class.class, methodName);
+            if (method != null) {
+                registerBulkPlugin(invocationPlugins, reason, method, registrationCallback);
+            }
+        }
+
+        private void registerBulkPlugin(InvocationPlugins invocationPlugins, ParsingReason reason, Method method, Consumer<Class<?>> registrationCallback) {
+            invocationPlugins.register(method.getDeclaringClass(), new InvocationPlugin.RequiredInvocationPlugin(method.getName(), getArgumentTypesForPlugin(method)) {
+                @Override
+                public boolean isDecorator() {
+                    return true;
+                }
+
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    Class<?> clazz = registry.getReceiver(b.getMethod(), b.bci(), targetMethod, Class.class);
+                    return tryToRegisterBulkQuery(b, reason, targetMethod, clazz, registrationCallback);
+                }
+            });
+        }
+
+        private boolean tryToRegisterBulkQuery(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Class<?> clazz, Consumer<Class<?>> registrationCallback) {
+            if (clazz == null) {
+                return false;
+            }
+            b.add(ReachabilityRegistrationNode.create(() -> {
+                try {
+                    registrationCallback.accept(clazz);
+                } catch (LinkageError e) {
+                    // Ignore
+                }
+            }, reason));
+            if (inferenceLog != null) {
+                inferenceLog.logRegistration(b, reason, targetMethod, clazz, new Object[]{});
+            }
+            return true;
+        }
+
+        private void registerMethodHandlePlugins(GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+            InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
+
+            Method findClass = ReflectionUtil.lookupMethod(true, MethodHandles.Lookup.class, "findClass", String.class);
+
+            Method findConstructor = ReflectionUtil.lookupMethod(true, MethodHandles.Lookup.class, "findConstructor", Class.class, MethodType.class);
+
+            Method findVirtual = ReflectionUtil.lookupMethod(true, MethodHandles.Lookup.class, "findVirtual", Class.class, String.class, MethodType.class);
+            Method findStatic = ReflectionUtil.lookupMethod(true, MethodHandles.Lookup.class, "findStatic", Class.class, String.class, MethodType.class);
+            Method findSpecial = ReflectionUtil.lookupMethod(true, MethodHandles.Lookup.class, "findSpecial", Class.class, String.class, MethodType.class, Class.class);
+
+            Method findGetter = ReflectionUtil.lookupMethod(true, MethodHandles.Lookup.class, "findGetter", Class.class, String.class, Class.class);
+            Method findStaticGetter = ReflectionUtil.lookupMethod(true, MethodHandles.Lookup.class, "findStaticGetter", Class.class, String.class, Class.class);
+            Method findSetter = ReflectionUtil.lookupMethod(true, MethodHandles.Lookup.class, "findSetter", Class.class, String.class, Class.class);
+            Method findStaticSetter = ReflectionUtil.lookupMethod(true, MethodHandles.Lookup.class, "findStaticSetter", Class.class, String.class, String.class);
+            Method findVarHandle = ReflectionUtil.lookupMethod(true, MethodHandles.Lookup.class, "findVarHandle", Class.class, String.class, Class.class);
+            Method findStaticVarHandle = ReflectionUtil.lookupMethod(true, MethodHandles.Lookup.class, "findStaticVarHandle", Class.class, String.class, Class.class);
+
+            Stream.of(findClass, findConstructor, findVirtual, findStatic, findSpecial, findGetter, findStaticGetter, findSetter, findStaticSetter, findVarHandle, findStaticVarHandle)
+                            .filter(Objects::nonNull)
+                            .forEach(m -> registerFoldingPlugin(invocationPlugins, reason, m));
+        }
+
+        private void registerProxyPlugins(GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+            Method getProxyClass = ReflectionUtil.lookupMethod(true, Proxy.class, "getProxyClass", ClassLoader.class, Class[].class);
+            Method newProxyInstance = ReflectionUtil.lookupMethod(true, Proxy.class, "newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class);
+            Stream.of(getProxyClass, newProxyInstance)
+                            .filter(Objects::nonNull)
+                            .forEach(m -> registerProxyPlugin(plugins.getInvocationPlugins(), reason, m));
+        }
+
+        private void registerProxyPlugin(InvocationPlugins invocationPlugins, ParsingReason reason, Method method) {
+            invocationPlugins.register(method.getDeclaringClass(), new InvocationPlugin.RequiredInvocationPlugin(method.getName(), getArgumentTypesForPlugin(method)) {
                 @Override
                 public boolean isDecorator() {
                     return true;
@@ -205,364 +566,40 @@ class StrictProxyInferenceFeature implements InternalFeature {
                 @Override
                 public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
                     Class<?>[] interfaces = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 1, Class[].class);
-                    return registerProxy(b, reason, targetMethod, interfaces);
+                    return tryToRegisterProxy(b, reason, targetMethod, interfaces);
                 }
             });
         }
-    }
 
-    private boolean registerProxy(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Class<?>[] interfaces) {
-        if (interfaces == null) {
-            return false;
-        }
-
-        b.add(ReachabilityRegistrationNode.create(() -> RuntimeProxyCreation.register(interfaces), reason));
-        if (inferenceLog != null) {
-            Object ignore = DynamicAccessInferenceLog.ignoreArgument();
-            Object[] args = targetMethod.getParameters().length == 2
-                            ? new Object[]{ignore, interfaces}
-                            : new Object[]{ignore, interfaces, ignore};
-            inferenceLog.logRegistration(b, reason, targetMethod, null, args);
-        }
-        return true;
-    }
-}
-
-@AutomaticallyRegisteredFeature
-class StrictReflectionInferenceFeature implements InternalFeature {
-
-    private ConstantExpressionRegistry registry;
-    private ImageClassLoader imageClassLoader;
-    private AnalysisUniverse analysisUniverse;
-    private DynamicAccessInferenceLog inferenceLog;
-
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(StrictDynamicAccessInferenceFeature.class);
-    }
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return StrictDynamicAccessInferenceFeature.isEnforced();
-    }
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
-        registry = ConstantExpressionRegistry.singleton();
-        imageClassLoader = accessImpl.getImageClassLoader();
-        analysisUniverse = accessImpl.getUniverse();
-        inferenceLog = ImageSingletons.contains(DynamicAccessInferenceLog.class) ? DynamicAccessInferenceLog.singleton() : null;
-    }
-
-    @Override
-    public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        if (reason != ParsingReason.PointsToAnalysis) {
-            return;
-        }
-
-        InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
-        ClassInitializationPlugin initializationPlugin = plugins.getClassInitializationPlugin();
-
-        invocationPlugins.register(Class.class, new InvocationPlugin.RequiredInlineOnlyInvocationPlugin("forName", String.class) {
-            @Override
-            public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
-                String className = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 0, String.class);
-                ClassLoader classLoader = ClassForNameSupport.respectClassLoader()
-                                ? OriginalClassProvider.getJavaClass(b.getMethod().getDeclaringClass()).getClassLoader()
-                                : imageClassLoader.getClassLoader();
-                return foldClassForName(initializationPlugin, b, reason, targetMethod, className, true, classLoader);
-            }
-        });
-
-        invocationPlugins.register(Class.class, new InvocationPlugin.RequiredInlineOnlyInvocationPlugin("forName", String.class, boolean.class, ClassLoader.class) {
-            @Override
-            public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
-                String className = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 0, String.class);
-                Boolean initialize = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 1, Boolean.class);
-                ClassLoader classLoader;
-                if (ClassForNameSupport.respectClassLoader()) {
-                    Object loader = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 2);
-                    if (loader == null) {
-                        return false;
-                    } else if (ConstantExpressionRegistry.isNull(loader)) {
-                        classLoader = null;
-                    } else {
-                        classLoader = (ClassLoader) loader;
-                    }
-                } else {
-                    classLoader = imageClassLoader.getClassLoader();
-                }
-                return foldClassForName(initializationPlugin, b, reason, targetMethod, className, initialize, classLoader);
-            }
-        });
-
-        registerFoldInvocationPlugins(invocationPlugins, reason, Class.class,
-                        "getField", "getDeclaredField", "getConstructor",
-                        "getDeclaredConstructor", "getMethod", "getDeclaredMethod");
-
-        registerFoldInvocationPlugins(invocationPlugins, reason, MethodHandles.Lookup.class,
-                        "findClass", "findVirtual", "findStatic", "findConstructor",
-                        "findGetter", "findStaticGetter", "findSetter", "findStaticSetter",
-                        "findVarHandle", "findStaticVarHandle", "findSpecial");
-
-        registerBulkQueryRegistrationPlugin(invocationPlugins, reason, "getClasses", RuntimeReflection::registerAllClasses);
-        registerBulkQueryRegistrationPlugin(invocationPlugins, reason, "getDeclaredClasses", RuntimeReflection::registerAllDeclaredClasses);
-        registerBulkQueryRegistrationPlugin(invocationPlugins, reason, "getConstructors", RuntimeReflection::registerAllConstructors);
-        registerBulkQueryRegistrationPlugin(invocationPlugins, reason, "getDeclaredConstructors", RuntimeReflection::registerAllDeclaredConstructors);
-        registerBulkQueryRegistrationPlugin(invocationPlugins, reason, "getFields", RuntimeReflection::registerAllFields);
-        registerBulkQueryRegistrationPlugin(invocationPlugins, reason, "getDeclaredFields", RuntimeReflection::registerAllDeclaredFields);
-        registerBulkQueryRegistrationPlugin(invocationPlugins, reason, "getMethods", RuntimeReflection::registerAllMethods);
-        registerBulkQueryRegistrationPlugin(invocationPlugins, reason, "getDeclaredMethods", RuntimeReflection::registerAllDeclaredMethods);
-        registerBulkQueryRegistrationPlugin(invocationPlugins, reason, "getNestMembers", RuntimeReflection::registerAllNestMembers);
-        registerBulkQueryRegistrationPlugin(invocationPlugins, reason, "getPermittedSubclasses", RuntimeReflection::registerAllPermittedSubclasses);
-        registerBulkQueryRegistrationPlugin(invocationPlugins, reason, "getRecordComponents", RuntimeReflection::registerAllRecordComponents);
-        registerBulkQueryRegistrationPlugin(invocationPlugins, reason, "getSigners", RuntimeReflection::registerAllSigners);
-    }
-
-    private void registerFoldInvocationPlugins(InvocationPlugins plugins, ParsingReason reason, Class<?> declaringClass, String... methodNames) {
-        Set<String> methodNamesSet = Set.of(methodNames);
-        Arrays.stream(declaringClass.getDeclaredMethods())
-                        .filter(m -> methodNamesSet.contains(m.getName()) && !m.isSynthetic())
-                        .forEach(m -> registerFoldInvocationPlugin(plugins, reason, m));
-    }
-
-    private void registerFoldInvocationPlugin(InvocationPlugins plugins, ParsingReason reason, Method method) {
-        List<Class<?>> parameterTypes = new ArrayList<>();
-        if (!Modifier.isStatic(method.getModifiers())) {
-            parameterTypes.add(InvocationPlugin.Receiver.class);
-        }
-        parameterTypes.addAll(Arrays.asList(method.getParameterTypes()));
-
-        plugins.register(method.getDeclaringClass(), new InvocationPlugin.RequiredInvocationPlugin(method.getName(), parameterTypes.toArray(new Class<?>[0])) {
-            @Override
-            public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
-                Object receiverValue = targetMethod.hasReceiver() ? registry.getReceiver(b.getMethod(), b.bci(), targetMethod) : null;
-                Object[] arguments = getArgumentsFromRegistry(b, targetMethod);
-                return foldInvocationUsingReflection(b, reason, targetMethod, method, receiverValue, arguments);
-            }
-        });
-    }
-
-    private void registerBulkQueryRegistrationPlugin(InvocationPlugins plugins, ParsingReason reason, String methodName, Consumer<Class<?>> registrationCallback) {
-        plugins.register(Class.class, new InvocationPlugin.RequiredInvocationPlugin(methodName, new Class<?>[]{InvocationPlugin.Receiver.class}) {
-            @Override
-            public boolean isDecorator() {
-                return true;
-            }
-
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                Class<?> clazz = registry.getReceiver(b.getMethod(), b.bci(), targetMethod, Class.class);
-                return registerBulkQuery(b, reason, targetMethod, clazz, registrationCallback);
-            }
-        });
-    }
-
-    private boolean registerBulkQuery(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Class<?> clazz, Consumer<Class<?>> registrationCallback) {
-        if (clazz == null) {
-            return false;
-        }
-
-        b.add(ReachabilityRegistrationNode.create(() -> {
-            try {
-                registrationCallback.accept(clazz);
-            } catch (LinkageError e) {
-                // Ignore
-            }
-        }, reason));
-        if (inferenceLog != null) {
-            inferenceLog.logRegistration(b, reason, targetMethod, clazz, new Object[]{});
-        }
-        return true;
-    }
-
-    private boolean foldClassForName(ClassInitializationPlugin initializationPlugin, GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, String className, Boolean initialize,
-                    ClassLoader classLoader) {
-        if (className == null || initialize == null) {
-            return false;
-        }
-
-        Object[] argValues = targetMethod.getParameters().length == 1
-                        ? new Object[]{className}
-                        : new Object[]{className, initialize, ClassForNameSupport.respectClassLoader() ? classLoader : DynamicAccessInferenceLog.ignoreArgument()};
-
-        TypeResult<Class<?>> type = ImageClassLoader.findClass(className, false, classLoader);
-        if (!type.isPresent()) {
-            if (RuntimeClassLoading.isSupported()) {
+        private boolean tryToRegisterProxy(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Class<?>[] interfaces) {
+            if (interfaces == null) {
                 return false;
             }
-            Throwable e = type.getException();
-            return throwException(b, reason, targetMethod, null, argValues, e.getClass(), e.getMessage());
-        }
-
-        Class<?> clazz = type.get();
-        if (PredefinedClassesSupport.isPredefined(clazz)) {
-            return false;
-        }
-
-        JavaConstant classConstant = pushConstant(b, reason, targetMethod, null, argValues, clazz);
-        if (classConstant == null) {
-            return false;
-        }
-
-        if (initialize) {
-            initializationPlugin.apply(b, b.getMetaAccess().lookupJavaType(clazz), () -> null);
-        }
-
-        return true;
-    }
-
-    private boolean foldInvocationUsingReflection(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Method reflectionMethod, Object receiverValue, Object[] argValues) {
-        boolean isStatic = Modifier.isStatic(reflectionMethod.getModifiers());
-        if (isStatic && (receiverValue == null || ConstantExpressionRegistry.isNull(receiverValue)) || argValues == null) {
-            return false;
-        }
-
-        Object returnValue;
-        try {
-            returnValue = reflectionMethod.invoke(receiverValue, argValues);
-        } catch (InvocationTargetException e) {
-            return throwException(b, reason, targetMethod, receiverValue, argValues, e.getTargetException().getClass(), e.getTargetException().getMessage());
-        } catch (Throwable e) {
-            return throwException(b, reason, targetMethod, receiverValue, argValues, e.getClass(), e.getMessage());
-        }
-
-        return pushConstant(b, reason, targetMethod, returnValue, argValues, returnValue) != null;
-    }
-
-    private JavaConstant pushConstant(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Object receiver, Object[] arguments, Object returnValue) {
-        Object intrinsicValue = getIntrinsic(b, returnValue);
-        if (intrinsicValue == null) {
-            return null;
-        }
-
-        JavaKind returnKind = targetMethod.getSignature().getReturnKind();
-
-        JavaConstant intrinsicConstant;
-        if (returnKind.isPrimitive()) {
-            intrinsicConstant = JavaConstant.forBoxedPrimitive(intrinsicValue);
-        } else if (ConstantExpressionRegistry.isNull(returnValue)) {
-            intrinsicConstant = JavaConstant.NULL_POINTER;
-        } else {
-            intrinsicConstant = b.getSnippetReflection().forObject(intrinsicValue);
-        }
-
-        b.addPush(returnKind, ConstantNode.forConstant(intrinsicConstant, b.getMetaAccess()));
-        if (inferenceLog != null) {
-            inferenceLog.logConstant(b, reason, targetMethod, receiver, arguments, returnValue);
-        }
-        return intrinsicConstant;
-    }
-
-    private boolean throwException(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Object receiver, Object[] arguments, Class<? extends Throwable> exceptionClass,
-                    String message) {
-        /* Get the exception throwing method that has a message parameter. */
-        Method exceptionMethod = ExceptionSynthesizer.throwExceptionMethodOrNull(exceptionClass, String.class);
-        if (exceptionMethod == null) {
-            return false;
-        }
-        Method intrinsic = getIntrinsic(b, exceptionMethod);
-        if (intrinsic == null) {
-            return false;
-        }
-
-        if (inferenceLog != null) {
-            inferenceLog.logException(b, reason, targetMethod, receiver, arguments, exceptionClass);
-        }
-
-        ExceptionSynthesizer.throwException(b, exceptionMethod, message);
-        return true;
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> T getIntrinsic(GraphBuilderContext context, T element) {
-        if (isDeleted(element, context.getMetaAccess())) {
-            /*
-             * Should not intrinsify. Will fail during the reflective lookup at runtime. @Delete-ed
-             * elements are ignored by the reflection plugins regardless of the value of
-             * ReportUnsupportedElementsAtRuntime.
-             */
-            return null;
-        }
-        return (T) analysisUniverse.replaceObject(element);
-    }
-
-    private static <T> boolean isDeleted(T element, MetaAccessProvider metaAccess) {
-        AnnotatedElement annotated = null;
-        try {
-            if (element instanceof Executable) {
-                annotated = metaAccess.lookupJavaMethod((Executable) element);
-            } else if (element instanceof Field) {
-                annotated = metaAccess.lookupJavaField((Field) element);
+            b.add(ReachabilityRegistrationNode.create(() -> RuntimeProxyCreation.register(interfaces), reason));
+            if (inferenceLog != null) {
+                Object[] args = targetMethod.getParameters().length == 2
+                                ? new Object[]{DynamicAccessInferenceLog.ignoreArgument(), interfaces}
+                                : new Object[]{DynamicAccessInferenceLog.ignoreArgument(), interfaces, DynamicAccessInferenceLog.ignoreArgument()};
+                inferenceLog.logRegistration(b, reason, targetMethod, null, args);
             }
-        } catch (DeletedElementException ex) {
-            /*
-             * If ReportUnsupportedElementsAtRuntime is *not* set looking up a @Delete-ed element
-             * will result in a DeletedElementException.
-             */
             return true;
         }
-        /*
-         * If ReportUnsupportedElementsAtRuntime is set looking up a @Delete-ed element will return
-         * a substitution method that has the @Delete annotation.
-         */
-        return annotated != null && annotated.isAnnotationPresent(Delete.class);
     }
 
-    private Object[] getArgumentsFromRegistry(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
-        Object[] argValues = new Object[targetMethod.getSignature().getParameterCount(false)];
-        for (int i = 0; i < argValues.length; i++) {
-            argValues[i] = registry.getArgument(b.getMethod(), b.bci(), targetMethod, i);
-            if (argValues[i] == null) {
-                return null;
-            } else if (ConstantExpressionRegistry.isNull(argValues[i])) {
-                argValues[i] = null;
-            }
-        }
-        return argValues;
-    }
-}
+    private final class StrictResourceInferencePlugins {
 
-@AutomaticallyRegisteredFeature
-class StrictResourceInferenceFeature implements InternalFeature {
+        private final Method resourceNameResolver = ReflectionUtil.lookupMethod(Class.class, "resolveName", String.class);
 
-    private ConstantExpressionRegistry registry;
-    private DynamicAccessInferenceLog inferenceLog;
-
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(StrictDynamicAccessInferenceFeature.class);
-    }
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return StrictDynamicAccessInferenceFeature.isEnforced();
-    }
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        registry = ConstantExpressionRegistry.singleton();
-        inferenceLog = ImageSingletons.contains(DynamicAccessInferenceLog.class) ? DynamicAccessInferenceLog.singleton() : null;
-    }
-
-    @Override
-    public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        if (reason != ParsingReason.PointsToAnalysis) {
-            return;
+        public void register(GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+            Method getResource = ReflectionUtil.lookupMethod(true, Class.class, "getResource", String.class);
+            Method getResourceAsStream = ReflectionUtil.lookupMethod(true, Class.class, "getResource", String.class);
+            Stream.of(getResource, getResourceAsStream)
+                            .filter(Objects::nonNull)
+                            .forEach(m -> registerResourcePlugin(plugins.getInvocationPlugins(), reason, m));
         }
 
-        InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
-        Method resolveResourceName = ReflectionUtil.lookupMethod(Class.class, "resolveName", String.class);
-
-        Method getResource = ReflectionUtil.lookupMethod(Class.class, "getResource", String.class);
-        Method getResourceAsStream = ReflectionUtil.lookupMethod(Class.class, "getResourceAsStream", String.class);
-
-        for (Method method : List.of(getResource, getResourceAsStream)) {
-            List<Class<?>> parameterTypes = new ArrayList<>();
-            parameterTypes.add(InvocationPlugin.Receiver.class);
-            parameterTypes.addAll(Arrays.asList(method.getParameterTypes()));
-            invocationPlugins.register(method.getDeclaringClass(), new InvocationPlugin.RequiredInvocationPlugin(method.getName(), parameterTypes.toArray(new Class<?>[0])) {
+        private void registerResourcePlugin(InvocationPlugins invocationPlugins, ParsingReason reason, Method method) {
+            invocationPlugins.register(method.getDeclaringClass(), new InvocationPlugin.RequiredInvocationPlugin(method.getName(), getArgumentTypesForPlugin(method)) {
                 @Override
                 public boolean isDecorator() {
                     return true;
@@ -572,27 +609,28 @@ class StrictResourceInferenceFeature implements InternalFeature {
                 public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
                     Class<?> clazz = registry.getReceiver(b.getMethod(), b.bci(), targetMethod, Class.class);
                     String resource = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 0, String.class);
-                    return registerResource(b, reason, targetMethod, clazz, resource, resolveResourceName);
+                    return tryToRegisterResource(b, reason, targetMethod, clazz, resource);
                 }
             });
         }
-    }
 
-    private boolean registerResource(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Class<?> clazz, String resource, Method resolveResourceName) {
-        if (clazz == null || resource == null) {
-            return false;
+        private boolean tryToRegisterResource(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Class<?> clazz, String resource) {
+            if (clazz == null || resource == null) {
+                return false;
+            }
+            b.add(ReachabilityRegistrationNode.create(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resolveResourceName(clazz, resource)), reason));
+            if (inferenceLog != null) {
+                inferenceLog.logRegistration(b, reason, targetMethod, clazz, new String[]{resource});
+            }
+            return true;
         }
 
-        String resourceName;
-        try {
-            resourceName = (String) resolveResourceName.invoke(clazz, resource);
-        } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere(e);
+        private String resolveResourceName(Class<?> clazz, String name) {
+            try {
+                return (String) resourceNameResolver.invoke(clazz, name);
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
         }
-        b.add(ReachabilityRegistrationNode.create(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName), reason));
-        if (inferenceLog != null) {
-            inferenceLog.logRegistration(b, reason, targetMethod, clazz, new String[]{resource});
-        }
-        return true;
     }
 }

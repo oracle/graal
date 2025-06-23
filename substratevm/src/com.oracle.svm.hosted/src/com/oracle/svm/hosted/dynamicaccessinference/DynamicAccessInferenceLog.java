@@ -35,8 +35,6 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.vm.ci.code.BytecodePosition;
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.ParsingReason;
@@ -44,19 +42,32 @@ import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.util.json.JsonBuilder;
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class DynamicAccessInferenceLog {
+/**
+ * Log holding information on build-time inferred dynamic access invocations.
+ */
+public final class DynamicAccessInferenceLog {
+
+    private static final Object IGNORED_ARGUMENT_MARKER = new IgnoredArgumentValue();
+
+    private final Queue<LogEntry> entries = new ConcurrentLinkedQueue<>();
 
     public static DynamicAccessInferenceLog singleton() {
         return ImageSingletons.lookup(DynamicAccessInferenceLog.class);
     }
 
-    private Queue<LogEntry> entries = new ConcurrentLinkedQueue<>();
-    private boolean isSealed = false;
+    public static DynamicAccessInferenceLog singletonOrNull() {
+        return ImageSingletons.contains(DynamicAccessInferenceLog.class) ? ImageSingletons.lookup(DynamicAccessInferenceLog.class) : null;
+    }
 
-    public void logConstant(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Object targetReceiver, Object[] targetArguments, Object value) {
-        logEntry(b, reason, () -> new ConstantLogEntry(b, targetMethod, targetReceiver, targetArguments, value));
+    public static Object ignoreArgument() {
+        return IGNORED_ARGUMENT_MARKER;
+    }
+
+    public void logFolding(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Object targetReceiver, Object[] targetArguments, Object value) {
+        logEntry(b, reason, () -> new FoldingLogEntry(b, targetMethod, targetReceiver, targetArguments, value));
     }
 
     public void logException(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Object targetReceiver, Object[] targetArguments,
@@ -70,37 +81,32 @@ public class DynamicAccessInferenceLog {
 
     private void logEntry(GraphBuilderContext b, ParsingReason reason, Supplier<LogEntry> entrySupplier) {
         if (reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
-            assert !isSealed : "Logging attempt when log is already sealed";
             LogEntry entry = entrySupplier.get();
+            /*
+             * Using a reachability node avoids reporting for unreachable invocations, as well as
+             * invocations that were potentially folded during the exploration phase of
+             * InlineBeforeAnalysis (but not in the final graph).
+             */
             b.add(ReachabilityRegistrationNode.create(() -> entries.add(entry), reason));
         }
     }
 
-    Queue<LogEntry> getEntries() {
+    Iterable<LogEntry> getEntries() {
         return entries;
-    }
-
-    public boolean isSealed() {
-        return isSealed;
-    }
-
-    public void seal() {
-        isSealed = true;
-        entries = null;
     }
 
     abstract static class LogEntry {
 
-        final Pair<ResolvedJavaMethod, Integer> callLocation;
-        final List<StackTraceElement> callStack;
-        final ResolvedJavaMethod targetMethod;
-        final Object targetReceiver;
-        final Object[] targetArguments;
+        private final BytecodePosition callLocation;
+        private final List<StackTraceElement> callStack;
+        private final ResolvedJavaMethod targetMethod;
+        private final Object targetReceiver;
+        private final Object[] targetArguments;
 
         LogEntry(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object targetReceiver, Object[] targetArguments) {
             assert targetMethod.hasReceiver() == (targetReceiver != null) : "Inferred receiver does not match with target method signature";
             assert targetMethod.getSignature().getParameterCount(false) == targetArguments.length : "Inferred arguments do not match with target method signature";
-            this.callLocation = Pair.create(b.getMethod(), b.bci());
+            this.callLocation = new BytecodePosition(null, b.getMethod(), b.bci());
             this.callStack = getCallStack(b);
             this.targetMethod = targetMethod;
             this.targetReceiver = targetReceiver;
@@ -150,13 +156,29 @@ public class DynamicAccessInferenceLog {
                 }
             }
         }
+
+        public BytecodePosition getCallLocation() {
+            return callLocation;
+        }
+
+        public ResolvedJavaMethod getTargetMethod() {
+            return targetMethod;
+        }
+
+        public Object getReceiver() {
+            return targetReceiver;
+        }
+
+        public Object[] getArguments() {
+            return targetArguments;
+        }
     }
 
-    static class ConstantLogEntry extends LogEntry {
+    private static class FoldingLogEntry extends LogEntry {
 
-        final Object value;
+        private final Object value;
 
-        ConstantLogEntry(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object targetCaller, Object[] targetArguments, Object value) {
+        FoldingLogEntry(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object targetCaller, Object[] targetArguments, Object value) {
             super(b, targetMethod, targetCaller, targetArguments);
             this.value = value;
         }
@@ -173,9 +195,9 @@ public class DynamicAccessInferenceLog {
         }
     }
 
-    static class ExceptionLogEntry extends LogEntry {
+    private static class ExceptionLogEntry extends LogEntry {
 
-        final Class<? extends Throwable> exceptionClass;
+        private final Class<? extends Throwable> exceptionClass;
 
         ExceptionLogEntry(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object targetCaller, Object[] targetArguments, Class<? extends Throwable> exceptionClass) {
             super(b, targetMethod, targetCaller, targetArguments);
@@ -194,7 +216,7 @@ public class DynamicAccessInferenceLog {
         }
     }
 
-    static class RegistrationLogEntry extends LogEntry {
+    private static class RegistrationLogEntry extends LogEntry {
 
         RegistrationLogEntry(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object targetCaller, Object[] targetArguments) {
             super(b, targetMethod, targetCaller, targetArguments);
@@ -209,12 +231,6 @@ public class DynamicAccessInferenceLog {
         public void toJson(JsonBuilder.ObjectBuilder builder) throws IOException {
             super.toJson(builder);
         }
-    }
-
-    private static final Object IGNORED_ARGUMENT_MARKER = new IgnoredArgumentValue();
-
-    public static Object ignoreArgument() {
-        return IGNORED_ARGUMENT_MARKER;
     }
 
     private static final class IgnoredArgumentValue {

@@ -26,24 +26,12 @@ package com.oracle.svm.hosted.dynamicaccessinference;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import com.oracle.svm.core.feature.InternalFeature;
 
-public class StrictDynamicAccessInferenceSupport {
+final class DynamicAccessInferenceLogFeature implements InternalFeature {
 
-    public static StrictDynamicAccessInferenceSupport singleton() {
-        return ImageSingletons.lookup(StrictDynamicAccessInferenceSupport.class);
-    }
-
-    private final ConstantExpressionAnalyzer analyzer;
-    private final ConstantExpressionRegistry registry;
-
-    StrictDynamicAccessInferenceSupport(ConstantExpressionAnalyzer analyzer, ConstantExpressionRegistry registry) {
-        this.analyzer = analyzer;
-        this.registry = registry;
-    }
-
-    public void analyze(ResolvedJavaMethod method, IntrinsicContext intrinsicContext) {
-        registry.analyzeAndStore(analyzer, method, intrinsicContext);
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(DynamicAccessInferenceLog.class, new DynamicAccessInferenceLog());
     }
 }

@@ -141,7 +141,7 @@ public final class ReflectionPlugins {
 
         this.classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
 
-        this.inferenceLog = ImageSingletons.contains(DynamicAccessInferenceLog.class) ? DynamicAccessInferenceLog.singleton() : null;
+        this.inferenceLog = DynamicAccessInferenceLog.singletonOrNull();
     }
 
     public static void registerInvocationPlugins(ImageClassLoader imageClassLoader, AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -502,23 +502,23 @@ public final class ReflectionPlugins {
      * parameter types. It also simplifies handling of different JDK versions, because methods not
      * yet available in JDK 8 (like VarHandle methods) are silently ignored.
      */
-    private void registerFoldInvocationPlugins(InvocationPlugins plugins, boolean logAsInferredDynamicAccess, Class<?> declaringClass, String... methodNames) {
+    private void registerFoldInvocationPlugins(InvocationPlugins plugins, boolean subjectToStrictDynamicAccessInference, Class<?> declaringClass, String... methodNames) {
         Set<String> methodNamesSet = new HashSet<>(Arrays.asList(methodNames));
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ReflectionPlugins.class, declaringClass);
         for (Method method : declaringClass.getDeclaredMethods()) {
             if (methodNamesSet.contains(method.getName()) && !method.isSynthetic()) {
-                registerFoldInvocationPlugin(plugins, method, logAsInferredDynamicAccess);
+                registerFoldInvocationPlugin(plugins, method, subjectToStrictDynamicAccessInference);
             }
         }
     }
 
     private static final Predicate<Object[]> alwaysAllowConstantFolding = args -> true;
 
-    private void registerFoldInvocationPlugin(InvocationPlugins plugins, Method reflectionMethod, boolean logAsInferredDynamicAccess) {
-        registerFoldInvocationPlugin(plugins, reflectionMethod, alwaysAllowConstantFolding, logAsInferredDynamicAccess);
+    private void registerFoldInvocationPlugin(InvocationPlugins plugins, Method reflectionMethod, boolean subjectToStrictDynamicAccessInference) {
+        registerFoldInvocationPlugin(plugins, reflectionMethod, alwaysAllowConstantFolding, subjectToStrictDynamicAccessInference);
     }
 
-    private void registerFoldInvocationPlugin(InvocationPlugins plugins, Method reflectionMethod, Predicate<Object[]> allowConstantFolding, boolean logAsInferredDynamicAccess) {
+    private void registerFoldInvocationPlugin(InvocationPlugins plugins, Method reflectionMethod, Predicate<Object[]> allowConstantFolding, boolean subjectToStrictDynamicAccessInference) {
         if (!isAllowedReturnType(reflectionMethod.getReturnType())) {
             throw VMError.shouldNotReachHere("Return type of method " + reflectionMethod + " is not on the allow-list for types that are immutable");
         }
@@ -533,7 +533,7 @@ public final class ReflectionPlugins {
         plugins.register(reflectionMethod.getDeclaringClass(), new RequiredInvocationPlugin(reflectionMethod.getName(), parameterTypes.toArray(new Class<?>[0])) {
             @Override
             public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
-                return foldInvocationUsingReflection(b, targetMethod, reflectionMethod, receiver, args, allowConstantFolding, logAsInferredDynamicAccess);
+                return foldInvocationUsingReflection(b, targetMethod, reflectionMethod, receiver, args, allowConstantFolding, subjectToStrictDynamicAccessInference);
             }
         });
     }
@@ -543,7 +543,7 @@ public final class ReflectionPlugins {
     }
 
     private boolean foldInvocationUsingReflection(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Method reflectionMethod, Receiver receiver, ValueNode[] args,
-                    Predicate<Object[]> allowConstantFolding, boolean logAsInferredDynamicAccess) {
+                    Predicate<Object[]> allowConstantFolding, boolean subjectToStrictDynamicAccessInference) {
         assert b.getMetaAccess().lookupJavaMethod(reflectionMethod).equals(targetMethod) : "Fold method mismatch: " + reflectionMethod + " != " + targetMethod;
 
         Object receiverValue;
@@ -581,9 +581,9 @@ public final class ReflectionPlugins {
         try {
             returnValue = reflectionMethod.invoke(receiverValue, argValues);
         } catch (InvocationTargetException ex) {
-            return throwException(b, targetMethod, receiverValue, argValues, ex.getTargetException().getClass(), ex.getTargetException().getMessage(), logAsInferredDynamicAccess);
+            return throwException(b, targetMethod, receiverValue, argValues, ex.getTargetException().getClass(), ex.getTargetException().getMessage(), subjectToStrictDynamicAccessInference);
         } catch (Throwable ex) {
-            return throwException(b, targetMethod, receiverValue, argValues, ex.getClass(), ex.getMessage(), logAsInferredDynamicAccess);
+            return throwException(b, targetMethod, receiverValue, argValues, ex.getClass(), ex.getMessage(), subjectToStrictDynamicAccessInference);
         }
 
         JavaKind returnKind = targetMethod.getSignature().getReturnKind();
@@ -591,11 +591,11 @@ public final class ReflectionPlugins {
             /*
              * The target method is a side-effect free void method that did not throw an exception.
              */
-            traceConstant(b, targetMethod, receiverValue, argValues, JavaKind.Void, logAsInferredDynamicAccess);
+            traceConstant(b, targetMethod, receiverValue, argValues, JavaKind.Void, subjectToStrictDynamicAccessInference);
             return true;
         }
 
-        return pushConstant(b, targetMethod, receiverValue, argValues, returnKind, returnValue, false, logAsInferredDynamicAccess) != null;
+        return pushConstant(b, targetMethod, receiverValue, argValues, returnKind, returnValue, false, subjectToStrictDynamicAccessInference) != null;
     }
 
     private <T> void registerBulkInvocationPlugin(InvocationPlugins plugins, Class<T> declaringClass, String methodName, Consumer<T> registrationCallback) {
@@ -784,7 +784,7 @@ public final class ReflectionPlugins {
     }
 
     private JavaConstant pushConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object receiver, Object[] arguments, JavaKind returnKind, Object returnValue,
-                    boolean allowNullReturnValue, boolean logAsInferredDynamicAccess) {
+                    boolean allowNullReturnValue, boolean subjectToStrictDynamicAccessInference) {
         Object intrinsicValue = getIntrinsic(b, returnValue == null && allowNullReturnValue ? NULL_MARKER : returnValue);
         if (intrinsicValue == null) {
             return null;
@@ -800,12 +800,12 @@ public final class ReflectionPlugins {
         }
 
         b.addPush(returnKind, ConstantNode.forConstant(intrinsicConstant, b.getMetaAccess()));
-        traceConstant(b, targetMethod, receiver, arguments, intrinsicValue, logAsInferredDynamicAccess);
+        traceConstant(b, targetMethod, receiver, arguments, intrinsicValue, subjectToStrictDynamicAccessInference);
         return intrinsicConstant;
     }
 
     private boolean throwException(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object receiver, Object[] arguments, Class<? extends Throwable> exceptionClass, String originalMessage,
-                    boolean logAsInferredDynamicAccess) {
+                    boolean subjectToStrictDynamicAccessInference) {
         /* Get the exception throwing method that has a message parameter. */
         Method exceptionMethod = ExceptionSynthesizer.throwExceptionMethodOrNull(exceptionClass, String.class);
         if (exceptionMethod == null) {
@@ -820,7 +820,7 @@ public final class ReflectionPlugins {
          * Because tracing can add a ReachabilityRegistrationNode to the graph, it has to happen
          * before exception synthesis.
          */
-        traceException(b, targetMethod, receiver, arguments, exceptionClass, logAsInferredDynamicAccess);
+        traceException(b, targetMethod, receiver, arguments, exceptionClass, subjectToStrictDynamicAccessInference);
 
         String message = originalMessage + ". This exception was synthesized during native image building from a call to " + targetMethod.format("%H.%n(%p)") +
                         " with constant arguments.";
@@ -828,9 +828,18 @@ public final class ReflectionPlugins {
         return true;
     }
 
-    private void traceConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object receiver, Object[] arguments, Object value, boolean logAsInferredDynamicAccess) {
-        if (logAsInferredDynamicAccess && inferenceLog != null) {
-            inferenceLog.logConstant(b, reason, targetMethod, receiver, arguments, value);
+    /**
+     * Log successful constant folding of an invocation.
+     *
+     * @param subjectToStrictDynamicAccessInference The value is {@code true} if inference for
+     *            {@code targetMethod} invocations is also executed by
+     *            {@link StrictDynamicAccessInferenceFeature}. This is used to avoid logging and
+     *            warning for non-strict folding of invocations which are not reflective, such as
+     *            {@link Integer#toString()}.
+     */
+    private void traceConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object receiver, Object[] arguments, Object value, boolean subjectToStrictDynamicAccessInference) {
+        if (subjectToStrictDynamicAccessInference && inferenceLog != null) {
+            inferenceLog.logFolding(b, reason, targetMethod, receiver, arguments, value);
         }
         if (Options.ReflectionPluginTracing.getValue()) {
             System.out.println("Call to " + targetMethod.format("%H.%n(%p)") +
@@ -840,9 +849,12 @@ public final class ReflectionPlugins {
         }
     }
 
+    /**
+     * Log constant folding of an invocation which was inferred to throw an exception at run-time.
+     */
     private void traceException(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object receiver, Object[] arguments, Class<? extends Throwable> exceptionClass,
-                    boolean logAsInferredDynamicAccess) {
-        if (logAsInferredDynamicAccess && inferenceLog != null) {
+                    boolean subjectToStrictDynamicAccessInference) {
+        if (subjectToStrictDynamicAccessInference && inferenceLog != null) {
             inferenceLog.logException(b, reason, targetMethod, receiver, arguments, exceptionClass);
         }
         if (Options.ReflectionPluginTracing.getValue()) {

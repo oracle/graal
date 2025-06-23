@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.dynamicaccessinference;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.util.LogUtils;
@@ -35,16 +34,14 @@ import com.oracle.svm.hosted.dataflow.AbstractFrame;
 import com.oracle.svm.hosted.dataflow.DataFlowAnalysisException;
 
 import jdk.graal.compiler.bytecode.Bytecode;
-import jdk.graal.compiler.bytecode.BytecodeProvider;
-import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
-import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Holds information on constant expressions as inferred by {@link ConstantExpressionAnalyzer}.
  */
-public class ConstantExpressionRegistry {
+public final class ConstantExpressionRegistry {
 
     public static ConstantExpressionRegistry singleton() {
         return ImageSingletons.lookup(ConstantExpressionRegistry.class);
@@ -59,30 +56,27 @@ public class ConstantExpressionRegistry {
      * Maps method and BCI pairs into abstract frames which represent the execution frame right
      * before the corresponding bytecode instruction.
      */
-    private Map<Pair<ResolvedJavaMethod, Integer>, AbstractFrame<ConstantExpressionAnalyzer.Value>> registry;
-    private boolean isSealed;
+    private Map<BytecodePosition, AbstractFrame<ConstantExpressionAnalyzer.Value>> registry = new ConcurrentHashMap<>();
+    private boolean sealed = false;
 
-    public ConstantExpressionRegistry() {
-        registry = new ConcurrentHashMap<>();
-        isSealed = false;
+    private final ConstantExpressionAnalyzer analyzer;
+
+    ConstantExpressionRegistry(ConstantExpressionAnalyzer analyzer) {
+        this.analyzer = analyzer;
     }
 
-    public void analyzeAndStore(ConstantExpressionAnalyzer analyzer, ResolvedJavaMethod method, IntrinsicContext intrinsicContext) {
-        assert !isSealed() : "Cannot store in registry when it is already sealed";
-        Bytecode bytecode = getBytecode(method, intrinsicContext);
+    /**
+     * Analyze the provided {@code bytecode} for constant expressions and store the results in the
+     * registry.
+     */
+    public void store(Bytecode bytecode) {
+        assert !sealed : "Cannot store in registry when it is already sealed";
         try {
             Map<Integer, AbstractFrame<ConstantExpressionAnalyzer.Value>> abstractFrames = analyzer.analyze(bytecode);
-            abstractFrames.forEach((key, value) -> registry.put(Pair.create(method, key), value));
+            abstractFrames.forEach((key, value) -> registry.put(new BytecodePosition(null, bytecode.getMethod(), key), value));
         } catch (DataFlowAnalysisException e) {
-            LogUtils.warning("Constant expression analysis failed for " + method.format("%H.%n(%p)") + ": " + e.getMessage());
+            LogUtils.warning("Constant expression analysis failed for " + bytecode.getMethod().format("%H.%n(%p)") + ": " + e.getMessage());
         }
-    }
-
-    private static Bytecode getBytecode(ResolvedJavaMethod method, IntrinsicContext intrinsicContext) {
-        BytecodeProvider bytecodeProvider = intrinsicContext == null
-                        ? ResolvedJavaMethodBytecodeProvider.INSTANCE
-                        : intrinsicContext.getBytecodeProvider();
-        return bytecodeProvider.getBytecode(method);
     }
 
     /**
@@ -96,9 +90,12 @@ public class ConstantExpressionRegistry {
      *         {@code null} value is represented by {@link ConstantExpressionRegistry#NULL_MARKER}.
      */
     public Object getReceiver(ResolvedJavaMethod callerMethod, int bci, ResolvedJavaMethod targetMethod) {
-        assert !isSealed() : "Registry is already sealed";
+        assert !sealed : "Registry is already sealed";
         assert targetMethod.hasReceiver() : "Method " + targetMethod + " does not have receiver";
-        AbstractFrame<ConstantExpressionAnalyzer.Value> frame = registry.get(Pair.create(callerMethod, bci));
+        if (callerMethod == null) {
+            return null;
+        }
+        AbstractFrame<ConstantExpressionAnalyzer.Value> frame = registry.get(new BytecodePosition(null, callerMethod, bci));
         if (frame == null) {
             return null;
         }
@@ -138,10 +135,13 @@ public class ConstantExpressionRegistry {
      *         {@code null} value is represented by {@link ConstantExpressionRegistry#NULL_MARKER}.
      */
     public Object getArgument(ResolvedJavaMethod callerMethod, int bci, ResolvedJavaMethod targetMethod, int index) {
-        assert !isSealed() : "Registry is already sealed";
+        assert !sealed : "Registry is already sealed";
         int numOfParameters = targetMethod.getSignature().getParameterCount(false);
         assert 0 <= index && index < numOfParameters : "Argument index " + index + " out of bounds for " + targetMethod;
-        AbstractFrame<ConstantExpressionAnalyzer.Value> frame = registry.get(Pair.create(callerMethod, bci));
+        if (callerMethod == null) {
+            return null;
+        }
+        AbstractFrame<ConstantExpressionAnalyzer.Value> frame = registry.get(new BytecodePosition(null, callerMethod, bci));
         if (frame == null) {
             return null;
         }
@@ -193,12 +193,9 @@ public class ConstantExpressionRegistry {
         return type.cast(value);
     }
 
-    public boolean isSealed() {
-        return isSealed;
-    }
-
-    public void seal() {
-        isSealed = true;
+    void seal() {
+        assert !sealed;
+        sealed = true;
         registry = null;
     }
 
