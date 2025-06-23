@@ -301,6 +301,14 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         rci.initializeAtRunTime(NativePRNG.Blocking.class, "for substitutions");
         rci.initializeAtRunTime(NativePRNG.NonBlocking.class, "for substitutions");
 
+        /*
+         * The following classes will pull a SecureRandom instance into the image heap, so we need
+         * to explicitly move them to a run time.
+         */
+        rci.initializeAtRunTime(clazz(access, "com.sun.security.sasl.CramMD5Server"), "for substitutions");
+        rci.initializeAtRunTime(clazz(access, "com.sun.security.sasl.digest.DigestMD5Base"), "for substitutions");
+        rci.initializeAtRunTime(clazz(access, "com.sun.security.sasl.digest.DigestMD5Client"), "for substitutions");
+
         rci.initializeAtRunTime(clazz(access, "sun.security.provider.SeedGenerator"), "for substitutions");
         rci.initializeAtRunTime(clazz(access, "sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
 
