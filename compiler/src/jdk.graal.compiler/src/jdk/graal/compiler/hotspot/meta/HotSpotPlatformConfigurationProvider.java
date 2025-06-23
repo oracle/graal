@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package jdk.graal.compiler.hotspot.meta;
 
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
-import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 
@@ -34,12 +33,9 @@ public class HotSpotPlatformConfigurationProvider implements PlatformConfigurati
 
     private final boolean canVirtualizeLargeByteArrayAccess;
 
-    private final boolean useLightweightLocking;
-
     public HotSpotPlatformConfigurationProvider(GraalHotSpotVMConfig config, BarrierSet barrierSet) {
         this.barrierSet = barrierSet;
         this.canVirtualizeLargeByteArrayAccess = config.deoptimizationSupportLargeAccessByteArrayVirtualization;
-        this.useLightweightLocking = HotSpotReplacementsUtil.useLightweightLocking(config);
     }
 
     @Override
@@ -49,7 +45,7 @@ public class HotSpotPlatformConfigurationProvider implements PlatformConfigurati
 
     @Override
     public boolean requiresStrictLockOrder() {
-        return useLightweightLocking;
+        return true;
     }
 
     @Override
