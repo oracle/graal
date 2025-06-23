@@ -27,6 +27,7 @@ package com.oracle.svm.core.graal.amd64;
 import java.util.ArrayList;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId;
 
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
@@ -51,9 +52,13 @@ import jdk.vm.ci.code.TargetDescription;
  *
  * @see LIRInstruction#modifiesStackPointer
  */
-class FramePointerPhase extends PreAllocationOptimizationPhase {
+public class FramePointerPhase extends PreAllocationOptimizationPhase {
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PreAllocationOptimizationContext context) {
+        if (!isSupported(lirGenRes)) {
+            return;
+        }
+
         LIR lir = lirGenRes.getLIR();
         if (!modifiesStackPointer(lir)) {
             return;
@@ -99,6 +104,12 @@ class FramePointerPhase extends PreAllocationOptimizationPhase {
                 buffer.finish();
             }
         }
+    }
+
+    static boolean isSupported(LIRGenerationResult lirGenRes) {
+        /* JIT compilation and deopt targets are not supported, see GR-64771. */
+        SubstrateAMD64Backend.SubstrateLIRGenerationResult result = (SubstrateAMD64Backend.SubstrateLIRGenerationResult) lirGenRes;
+        return SubstrateUtil.HOSTED && !result.getMethod().isDeoptTarget();
     }
 
     /** Returns true if any LIR instruction modifies the stack pointer, false otherwise. */

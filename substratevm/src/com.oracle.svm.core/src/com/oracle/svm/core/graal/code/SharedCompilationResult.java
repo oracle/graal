@@ -41,15 +41,22 @@ public abstract class SharedCompilationResult extends CompilationResult {
         return frameSize;
     }
 
-    public void setFrameSize(int frameSize) {
-        this.frameSize = frameSize;
+    public void setFrameSize(int value) {
+        assert frameSize == -1;
+        this.frameSize = value;
+    }
+
+    public boolean hasFramePointerSaveAreaOffset() {
+        return framePointerSaveAreaOffset != -1;
     }
 
     public int getFramePointerSaveAreaOffset() {
+        assert hasFramePointerSaveAreaOffset();
         return framePointerSaveAreaOffset;
     }
 
-    public void setFramePointerSaveAreaOffset(int framePointerSaveAreaOffset) {
-        this.framePointerSaveAreaOffset = framePointerSaveAreaOffset;
+    public void setFramePointerSaveAreaOffset(int value) {
+        assert !hasFramePointerSaveAreaOffset();
+        this.framePointerSaveAreaOffset = value;
     }
 }
