@@ -12,6 +12,9 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     components+: ["truffletck"],
     timelimit: '35:00',
     name: self.targets[0] + '-vm-truffle-native-tck-labs' + self.jdk_name + '-linux-amd64',
+    logs+: [
+      "*/call_tree.txt.gz"
+    ]
   },
 
   local truffle_native_tck_wasm = graal_common.deps.svm + {
