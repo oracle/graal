@@ -396,7 +396,6 @@ public class ResourcesFeature implements InternalFeature {
         ImageSingletons.add(RuntimeResourceSupport.class, resourcesRegistry);
         EmbeddedResourcesInfo embeddedResourcesInfo = new EmbeddedResourcesInfo();
         ImageSingletons.add(EmbeddedResourcesInfo.class, embeddedResourcesInfo);
-        inferenceLog = ImageSingletons.contains(DynamicAccessInferenceLog.class) ? DynamicAccessInferenceLog.singleton() : null;
     }
 
     private static ResourcesRegistryImpl resourceRegistryImpl() {
@@ -489,6 +488,8 @@ public class ResourcesFeature implements InternalFeature {
         globWorkSet = Set.of();
 
         resourceRegistryImpl().setAnalysisAccess(access);
+
+        inferenceLog = DynamicAccessInferenceLog.singletonOrNull();
     }
 
     private static final class ResourceCollectorImpl extends ConditionalConfigurationRegistry implements ResourceCollector {

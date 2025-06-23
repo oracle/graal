@@ -86,14 +86,14 @@ import static jdk.graal.compiler.bytecode.Bytecodes.CHECKCAST;
  * into the abstract frame, while the inferred value represents the actual Java value which would be
  * observed during the run-time execution of the corresponding instruction.
  */
-public final class ConstantExpressionAnalyzer extends AbstractInterpreter<ConstantExpressionAnalyzer.Value> {
+final class ConstantExpressionAnalyzer extends AbstractInterpreter<ConstantExpressionAnalyzer.Value> {
 
     private static final NotACompileTimeConstant NOT_A_COMPILE_TIME_CONSTANT = new NotACompileTimeConstant();
 
-    private final ImageClassLoader classLoader;
+    private final ClassLoader classLoader;
     private final Map<Method, Function<InvocationData, Value>> propagatingMethods;
 
-    public ConstantExpressionAnalyzer(CoreProviders providers, ImageClassLoader classLoader) {
+    ConstantExpressionAnalyzer(CoreProviders providers, ClassLoader classLoader) {
         super(providers);
         this.classLoader = classLoader;
         this.propagatingMethods = buildPropagatingMethods();
@@ -252,13 +252,13 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
         if (field.getName().equals("TYPE")) {
             Class<?> primitiveClass = switch (field.getDeclaringClass().toJavaName()) {
                 case "java.lang.Boolean" -> boolean.class;
-                case "java.lang.Character" -> char.class;
-                case "java.lang.Float" -> float.class;
-                case "java.lang.Double" -> double.class;
                 case "java.lang.Byte" -> byte.class;
                 case "java.lang.Short" -> short.class;
+                case "java.lang.Character" -> char.class;
                 case "java.lang.Integer" -> int.class;
                 case "java.lang.Long" -> long.class;
+                case "java.lang.Float" -> float.class;
+                case "java.lang.Double" -> double.class;
                 case "java.lang.Void" -> void.class;
                 default -> null;
             };
@@ -462,7 +462,7 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
         }
         ClassLoader loader = ClassForNameSupport.respectClassLoader()
                         ? OriginalClassProvider.getJavaClass(context.method().getDeclaringClass()).getClassLoader()
-                        : classLoader.getClassLoader();
+                        : classLoader;
         return findClass(context, className, loader);
     }
 
@@ -480,7 +480,7 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
                 return defaultValue();
             }
         } else {
-            loader = classLoader.getClassLoader();
+            loader = classLoader;
         }
         return findClass(context, className, loader);
     }
@@ -508,9 +508,10 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
 
     /**
      * Looking up constants/types/fields/methods through a {@link WrappedConstantPool} can result in
-     * UnsupportedFeatureException(s) being thrown. To avoid these exceptions, we essentially
-     * simulate the behavior of the WrappedConstantPool when looking up the underlying JVMCI
-     * constant/type/field/method, but skip the analysis (or hosted) universe lookup.
+     * {@link com.oracle.graal.pointsto.constraints.UnsupportedFeatureException
+     * UnsupportedFeatureException(s)} being thrown. To avoid this, we simulate the behavior of the
+     * {@link WrappedConstantPool} when looking up the underlying JVMCI constant/type/field/method,
+     * but skip the analysis (or hosted) universe lookup.
      */
     private static ConstantPool unwrapIfWrapped(ConstantPool constantPool) {
         return constantPool instanceof WrappedConstantPool wrapper
@@ -553,23 +554,15 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
      * Marker interface for abstract values obtained during bytecode-level constant expression
      * inference.
      */
-    public interface Value {
+    interface Value {
 
     }
 
-    public static class NotACompileTimeConstant implements Value {
-
-        @Override
-        public String toString() {
-            return "Not a compile-time constant";
-        }
-    }
-
-    public abstract static class CompileTimeConstant implements Value {
+    abstract static class CompileTimeConstant implements Value {
 
         private final int sourceBci;
 
-        public CompileTimeConstant(int bci) {
+        CompileTimeConstant(int bci) {
             this.sourceBci = bci;
         }
 
@@ -602,11 +595,19 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
         }
     }
 
-    public static class CompileTimeValueConstant<T> extends CompileTimeConstant {
+    private static final class NotACompileTimeConstant implements Value {
+
+        @Override
+        public String toString() {
+            return "Not a compile-time constant";
+        }
+    }
+
+    private static final class CompileTimeValueConstant<T> extends CompileTimeConstant {
 
         private final T value;
 
-        public CompileTimeValueConstant(int bci, T value) {
+        CompileTimeValueConstant(int bci, T value) {
             super(bci);
             this.value = value;
         }
@@ -622,24 +623,24 @@ public final class ConstantExpressionAnalyzer extends AbstractInterpreter<Consta
         }
     }
 
-    public static class CompileTimeArrayConstant<T> extends CompileTimeConstant {
+    private static final class CompileTimeArrayConstant<T> extends CompileTimeConstant {
 
         /*
-         * Sparse array representation to avoid possible large memory overheads when analyzing an
+         * Sparse array representation to avoid possible large memory overhead when analyzing an
          * array initialization with a large size.
          */
         private final Map<Integer, T> value;
         private final int size;
         private final Class<T> elementType;
 
-        public CompileTimeArrayConstant(int bci, int size, Class<T> elementType) {
+        CompileTimeArrayConstant(int bci, int size, Class<T> elementType) {
             super(bci);
             this.value = new HashMap<>();
             this.size = size;
             this.elementType = elementType;
         }
 
-        public CompileTimeArrayConstant(int bci, CompileTimeArrayConstant<T> arrayConstant) {
+        CompileTimeArrayConstant(int bci, CompileTimeArrayConstant<T> arrayConstant) {
             super(bci);
             this.value = new HashMap<>(arrayConstant.value);
             this.size = arrayConstant.size;
