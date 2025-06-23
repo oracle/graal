@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@ package jdk.graal.compiler.phases.common;
 
 import java.util.Optional;
 
-import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.GraphState;
@@ -65,7 +65,7 @@ public class LockEliminationPhase extends Phase {
             if ((next instanceof MonitorEnterNode)) {
                 // should never happen, osr monitor enters are always direct successors of the graph
                 // start
-                assert !(next instanceof OSRMonitorEnterNode) : Assertions.errorMessageContext("next", next);
+                GraalError.guarantee(!(next instanceof OSRMonitorEnterNode), "OSRMonitorEnterNode can't be seen here: %s", next);
                 AccessMonitorNode monitorEnterNode = (AccessMonitorNode) next;
                 if (isCompatibleLock(monitorEnterNode, monitorExitNode, true, cfg)) {
                     /*

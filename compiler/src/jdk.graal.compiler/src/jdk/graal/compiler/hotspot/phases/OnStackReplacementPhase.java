@@ -38,7 +38,6 @@ import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.graal.compiler.loop.phases.LoopTransformations;
@@ -68,10 +67,7 @@ import jdk.graal.compiler.nodes.extended.OSRLockNode;
 import jdk.graal.compiler.nodes.extended.OSRMonitorEnterNode;
 import jdk.graal.compiler.nodes.extended.OSRStartNode;
 import jdk.graal.compiler.nodes.extended.ObjectIsArrayNode;
-import jdk.graal.compiler.nodes.java.AccessMonitorNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
-import jdk.graal.compiler.nodes.java.MonitorEnterNode;
-import jdk.graal.compiler.nodes.java.MonitorExitNode;
 import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
@@ -253,12 +249,6 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
                     ValueNode lockedObject = osrState.lockAt(i);
                     OSRMonitorEnterNode osrMonitorEnter = graph.add(new OSRMonitorEnterNode(lockedObject, id));
                     osrMonitorEnter.setStateAfter(osrStart.stateAfter());
-                    for (Node usage : id.usages()) {
-                        if (usage instanceof AccessMonitorNode) {
-                            AccessMonitorNode access = (AccessMonitorNode) usage;
-                            access.setObject(lockedObject);
-                        }
-                    }
                     FixedNode oldNext = osrStart.next();
                     oldNext.replaceAtPredecessor(null);
                     osrMonitorEnter.setNext(oldNext);
@@ -267,19 +257,10 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
             }
 
             debug.dump(DebugContext.DETAILED_LEVEL, graph, "After inserting OSR monitor enters");
-            /*
-             * Ensure balanced monitorenter - monitorexit
-             *
-             * Ensure that there is no monitor exit without a monitor enter in the graph. If there
-             * is one this can only be done by bytecode as we have the monitor enter before the OSR
-             * loop but the exit in a path of the loop that must be under a condition, else it will
-             * throw an IllegalStateException anyway in the 2.iteration
-             */
-            for (MonitorExitNode exit : graph.getNodes(MonitorExitNode.TYPE)) {
-                MonitorIdNode id = exit.getMonitorId();
-                if (id.usages().filter(MonitorEnterNode.class).count() != 1) {
-                    throw new PermanentBailoutException("Unbalanced monitor enter-exit in OSR compilation with locks. Object is locked before the loop but released inside the loop.");
-                }
+            try {
+                new VerifyLockDepthPhase().run(graph);
+            } catch (VerifyLockDepthPhase.LockStructureError e) {
+                throw new PermanentBailoutException("Unbalanced monitor enter-exit in OSR compilation with locks: " + e.getMessage());
             }
         }
         debug.dump(DebugContext.DETAILED_LEVEL, graph, "OnStackReplacement result");
