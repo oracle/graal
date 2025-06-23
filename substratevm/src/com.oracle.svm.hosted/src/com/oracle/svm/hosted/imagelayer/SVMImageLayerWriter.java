@@ -1117,6 +1117,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                 constantId = initialLayerOnlySingletonMap.getOrDefault(initialLayerOnlyImageSingleton, -1);
             }
             sb.setConstantId(constantId);
+            sb.setIsInitialLayerOnly(singleton instanceof InitialLayerOnlyImageSingleton);
         }
 
         var sortedByIDs = singletonInfoMap.entrySet().stream()
