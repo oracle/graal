@@ -25,9 +25,10 @@ package com.oracle.truffle.espresso.jvmci.meta;
 import static com.oracle.truffle.espresso.jvmci.EspressoJVMCIRuntime.runtime;
 
 import java.lang.invoke.MethodHandle;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -126,10 +127,35 @@ public final class EspressoConstantPool implements ConstantPool {
     @Override
     public native EspressoBootstrapMethodInvocation lookupBootstrapMethodInvocation(int cpi, int opcode);
 
+    private native EspressoBootstrapMethodInvocation lookupIndyBootstrapMethodInvocation(int siteIndex);
+
     @Override
     public List<BootstrapMethodInvocation> lookupBootstrapMethodInvocations(boolean invokeDynamic) {
-        throw JVMCIError.unimplemented();
+        List<BootstrapMethodInvocation> result;
+        if (invokeDynamic) {
+            int indyEntries = getNumIndyEntries();
+            if (indyEntries == 0) {
+                return Collections.emptyList();
+            }
+            result = new ArrayList<>(indyEntries);
+            for (int i = 0; i < indyEntries; i++) {
+                result.add(lookupIndyBootstrapMethodInvocation(i));
+            }
+        } else {
+            result = new ArrayList<>();
+            int length = length();
+            for (int i = 0; i < length; i++) {
+                byte tagByte = getTagByteAt(i);
+                if (tagByte == 17) {
+                    // Dynamic
+                    result.add(lookupBootstrapMethodInvocation(i, -1));
+                }
+            }
+        }
+        return result;
     }
+
+    private native int getNumIndyEntries();
 
     @Override
     public native JavaType lookupType(int cpi, int opcode);

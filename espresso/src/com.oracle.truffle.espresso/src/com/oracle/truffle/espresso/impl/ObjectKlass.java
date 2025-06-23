@@ -758,7 +758,7 @@ public final class ObjectKlass extends Klass {
         return constructors.toArray(Method.EMPTY_ARRAY);
     }
 
-    Method.MethodVersion[] getMirandaMethods() {
+    public Method.MethodVersion[] getMirandaMethods() {
         return getKlassVersion().mirandaMethods;
     }
 

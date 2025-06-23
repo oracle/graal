@@ -243,7 +243,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
     }
 
     @Substitution(hasReceiver = true)
-    public static int hashCode(StaticObject self, @Inject EspressoContext context) {
+    public static int hashCode0(StaticObject self, @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
         Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(self);
