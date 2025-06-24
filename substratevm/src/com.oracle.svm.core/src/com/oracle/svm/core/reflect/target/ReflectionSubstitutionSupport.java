@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.reflect.target;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
@@ -52,4 +53,6 @@ public interface ReflectionSubstitutionSupport {
      * deleted.
      */
     String getDeletionReason(Field field);
+
+    boolean isCustomSerializationConstructor(Constructor<?> reflectConstructor);
 }
