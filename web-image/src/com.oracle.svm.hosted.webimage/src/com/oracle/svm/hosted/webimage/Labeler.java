@@ -33,9 +33,9 @@ import java.util.regex.Pattern;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.webimage.hightiercodegen.CodeBuffer;
 
 import jdk.graal.compiler.debug.MetricKey;
-import jdk.graal.compiler.hightiercodegen.CodeBuffer;
 
 /**
  * A utility class used for injecting label pairs and method labels inside JavaScript image. Besides

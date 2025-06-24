@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.webimage.js;
 
-import jdk.graal.compiler.hightiercodegen.Keyword;
+import com.oracle.svm.webimage.hightiercodegen.Keyword;
 
 /**
  * Collection of keywords that are available in JavaScript.

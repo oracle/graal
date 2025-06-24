@@ -32,6 +32,8 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.js.JSStaticMethodDefinition;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.webimage.hightiercodegen.Emitter;
+import com.oracle.svm.webimage.hightiercodegen.IEmitter;
 import com.oracle.svm.webimage.longemulation.Long64;
 
 import jdk.graal.compiler.core.common.calc.FloatConvert;
@@ -39,8 +41,6 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.hightiercodegen.Emitter;
-import jdk.graal.compiler.hightiercodegen.IEmitter;
 import jdk.graal.compiler.nodes.ArithmeticOperation;
 import jdk.graal.compiler.nodes.BinaryOpLogicNode;
 import jdk.graal.compiler.nodes.ValueNode;

@@ -72,10 +72,10 @@ import com.oracle.svm.hosted.webimage.util.TypeControlGraphPrinter;
 import com.oracle.svm.hosted.webimage.util.metrics.CodeSizeCollector;
 import com.oracle.svm.hosted.webimage.util.metrics.ImageMetricsCollector;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.webimage.hightiercodegen.CodeBuffer;
+import com.oracle.svm.webimage.hightiercodegen.Emitter;
 
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.hightiercodegen.CodeBuffer;
-import jdk.graal.compiler.hightiercodegen.Emitter;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;

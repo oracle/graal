@@ -26,8 +26,8 @@ package com.oracle.svm.webimage.functionintrinsics;
 
 import java.util.List;
 
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
-import jdk.graal.compiler.hightiercodegen.IEmitter;
+import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
+import com.oracle.svm.webimage.hightiercodegen.IEmitter;
 
 public interface JSFunctionDefinition {
     int getNrOfArgs();

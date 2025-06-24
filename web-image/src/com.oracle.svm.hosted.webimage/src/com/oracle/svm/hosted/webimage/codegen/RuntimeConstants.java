@@ -32,8 +32,7 @@ import com.oracle.svm.hosted.webimage.codegen.type.ClassMetadataLowerer;
 import com.oracle.svm.hosted.webimage.js.JSKeyword;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.webimage.JSNameGenerator;
-
-import jdk.graal.compiler.hightiercodegen.CodeBuffer;
+import com.oracle.svm.webimage.hightiercodegen.CodeBuffer;
 
 /**
  * Defines constants that can be used by handwritten (and generated) JS code.

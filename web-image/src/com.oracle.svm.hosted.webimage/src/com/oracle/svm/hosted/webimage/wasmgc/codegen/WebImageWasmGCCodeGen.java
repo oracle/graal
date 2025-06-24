@@ -54,12 +54,12 @@ import com.oracle.svm.hosted.webimage.wasmgc.WebImageWasmGCCodeCache;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.visitors.WasmGCElementCreator;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCHeapWriter.ObjectData;
 import com.oracle.svm.hosted.webimage.wasmgc.image.WasmGCImageHeapLayoutInfo;
+import com.oracle.svm.webimage.hightiercodegen.CodeBuffer;
+import com.oracle.svm.webimage.hightiercodegen.Emitter;
+import com.oracle.svm.webimage.hightiercodegen.IEmitter;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.hightiercodegen.CodeBuffer;
-import jdk.graal.compiler.hightiercodegen.Emitter;
-import jdk.graal.compiler.hightiercodegen.IEmitter;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.Reference;
 import jdk.vm.ci.meta.VMConstant;

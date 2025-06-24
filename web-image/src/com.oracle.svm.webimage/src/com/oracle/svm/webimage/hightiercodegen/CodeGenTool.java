@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hightiercodegen;
+package com.oracle.svm.webimage.hightiercodegen;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 
+import com.oracle.svm.webimage.hightiercodegen.variables.ResolvedVar;
+import com.oracle.svm.webimage.hightiercodegen.variables.VariableAllocation;
+import com.oracle.svm.webimage.hightiercodegen.variables.VariableMap;
+
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.hightiercodegen.variables.ResolvedVar;
-import jdk.graal.compiler.hightiercodegen.variables.VariableAllocation;
-import jdk.graal.compiler.hightiercodegen.variables.VariableMap;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.StructuredGraph;

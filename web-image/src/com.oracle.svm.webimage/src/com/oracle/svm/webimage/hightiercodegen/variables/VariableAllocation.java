@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,18 +23,19 @@
  * questions.
  */
 
-package jdk.graal.compiler.hightiercodegen.variables;
+package com.oracle.svm.webimage.hightiercodegen.variables;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
+import com.oracle.svm.webimage.hightiercodegen.NodeLowerer;
+
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.graph.NodeMap;
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
-import jdk.graal.compiler.hightiercodegen.NodeLowerer;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.CallTargetNode;

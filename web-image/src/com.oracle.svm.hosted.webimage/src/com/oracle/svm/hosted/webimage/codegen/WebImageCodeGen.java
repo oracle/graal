@@ -63,10 +63,10 @@ import com.oracle.svm.hosted.webimage.util.metrics.CodeSizeCollector;
 import com.oracle.svm.hosted.webimage.util.metrics.ImageMetricsCollector;
 import com.oracle.svm.hosted.webimage.util.metrics.MethodMetricsCollector;
 import com.oracle.svm.webimage.NamingConvention;
+import com.oracle.svm.webimage.hightiercodegen.Emitter;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.MetricKey;
-import jdk.graal.compiler.hightiercodegen.Emitter;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.common.JVMCIError;
 

@@ -31,10 +31,11 @@ import java.util.function.Function;
 
 import org.graalvm.webimage.api.JS;
 
+import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
+
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeInputList;
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;

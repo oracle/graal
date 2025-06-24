@@ -37,12 +37,12 @@ import com.oracle.svm.hosted.webimage.js.JSKeyword;
 import com.oracle.svm.hosted.webimage.metrickeys.ImageBreakdownMetricKeys;
 import com.oracle.svm.hosted.webimage.util.metrics.CodeSizeCollector;
 import com.oracle.svm.webimage.functionintrinsics.JSGenericFunctionDefinition;
+import com.oracle.svm.webimage.hightiercodegen.CodeBuffer;
 import com.oracle.svm.webimage.object.ConstantIdentityMapping;
 import com.oracle.svm.webimage.object.ConstantIdentityMapping.IdentityNode;
 import com.oracle.svm.webimage.object.ObjectInspector;
 import com.oracle.svm.webimage.object.ObjectInspector.ObjectType;
 
-import jdk.graal.compiler.hightiercodegen.CodeBuffer;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.vm.ci.meta.JavaConstant;

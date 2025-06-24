@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hightiercodegen.reconstruction.stackifier;
+package com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier;
 
 import java.util.Optional;
 
-import jdk.graal.compiler.hightiercodegen.irwalk.StackifierIRWalker;
-import jdk.graal.compiler.hightiercodegen.reconstruction.ReconstructionPhase;
-import jdk.graal.compiler.hightiercodegen.reconstruction.ScheduleWithReconstructionResult;
-import jdk.graal.compiler.hightiercodegen.reconstruction.StackifierData;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlockGeneration;
+import com.oracle.svm.hosted.webimage.codegen.irwalk.StackifierIRWalker;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.ReconstructionPhase;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.ScheduleWithReconstructionResult;
+
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;

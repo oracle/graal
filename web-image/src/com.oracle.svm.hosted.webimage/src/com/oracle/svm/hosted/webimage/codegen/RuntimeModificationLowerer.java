@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.webimage.codegen;
 
-import static jdk.graal.compiler.hightiercodegen.Emitter.of;
+import static com.oracle.svm.webimage.hightiercodegen.Emitter.of;
 
 import java.lang.reflect.Array;
 import java.math.BigInteger;
@@ -33,9 +33,9 @@ import java.util.Set;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.webimage.hightiercodegen.Emitter;
 import com.oracle.svm.webimage.type.TypeControl;
 
-import jdk.graal.compiler.hightiercodegen.Emitter;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;

@@ -25,8 +25,8 @@
 
 package com.oracle.svm.hosted.webimage.snippets;
 
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
-import jdk.graal.compiler.hightiercodegen.IEmitter;
+import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
+import com.oracle.svm.webimage.hightiercodegen.IEmitter;
 
 public class JSSnippet implements IEmitter {
     protected final String formattedString;

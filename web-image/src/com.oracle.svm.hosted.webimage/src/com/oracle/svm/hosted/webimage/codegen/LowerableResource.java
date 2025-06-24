@@ -30,10 +30,10 @@ import java.util.Scanner;
 
 import com.oracle.svm.hosted.webimage.LowerableFile;
 import com.oracle.svm.hosted.webimage.codegen.JSIntrinsifyFile.FileData;
+import com.oracle.svm.webimage.hightiercodegen.CodeBuffer;
+import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
 
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.hightiercodegen.CodeBuffer;
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
 
 /**
  * Represents a hand-written JavaScript file that is part of Web Image. The content is accessed as a

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.webimage;
 
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
+import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
 
 /**
  * Represents a JS file that needs to be linked and lowered.

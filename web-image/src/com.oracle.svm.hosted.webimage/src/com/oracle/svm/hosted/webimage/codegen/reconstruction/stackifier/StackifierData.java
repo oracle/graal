@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hightiercodegen.reconstruction;
+package com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier;
 
 import java.util.SortedSet;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.ReconstructionData;
+
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.CFStackifierSortPhase;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlock;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlockGeneration;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.CatchScopeContainer;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.IfScopeContainer;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.LoopScopeContainer;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.Scope;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.ScopeContainer;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.SwitchScopeContainer;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 

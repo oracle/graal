@@ -28,9 +28,8 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.js.JSKeyword;
-
-import jdk.graal.compiler.hightiercodegen.CodeBuffer;
-import jdk.graal.compiler.hightiercodegen.Emitter;
+import com.oracle.svm.webimage.hightiercodegen.CodeBuffer;
+import com.oracle.svm.webimage.hightiercodegen.Emitter;
 
 public class TypeVtableLowerer {
 

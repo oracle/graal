@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hightiercodegen.irwalk;
+package com.oracle.svm.hosted.webimage.codegen.irwalk;
 
 import java.util.List;
+
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.ReconstructionData;
+import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
-import jdk.graal.compiler.hightiercodegen.reconstruction.ReconstructionData;
 import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.vm.ci.common.JVMCIError;

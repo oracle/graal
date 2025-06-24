@@ -52,10 +52,10 @@ import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.snippets.JSSnippet;
 import com.oracle.svm.hosted.webimage.snippets.JSSnippets;
 import com.oracle.svm.hosted.webimage.util.metrics.MethodMetricsCollector;
+import com.oracle.svm.webimage.hightiercodegen.CodeBuffer;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.hightiercodegen.CodeBuffer;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.meta.ResolvedJavaField;

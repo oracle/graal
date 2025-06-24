@@ -22,12 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hightiercodegen.irwalk;
+package com.oracle.svm.hosted.webimage.codegen.irwalk;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.SortedSet;
+
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.ReconstructionData;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.CatchScopeContainer;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.IfScopeContainer;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.LabeledBlock;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.LabeledBlockGeneration;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.LoopScopeContainer;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.Scope;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.StackifierData;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.StackifierScopeComputation;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.SwitchScopeContainer;
+import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
 
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.core.common.cfg.CFGLoop;
@@ -36,17 +48,6 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
-import jdk.graal.compiler.hightiercodegen.reconstruction.ReconstructionData;
-import jdk.graal.compiler.hightiercodegen.reconstruction.StackifierData;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.StackifierScopeComputation;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlock;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlockGeneration;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.CatchScopeContainer;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.IfScopeContainer;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.LoopScopeContainer;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.Scope;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.SwitchScopeContainer;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.BeginNode;
