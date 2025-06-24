@@ -37,6 +37,8 @@ import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lan
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.HIDDEN_CLASS;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.NESTMATE_CLASS;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.STRONG_LOADER_LINK;
+import static com.oracle.truffle.espresso.threads.ThreadState.OBJECT_WAIT;
+import static com.oracle.truffle.espresso.threads.ThreadState.TIMED_OBJECT_WAIT;
 
 import java.io.File;
 import java.lang.invoke.MethodType;
@@ -164,8 +166,8 @@ import com.oracle.truffle.espresso.substitutions.continuations.Target_org_graalv
 import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_ref_Reference;
-import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.ThreadAccess;
+import com.oracle.truffle.espresso.threads.ThreadState;
 import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.npe.ExtendedNPEMessage;
 import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
@@ -871,8 +873,9 @@ public final class VM extends NativeEnv {
 
         EspressoContext context = getContext();
         StaticObject currentThread = context.getCurrentPlatformThread();
-        State state = timeout > 0 ? State.TIMED_WAITING : State.WAITING;
-        try (Transition transition = Transition.transition(context, state)) {
+        ThreadState state = timeout > 0 ? TIMED_OBJECT_WAIT : OBJECT_WAIT;
+        Transition transition = Transition.transition(state, profiler);
+        try {
             final boolean report = context.shouldReportVMEvents();
             if (report) {
                 context.reportMonitorWait(self, timeout);
@@ -892,13 +895,15 @@ public final class VM extends NativeEnv {
             if (getThreadAccess().isInterrupted(currentThread, true)) {
                 throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
             }
-            getThreadAccess().fullSafePoint(currentThread);
+            getThreadAccess().checkDeprecatedThreadStatus(currentThread);
         } catch (IllegalMonitorStateException e) {
             profiler.profile(1);
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalMonitorStateException, e.getMessage());
         } catch (IllegalArgumentException e) {
             profiler.profile(2);
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
+        } finally {
+            transition.restore(profiler);
         }
     }
 
@@ -1782,6 +1787,14 @@ public final class VM extends NativeEnv {
             this.trace = new StackElement[size];
             this.capacity = size;
             this.size = 0;
+        }
+
+        public StaticObject toGuest(EspressoContext ctx) {
+            return ctx.getMeta().java_lang_StackTraceElement.allocateReferenceArray(size, i -> {
+                StaticObject ste = ctx.getMeta().java_lang_StackTraceElement.allocateInstance(ctx);
+                VM.fillInElement(ste, trace[i], ctx.getMeta());
+                return ste;
+            });
         }
 
         public StackElement top() {

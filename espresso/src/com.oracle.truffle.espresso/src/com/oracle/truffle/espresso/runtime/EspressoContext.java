@@ -453,7 +453,7 @@ public final class EspressoContext
                 vm.attachThread(Thread.currentThread());
                 vm.loadJavaLibrary(vmProperties.bootLibraryPath()); // libjava
                 this.downcallStubs = new DowncallStubs(Platform.getHostPlatform());
-                this.upcallStubs = new UpcallStubs(Platform.getHostPlatform(), nativeAccess, language);
+                this.upcallStubs = new UpcallStubs(Platform.getHostPlatform(), nativeAccess, this, language);
 
                 vm.initializeJavaLibrary();
                 EspressoError.guarantee(getJavaVersion() != null, "Java version");
@@ -509,6 +509,8 @@ public final class EspressoContext
             }
 
             // Create main thread as soon as Thread class is initialized.
+            // On return, the main thread is in the RUNNABLE state. Keep it that way until we are
+            // done with initializing the guest.
             espressoEnv.getThreadRegistry().createMainThread(meta);
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
@@ -603,6 +605,10 @@ public final class EspressoContext
             initDoneTimeNanos = System.nanoTime();
             long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
             getLogger().log(Level.FINE, "VM booted in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
+        } finally {
+            // Done with guest initialization, report main thread as out of espresso as we are
+            // yielding control.
+            espressoEnv.getThreadRegistry().reportMainAsInNative();
         }
     }
 
