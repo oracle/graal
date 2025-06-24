@@ -28,8 +28,8 @@ import java.io.File;
 import java.io.InputStream;
 import java.util.Scanner;
 
+import com.oracle.svm.hosted.webimage.LowerableFile;
 import com.oracle.svm.hosted.webimage.codegen.JSIntrinsifyFile.FileData;
-import com.oracle.svm.webimage.LowerableFile;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hightiercodegen.CodeBuffer;

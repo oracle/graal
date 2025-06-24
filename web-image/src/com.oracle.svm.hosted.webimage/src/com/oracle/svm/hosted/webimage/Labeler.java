@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.webimage;
+package com.oracle.svm.hosted.webimage;
 
 import java.util.ArrayList;
 import java.util.function.BiConsumer;

@@ -51,8 +51,8 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.JSCodeBuffer;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.codegen.RuntimeConstants;
+import com.oracle.svm.hosted.webimage.js.JSKeyword;
 import com.oracle.svm.hosted.webimage.util.ReflectUtil;
-import com.oracle.svm.webimage.JSKeyword;
 import com.oracle.svm.webimage.api.Nothing;
 import com.oracle.svm.webimage.type.TypeControl;
 

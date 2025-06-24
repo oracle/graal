@@ -40,11 +40,11 @@ import org.graalvm.webimage.api.JSValue;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.JSCodeBuffer;
+import com.oracle.svm.hosted.webimage.LowerableFile;
 import com.oracle.svm.hosted.webimage.WebImageHostedConfiguration;
 import com.oracle.svm.hosted.webimage.js.JSBody;
+import com.oracle.svm.hosted.webimage.js.JSKeyword;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
-import com.oracle.svm.webimage.JSKeyword;
-import com.oracle.svm.webimage.LowerableFile;
 import com.oracle.svm.webimage.annotation.WebImage;
 
 import jdk.graal.compiler.core.common.NumUtil;

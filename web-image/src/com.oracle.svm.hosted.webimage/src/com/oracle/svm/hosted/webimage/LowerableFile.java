@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.webimage;
+package com.oracle.svm.hosted.webimage;
 
 import jdk.graal.compiler.hightiercodegen.CodeGenTool;
 
@@ -31,7 +31,7 @@ import jdk.graal.compiler.hightiercodegen.CodeGenTool;
  *
  * A LowerableFile might contain references to Java class and method names, which need to be
  * resolved to the actual JS names that are generated for the Java classes and methods (See
- * {@code JSIntrinsifyFile}). This is the <i>linking</> process.
+ * {@code JSIntrinsifyFile}). This is the <i>linking</i> process.
  *
  * A LowerableFile might have JavaScript evaluation order dependencies among them and/or on lowered
  * Java classes. The high-level lowering logic handles the dependencies when output the contents of

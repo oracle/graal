@@ -41,6 +41,7 @@ import com.oracle.svm.hosted.webimage.codegen.LowerableResource;
 import com.oracle.svm.hosted.webimage.codegen.LowerableResources;
 import com.oracle.svm.hosted.webimage.codegen.WebImageProviders;
 import com.oracle.svm.hosted.webimage.js.JSBody;
+import com.oracle.svm.hosted.webimage.js.JSKeyword;
 import com.oracle.svm.hosted.webimage.wasm.WasmJSCounterparts;
 import com.oracle.svm.hosted.webimage.wasm.ast.Instruction;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
@@ -53,7 +54,6 @@ import com.oracle.svm.hosted.webimage.wasmgc.WebImageWasmGCCodeCache;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.visitors.WasmGCElementCreator;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCHeapWriter.ObjectData;
 import com.oracle.svm.hosted.webimage.wasmgc.image.WasmGCImageHeapLayoutInfo;
-import com.oracle.svm.webimage.JSKeyword;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;

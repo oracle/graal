@@ -51,6 +51,7 @@ import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.JSCodeBuffer;
+import com.oracle.svm.hosted.webimage.Labeler;
 import com.oracle.svm.hosted.webimage.WebImageCodeCache;
 import com.oracle.svm.hosted.webimage.WebImageHostedConfiguration;
 import com.oracle.svm.hosted.webimage.codegen.compatibility.JSBenchmarkingCode;
@@ -71,7 +72,6 @@ import com.oracle.svm.hosted.webimage.util.TypeControlGraphPrinter;
 import com.oracle.svm.hosted.webimage.util.metrics.CodeSizeCollector;
 import com.oracle.svm.hosted.webimage.util.metrics.ImageMetricsCollector;
 import com.oracle.svm.util.ReflectionUtil;
-import com.oracle.svm.webimage.Labeler;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.hightiercodegen.CodeBuffer;
