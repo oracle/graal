@@ -234,9 +234,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         G1("UseG1GC"),
         Z(true, true, flagIsSet("UseZGC")),
         Epsilon(true, true, flagIsSet("UseEpsilonGC")),
-
-        // Unsupported GCs
-        Shenandoah(false, true, flagIsSet("UseShenandoahGC"));
+        Shenandoah(true, true, flagIsSet("UseShenandoahGC"));
 
         HotSpotGC(String flag) {
             this(true, true, flagIsSet(flag));
