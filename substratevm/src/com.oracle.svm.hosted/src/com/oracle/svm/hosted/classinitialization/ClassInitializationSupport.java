@@ -169,9 +169,22 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
     /**
      * Seal the configuration, blocking if another thread is trying to seal the configuration or an
      * unsealed-configuration window is currently open in another thread.
+     * </p>
+     * If -H:+PrintClassInitialization is set, dumps all class-initialization config into a file.
      */
     public synchronized void sealConfiguration() {
         setConfigurationSealed(true);
+        if (ClassInitializationOptions.PrintClassInitialization.getValue()) {
+            List<ClassOrPackageConfig> allConfigs = classInitializationConfiguration.allConfigs();
+            allConfigs.sort(Comparator.comparing(ClassOrPackageConfig::getName));
+            ReportUtils.report("class initialization configuration", SubstrateOptions.reportsPath(), "class_initialization_configuration", "csv", writer -> {
+                writer.println("Class or Package Name, Initialization Kind, Reasons");
+                for (ClassOrPackageConfig config : allConfigs) {
+                    writer.append(config.getName()).append(", ").append(config.getKind().toString()).append(", ")
+                                    .append(String.join(" and ", config.getReasons())).append(System.lineSeparator());
+                }
+            });
+        }
     }
 
     /**
@@ -190,17 +203,6 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
 
     private void setConfigurationSealed(boolean sealed) {
         configurationSealed = sealed;
-        if (configurationSealed && ClassInitializationOptions.PrintClassInitialization.getValue()) {
-            List<ClassOrPackageConfig> allConfigs = classInitializationConfiguration.allConfigs();
-            allConfigs.sort(Comparator.comparing(ClassOrPackageConfig::getName));
-            ReportUtils.report("class initialization configuration", SubstrateOptions.reportsPath(), "class_initialization_configuration", "csv", writer -> {
-                writer.println("Class or Package Name, Initialization Kind, Reasons");
-                for (ClassOrPackageConfig config : allConfigs) {
-                    writer.append(config.getName()).append(", ").append(config.getKind().toString()).append(", ")
-                                    .append(String.join(" and ", config.getReasons())).append(System.lineSeparator());
-                }
-            });
-        }
     }
 
     /**
