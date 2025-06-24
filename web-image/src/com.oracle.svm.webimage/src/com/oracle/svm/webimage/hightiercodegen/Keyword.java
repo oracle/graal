@@ -24,9 +24,13 @@
  */
 package com.oracle.svm.webimage.hightiercodegen;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 /**
  * This class represents keywords of a high level programming language.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public abstract class Keyword {
 
     private final String symbol;

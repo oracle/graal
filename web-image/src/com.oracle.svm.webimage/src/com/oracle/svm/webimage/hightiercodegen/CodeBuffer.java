@@ -32,6 +32,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.vm.ci.common.JVMCIError;
@@ -42,6 +45,7 @@ import jdk.vm.ci.meta.Signature;
 /**
  * Utility class that provides an abstraction layer for emitting code.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public abstract class CodeBuffer {
 
     /**

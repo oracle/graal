@@ -28,6 +28,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.webimage.hightiercodegen.variables.ResolvedVar;
 import com.oracle.svm.webimage.hightiercodegen.variables.VariableAllocation;
 import com.oracle.svm.webimage.hightiercodegen.variables.VariableMap;
@@ -50,6 +53,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * abstraction (e.g. {@link #genArrayLoad}, {@link #genFunctionCall}) compared to
  * {@link CodeBuffer}, which is mainly concerned with emitting individual tokens.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public abstract class CodeGenTool {
 
     protected final CodeBuffer codeBuffer;

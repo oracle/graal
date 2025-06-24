@@ -26,11 +26,15 @@ package com.oracle.svm.webimage.hightiercodegen.variables;
 
 import java.util.HashMap;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import jdk.graal.compiler.nodes.ValueNode;
 
 /**
  * Storing variable allocation result for a method.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public final class VariableMap {
     public static final String LOCAL_PREFIX = "l";
 

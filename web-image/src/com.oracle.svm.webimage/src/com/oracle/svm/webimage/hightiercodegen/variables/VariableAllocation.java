@@ -29,6 +29,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
 import com.oracle.svm.webimage.hightiercodegen.NodeLowerer;
 
@@ -58,6 +61,7 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
  * Whether to create a variable or to inline is tightly coupled to how code is generated for a node,
  * especially when it comes to correctness.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public abstract class VariableAllocation {
 
     /**

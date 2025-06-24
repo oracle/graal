@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.webimage.hightiercodegen;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.webimage.hightiercodegen.variables.ResolvedVar;
 
 import jdk.graal.compiler.graph.GraalGraphError;
@@ -109,6 +112,7 @@ import jdk.graal.compiler.word.WordCastNode;
 /**
  * This class is responsible for generating code for individual {@link Node}s in the graph.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public abstract class NodeLowerer {
 
     protected final CodeGenTool codeGenTool;

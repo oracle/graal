@@ -24,9 +24,13 @@
  */
 package com.oracle.svm.webimage.hightiercodegen.variables;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import jdk.graal.compiler.graph.Node;
 import jdk.vm.ci.common.JVMCIError;
 
+@Platforms(Platform.HOSTED_ONLY.class)
 public final class ResolvedVar {
     private final Node node;
     private boolean unborn;

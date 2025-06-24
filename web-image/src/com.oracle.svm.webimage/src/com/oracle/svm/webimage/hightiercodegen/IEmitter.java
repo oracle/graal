@@ -25,12 +25,16 @@
 
 package com.oracle.svm.webimage.hightiercodegen;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 /**
  * Abstract interface to facilitate lowering of various objects.
  *
  * Methods that want to accept multiple different types for lowering, especially as part of a list
  * of arguments, can accept {@link IEmitter} instead of having to create many overloaded methods.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public interface IEmitter {
     void lower(CodeGenTool codeGenTool);
 }

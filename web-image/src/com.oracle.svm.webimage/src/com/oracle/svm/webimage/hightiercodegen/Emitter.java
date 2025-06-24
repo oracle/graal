@@ -32,6 +32,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.webimage.hightiercodegen.variables.ResolvedVar;
 
 import jdk.graal.compiler.nodes.ValueNode;
@@ -43,6 +46,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * This class holds utility methods to create instances of {@link IEmitter} to generate various code
  * constructs, such as identifiers and literals of various types.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public class Emitter implements IEmitter {
     private static final Emitter NULL = new Emitter(CodeGenTool::genNull);
 
