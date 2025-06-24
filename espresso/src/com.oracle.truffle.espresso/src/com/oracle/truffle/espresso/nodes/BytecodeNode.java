@@ -371,6 +371,7 @@ import com.oracle.truffle.espresso.shared.resolver.CallSiteType;
 import com.oracle.truffle.espresso.shared.resolver.FieldAccessType;
 import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.SiteTypes;
+import com.oracle.truffle.espresso.threads.ThreadState;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
@@ -723,6 +724,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private Object executeBodyFromBCI(VirtualFrame frame, int startBCI, int startTop, int startStatementIndex,
                     boolean isOSR, boolean resumeContinuation) {
         CompilerAsserts.partialEvaluationConstant(startBCI);
+        assert ThreadState.currentThreadInEspresso(getContext());
         final InstrumentationSupport instrument = this.instrumentation;
         int statementIndex = startStatementIndex;
         boolean skipLivenessActions = instrument != null;

@@ -400,8 +400,6 @@ public final class ObjectKlass extends Klass {
                 }
             }
 
-            var tls = getContext().getLanguage().getThreadLocalState();
-            tls.blockContinuationSuspension();
             try {
                 if (!isInterface()) {
                     /*
@@ -425,7 +423,7 @@ public final class ObjectKlass extends Klass {
                 // Next, execute the class or interface initialization method of C.
                 Method clinit = getClassInitializer();
                 if (clinit != null) {
-                    clinit.getCallTarget().call();
+                    clinit.invokeDirectStatic();
                 }
             } catch (EspressoException e) {
                 setErroneousInitialization();
@@ -438,8 +436,6 @@ public final class ObjectKlass extends Klass {
                 e.printStackTrace();
                 setErroneousInitialization();
                 throw e;
-            } finally {
-                tls.unblockContinuationSuspension();
             }
             checkErroneousInitialization();
             initState = INITIALIZED;
@@ -1536,7 +1532,7 @@ public final class ObjectKlass extends Klass {
 
     // used by some plugins during klass redefinition
     public void reRunClinit() {
-        getClassInitializer().getCallTarget().call();
+        getClassInitializer().invokeDirectStatic();
     }
 
     private static void checkCopyMethods(KlassVersion klassVersion, Method method, Method.MethodVersion[][] table, Method.SharedRedefinitionContent content) {

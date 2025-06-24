@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
+import static com.oracle.truffle.espresso.threads.ThreadState.IN_ESPRESSO;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -41,9 +43,9 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.threads.Transition;
 
 @GenerateUncached
 public abstract class InvokeEspressoNode extends EspressoNode {
@@ -59,8 +61,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
         }
         EspressoLanguage language = getLanguage();
         Meta meta = getMeta();
-        EspressoThreadLocalState tls = language.getThreadLocalState();
-        tls.blockContinuationSuspension();
+        Transition transition = Transition.transition(IN_ESPRESSO, this);
         try {
             Object result = executeMethod(resolutionSeed, receiver, arguments, argsConverted);
             /*
@@ -74,7 +75,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
              */
             throw InteropUtils.unwrapExceptionBoundary(language, e, meta);
         } finally {
-            tls.unblockContinuationSuspension();
+            transition.restore(this);
         }
     }
 

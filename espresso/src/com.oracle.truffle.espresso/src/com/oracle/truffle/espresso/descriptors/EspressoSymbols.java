@@ -987,6 +987,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> HIDDEN_THREAD_PARK_LOCK = SYMBOLS.putName("0HIDDEN_THREAD_PARK_LOCK");
         public static final Symbol<Name> HIDDEN_HOST_THREAD = SYMBOLS.putName("0HIDDEN_HOST_THREAD");
         public static final Symbol<Name> HIDDEN_ESPRESSO_MANAGED = SYMBOLS.putName("0HIDDEN_ESPRESSO_MANAGED");
+        public static final Symbol<Name> HIDDEN_TO_NATIVE_LOCK = SYMBOLS.putName("0HIDDEN_TO_NATIVE_LOCK");
         public static final Symbol<Name> HIDDEN_INTERRUPTED = SYMBOLS.putName("0HIDDEN_INTERRUPTED");
         public static final Symbol<Name> HIDDEN_THREAD_PENDING_MONITOR = SYMBOLS.putName("0HIDDEN_THREAD_PENDING_MONITOR");
         public static final Symbol<Name> HIDDEN_THREAD_WAITING_MONITOR = SYMBOLS.putName("0HIDDEN_THREAD_WAITING_MONITOR");
