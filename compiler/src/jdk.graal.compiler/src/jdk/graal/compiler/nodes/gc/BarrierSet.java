@@ -25,6 +25,7 @@
  */
 package jdk.graal.compiler.nodes.gc;
 
+import jdk.graal.compiler.nodes.GraphState;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
@@ -87,5 +88,11 @@ public interface BarrierSet {
      * @param graph the grraph to verify.
      */
     default void verifyBarriers(StructuredGraph graph) {
+    }
+
+    default boolean shouldAddBarriersInStage(GraphState.StageFlag stage) {
+        // Most barrier sets should be added in mid-tier, some might also
+        // wish to add in low-tier (e.g. Shenandoah GC).
+        return stage == GraphState.StageFlag.BARRIER_ADDITION;
     }
 }

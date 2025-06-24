@@ -63,6 +63,7 @@ import jdk.graal.compiler.hotspot.HotSpotLIRGenerationResult;
 import jdk.graal.compiler.hotspot.HotSpotLIRGenerator;
 import jdk.graal.compiler.hotspot.HotSpotLockStack;
 import jdk.graal.compiler.hotspot.aarch64.g1.AArch64HotSpotG1BarrierSetLIRTool;
+import jdk.graal.compiler.hotspot.aarch64.shenandoah.AArch64HotSpotShenandoahBarrierSetLIRGenerator;
 import jdk.graal.compiler.hotspot.aarch64.z.AArch64HotSpotZBarrierSetLIRGenerator;
 import jdk.graal.compiler.hotspot.debug.BenchmarkCounters;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
@@ -119,6 +120,9 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         }
         if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
             return new AArch64HotSpotZBarrierSetLIRGenerator(config, providers);
+        }
+        if (config.gc == HotSpotGraalRuntime.HotSpotGC.Shenandoah) {
+            return new AArch64HotSpotShenandoahBarrierSetLIRGenerator(config, providers);
         }
         return null;
     }

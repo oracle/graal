@@ -296,6 +296,8 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
         ResolvedJavaField referentField = HotSpotReplacementsUtil.referentField(metaAccess);
         if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
             return new HotSpotZBarrierSet(objectArrayType, referentField);
+        } else if (config.gc == HotSpotGraalRuntime.HotSpotGC.Shenandoah) {
+            return new HotSpotShenandoahBarrierSet(objectArrayType, referentField, config);
         } else if (config.gc == HotSpotGraalRuntime.HotSpotGC.Epsilon) {
             return new NoBarrierSet();
         } else if (config.useG1GC()) {

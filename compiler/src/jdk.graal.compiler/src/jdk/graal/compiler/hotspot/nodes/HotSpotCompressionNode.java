@@ -63,6 +63,14 @@ public final class HotSpotCompressionNode extends CompressionNode {
         return graph.unique(uncompress(input, encoding));
     }
 
+    public static HotSpotCompressionNode compressWithoutUnique(StructuredGraph graph, ValueNode input, CompressEncoding encoding) {
+        return graph.addWithoutUnique(compress(input, encoding));
+    }
+
+    public static CompressionNode uncompressWithoutUnique(StructuredGraph graph, ValueNode input, CompressEncoding encoding) {
+        return graph.addWithoutUnique(uncompress(input, encoding));
+    }
+
     private static HotSpotCompressionNode compress(ValueNode input, CompressEncoding encoding) {
         return new HotSpotCompressionNode(CompressionOp.Compress, input, encoding);
     }
