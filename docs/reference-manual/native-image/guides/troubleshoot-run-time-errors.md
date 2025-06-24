@@ -23,13 +23,17 @@ This can be avoided by eagerly checking for missing metadata.
 
 1. Pass the `--exact-reachability-metadata` option to the `native-image` tool and rebuild the application. If you want to do this only for a specific package, specify a package prefix `--exact-reachability-metadata=[package prefix]`.
     
-    > This option was introduced in GraalVM for JDK 23 and will become the default in the next feature release. It is equivalent to the `-H:ThrowMissingRegistrationErrors=` host option.
+    > This option was introduced in GraalVM for JDK 23 for debugging purposes. In GraalVM versions prior to JDK 23, use the `-H:ThrowMissingRegistrationErrors=` build option instead.
 
-2. Next run that native executable passing the `-XX:MissingRegistrationReportingMode=Warn` option to find all places in your code where missing registrations occur.
+2. Run the generated native executable passing the `-XX:MissingRegistrationReportingMode=Warn` option to find all places in your code where missing registrations occur.
+
+    > `-XX:MissingRegistrationReportingMode=` was promoted to a run-time option in GraalVM for JDK 23. In GraalVM versions prior to JDK 23, use the `-H:MissingRegistrationReportingMode=Warn` build option instead.
 
 3. If there is some missing metadata reported, make sure to add it to the _reachability-metadata.json_ file. See how to do it in the [Reachability Metadata documentation](https://www.graalvm.org/latest/reference-manual/native-image/metadata/#specifying-metadata-with-json).
 
-4. Then restart the native executable with `-XX:MissingRegistrationReportingMode=Exit` to detect places where the application accidentally ignores a missing registration error (with `catch (Throwable t)` blocks). The application will then unconditionally print the error message with the stack trace and exit immediately. This behavior is ideal for running application tests to guarantee all metadata is included.
+    > It is not always necessary to add all reported elements to _reachability-metadata.json_. The one causing the program failure is usually among the last listed.
+
+    > In GraalVM versions prior to JDK 23, errors may be reported for elements already present in _reachability-metadata.json_. These can be safely ignored, as they result from the experimental nature of the `-H:ThrowMissingRegistrationErrors=` option.
 
 #### Shared Libraries
 
