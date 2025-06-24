@@ -986,6 +986,10 @@ public class AMD64Move {
 
             final Register resReg = getResultRegister();
             final Register baseReg = getBaseRegister();
+            emitCompressCode(masm, resReg, getShift(), baseReg, nonNull);
+        }
+
+        public static void emitCompressCode(AMD64MacroAssembler masm, Register resReg, int shift, Register baseReg, boolean nonNull) {
             if (!baseReg.equals(Register.None)) {
                 if (!nonNull) {
                     masm.testq(resReg, resReg);
@@ -994,7 +998,6 @@ public class AMD64Move {
                 masm.subq(resReg, baseReg);
             }
 
-            int shift = getShift();
             if (shift != 0) {
                 masm.shrq(resReg, shift);
             }
