@@ -1136,7 +1136,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "21+",
+            "javaCompliance" : "22+",
             "spotbugs": "false",
             "jacoco" : "exclude",
         },
