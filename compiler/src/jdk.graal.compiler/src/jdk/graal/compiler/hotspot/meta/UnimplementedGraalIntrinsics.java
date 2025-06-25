@@ -129,7 +129,7 @@ public final class UnimplementedGraalIntrinsics {
                         "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
                         "java/lang/StringUTF16.indexOfLatin1([B[B)I",
                         // implemented through lowering
-                        "java/lang/ref/Reference.get()Ljava/lang/Object;",
+                        "java/lang/ref/Reference.get0()Ljava/lang/Object;",
                         // Relevant for Java flight recorder
                         // [GR-10106] These JFR intrinsics are used for firing socket/file events
                         // via Java instrumentation and are of low priority.
