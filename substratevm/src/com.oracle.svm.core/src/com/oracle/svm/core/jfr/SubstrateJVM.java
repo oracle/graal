@@ -752,16 +752,13 @@ public class SubstrateJVM {
         try {
             boolean existingFile = chunkWriter.hasOpenFile();
             if (!existingFile) {
-                Log.log().string("no existing chunk file.").newline();
-                // If no chunkfile is open, create one.
-                // TODO when would a file not already be open? must be open for flushes.
-                // RawFileOperationSupport.RawFileDescriptor fd = JfrEmergencyDumpSupport.singleton().chunkPath();
-                // chunkWriter.openFile(fd);
-                // chunkWriter.closeFileForEmergencyDump();
-            } else {
-                assert chunkWriter.hasOpenFile();
-                chunkWriter.closeFileForEmergencyDump();
+                // If no chunkfile is open, create one. This case is very unlikely.
+                Log.log().string("No existing chunk file. Creating one.").newline();
+                RawFileOperationSupport.RawFileDescriptor fd = JfrEmergencyDumpSupport.singleton().chunkPath();
+                chunkWriter.openFile(fd);
             }
+            assert chunkWriter.hasOpenFile();
+            chunkWriter.closeFileForEmergencyDump();
             JfrEmergencyDumpSupport.singleton().onVmError();
         } finally {
             chunkWriter.unlock();

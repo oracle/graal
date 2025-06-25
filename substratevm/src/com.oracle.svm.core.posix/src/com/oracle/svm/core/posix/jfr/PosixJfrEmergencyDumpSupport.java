@@ -73,6 +73,8 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
     private static int ISO8601_LEN = 19;
     private static final byte FILE_SEPARATOR = "/".getBytes(StandardCharsets.UTF_8)[0];
     private static final byte DOT = ".".getBytes(StandardCharsets.UTF_8)[0];
+    // It does not really matter what the name is.
+    private static final byte[] EMERGENCY_CHUNK_BYTES = "emergency_chunk".getBytes(StandardCharsets.UTF_8);
     private static final byte[] DUMP_FILE_PREFIX = "hs_oom_pid_".getBytes(StandardCharsets.UTF_8);
     private static final byte[] CHUNKFILE_EXTENSION_BYTES = ".jfr".getBytes(StandardCharsets.UTF_8);
     private Dirent.DIR directory;
@@ -109,30 +111,29 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
 
     // Either use create and use the dumpfile itself, or create a new file in the repository
     // location.
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+3/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L433-L445")
     public RawFileDescriptor chunkPath() {
         if (repositoryLocationBytes == null) {
             if (!openEmergencyDumpFile()) {
                 return WordFactory.nullPointer();
             }
-            // We can directly use the emergency dump file name as the chunk.
+            // We can directly use the emergency dump file name as the new chunk since there are no other chunk files.
             return emergencyFd;
         }
+        Log.log().string("Creating a new emergency chunk file in the JFR disk repository").newline();
         return createEmergencyChunkPath();
     }
 
+    /** The normal chunkfile name format is: repository path + file separator + date time + extension.
+     * In this case we just use a hardcoded string instead of date time, which will successfully rank last in lexographic order among other chunkfile names.*/
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+3/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L418-L431")
     private RawFileDescriptor createEmergencyChunkPath() {
-        int idx = 0;
         clearPathBuffer();
-        for (int i = 0; i < repositoryLocationBytes.length; i++) {
-            getPathBuffer().write(idx++, repositoryLocationBytes[i]);
-        }
+        int idx = 0;
+        idx = writeToPathBuffer(repositoryLocationBytes, idx);
         getPathBuffer().write(idx++, FILE_SEPARATOR);
-
-        for (int i = 0; i < CHUNKFILE_EXTENSION_BYTES.length; i++) {
-            getPathBuffer().write(idx++, CHUNKFILE_EXTENSION_BYTES[i]);
-        }
-        // TODO what about date time? Need that for sorting.
-        // repository path + file separator + date time + extension
+        idx = writeToPathBuffer(EMERGENCY_CHUNK_BYTES, idx);
+        writeToPathBuffer(CHUNKFILE_EXTENSION_BYTES, idx);
         return getFileSupport().create(getPathBuffer(), FileCreationMode.CREATE, FileAccessMode.READ_WRITE);
     }
 
@@ -171,32 +172,21 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L110-L129")
     private CCharPointer createEmergencyDumpPath() {
         int idx = 0;
-
         clearPathBuffer();
 
         if (dumpPathBytes != null) {
-            for (int i = 0; i < dumpPathBytes.length; i++) {
-                getPathBuffer().write(idx++, dumpPathBytes[i]);
-            }
+            idx = writeToPathBuffer(dumpPathBytes, idx);
             // Add delimiter
             getPathBuffer().write(idx++, FILE_SEPARATOR);
         }
 
-        for (int i = 0; i < DUMP_FILE_PREFIX.length; i++) {
-            getPathBuffer().write(idx++, DUMP_FILE_PREFIX[i]);
-        }
-
-        for (int i = 0; i < pidBytes.length; i++) {
-            getPathBuffer().write(idx++, pidBytes[i]);
-        }
-
-        for (int i = 0; i < CHUNKFILE_EXTENSION_BYTES.length; i++) {
-            getPathBuffer().write(idx++, CHUNKFILE_EXTENSION_BYTES[i]);
-        }
-
+        idx = writeToPathBuffer(DUMP_FILE_PREFIX, idx);
+        idx = writeToPathBuffer(pidBytes, idx);
+        writeToPathBuffer(CHUNKFILE_EXTENSION_BYTES, idx);
         return getPathBuffer();
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+3/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L310-L345")
     private GrowableWordArray iterateRepository(GrowableWordArray gwa) {
         int count = 0;
         // Open directory
@@ -307,9 +297,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
 
     private CCharPointer getRepositoryLocation() {
         clearPathBuffer();
-        for (int i = 0; i < repositoryLocationBytes.length; i++) {
-            getPathBuffer().write(i, repositoryLocationBytes[i]);
-        }
+        writeToPathBuffer(repositoryLocationBytes,0);
         return getPathBuffer();
     }
 
@@ -374,9 +362,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         // TODO HS uses _path_buffer_file_name_offset to avoid building this part of th path each
         // time.
         // Cached in RepositoryIterator::RepositoryIterator and used in fully_qualified
-        for (int i = 0; i < repositoryLocationBytes.length; i++) {
-            getPathBuffer().write(idx++, repositoryLocationBytes[i]);
-        }
+        idx = writeToPathBuffer(repositoryLocationBytes, idx);
 
         // Add delimiter
         getPathBuffer().write(idx++, FILE_SEPARATOR);
@@ -394,6 +380,13 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
     private void clearPathBuffer() {
         // Terminate the string with 0.
         LibC.memset(getPathBuffer(), Word.signed(0), Word.unsigned(JVM_MAXPATHLEN));
+    }
+
+    private int writeToPathBuffer(byte[] bytes, int idx){
+        for (int i = 0; i < bytes.length; i++) {
+            getPathBuffer().write(idx++, bytes[i]);
+        }
+        return idx;
     }
 
     @Fold
