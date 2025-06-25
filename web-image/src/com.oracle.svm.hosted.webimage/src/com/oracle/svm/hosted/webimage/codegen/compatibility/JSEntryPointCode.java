@@ -29,12 +29,11 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.codegen.Array;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.codegen.Runtime;
-import com.oracle.svm.webimage.JSKeyword;
+import com.oracle.svm.hosted.webimage.js.JSKeyword;
 import com.oracle.svm.webimage.functionintrinsics.JSFunctionDefinition;
 import com.oracle.svm.webimage.functionintrinsics.JSGenericFunctionDefinition;
-
-import jdk.graal.compiler.hightiercodegen.CodeBuffer;
-import jdk.graal.compiler.hightiercodegen.Emitter;
+import com.oracle.svm.webimage.hightiercodegen.CodeBuffer;
+import com.oracle.svm.webimage.hightiercodegen.Emitter;
 
 /**
  * Generates the function that calls the entry point.

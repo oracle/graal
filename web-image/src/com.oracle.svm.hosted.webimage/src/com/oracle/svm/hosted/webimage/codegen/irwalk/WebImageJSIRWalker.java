@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.webimage.codegen.irwalk;
 import java.util.List;
 
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.ReconstructionData;
 import com.oracle.svm.hosted.webimage.logging.LoggerContext;
 import com.oracle.svm.hosted.webimage.metrickeys.MethodMetricKeys;
 import com.oracle.svm.hosted.webimage.metrickeys.StackifierMetricKeys;
@@ -36,8 +37,6 @@ import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
-import jdk.graal.compiler.hightiercodegen.irwalk.StackifierIRWalker;
-import jdk.graal.compiler.hightiercodegen.reconstruction.ReconstructionData;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 

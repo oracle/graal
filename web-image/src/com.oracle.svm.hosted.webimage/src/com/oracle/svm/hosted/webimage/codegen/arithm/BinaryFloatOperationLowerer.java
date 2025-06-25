@@ -25,8 +25,8 @@
 package com.oracle.svm.hosted.webimage.codegen.arithm;
 
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
+import com.oracle.svm.hosted.webimage.js.JSKeyword;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
-import com.oracle.svm.webimage.JSKeyword;
 
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.nodes.NodeView;
