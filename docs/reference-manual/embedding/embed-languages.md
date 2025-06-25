@@ -93,7 +93,7 @@ In this example, `lib/polyglot` directory should contain all polyglot and langua
 To access polyglot classes from the class path, you must also specify the `--add-modules=org.graalvm.polyglot` JVM option.
 If you are using [GraalVM Native Image](#build-native-executables-from-polyglot-applications), polyglot modules on the class path will be automatically upgraded to the module path.
 
-While we do support creating single uber JAR files from polyglot libraries, for example, using the Maven Assembly plugin, but we do not recommend it.
+While we do support [creating single uber JAR files](#uber-jar-file-creation) from polyglot libraries, for example, using the Maven Assembly plugin, we do not recommend it.
 Also note that uber JAR files are not supported when creating native binaries with GraalVM Native Image.
 
 ## Compile and Run a Polyglot Application
@@ -940,6 +940,131 @@ In this code:
 - The `statements(true)` filters execution listeners to statements only.
 - The `context.eval()` call evaluates a specified snippet of guest language code.
 - The `listener.close()` closes a listener earlier, however execution listeners are automatically closed with the engine.
+
+## Uber JAR File Creation
+
+Uber JARs are JAR files that bundle all dependencies into a single archive for easier distribution.
+However, creating an Uber JAR is not recommended for Graal languages because it breaks module descriptors, file integrity metadata, and JAR signature information.
+Uber JARs are only supported on HotSpot and are not supported for native image generation, as the Native Image tool requires intact Java module descriptors.
+
+If you must use Uber JARs, use the minimal configuration below and verify that it is still up to date whenever you upgrade.
+
+You can find a working example of valid Maven Shade and Assembly plugin configurations in the [polyglot embedding example](https://github.com/graalvm/polyglot-embedding-demo?tab=readme-ov-file#maven-usage).
+See the `shade` and `assembly` profiles in [_pom.xml_](https://github.com/graalvm/polyglot-embedding-demo/blob/main/pom.xml#L384).
+
+### Maven Shade Plugin
+
+If you intend to use the Maven Shade plugin, include at least the following transformers and filter configuration:
+
+```xml
+<profile>
+    <id>shade</id>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <transformers>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                            <mainClass>org.example.embedding.Main</mainClass>
+                            <manifestEntries>
+                                <Multi-Release>true</Multi-Release>
+                            </manifestEntries>
+                        </transformer>
+                    </transformers>
+                    <filters>
+                    	  <!-- Filters JAR signature files -->
+                        <filter>
+                            <artifact>*:*:*:*</artifact>
+                            <excludes>
+                                <exclude>META-INF/*.SF</exclude>
+                                <exclude>META-INF/*.DSA</exclude>
+                                <exclude>META-INF/*.RSA</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</profile>
+```
+
+### Maven Assembly plugin
+
+If you are using the Maven Assembly plugin, you may apply the following configuration:
+
+```xml
+<profile>
+    <id>assembly</id>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <archive>
+                                <manifest>
+                                    <mainClass>org.example.embedding.Main</mainClass>
+                                </manifest>
+                                <manifestEntries>
+                                    <Multi-Release>true</Multi-Release>
+                                </manifestEntries>
+                            </archive>
+                            <descriptors>
+                                <descriptor>assembly.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</profile>
+```
+with the corresponding `assembly.xml`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<assembly xmlns="http://maven.apache.org/ASSEMBLY/2.2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.2.0 http://maven.apache.org/xsd/assembly-2.2.0.xsd">
+    <id>jar-with-dependencies</id>
+    <formats>
+        <format>jar</format>
+    </formats>
+    <includeBaseDirectory>false</includeBaseDirectory>
+    <dependencySets>
+        <dependencySet>
+            <outputDirectory>/</outputDirectory>
+            <useProjectArtifact>true</useProjectArtifact>
+            <unpack>true</unpack>
+            <scope>runtime</scope>
+        </dependencySet>
+    </dependencySets>
+    <containerDescriptorHandlers>
+        <containerDescriptorHandler>
+            <handlerName>metaInf-services</handlerName>
+        </containerDescriptorHandler>
+    </containerDescriptorHandlers>
+</assembly
+```
 
 ## Compatibility with JSR-223 ScriptEngine
 
