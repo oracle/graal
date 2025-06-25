@@ -235,7 +235,7 @@ public class LIRCompilerBackend {
                 compilationResult.setSpeculationLog(speculationLog);
             }
             crb.finish();
-            if (debug.isCountEnabled()) {
+            if (debug.areCountersEnabled()) {
                 List<DataPatch> ldp = compilationResult.getDataPatches();
                 JavaKind[] kindValues = JavaKind.values();
                 CounterKey[] dms = new CounterKey[kindValues.length];

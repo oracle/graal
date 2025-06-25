@@ -54,7 +54,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.DebugContext.Description;
 import jdk.graal.compiler.debug.DebugDumpScope;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.TTY;
@@ -163,7 +163,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         protected DebugContext createRetryDebugContext(DebugContext initialDebug, OptionValues retryOptions, PrintStream logStream) {
             SnippetReflectionProvider snippetReflection = compiler.getGraalRuntime().getHostProviders().getSnippetReflection();
             Description description = initialDebug.getDescription();
-            DebugHandlersFactory factory = new GraalDebugHandlersFactory(snippetReflection);
+            DebugDumpHandlersFactory factory = new GraalDebugHandlersFactory(snippetReflection);
             return new Builder(retryOptions, factory).globalMetrics(initialDebug.getGlobalMetrics()).description(description).logStream(logStream).build();
         }
 
@@ -391,7 +391,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                  * Passing a snippet reflection instance to the debug handlers would cause replay
                  * failures.
                  */
-                List<DebugHandlersFactory> debugHandlersFactories = List.of(new GraalDebugHandlersFactory(null));
+                List<DebugDumpHandlersFactory> debugHandlersFactories = List.of(new GraalDebugHandlersFactory(null));
                 PrintStream selectedPrintStream = initialDebug.getConfig() == null ? DebugContext.getDefaultLogStream() : initialDebug.getConfig().output();
                 try (DebugContext debug = selectedCompiler.getGraalRuntime().openDebugContext(options, compilationId, method, debugHandlersFactories, selectedPrintStream);
                                 DebugContext.Activation a = debug.activate();

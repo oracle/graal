@@ -26,12 +26,12 @@ package jdk.graal.compiler.core;
 
 import static jdk.graal.compiler.core.CompilationWrapper.ExceptionAction.ExitVM;
 import static jdk.graal.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
-import static jdk.graal.compiler.debug.DebugOptions.Count;
 import static jdk.graal.compiler.debug.DebugOptions.Dump;
 import static jdk.graal.compiler.debug.DebugOptions.DumpPath;
 import static jdk.graal.compiler.debug.DebugOptions.MethodFilter;
 import static jdk.graal.compiler.debug.DebugOptions.PrintBackendCFG;
-import static jdk.graal.compiler.debug.DebugOptions.Time;
+import static jdk.graal.compiler.debug.DebugOptions.Counters;
+import static jdk.graal.compiler.debug.DebugOptions.Timers;
 import static jdk.graal.compiler.debug.PathUtilities.getPath;
 import static jdk.graal.compiler.debug.DebugOptions.RecordForReplay;
 
@@ -393,8 +393,8 @@ public abstract class CompilationWrapper<T> {
          * turn if explicitly set in DiagnoseOptions.
          */
         values.put(MethodFilter, null);
-        values.put(Count, "");
-        values.put(Time, "");
+        values.put(Counters, "");
+        values.put(Timers, "");
         values.put(DumpPath, dumpPath);
         values.put(PrintBackendCFG, true);
         values.put(TrackNodeSourcePosition, true);

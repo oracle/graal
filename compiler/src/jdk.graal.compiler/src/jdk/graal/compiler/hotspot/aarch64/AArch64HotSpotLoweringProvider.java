@@ -28,7 +28,7 @@ package jdk.graal.compiler.hotspot.aarch64;
 import jdk.graal.compiler.core.aarch64.AArch64LoweringProviderMixin;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -59,7 +59,7 @@ public class AArch64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvid
     }
 
     @Override
-    public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
+    public void initialize(OptionValues options, Iterable<DebugDumpHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
                     HotSpotArraycopySnippets.Templates arraycopySnippetTemplates,
                     HotSpotAllocationSnippets.Templates allocationSnippetTemplates) {
         integerArithmeticSnippets = new AArch64IntegerArithmeticSnippets(options, providers);

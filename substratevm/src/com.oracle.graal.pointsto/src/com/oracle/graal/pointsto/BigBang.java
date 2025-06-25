@@ -40,7 +40,7 @@ import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodePosition;
@@ -75,7 +75,7 @@ public interface BigBang extends ReachabilityAnalysis {
 
     HostedProviders getProviders(MultiMethod.MultiMethodKey key);
 
-    List<DebugHandlersFactory> getDebugHandlerFactories();
+    List<DebugDumpHandlersFactory> getDebugHandlerFactories();
 
     /**
      * Prints more detailed information about all analysis timers.
