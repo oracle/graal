@@ -30,8 +30,10 @@ import java.lang.reflect.Method;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
-import com.oracle.svm.hosted.webimage.js.JSStaticFieldDefinition;
 import com.oracle.svm.hosted.webimage.js.JSStaticMethodDefinition;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.webimage.hightiercodegen.Emitter;
+import com.oracle.svm.webimage.hightiercodegen.IEmitter;
 import com.oracle.svm.webimage.longemulation.Long64;
 
 import jdk.graal.compiler.core.common.calc.FloatConvert;
@@ -39,8 +41,6 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.hightiercodegen.Emitter;
-import jdk.graal.compiler.hightiercodegen.IEmitter;
 import jdk.graal.compiler.nodes.ArithmeticOperation;
 import jdk.graal.compiler.nodes.BinaryOpLogicNode;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -61,7 +61,6 @@ public class Long64Lowerer {
     public static final long JS_MAX_EXACT_INT53 = 9007199254740991L;
     public static final long JS_MIN_EXACT_INT53 = -9007199254740991L;
     private static final EconomicMap<Method, JSStaticMethodDefinition> staticJSMethodCache = EconomicMap.create();
-    private static final EconomicMap<Field, JSStaticFieldDefinition> staticJSFieldCache = EconomicMap.create();
 
     public static JSStaticMethodDefinition getJSStaticMethodDefinition(Method method, JSCodeGenTool jsLTools) {
         if (staticJSMethodCache.containsKey(method)) {
@@ -74,45 +73,21 @@ public class Long64Lowerer {
         }
     }
 
-    public static JSStaticFieldDefinition getJSStaticFieldDefinition(Field field, JSCodeGenTool jsLTools) {
-        if (staticJSFieldCache.containsKey(field)) {
-            return staticJSFieldCache.get(field);
-        } else {
-            ResolvedJavaField f = jsLTools.getProviders().getMetaAccess().lookupJavaField(field);
-            JSStaticFieldDefinition jsStaticFieldDefinition = new JSStaticFieldDefinition(f);
-            staticJSFieldCache.put(field, jsStaticFieldDefinition);
-            return jsStaticFieldDefinition;
-        }
-    }
-
     public static void lowerFromConstant(Constant c, JSCodeGenTool jsLTools) {
         assert c instanceof PrimitiveConstant : c;
         long longVal = ((PrimitiveConstant) c).asLong();
 
-        Method m;
         if (longVal == 0) {
-            try {
-                Field f = Long64.class.getField("LongZero");
-                JSStaticFieldDefinition constantDefinition = Long64Lowerer.getJSStaticFieldDefinition(f, jsLTools);
-                constantDefinition.emitAccess(jsLTools);
-            } catch (NoSuchFieldException e) {
-                throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
-            }
+            Field longZeroField = ReflectionUtil.lookupField(Long64.class, "LongZero");
+            ResolvedJavaField resolvedField = jsLTools.getProviders().getMetaAccess().lookupJavaField(longZeroField);
+            jsLTools.genStaticField(resolvedField);
         } else if (Integer.MIN_VALUE <= longVal && longVal <= Integer.MAX_VALUE) {
-            try {
-                m = Long64.class.getMethod("fromInt", int.class);
-            } catch (NoSuchMethodException e) {
-                throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
-            }
+            Method m = ReflectionUtil.lookupMethod(Long64.class, "fromInt", int.class);
             getJSStaticMethodDefinition(m, jsLTools).emitCall(jsLTools, Emitter.of((int) longVal));
         } else {
             int low = (int) longVal;
             int high = (int) (longVal >> 32);
-            try {
-                m = Long64.class.getMethod("fromTwoInt", int.class, int.class);
-            } catch (NoSuchMethodException e) {
-                throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
-            }
+            Method m = ReflectionUtil.lookupMethod(Long64.class, "fromTwoInt", int.class, int.class);
             getJSStaticMethodDefinition(m, jsLTools).emitCall(jsLTools, Emitter.of(low), Emitter.of(high));
         }
     }

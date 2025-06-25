@@ -27,10 +27,10 @@ package com.oracle.svm.hosted.webimage.wasm.phases;
 
 import com.oracle.svm.hosted.webimage.codegen.phase.ReconstructionVerificationPhase;
 import com.oracle.svm.hosted.webimage.codegen.phase.WebImageLowTier;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.StackifierReconstructionPhase;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 
 import jdk.graal.compiler.core.common.GraalOptions;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.StackifierReconstructionPhase;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.PlaceholderPhase;
 import jdk.graal.compiler.phases.common.AddressLoweringPhase;

@@ -27,12 +27,12 @@ package com.oracle.svm.hosted.webimage.codegen.phase;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.ReconstructionData;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.ScheduleWithReconstructionResult;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.StackifierData;
 import com.oracle.svm.webimage.annotation.StackifierVerification;
 
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.hightiercodegen.reconstruction.ReconstructionData;
-import jdk.graal.compiler.hightiercodegen.reconstruction.ScheduleWithReconstructionResult;
-import jdk.graal.compiler.hightiercodegen.reconstruction.StackifierData;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;

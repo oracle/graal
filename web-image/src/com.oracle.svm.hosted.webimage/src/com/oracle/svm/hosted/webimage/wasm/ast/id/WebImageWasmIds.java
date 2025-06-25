@@ -27,13 +27,13 @@ package com.oracle.svm.hosted.webimage.wasm.ast.id;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.LabeledBlock;
 import com.oracle.svm.hosted.webimage.wasm.ast.FunctionTypeDescriptor;
 import com.oracle.svm.hosted.webimage.wasm.ast.TypeUse;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.FunctionType;
+import com.oracle.svm.webimage.hightiercodegen.variables.ResolvedVar;
 import com.oracle.svm.webimage.wasm.types.WasmValType;
 
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlock;
-import jdk.graal.compiler.hightiercodegen.variables.ResolvedVar;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

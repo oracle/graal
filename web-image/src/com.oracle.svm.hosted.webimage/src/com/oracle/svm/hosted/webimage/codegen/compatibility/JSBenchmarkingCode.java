@@ -30,8 +30,8 @@ import java.util.List;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.codegen.LowerableResources;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.webimage.hightiercodegen.CodeBuffer;
 
-import jdk.graal.compiler.hightiercodegen.CodeBuffer;
 import jdk.graal.compiler.options.OptionValues;
 
 /**

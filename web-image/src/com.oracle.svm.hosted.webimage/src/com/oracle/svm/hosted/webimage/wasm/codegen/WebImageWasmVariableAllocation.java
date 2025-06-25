@@ -32,8 +32,8 @@ import com.oracle.svm.hosted.webimage.codegen.WebImageVariableAllocation;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmAddressNode;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmIsNonZeroNode;
 import com.oracle.svm.hosted.webimage.wasm.phases.WasmSwitchPhase;
+import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
 
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
 import jdk.graal.compiler.nodes.CompressionNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.Invoke;
