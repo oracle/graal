@@ -117,15 +117,19 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
             if (!openEmergencyDumpFile()) {
                 return WordFactory.nullPointer();
             }
-            // We can directly use the emergency dump file name as the new chunk since there are no other chunk files.
+            // We can directly use the emergency dump file name as the new chunk since there are no
+            // other chunk files.
             return emergencyFd;
         }
         Log.log().string("Creating a new emergency chunk file in the JFR disk repository").newline();
         return createEmergencyChunkPath();
     }
 
-    /** The normal chunkfile name format is: repository path + file separator + date time + extension.
-     * In this case we just use a hardcoded string instead of date time, which will successfully rank last in lexographic order among other chunkfile names.*/
+    /**
+     * The normal chunkfile name format is: repository path + file separator + date time +
+     * extension. In this case we just use a hardcoded string instead of date time, which will
+     * successfully rank last in lexographic order among other chunkfile names.
+     */
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+3/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L418-L431")
     private RawFileDescriptor createEmergencyChunkPath() {
         clearPathBuffer();
@@ -297,7 +301,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
 
     private CCharPointer getRepositoryLocation() {
         clearPathBuffer();
-        writeToPathBuffer(repositoryLocationBytes,0);
+        writeToPathBuffer(repositoryLocationBytes, 0);
         return getPathBuffer();
     }
 
@@ -382,7 +386,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         LibC.memset(getPathBuffer(), Word.signed(0), Word.unsigned(JVM_MAXPATHLEN));
     }
 
-    private int writeToPathBuffer(byte[] bytes, int idx){
+    private int writeToPathBuffer(byte[] bytes, int idx) {
         for (int i = 0; i < bytes.length; i++) {
             getPathBuffer().write(idx++, bytes[i]);
         }
@@ -420,8 +424,6 @@ class PosixJfrEmergencyDumpFeature extends JfrEmergencyDumpFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        PosixJfrEmergencyDumpSupport support = new PosixJfrEmergencyDumpSupport();
-        ImageSingletons.add(JfrEmergencyDumpSupport.class, support);
-        ImageSingletons.add(PosixJfrEmergencyDumpSupport.class, support);
+        ImageSingletons.add(JfrEmergencyDumpSupport.class, new PosixJfrEmergencyDumpSupport());
     }
 }

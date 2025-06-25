@@ -601,7 +601,7 @@ public class SubstrateJVM {
      */
     public String getDumpPath() {
         if (JfrEmergencyDumpSupport.singleton().getDumpPath() == null) {
-                JfrEmergencyDumpSupport.singleton().setDumpPath(Target_jdk_jfr_internal_util_Utils.getPathInProperty("user.home", null).toString());
+            JfrEmergencyDumpSupport.singleton().setDumpPath(Target_jdk_jfr_internal_util_Utils.getPathInProperty("user.home", null).toString());
         }
         return JfrEmergencyDumpSupport.singleton().getDumpPath();
     }
@@ -758,6 +758,7 @@ public class SubstrateJVM {
                 chunkWriter.openFile(fd);
             }
             assert chunkWriter.hasOpenFile();
+            chunkWriter.markChunkFinal();
             chunkWriter.closeFileForEmergencyDump();
             JfrEmergencyDumpSupport.singleton().onVmError();
         } finally {

@@ -275,7 +275,8 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         writeThreadCheckpoint(true);
         writeFlushCheckpoint(true);
         writeMetadataEvent();
-        patchFileHeader(true);
+        // Header must be marked COMPLETE, unlike at flushpoints.
+        patchFileHeader(false);
 
         getFileSupport().close(fd);
         filename = null;
