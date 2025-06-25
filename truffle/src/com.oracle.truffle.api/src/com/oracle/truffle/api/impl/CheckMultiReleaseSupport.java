@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.api.impl;
 
+/*
+ * Implementation internal class. Please do not use.
+ */
 public abstract class CheckMultiReleaseSupport {
 
     private CheckMultiReleaseSupport() {
