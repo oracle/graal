@@ -1673,12 +1673,9 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         if (schedule == null) {
             return null;
         }
-        if (schedule.getCFG().getNodeToBlock().isNew(successor)) {
-            // This can occur when nodes were created after the last schedule.
-            return null;
-        }
-        HIRBlock block = schedule.getCFG().blockFor(successor);
+        HIRBlock block = schedule.blockFor(successor, true);
         if (block == null) {
+            // This can occur when nodes were created after the last schedule.
             return null;
         }
         return schedule.nodesFor(block);

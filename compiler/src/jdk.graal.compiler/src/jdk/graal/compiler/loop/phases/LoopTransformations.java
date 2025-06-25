@@ -73,6 +73,7 @@ import jdk.graal.compiler.nodes.VirtualState.NodePositionClosure;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.extended.OpaqueNode;
 import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
@@ -496,6 +497,7 @@ public abstract class LoopTransformations {
      * if the given loop exit is the only exit of the loop.
      */
     public static void adaptCountedLoopExitProbability(AbstractBeginNode lex, double newExitCheckFrequency) {
+        invalidateCFGFrequencies(lex.graph().getLastCFG());
         double probability = 1.0D - 1.0D / newExitCheckFrequency;
         if (probability <= 0D) {
             setSingleVisitedLoopFrequencySplitProbability(lex);
@@ -504,6 +506,12 @@ public abstract class LoopTransformations {
         IfNode ifNode = ((IfNode) lex.predecessor());
         boolean trueSucc = ifNode.trueSuccessor() == lex;
         ifNode.setTrueSuccessorProbability(BranchProbabilityData.injected(probability, trueSucc));
+    }
+
+    private static void invalidateCFGFrequencies(ControlFlowGraph cfg) {
+        if (cfg != null) {
+            cfg.invalidateFrequencies();
+        }
     }
 
     public static class PreMainPostResult {

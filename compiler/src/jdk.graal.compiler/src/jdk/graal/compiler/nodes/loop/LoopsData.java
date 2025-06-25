@@ -94,7 +94,7 @@ public class LoopsData {
             if (preComputedCFG == null) {
                 try (DebugContext.Scope s = debug.scope("ControlFlowGraph")) {
                     boolean backendBlocks = graph.isAfterStage(GraphState.StageFlag.FINAL_SCHEDULE);
-                    this.cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).backendBlocks(backendBlocks).computeLoops(true).computeDominators(true).computePostdominators(
+                    this.cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).modifiableBlocks(backendBlocks).computeLoops(true).computeDominators(true).computePostdominators(
                                     true).computeFrequency(true).build();
                 } catch (Throwable e) {
                     throw debug.handle(e);

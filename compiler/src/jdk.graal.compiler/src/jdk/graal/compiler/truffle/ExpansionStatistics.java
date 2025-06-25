@@ -50,7 +50,6 @@ import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.spi.VirtualizableAllocation;
 import jdk.graal.compiler.options.OptionValues;
@@ -290,11 +289,11 @@ final class ExpansionStatistics {
     private TreeNode buildMethodTree(StructuredGraph graph) {
         TreeNode root = new TreeNode(null, null, ExpansionStatistics::buildMethodTreeLabel);
         SchedulePhase.runWithoutContextOptimizations(graph, SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
-        ControlFlowGraph cfg = graph.getLastSchedule().getCFG();
+        StructuredGraph.ScheduleResult schedule = graph.getLastSchedule();
         for (Node node : graph.getNodes()) {
             NodeSourcePosition nodeSourcePosition = node.getNodeSourcePosition();
             TreeNode tree = resolveMethodTree(root, nodeSourcePosition);
-            HIRBlock block = cfg.blockFor(node);
+            HIRBlock block = schedule.blockFor(node);
             double frequency;
             if (block != null) {
                 frequency = block.getRelativeFrequency();

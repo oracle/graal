@@ -639,7 +639,7 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
     }
 
     private static EconomicSet<DominatedCall> insertSessionChecks(StructuredGraph graph, MidTierContext context) {
-        ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).backendBlocks(true).connectBlocks(true).computeFrequency(true).computeLoops(true).computeDominators(true)
+        ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).modifiableBlocks(true).connectBlocks(true).computeFrequency(true).computeLoops(true).computeDominators(true)
                         .computePostdominators(true)
                         .build();
         // Compute the graph with all the necessary data about scoped memory accesses.
