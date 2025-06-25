@@ -77,11 +77,6 @@ public final class RuntimeOptionParser implements DuplicableImageSingleton {
     private static final String LEGACY_GRAAL_OPTION_PREFIX = "-Dgraal.";
 
     /**
-     * Guard for issuing warning about deprecated Graal option prefix at most once.
-     */
-    private static final AtomicBoolean LEGACY_OPTION_DEPRECATION_WARNED = new AtomicBoolean();
-
-    /**
      * The prefix for XOptions available in an application based on Substrate VM.
      */
     static final String X_OPTION_PREFIX = "-X";
@@ -153,15 +148,8 @@ public final class RuntimeOptionParser implements DuplicableImageSingleton {
                 parseOptionAtRuntime(arg, graalOptionPrefix, BooleanOptionFormat.NAME_VALUE, values, ignoreUnrecognized);
             } else if (legacyGraalOptionPrefix != null && arg.startsWith(legacyGraalOptionPrefix)) {
                 String baseName = arg.substring(legacyGraalOptionPrefix.length());
-                if (LEGACY_OPTION_DEPRECATION_WARNED.compareAndExchange(false, true)) {
-                    Log log = Log.log();
-                    // Checkstyle: Allow raw info or warning printing - begin
-                    log.string("WARNING: The 'graal.' property prefix for the Graal option ").string(baseName).newline();
-                    log.string("WARNING: (and all other Graal options) is deprecated and will be ignored").newline();
-                    log.string("WARNING: in a future release. Please use 'jdk.graal.").string(baseName).string("' instead.").newline();
-                    // Checkstyle: Allow raw info or warning printing - end
-                }
-                parseOptionAtRuntime(arg, legacyGraalOptionPrefix, BooleanOptionFormat.NAME_VALUE, values, ignoreUnrecognized);
+                String msg = String.format("The 'graal.' prefix for %s is unsupported - use 'jdk.graal.%s' instead.", baseName, baseName);
+                throw new IllegalArgumentException(msg);
             } else if (xOptionPrefix != null && arg.startsWith(xOptionPrefix) && XOptions.parse(arg.substring(xOptionPrefix.length()), values)) {
                 // option value was already parsed and added to the map
             } else {
