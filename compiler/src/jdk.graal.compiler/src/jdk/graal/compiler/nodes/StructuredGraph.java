@@ -113,6 +113,14 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             this.strategy = strategy;
         }
 
+        /**
+         * Returns the cfg which was used for building the schedule.
+         *
+         * <b>NOTE:</b> The cfg's nodeToBlock map is not modified when building the schedule. Use
+         * the corresponding methods in {@link ScheduleResult} ({@link #nodesFor},
+         * {@link #blockFor}, {@link #getNodeToBlockMap}) to get the schedule-specific mapping
+         * between floating nodes and CFG blocks.
+         */
         public ControlFlowGraph getCFG() {
             return cfg;
         }
@@ -315,14 +323,12 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private final Assumptions assumptions;
 
     /**
-     * The last schedule which was computed for this graph. Only re-use if
-     * {@link #isLastScheduleValid()} is {@code true}.
+     * The last schedule which was computed for this graph.
      */
     private ScheduleResult lastSchedule;
 
     /**
-     * The last control flow graph which was computed for this graph. Only re-use if
-     * {@link #isLastCFGValid()} is {@code true}.
+     * The last control flow graph which was computed for this graph.
      */
     private ControlFlowGraph lastCFG;
 
@@ -332,7 +338,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     /**
      * Invalidates cached values (e.g., schedule or CFG) if the graph changes. Afterwards, removes
      * itself from the graph's list of listeners. Needs to be added to the graph again after one of
-     * the caches is set to ensure proper invalidation.
+     * the caches is set to ensure proper invalidation. Caching is used per default but can be
+     * disabled via {@link GraalOptions#CacheCompilerDataStructures}.
      */
     private final class CacheInvalidationListener extends NodeEventListener {
 
@@ -341,9 +348,18 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
         @Override
         public void changed(NodeEvent e, Node node) {
-            lastCFGValid = false;
             lastScheduleValid = false;
-            disableCacheInvalidationListener();
+            if (node instanceof FixedNode) {
+                // a CFG only needs to be invalidated on certain events involving FixedNodes
+                switch (e) {
+                    case NODE_ADDED:
+                    case NODE_REMOVED:
+                    case CONTROL_FLOW_CHANGED:
+                        lastCFGValid = false;
+                        disableCacheInvalidationListener();
+                        break;
+                }
+            }
         }
     }
 
@@ -352,7 +368,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * {@link #getLastSchedule()} for obtaining the cached schedule.
      */
     public boolean isLastScheduleValid() {
-        return cacheInvalidationListener.lastScheduleValid;
+        return cacheCompilerDataStructures && cacheInvalidationListener.lastScheduleValid;
     }
 
     /**
@@ -360,17 +376,17 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * graph. Use {@link #getLastCFG()} for obtaining the cached cfg.
      */
     public boolean isLastCFGValid() {
-        return cacheInvalidationListener.lastCFGValid;
+        return cacheCompilerDataStructures && cacheInvalidationListener.lastCFGValid;
     }
 
     private void enableCacheInvalidationListener() {
-        if (cacheInvalidationNES == null) {
+        if (cacheCompilerDataStructures && cacheInvalidationNES == null) {
             cacheInvalidationNES = this.trackNodeEvents(cacheInvalidationListener);
         }
     }
 
     private void disableCacheInvalidationListener() {
-        if (cacheInvalidationNES != null) {
+        if (cacheCompilerDataStructures && cacheInvalidationNES != null) {
             cacheInvalidationNES.close();
             cacheInvalidationNES = null;
         }
@@ -418,6 +434,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     private OptimizationLog optimizationLog;
 
+    private final boolean cacheCompilerDataStructures;
+
     private StructuredGraph(String name,
                     ResolvedJavaMethod method,
                     int entryBCI,
@@ -448,22 +466,25 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.inliningLog = GraalOptions.TraceInlining.getValue(options) || OptimizationLog.isStructuredOptimizationLogEnabled(options) ? new InliningLog(rootMethod) : null;
         this.callerContext = context;
         this.optimizationLog = OptimizationLog.getInstance(this);
-        this.cacheInvalidationListener = new CacheInvalidationListener();
+        this.cacheCompilerDataStructures = GraalOptions.CacheCompilerDataStructures.getValue(options);
+        this.cacheInvalidationListener = cacheCompilerDataStructures ? new CacheInvalidationListener() : null;
     }
 
     public void setLastSchedule(ScheduleResult result) {
         GraalError.guarantee(result == null || result.cfg.getStartBlock().isModifiable(), "Schedule must use blocks that can be modified");
         lastSchedule = result;
-        cacheInvalidationListener.lastScheduleValid = result != null;
-        if (result != null) {
-            enableCacheInvalidationListener();
+        if (cacheCompilerDataStructures) {
+            cacheInvalidationListener.lastScheduleValid = result != null;
+            if (result != null) {
+                enableCacheInvalidationListener();
+            }
         }
     }
 
     /**
-     * Returns the last schedule which has been computed for this graph. Use
-     * {@link #isLastScheduleValid()} to verify that the graph has not changed since the last
-     * schedule has been computed.
+     * Returns the last schedule which has been computed for this graph. If
+     * {@link GraalOptions#CacheCompilerDataStructures} is enabled, use
+     * {@link #isLastScheduleValid()} to tell if the cached schedule can still be used.
      */
     public ScheduleResult getLastSchedule() {
         return lastSchedule;
@@ -471,14 +492,19 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public void clearLastSchedule() {
         setLastSchedule(null);
-        clearLastCFG();
+        if (cacheCompilerDataStructures) {
+            if (!isLastCFGValid()) {
+                disableCacheInvalidationListener();
+            }
+        }
     }
 
     /**
-     * Returns the last control flow graph which has been computed for this graph. Use
-     * {@link #isLastCFGValid()} to verify that the graph has not changed since the last cfg has
-     * been computed. Creating a {@link ControlFlowGraph} via
-     * {@link ControlFlowGraphBuilder#build()} will implicitly return and/or update the cached cfg.
+     * Returns the last control flow graph which has been computed for this graph. If
+     * {@link GraalOptions#CacheCompilerDataStructures} is enabled, use {@link #isLastCFGValid()} to
+     * tell if the cached cfg can still be used. Creating a {@link ControlFlowGraph} via
+     * {@link ControlFlowGraphBuilder#build()} will implicitly return and/or update the cached cfg
+     * if caching is enabled.
      */
     public ControlFlowGraph getLastCFG() {
         return lastCFG;
@@ -486,14 +512,17 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public void setLastCFG(ControlFlowGraph cfg) {
         lastCFG = cfg;
-        cacheInvalidationListener.lastCFGValid = cfg != null;
-        if (cfg != null) {
-            enableCacheInvalidationListener();
+        if (cacheCompilerDataStructures) {
+            cacheInvalidationListener.lastCFGValid = cfg != null;
+            if (cfg != null) {
+                enableCacheInvalidationListener();
+            }
         }
     }
 
     public void clearLastCFG() {
         setLastCFG(null);
+        clearLastSchedule();
     }
 
     @Override
@@ -545,6 +574,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
              * The schedule contains a NodeMap which is unusable after compression.
              */
             clearLastSchedule();
+            clearLastCFG();
             return true;
         }
         return false;

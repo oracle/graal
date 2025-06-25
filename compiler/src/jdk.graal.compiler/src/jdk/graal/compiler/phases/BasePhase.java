@@ -561,7 +561,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         @Override
         public void changed(NodeEvent e, Node node) {
             if (!graph.isNew(mark, node) && node.isAlive()) {
-                if (e == NodeEvent.INPUT_CHANGED || e == NodeEvent.ZERO_USAGES) {
+                if (e == NodeEvent.INPUT_CHANGED || e == NodeEvent.CONTROL_FLOW_CHANGED || e == NodeEvent.ZERO_USAGES) {
                     changed = true;
                 }
             }

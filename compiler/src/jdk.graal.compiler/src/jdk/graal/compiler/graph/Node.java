@@ -819,9 +819,9 @@ public abstract class Node implements Cloneable, Formattable {
             if (newSuccessor != null) {
                 assertTrue(newSuccessor.predecessor == null, "unexpected non-null predecessor in new successor (%s): %s, this=%s", newSuccessor, newSuccessor.predecessor, this);
                 newSuccessor.predecessor = this;
-                maybeNotifyInputChanged(newSuccessor);
+                maybeNotifyControlFlowChanged(newSuccessor);
             }
-            maybeNotifyInputChanged(this);
+            maybeNotifyControlFlowChanged(this);
         }
     }
 
@@ -1261,9 +1261,17 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
+    private void maybeNotifyControlFlowChanged(Node node) {
+        if (graph != null) {
+            assert !graph.isFrozen() : "Frozen graph must not change!";
+            graph.fireNodeEvent(Graph.NodeEvent.CONTROL_FLOW_CHANGED, node);
+            graph.edgeModificationCount++;
+        }
+    }
+
     private void maybeNotifyInputChanged(Node node) {
         if (graph != null) {
-            assert !graph.isFrozen();
+            assert !graph.isFrozen() : "Frozen graph must not change!";
             graph.fireNodeEvent(Graph.NodeEvent.INPUT_CHANGED, node);
             graph.edgeModificationCount++;
         }
@@ -1276,7 +1284,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public void maybeNotifyZeroUsages(Node node) {
         if (graph != null && node.isAlive()) {
-            assert !graph.isFrozen();
+            assert !graph.isFrozen() : "Frozen graph must not change!";
             graph.fireNodeEvent(Graph.NodeEvent.ZERO_USAGES, node);
         }
     }

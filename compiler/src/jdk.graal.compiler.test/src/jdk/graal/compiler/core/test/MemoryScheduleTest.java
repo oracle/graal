@@ -641,7 +641,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         int withRead = 0;
         int returnBlocks = 0;
         for (ReturnNode returnNode : graph.getNodes(ReturnNode.TYPE)) {
-            HIRBlock block = schedule.getCFG().getNodeToBlock().get(returnNode);
+            HIRBlock block = schedule.getNodeToBlockMap().get(returnNode);
             for (Node node : schedule.getBlockToNodesMap().get(block)) {
                 if (node instanceof FloatingReadNode) {
                     withRead++;
@@ -667,7 +667,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         StructuredGraph graph = schedule.getCFG().graph;
         FloatingReadNode read = graph.getNodes().filter(FloatingReadNode.class).first();
         WriteNode write = graph.getNodes().filter(WriteNode.class).first();
-        assertTrue(!(inSame ^ schedule.getCFG().blockFor(read) == schedule.getCFG().blockFor(write)));
+        assertTrue(!(inSame ^ schedule.blockFor(read) == schedule.blockFor(write)));
     }
 
     private static void assertReadBeforeAllWritesInStartBlock(ScheduleResult schedule) {
@@ -712,6 +712,11 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                 graph.clearAllStateAfterForTestingOnly();
                 // disable state split verification
                 graph.getGraphState().setAfterFSA();
+                if (graph.hasLoops() && graph.isLastCFGValid()) {
+                    // CFGLoops are computed differently after FSA, see CFGLoop#getLoopExits(). The
+                    // cached cfg needs to have its loop information invalidated.
+                    graph.getLastCFG().invalidateLoopInformation();
+                }
             }
             debug.dump(DebugContext.BASIC_LEVEL, graph, "after removal of framestates");
 

@@ -296,7 +296,8 @@ public class GraphUtil {
                         if (e == Graph.NodeEvent.ZERO_USAGES && isFloatingNode(n) && !(n instanceof GuardNode)) {
                             collectedUnusedNodes.add(n);
                         }
-                        if (e == Graph.NodeEvent.INPUT_CHANGED && n instanceof FixedNode && !(n instanceof AbstractMergeNode) && n.predecessor() == null) {
+                        if ((e == Graph.NodeEvent.INPUT_CHANGED || e == Graph.NodeEvent.CONTROL_FLOW_CHANGED) && n instanceof FixedNode && !(n instanceof AbstractMergeNode) &&
+                                        n.predecessor() == null) {
                             if (!deadControlFLow.contains(n)) {
                                 collectedUnusedNodes.add(n);
                             }
