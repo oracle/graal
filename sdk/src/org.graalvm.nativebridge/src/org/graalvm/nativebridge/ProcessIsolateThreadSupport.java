@@ -179,6 +179,7 @@ final class ProcessIsolateThreadSupport {
             }
         });
         thread.setName(String.format("%s Connection Listen Thread", ProcessIsolateThreadSupport.class.getSimpleName()));
+        thread.setDaemon(true);
         thread.start();
         return result;
     }
