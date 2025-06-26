@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -214,11 +214,10 @@ public class EATestBase extends GraalCompilerTest {
         return graph.getNodes().filter(isA(NewInstanceNode.class).or(NewArrayNode.class).or(AllocatedObjectNode.class)).count();
     }
 
-    @SuppressWarnings("try")
     protected void prepareGraph(String snippet, boolean removeIdentity) {
         ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
         DebugContext debug = getDebugContext();
-        try (DebugContext.Scope s = debug.scope(getClass(), method, getCodeCache())) {
+        try (DebugContext.Scope _ = debug.scope(getClass(), method, getCodeCache())) {
             graph = parseEager(method, AllowAssumptions.YES, debug);
             context = getDefaultHighTierContext();
             createInliningPhase().apply(graph, context);

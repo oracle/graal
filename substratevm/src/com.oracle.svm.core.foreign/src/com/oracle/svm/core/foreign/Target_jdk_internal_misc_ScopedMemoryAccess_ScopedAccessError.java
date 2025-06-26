@@ -25,8 +25,7 @@
 package com.oracle.svm.core.foreign;
 
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDKLatest;
 
-@TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError", onlyWith = {JDKLatest.class, ForeignAPIPredicates.Enabled.class})
+@TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError", onlyWith = ForeignAPIPredicates.Enabled.class)
 final class Target_jdk_internal_misc_ScopedMemoryAccess_ScopedAccessError {
 }

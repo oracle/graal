@@ -47,4 +47,5 @@ public enum NativeType {
 
     OBJECT, // word-sized handle
     POINTER,
+    BITFIELD_INT,
 }

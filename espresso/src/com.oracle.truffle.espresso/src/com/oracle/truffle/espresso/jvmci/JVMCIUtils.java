@@ -69,7 +69,7 @@ public final class JVMCIUtils {
             if (elemental == null) {
                 return null;
             }
-            return elemental.getArrayClass(TypeSymbols.getArrayDimensions(symbol));
+            return elemental.getArrayKlass(TypeSymbols.getArrayDimensions(symbol));
         } else {
             return findInstanceType(symbol, accessingKlass, resolve, meta);
         }

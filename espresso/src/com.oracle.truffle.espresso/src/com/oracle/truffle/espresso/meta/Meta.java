@@ -564,6 +564,7 @@ public final class Meta extends ContextAccessImpl
                         .maybeHiddenfield(java_lang_Thread);
         HIDDEN_HOST_THREAD = java_lang_Thread.requireHiddenField(Names.HIDDEN_HOST_THREAD);
         HIDDEN_ESPRESSO_MANAGED = java_lang_Thread.requireHiddenField(Names.HIDDEN_ESPRESSO_MANAGED);
+        HIDDEN_TO_NATIVE_LOCK = java_lang_Thread.requireHiddenField(Names.HIDDEN_TO_NATIVE_LOCK);
         HIDDEN_DEPRECATION_SUPPORT = java_lang_Thread.requireHiddenField(Names.HIDDEN_DEPRECATION_SUPPORT);
         HIDDEN_THREAD_UNPARK_SIGNALS = java_lang_Thread.requireHiddenField(Names.HIDDEN_THREAD_UNPARK_SIGNALS);
         HIDDEN_THREAD_PARK_LOCK = java_lang_Thread.requireHiddenField(Names.HIDDEN_THREAD_PARK_LOCK);
@@ -1039,11 +1040,14 @@ public final class Meta extends ContextAccessImpl
 
         java_time_LocalDate = knownKlass(Types.java_time_LocalDate);
         java_time_LocalDate_year = java_time_LocalDate.requireDeclaredField(Names.year, Types._int);
-        assert java_time_LocalDate_year.getKind() == JavaKind.Int;
-        java_time_LocalDate_month = java_time_LocalDate.requireDeclaredField(Names.month, Types._short);
-        assert java_time_LocalDate_month.getKind() == JavaKind.Short;
-        java_time_LocalDate_day = java_time_LocalDate.requireDeclaredField(Names.day, Types._short);
-        assert java_time_LocalDate_day.getKind() == JavaKind.Short;
+        java_time_LocalDate_month = diff() //
+                        .field(VERSION_24_OR_LOWER, Names.month, Types._short) //
+                        .field(VERSION_25_OR_HIGHER, Names.month, Types._byte) //
+                        .field(java_time_LocalDate);
+        java_time_LocalDate_day = diff() //
+                        .field(VERSION_24_OR_LOWER, Names.day, Types._short) //
+                        .field(VERSION_25_OR_HIGHER, Names.day, Types._byte) //
+                        .field(java_time_LocalDate);
         java_time_LocalDate_of = java_time_LocalDate.requireDeclaredMethod(Names.of, Signatures.LocalDate_int_int_int);
 
         java_time_ZonedDateTime = knownKlass(Types.java_time_ZonedDateTime);
@@ -1851,6 +1855,7 @@ public final class Meta extends ContextAccessImpl
     public final Method java_lang_Thread_getThreadGroup;
     public final Field HIDDEN_HOST_THREAD;
     public final Field HIDDEN_ESPRESSO_MANAGED;
+    public final Field HIDDEN_TO_NATIVE_LOCK;
     public final Field HIDDEN_INTERRUPTED;
     public final Field HIDDEN_THREAD_UNPARK_SIGNALS;
     public final Field HIDDEN_THREAD_PARK_LOCK;
@@ -2987,7 +2992,7 @@ public final class Meta extends ContextAccessImpl
             if (elemental == null) {
                 return null;
             }
-            return elemental.getArrayClass(TypeSymbols.getArrayDimensions(type));
+            return elemental.getArrayKlass(TypeSymbols.getArrayDimensions(type));
         }
         return loadKlassOrNull(type, classLoader, protectionDomain);
     }
@@ -3007,7 +3012,7 @@ public final class Meta extends ContextAccessImpl
         }
         if (TypeSymbols.isArray(type)) {
             Klass elemental = resolveSymbolOrFail(getTypes().getElementalType(type), classLoader, protectionDomain);
-            return elemental.getArrayClass(TypeSymbols.getArrayDimensions(type));
+            return elemental.getArrayKlass(TypeSymbols.getArrayDimensions(type));
         }
         return loadKlassOrFail(type, classLoader, protectionDomain);
     }

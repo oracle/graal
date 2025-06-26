@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -178,7 +178,6 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void test() {
         test("doTest", EconomicMap.create(), getInitialOptions());
     }
@@ -223,12 +222,11 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
         }
     }
 
-    @SuppressWarnings("try")
     private StructuredGraph test(String methodName, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache, OptionValues optionValues) {
         ResolvedJavaMethod testMethod = getResolvedJavaMethod(methodName);
         StructuredGraph targetGraph = null;
         DebugContext debug = getDebugContext(optionValues, null, null);
-        try (DebugContext.Scope scope = debug.scope("GraphPETest", testMethod)) {
+        try (DebugContext.Scope _ = debug.scope("GraphPETest", testMethod)) {
             GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withEagerResolving(true).withUnresolvedIsError(true);
             graphBuilderConfig = editGraphBuilderConfiguration(graphBuilderConfig);
             registerPlugins(graphBuilderConfig.getPlugins().getInvocationPlugins());

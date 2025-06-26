@@ -201,6 +201,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
     private NativeImageHeap nativeImageHeap;
     private HostedUniverse hUniverse;
+    private final ClassInitializationSupport classInitializationSupport;
 
     private boolean polymorphicSignatureSealed = false;
 
@@ -268,6 +269,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         this.useSharedLayerGraphs = useSharedLayerGraphs;
         this.useSharedLayerStrengthenedGraphs = useSharedLayerStrengthenedGraphs;
         graphsOutput = new GraphsOutput();
+        this.classInitializationSupport = ClassInitializationSupport.singleton();
     }
 
     public void setInternedStringsIdentityMap(IdentityHashMap<String, String> map) {
@@ -447,6 +449,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setIsInterface(type.isInterface());
         builder.setIsEnum(type.isEnum());
         builder.setIsInitialized(type.isInitialized());
+        builder.setIsFailedInitialization(classInitializationSupport.isFailedInitialization(type.getJavaClass()));
         builder.setIsLinked(type.isLinked());
         if (type.getSourceFileName() != null) {
             builder.setSourceFileName(type.getSourceFileName());
@@ -1114,6 +1117,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                 constantId = initialLayerOnlySingletonMap.getOrDefault(initialLayerOnlyImageSingleton, -1);
             }
             sb.setConstantId(constantId);
+            sb.setIsInitialLayerOnly(singleton instanceof InitialLayerOnlyImageSingleton);
         }
 
         var sortedByIDs = singletonInfoMap.entrySet().stream()

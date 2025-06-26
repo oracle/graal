@@ -99,6 +99,10 @@ public class EspressoSymbols {
         public static final Symbol<Type> jdk_internal_util_ArraysSupport = SYMBOLS.putType("Ljdk/internal/util/ArraysSupport;");
         public static final Symbol<Type> jdk_internal_util_SystemProps_Raw = SYMBOLS.putType("Ljdk/internal/util/SystemProps$Raw;");
 
+        // CDS
+        public static final Symbol<Type> jdk_internal_misc_CDS = SYMBOLS.putType("Ljdk/internal/misc/CDS;");
+        public static final Symbol<Type> jdk_internal_module_ArchivedBootLayer = SYMBOLS.putType("Ljdk/internal/module/ArchivedBootLayer;");
+
         // io
         public static final Symbol<Type> java_io_InputStream = SYMBOLS.putType("Ljava/io/InputStream;");
         public static final Symbol<Type> java_io_PrintStream = SYMBOLS.putType("Ljava/io/PrintStream;");
@@ -620,6 +624,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> parent = SYMBOLS.putName("parent");
         public static final Symbol<Name> unnamedModule = SYMBOLS.putName("unnamedModule");
         public static final Symbol<Name> nameAndId = SYMBOLS.putName("nameAndId");
+        public static final Symbol<Name> resetArchivedStates = SYMBOLS.putName("resetArchivedStates");
         public static final Symbol<Name> HIDDEN_CLASS_LOADER_REGISTRY = SYMBOLS.putName("0HIDDEN_CLASS_LOADER_REGISTRY");
         // j.l.Module
         public static final Symbol<Name> loader = SYMBOLS.putName("loader");
@@ -951,6 +956,12 @@ public class EspressoSymbols {
         public static final Symbol<Name> entrySet = SYMBOLS.putName("entrySet");
         public static final Symbol<Name> hasNext = SYMBOLS.putName("hasNext");
         public static final Symbol<Name> toArray = SYMBOLS.putName("toArray");
+
+        // CDS
+        public static final Symbol<Name> IS_USING_ARCHIVE = SYMBOLS.putName("IS_USING_ARCHIVE");
+        public static final Symbol<Name> IS_DUMPING_STATIC_ARCHIVE = SYMBOLS.putName("IS_DUMPING_STATIC_ARCHIVE");
+        public static final Symbol<Name> archivedBootLayer = SYMBOLS.putName("archivedBootLayer");
+
         // j.l.Object
         public static final Symbol<Name> HIDDEN_SYSTEM_IHASHCODE = SYMBOLS.putName("0HIDDEN_SYSTEM_IHASHCODE");
         // MemberName
@@ -976,6 +987,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> HIDDEN_THREAD_PARK_LOCK = SYMBOLS.putName("0HIDDEN_THREAD_PARK_LOCK");
         public static final Symbol<Name> HIDDEN_HOST_THREAD = SYMBOLS.putName("0HIDDEN_HOST_THREAD");
         public static final Symbol<Name> HIDDEN_ESPRESSO_MANAGED = SYMBOLS.putName("0HIDDEN_ESPRESSO_MANAGED");
+        public static final Symbol<Name> HIDDEN_TO_NATIVE_LOCK = SYMBOLS.putName("0HIDDEN_TO_NATIVE_LOCK");
         public static final Symbol<Name> HIDDEN_INTERRUPTED = SYMBOLS.putName("0HIDDEN_INTERRUPTED");
         public static final Symbol<Name> HIDDEN_THREAD_PENDING_MONITOR = SYMBOLS.putName("0HIDDEN_THREAD_PENDING_MONITOR");
         public static final Symbol<Name> HIDDEN_THREAD_WAITING_MONITOR = SYMBOLS.putName("0HIDDEN_THREAD_WAITING_MONITOR");

@@ -185,7 +185,11 @@ suite = {
                 "java.compiler",
             ],
             "requiresConcealed": {
-                "java.base": ["sun.nio.ch", "sun.security.provider", "jdk.internal.reflect"],
+                "java.base": [
+                    "sun.nio.ch",
+                    "sun.security.provider",
+                    "jdk.internal.reflect",
+                ],
                 "jdk.internal.vm.ci": ["jdk.vm.ci.code.site", "jdk.vm.ci.code", "jdk.vm.ci.common", "jdk.vm.ci.meta"],
             },
             "javaCompliance": "21+",

@@ -30,6 +30,7 @@ import java.util.List;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.webimage.codegen.lowerer.CommitAllocationLowerer;
 
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.graph.Node;
@@ -71,7 +72,7 @@ import jdk.vm.ci.meta.JavaKind;
  *
  * @see jdk.graal.compiler.replacements.DefaultJavaLoweringProvider
  *      DefaultJavaLoweringProvider#lowerCommitAllocation
- * @see jdk.graal.compiler.hightiercodegen.lowerer.CommitAllocationLowerer
+ * @see CommitAllocationLowerer
  */
 public class MaterializeAllocationsPhase extends BasePhase<CoreProviders> {
     @Override

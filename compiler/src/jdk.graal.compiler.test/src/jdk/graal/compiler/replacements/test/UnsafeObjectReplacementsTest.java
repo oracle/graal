@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,18 +25,18 @@
 package jdk.graal.compiler.replacements.test;
 
 import java.io.IOException;
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassTransform;
+import java.lang.classfile.CodeTransform;
+import java.lang.classfile.MethodTransform;
+import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.reflect.Method;
 
-import jdk.graal.compiler.core.test.CustomizedBytecodePatternTest.CachedLoader;
-import jdk.graal.compiler.test.AddExports;
 import org.junit.Test;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 
+import jdk.graal.compiler.core.test.CustomizedBytecodePattern;
+import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.test.AddExports;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * @see "https://bugs.openjdk.java.net/browse/JDK-8207146"
  */
 @AddExports("java.base/jdk.internal.misc")
-public class UnsafeObjectReplacementsTest extends MethodSubstitutionTest {
+public class UnsafeObjectReplacementsTest extends MethodSubstitutionTest implements CustomizedBytecodePattern {
 
     public static class Container {
         public volatile Object objectField = dummyValue;
@@ -127,10 +127,8 @@ public class UnsafeObjectReplacementsTest extends MethodSubstitutionTest {
      * rewritten to invoke the corresponding {@code *Reference*} methods.
      */
     private Class<?> loadModifiedMethodsClass() {
-        String className = Methods.class.getName();
-        CachedLoader cl = new CachedLoader(getClass().getClassLoader(), className, Generator::generate);
         try {
-            return cl.findClass(className);
+            return getClass(Methods.class.getName());
         } catch (ClassNotFoundException e) {
             throw new AssertionError(e);
         }
@@ -145,34 +143,29 @@ public class UnsafeObjectReplacementsTest extends MethodSubstitutionTest {
         }
     }
 
-    static class Generator {
-        static byte[] generate(String className) {
-            int api = Opcodes.ASM9;
-            try {
-                ClassReader cr = new ClassReader(className);
-                ClassWriter cw = new ClassWriter(cr, 0);
-                ClassVisitor cv = new ClassVisitor(api, cw) {
-                    @Override
-                    public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-                        return new MethodVisitor(api, super.visitMethod(access, name, descriptor, signature, exceptions)) {
-                            @Override
-                            public void visitMethodInsn(int opcode, String owner, String methodName, String methodDescriptor, boolean isInterface) {
-                                if (methodName.contains("Object") && owner.equals(Type.getInternalName(Unsafe.class))) {
-                                    super.visitMethodInsn(opcode, owner, methodName.replace("Object", "Reference"), methodDescriptor, isInterface);
-                                } else {
-                                    super.visitMethodInsn(opcode, owner, methodName, methodDescriptor, isInterface);
-                                }
-                            }
-                        };
+    @Override
+    public byte[] generateClass(String className) {
+        // @formatter:off
+        CodeTransform codeTransform = (codeBuilder, e) -> {
+            switch (e) {
+                case InvokeInstruction i -> {
+                    if (i.owner().asSymbol().equals(cd(Unsafe.class)) && i.method().name().stringValue().contains("Object")) {
+                        codeBuilder.invoke(i.opcode(), i.owner().asSymbol(), i.method().name().stringValue().replace("Object", "Reference"), i.typeSymbol(), i.isInterface());
+                    } else {
+                        codeBuilder.accept(i);
                     }
-                };
-
-                cr.accept(cv, 0);
-                cw.visitEnd();
-                return cw.toByteArray();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+                }
+                default -> codeBuilder.accept(e);
             }
+        };
+
+        try {
+            ClassFile cf = ClassFile.of();
+            return cf.transformClass(cf.parse(GraalServices.getClassfileAsStream(Methods.class).readAllBytes()),
+                            ClassTransform.transformingMethods(MethodTransform.transformingCode(codeTransform)));
+        } catch (IOException e) {
+            return new byte[0];
         }
+        // @formatter:on
     }
 }

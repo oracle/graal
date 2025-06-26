@@ -1569,7 +1569,15 @@ JNIEXPORT void JNICALL JVM_RegisterLambdaProxyClassForArchiving(JNIEnv* env, jcl
                                          jobject implMethodMember,
                                          jobject instantiatedMethodType,
                                          jclass lambdaProxyClass) {
-  UNIMPLEMENTED(JVM_RegisterLambdaProxyClassForArchiving);
+  IMPLEMENTED(JVM_RegisterLambdaProxyClassForArchiving);
+  (*getEnv())->JVM_RegisterLambdaProxyClassForArchiving(env,
+          caller,
+          invokedName,
+          invokedType,
+          methodType,
+          implMethodMember,
+          instantiatedMethodType,
+          lambdaProxyClass);
   return;
 }
 
@@ -1579,8 +1587,14 @@ JNIEXPORT jclass JNICALL JVM_LookupLambdaProxyClassFromArchive(JNIEnv* env, jcla
                                       jobject methodType,
                                       jobject implMethodMember,
                                       jobject instantiatedMethodType) {
-  UNIMPLEMENTED(JVM_LookupLambdaProxyClassFromArchive);
-  return NULL;
+  IMPLEMENTED(JVM_LookupLambdaProxyClassFromArchive);
+  return (*getEnv())->JVM_LookupLambdaProxyClassFromArchive(env,
+          caller,
+          invokedName,
+          invokedType,
+          methodType,
+          implMethodMember,
+          instantiatedMethodType);
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsCDSDumpingEnabled(JNIEnv* env) {
@@ -1732,6 +1746,11 @@ JNIEXPORT void JNICALL JVM_VirtualThreadUnmount(JNIEnv* env, jobject vthread, jb
 JNIEXPORT jboolean JNICALL JVM_PrintWarningAtDynamicAgentLoad(void) {
   UNIMPLEMENTED(JVM_PrintWarningAtDynamicAgentLoad);
   return JNI_FALSE;
+}
+
+JNIEXPORT jobject JNICALL JVM_CreateThreadSnapshot(JNIEnv* env, jobject thread) {
+    UNIMPLEMENTED(JVM_CreateThreadSnapshot);
+    return NULL;
 }
 
 

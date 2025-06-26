@@ -84,6 +84,7 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.util.VMError;
@@ -157,6 +158,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private final SharedLayerSnapshot.Reader snapshot;
     private final FileChannel graphsChannel;
     private final ClassInitializationSupport classInitializationSupport;
+    private final boolean buildingApplicationLayer;
 
     private HostedUniverse hostedUniverse;
 
@@ -203,6 +205,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         this.graphsChannel = graphChannel;
         this.useSharedLayerGraphs = useSharedLayerGraphs;
         classInitializationSupport = ClassInitializationSupport.singleton();
+        buildingApplicationLayer = ImageLayerBuildingSupport.buildingApplicationLayer();
     }
 
     public AnalysisUniverse getUniverse() {
@@ -681,7 +684,19 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         if (typeData.getIsInitialized()) {
             classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtBuildTime(clazz, "computed in a previous layer"));
         } else {
-            classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtRunTime(clazz, "computed in a previous layer"));
+            if (typeData.getIsFailedInitialization()) {
+                /*
+                 * In the previous layer this class was configured with --initialize-at-build-time
+                 * but its initialization failed so it was registered as run time initialized. We
+                 * attempt to init it again in this layer and verify that it fails. This will allow
+                 * the class to be configured again in this layer with --initialize-at-build-time,
+                 * either before or after this step.
+                 */
+                classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtBuildTime(clazz, "computed in a previous layer"));
+                VMError.guarantee(classInitializationSupport.isFailedInitialization(clazz), "Expected the initialization to fail for %s, as it has failed in a previous layer.", clazz);
+            } else {
+                classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtRunTime(clazz, "computed in a previous layer"));
+            }
         }
 
         /* Extract and record the base layer identity hashcode for this type. */
@@ -1000,8 +1015,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         SVMImageLayerSnapshotUtil.AbstractSVMGraphDecoder decoder = imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection(), nodeClassMap);
         EncodedGraph encodedGraph = (EncodedGraph) ObjectCopier.decode(decoder, encodedAnalyzedGraph);
         for (int i = 0; i < encodedGraph.getNumObjects(); ++i) {
-            if (encodedGraph.getObject(i) instanceof CGlobalDataInfo cGlobalDataInfo) {
+            Object obj = encodedGraph.getObject(i);
+            if (obj instanceof CGlobalDataInfo cGlobalDataInfo) {
                 encodedGraph.setObject(i, CGlobalDataFeature.singleton().registerAsAccessedOrGet(cGlobalDataInfo.getData()));
+            } else if (buildingApplicationLayer && obj instanceof LoadImageSingletonDataImpl data) {
+                data.setApplicationLayerConstant();
             }
         }
         return encodedGraph;

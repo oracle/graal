@@ -36,7 +36,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -107,11 +106,9 @@ public class SVMImageLayerSingletonLoader {
                 Class<?> clazz = imageLayerBuildingSupport.lookupClass(false, className);
                 singletonInitializationMap.computeIfAbsent(forbiddenObject, (k) -> new HashSet<>());
                 singletonInitializationMap.get(forbiddenObject).add(clazz);
-                if (InitialLayerOnlyImageSingleton.class.isAssignableFrom(clazz)) {
+                if (entry.getIsInitialLayerOnly()) {
                     int constantId = entry.getConstantId();
-                    if (constantId != -1) {
-                        initialLayerKeyToIdMap.put(clazz, constantId);
-                    }
+                    initialLayerKeyToIdMap.put(clazz, constantId);
                 }
             } else {
                 assert persistInfo == PersistFlags.NOTHING : "Unexpected PersistFlags value: " + persistInfo;
@@ -122,6 +119,10 @@ public class SVMImageLayerSingletonLoader {
         initialLayerOnlySingletonConstantIds = Map.copyOf(initialLayerKeyToIdMap);
 
         return singletonInitializationMap;
+    }
+
+    public boolean isInitialLayerOnlyImageSingleton(Class<?> key) {
+        return initialLayerOnlySingletonConstantIds.containsKey(key);
     }
 
     public JavaConstant loadInitialLayerOnlyImageSingleton(Class<?> key) {

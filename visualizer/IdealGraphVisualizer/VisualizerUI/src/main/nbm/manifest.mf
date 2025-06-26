@@ -5,3 +5,4 @@ OpenIDE-Module-Layer: org/graalvm/visualizer/ui/layer.xml
 OpenIDE-Module-Localizing-Bundle: org/graalvm/visualizer/ui/Bundle.properties
 OpenIDE-Module-Specification-Version: 1.0
 OpenIDE-Module-Needs: org.netbeans.Netbinox
+OpenIDE-Module-Hide-Classpath-Packages: jdk.graal.compiler.graphio.**

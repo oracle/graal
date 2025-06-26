@@ -26,6 +26,7 @@ import java.lang.reflect.Array;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -76,7 +77,7 @@ import com.oracle.truffle.espresso.nodes.EspressoInstrumentableRootNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.threads.State;
+import com.oracle.truffle.espresso.threads.ThreadState;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public final class JDWPContextImpl implements JDWPContext {
@@ -134,7 +135,7 @@ public final class JDWPContextImpl implements JDWPContext {
             if (context.getMeta().java_lang_Thread.isAssignableFrom(staticObject.getKlass())) {
                 if (checkTerminated) {
                     // check if thread has been terminated
-                    return getThreadStatus(thread) != State.TERMINATED.value;
+                    return !ThreadState.isTerminated(getThreadStatus(thread));
                 }
                 return true;
             }
@@ -194,21 +195,21 @@ public final class JDWPContextImpl implements JDWPContext {
                 // primitive
                 switch (componentRawName) {
                     case "I":
-                        return new KlassRef[]{context.getMeta()._int.getArrayClass(dimensions)};
+                        return new KlassRef[]{context.getMeta()._int.getArrayClassNoCreate(dimensions)};
                     case "Z":
-                        return new KlassRef[]{context.getMeta()._boolean.getArrayClass(dimensions)};
+                        return new KlassRef[]{context.getMeta()._boolean.getArrayClassNoCreate(dimensions)};
                     case "S":
-                        return new KlassRef[]{context.getMeta()._short.getArrayClass(dimensions)};
+                        return new KlassRef[]{context.getMeta()._short.getArrayClassNoCreate(dimensions)};
                     case "C":
-                        return new KlassRef[]{context.getMeta()._char.getArrayClass(dimensions)};
+                        return new KlassRef[]{context.getMeta()._char.getArrayClassNoCreate(dimensions)};
                     case "B":
-                        return new KlassRef[]{context.getMeta()._byte.getArrayClass(dimensions)};
+                        return new KlassRef[]{context.getMeta()._byte.getArrayClassNoCreate(dimensions)};
                     case "J":
-                        return new KlassRef[]{context.getMeta()._long.getArrayClass(dimensions)};
+                        return new KlassRef[]{context.getMeta()._long.getArrayClassNoCreate(dimensions)};
                     case "D":
-                        return new KlassRef[]{context.getMeta()._double.getArrayClass(dimensions)};
+                        return new KlassRef[]{context.getMeta()._double.getArrayClassNoCreate(dimensions)};
                     case "F":
-                        return new KlassRef[]{context.getMeta()._float.getArrayClass(dimensions)};
+                        return new KlassRef[]{context.getMeta()._float.getArrayClassNoCreate(dimensions)};
                     default:
                         throw new RuntimeException("invalid primitive component type " + componentRawName);
                 }
@@ -217,11 +218,14 @@ public final class JDWPContextImpl implements JDWPContext {
                 String componentType = componentRawName.substring(1, componentRawName.length() - 1);
                 Symbol<Type> type = context.getTypes().fromClassGetName(componentType);
                 KlassRef[] klassRefs = context.getRegistries().findLoadedClassAny(type);
-                KlassRef[] result = new KlassRef[klassRefs.length];
-                for (int i = 0; i < klassRefs.length; i++) {
-                    result[i] = klassRefs[i].getArrayClass(dimensions);
+                List<KlassRef> result = new ArrayList<>();
+                for (KlassRef klassRef : klassRefs) {
+                    KlassRef array = klassRef.getArrayClassNoCreate(dimensions);
+                    if (array != null) {
+                        result.add(array);
+                    }
                 }
-                return result;
+                return result.toArray(new KlassRef[0]);
             }
         } else {
             // regular type
@@ -231,19 +235,20 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public KlassRef[] getAllLoadedClasses() {
-        return context.getRegistries().getAllLoadedClasses().toArray(new KlassRef[0]);
+    public Set<? extends KlassRef> getAllLoadedClasses() {
+        return context.getRegistries().getAllLoadedClasses();
     }
 
     @Override
-    public List<? extends KlassRef> getInitiatedClasses(Object classLoader) {
-        return context.getRegistries().getLoadedClassesByLoader((StaticObject) classLoader);
+    public Set<? extends KlassRef> getInitiatedClasses(Object classLoader) {
+        return context.getRegistries().getLoadedClassesByLoader((StaticObject) classLoader, false);
     }
 
     @Override
     public boolean isValidClassLoader(Object object) {
         if (object instanceof StaticObject loader) {
-            return InterpreterToVM.instanceOf(loader, context.getMeta().java_lang_ClassLoader);
+            // boot loader is StaticObject.NULL
+            return StaticObject.isNull(loader) || InterpreterToVM.instanceOf(loader, context.getMeta().java_lang_ClassLoader);
         }
         return false;
     }

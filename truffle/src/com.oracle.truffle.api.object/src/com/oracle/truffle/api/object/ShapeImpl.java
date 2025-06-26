@@ -510,17 +510,18 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
         return getLayoutStrategy().addProperty(this, property);
     }
 
-    @TruffleBoundary
-    protected void onPropertyTransition(Property property) {
-        onPropertyTransitionWithKey(property.getKey());
+    protected final void onPropertyTransition(Transition.PropertyTransition propertyTransition) {
+        if (allowPropertyAssumptions()) {
+            invalidatePropertyAssumption(propertyTransition.getPropertyKey(), propertyTransition.isDirect());
+        }
     }
 
-    final void onPropertyTransitionWithKey(Object propertyKey) {
-        if (allowPropertyAssumptions()) {
-            PropertyAssumptions propertyAssumptions = getPropertyAssumptions();
-            if (propertyAssumptions != null) {
-                propertyAssumptions.invalidatePropertyAssumption(propertyKey);
-            }
+    private void invalidatePropertyAssumption(Object propertyKey, boolean onlyExisting) {
+        PropertyAssumptions propertyAssumptions = onlyExisting
+                        ? getPropertyAssumptions()
+                        : getOrCreatePropertyAssumptions();
+        if (propertyAssumptions != null) {
+            propertyAssumptions.invalidatePropertyAssumption(propertyKey, onlyExisting);
         }
     }
 
@@ -1023,7 +1024,8 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
     @TruffleBoundary
     @Override
     public Assumption getPropertyAssumption(Object key) {
-        if (allowPropertyAssumptions()) {
+        // Deny new property assumptions from being made if shape is already obsolete.
+        if (allowPropertyAssumptions() && this.isValid()) {
             Assumption propertyAssumption = getOrCreatePropertyAssumptions().getPropertyAssumption(key);
             if (propertyAssumption != null && propertyAssumption.isValid()) {
                 return propertyAssumption;
@@ -1082,18 +1084,6 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
 
         protected abstract Location moveLocation(Location oldLocation);
 
-        protected abstract Location newObjectLocation(boolean useFinal, boolean nonNull);
-
-        protected abstract Location newTypedObjectLocation(boolean useFinal, Class<?> type, boolean nonNull);
-
-        protected abstract Location newIntLocation(boolean useFinal);
-
-        protected abstract Location newDoubleLocation(boolean useFinal);
-
-        protected abstract Location newLongLocation(boolean useFinal);
-
-        protected abstract Location newBooleanLocation(boolean useFinal);
-
         /**
          * Creates a new location from a constant value. The value is stored in the shape rather
          * than in the object.
@@ -1107,6 +1097,8 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
         /**
          * Creates a new declared location with a default value. A declared location only assumes a
          * type after the first set (initialization).
+         * <p>
+         * Used by tests.
          *
          * @param value the default value
          */
@@ -1115,46 +1107,22 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
         }
 
         /**
-         * Create a new location compatible with the given initial value.
-         *
-         * @param value the initial value this location is going to be assigned
-         * @param useFinal final location
-         * @param nonNull non-null location
-         */
-        protected Location locationForValue(Object value, boolean useFinal, boolean nonNull) {
-            throw new UnsupportedOperationException();
-        }
-
-        /**
+         * Creates a new location compatible with the given initial value.
+         * <p>
          * Used by tests.
          */
-        public Location locationForValue(Object value) {
-            return locationForValue(value, false, value != null);
-        }
-
-        protected Location locationForValueUpcast(Object value, Location oldLocation) {
-            return locationForValueUpcast(value, oldLocation, 0);
-        }
+        public abstract Location locationForValue(Object value);
 
         protected abstract Location locationForValueUpcast(Object value, Location oldLocation, int putFlags);
 
         /**
-         * Create a new location for a fixed type. It can only be assigned to values of this type.
+         * Creates a new location for a fixed type. It can only be assigned to values of this type.
+         * <p>
+         * Used by tests.
          *
          * @param type the Java type this location must be compatible with (may be primitive)
-         * @param useFinal final location
-         * @param nonNull non-null location
          */
-        protected Location locationForType(Class<?> type, boolean useFinal, boolean nonNull) {
-            throw new UnsupportedOperationException();
-        }
-
-        /**
-         * Used by tests.
-         */
-        public final Location locationForType(Class<?> type) {
-            return locationForType(type, false, false);
-        }
+        public abstract Location locationForType(Class<?> type);
 
         protected <T extends Location> T advance(T location0) {
             if (location0 instanceof LocationImpl location) {
@@ -1194,16 +1162,6 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
             primitiveFieldSize = Math.max(primitiveFieldSize, index + count);
         }
 
-        public Location existingLocationForValue(Object value, Location oldLocation, ShapeImpl oldShape) {
-            assert oldShape.getLayout() == this.layout;
-            Location newLocation;
-            if (oldLocation.canStore(value)) {
-                newLocation = oldLocation;
-            } else {
-                newLocation = oldShape.allocator().locationForValueUpcast(value, oldLocation);
-            }
-            return newLocation;
-        }
     }
 
     static final class PropertyAssumptions {
@@ -1228,14 +1186,32 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
             return assumption;
         }
 
-        synchronized void invalidatePropertyAssumption(Object propertyName) {
+        synchronized void invalidatePropertyAssumption(Object propertyName, boolean onlyExisting) {
             CompilerAsserts.neverPartOfCompilation();
             EconomicMap<Object, Assumption> map = stablePropertyAssumptions;
             Assumption assumption = map.get(propertyName);
-            if (assumption != null && assumption != Assumption.NEVER_VALID) {
+            if (assumption == Assumption.NEVER_VALID) {
+                return;
+            }
+            if (assumption != null) {
                 assumption.invalidate("invalidatePropertyAssumption");
+            }
+            /*
+             * Direct property transitions can happen only once per object as they always lead to
+             * new shapes, so we only need to invalidate already registered assumptions.
+             *
+             * Indirect property transitions, OTOH, can form transition cycles in the shape tree
+             * that may cause toggling between existing shapes for the same object, and since
+             * already cached shape transitions fly under the radar of future property assumptions,
+             * we have to block any future assumptions from being registered for this property.
+             */
+            if (assumption != null || !onlyExisting) {
                 map.put(propertyName, Assumption.NEVER_VALID);
-                propertyAssumptionsRemoved.inc();
+                if (assumption != null) {
+                    propertyAssumptionsRemoved.inc();
+                } else {
+                    propertyAssumptionsBlocked.inc();
+                }
             }
         }
 
@@ -1260,6 +1236,7 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
     static final DebugCounter shapeCacheWeakKeys = DebugCounter.create("Shape cache weak keys");
     static final DebugCounter propertyAssumptionsCreated = DebugCounter.create("Property assumptions created");
     static final DebugCounter propertyAssumptionsRemoved = DebugCounter.create("Property assumptions removed");
+    static final DebugCounter propertyAssumptionsBlocked = DebugCounter.create("Property assumptions blocked");
     static final DebugCounter transitionSingleEntriesCreated = DebugCounter.create("Transition single-entry maps created");
     static final DebugCounter transitionMapsCreated = DebugCounter.create("Transition multi-entry maps created");
 

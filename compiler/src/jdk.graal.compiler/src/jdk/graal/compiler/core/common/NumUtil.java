@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -441,5 +441,40 @@ public class NumUtil {
      */
     public static long unsafeAbs(long l) {
         return Math.abs(l);
+    }
+
+    /**
+     * Converts the double value to unsigned long, rounding toward zero.
+     */
+    public static long toUnsignedLong(double value) {
+        if (value >= 0x1p63) {
+            return (long) (value - 0x1p63) + Long.MIN_VALUE;
+        } else if (value >= 0) {
+            return (long) value;
+        } else {
+            return 0;
+        }
+    }
+
+    /**
+     * Converts the unsigned long value to the nearest double value.
+     */
+    public static double unsignedToDouble(long value) {
+        if (value >= 0) {
+            return value;
+        } else {
+            return ((value >>> 1) | (value & 1)) * 2.0;
+        }
+    }
+
+    /**
+     * Converts the unsigned long value to the nearest float value.
+     */
+    public static float unsignedToFloat(long value) {
+        if (value >= 0) {
+            return value;
+        } else {
+            return ((value >>> 1) | (value & 1)) * 2.0f;
+        }
     }
 }

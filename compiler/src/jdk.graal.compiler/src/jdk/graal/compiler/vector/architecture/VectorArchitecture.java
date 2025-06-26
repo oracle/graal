@@ -359,6 +359,15 @@ public abstract class VectorArchitecture {
     public abstract int getSupportedVectorBlendLength(Stamp elementStamp, int maxLength);
 
     /**
+     * Get the maximum supported vector length for a vector compress/expand based on a mask.
+     *
+     * @param elementStamp the stamp of the elements to be blended
+     * @param maxLength the maximum length to return
+     * @return the number of elements that can be compressed/expanded by a single instruction
+     */
+    public abstract int getSupportedVectorCompressExpandLength(Stamp elementStamp, int maxLength);
+
+    /**
      * Determine the minimum alignment in bytes that is guaranteed for objects.
      *
      * @return the alignment in bytes that is guaranteed for objects.

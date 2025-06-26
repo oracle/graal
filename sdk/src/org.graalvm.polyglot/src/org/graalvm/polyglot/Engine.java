@@ -1758,15 +1758,14 @@ public final class Engine implements AutoCloseable {
             }
             impls.add(found);
         }
-        Collections.sort(impls, Comparator.comparing(AbstractPolyglotImpl::getPriority));
-        Version polyglotVersion = Boolean.getBoolean("polyglotimpl.DisableVersionChecks") ? null : getPolyglotVersion();
-        AbstractPolyglotImpl prev = null;
-        for (AbstractPolyglotImpl impl : impls) {
-            if (impl.getPriority() == Integer.MIN_VALUE) {
-                // disabled
-                continue;
-            }
-            if (polyglotVersion != null) {
+        /*
+         * Verifies the Polyglot and Truffle API versions before sorting polyglot implementations.
+         * This is necessary because AbstractPolyglotImpl#getPriority, which is used during sorting,
+         * may already depend on compatible API versions and could trigger incompatibility issues.
+         */
+        if (!Boolean.getBoolean("polyglotimpl.DisableVersionChecks")) {
+            Version polyglotVersion = getPolyglotVersion();
+            for (AbstractPolyglotImpl impl : impls) {
                 String truffleVersionString = impl.getTruffleVersion();
                 Version truffleVersion = truffleVersionString != null ? Version.parse(truffleVersionString) : Version.create(23, 1, 1);
                 if (!polyglotVersion.equals(truffleVersion)) {
@@ -1793,6 +1792,14 @@ public final class Engine implements AutoCloseable {
                                     """);
                     throw new IllegalStateException(errorMessage.toString());
                 }
+            }
+        }
+        Collections.sort(impls, Comparator.comparing(AbstractPolyglotImpl::getPriority));
+        AbstractPolyglotImpl prev = null;
+        for (AbstractPolyglotImpl impl : impls) {
+            if (impl.getPriority() == Integer.MIN_VALUE) {
+                // disabled
+                continue;
             }
             impl.setNext(prev);
             try {

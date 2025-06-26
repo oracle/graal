@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
@@ -42,9 +44,29 @@ public final class ModuleTable extends AbstractModuleTable<StaticObject, ModuleT
         return new ModuleEntry(name, data);
     }
 
+    @SuppressWarnings("try")
+    public void addModuleEntriesForCDS(List<ModuleEntry> moduleEntries) {
+        try (BlockLock block = write()) {
+            for (ModuleEntry moduleEntry : moduleEntries) {
+                assert moduleEntry != null;
+                assert !entries.containsKey(moduleEntry.getName());
+                entries.put(moduleEntry.getName(), moduleEntry);
+            }
+        }
+    }
+
     public static final class ModuleEntry extends AbstractModuleTable.AbstractModuleEntry<StaticObject> implements ModuleRef {
-        ModuleEntry(Symbol<Name> name, ModuleData<StaticObject> data) {
+        // Public for CDS de-serialization.
+        public ModuleEntry(Symbol<Name> name, ModuleData<StaticObject> data) {
             super(name, data);
+        }
+
+        @SuppressWarnings({"unchecked", "raw"})
+        public List<ModuleEntry> getReadsForCDS() {
+            if (reads == null) {
+                return List.of();
+            }
+            return (List<ModuleEntry>) (List<?>) Collections.unmodifiableList(this.reads);
         }
 
         @Override

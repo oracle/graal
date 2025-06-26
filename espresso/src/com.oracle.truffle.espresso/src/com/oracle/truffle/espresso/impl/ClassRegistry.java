@@ -24,14 +24,18 @@ package com.oracle.truffle.espresso.impl;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.cds.ArchivedRegistryData;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
@@ -67,9 +71,9 @@ public abstract class ClassRegistry {
     /**
      * Storage class used to propagate information in the case of special kinds of class definition
      * (hidden, anonymous or with a specified protection domain).
-     * 
+     *
      * Regular class definitions will use the {@link #EMPTY} instance.
-     * 
+     *
      * Hidden and Unsafe anonymous classes are handled by not registering them in the class loader
      * registry.
      */
@@ -280,13 +284,19 @@ public abstract class ClassRegistry {
      * reclaimed, while not appearing in the actual registry. This field simply keeps those hidden
      * classes strongly reachable from the class registry.
      */
-    private volatile Collection<Klass> strongHiddenKlasses = null;
+    volatile Collection<Klass> strongHiddenKlasses = null;
 
-    private Object getStrongHiddenClassRegistrationLock() {
+    /**
+     * Hidden classes must be reachable until they're unloaded, because JDWP and JVMTI must be able
+     * to query all classes.
+     */
+    private volatile WeakHashMap<Klass, Void> hiddenKlasses = null;
+
+    Object getStrongHiddenClassRegistrationLock() {
         return this;
     }
 
-    private void registerStrongHiddenClass(Klass klass) {
+    private void registerStrongHiddenKlass(Klass klass) {
         synchronized (getStrongHiddenClassRegistrationLock()) {
             if (strongHiddenKlasses == null) {
                 strongHiddenKlasses = new ArrayList<>();
@@ -295,15 +305,37 @@ public abstract class ClassRegistry {
         }
     }
 
-    protected ClassRegistry(long loaderID) {
-        this.loaderID = loaderID;
-        ReadWriteLock rwLock = new ReentrantReadWriteLock();
-        this.packages = new PackageTable(rwLock);
-        this.modules = new ModuleTable(rwLock);
+    private void registerHiddenKlass(Klass klass) {
+        synchronized (getStrongHiddenClassRegistrationLock()) {
+            if (hiddenKlasses == null) {
+                hiddenKlasses = new WeakHashMap<>();
+            }
+            hiddenKlasses.put(klass, null);
+        }
     }
 
-    public void initUnnamedModule(StaticObject unnamedModule) {
-        this.unnamed = modules.createUnnamedModuleEntry(unnamedModule);
+    public Set<Klass> getHiddenKlasses() {
+        return hiddenKlasses != null ? hiddenKlasses.keySet() : Collections.emptySet();
+    }
+
+    protected ClassRegistry(long loaderID, ArchivedRegistryData archivedData) {
+        this.loaderID = loaderID;
+        if (archivedData != null) {
+            this.packages = archivedData.packageTable();
+            this.modules = archivedData.moduleTable();
+        } else {
+            ReadWriteLock rwLock = new ReentrantReadWriteLock();
+            this.packages = new PackageTable(rwLock);
+            this.modules = new ModuleTable(rwLock);
+        }
+    }
+
+    public void initUnnamedModule(StaticObject unnamedModule, ArchivedRegistryData archivedRegistryData) {
+        if (archivedRegistryData != null) {
+            this.unnamed = archivedRegistryData.unnamedModule();
+        } else {
+            this.unnamed = modules.createUnnamedModuleEntry(unnamedModule);
+        }
     }
 
     /**
@@ -322,7 +354,7 @@ public abstract class ClassRegistry {
             if (elemental == null) {
                 return null;
             }
-            return elemental.getArrayClass(TypeSymbols.getArrayDimensions(type));
+            return elemental.getArrayKlass(TypeSymbols.getArrayDimensions(type));
         }
 
         loadKlassCountInc();
@@ -363,8 +395,8 @@ public abstract class ClassRegistry {
     public abstract @JavaType(ClassLoader.class) StaticObject getClassLoader();
 
     @TruffleBoundary
-    public List<Klass> getLoadedKlasses() {
-        ArrayList<Klass> klasses = new ArrayList<>(classes.size());
+    Set<Klass> getLoadedKlasses() {
+        HashSet<Klass> klasses = new HashSet<>(classes.size());
         for (ClassRegistries.RegistryEntry entry : classes.values()) {
             klasses.add(entry.klass());
         }
@@ -378,7 +410,7 @@ public abstract class ClassRegistry {
             if (elementalKlass == null) {
                 return null;
             }
-            return elementalKlass.getArrayClass(TypeSymbols.getArrayDimensions(type));
+            return elementalKlass.getArrayKlass(TypeSymbols.getArrayDimensions(type));
         }
         ClassRegistries.RegistryEntry entry = classes.get(type);
         if (entry == null) {
@@ -446,7 +478,9 @@ public abstract class ClassRegistry {
         if (info.addedToRegistry()) {
             registerKlass(klass, type, beforeRetransformBytes);
         } else if (info.isStrongHidden()) {
-            registerStrongHiddenClass(klass);
+            registerStrongHiddenKlass(klass);
+        } else {
+            registerHiddenKlass(klass);
         }
         return klass;
     }

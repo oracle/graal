@@ -2883,6 +2883,9 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
                      "Barista benchmark suite directory.")
         return barista_home
 
+    def baristaApplicationDirectoryPath(self, benchmark: str) -> Path:
+        return Path(self.baristaDirectoryPath()) / "benchmarks" / benchmark
+
     def baristaFilePath(self, file_name):
         barista_home = self.baristaDirectoryPath()
         file_path = os.path.abspath(os.path.join(barista_home, file_name))
@@ -3026,11 +3029,29 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
     def computeDerivedDatapoints(self, datapoints: DataPoints) -> DataPoints:
         """Adds derived datapoints to the list of datapoints captured from the benchmark stdout or generated files.
         Adds datapoints such as:
+        * rss-distribution: copies of rss datapoints, naming more clearly indicates that the metric comprises the
+          distribution represented by percentile values
+        * latency-distribution: copies of latency datapoints, naming more clearly indicates that the metric comprises
+          the distribution represented by percentile values
         * max-rss: copied from specific rss percentile values
         * time-to-first-response: copied from response_time with iteration 0
         * max-time: copied from response_time with the highest value
         * ops-per-GB-second: computed as throughput divided by max-rss
         """
+        # rss-distribution
+        rss_dps = filter(lambda dp: dp["metric.name"] == "rss", datapoints)
+        for rss_dp in rss_dps:
+            rss_dp_copy = rss_dp.copy()
+            rss_dp_copy["metric.name"] = "rss-distribution"
+            datapoints.append(rss_dp_copy)
+
+        # latency-distribution
+        latency_dps = filter(lambda dp: dp["metric.name"] == "latency", datapoints)
+        for latency_dp in latency_dps:
+            latency_dp_copy = latency_dp.copy()
+            latency_dp_copy["metric.name"] = "latency-distribution"
+            datapoints.append(latency_dp_copy)
+
         # max-rss
         percentile_to_copy_into_max_rss = float(mx_benchmark.RssPercentilesTracker.MaxRssCopyRule.percentile_to_copy_into_max_rss)
         rss_dp_to_copy_from = next(filter(lambda dp: dp["metric.name"] == "rss" and dp["metric.percentile"] == percentile_to_copy_into_max_rss, datapoints), None)
@@ -3982,7 +4003,7 @@ class NativeImageBenchmarkMixin(object):
         # produced in the corresponding run stages.
         if not stage.is_image() and self.stages_info.should_produce_datapoints(stage.stage_name):
             final_command = self.apply_command_mapper_hooks(command, vm)
-        return mx.run(final_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+        return mx.run(final_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, env=self.get_stage_env())
 
     def is_native_mode(self, bm_suite_args: List[str]):
         """Checks whether the given arguments request a Native Image benchmark"""
@@ -4117,6 +4138,10 @@ class NativeImageBenchmarkMixin(object):
     # Override and return False if this suite should not check for samples in runs with PGO
     def checkSamplesInPgo(self):
         return True
+
+    def get_stage_env(self) -> Optional[dict]:
+        """Return the environment to be used when executing a stage."""
+        return None
 
 
 def measureTimeToFirstResponse(bmSuite):

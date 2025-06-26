@@ -146,6 +146,10 @@ public class FrameStateAssignmentPhase extends Phase {
         assert !hasFloatingDeopts(graph);
         ReentrantNodeIterator.apply(new FrameStateAssignmentClosure(), graph.start(), null);
         GraphUtil.killAllWithUnusedFloatingInputs(graph.getNodes(FrameState.TYPE).filter(state -> state.hasNoUsages()), false);
+        if (graph.hasLoops() && graph.isLastCFGValid()) {
+            // CFGLoops are computed differently after FSA, see CFGLoop#getLoopExits().
+            graph.getLastCFG().invalidateLoopInformation();
+        }
     }
 
     @Override

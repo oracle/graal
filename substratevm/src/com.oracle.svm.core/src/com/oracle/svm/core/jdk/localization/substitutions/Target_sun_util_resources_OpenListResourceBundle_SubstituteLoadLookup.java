@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,20 +38,13 @@ import com.oracle.svm.core.jdk.localization.substitutions.modes.SubstituteLoadLo
 @SuppressWarnings({"static-method"})
 final class Target_sun_util_resources_OpenListResourceBundle_SubstituteLoadLookup {
 
-    @Alias private volatile Map<String, Object> lookup;
-
     @Substitute
-    private void loadLookup() {
-        LocalizationSupport support = ImageSingletons.lookup(LocalizationSupport.class);
-        Map<String, Object> content = support.getBundleContentOf(this);
-        // use the supplied map implementation specified by the factory method
-        Map<String, Object> tmp = createMap(content.size());
-        tmp.putAll(content);
-        synchronized (this) {
-            if (lookup == null) {
-                lookup = content;
-            }
-        }
+    private Map<String, Object> lookup0() {
+        Map<String, Object> preloadedContent = ImageSingletons.lookup(LocalizationSupport.class).getBundleContentOf(this);
+        /* Use the type of map provided by the subclass. */
+        Map<String, Object> map = createMap(preloadedContent.size());
+        map.putAll(preloadedContent);
+        return map;
     }
 
     @Alias

@@ -23,6 +23,8 @@
 package com.oracle.truffle.espresso.substitutions.standard;
 
 import static com.oracle.truffle.espresso.substitutions.SubstitutionFlag.IsTrivial;
+import static com.oracle.truffle.espresso.threads.ThreadState.PARKED;
+import static com.oracle.truffle.espresso.threads.ThreadState.TIMED_PARKED;
 
 import java.lang.reflect.Array;
 import java.nio.ByteOrder;
@@ -75,7 +77,7 @@ import com.oracle.truffle.espresso.substitutions.SubstitutionNamesProvider;
 import com.oracle.truffle.espresso.substitutions.SubstitutionNode;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Throws;
-import com.oracle.truffle.espresso.threads.State;
+import com.oracle.truffle.espresso.threads.ThreadState;
 import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
@@ -695,7 +697,7 @@ public final class Target_sun_misc_Unsafe {
     @SuppressWarnings({"try", "unused"})
     public static void park(@JavaType(Unsafe.class) StaticObject self, boolean isAbsolute, long time,
                     @Inject Meta meta,
-                    @Inject SubstitutionProfiler profiler) {
+                    @Inject SubstitutionProfiler location) {
         if (time < 0 || (isAbsolute && time == 0)) { // don't wait at all
             return;
         }
@@ -707,9 +709,12 @@ public final class Target_sun_misc_Unsafe {
         if (parkReturnCondition(thread, meta)) {
             return;
         }
-        State state = time > 0 ? State.TIMED_WAITING : State.WAITING;
-        try (Transition transition = Transition.transition(context, state)) {
+        ThreadState state = time > 0 ? TIMED_PARKED : PARKED;
+        Transition transition = Transition.transition(state, location);
+        try {
             parkImpl(isAbsolute, time, thread, meta);
+        } finally {
+            transition.restore(location);
         }
     }
 

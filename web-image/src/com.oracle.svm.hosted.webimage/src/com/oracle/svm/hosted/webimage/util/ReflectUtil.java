@@ -25,10 +25,7 @@
 
 package com.oracle.svm.hosted.webimage.util;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.GenericSignatureFormatError;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -42,6 +39,8 @@ import org.graalvm.webimage.api.JS;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -169,92 +168,42 @@ public class ReflectUtil {
         }
     }
 
-    public static Set<Method> findBaseMethodsOfJSAnnotated(List<Class<?>> allClasses) {
-        HashSet<Method> set = new HashSet<>();
-        for (Class<?> cls : allClasses) {
-            Method[] declaredMethods;
-            try {
-                declaredMethods = cls.getDeclaredMethods();
-            } catch (NoClassDefFoundError e) {
-                // Some classes may be missing on the class path, but these will not be used by the
-                // image.
-                continue;
-            } catch (VerifyError | ClassFormatError | ClassCircularityError | IllegalAccessError e) {
-                // Skip the corrupted class encountered during the analysis.
-                System.err.printf(
-                                "Skipped JS annotated base methods lookup for class %s.%nError: %s, Message: %s.%n",
-                                cls.getName(),
-                                e.getClass().getName(),
-                                e.getMessage());
-                continue;
-            }
-            for (Method method : declaredMethods) {
-                Annotation jsAnnotation;
-                try {
-                    jsAnnotation = method.getAnnotation(JS.class);
-                } catch (GenericSignatureFormatError e) {
-                    // Skip the corrupted method encountered during the analysis.
-                    System.err.printf(
-                                    "Skipped JS annotated base methods lookup for method %s::%s.%nError: %s, Message: %s.%n",
-                                    method.getDeclaringClass().getName(),
-                                    method.getName(),
-                                    e.getClass().getName(),
-                                    e.getMessage());
-                    continue;
-                }
-                if (jsAnnotation != null) {
-                    markBaseMethods(method, cls, set, new HashSet<>());
-                }
-            }
+    /**
+     * Finds all methods annotated with {@link JS} as well as all the methods it overrides.
+     */
+    public static Set<Method> findBaseMethodsOfJSAnnotated(ImageClassLoader imageClassLoader) {
+        Set<Method> methods = new HashSet<>();
+
+        List<Method> annotatedMethods = imageClassLoader.findAnnotatedMethods(JS.class);
+
+        for (Method annotatedMethod : annotatedMethods) {
+            findBaseMethods(annotatedMethod, annotatedMethod.getDeclaringClass(), methods);
         }
-        return set;
+
+        return methods;
     }
 
-    private static void markBaseMethods(Method method, Class<?> type, HashSet<Method> set, HashSet<Class<?>> seen) {
-        if (seen.contains(type)) {
-            // We already saw this type -- we skip it to avoid traversing an interface type twice.
+    /**
+     * Finds all methods the given {@code originalMethod} overrides (including itself) from the
+     * given class upwards and adds them to the given set.
+     */
+    private static void findBaseMethods(Method originalMethod, Class<?> clazz, Set<Method> jsOverridenMethodSet) {
+        if (clazz == null) {
             return;
         }
-        seen.add(type);
-        if (!set.contains(method)) {
-            set.add(method);
+
+        // This is either the same method as originalMethod or a method it overrides.
+        Method baseMethod = ReflectionUtil.lookupMethod(true, clazz, originalMethod.getName(), originalMethod.getParameterTypes());
+
+        if (baseMethod != null) {
+            jsOverridenMethodSet.add(baseMethod);
         }
-        if (Modifier.isPrivate(method.getModifiers()) || Modifier.isStatic(method.getModifiers())) {
-            // Private and static methods cannot override anything.
-            return;
+
+        for (Class<?> clazzInterface : clazz.getInterfaces()) {
+            findBaseMethods(originalMethod, clazzInterface, jsOverridenMethodSet);
         }
-        resolveAndMarkBaseMethods(method, type.getSuperclass(), set, seen);
-        for (Class<?> i : type.getInterfaces()) {
-            resolveAndMarkBaseMethods(method, i, set, seen);
-        }
+
+        findBaseMethods(originalMethod, clazz.getSuperclass(), jsOverridenMethodSet);
     }
 
-    private static void resolveAndMarkBaseMethods(Method method, Class<?> type, HashSet<Method> set, HashSet<Class<?>> seen) {
-        if (type == null) {
-            // We reached Object's superclass.
-            return;
-        }
-        for (Method declaredMethod : type.getDeclaredMethods()) {
-            if (isOverriding(method, declaredMethod)) {
-                markBaseMethods(declaredMethod, type, set, seen);
-                return;
-            }
-        }
-        // There is no override in the current class, continue using the subtype's method.
-        markBaseMethods(method, type, set, seen);
-    }
-
-    private static boolean isOverriding(Method method, Method baseMethod) {
-        if (method.getParameterCount() != baseMethod.getParameterCount() || !method.getName().equals(baseMethod.getName())) {
-            return false;
-        }
-        Class<?>[] parameters = method.getParameterTypes();
-        Class<?>[] baseParameters = baseMethod.getParameterTypes();
-        for (int i = 0; i < parameters.length; i++) {
-            if (!parameters[i].equals(baseParameters[i])) {
-                return false;
-            }
-        }
-        return true;
-    }
 }
