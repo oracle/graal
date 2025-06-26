@@ -76,8 +76,8 @@ public final class JavaVersion implements Comparable<JavaVersion> {
 
     public static final JavaVersion HOST_VERSION = forVersion(Runtime.version());
 
-    public static final int LATEST_SUPPORTED = 25;
-    public static final int LATEST_SUPPORTED_CLASSFILE = ClassfileParser.JAVA_25_VERSION;
+    public static final int LATEST_SUPPORTED = 26;
+    public static final int LATEST_SUPPORTED_CLASSFILE = ClassfileParser.JAVA_26_VERSION;
 
     private final int version;
 

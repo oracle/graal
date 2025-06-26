@@ -377,7 +377,8 @@ typedef uint64_t julong;
     V(JVM_VirtualThreadDisableSuspend) \
     V(JVM_VirtualThreadPinnedEvent) \
     V(JVM_TakeVirtualThreadListToUnblock) \
-    V(JVM_IsStaticallyLinked) \
+    V(JVM_IsStaticallyLinked)   \
+    V(JVM_CreateThreadSnapshot)
 
 #ifdef __cplusplus
 extern "C" {
@@ -1015,6 +1016,8 @@ void (*JVM_VirtualThreadPinnedEvent)(JNIEnv* env, jclass clazz, jstring op);
 jobject (*JVM_TakeVirtualThreadListToUnblock)(JNIEnv* env, jclass ignored);
 
 jboolean(*JVM_IsStaticallyLinked)(void);
+
+jobject(*JVM_CreateThreadSnapshot)(JNIEnv* env, jobject thread);
 };
 
 struct MokapotEnv_ {

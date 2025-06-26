@@ -154,6 +154,7 @@ public final class ClassfileParser {
     public static final int JAVA_23_VERSION = 67;
     public static final int JAVA_24_VERSION = 68;
     public static final int JAVA_25_VERSION = 69;
+    public static final int JAVA_26_VERSION = 70;
 
     public static final int STRICTER_ACCESS_CTRL_CHECK_VERSION = JAVA_1_5_VERSION;
     public static final int STACKMAP_ATTRIBUTE_MAJOR_VERSION = JAVA_6_VERSION;
