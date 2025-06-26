@@ -1748,6 +1748,11 @@ JNIEXPORT jboolean JNICALL JVM_PrintWarningAtDynamicAgentLoad(void) {
   return JNI_FALSE;
 }
 
+JNIEXPORT jobject JNICALL JVM_CreateThreadSnapshot(JNIEnv* env, jobject thread) {
+    UNIMPLEMENTED(JVM_CreateThreadSnapshot);
+    return NULL;
+}
+
 
 // region Invocation API
 
