@@ -38,7 +38,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateUtil;
@@ -217,7 +217,7 @@ public class SerializationSupport implements MultiLayeredImageSingleton, Seriali
     private final EconomicMap<String, RuntimeConditionSet> lambdaCapturingClasses = EconomicMap.create();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerSerializationTargetClass(ConfigurationCondition cnd, DynamicHub hub) {
+    public void registerSerializationTargetClass(AccessCondition cnd, DynamicHub hub) {
         synchronized (classes) {
             var previous = classes.putIfAbsent(BuildPhaseProvider.isHostedUniverseBuilt() ? hub.getTypeID() : new DynamicHubKey(hub), RuntimeConditionSet.createHosted(cnd));
             if (previous != null) {
@@ -240,7 +240,7 @@ public class SerializationSupport implements MultiLayeredImageSingleton, Seriali
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerLambdaCapturingClass(ConfigurationCondition cnd, String lambdaCapturingClass) {
+    public void registerLambdaCapturingClass(AccessCondition cnd, String lambdaCapturingClass) {
         synchronized (lambdaCapturingClasses) {
             var previousConditions = lambdaCapturingClasses.putIfAbsent(lambdaCapturingClass, RuntimeConditionSet.createHosted(cnd));
             if (previousConditions != null) {

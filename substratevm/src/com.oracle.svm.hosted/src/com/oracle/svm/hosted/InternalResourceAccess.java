@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,40 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure;
+package com.oracle.svm.hosted;
 
-import java.util.Collection;
-import java.util.Locale;
+import java.util.Objects;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 
-public interface ResourcesRegistry<C> extends RuntimeResourceSupport<C> {
+public final class InternalResourceAccess implements ResourceAccess {
 
-    @SuppressWarnings("unchecked")
-    static ResourcesRegistry<AccessCondition> singleton() {
-        return ImageSingletons.lookup(ResourcesRegistry.class);
-    }
+    private final RuntimeResourceSupport<AccessCondition> rrsInstance;
 
-    void addClassBasedResourceBundle(C condition, String basename, String className);
-
-    /**
-     * Although the interface-methods below are already defined in the super-interface
-     * {@link RuntimeResourceSupport} they are also needed here for legacy code that accesses them
-     * reflectively.
-     */
-    @Deprecated
-    default void addResources(C condition, String pattern) {
-        addResources(condition, pattern, "unknown");
+    InternalResourceAccess() {
+        rrsInstance = RuntimeResourceSupport.singleton();
     }
 
     @Override
-    void ignoreResources(C condition, String pattern);
+    public void register(AccessCondition condition, Module module, String pattern) {
+        Objects.requireNonNull(pattern);
+        if (pattern.replace("\\*", "").contains("*")) {
+            String moduleName = module == null ? null : module.getName();
+            rrsInstance.addGlob(condition, moduleName, pattern, "Registered from API");
+        } else {
+            rrsInstance.addResource(condition, module, pattern.replace("\\*", "*"), "Registered from API");
+        }
+    }
 
     @Override
-    void addResourceBundles(C condition, String name);
-
-    @Override
-    void addResourceBundles(C condition, String basename, Collection<Locale> locales);
+    public void registerResourceBundle(AccessCondition condition, Module module, String bundleName) {
+        Objects.requireNonNull(bundleName);
+        String finalBundleName = (module != null && module.isNamed()) ? module.getName() + ":" + bundleName : bundleName;
+        rrsInstance.addResourceBundles(condition, finalBundleName);
+    }
 }

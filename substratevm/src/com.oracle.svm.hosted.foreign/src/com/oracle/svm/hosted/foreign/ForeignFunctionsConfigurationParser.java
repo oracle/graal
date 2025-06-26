@@ -50,7 +50,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 import com.oracle.svm.configure.ConfigurationParserOption;
@@ -96,13 +96,13 @@ public class ForeignFunctionsConfigurationParser extends ForeignConfigurationPar
     }
 
     @Override
-    protected void registerDowncall(ConfigurationCondition configurationCondition, FunctionDescriptor descriptor, Option[] options) {
-        accessSupport.registerForDowncall(ConfigurationCondition.alwaysTrue(), descriptor, (Object[]) options);
+    protected void registerDowncall(AccessCondition configurationCondition, FunctionDescriptor descriptor, Option[] options) {
+        accessSupport.registerForDowncall(AccessCondition.unconditional(), descriptor, (Object[]) options);
     }
 
     @Override
-    protected void registerUpcall(ConfigurationCondition configurationCondition, FunctionDescriptor descriptor, Option[] options) {
-        accessSupport.registerForUpcall(ConfigurationCondition.alwaysTrue(), descriptor, (Object[]) options);
+    protected void registerUpcall(AccessCondition configurationCondition, FunctionDescriptor descriptor, Option[] options) {
+        accessSupport.registerForUpcall(AccessCondition.unconditional(), descriptor, (Object[]) options);
     }
 
     @Override
@@ -129,7 +129,7 @@ public class ForeignFunctionsConfigurationParser extends ForeignConfigurationPar
                             className, methodName, methodType);
             return;
         }
-        accessSupport.registerForDirectUpcall(ConfigurationCondition.alwaysTrue(), target, descriptor, (Object[]) options);
+        accessSupport.registerForDirectUpcall(AccessCondition.unconditional(), target, descriptor, (Object[]) options);
     }
 
     @Override
@@ -167,7 +167,7 @@ public class ForeignFunctionsConfigurationParser extends ForeignConfigurationPar
         for (Pair<FunctionDescriptor, MethodHandle> pair : descriptors) {
             var options = createUpcallOptions(optionsMap, pair.getLeft());
             try {
-                accessSupport.registerForDirectUpcall(ConfigurationCondition.alwaysTrue(), pair.getRight(), pair.getLeft(), (Object[]) options);
+                accessSupport.registerForDirectUpcall(AccessCondition.unconditional(), pair.getRight(), pair.getLeft(), (Object[]) options);
             } catch (IllegalArgumentException e) {
                 handleMissingElement(e, "Could not register direct upcall stub '%s.%s%s'", className, methodName, pair.getLeft().toMethodType());
             }
