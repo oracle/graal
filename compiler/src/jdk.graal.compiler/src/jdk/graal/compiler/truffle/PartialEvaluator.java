@@ -114,6 +114,7 @@ public abstract class PartialEvaluator {
     protected boolean persistentEncodedGraphCache;
 
     protected final TruffleConstantFieldProvider constantFieldProvider;
+    private final TruffleCachingConstantFieldProvider graphCacheConstantFieldProvider;
 
     @SuppressWarnings("this-escape")
     public PartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot) {
@@ -124,6 +125,7 @@ public abstract class PartialEvaluator {
         this.lastTierDecodingPlugins = createDecodingInvocationPlugins(config.lastTier().partialEvaluator(), configForRoot.getPlugins(), config.lastTier().providers());
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
         this.constantFieldProvider = new TruffleConstantFieldProvider(this, getProviders().getConstantFieldProvider());
+        this.graphCacheConstantFieldProvider = new TruffleCachingConstantFieldProvider(this, getProviders().getConstantFieldProvider());
     }
 
     protected void initialize(OptionValues options) {
@@ -401,14 +403,14 @@ public abstract class PartialEvaluator {
         DeoptimizeOnExceptionPhase postParsingPhase = new DeoptimizeOnExceptionPhase(
                         method -> getMethodInfo(method).inlineForPartialEvaluation() == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION);
 
-        Providers baseProviders = config.lastTier().providers();
-        Providers compilationUnitProviders = config.lastTier().providers().copyWith(constantFieldProvider);
+        Providers graphCacheProviders = config.lastTier().providers().copyWith(graphCacheConstantFieldProvider);
+        Providers decoderProviders = config.lastTier().providers().copyWith(constantFieldProvider);
 
         assert !allowAssumptionsDuringParsing || !persistentEncodedGraphCache;
-        return new CachingPEGraphDecoder(config.architecture(), context.graph, compilationUnitProviders, newConfig,
+        return new CachingPEGraphDecoder(config.architecture(), context.graph, graphCacheProviders, decoderProviders, newConfig,
                         loopExplosionPlugin, decodingPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, types.OptimizedCallTarget_callInlined,
                         sourceLanguagePositionProvider, postParsingPhase, graphCache, createCachedGraphScope,
-                        createGraphBuilderPhaseInstance(compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations),
+                        createGraphBuilderPhaseInstance(graphCacheProviders, newConfig, TruffleCompilerImpl.Optimizations),
                         allowAssumptionsDuringParsing, false, true);
     }
 

@@ -34,6 +34,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
@@ -148,6 +149,32 @@ public class DeoptLoopDetectionTest {
         }, "globalDeopt", (target) -> {
             target.call(true);
         }, 1);
+    }
+
+    static class StaticAssumptionRootNode extends BaseRootNode {
+        @CompilationFinal static volatile Assumption assumption = Assumption.create();
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (!assumption.isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            return 0;
+        }
+    }
+
+    @Test
+    public void testStaticAssumptionNoDeopt() {
+        boolean[] firstExecution = new boolean[]{true};
+        AssertionError expectedError = Assert.assertThrows(AssertionError.class, () -> assertDeoptLoop(new StaticAssumptionRootNode(), "staticAssumptionNoDeopt", (target) -> {
+            target.call();
+            if (firstExecution[0]) {
+                StaticAssumptionRootNode.assumption.invalidate();
+                StaticAssumptionRootNode.assumption = Assumption.create();
+                firstExecution[0] = false;
+            }
+        }, 1));
+        Assert.assertEquals("No deopt loop detected after " + MAX_EXECUTIONS + " executions", expectedError.getMessage());
     }
 
     @Test
