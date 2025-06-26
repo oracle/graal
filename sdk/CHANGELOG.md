@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 26.0.0
+* GR-66515 If neither a log handler nor the `log.file` option is set on the `Engine.Builder` or `Context.Builder`, Truffle and language log messages will be written to the Context’s error output stream by default. The `log.file` option is now also supported on `Context.Builder`.
+
 ## Version 25.0.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.
 * GR-51664 Improved `PolyglotException#toString` and `PolyglotException#printStackTrace`.
