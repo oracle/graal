@@ -60,7 +60,7 @@ final class SerializationMetadataParser<C> extends SerializationConfigurationPar
             return;
         }
 
-        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, true);
+        UnresolvedAccessCondition unresolvedCondition = parseCondition(data, true);
         var condition = conditionResolver.resolveCondition(unresolvedCondition);
         if (!condition.isPresent()) {
             return;
