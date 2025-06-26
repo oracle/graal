@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -312,9 +313,9 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return imageLayerBuildingSupport;
     }
 
-    record OptionLayerVerificationRequests(OptionDescriptor option, EconomicMap<LayerVerifiedOption.Kind, LayerVerifiedOption> requests) {
+    record OptionLayerVerificationRequests(OptionDescriptor option, List<LayerVerifiedOption> requests) {
         OptionLayerVerificationRequests(OptionDescriptor option) {
-            this(option, EconomicMap.create());
+            this(option, new ArrayList<>());
         }
     }
 
@@ -326,7 +327,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         Map<String, OptionLayerVerificationRequests> result = new HashMap<>();
         for (OptionDescriptor optionDescriptor : hostedOptions.getValues()) {
             for (LayerVerifiedOption layerVerification : OptionUtils.getAnnotationsByType(optionDescriptor, LayerVerifiedOption.class)) {
-                result.computeIfAbsent(optionDescriptor.getName(), key -> new OptionLayerVerificationRequests(optionDescriptor)).requests.put(layerVerification.kind(), layerVerification);
+                result.computeIfAbsent(optionDescriptor.getName(), key -> new OptionLayerVerificationRequests(optionDescriptor)).requests.add(layerVerification);
             }
         }
         return result;

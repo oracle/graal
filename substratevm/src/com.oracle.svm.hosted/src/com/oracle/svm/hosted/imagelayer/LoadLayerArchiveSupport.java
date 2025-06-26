@@ -27,11 +27,13 @@ package com.oracle.svm.hosted.imagelayer;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.option.LayerVerifiedOption;
@@ -105,59 +107,86 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
         List<DiffResult<String>> diffResults = DiffTool.diffResults(filteredLeft, filteredRight);
         Map<DiffResult<String>, Severity> violations = new HashMap<>();
         for (var diffResult : diffResults) {
-            Set<Kind> verificationKinds = switch (diffResult.kind()) {
+            DiffResult.Kind diffResultKind = diffResult.kind();
+            Set<Kind> verificationKinds = switch (diffResultKind) {
+                case Equal -> Set.of();
                 case Removed -> Set.of(Kind.Removed, Kind.Changed);
                 case Added -> Set.of(Kind.Added, Kind.Changed);
-                default -> Set.of();
             };
-            for (Kind verificationKind : verificationKinds) {
-                ArgumentOrigin argumentOrigin = splitArgumentOrigin(diffResult.getEntry(left, right));
-                NameValue argumentNameAndValue = argumentOrigin.nameValue();
-                var perOptionVerifications = allRequests.get(argumentNameAndValue.name);
-                if (perOptionVerifications == null) {
-                    continue;
-                }
-                LayerVerifiedOption request = perOptionVerifications.requests().get(verificationKind);
-                if (request == null || request.positional() != positional) {
-                    continue;
-                }
-
-                OptionOrigin origin = OptionOrigin.from(argumentOrigin.origin);
-                String argument = SubstrateOptionsParser.commandArgument(perOptionVerifications.option().getOptionKey(), argumentNameAndValue.value);
-                String message = switch (diffResult.kind()) {
-                    case Removed -> "Previous layer was";
-                    case Added -> "Current layer gets";
-                    case Equal -> throw VMError.shouldNotReachHere("diff for equal");
-                } + " built with option argument '" + argument + "' from " + origin + ".";
-                String suffix;
-                if (!request.message().isEmpty()) {
-                    suffix = request.message();
-                } else {
-                    /* fallback to generic verification message */
-                    suffix = "This is also required to be specified for the " + switch (diffResult.kind()) {
-                        case Removed -> "current layered image build";
-                        case Added -> "previous layer build";
-                        case Equal -> throw VMError.shouldNotReachHere("diff for equal");
-                    };
-                }
-                message += " " + suffix + (positional ? " at the same position." : ".");
-                Severity severity = request.severity();
-                violations.put(diffResult, severity);
-                if (verbose) {
-                    LogUtils.info("Error: ", message);
-                } else {
-                    switch (severity) {
-                        case Warn -> LogUtils.warning(message);
-                        case Error -> {
-                            if (strict) {
-                                UserError.abort(message);
-                            } else {
-                                LogUtils.warning(message);
-                            }
-                        }
-                    }
-                }
+            if (verificationKinds.isEmpty()) {
+                continue;
             }
+
+            ArgumentOrigin argumentOrigin = splitArgumentOrigin(diffResult.getEntry(left, right));
+            NameValue argumentNameAndValue = argumentOrigin.nameValue();
+            var perOptionVerifications = allRequests.get(argumentNameAndValue.name);
+            if (perOptionVerifications == null) {
+                continue;
+            }
+
+            List<LayerVerifiedOption> requests = perOptionVerifications.requests().stream()
+                            .filter(request -> request.positional() == positional)
+                            .collect(Collectors.toList());
+            String argument = SubstrateOptionsParser.commandArgument(perOptionVerifications.option().getOptionKey(), argumentNameAndValue.value);
+            List<LayerVerifiedOption> matchingAPIRequest = new ArrayList<>();
+            requests.removeIf(request -> {
+                if (request.apiOption().isEmpty()) {
+                    // Keep all non-API requests
+                    return false;
+                }
+                // Do record matching API requests ...
+                if (request.apiOption().equals(argument)) {
+                    matchingAPIRequest.add(request);
+                }
+                // ... but remove all API request entries
+                return true;
+            });
+            if (!matchingAPIRequest.isEmpty()) {
+                /*
+                 * If we have a @LayerVerifiedOption annotation with a matching apiOption set, we
+                 * ignore other @LayerVerifiedOption annotations that do not have apiOption set.
+                 */
+                requests = matchingAPIRequest;
+            }
+
+            requests.stream()
+                            .filter(request -> verificationKinds.contains(request.kind()))
+                            .forEach(request -> {
+
+                                String message = switch (diffResultKind) {
+                                    case Removed -> "Previous layer was";
+                                    case Added -> "Current layer gets";
+                                    case Equal -> throw VMError.shouldNotReachHere("diff for equal");
+                                } + " built with option argument '" + argument + "' from " + OptionOrigin.from(argumentOrigin.origin) + ".";
+                                String suffix;
+                                if (!request.message().isEmpty()) {
+                                    suffix = request.message();
+                                } else {
+                                    /* fallback to generic verification message */
+                                    suffix = "This is also required to be specified for the " + switch (diffResultKind) {
+                                        case Removed -> "current layered image build";
+                                        case Added -> "previous layer build";
+                                        case Equal -> throw VMError.shouldNotReachHere("diff for equal");
+                                    };
+                                }
+                                message += " " + suffix + (positional ? " at the same position." : ".");
+                                Severity severity = request.severity();
+                                violations.put(diffResult, severity);
+                                if (verbose) {
+                                    LogUtils.info("Error: ", message);
+                                } else {
+                                    switch (severity) {
+                                        case Warn -> LogUtils.warning(message);
+                                        case Error -> {
+                                            if (strict) {
+                                                UserError.abort(message);
+                                            } else {
+                                                LogUtils.warning(message);
+                                            }
+                                        }
+                                    }
+                                }
+                            });
         }
 
         boolean violationsFound = !violations.isEmpty();

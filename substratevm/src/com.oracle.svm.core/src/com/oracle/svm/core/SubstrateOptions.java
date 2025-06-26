@@ -1063,8 +1063,13 @@ public class SubstrateOptions {
     @Option(help = "Determines if debugging-specific helper methods are embedded into the image. Those methods can be called directly from the debugger to obtain or print additional information.", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> IncludeDebugHelperMethods = new HostedOptionKey<>(false);
 
+    private static final String ENABLE_DEBUGINFO_OPTION = "-g";
+    // Only raise error if -g is used in current layer build but missing in the previous layer build
+    @LayerVerifiedOption(apiOption = ENABLE_DEBUGINFO_OPTION, kind = Kind.Added, severity = Severity.Error, message = "If you want to use " + ENABLE_DEBUGINFO_OPTION +
+                    " in this layer, use a layer that was also built with " + ENABLE_DEBUGINFO_OPTION)//
+    // ... but use stricter check for raw (non-API) use of GenerateDebugInfo
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
-    @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
+    @APIOption(name = ENABLE_DEBUGINFO_OPTION, fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
     public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
         @Override
