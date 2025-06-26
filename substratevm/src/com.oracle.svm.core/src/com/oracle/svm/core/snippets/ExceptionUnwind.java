@@ -25,6 +25,7 @@
 package com.oracle.svm.core.snippets;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.core.stack.JavaFrameAnchors.verifyTopFrameAnchor;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -274,6 +275,8 @@ public abstract class ExceptionUnwind {
 
     @Uninterruptible(reason = "Prevent deoptimization while dispatching to exception handler")
     private static void jumpToHandler(Pointer sp, CodePointer handlerIP, boolean hasCalleeSavedRegisters) {
+        verifyTopFrameAnchor(sp);
+
         Throwable exception = currentException.get();
         currentException.set(null);
 
@@ -296,5 +299,4 @@ public abstract class ExceptionUnwind {
     private static void deoptTakeExceptionInterruptible(DeoptimizedFrame deoptFrame) {
         deoptFrame.takeException();
     }
-
 }
