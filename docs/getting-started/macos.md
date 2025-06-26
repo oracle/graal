@@ -92,8 +92,7 @@ xcode-select --install
 
 ### On JAVA_HOME Command
 
-The information property file, _Info.plist_, is in the top level _Contents/_ directory. 
-This means that GraalVM participates in the macOS-specific `/usr/libexec/java_home` mechanism. 
-Depending on other JDK installation(s) available, it is now possible that `/usr/libexec/java_home -v23` returns `/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`. 
-You can run `/usr/libexec/java_home -v23 -V` to see the complete list of JVMs available to the `java_home` command. 
-This command sorts the JVMs in decreasing version order and chooses the top one as the default for the specified version.
+The information property file, _Info.plist_, is located in the top-level _Contents/_ directory.
+This allows GraalVM to integrate with the macOS-specific `/usr/libexec/java_home` mechanism.
+Depending on other installed JDKs, running `/usr/libexec/java_home -v<version>` may return `/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`.
+To view all JVMs recognized by `java_home`, run `/usr/libexec/java_home -V`. This command lists JVMs in descending version order.
