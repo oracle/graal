@@ -39,6 +39,7 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LayerVerifiedOption;
 import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
@@ -200,6 +201,8 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
              * run time and build time.
              */
             SubstrateOptions.ApplicationLayerInitializedClasses.update(values, Module.class.getName());
+
+            setOptionIfHasNotBeenSet(values, SubstrateOptions.RelativeCodePointers, true);
         }
 
         if (isLayerUseOptionEnabled(hostedOptions)) {
@@ -210,6 +213,13 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             }
             enableConservativeUnsafeAccess(values);
             SubstrateOptions.ApplicationLayerInitializedClasses.update(values, Module.class.getName());
+            setOptionIfHasNotBeenSet(values, SubstrateOptions.RelativeCodePointers, true);
+        }
+    }
+
+    private static void setOptionIfHasNotBeenSet(EconomicMap<OptionKey<?>, Object> values, HostedOptionKey<Boolean> option, boolean boxedValue) {
+        if (!values.containsKey(option)) {
+            option.update(values, boxedValue);
         }
     }
 
