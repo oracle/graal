@@ -771,13 +771,17 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     static LogHandler createLogHandler(LogConfig logConfig, DispatchOutputStream errDispatchOutputStream, SandboxPolicy sandboxPolicy) {
         if (logConfig.logFile != null) {
-            if (ALLOW_IO) {
-                return PolyglotLoggers.getFileHandler(logConfig.logFile);
-            } else {
-                throw PolyglotEngineException.illegalState("The `log.file` option is not allowed when the allowIO() privilege is removed at image build time.");
-            }
+            return createFileHandler(logConfig.logFile);
         } else {
             return PolyglotLoggers.createDefaultHandler(INSTRUMENT.getOut(errDispatchOutputStream), sandboxPolicy);
+        }
+    }
+
+    private static LogHandler createFileHandler(String logFile) {
+        if (ALLOW_IO) {
+            return PolyglotLoggers.getFileHandler(logFile);
+        } else {
+            throw PolyglotEngineException.illegalState("The `log.file` option is not allowed when the allowIO() privilege is removed at image build time.");
         }
     }
 
@@ -1856,10 +1860,17 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             } else {
                 useErr = INSTRUMENT.createDelegatingOutput(configErr, this.err);
             }
-            LogHandler useHandler = handler != null ? (LogHandler) handler : logHandler;
-            useHandler = useHandler != null ? useHandler
-                            : PolyglotLoggers.createDefaultHandler(
-                                            configErr == null ? INSTRUMENT.getOut(this.err) : configErr, contextSandboxPolicy);
+            String logFile = options.remove(LOG_FILE_OPTION);
+            LogHandler useHandler;
+            if (handler != null) {
+                useHandler = (LogHandler) handler;
+            } else if (logFile != null) {
+                useHandler = createFileHandler(logFile);
+            } else if (logHandler != null && !PolyglotLoggers.isDefault(logHandler)) {
+                useHandler = logHandler;
+            } else {
+                useHandler = PolyglotLoggers.createDefaultHandler(configErr == null ? INSTRUMENT.getOut(this.err) : configErr, contextSandboxPolicy);
+            }
             final InputStream useIn = configIn == null ? this.in : configIn;
             final ProcessHandler useProcessHandler;
             if (allowCreateProcess) {
