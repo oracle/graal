@@ -536,16 +536,6 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static boolean useStackLocking(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.lockingMode == config.lockingModeStack;
-    }
-
-    @Fold
-    public static boolean useLightweightLocking(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.lockingMode == config.lockingModeLightweight;
-    }
-
-    @Fold
     public static boolean useObjectMonitorTable(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.useObjectMonitorTable;
     }
