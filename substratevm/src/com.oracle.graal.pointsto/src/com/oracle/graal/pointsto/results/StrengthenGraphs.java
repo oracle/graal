@@ -60,6 +60,7 @@ import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.IntegerLowerThanNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
@@ -322,7 +323,8 @@ public abstract class StrengthenGraphs {
     }
 
     private JavaTypeProfile createTypeProfile(TypeState typeState, boolean injectNotRecordedProbability) {
-        double probability = 1d / (typeState.typesCount() + (injectNotRecordedProbability ? 1 : 0));
+        final double notRecordedProb = injectNotRecordedProbability ? BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY : 0.0d;
+        final double probability = (1.0 - notRecordedProb) / typeState.typesCount();
 
         Stream<? extends ResolvedJavaType> stream = typeState.typesStream(bb);
         if (converter != null) {
@@ -332,7 +334,7 @@ public abstract class StrengthenGraphs {
                         .map(type -> new JavaTypeProfile.ProfiledType(type, probability))
                         .toArray(JavaTypeProfile.ProfiledType[]::new);
 
-        return new JavaTypeProfile(TriState.get(typeState.canBeNull()), injectNotRecordedProbability ? probability : 0, pitems);
+        return new JavaTypeProfile(TriState.get(typeState.canBeNull()), notRecordedProb, pitems);
     }
 
     protected JavaMethodProfile makeMethodProfile(Collection<AnalysisMethod> callees, boolean injectNotRecordedProbability) {
@@ -347,7 +349,8 @@ public abstract class StrengthenGraphs {
     private CachedJavaMethodProfile createMethodProfile(Collection<AnalysisMethod> callees, boolean injectNotRecordedProbability) {
         JavaMethodProfile.ProfiledMethod[] pitems = new JavaMethodProfile.ProfiledMethod[callees.size()];
         int hashCode = 0;
-        double probability = 1d / (pitems.length + (injectNotRecordedProbability ? 1 : 0));
+        final double notRecordedProb = injectNotRecordedProbability ? BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY : 0.0d;
+        final double probability = (1.0 - notRecordedProb) / pitems.length;
 
         int idx = 0;
         for (AnalysisMethod aMethod : callees) {
@@ -355,7 +358,7 @@ public abstract class StrengthenGraphs {
             pitems[idx++] = new JavaMethodProfile.ProfiledMethod(convertedMethod, probability);
             hashCode = hashCode * 31 + convertedMethod.hashCode();
         }
-        return new CachedJavaMethodProfile(new JavaMethodProfile(injectNotRecordedProbability ? probability : 0, pitems), hashCode);
+        return new CachedJavaMethodProfile(new JavaMethodProfile(notRecordedProb, pitems), hashCode);
     }
 }
 
