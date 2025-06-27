@@ -70,7 +70,7 @@ public record AbstractTransformers<Domain extends AbstractDomain<Domain>>(
     }
 
     /**
-     * Perform semantic transformation of an edge between two {@link HIRBlock}s.
+     * Performs semantic transformation of an edge between two {@link HIRBlock}s.
      *
      * @param sourceBlock      the head from which the edge originates
      * @param destinationBlock the head to which the edge goes
@@ -85,7 +85,7 @@ public record AbstractTransformers<Domain extends AbstractDomain<Domain>>(
     }
 
     /**
-     * Perform semantic transformation of the given {@link HIRBlock}.
+     * Performs semantic transformation of the given {@link HIRBlock}.
      *
      * @param block         the head to analyze
      * @param abstractState abstract state during fixpoint iteration
