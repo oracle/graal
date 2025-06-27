@@ -47,6 +47,7 @@ import java.io.InterruptedIOException;
 import java.net.StandardProtocolFamily;
 import java.net.UnixDomainSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -284,16 +285,47 @@ final class ProcessIsolateThreadSupport {
      */
     ThreadChannel attachThread() throws IOException {
         checkState();
-        SocketChannel c = SocketChannel.open(StandardProtocolFamily.UNIX);
+        SocketChannel c = connectPeer();
         c.configureBlocking(false);
-        boolean connected = c.connect(peer);
-        while (!connected) {
-            connected = c.finishConnect();
-        }
         writeAttachRequest(c, ThreadInfo.current());
         ThreadChannel threadChannel = new ThreadChannel(this, c, null);
         attachedThreads.add(threadChannel);
         return threadChannel;
+    }
+
+    /**
+     * Connects to the peer process using blocking socket channel.
+     *
+     * <p>
+     * Using a non-blocking {@link SocketChannel} for the initial connect can fail on some Linux
+     * systems under high load, throwing a {@link java.net.SocketException} with
+     * {@code errno = EAGAIN (Resource temporarily unavailable)}. This makes non-blocking connect
+     * unreliable in such environments.
+     *
+     * <p>
+     * Although {@link Selector} and {@link SelectionKey#OP_CONNECT} can be used to wait for the
+     * completion of a connection, they cannot be used to initiate it. Therefore, this method
+     * performs the connect in blocking mode.
+     *
+     * <p>
+     * If the connect attempt is interrupted (e.g., due to {@link Thread#interrupt()}), the
+     * resulting {@link ClosedByInterruptException} is caught and ignored, and the method retries.
+     * This avoids propagating the exception, which is important for distinguishing between
+     * cancellation and interruption in {@code IsolateDeathHandler} as both {@code Context.close()}
+     * and {@code Context.interrupt()} interrupt threads.
+     */
+    private SocketChannel connectPeer() throws IOException {
+        while (true) {
+            SocketChannel c = SocketChannel.open(StandardProtocolFamily.UNIX);
+            try {
+                c.connect(peer);
+                return c;
+            } catch (ClosedByInterruptException closed) {
+                // Retry on interrupt to avoid leaking cancellation semantics into
+                // IsolateDeathHandler.
+                // Closing or interrupting contexts may interrupt this thread.
+            }
+        }
     }
 
     /**
