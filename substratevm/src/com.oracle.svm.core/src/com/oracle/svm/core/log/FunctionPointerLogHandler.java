@@ -150,23 +150,17 @@ public class FunctionPointerLogHandler implements LogHandlerExtension, InitialLa
      *
      * @param optionString value of the {@code javaVMOption.optionString} field
      * @param extraInfo value of the {@code javaVMOption.extraInfo} field
-     * @return {@code true} iff the option was consumed by this method
      */
-    public static boolean parseJniVMOption(CCharPointer optionString, WordPointer extraInfo) {
+    public static void parseJniVMOption(CCharPointer optionString, WordPointer extraInfo) {
         if (LibC.strcmp(optionString, LOG_OPTION.get()) == 0) {
             handler(optionString).logFunctionPointer = (LogFunctionPointer) extraInfo;
-            return true;
         } else if (LibC.strcmp(optionString, FATAL_LOG_OPTION.get()) == 0) {
             handler(optionString).fatalLogFunctionPointer = (LogFunctionPointer) extraInfo;
-            return true;
         } else if (LibC.strcmp(optionString, FLUSH_LOG_OPTION.get()) == 0) {
             handler(optionString).flushFunctionPointer = (VoidFunctionPointer) extraInfo;
-            return true;
         } else if (LibC.strcmp(optionString, FATAL_OPTION.get()) == 0) {
             handler(optionString).fatalErrorFunctionPointer = (VoidFunctionPointer) extraInfo;
-            return true;
         }
-        return false;
     }
 
     private static FunctionPointerLogHandler handler(CCharPointer optionString) {
@@ -183,11 +177,10 @@ public class FunctionPointerLogHandler implements LogHandlerExtension, InitialLa
      */
     public static void afterParsingJniVMOptions() {
         LogHandler handler = ImageSingletons.lookup(LogHandler.class);
-        if (handler == null || !(handler instanceof FunctionPointerLogHandler)) {
+        if (handler == null || !(handler instanceof FunctionPointerLogHandler fpHandler)) {
             return;
         }
 
-        FunctionPointerLogHandler fpHandler = (FunctionPointerLogHandler) handler;
         if (fpHandler.logFunctionPointer.isNonNull()) {
             if (fpHandler.flushFunctionPointer.isNull()) {
                 throw new IllegalArgumentException("The _flush_log option cannot be null when _log is non-null");

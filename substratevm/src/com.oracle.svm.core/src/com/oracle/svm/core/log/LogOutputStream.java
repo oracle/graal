@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.svm.core.log;
 
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.UnsignedWord;
+import java.io.IOException;
+import java.io.OutputStream;
 
-import com.oracle.svm.core.heap.RestrictHeapAccess;
-
-public class StringBuilderLog extends RealLog {
-    private final StringBuilder builder = new StringBuilder();
-
-    public StringBuilderLog() {
+class LogOutputStream extends OutputStream {
+    @Override
+    public void write(int b) throws IOException {
+        Log.log().character((char) b);
     }
 
     @Override
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "This implementation allocates.")
-    protected Log rawBytes(CCharPointer bytes, UnsignedWord length) {
-        for (int i = 0; length.aboveThan(i); i++) {
-            char currentChar = (char) bytes.read(i);
-            builder.append(currentChar);
-        }
-        return this;
+    public void write(byte[] b, int off, int len) throws IOException {
+        Log.log().string(b, off, len);
     }
 
     @Override
-    public Log flush() {
-        /* Nothing to do. */
-        return this;
-    }
-
-    public String getResult() {
-        return builder.toString();
+    public void flush() throws IOException {
+        Log.log().flush();
     }
 }

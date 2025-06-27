@@ -24,11 +24,12 @@
  */
 package com.oracle.svm.core.windows;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
+import static com.oracle.svm.core.windows.headers.WinBase.INVALID_HANDLE_VALUE;
 
 import java.io.FileDescriptor;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
@@ -50,7 +51,10 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
+import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
+
+import jdk.graal.compiler.word.Word;
 
 public class WindowsUtils {
 
@@ -78,8 +82,8 @@ public class WindowsUtils {
         long handle;
     }
 
-    static void setHandle(FileDescriptor descriptor, long handle) {
-        SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).handle = handle;
+    static void setHandle(FileDescriptor descriptor, HANDLE handle) {
+        SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).handle = handle.rawValue();
     }
 
     /** Return the error string for the last error, or a default message. */
@@ -92,18 +96,16 @@ public class WindowsUtils {
      * Low-level output of bytes already in native memory. This method is allocation free, so that
      * it can be used, e.g., in low-level logging routines.
      */
-    public static boolean writeBytes(int handle, CCharPointer bytes, UnsignedWord length) {
+    public static boolean write(HANDLE handle, CCharPointer bytes, UnsignedWord length) {
+        if (handle == INVALID_HANDLE_VALUE()) {
+            return false;
+        }
+
         CCharPointer curBuf = bytes;
         UnsignedWord curLen = length;
         while (curLen.notEqual(0)) {
-            if (handle == -1) {
-                return false;
-            }
-
             CIntPointer bytesWritten = UnsafeStackValue.get(CIntPointer.class);
-
             int ret = FileAPI.WriteFile(handle, curBuf, curLen, bytesWritten, Word.nullPointer());
-
             if (ret == 0) {
                 return false;
             }
@@ -119,12 +121,45 @@ public class WindowsUtils {
         return true;
     }
 
-    static boolean flush(int handle) {
-        if (handle == -1) {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean writeUninterruptibly(HANDLE handle, CCharPointer bytes, UnsignedWord length) {
+        if (handle == INVALID_HANDLE_VALUE()) {
             return false;
         }
-        int result = FileAPI.FlushFileBuffers(handle);
-        return (result != 0);
+
+        CCharPointer curBuf = bytes;
+        UnsignedWord curLen = length;
+        while (curLen.notEqual(0)) {
+            CIntPointer bytesWritten = UnsafeStackValue.get(CIntPointer.class);
+            int ret = FileAPI.NoTransition.WriteFile(handle, curBuf, curLen, bytesWritten, Word.nullPointer());
+            if (ret == 0) {
+                return false;
+            }
+
+            int writtenCount = bytesWritten.read();
+            if (curLen.notEqual(writtenCount)) {
+                return false;
+            }
+
+            curBuf = curBuf.addressOf(writtenCount);
+            curLen = curLen.subtract(writtenCount);
+        }
+        return true;
+    }
+
+    static boolean flush(HANDLE handle) {
+        if (handle == INVALID_HANDLE_VALUE()) {
+            return false;
+        }
+        return FileAPI.FlushFileBuffers(handle) != 0;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static boolean flushUninterruptibly(HANDLE handle) {
+        if (handle == INVALID_HANDLE_VALUE()) {
+            return false;
+        }
+        return FileAPI.NoTransition.FlushFileBuffers(handle) != 0;
     }
 
     private static long performanceFrequency = 0L;

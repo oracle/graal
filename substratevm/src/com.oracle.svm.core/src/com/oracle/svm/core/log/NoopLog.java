@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package com.oracle.svm.webimage;
+package com.oracle.svm.core.log;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.log.RealLog;
-
 /**
- * An implementation of {@link Log} to be used in a JS runtime.
+ * A class that overrides most of the public methods of Log with noop implementations.
  *
- * Because we are in a JS runtime, everything is already initialized and this won't run during GC,
- * so we are allowed to allocate objects and do basically everything normal Java code can do (unlike
- * other Log implementations).
+ * The usage is somewhere to have a
  *
- * For now this is just a copy of NoopLog
+ * <pre>
+ * public static final int verbosity = ....;
+ * </pre>
  *
- * This is a subtype of {@link RealLog} because {@link Log#setLog(RealLog)} requires a RealLog
- * object.
+ * and then in methods that want to conditionally log output use
  *
- * TODO support logging stuff
+ * <pre>
+ * final Log myLog = (verbosity > 17 ? log() : noopLog());
+ * myLog.string("Some opening message").newline();
+ * ....
+ * myLog.string("Some closing message").newline();
+ * </pre>
+ *
+ * and expect the runtime compiler to evaluate the predicate and inline the effectively-empty bodies
+ * of the methods from NoopLog into noops. It can do that except if the evaluation of the arguments
+ * to the methods have side-effects, including possibly causing exceptions, e.g.,
+ * NullPointerException. So be careful with the arguments.
  */
-public class WebImageJSLog extends RealLog {
+public final class NoopLog implements Log {
+    public NoopLog() {
+    }
 
     @Override
     public boolean isEnabled() {
@@ -64,7 +72,17 @@ public class WebImageJSLog extends RealLog {
     }
 
     @Override
+    public Log string(String value, int maxLen) {
+        return this;
+    }
+
+    @Override
     public Log string(char[] value) {
+        return this;
+    }
+
+    @Override
+    public Log string(byte[] value) {
         return this;
     }
 
@@ -75,6 +93,11 @@ public class WebImageJSLog extends RealLog {
 
     @Override
     public Log string(CCharPointer value) {
+        return this;
+    }
+
+    @Override
+    public Log string(CCharPointer bytes, int length) {
         return this;
     }
 
@@ -109,6 +132,11 @@ public class WebImageJSLog extends RealLog {
     }
 
     @Override
+    public Log signed(long value, int fill, int align) {
+        return this;
+    }
+
+    @Override
     public Log unsigned(WordBase value) {
         return this;
     }
@@ -135,6 +163,11 @@ public class WebImageJSLog extends RealLog {
 
     @Override
     public Log rational(long numerator, long denominator, long decimals) {
+        return this;
+    }
+
+    @Override
+    public Log rational(UnsignedWord numerator, long denominator, long decimals) {
         return this;
     }
 
@@ -169,12 +202,7 @@ public class WebImageJSLog extends RealLog {
     }
 
     @Override
-    public Log flush() {
-        return this;
-    }
-
-    @Override
-    public Log autoflush(boolean onOrOff) {
+    public Log zhex(WordBase value) {
         return this;
     }
 
@@ -200,7 +228,17 @@ public class WebImageJSLog extends RealLog {
 
     @Override
     public Log hexdump(PointerBase from, int wordSize, int numWords) {
-        return null;
+        return this;
+    }
+
+    @Override
+    public Log hexdump(PointerBase from, int wordSize, int numWords, int bytesPerLine) {
+        return this;
+    }
+
+    @Override
+    public Log exception(Throwable t) {
+        return this;
     }
 
     @Override
@@ -210,6 +248,26 @@ public class WebImageJSLog extends RealLog {
 
     @Override
     public Log redent(boolean addOrRemove) {
+        return this;
+    }
+
+    @Override
+    public Log indent(boolean addOrRemove) {
+        return this;
+    }
+
+    @Override
+    public Log resetIndentation() {
+        return this;
+    }
+
+    @Override
+    public int getIndentation() {
+        return 0;
+    }
+
+    @Override
+    public Log flush() {
         return this;
     }
 }

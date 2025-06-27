@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.svm.core.log;
 
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.UnsignedWord;
+import java.io.PrintStream;
 
-import com.oracle.svm.core.heap.RestrictHeapAccess;
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
 
-public class StringBuilderLog extends RealLog {
-    private final StringBuilder builder = new StringBuilder();
+public class Loggers {
+    static Log realLog = new RealLog();
+    static final NoopLog noopLog = new NoopLog();
+    static final PrintStream logStream = new PrintStream(new LogOutputStream());
 
-    public StringBuilderLog() {
-    }
-
-    @Override
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "This implementation allocates.")
-    protected Log rawBytes(CCharPointer bytes, UnsignedWord length) {
-        for (int i = 0; length.aboveThan(i); i++) {
-            char currentChar = (char) bytes.read(i);
-            builder.append(currentChar);
-        }
-        return this;
-    }
-
-    @Override
-    public Log flush() {
-        /* Nothing to do. */
-        return this;
-    }
-
-    public String getResult() {
-        return builder.toString();
+    /**
+     * Only used by Web Image because {@link StackValue#get} is not supported there at the moment
+     * (see GR-66767).
+     */
+    @Platforms(HOSTED_ONLY.class)
+    public static void setRealLog(Log value) {
+        realLog = value;
     }
 }
