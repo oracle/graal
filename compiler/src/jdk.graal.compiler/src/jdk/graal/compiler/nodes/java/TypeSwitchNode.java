@@ -128,6 +128,10 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
 
     @Override
     public void simplify(SimplifierTool tool) {
+        super.simplify(tool);
+        if (this.isDeleted()) {
+            return;
+        }
         if (shouldInjectBranchProbabilities()) {
             injectBranchProbabilities();
         }

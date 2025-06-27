@@ -41,19 +41,26 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeBitMap;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeSuccessorList;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ControlSplitNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ProfileData;
 import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
 import jdk.graal.compiler.nodes.ProfileData.SwitchProbabilityData;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
+import jdk.graal.compiler.nodes.memory.MemoryAnchorNode;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.vm.ci.meta.Constant;
 
 /**
@@ -67,7 +74,7 @@ import jdk.vm.ci.meta.Constant;
           sizeRationale = "We cannot estimate the code size of a switch statement without knowing the number" +
                           "of case statements.")
 // @formatter:on
-public abstract class SwitchNode extends ControlSplitNode {
+public abstract class SwitchNode extends ControlSplitNode implements Simplifiable {
 
     public static final NodeClass<SwitchNode> TYPE = NodeClass.create(SwitchNode.class);
     @Successor protected NodeSuccessorList<AbstractBeginNode> successors;
@@ -391,5 +398,126 @@ public abstract class SwitchNode extends ControlSplitNode {
 
     public int[] getKeySuccessors() {
         return keySuccessors.clone();
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        tryPushThroughSwitch(tool);
+    }
+
+    /**
+     * Optimizes a switch statement by deduplicating the successor nodes of its case statements.
+     *
+     * <p>
+     * This transformation is applied to patterns where the same code is executed after each case,
+     * such as the following example:
+     *
+     * <pre>
+     * public static int switchReducePattern(int a) {
+     *     int result = 0;
+     *     switch (a) {
+     *         case 1:
+     *             result = sideEffect;
+     *             break;
+     *         case 2:
+     *             result = sideEffect;
+     *             break;
+     *         case 3:
+     *             result = sideEffect;
+     *             break;
+     *         default:
+     *             result = sideEffect;
+     *             break;
+     *     }
+     *     return result;
+     * }
+     * </pre>
+     *
+     * <p>
+     * The optimized code will have the common successor code extracted before the switch statement,
+     * resulting in:
+     *
+     * <pre>
+     * public static int switchReducePattern(int a) {
+     *     int result = 0;
+     *     result = sideEffect; // deduplicated before switch
+     *     switch (a) {
+     *         case 1:
+     *             break;
+     *         case 2:
+     *             break;
+     *         case 3:
+     *             break;
+     *         default:
+     *             break;
+     *     }
+     *     return result;
+     * }
+     * </pre>
+     */
+    private void tryPushThroughSwitch(SimplifierTool tool) {
+        outer: do {
+            NodeBitMap nbm = this.graph().createNodeBitMap();
+            for (Node successor : successors()) {
+                if (successor instanceof BeginNode begin && begin.next() instanceof FixedWithNextNode fwn) {
+                    if (successor.hasUsages()) {
+                        break outer;
+                    }
+                    if (fwn instanceof AbstractBeginNode || fwn instanceof ControlFlowAnchored || fwn instanceof MemoryAnchorNode || fwn instanceof SwitchCaseProbabilityNode) {
+                        /*
+                         * Cannot do this optimization for begin nodes, because it could move guards
+                         * above the if that need to stay below a branch.
+                         *
+                         * Cannot do this optimization for ControlFlowAnchored nodes, because these
+                         * are anchored in their control-flow position, and should not be moved
+                         * upwards.
+                         */
+                        break outer;
+                    }
+
+                    // check if all case successors are structurally and data wise the same node
+                    for (Node otherSuccessor : nbm) {
+                        if (otherSuccessor.getClass() != fwn.getClass()) {
+                            break outer;
+                        }
+                        if (!fwn.getNodeClass().equalInputs(fwn, otherSuccessor)) {
+                            break outer;
+                        }
+                        if (!fwn.valueEquals(otherSuccessor)) {
+                            break outer;
+                        }
+                    }
+                    nbm.mark(fwn);
+                } else {
+                    break outer;
+                }
+            }
+            GraalError.guarantee(nbm.count() == getSuccessorCount(), "Must find successorCount nodes");
+            FixedWithNextNode first = (FixedWithNextNode) nbm.first();
+            nbm.clear(first);
+            for (Node other : nbm) {
+                other.replaceAtUsages(first);
+                graph().removeFixed((FixedWithNextNode) other);
+            }
+            GraphUtil.unlinkFixedNode(first);
+            graph().addBeforeFixed(this, first);
+
+            for (Node usage : first.usages().snapshot()) {
+                if (usage.isAlive()) {
+                    NodeClass<?> usageNodeClass = usage.getNodeClass();
+                    if (usageNodeClass.valueNumberable() && !usageNodeClass.isLeafNode()) {
+                        Node newNode = graph().findDuplicate(usage);
+                        if (newNode != null) {
+                            usage.replaceAtUsagesAndDelete(newNode);
+                        }
+                    }
+                    if (usage.isAlive()) {
+                        tool.addToWorkList(usage);
+                    }
+                }
+            }
+
+        } while (true); // TERMINATION ARGUMENT: processing fixed nodes until duplication is no
+        // longer possible.
     }
 }
