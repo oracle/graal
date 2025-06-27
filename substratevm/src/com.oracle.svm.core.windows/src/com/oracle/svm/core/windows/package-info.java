@@ -23,10 +23,8 @@
  * questions.
  */
 
-/* Note: matching WINDOWS_* leaf platforms because only they subsume PLATFORM_JNI and FURNISHED. */
-@Platforms({WINDOWS_AMD64.class, WINDOWS_AARCH64.class})
+@Platforms(Platform.WINDOWS.class)
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.Platform.WINDOWS_AARCH64;
-import org.graalvm.nativeimage.Platform.WINDOWS_AMD64;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

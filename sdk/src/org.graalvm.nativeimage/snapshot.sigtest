@@ -421,17 +421,21 @@ CLSS public abstract interface static org.graalvm.nativeimage.Platform$RISCV64
 intf org.graalvm.nativeimage.Platform
 meth public java.lang.String getArchitecture()
 
-CLSS public abstract interface static org.graalvm.nativeimage.Platform$WINDOWS
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$WINDOWS_BASE
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.impl.InternalPlatform$NATIVE_ONLY
 meth public java.lang.String getOS()
+
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$WINDOWS
+ outer org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.Platform$WINDOWS_BASE
+intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
 
 CLSS public final static org.graalvm.nativeimage.Platform$WINDOWS_AARCH64
  outer org.graalvm.nativeimage.Platform
 cons public init()
 intf org.graalvm.nativeimage.Platform$AARCH64
 intf org.graalvm.nativeimage.Platform$WINDOWS
-intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
 supr java.lang.Object
 
 CLSS public final static org.graalvm.nativeimage.Platform$WINDOWS_AMD64
@@ -439,7 +443,6 @@ CLSS public final static org.graalvm.nativeimage.Platform$WINDOWS_AMD64
 cons public init()
 intf org.graalvm.nativeimage.Platform$AMD64
 intf org.graalvm.nativeimage.Platform$WINDOWS
-intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
 supr java.lang.Object
 
 CLSS public abstract interface !annotation org.graalvm.nativeimage.Platforms
@@ -1165,17 +1168,13 @@ CLSS public abstract interface org.graalvm.nativeimage.impl.InternalPlatform
 innr public abstract interface static NATIVE_ONLY
 innr public abstract interface static PLATFORM_JNI
 
-CLSS public abstract interface static org.graalvm.nativeimage.impl.InternalPlatform$FURNISHED
- outer org.graalvm.nativeimage.impl.InternalPlatform
-intf org.graalvm.nativeimage.Platform
-
 CLSS public abstract interface static org.graalvm.nativeimage.impl.InternalPlatform$NATIVE_ONLY
  outer org.graalvm.nativeimage.impl.InternalPlatform
 intf org.graalvm.nativeimage.Platform
 
 CLSS public abstract interface static org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
  outer org.graalvm.nativeimage.impl.InternalPlatform
-intf org.graalvm.nativeimage.impl.InternalPlatform$FURNISHED
+intf org.graalvm.nativeimage.Platform
 
 CLSS public abstract interface org.graalvm.word.ComparableWord
 intf org.graalvm.word.WordBase

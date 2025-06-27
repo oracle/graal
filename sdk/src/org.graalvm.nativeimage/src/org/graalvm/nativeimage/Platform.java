@@ -243,11 +243,12 @@ public interface Platform {
     }
 
     /**
-     * Supported operating system: Windows.
+     * Supported operating system: Windows, without registering OS-specific providers or making use
+     * of (or support for) JNI libraries.
      *
-     * @since 19.0
+     * @since 25.0
      */
-    interface WINDOWS extends InternalPlatform.NATIVE_ONLY {
+    interface WINDOWS_BASE extends InternalPlatform.NATIVE_ONLY {
         /**
          * Returns string representing WINDOWS OS.
          *
@@ -256,6 +257,14 @@ public interface Platform {
         default String getOS() {
             return "windows";
         }
+    }
+
+    /**
+     * Supported operating system: Windows.
+     *
+     * @since 19.0
+     */
+    interface WINDOWS extends WINDOWS_BASE, InternalPlatform.PLATFORM_JNI {
     }
 
     /**
@@ -430,7 +439,7 @@ public interface Platform {
      *
      * @since 19.0
      */
-    final class WINDOWS_AMD64 implements WINDOWS, AMD64, InternalPlatform.PLATFORM_JNI {
+    final class WINDOWS_AMD64 implements WINDOWS, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -447,7 +456,7 @@ public interface Platform {
      *
      * @since 22.0
      */
-    final class WINDOWS_AARCH64 implements WINDOWS, AARCH64, InternalPlatform.PLATFORM_JNI {
+    final class WINDOWS_AARCH64 implements WINDOWS, AARCH64 {
 
         /**
          * Instantiates a marker instance of this platform.
