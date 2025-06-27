@@ -265,6 +265,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     final long engineId;
     final boolean allowExperimentalOptions;
 
+    SourceCacheStatisticsListener sourceCacheStatisticsListener; // effectively final
+
     @SuppressWarnings("unchecked")
     PolyglotEngineImpl(PolyglotImpl impl, SandboxPolicy sandboxPolicy, String[] permittedLanguages,
                     DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
@@ -319,6 +321,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.engineLoggerSupplier = engineLoggerSupplier;
         this.engineLogger = initializeEngineLogger(engineLoggerSupplier, logLevels);
         this.engineOptionValues = engineOptions;
+
+        this.sourceCacheStatisticsListener = SourceCacheStatisticsListener.createOrNull(this);
 
         Map<String, PolyglotLanguage> publicLanguages = new LinkedHashMap<>();
         for (String key : this.idToLanguage.keySet()) {
@@ -559,6 +563,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.hostLanguage = createLanguage(LanguageCache.createHostLanguageCache(prototype.getHostLanguageSPI()), HOST_LANGUAGE_INDEX, null);
         this.engineLoggerSupplier = prototype.engineLoggerSupplier;
         this.engineLogger = prototype.engineLogger;
+        this.sourceCacheStatisticsListener = prototype.sourceCacheStatisticsListener;
 
         this.polyglotHostService = prototype.polyglotHostService;
         this.internalResourceRoots = prototype.internalResourceRoots;
@@ -741,6 +746,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
         parseOptions(newOptions, languagesOptions, instrumentsOptions);
+
+        sourceCacheStatisticsListener = SourceCacheStatisticsListener.createOrNull(this);
 
         RUNTIME.onEnginePatch(this.runtimeData, engineOptions, logSupplier, sandboxPolicy);
 
@@ -1363,6 +1370,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
 
             RUNTIME.onEngineClosed(this.runtimeData);
+            if (sourceCacheStatisticsListener != null) {
+                sourceCacheStatisticsListener.onEngineClose(this);
+            }
 
             Object loggers = getEngineLoggers();
             if (loggers != null) {
