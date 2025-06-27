@@ -134,16 +134,6 @@ public final class ConfigurationFiles {
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ReachabilityMetadataResources = new HostedOptionKey<>(
                         AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-        @OptionMigrationMessage("Use a foreign-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead.")//
-        @Option(help = "Files describing stubs allowing foreign calls according to the schema at " +
-                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/foreign-config-schema-v0.1.0.json", type = OptionType.User)//
-        @BundleMember(role = BundleMember.Role.Input)//
-        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> ForeignConfigurationFiles = new HostedOptionKey<>(
-                        AccumulatingLocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
-        @Option(help = "Resources describing stubs allowing foreign calls.", type = OptionType.User)//
-        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ForeignResources = new HostedOptionKey<>(
-                        AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
-
         @OptionMigrationMessage("Use a predefined-classes-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead.")//
         @Option(help = "Files describing predefined classes that can be loaded at runtime according to the schema at " +
                         "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/predefined-classes-config-schema-v1.0.0.json", type = OptionType.User)//
