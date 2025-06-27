@@ -320,10 +320,10 @@ class GraalVmComponent(object):
         self.third_party_license_files = third_party_license_files
         self.dependency_names = dependencies or []
         self.provided_executables = provided_executables or []
-        self.polyglot_lib_build_args = polyglot_lib_build_args or []
-        self.polyglot_lib_jar_dependencies = polyglot_lib_jar_dependencies or []
-        self.polyglot_lib_build_dependencies = polyglot_lib_build_dependencies or []
-        self.has_polyglot_lib_entrypoints = has_polyglot_lib_entrypoints
+        self.polyglot_lib_build_args = []
+        self.polyglot_lib_jar_dependencies = []
+        self.polyglot_lib_build_dependencies = []
+        self.has_polyglot_lib_entrypoints = False
         self.boot_jars = boot_jars or []
         self.jvmci_parent_jars = jvmci_parent_jars or []
         self.jar_distributions = jar_distributions or []
@@ -372,15 +372,10 @@ class GraalVmComponent(object):
         assert isinstance(self.license_files, list)
         assert isinstance(self.third_party_license_files, list)
         assert isinstance(self.provided_executables, list)
-        assert isinstance(self.polyglot_lib_build_args, list)
-        assert isinstance(self.polyglot_lib_jar_dependencies, list)
-        assert isinstance(self.polyglot_lib_build_dependencies, list)
         assert isinstance(self.boot_jars, list)
         assert isinstance(self.jvmci_parent_jars, list)
         assert isinstance(self.launcher_configs, list)
         assert isinstance(self.library_configs, list)
-
-        assert not any(cp_arg in self.polyglot_lib_build_args for cp_arg in ('-cp', '-classpath')), "the '{}' component passes a classpath argument to libpolylgot: '{}'. Use `polyglot_lib_jar_dependencies` instead".format(self.name, ' '.join(self.polyglot_lib_build_args))
 
     def __str__(self):
         return "{} ({})".format(self.name, self.dir_name)
@@ -1174,7 +1169,7 @@ def verify_graalvm_configs(suites=None, start_from=None, check_all=False):
     """
     import mx_sdk_vm_impl
     child_env = os.environ.copy()
-    for env_var in ['DYNAMIC_IMPORTS', 'DEFAULT_DYNAMIC_IMPORTS', 'COMPONENTS', 'EXCLUDE_COMPONENTS', 'SKIP_LIBRARIES', 'NATIVE_IMAGES', 'FORCE_BASH_LAUNCHERS', 'DISABLE_POLYGLOT', 'DISABLE_LIBPOLYGLOT']:
+    for env_var in ['DYNAMIC_IMPORTS', 'DEFAULT_DYNAMIC_IMPORTS', 'COMPONENTS', 'EXCLUDE_COMPONENTS', 'SKIP_LIBRARIES', 'NATIVE_IMAGES', 'FORCE_BASH_LAUNCHERS']:
         if env_var in child_env:
             del child_env[env_var]
     started = start_from is None

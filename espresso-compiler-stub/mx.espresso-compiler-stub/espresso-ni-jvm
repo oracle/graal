@@ -2,4 +2,3 @@
 DYNAMIC_IMPORTS=/vm,/substratevm
 COMPONENTS=Espresso Launcher,LibGraal,Java on Truffle,SubstrateVM,Java on Truffle LLVM Java libraries,tflm,ni,sdkni,svmt,svmsl,tflc,tflsm,ecs
 NATIVE_IMAGES=lib:jvmcicompiler
-DISABLE_LIBPOLYGLOT=true

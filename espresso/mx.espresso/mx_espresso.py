@@ -429,8 +429,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     truffle_jars=['espresso:ESPRESSO', 'espresso-shared:ESPRESSO_SHARED'],
     support_distributions=['espresso:ESPRESSO_GRAALVM_SUPPORT'],
     library_configs=[espresso_library_config],
-    polyglot_lib_jar_dependencies=['espresso:LIB_JAVAVM'],
-    has_polyglot_lib_entrypoints=True,
     priority=1,
     stability=_espresso_stability,
 ))
