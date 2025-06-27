@@ -28,9 +28,9 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
@@ -44,6 +44,8 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
+
+import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredFeature
 public class VMFeature implements InternalFeature {
@@ -113,7 +115,7 @@ public class VMFeature implements InternalFeature {
             });
         }
 
-        if (!Platform.includedIn(Platform.WINDOWS_BASE.class)) {
+        if (!Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
             CGlobalData<PointerBase> isStaticBinaryMarker = CGlobalDataFactory.createWord(Word.unsigned(SubstrateOptions.StaticExecutable.getValue() ? 1 : 0), STATIC_BINARY_MARKER_SYMBOL_NAME);
             CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(isStaticBinaryMarker);
         }

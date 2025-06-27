@@ -308,7 +308,7 @@ public final class ManagementSupport implements ThreadListener {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static Class<? extends PlatformManagedObject> getOsMXBeanInterface() {
         if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
-            return Platform.includedIn(Platform.WINDOWS_BASE.class)
+            return Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)
                             ? com.sun.management.OperatingSystemMXBean.class
                             : com.sun.management.UnixOperatingSystemMXBean.class;
         }

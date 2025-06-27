@@ -60,4 +60,21 @@ public interface InternalPlatform {
     interface NATIVE_ONLY extends Platform {
 
     }
+
+    /**
+     * Supported operating system: Windows, without registering OS-specific providers or making use
+     * of (or support for) JNI libraries.
+     *
+     * @since 25.0
+     */
+    interface WINDOWS_BASE extends NATIVE_ONLY {
+        /**
+         * Returns string representing WINDOWS OS.
+         *
+         * @since 21.0
+         */
+        default String getOS() {
+            return "windows";
+        }
+    }
 }

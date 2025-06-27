@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.hosted.Feature.AfterAnalysisAccess;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
@@ -65,7 +66,7 @@ public class JNIRegistrationUtil {
         if (Platform.includedIn(Platform.WINDOWS.class)) {
             return true;
         }
-        assert !Platform.includedIn(Platform.WINDOWS_BASE.class) : "Should never be called when targeting a non-JNI platform";
+        assert !Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) : "Should never be called when targeting a non-JNI platform";
         return false;
     }
 

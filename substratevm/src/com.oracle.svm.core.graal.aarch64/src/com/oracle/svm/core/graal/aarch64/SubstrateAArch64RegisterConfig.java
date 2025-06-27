@@ -72,6 +72,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
@@ -163,7 +164,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
          *
          * https://developer.android.com/ndk/guides/abis#arm64-v8a
          */
-        if (Platform.includedIn(Platform.DARWIN.class) || Platform.includedIn(Platform.WINDOWS_BASE.class) || Platform.includedIn(Platform.ANDROID.class)) {
+        if (Platform.includedIn(Platform.DARWIN.class) || Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) || Platform.includedIn(Platform.ANDROID.class)) {
             regs.remove(r18);
         }
         allocatableRegs = List.copyOf(regs);

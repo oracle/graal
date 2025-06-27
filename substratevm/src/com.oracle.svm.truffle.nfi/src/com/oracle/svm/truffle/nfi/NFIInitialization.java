@@ -29,8 +29,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.AARCH64;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.WINDOWS_BASE;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.impl.InternalPlatform.WINDOWS_BASE;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;

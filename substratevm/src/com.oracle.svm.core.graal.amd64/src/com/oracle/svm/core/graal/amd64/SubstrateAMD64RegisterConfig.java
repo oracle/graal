@@ -73,6 +73,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateUtil;
@@ -146,7 +147,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             }
         }
 
-        if (Platform.includedIn(Platform.WINDOWS_BASE.class)) {
+        if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
             // This is the Windows 64-bit ABI for parameters.
             // Note that float parameters also "consume" a general register and vice versa in the
             // native ABI.
@@ -195,7 +196,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                  * rbp must be last in the list, so that it gets the location closest to the saved
                  * return address.
                  */
-                if (Platform.includedIn(Platform.WINDOWS_BASE.class)) {
+                if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
                     calleeSaveRegisters = List.of(rbx, rdi, rsi, r12, r13, r14, r15, rbp,
                                     xmm6, xmm7, xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15);
                 } else {
@@ -321,7 +322,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                 JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, parameterTypes[i], metaAccess, target);
                 kinds[i] = kind;
 
-                if (type.nativeABI() && Platform.includedIn(Platform.WINDOWS_BASE.class)) {
+                if (type.nativeABI() && Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
                     // Strictly positional: float parameters consume a general register and vice
                     // versa
                     currentGeneral = i;

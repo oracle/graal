@@ -39,6 +39,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.BuildArtifacts;
@@ -76,7 +77,7 @@ public abstract class NativeImageViaCC extends NativeImage {
         Pattern p = Pattern.compile(".*cannot find -l([^\\s]+)\\s.*", Pattern.DOTALL);
         Matcher m = p.matcher(linkerOutput);
         if (m.matches()) {
-            boolean targetWindows = Platform.includedIn(Platform.WINDOWS_BASE.class);
+            boolean targetWindows = Platform.includedIn(InternalPlatform.WINDOWS_BASE.class);
             String libPrefix = targetWindows ? "" : "lib";
             String libSuffix = targetWindows ? ".lib" : ".a";
             potentialCauses.add(String.format("It appears as though %s%s%s is missing. Please install it.", libPrefix, m.group(1), libSuffix));
@@ -158,7 +159,7 @@ public abstract class NativeImageViaCC extends NativeImage {
             imageFileSize = (int) imagePath.toFile().length();
             BuildArtifacts.singleton().add(kind.isExecutable ? ArtifactType.EXECUTABLE : kind.isImageLayer ? ArtifactType.IMAGE_LAYER : ArtifactType.SHARED_LIBRARY, imagePath);
 
-            if (Platform.includedIn(Platform.WINDOWS_BASE.class) && !kind.isExecutable) {
+            if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) && !kind.isExecutable) {
                 /* Provide an import library for the built shared library. */
                 Path importLib = inv.getTempDirectory().resolve(imageName + ".lib");
                 Path importLibCopy = Files.copy(importLib, imagePath.resolveSibling(importLib.getFileName()), StandardCopyOption.REPLACE_EXISTING);
@@ -173,7 +174,7 @@ public abstract class NativeImageViaCC extends NativeImage {
                     Files.copy(svmDebugHelper, svmDebugHelperCopy, StandardCopyOption.REPLACE_EXISTING);
                     BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, svmDebugHelperCopy);
                 }
-                if (Platform.includedIn(Platform.WINDOWS_BASE.class)) {
+                if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
                     BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath.resolveSibling(imageName + ".pdb"));
                 } else if (!SubstrateOptions.StripDebugInfo.getValue()) {
                     BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath);

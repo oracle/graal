@@ -30,6 +30,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.util.VMError;
 
@@ -48,12 +49,12 @@ public class WindowsDirectives implements CContext.Directives {
 
     @Override
     public boolean isInConfiguration() {
-        return Platform.includedIn(Platform.WINDOWS_BASE.class);
+        return Platform.includedIn(InternalPlatform.WINDOWS_BASE.class);
     }
 
     @Override
     public List<String> getHeaderFiles() {
-        if (Platform.includedIn(Platform.WINDOWS_BASE.class)) {
+        if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
             return new ArrayList<>(Arrays.asList(windowsLibs));
         } else {
             throw VMError.shouldNotReachHere("Unsupported OS");

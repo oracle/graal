@@ -26,7 +26,7 @@
 package com.oracle.svm.core;
 
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.WINDOWS_BASE;
+import org.graalvm.nativeimage.impl.InternalPlatform.WINDOWS_BASE;
 
 import com.oracle.svm.core.attach.AttachApiSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
