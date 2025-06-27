@@ -70,7 +70,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/os/posix/include/jvm_md.h#L57") //
     private static final int JVM_MAXPATHLEN = 4096;
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L47") //
-    private static int ISO8601_LEN = 19;
+    private static final int ISO_8601_LEN = 19;
     private static final byte FILE_SEPARATOR = "/".getBytes(StandardCharsets.UTF_8)[0];
     private static final byte DOT = ".".getBytes(StandardCharsets.UTF_8)[0];
     // It does not really matter what the name is.
@@ -88,20 +88,24 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
     public PosixJfrEmergencyDumpSupport() {
     }
 
+    @Override
     public void initialize() {
         pidBytes = String.valueOf(ProcessHandle.current().pid()).getBytes(StandardCharsets.UTF_8);
         pathBuffer = NativeMemory.calloc(JVM_MAXPATHLEN, NmtCategory.JFR);
         directory = WordFactory.nullPointer();
     }
 
+    @Override
     public void setRepositoryLocation(String dirText) {
         repositoryLocationBytes = dirText.getBytes(StandardCharsets.UTF_8);
     }
 
+    @Override
     public void setDumpPath(String dumpPathText) {
         dumpPathBytes = dumpPathText.getBytes(StandardCharsets.UTF_8);
     }
 
+    @Override
     public String getDumpPath() {
         if (dumpPathBytes != null) {
             return new String(dumpPathBytes, StandardCharsets.UTF_8);
@@ -109,16 +113,21 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         return "";
     }
 
-    // Either use create and use the dumpfile itself, or create a new file in the repository
-    // location.
+    /*
+     * Either use create and use the dumpfile itself, or create a new file in the repository
+     * location.
+     */
+    @Override
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+3/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L433-L445")
     public RawFileDescriptor chunkPath() {
         if (repositoryLocationBytes == null) {
             if (!openEmergencyDumpFile()) {
                 return WordFactory.nullPointer();
             }
-            // We can directly use the emergency dump file name as the new chunk since there are no
-            // other chunk files.
+            /*
+             * We can directly use the emergency dump file name as the new chunk since there are no
+             * other chunk files.
+             */
             return emergencyFd;
         }
         Log.log().string("Creating a new emergency chunk file in the JFR disk repository").newline();
@@ -141,6 +150,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         return getFileSupport().create(getPathBuffer(), FileCreationMode.CREATE, FileAccessMode.READ_WRITE);
     }
 
+    @Override
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L409-L416")
     public void onVmError() {
         Log.log().string("Attempting JFR Emergency Dump").newline();
@@ -213,12 +223,6 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
             if (count > 0) {
                 GrowableWordArrayAccess.qsort(gwa, 0, count - 1, PosixJfrEmergencyDumpSupport::compare);
             }
-// for (int i=0; i < count; i ++){ // todo remove
-// String name =
-// org.graalvm.nativeimage.c.type.CTypeConversion.toJavaString(GrowableWordArrayAccess.read(gwa,
-// i));
-// System.out.println("chunk file: "+ name);
-// }
         }
         return WordFactory.nullPointer();
     }
@@ -227,7 +231,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
     static int compare(Word a, Word b) {
         CCharPointer filenameA = (CCharPointer) a;
         CCharPointer filenameB = (CCharPointer) b;
-        int cmp = LibC.strncmp(filenameA, filenameB, WordFactory.unsigned(ISO8601_LEN));
+        int cmp = LibC.strncmp(filenameA, filenameB, WordFactory.unsigned(ISO_8601_LEN));
         if (cmp == 0) {
             CCharPointer aDot = SubstrateUtil.strchr(filenameA, DOT);
             CCharPointer bDot = SubstrateUtil.strchr(filenameB, DOT);
@@ -306,8 +310,8 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
     }
 
     /**
-     * See
-     * {@link com.oracle.svm.core.posix.jvmstat.PosixPerfMemoryProvider#restartableOpen(CCharPointer, int, int)}
+     * See com.oracle.svm.core.posix.jvmstat.PosixPerfMemoryProvider#restartableOpen(CCharPointer,
+     * int, int).
      */
     @Uninterruptible(reason = "LibC.errno() must not be overwritten accidentally.")
     private static int restartableOpen(CCharPointer directory, int flags, int mode) {
@@ -363,8 +367,6 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
 
         clearPathBuffer();
 
-        // TODO HS uses _path_buffer_file_name_offset to avoid building this part of th path each
-        // time.
         // Cached in RepositoryIterator::RepositoryIterator and used in fully_qualified
         idx = writeToPathBuffer(repositoryLocationBytes, idx);
 
@@ -386,7 +388,8 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         LibC.memset(getPathBuffer(), Word.signed(0), Word.unsigned(JVM_MAXPATHLEN));
     }
 
-    private int writeToPathBuffer(byte[] bytes, int idx) {
+    private int writeToPathBuffer(byte[] bytes, int start) {
+        int idx = start;
         for (int i = 0; i < bytes.length; i++) {
             getPathBuffer().write(idx++, bytes[i]);
         }
@@ -412,6 +415,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         }
     }
 
+    @Override
     public void teardown() {
         closeEmergencyDumpFile();
         closeDirectory();

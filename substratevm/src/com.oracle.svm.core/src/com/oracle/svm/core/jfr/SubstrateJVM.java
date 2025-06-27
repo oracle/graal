@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.svm.core.os.RawFileOperationSupport;
@@ -35,11 +34,11 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jfr.events.JfrAllocationEvents;
+import com.oracle.svm.core.jfr.events.DumpReasonEvent;
 import com.oracle.svm.core.jfr.logging.JfrLogging;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectProfiler;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
@@ -339,7 +338,9 @@ public class SubstrateJVM {
             return;
         }
 
-        JfrEmergencyDumpSupport.singleton().initialize();
+        if (JfrEmergencyDumpSupport.isPresent()) {
+            JfrEmergencyDumpSupport.singleton().initialize();
+        }
 
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
@@ -586,24 +587,31 @@ public class SubstrateJVM {
      * See {@link JVM#setRepositoryLocation}.
      */
     public void setRepositoryLocation(@SuppressWarnings("unused") String dirText) {
-        JfrEmergencyDumpSupport.singleton().setRepositoryLocation(dirText);
+        if (JfrEmergencyDumpSupport.isPresent()) {
+            JfrEmergencyDumpSupport.singleton().setRepositoryLocation(dirText);
+        }
     }
 
     /**
      * See {@code JfrEmergencyDump::set_dump_path}.
      */
     public void setDumpPath(String dumpPathText) {
-        JfrEmergencyDumpSupport.singleton().setDumpPath(dumpPathText);
+        if (JfrEmergencyDumpSupport.isPresent()) {
+            JfrEmergencyDumpSupport.singleton().setDumpPath(dumpPathText);
+        }
     }
 
     /**
      * See {@code JVM#getDumpPath()}.
      */
     public String getDumpPath() {
-        if (JfrEmergencyDumpSupport.singleton().getDumpPath() == null) {
-            JfrEmergencyDumpSupport.singleton().setDumpPath(Target_jdk_jfr_internal_util_Utils.getPathInProperty("user.home", null).toString());
+        if (JfrEmergencyDumpSupport.isPresent()) {
+            if (JfrEmergencyDumpSupport.singleton().getDumpPath() == null) {
+                JfrEmergencyDumpSupport.singleton().setDumpPath(Target_jdk_jfr_internal_util_Utils.getPathInProperty("user.home", null).toString());
+            }
+            return JfrEmergencyDumpSupport.singleton().getDumpPath();
         }
-        return JfrEmergencyDumpSupport.singleton().getDumpPath();
+        return null;
     }
 
     /**
@@ -742,12 +750,15 @@ public class SubstrateJVM {
         return DynamicHub.fromClass(eventClass).getJfrEventConfiguration();
     }
 
-    /** See JfrRecorderService::vm_error_rotation */
+    /** See JfrRecorderService::vm_error_rotation. */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used on OOME for emergency dumps")
     public void vmErrorRotation() {
-        if (!recording) {
+        if (!recording || !JfrEmergencyDumpSupport.isPresent()) {
             return;
         }
+        // Hotspot emits GC root paths, but we don't support that yet. So cutoff = 0.
+        emitOldObjectSamples(0, false, false);
+        DumpReasonEvent.emit("Out of Memory", -1);
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
             boolean existingFile = chunkWriter.hasOpenFile();
@@ -800,7 +811,6 @@ public class SubstrateJVM {
             if (!SubstrateJVM.get().recording) {
                 return;
             }
-
             SubstrateJVM.get().recording = false;
             JfrExecutionSampler.singleton().update();
 
@@ -859,8 +869,9 @@ public class SubstrateJVM {
             methodRepo.teardown();
             typeRepo.teardown();
             oldObjectRepo.teardown();
-            JfrEmergencyDumpSupport.singleton().teardown();
-
+            if (JfrEmergencyDumpSupport.isPresent()) {
+                JfrEmergencyDumpSupport.singleton().teardown();
+            }
             initialized = false;
         }
     }

@@ -27,8 +27,6 @@ package com.oracle.svm.core.jfr;
 import static com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList;
 import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
 
-import java.nio.charset.StandardCharsets;
-
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
 import com.oracle.svm.core.nmt.NmtCategory;
 import jdk.graal.compiler.word.Word;
@@ -172,10 +170,10 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
 
     // Used by JFR emergency dump
     @Override
-    public void openFile(RawFileDescriptor fd) {
+    public void openFile(RawFileDescriptor file) {
         assert lock.isOwner();
         filename = null;
-        this.fd = fd;
+        fd = file;
         openFile0();
     }
 

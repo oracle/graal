@@ -29,11 +29,20 @@ import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 
+import jdk.graal.compiler.api.replacements.Fold;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
 /**
  * The JFR emergency dump mechanism uses platform-specific implementations (see {@link JfrEmergencyDumpSupport}).
  */
 @AutomaticallyRegisteredFeature
 public class JfrEmergencyDumpFeature implements InternalFeature {
+    @Fold
+    static boolean isPresent() {
+        return ImageSingletons.contains(JfrEmergencyDumpSupport.class);
+    }
+
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return VMInspectionOptions.hasJfrSupport();

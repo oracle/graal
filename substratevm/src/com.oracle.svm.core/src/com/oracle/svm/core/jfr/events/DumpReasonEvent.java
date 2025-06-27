@@ -24,28 +24,35 @@
  * questions.
  */
 
-package com.oracle.svm.core.jfr;
+package com.oracle.svm.core.jfr.events;
 
-import com.oracle.svm.core.os.RawFileOperationSupport;
-import org.graalvm.nativeimage.ImageSingletons;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.jfr.JfrNativeEventWriter;
+import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
+import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
+import com.oracle.svm.core.jfr.JfrTicks;
+import org.graalvm.nativeimage.StackValue;
 
-import jdk.graal.compiler.api.replacements.Fold;
-public interface JfrEmergencyDumpSupport {
-    @Fold
-    static boolean isPresent() {
-        return ImageSingletons.contains(JfrEmergencyDumpSupport.class);
+public class DumpReasonEvent {
+    public static void emit(String reason, int recordingId) {
+        if (HasJfrSupport.get()) {
+            emit0(reason, recordingId);
+        }
     }
 
-    @Fold
-    static JfrEmergencyDumpSupport singleton() {
-        return ImageSingletons.lookup(JfrEmergencyDumpSupport.class);
-    }
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    private static void emit0(String reason, int recordingId) {
+        if (JfrEvent.DumpReason.shouldEmit()) {
+            JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
+            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-    void initialize();
-    void setRepositoryLocation(String dirText);
-    void setDumpPath(String dumpPathText);
-    String getDumpPath();
-    RawFileOperationSupport.RawFileDescriptor chunkPath();
-    void onVmError();
-    void teardown();
+            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.DumpReason);
+            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
+            JfrNativeEventWriter.putString(data, reason);
+            JfrNativeEventWriter.putInt(data, recordingId);
+            JfrNativeEventWriter.endSmallEvent(data);
+        }
+    }
 }

@@ -33,8 +33,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.Uninterruptible;
-
 import jdk.graal.compiler.api.replacements.Fold;
 
 /**

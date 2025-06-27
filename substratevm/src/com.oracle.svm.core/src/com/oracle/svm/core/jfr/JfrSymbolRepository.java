@@ -37,7 +37,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.collections.AbstractUninterruptibleHashtable;
 import com.oracle.svm.core.collections.UninterruptibleEntry;
 import com.oracle.svm.core.heap.Heap;
@@ -85,7 +84,6 @@ public class JfrSymbolRepository implements JfrRepository {
             return 0;
         }
 
-        assert Heap.getHeap().isInImageHeap("");
         assert Heap.getHeap().isInImageHeap(imageHeapString);
         int length = 0;
         length = UninterruptibleUtils.String.modifiedUTF8Length(imageHeapString, false);
@@ -102,7 +100,7 @@ public class JfrSymbolRepository implements JfrRepository {
     public long getSymbolId(PointerBase buffer, UnsignedWord length, int hash, boolean previousEpoch) {
         com.oracle.svm.core.util.VMError.guarantee(buffer.isNonNull());
         JfrSymbol symbol = StackValue.get(JfrSymbol.class);
-        symbol.setModifiedUTF8(buffer); // *** symbol in native memory
+        symbol.setModifiedUTF8(buffer); // symbol allocated in native memory
         symbol.setLength(length);
         symbol.setHash(hash);
 
@@ -134,7 +132,7 @@ public class JfrSymbolRepository implements JfrRepository {
             JfrNativeEventWriterDataAccess.initialize(data, epochData.buffer);
 
             JfrNativeEventWriter.putLong(data, newEntry.getId());
-            JfrNativeEventWriter.putString(data, (org.graalvm.word.Pointer) newEntry.getModifiedUTF8(), (int) newEntry.getLength().rawValue());
+            JfrNativeEventWriter.putString(data, (Pointer) newEntry.getModifiedUTF8(), (int) newEntry.getLength().rawValue());
             if (!JfrNativeEventWriter.commit(data)) {
                 return 0L;
             }
