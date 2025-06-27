@@ -24,14 +24,14 @@
  */
 package com.oracle.svm.core.deopt;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.lang.ref.WeakReference;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -42,16 +42,14 @@ import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.Deoptimizer.TargetContent;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.monitor.MonitorSupport;
 
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
-
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 /**
  * The handle to a deoptimized frame. It contains all stack entries which are written to the frame
@@ -407,6 +405,7 @@ public final class DeoptimizedFrame {
      * deoptimization stub return to the exception handler instead of the regular return address of
      * the deoptimization target.
      */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void takeException() {
         if (rethrowException) {
             /*
@@ -415,6 +414,7 @@ public final class DeoptimizedFrame {
              */
             return;
         }
+
         ReturnAddress firstAddressEntry = topFrame.returnAddress;
         CodePointer ip = Word.pointer(firstAddressEntry.returnAddress);
         CodeInfo info = CodeInfoTable.getImageCodeInfo(ip);
@@ -427,13 +427,15 @@ public final class DeoptimizedFrame {
         firstAddressEntry.returnAddress += handler;
     }
 
-    @NeverInline("Has more relaxed heap access requirements than caller.")
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Printing out error and then crashing.")
+    @Uninterruptible(reason = "Does not need to be uninterruptible because it throws a fatal error.", calleeMustBe = false)
     private static void throwMissingExceptionHandler(CodeInfo info, ReturnAddress firstAddressEntry) {
+        throwMissingExceptionHandler0(info, firstAddressEntry);
+    }
+
+    private static void throwMissingExceptionHandler0(CodeInfo info, ReturnAddress firstAddressEntry) {
         CodeInfoQueryResult detailedQueryResult = new CodeInfoQueryResult();
         CodeInfoAccess.lookupCodeInfo(info, Word.pointer(firstAddressEntry.returnAddress), detailedQueryResult);
         FrameInfoQueryResult frameInfo = detailedQueryResult.getFrameInfo();
         throw Deoptimizer.fatalDeoptimizationError("No exception handler registered for deopt target", frameInfo);
     }
-
 }
