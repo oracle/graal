@@ -24,11 +24,13 @@
  */
 package com.oracle.svm.hosted;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Stream;
 
+import com.oracle.svm.hosted.imagelayer.CapnProtoAdapters;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -39,7 +41,6 @@ import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
-import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerWriter;
 
@@ -91,7 +92,7 @@ public class SharedLayerBootLayerModulesSingleton implements LayeredImageSinglet
     @SuppressWarnings("unused")
     public static Object createFromLoader(ImageSingletonLoader loader) {
         SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl loaderImpl = (SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl) loader;
-        List<String> moduleNames = SVMImageLayerLoader.streamStrings(loaderImpl.getSnapshotReader().getSharedLayerBootLayerModules()).toList();
+        List<String> moduleNames = CapnProtoAdapters.toCollection(loaderImpl.getSnapshotReader().getSharedLayerBootLayerModules(), ArrayList::new);
         return new SharedLayerBootLayerModulesSingleton(moduleNames);
     }
 }

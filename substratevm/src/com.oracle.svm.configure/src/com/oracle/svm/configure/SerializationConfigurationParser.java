@@ -68,6 +68,8 @@ public abstract class SerializationConfigurationParser<C> extends ConditionalCon
         switch (targetSerializationClass.getDescriptorType()) {
             case NAMED -> serializationSupport.register(condition, ((NamedConfigurationTypeDescriptor) targetSerializationClass).name());
             case PROXY -> serializationSupport.registerProxyClass(condition, ((ProxyConfigurationTypeDescriptor) targetSerializationClass).interfaceNames());
+            case LAMBDA -> serializationSupport.registerLambdaCapturingClass(condition,
+                            ((NamedConfigurationTypeDescriptor) ((LambdaConfigurationTypeDescriptor) targetSerializationClass).declaringClass()).name());
         }
     }
 }

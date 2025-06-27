@@ -35,7 +35,6 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
-import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
 import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
@@ -119,7 +118,7 @@ class ReflectionProcessor extends AbstractProcessor {
         ConfigurationTypeDescriptor clazz = descriptorForClass(entry.get("class"));
         if (clazz != null) {
             for (String className : clazz.getAllQualifiedJavaNames()) {
-                if (advisor.shouldIgnore(lazyValue(className), lazyValue(callerClass), copyWithUniqueEntry(entry, "ignoredClassName", className))) {
+                if (advisor.shouldIgnore(lazyValue(className), lazyValue(callerClass), false, copyWithUniqueEntry(entry, "ignoredClassName", className))) {
                     return;
                 }
             }
@@ -280,9 +279,8 @@ class ReflectionProcessor extends AbstractProcessor {
             case "getBundleImpl": {
                 expectSize(args, 5);
                 String baseName = (String) args.get(2);
-                String queriedLocale = (String) args.get(3);
                 if (baseName != null) {
-                    resourceConfiguration.addBundle(condition, baseName, queriedLocale);
+                    resourceConfiguration.addBundle(condition, baseName);
                 }
                 break;
             }
@@ -292,17 +290,6 @@ class ReflectionProcessor extends AbstractProcessor {
             }
             default:
                 System.err.println("Unsupported reflection method: " + function);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static ConfigurationTypeDescriptor descriptorForClass(Object clazz) {
-        if (clazz == null) {
-            return null;
-        } else if (clazz instanceof List<?>) {
-            return ProxyConfigurationTypeDescriptor.fromInterfaceReflectionNames(((List<String>) clazz));
-        } else {
-            return NamedConfigurationTypeDescriptor.fromReflectionName((String) clazz);
         }
     }
 

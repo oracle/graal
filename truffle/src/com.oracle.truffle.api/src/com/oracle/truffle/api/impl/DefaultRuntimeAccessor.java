@@ -155,12 +155,6 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        // Support for deprecated frame transfer: GR-38296
-        public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, long bytecodeTarget) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
         public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, long bytecodeTarget, Object targetMetadata) {
             throw new UnsupportedOperationException();
         }

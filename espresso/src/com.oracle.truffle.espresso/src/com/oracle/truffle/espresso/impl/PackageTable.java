@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
@@ -40,9 +42,27 @@ public final class PackageTable extends AbstractPackageTable<StaticObject, Packa
         return new PackageEntry(name, data);
     }
 
+    @SuppressWarnings("try")
+    public void addPackageEntriesForCDS(List<PackageEntry> packageEntries) {
+        try (BlockLock block = write()) {
+            for (PackageEntry packageEntry : packageEntries) {
+                assert packageEntry != null;
+                assert !entries.containsKey(packageEntry.getName());
+                entries.put(packageEntry.getName(), packageEntry);
+            }
+        }
+    }
+
     public static final class PackageEntry extends AbstractPackageTable.AbstractPackageEntry<StaticObject, ModuleEntry> {
         public PackageEntry(Symbol<Name> name, ModuleEntry module) {
             super(name, module);
+        }
+
+        public List<ModuleEntry> getExportsForCDS() {
+            if (exports == null) {
+                return List.of();
+            }
+            return Collections.unmodifiableList(exports);
         }
     }
 }

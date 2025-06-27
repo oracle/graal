@@ -156,13 +156,15 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         private final NodeBitMap activeGuards;
         private AnchoringNode guardAnchor;
         private FixedWithNextNode lastFixedNode;
+        private FixedNode nextFixedNode;
         private NodeMap<HIRBlock> nodeMap;
 
-        LoweringToolImpl(CoreProviders context, AnchoringNode guardAnchor, NodeBitMap activeGuards, FixedWithNextNode lastFixedNode, NodeMap<HIRBlock> nodeMap) {
+        LoweringToolImpl(CoreProviders context, AnchoringNode guardAnchor, NodeBitMap activeGuards, FixedWithNextNode lastFixedNode, FixedNode nextFixedNode, NodeMap<HIRBlock> nodeMap) {
             super(context);
             this.guardAnchor = guardAnchor;
             this.activeGuards = activeGuards;
             this.lastFixedNode = lastFixedNode;
+            this.nextFixedNode = nextFixedNode;
             this.nodeMap = nodeMap;
         }
 
@@ -218,14 +220,36 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
             }
         }
 
+        public FixedNode nextFixedNode() {
+            return nextFixedNode;
+        }
+
+        public void setNextFixedNode(FixedNode n) {
+            GraalError.guarantee(n.isAlive(), "Cannot add next fixed node %s because it is not alive", n);
+            nextFixedNode = n;
+        }
+
         @Override
         public FixedWithNextNode lastFixedNode() {
-            GraalError.guarantee(lastFixedNode.isAlive(), "The last fixed node %s was deleted by a previous lowering", lastFixedNode);
+            if (lastFixedNode == null) {
+                Node pred = nextFixedNode.predecessor();
+                if (!(pred instanceof FixedWithNextNode)) {
+                    // insert begin node to have a valid FixedWithNextNode to insert after
+                    AbstractBeginNode begin = nextFixedNode.graph().add(new BeginNode());
+                    pred.replaceFirstSuccessor(lastFixedNode, begin);
+                    begin.setNext(lastFixedNode);
+                    lastFixedNode = begin;
+                } else {
+                    lastFixedNode = (FixedWithNextNode) pred;
+                }
+            } else {
+                GraalError.guarantee(lastFixedNode.isAlive(), "The last fixed node %s was deleted by a previous lowering", lastFixedNode);
+            }
             return lastFixedNode;
         }
 
         private void setLastFixedNode(FixedWithNextNode n) {
-            GraalError.guarantee(n.isAlive(), "Cannot add last fixed node %s because it is not alive", n);
+            GraalError.guarantee(n == null || n.isAlive(), "Cannot add last fixed node %s because it is not alive", n);
             lastFixedNode = n;
         }
     }
@@ -608,6 +632,7 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
     @SuppressWarnings("try")
     private AnchoringNode process(CoreProviders context, final HIRBlock b, final NodeBitMap activeGuards, final AnchoringNode startAnchor, ScheduleResult schedule) {
         FixedWithNextNode lastFixedNode = b.getBeginNode();
+        FixedNode nextFixedNode = lastFixedNode.next();
         if (b.getBeginNode() instanceof LoopExitNode) {
             /**
              * If we are processing a loop exit block and there are floating nodes only used flowing
@@ -638,19 +663,21 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
              * loop exit because its a valid implementation of AbstractBeginNode.
              */
             FixedNode pred = (FixedNode) lastFixedNode.predecessor();
-            if (!(pred instanceof FixedWithNextNode)) {
-                // insert begin node to have a valid FixedWithNextNode to insert after before the
-                // loop exit
-                AbstractBeginNode begin = b.getBeginNode().graph().add(new BeginNode());
-                pred.replaceFirstSuccessor(lastFixedNode, begin);
-                begin.setNext(lastFixedNode);
-                lastFixedNode = begin;
+            if (pred instanceof FixedWithNextNode predWithNext) {
+                lastFixedNode = predWithNext;
+                nextFixedNode = predWithNext.next();
             } else {
-                lastFixedNode = (FixedWithNextNode) pred;
+                /**
+                 * The loop exit is not preceded by a FixedWithNextNode. If a node needs to be
+                 * lowered before the LoopExit, a BeginNode is introduced lazily (see:
+                 * {@link LoweringToolImpl#lastFixedNode()}).
+                 */
+                nextFixedNode = b.getBeginNode();
+                lastFixedNode = null;
             }
         }
 
-        final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, lastFixedNode, schedule.getNodeToBlockMap());
+        final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, lastFixedNode, nextFixedNode, schedule.getNodeToBlockMap());
 
         DebugContext debug = startAnchor.asNode().getDebug();
 
@@ -665,11 +692,8 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
 
             // Cache the next node to be able to reconstruct the previous of the next node
             // after lowering.
-            FixedNode nextNode = null;
-            if (node instanceof FixedWithNextNode) {
-                nextNode = ((FixedWithNextNode) node).next();
-            } else {
-                nextNode = loweringTool.lastFixedNode().next();
+            if (node instanceof FixedWithNextNode fixedWithNext) {
+                loweringTool.setNextFixedNode(fixedWithNext.next());
             }
 
             if (node instanceof Lowerable) {
@@ -690,28 +714,29 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                 }
                 if (loweringTool.guardAnchor.asNode().isDeleted()) {
                     // TODO nextNode could be deleted but this is not currently supported
-                    assert nextNode.isAlive();
-                    loweringTool.guardAnchor = AbstractBeginNode.prevBegin(nextNode);
+                    assert loweringTool.nextFixedNode().isAlive();
+                    loweringTool.guardAnchor = AbstractBeginNode.prevBegin(loweringTool.nextFixedNode());
                 }
                 assert checkPostNodeLowering(node, loweringTool, preLoweringMark, unscheduledUsages);
             }
 
-            if (!nextNode.isAlive()) {
+            if (!loweringTool.nextFixedNode().isAlive()) {
                 // can happen when the rest of the block is killed by lowering
                 // (e.g. by an unconditional deopt)
                 break;
             } else {
-                Node nextLastFixed = nextNode.predecessor();
+                Node nextLastFixed = loweringTool.nextFixedNode().predecessor();
                 if (!(nextLastFixed instanceof FixedWithNextNode)) {
-                    // insert begin node, to have a valid last fixed for next lowerable node.
-                    // This is about lowering a FixedWithNextNode to a control split while this
-                    // FixedWithNextNode is followed by some kind of BeginNode.
-                    // For example the when a FixedGuard followed by a loop exit is lowered to a
-                    // control-split + deopt.
-                    AbstractBeginNode begin = node.graph().add(new BeginNode());
-                    nextLastFixed.replaceFirstSuccessor(nextNode, begin);
-                    begin.setNext(nextNode);
-                    nextLastFixed = begin;
+                    /**
+                     * There is no FixedWithNextNode where subsequently lowered nodes can be
+                     * attached to. This can happen when lowering a FixedWithNextNode to a control
+                     * split while the FixedWithNextNode is followed by some kind of BeginNode. For
+                     * example when a FixedGuard followed by a loop exit is lowered to a
+                     * control-split + deopt. If there are further nodes to be lowered between the
+                     * split and the next begin, {@link LoweringToolImpl#lastFixedNode()}) will
+                     * lazily introduce a BeginNode.
+                     */
+                    nextLastFixed = null;
                 }
                 loweringTool.setLastFixedNode((FixedWithNextNode) nextLastFixed);
             }
@@ -737,7 +762,7 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         if (node instanceof FloatingNode) {
             for (Node usage : node.usages()) {
                 if (usage instanceof ValueNode && !(usage instanceof PhiNode) && !(usage instanceof ProxyNode)) {
-                    if (schedule.getCFG().getNodeToBlock().isNew(usage) || schedule.getCFG().blockFor(usage) == null) {
+                    if (schedule.blockFor(usage, true) == null) {
                         unscheduledUsages.add(usage);
                     }
                 }

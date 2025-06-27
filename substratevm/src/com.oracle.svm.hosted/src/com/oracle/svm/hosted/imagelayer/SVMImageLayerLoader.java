@@ -45,14 +45,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
-import java.util.function.ToIntFunction;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -88,6 +84,7 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.util.VMError;
@@ -113,7 +110,6 @@ import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking.EnumConstant;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking.StringConstant;
-import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot;
 import com.oracle.svm.hosted.jni.JNIAccessFeature;
@@ -123,12 +119,9 @@ import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.serialize.SerializationFeature;
 import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
-import com.oracle.svm.shaded.org.capnproto.ListReader;
 import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
 import com.oracle.svm.shaded.org.capnproto.StructList;
-import com.oracle.svm.shaded.org.capnproto.StructReader;
 import com.oracle.svm.shaded.org.capnproto.Text;
-import com.oracle.svm.shaded.org.capnproto.TextList;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -165,6 +158,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private final SharedLayerSnapshot.Reader snapshot;
     private final FileChannel graphsChannel;
     private final ClassInitializationSupport classInitializationSupport;
+    private final boolean buildingApplicationLayer;
 
     private HostedUniverse hostedUniverse;
 
@@ -211,6 +205,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         this.graphsChannel = graphChannel;
         this.useSharedLayerGraphs = useSharedLayerGraphs;
         classInitializationSupport = ClassInitializationSupport.singleton();
+        buildingApplicationLayer = ImageLayerBuildingSupport.buildingApplicationLayer();
     }
 
     public AnalysisUniverse getUniverse() {
@@ -276,8 +271,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             methodDescriptorToBaseLayerId.put(descriptor, methodData.getId());
         }
 
-        streamInts(snapshot.getConstantsToRelink()).mapToObj(this::findConstant)
-                        .forEach(c -> prepareConstantRelinking(c, c.getIdentityHashCode(), c.getId()));
+        CapnProtoAdapters.forEach(snapshot.getConstantsToRelink(), id -> prepareConstantRelinking(findConstant(id)));
     }
 
     /**
@@ -325,49 +319,16 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         });
     }
 
-    public static IntStream streamInts(PrimitiveList.Int.Reader reader) {
-        return IntStream.range(0, reader.size()).map(reader::get);
-    }
-
-    public static Stream<String> streamStrings(TextList.Reader reader) {
-        return IntStream.range(0, reader.size()).mapToObj(i -> reader.get(i).toString());
-    }
-
     private PersistedConstant.Reader findConstant(int id) {
-        return binarySearchUnique(id, snapshot.getConstants(), PersistedConstant.Reader::getId);
+        return CapnProtoAdapters.binarySearchUnique(id, snapshot.getConstants(), PersistedConstant.Reader::getId);
     }
 
-    private static <T extends StructReader> T binarySearchUnique(int key, StructList.Reader<T> sortedList, ToIntFunction<T> keyExtractor) {
-        int low = 0;
-        int high = sortedList.size() - 1;
-
-        int prevMid = -1;
-        int prevKey = 0;
-        while (low <= high) {
-            int mid = (low + high) >>> 1;
-            T midStruct = sortedList.get(mid);
-            int midKey = keyExtractor.applyAsInt(midStruct);
-
-            assert prevMid == -1 || (mid < prevMid && midKey < prevKey) || (mid > prevMid && midKey > prevKey) : "unsorted or contains duplicates";
-
-            if (midKey < key) {
-                low = mid + 1;
-            } else if (midKey > key) {
-                high = mid - 1;
-            } else {
-                return midStruct;
-            }
-
-            prevMid = mid;
-            prevKey = midKey;
-        }
-        return null;
-    }
-
-    private void prepareConstantRelinking(PersistedConstant.Reader constantData, int identityHashCode, int id) {
+    private void prepareConstantRelinking(PersistedConstant.Reader constantData) {
         if (!constantData.isObject()) {
             return;
         }
+        int id = constantData.getId();
+        int identityHashCode = constantData.getIdentityHashCode();
 
         Relinking.Reader relinking = constantData.getObject().getRelinking();
         if (relinking.isClassConstant()) {
@@ -408,7 +369,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private PersistedAnalysisType.Reader findType(int tid) {
-        return binarySearchUnique(tid, snapshot.getTypes(), PersistedAnalysisType.Reader::getId);
+        return CapnProtoAdapters.binarySearchUnique(tid, snapshot.getTypes(), PersistedAnalysisType.Reader::getId);
     }
 
     /**
@@ -435,8 +396,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         Class<?> clazz = lookupBaseLayerTypeInHostVM(typeData.getClassJavaName().toString());
 
         ResolvedJavaType superClass = getResolvedJavaTypeForBaseLayerId(typeData.getSuperClassTypeId());
-        ResolvedJavaType[] interfaces = streamInts(typeData.getInterfaces())
-                        .mapToObj(this::getResolvedJavaTypeForBaseLayerId).toArray(ResolvedJavaType[]::new);
+        ResolvedJavaType[] interfaces = CapnProtoAdapters.toArray(typeData.getInterfaces(), this::getResolvedJavaTypeForBaseLayerId, ResolvedJavaType[]::new);
 
         if (clazz != null) {
             /* Lookup the host VM type and create the analysis type. */
@@ -450,10 +410,8 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
              */
             BaseLayerType baseLayerType = getBaseLayerType(typeData, tid, superClass, interfaces);
 
-            baseLayerType.setInstanceFields(streamInts(typeData.getInstanceFieldIds())
-                            .mapToObj(this::getBaseLayerField).toArray(ResolvedJavaField[]::new));
-            baseLayerType.setInstanceFieldsWithSuper(streamInts(typeData.getInstanceFieldIdsWithSuper())
-                            .mapToObj(this::getBaseLayerField).toArray(ResolvedJavaField[]::new));
+            baseLayerType.setInstanceFields(CapnProtoAdapters.toArray(typeData.getInstanceFieldIds(), this::getBaseLayerField, ResolvedJavaField[]::new));
+            baseLayerType.setInstanceFieldsWithSuper(CapnProtoAdapters.toArray(typeData.getInstanceFieldIdsWithSuper(), this::getBaseLayerField, ResolvedJavaField[]::new));
 
             AnalysisType type = universe.lookup(baseLayerType);
             guarantee(getBaseLayerTypeId(type) == tid, "The base layer type %s is not correctly matched to the id %d", type, tid);
@@ -484,8 +442,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             loadLambdaTypes(capturingClass);
             return types.containsKey(typeData.getId());
         } else if (wrappedType.isProxyType()) {
-            Class<?>[] interfaces = Stream.of(typeData.getInterfaces()).flatMapToInt(r -> IntStream.range(0, r.size()).map(r::get))
-                            .mapToObj(i -> getAnalysisTypeForBaseLayerId(i).getJavaClass()).toArray(Class<?>[]::new);
+            Class<?>[] interfaces = CapnProtoAdapters.toArray(typeData.getInterfaces(), tid -> getAnalysisTypeForBaseLayerId(tid).getJavaClass(), Class[]::new);
             /* GR-59854: The deprecation warning comes from this call to Proxy.getProxyClass. */
             Class<?> proxy = Proxy.getProxyClass(interfaces[0].getClassLoader(), interfaces);
             metaAccess.lookupJavaType(proxy);
@@ -602,7 +559,8 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private BaseLayerType getBaseLayerType(int tid) {
         PersistedAnalysisType.Reader typeData = findType(tid);
         ResolvedJavaType superClass = getResolvedJavaTypeForBaseLayerId(typeData.getSuperClassTypeId());
-        ResolvedJavaType[] interfaces = streamInts(typeData.getInterfaces()).mapToObj(this::getResolvedJavaTypeForBaseLayerId).toArray(ResolvedJavaType[]::new);
+
+        ResolvedJavaType[] interfaces = CapnProtoAdapters.toArray(typeData.getInterfaces(), this::getResolvedJavaTypeForBaseLayerId, ResolvedJavaType[]::new);
         return getBaseLayerType(typeData, tid, superClass, interfaces);
     }
 
@@ -621,7 +579,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private Annotation[] getAnnotations(StructList.Reader<SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader> reader) {
-        return IntStream.range(0, reader.size()).mapToObj(reader::get).map(this::getAnnotation).toArray(Annotation[]::new);
+        return CapnProtoAdapters.toArray(reader, this::getAnnotation, Annotation[]::new);
     }
 
     private Annotation getAnnotation(SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader a) {
@@ -655,7 +613,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                     default -> throw AnalysisError.shouldNotReachHere("Unknown annotation value type: " + typeChar);
                 };
             }
-            case PRIMITIVE_ARRAY -> getArray(v.getPrimitiveArray());
+            case PRIMITIVE_ARRAY -> CapnProtoAdapters.toArray(v.getPrimitiveArray());
             case CLASS_NAME -> imageLayerBuildingSupport.lookupClass(false, v.getClassName().toString());
             case ANNOTATION -> getAnnotation(v.getAnnotation());
             case MEMBERS -> {
@@ -726,7 +684,19 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         if (typeData.getIsInitialized()) {
             classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtBuildTime(clazz, "computed in a previous layer"));
         } else {
-            classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtRunTime(clazz, "computed in a previous layer"));
+            if (typeData.getIsFailedInitialization()) {
+                /*
+                 * In the previous layer this class was configured with --initialize-at-build-time
+                 * but its initialization failed so it was registered as run time initialized. We
+                 * attempt to init it again in this layer and verify that it fails. This will allow
+                 * the class to be configured again in this layer with --initialize-at-build-time,
+                 * either before or after this step.
+                 */
+                classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtBuildTime(clazz, "computed in a previous layer"));
+                VMError.guarantee(classInitializationSupport.isFailedInitialization(clazz), "Expected the initialization to fail for %s, as it has failed in a previous layer.", clazz);
+            } else {
+                classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtRunTime(clazz, "computed in a previous layer"));
+            }
         }
 
         /* Extract and record the base layer identity hashcode for this type. */
@@ -780,7 +750,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private PersistedAnalysisMethod.Reader findMethod(int mid) {
-        return binarySearchUnique(mid, snapshot.getMethods(), PersistedAnalysisMethod.Reader::getId);
+        return CapnProtoAdapters.binarySearchUnique(mid, snapshot.getMethods(), PersistedAnalysisMethod.Reader::getId);
     }
 
     private void loadMethod(PersistedAnalysisMethod.Reader methodData) {
@@ -793,7 +763,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         int tid = methodData.getDeclaringTypeId();
         AnalysisType type = getAnalysisTypeForBaseLayerId(tid);
 
-        AnalysisType[] parameterTypes = streamInts(methodData.getArgumentTypeIds()).mapToObj(this::getAnalysisTypeForBaseLayerId).toArray(AnalysisType[]::new);
+        AnalysisType[] parameterTypes = CapnProtoAdapters.toArray(methodData.getArgumentTypeIds(), this::getAnalysisTypeForBaseLayerId, AnalysisType[]::new);
 
         AnalysisType returnType = getAnalysisTypeForBaseLayerId(methodData.getReturnTypeId());
 
@@ -804,7 +774,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             Executable method = null;
             Class<?> clazz = lookupBaseLayerTypeInHostVM(className);
             if (clazz != null) {
-                Class<?>[] argumentClasses = streamStrings(methodData.getArgumentClassNames()).map(this::lookupBaseLayerTypeInHostVM).toArray(Class[]::new);
+                Class<?>[] argumentClasses = CapnProtoAdapters.toArray(methodData.getArgumentClassNames(), this::lookupBaseLayerTypeInHostVM, Class[]::new);
                 method = lookupMethodByReflection(name, clazz, argumentClasses);
             }
 
@@ -826,7 +796,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             }
         }
 
-        ResolvedSignature<AnalysisType> signature = ResolvedSignature.fromList(Arrays.stream(parameterTypes).toList(), returnType);
+        ResolvedSignature<AnalysisType> signature = ResolvedSignature.fromArray(parameterTypes, returnType);
 
         if (name.equals(CONSTRUCTOR_NAME)) {
             type.findConstructor(signature);
@@ -902,8 +872,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             return null;
         }
         String name = memberData.getName().toString();
-        Class<?>[] parameters = StreamSupport.stream(memberData.getArgumentTypeNames().spliterator(), false).map(Text.Reader::toString)
-                        .map(c -> imageLayerBuildingSupport.lookupClass(false, c)).toArray(Class<?>[]::new);
+        Class<?>[] parameters = CapnProtoAdapters.toArray(memberData.getArgumentTypeNames(), c -> imageLayerBuildingSupport.lookupClass(false, c), Class<?>[]::new);
         return lookupMethodByReflection(name, declaringClass, parameters);
     }
 
@@ -983,7 +952,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     public DynamicHubInfo.Reader getDynamicHubInfo(AnalysisType aType) {
-        DynamicHubInfo.Reader result = binarySearchUnique(aType.getId(), snapshot.getDynamicHubInfos(), DynamicHubInfo.Reader::getTypeId);
+        DynamicHubInfo.Reader result = CapnProtoAdapters.binarySearchUnique(aType.getId(), snapshot.getDynamicHubInfos(), DynamicHubInfo.Reader::getTypeId);
         assert result != null : aType;
         return result;
     }
@@ -1046,8 +1015,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         SVMImageLayerSnapshotUtil.AbstractSVMGraphDecoder decoder = imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection(), nodeClassMap);
         EncodedGraph encodedGraph = (EncodedGraph) ObjectCopier.decode(decoder, encodedAnalyzedGraph);
         for (int i = 0; i < encodedGraph.getNumObjects(); ++i) {
-            if (encodedGraph.getObject(i) instanceof CGlobalDataInfo cGlobalDataInfo) {
+            Object obj = encodedGraph.getObject(i);
+            if (obj instanceof CGlobalDataInfo cGlobalDataInfo) {
                 encodedGraph.setObject(i, CGlobalDataFeature.singleton().registerAsAccessedOrGet(cGlobalDataInfo.getData()));
+            } else if (buildingApplicationLayer && obj instanceof LoadImageSingletonDataImpl data) {
+                data.setApplicationLayerConstant();
             }
         }
         return encodedGraph;
@@ -1149,7 +1121,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private PersistedAnalysisField.Reader findField(int fid) {
-        return binarySearchUnique(fid, snapshot.getFields(), PersistedAnalysisField.Reader::getId);
+        return CapnProtoAdapters.binarySearchUnique(fid, snapshot.getFields(), PersistedAnalysisField.Reader::getId);
     }
 
     private void loadField(PersistedAnalysisField.Reader fieldData) {
@@ -1421,7 +1393,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                 }
             }
             case PRIMITIVE_DATA -> {
-                Object array = getArray(baseLayerConstant.getPrimitiveData());
+                Object array = CapnProtoAdapters.toArray(baseLayerConstant.getPrimitiveData());
                 addBaseLayerObject(id, objectOffset, () -> new ImageHeapPrimitiveArray(type, null, array, Array.getLength(array), identityHashCode, id));
             }
             case RELOCATABLE -> {
@@ -1508,9 +1480,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             CEntryPointLiteralReference.Reader ref = constantRef.getCEntryPointLiteralCodePointer();
             String methodName = ref.getMethodName().toString();
             Class<?> definingClass = lookupBaseLayerTypeInHostVM(ref.getDefiningClass().toString());
-            Class<?>[] parameterTypes = IntStream.range(0, ref.getParameterNames().size())
-                            .mapToObj(j -> ref.getParameterNames().get(j).toString())
-                            .map(this::lookupBaseLayerTypeInHostVM).toArray(Class[]::new);
+            Class<?>[] parameterTypes = CapnProtoAdapters.toArray(ref.getParameterNames(), this::lookupBaseLayerTypeInHostVM, Class[]::new);
             values[i] = new PatchedWordConstant(new CEntryPointLiteralCodePointer(definingClass, methodName, parameterTypes), cEntryPointerLiteralPointerType);
             return true;
         } else if (constantRef.isCGlobalDataBasePointer()) {
@@ -1520,35 +1490,6 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             return true;
         }
         return false;
-    }
-
-    private static Object getArray(PrimitiveArray.Reader reader) {
-        return switch (reader.which()) {
-            case Z -> getBooleans(reader.getZ());
-            case B -> toArray(reader.getB(), r -> IntStream.range(0, r.size()).collect(() -> new byte[r.size()], (a, i) -> a[i] = r.get(i), combineUnsupported()));
-            case S -> toArray(reader.getS(), r -> IntStream.range(0, r.size()).collect(() -> new short[r.size()], (a, i) -> a[i] = r.get(i), combineUnsupported()));
-            case C -> toArray(reader.getC(), r -> IntStream.range(0, r.size()).collect(() -> new char[r.size()], (a, i) -> a[i] = (char) r.get(i), combineUnsupported()));
-            case I -> toArray(reader.getI(), r -> IntStream.range(0, r.size()).collect(() -> new int[r.size()], (a, i) -> a[i] = r.get(i), combineUnsupported()));
-            case F -> toArray(reader.getF(), r -> IntStream.range(0, r.size()).collect(() -> new float[r.size()], (a, i) -> a[i] = r.get(i), combineUnsupported()));
-            case J -> toArray(reader.getJ(), r -> IntStream.range(0, r.size()).collect(() -> new long[r.size()], (a, i) -> a[i] = r.get(i), combineUnsupported()));
-            case D -> toArray(reader.getD(), r -> IntStream.range(0, r.size()).collect(() -> new double[r.size()], (a, i) -> a[i] = r.get(i), combineUnsupported()));
-            case _NOT_IN_SCHEMA -> throw new IllegalArgumentException("Unsupported kind: " + reader.which());
-        };
-    }
-
-    protected static boolean[] getBooleans(PrimitiveList.Boolean.Reader r) {
-        return IntStream.range(0, r.size()).collect(() -> new boolean[r.size()], (a, i) -> a[i] = r.get(i), combineUnsupported());
-    }
-
-    /** Enables concise one-liners without explicit types in {@link #getArray}. */
-    private static <T extends ListReader, A> A toArray(T reader, Function<T, A> fun) {
-        return fun.apply(reader);
-    }
-
-    private static <A> BiConsumer<A, A> combineUnsupported() {
-        return (u, v) -> {
-            throw new UnsupportedOperationException("Combining partial results not supported, streams must be sequential");
-        };
     }
 
     /**

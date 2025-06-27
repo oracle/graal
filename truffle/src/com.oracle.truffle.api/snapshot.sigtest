@@ -122,11 +122,17 @@ supr java.lang.Object
 
 CLSS public final com.oracle.truffle.api.ExactMath
 meth public static double truncate(double)
+meth public static double unsignedToDouble(long)
 meth public static float truncate(float)
+meth public static float unsignedToFloat(long)
 meth public static int multiplyHigh(int,int)
 meth public static int multiplyHighUnsigned(int,int)
+meth public static int truncateToUnsignedInt(double)
+meth public static int truncateToUnsignedInt(float)
 meth public static long multiplyHigh(long,long)
 meth public static long multiplyHighUnsigned(long,long)
+meth public static long truncateToUnsignedLong(double)
+meth public static long truncateToUnsignedLong(float)
 supr java.lang.Object
 
 CLSS public final com.oracle.truffle.api.HostCompilerDirectives
@@ -1166,8 +1172,6 @@ meth public static boolean pollOSRBackEdge(com.oracle.truffle.api.nodes.Bytecode
 meth public static boolean pollOSRBackEdge(com.oracle.truffle.api.nodes.BytecodeOSRNode,int)
 meth public static java.lang.Object tryOSR(com.oracle.truffle.api.nodes.BytecodeOSRNode,int,java.lang.Object,java.lang.Runnable,com.oracle.truffle.api.frame.VirtualFrame)
 meth public static java.lang.Object tryOSR(com.oracle.truffle.api.nodes.BytecodeOSRNode,long,java.lang.Object,java.lang.Runnable,com.oracle.truffle.api.frame.VirtualFrame)
-meth public void copyIntoOSRFrame(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.frame.VirtualFrame,int)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 meth public void copyIntoOSRFrame(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.frame.VirtualFrame,int,java.lang.Object)
 meth public void copyIntoOSRFrame(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.frame.VirtualFrame,long,java.lang.Object)
 meth public void prepareOSR(int)

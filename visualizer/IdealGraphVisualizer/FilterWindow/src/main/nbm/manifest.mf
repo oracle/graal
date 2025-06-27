@@ -3,4 +3,4 @@ OpenIDE-Module: org.graalvm.visualizer.filterwindow
 OpenIDE-Module-Layer: org/graalvm/visualizer/filterwindow/resources/layer.xml
 OpenIDE-Module-Localizing-Bundle: org/graalvm/visualizer/filterwindow/Bundle.properties
 OpenIDE-Module-Specification-Version: 1.1
-
+OpenIDE-Module-Hide-Classpath-Packages: jdk.graal.compiler.graphio.**

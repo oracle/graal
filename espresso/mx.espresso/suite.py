@@ -22,9 +22,9 @@
 #
 
 suite = {
-    "mxversion": "7.46.0",
+    "mxversion": "7.55.2",
     "name": "espresso",
-    "version" : "25.0.0",
+    "version" : "26.0.0",
     "release" : False,
     "groupId" : "org.graalvm.espresso",
     "url" : "https://www.graalvm.org/reference-manual/java-on-truffle/",
@@ -606,7 +606,7 @@ suite = {
             "layout": {
                 "bin/": [
                     "dependency:espresso:espresso",
-                    "dependency:ESPRESSO_JVM_STANDALONE_JAVA_LINKS/bin/*",
+                    "dependency:espresso:ESPRESSO_JVM_STANDALONE_JAVA_LINKS/bin/*",
                 ],
                 "./": [{
                         "source_type": "dependency",
@@ -882,7 +882,7 @@ suite = {
             "maven": False,
         },
 
-        "JAVA_COMMUNITY": {
+        "JAVA_POM": {
             "class": "DynamicPOMDistribution",
             "description": "Java on Truffle (aka Espresso): a Java bytecode interpreter",
             "distDependencies": [
@@ -891,7 +891,7 @@ suite = {
                 "truffle:TRUFFLE_NFI_LIBFFI",
                 "truffle:TRUFFLE_RUNTIME",
                 # sulong is not strictly required, but it'll work out of the box in more cases if it's there
-                "sulong:LLVM_NATIVE_COMMUNITY",
+                "sulong:LLVM_NATIVE_POM",
             ],
             # optionally provides:
             # - ESPRESSO_RUNTIME_RESOURCES
@@ -915,8 +915,6 @@ suite = {
             # - sulong:SULONG_CORE
             # - sulong:SULONG_NATIVE
             # - sulong:SULONG_NFI
-            # - sulong-managed:SULONG_ENTERPRISE
-            # - sulong-managed:SULONG_ENTERPRISE_NATIVE
             # - truffle-enterprise:TRUFFLE_ENTERPRISE
             "dynamicDistDependencies": "jvm_standalone_deps",
             "maven": False,

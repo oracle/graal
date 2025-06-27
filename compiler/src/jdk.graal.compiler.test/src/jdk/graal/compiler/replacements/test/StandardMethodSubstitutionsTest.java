@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,6 +53,7 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
     public void testMathSubstitutions() {
         assertInGraph(assertNotInGraph(testGraph("mathAbs"), IfNode.class), AbsNode.class);     // Java
         double value = 34567.891D;
+
         testGraph("mathCos");
         testGraph("mathLog");
         testGraph("mathLog10");
@@ -60,10 +61,13 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         testGraph("mathSqrt");
         testGraph("mathTan");
         testGraph("mathAll");
-
         if (getReplacements().hasSubstitution(getResolvedJavaMethod(Math.class, "tanh"), getInitialOptions())) {
             testGraph("mathTanh");
         }
+        if (getReplacements().hasSubstitution(getResolvedJavaMethod(Math.class, "cbrt"), getInitialOptions())) {
+            testGraph("mathCbrt");
+        }
+        testGraph("mathCbrt");
 
         test("mathCos", value);
         test("mathLog", value);
@@ -72,6 +76,7 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         test("mathSqrt", value);
         test("mathTan", value);
         test("mathTanh", value);
+        test("mathCbrt", value);
         test("mathAll", value);
     }
 
@@ -139,6 +144,10 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
 
     public static double mathTanh(double value) {
         return Math.tanh(value);
+    }
+
+    public static double mathCbrt(double value) {
+        return Math.cbrt(value);
     }
 
     public static double mathAll(double value) {

@@ -360,7 +360,7 @@ public class PartialEscapeAnalysisTest extends EATestBase {
     @Test
     public void testVirtualPhiLoop3() {
         for (int size = 0; size < 100; size++) {
-            test("virtualPhiLoop2", (Object) new Object[size]);
+            test("virtualPhiLoop3", (Object) new Object[size]);
         }
     }
 

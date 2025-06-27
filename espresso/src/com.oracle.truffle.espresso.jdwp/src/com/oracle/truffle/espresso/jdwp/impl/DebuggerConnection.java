@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,19 +58,8 @@ public final class DebuggerConnection implements Commands {
     }
 
     @Override
-    public void stepInto(Object thread, RequestFilter filter) {
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false, DebuggerCommand.Kind.STEP_INTO);
-    }
-
-    @Override
-    public void stepOver(Object thread, RequestFilter filter) {
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false, DebuggerCommand.Kind.STEP_OVER);
-    }
-
-    @Override
-    public void stepOut(Object thread, RequestFilter filter) {
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false, DebuggerCommand.Kind.STEP_OUT);
-        controller.stepOut(filter);
+    public void step(Object thread, RequestFilter filter, DebuggerCommand.Kind stepKind) {
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false, stepKind);
     }
 
     @Override
@@ -115,6 +104,7 @@ public final class DebuggerConnection implements Commands {
 
     private static class JDWPReceiver implements Runnable {
 
+        private static final Object NOT_ENTERED_MARKER = new Object();
         private DebuggerController.SetupState setupState;
         private final DebuggerController controller;
         private RequestedJDWPEvents requestedJDWPEvents;
@@ -199,11 +189,17 @@ public final class DebuggerConnection implements Commands {
                 setupState = null;
                 latch.countDown();
             }
-            // Now, begin processing packets when they start to flow from the debugger
+            // Now, begin processing packets when they start to flow from the debugger.
+            // Make sure this thread is entered in the context
             try {
                 while (!Thread.currentThread().isInterrupted() && !controller.isClosing()) {
+                    Object previous = NOT_ENTERED_MARKER;
                     try {
-                        processPacket(Packet.fromByteArray(debuggerConnection.connection.readPacket()));
+                        // get the packet outside the Truffle context, because it's a blocking IO
+                        // operation
+                        Packet packet = Packet.fromByteArray(debuggerConnection.connection.readPacket());
+                        previous = controller.enterTruffleContext();
+                        processPacket(packet);
                     } catch (IOException e) {
                         if (!debuggerConnection.isOpen()) {
                             // when the socket is closed, we're done
@@ -214,6 +210,10 @@ public final class DebuggerConnection implements Commands {
                         }
                     } catch (ConnectionClosedException e) {
                         break;
+                    } finally {
+                        if (previous != NOT_ENTERED_MARKER) {
+                            controller.leaveTruffleContext(previous);
+                        }
                     }
                 }
             } finally {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -102,7 +102,6 @@ import sun.util.cldr.CLDRLocaleProviderAdapter;
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.locale.provider.ResourceBundleBasedAdapter;
 import sun.util.resources.LocaleData;
-import sun.util.resources.ParallelListResourceBundle;
 
 /**
  * LocalizationFeature is the core class of SVM localization support. It contains all the options
@@ -162,7 +161,6 @@ public class LocalizationFeature implements InternalFeature {
     private Field baseLocaleCacheField;
     private Field localeCacheField;
     private Field candidatesCacheField;
-    private Field localeObjectCacheMapField;
     private Field langAliasesCacheField;
     private Field parentLocalesMapField;
     @Platforms(Platform.HOSTED_ONLY.class) private ImageClassLoader imageClassLoader;
@@ -291,10 +289,9 @@ public class LocalizationFeature implements InternalFeature {
         }
         langAliasesCacheField = access.findField(CLDRLocaleProviderAdapter.class, "langAliasesCache");
         parentLocalesMapField = access.findField(CLDRLocaleProviderAdapter.class, "parentLocalesMap");
-        baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale$1InterningCache", "CACHE");
-        localeCacheField = access.findField("java.util.Locale$LocaleCache", "LOCALE_CACHE");
-        localeObjectCacheMapField = null;
         candidatesCacheField = access.findField("java.util.ResourceBundle$Control", "CANDIDATES_CACHE");
+        baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale", "CACHE");
+        localeCacheField = access.findField("java.util.Locale", "LOCALE_CACHE");
 
         String reason = "All ResourceBundleControlProvider that are registered as services end up as objects in the image heap, and are therefore registered to be initialized at image build time";
         ServiceLoader.load(ResourceBundleControlProvider.class).stream()
@@ -346,25 +343,12 @@ public class LocalizationFeature implements InternalFeature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        scanLocaleCache(access, baseLocaleCacheField);
-        scanLocaleCache(access, localeCacheField);
-        scanLocaleCache(access, candidatesCacheField);
+
+        access.rescanRoot(baseLocaleCacheField);
+        access.rescanRoot(localeCacheField);
+        access.rescanRoot(candidatesCacheField);
         access.rescanRoot(langAliasesCacheField);
         access.rescanRoot(parentLocalesMapField);
-    }
-
-    private void scanLocaleCache(DuringAnalysisAccessImpl access, Field cacheFieldField) {
-        access.rescanRoot(cacheFieldField);
-
-        Object localeCache;
-        try {
-            localeCache = cacheFieldField.get(null);
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-        if (localeCache != null && localeObjectCacheMapField != null) {
-            access.rescanField(localeCache, localeObjectCacheMapField);
-        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -506,10 +490,6 @@ public class LocalizationFeature implements InternalFeature {
                                         String baseName = e.getClassName().split("_")[0];
                                         prepareNegativeBundle(ConfigurationCondition.alwaysTrue(), baseName, locale, true);
                                         continue; /* No bundle for this `locale`. */
-                                    }
-                                    if (bundle instanceof ParallelListResourceBundle) {
-                                        /* Make sure the `bundle` content is complete. */
-                                        localeData.setSupplementary((ParallelListResourceBundle) bundle);
                                     }
                                     prepareJDKBundle(bundle, locale);
                                 }

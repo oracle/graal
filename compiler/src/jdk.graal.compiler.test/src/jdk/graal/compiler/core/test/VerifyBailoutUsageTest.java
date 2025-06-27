@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -113,7 +113,6 @@ public class VerifyBailoutUsageTest {
         testBailoutUsage(ValidRetryableBailoutUsage.class);
     }
 
-    @SuppressWarnings("try")
     private static void testBailoutUsage(Class<?> c) {
         RuntimeProvider rt = Graal.getRequiredCapability(RuntimeProvider.class);
         Providers providers = rt.getHostBackend().getProviders();
@@ -130,7 +129,7 @@ public class VerifyBailoutUsageTest {
                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
                 StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).build();
                 graphBuilderSuite.apply(graph, context);
-                try (DebugCloseable s = debug.disableIntercept()) {
+                try (DebugCloseable _ = debug.disableIntercept()) {
                     new VerifyBailoutUsage().apply(graph, context);
                 }
             }

@@ -66,25 +66,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     notify_groups:: ['deploy'],
   },
 
-  vm_notifier_weekly: vm_common.vm_base('linux', 'amd64', 'weekly', deploy=true) + {
-    name: 'weekly-deploy-vm-notifier-linux-amd64',
-    packages+: {
-      curl: '==7.50.1',
-    },
-    run+: [
-      ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + self.ci_resources.infra.notify_indexer_service('java21', 'ce'),
-    ],
-    runAfter: [
-      'daily-deploy-vm-maven-linux-amd64',
-      'weekly-deploy-vm-base-java21-darwin-aarch64',
-      'weekly-deploy-vm-base-java21-darwin-amd64',
-      'weekly-deploy-vm-base-java21-linux-aarch64',
-      'weekly-deploy-vm-base-java21-linux-amd64',
-      'weekly-deploy-vm-base-java21-windows-amd64',
-    ],
-    notify_groups:: ['deploy'],
-  },
-
   maven_deploy_base_functions: {
     edition:: vm.edition,
 
@@ -118,7 +99,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
      ],
      name: 'gate-vm-unittest-windows-amd64',
     }, ["sdk", "truffle", "vm"]),
-    self.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate') + vm_common.sulong + {
+    self.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate') + graal_common.deps.sulong + {
      environment+: {
        DYNAMIC_IMPORTS: '/tools,/substratevm,/sulong',
        NATIVE_IMAGES: 'polyglot',
@@ -211,7 +192,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     vm_common.deploy_vm_standalones_javaLatest_windows_amd64,
     # Trigger the releaser service and notify the indexer
     self.vm_notifier_daily,
-    self.vm_notifier_weekly,
   ],
 
   builds: [vm_common.verify_name(b) for b in vm_common.builds + vm_common_runspec.builds + vm_common_bench.builds + vm_bench.builds + vm_native.builds + utils.add_defined_in(builds, std.thisFile)],

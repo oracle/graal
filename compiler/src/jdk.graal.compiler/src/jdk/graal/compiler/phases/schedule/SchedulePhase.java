@@ -297,7 +297,6 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                 this.blockToNodesMap = latestBlockToNodesMap;
 
             }
-            cfg.setNodeToBlock(currentNodeMap);
 
             graph.setLastSchedule(new ScheduleResult(this.cfg, this.nodeToBlockMap, this.blockToNodesMap, selectedStrategy));
         }
@@ -735,16 +734,12 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             if (!supportsImplicitNullChecks) {
                 return false;
             }
-            if (currentNode instanceof FloatingReadNode) {
-                FloatingReadNode floatingReadNode = (FloatingReadNode) currentNode;
+            if (currentNode instanceof FloatingReadNode floatingReadNode) {
                 Node pred = block.getBeginNode().predecessor();
-                if (pred instanceof IfNode) {
-                    IfNode ifNode = (IfNode) pred;
-                    if (ifNode.condition() instanceof IsNullNode && ifNode.getTrueSuccessorProbability() == 0.0) {
-                        IsNullNode isNullNode = (IsNullNode) ifNode.condition();
-                        if (getUnproxifiedUncompressed(floatingReadNode.getAddress().getBase()) == getUnproxifiedUncompressed(isNullNode.getValue())) {
-                            return true;
-                        }
+                if (pred instanceof IfNode ifNode) {
+                    if (ifNode.condition() instanceof IsNullNode isNullNode && ifNode.getTrueSuccessorProbability() == 0.0) {
+                        ValueNode base = floatingReadNode.getAddress().getBase();
+                        return base != null && getUnproxifiedUncompressed(base) == getUnproxifiedUncompressed(isNullNode.getValue());
                     }
                 }
             }

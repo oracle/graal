@@ -26,6 +26,8 @@ import static java.util.Objects.requireNonNull;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
+import java.util.Collections;
+import java.util.List;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions;
@@ -246,6 +248,11 @@ public final class EspressoResolvedPrimitiveType extends EspressoResolvedJavaTyp
     @Override
     public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
         return NO_METHODS;
+    }
+
+    @Override
+    public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
+        return Collections.emptyList();
     }
 
     @Override

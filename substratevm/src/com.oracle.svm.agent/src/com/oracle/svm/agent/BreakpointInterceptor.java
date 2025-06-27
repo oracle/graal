@@ -80,6 +80,9 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.agent.stackaccess.EagerlyLoadedJavaStackAccess;
 import com.oracle.svm.agent.stackaccess.InterceptedState;
 import com.oracle.svm.agent.tracing.core.Tracer;
+import com.oracle.svm.configure.LambdaConfigurationTypeDescriptor;
+import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
+import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
@@ -194,8 +197,8 @@ final class BreakpointInterceptor {
         if (tracer != null) {
             tracer.traceCall(context,
                             function,
-                            getClassOrProxyInterfaceNames(env, clazz),
-                            getClassOrProxyInterfaceNames(env, declaringClass),
+                            getTypeDescriptor(env, clazz),
+                            getTypeDescriptor(env, declaringClass),
                             getClassNameOr(env, callerClass, null, Tracer.UNKNOWN_VALUE),
                             result,
                             stackTrace,
@@ -224,7 +227,7 @@ final class BreakpointInterceptor {
      * @return The interface, or the original class if it is not a proxy or implements multiple
      *         interfaces.
      */
-    private static Object getClassOrProxyInterfaceNames(JNIEnvironment env, JNIObjectHandle clazz) {
+    static Object getTypeDescriptor(JNIEnvironment env, JNIObjectHandle clazz) {
         if (clazz.equal(nullHandle())) {
             return null;
         }
@@ -233,17 +236,30 @@ final class BreakpointInterceptor {
         if (Support.clearException(env)) {
             return Tracer.UNKNOWN_VALUE;
         }
-
-        if (!isProxy) {
-            return getClassNameOr(env, clazz, null, Tracer.UNKNOWN_VALUE);
+        String className = getClassNameOr(env, clazz, null, Tracer.UNKNOWN_VALUE);
+        if (className == null || className.equals(Tracer.UNKNOWN_VALUE)) {
+            return className;
+        }
+        boolean isLambda = className.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING);
+        if (isProxy || isLambda) {
+            JNIObjectHandle interfaces = Support.callObjectMethod(env, clazz, agent.handles().javaLangClassGetInterfaces);
+            if (Support.clearException(env)) {
+                return Tracer.UNKNOWN_VALUE;
+            }
+            Object interfaceNames = getClassArrayNames(env, interfaces);
+            if (interfaceNames.equals(Tracer.EXPLICIT_NULL) || interfaceNames.equals(Tracer.UNKNOWN_VALUE)) {
+                return interfaceNames;
+            }
+            List<String> interfaceNameString = Arrays.asList((String[]) interfaceNames);
+            if (isProxy) {
+                return ProxyConfigurationTypeDescriptor.fromInterfaceReflectionNames(interfaceNameString);
+            } else if (isLambda) {
+                String declaringClass = className.substring(0, className.indexOf(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING));
+                return LambdaConfigurationTypeDescriptor.fromReflectionNames(declaringClass, interfaceNameString);
+            }
         }
 
-        JNIObjectHandle interfaces = Support.callObjectMethod(env, clazz, agent.handles().javaLangClassGetInterfaces);
-        if (Support.clearException(env)) {
-            return Tracer.UNKNOWN_VALUE;
-        }
-
-        return getClassArrayNames(env, interfaces);
+        return NamedConfigurationTypeDescriptor.fromReflectionName(className);
     }
 
     private static boolean forName(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {

@@ -165,6 +165,8 @@ public interface LibGraalSupport {
 
     /**
      * Returns true if the current runtime is in the libgraal native image (i.e. SVM).
+     *
+     * This method is intrinsified by Native Image to return true.
      */
     static boolean inLibGraalRuntime() {
         return false;
@@ -177,7 +179,7 @@ public interface LibGraalSupport {
     LibGraalSupport INSTANCE = Init.init();
 
     /**
-     * Initializaton support for {@link LibGraalSupport#INSTANCE}.
+     * Initialization support for {@link LibGraalSupport#INSTANCE}.
      */
     class Init {
         @SuppressWarnings("try")

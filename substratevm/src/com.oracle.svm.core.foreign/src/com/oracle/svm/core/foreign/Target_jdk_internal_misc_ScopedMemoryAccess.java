@@ -25,12 +25,11 @@
 package com.oracle.svm.core.foreign;
 
 import java.io.FileDescriptor;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
 import java.lang.ref.Reference;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.ArenaIntrinsics;
+import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -100,7 +99,7 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(onlyWith = SharedArenasEnabled.class)
-    @SVMScoped
+    @ForeignSupport.Scoped
     @AlwaysInline("Safepoints must be visible in caller")
     public void loadInternal(MemorySessionImpl session, MappedMemoryUtilsProxy mappedUtils, long address, boolean isSync, long size) {
         SubstrateForeignUtil.checkIdentity(mappedUtils, Target_java_nio_MappedMemoryUtils.PROXY);
@@ -121,7 +120,7 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(onlyWith = SharedArenasEnabled.class)
-    @SVMScoped
+    @ForeignSupport.Scoped
     @AlwaysInline("Safepoints must be visible in caller")
     public boolean isLoadedInternal(MemorySessionImpl session, MappedMemoryUtilsProxy mappedUtils, long address, boolean isSync, long size) {
         SubstrateForeignUtil.checkIdentity(mappedUtils, Target_java_nio_MappedMemoryUtils.PROXY);
@@ -143,7 +142,7 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(onlyWith = SharedArenasEnabled.class)
-    @SVMScoped
+    @ForeignSupport.Scoped
     @AlwaysInline("Safepoints must be visible in caller")
     public void unloadInternal(MemorySessionImpl session, MappedMemoryUtilsProxy mappedUtils, long address, boolean isSync, long size) {
         SubstrateForeignUtil.checkIdentity(mappedUtils, Target_java_nio_MappedMemoryUtils.PROXY);
@@ -166,7 +165,7 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(onlyWith = SharedArenasEnabled.class)
-    @SVMScoped
+    @ForeignSupport.Scoped
     @AlwaysInline("Safepoints must be visible in caller")
     public void forceInternal(MemorySessionImpl session, MappedMemoryUtilsProxy mappedUtils, FileDescriptor fd, long address, boolean isSync, long index, long length) {
         SubstrateForeignUtil.checkIdentity(mappedUtils, Target_java_nio_MappedMemoryUtils.PROXY);
@@ -214,8 +213,4 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     void closeScope0Unsupported(Target_jdk_internal_foreign_MemorySessionImpl session, Target_jdk_internal_misc_ScopedMemoryAccess_ScopedAccessError error) {
         throw SharedArenasDisabled.fail();
     }
-}
-
-@Retention(RetentionPolicy.RUNTIME)
-@interface SVMScoped {
 }

@@ -218,8 +218,9 @@ public final class Arguments {
                         builder.option("engine.CompileImmediately", "true");
                     } else if (optionString.startsWith("-Xint") || "-XX:TieredStopAtLevel=0".equals(optionString)) {
                         builder.option("engine.Compilation", "false");
-                    } else if ("-Xshare:auto".equals(optionString) || "-Xshare:off".equals(optionString)) {
-                        // ignore
+                    } else if (optionString.startsWith("-Xshare:")) {
+                        String value = optionString.substring("-Xshare:".length());
+                        builder.option("java.CDS", value);
                     } else if (optionString.startsWith("-XX:")) {
                         handler.handleXXArg(optionString);
                     } else if (optionString.startsWith("--help:")) {

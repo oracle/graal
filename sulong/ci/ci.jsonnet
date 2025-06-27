@@ -12,7 +12,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
   sulong:: {
     suite:: "sulong",
-    extra_mx_args+:: [ "--dynamicimport", "/compiler" ],
+    extra_mx_args+:: if self._jdkIsGraalVM then [] else [ "--dynamicimport", "/compiler" ],
     setup+: [
       ["cd", "./sulong"],
     ],
@@ -120,11 +120,11 @@ local sc = (import "ci_common/sulong-common.jsonnet");
   coverage_builds::
     sc.mapPrototypePlatformName([sc.weekly + $.sulong + sc.coverage($.regular_builds)],
     [
-      [sc.linux_amd64,    [sc.labsjdk21]],
-      [sc.darwin_amd64,   [sc.labsjdk21]],
-      [sc.windows_amd64,  [sc.labsjdk21]],
-      [sc.linux_aarch64,  [sc.labsjdk21]],
-      [sc.darwin_aarch64, [sc.labsjdk21]],
+      [sc.linux_amd64,    [sc.graalvmee21]],
+      [sc.darwin_amd64,   [sc.graalvmee21]],
+      [sc.windows_amd64,  [sc.graalvmee21]],
+      [sc.linux_aarch64,  [sc.graalvmee21]],
+      [sc.darwin_aarch64, [sc.graalvmee21]],
     ],
     [
       { name: "weekly-sulong-coverage-jdk21-linux-amd64",    timelimit: "2:00:00" },

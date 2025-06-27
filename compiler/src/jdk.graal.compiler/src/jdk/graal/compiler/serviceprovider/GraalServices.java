@@ -507,6 +507,17 @@ public final class GraalServices {
     }
 
     /**
+     * Returns a scope which tracks time spent in garbage collection if the Java virtual machine
+     * supports it.
+     */
+    public static JMXService.GCTimeStatistics getGCTimeStatistics() {
+        if (jmx == null) {
+            return null;
+        }
+        return jmx.getGCTimeStatistics();
+    }
+
+    /**
      * Returns the fused multiply add of the three arguments; that is, returns the exact product of
      * the first two arguments summed with the third argument and then rounded once to the nearest
      * {@code float}.
@@ -522,15 +533,6 @@ public final class GraalServices {
      */
     public static double fma(double a, double b, double c) {
         return Math.fma(a, b, c);
-    }
-
-    /**
-     * Gets the update-release counter for the current Java runtime.
-     *
-     * @see java.lang.Runtime.Version
-     */
-    public static int getJavaUpdateVersion() {
-        return Runtime.version().update();
     }
 
     private static final JMXService jmx = loadSingle(JMXService.class, libgraalServices != null);

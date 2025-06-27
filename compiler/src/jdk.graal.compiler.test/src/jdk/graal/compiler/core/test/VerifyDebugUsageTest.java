@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,10 +67,9 @@ public class VerifyDebugUsageTest {
 
     private static final class InvalidLogAndIndentUsagePhase extends TestPhase {
         @Override
-        @SuppressWarnings("try")
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
-            try (Indent i = debug.logAndIndent("%s", graph.toString())) {
+            try (Indent _ = debug.logAndIndent("%s", graph.toString())) {
                 for (Node n : graph.getNodes()) {
                     debug.log("%s", n);
                 }
@@ -129,10 +128,9 @@ public class VerifyDebugUsageTest {
 
     private static final class InvalidConcatLogAndIndentUsagePhase extends TestPhase {
         @Override
-        @SuppressWarnings("try")
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
-            try (Indent i = debug.logAndIndent("error " + graph)) {
+            try (Indent _ = debug.logAndIndent("error " + graph)) {
                 for (Node n : graph.getNodes()) {
                     debug.log("%s", n);
                 }
@@ -172,10 +170,9 @@ public class VerifyDebugUsageTest {
 
     static class ValidLogAndIndentUsagePhase extends TestPhase {
         @Override
-        @SuppressWarnings("try")
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
-            try (Indent i = debug.logAndIndent("%s", graph)) {
+            try (Indent _ = debug.logAndIndent("%s", graph)) {
                 for (Node n : graph.getNodes()) {
                     debug.log("%s", n);
                 }
@@ -322,7 +319,6 @@ public class VerifyDebugUsageTest {
         testDebugUsageClass(ValidGraalErrorCtorPhase.class);
     }
 
-    @SuppressWarnings("try")
     private static void testDebugUsageClass(Class<?> c) {
         RuntimeProvider rt = Graal.getRequiredCapability(RuntimeProvider.class);
         Providers providers = rt.getHostBackend().getProviders();
@@ -339,7 +335,7 @@ public class VerifyDebugUsageTest {
                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
                 StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).build();
                 graphBuilderSuite.apply(graph, context);
-                try (DebugCloseable s = debug.disableIntercept()) {
+                try (DebugCloseable _ = debug.disableIntercept()) {
                     new VerifyDebugUsage().apply(graph, context);
                 }
             }

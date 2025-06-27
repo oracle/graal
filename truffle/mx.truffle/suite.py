@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.33.0",
+  "mxversion": "7.55.2",
   "name" : "truffle",
-  "version" : "25.0.0",
+  "version" : "26.0.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -234,6 +234,22 @@ suite = {
       ],
       "javaCompliance" : "17+",
       "checkstyleVersion" : "10.21.0",
+      "workingSets" : "API,Truffle",
+      "graalCompilerSourceEdition": "ignore",
+    },
+
+    # This uses the lowest Multi-Release version possible,
+    # for checking that Multi-Release classes are used as expected (see CheckMultiReleaseSupport).
+    "com.oracle.truffle.api.jdk9" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+      ],
+      "overlayTarget" : "com.oracle.truffle.api",
+      "checkPackagePrefix" : "false",
+      "multiReleaseJarVersion" : "9",
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "9+",
       "workingSets" : "API,Truffle",
       "graalCompilerSourceEdition": "ignore",
     },
@@ -999,6 +1015,9 @@ suite = {
 
     "libffi" : {
       "class" : "LibffiBuilderProject",
+      "multitarget": {
+         "libc": ["glibc", "musl", "default"],
+      },
       "dependencies" : [
         "LIBFFI_SOURCES",
       ],
@@ -1008,8 +1027,10 @@ suite = {
     "com.oracle.truffle.nfi.native" : {
       "subDir" : "src",
       "native" : "shared_lib",
-      "toolchain" : "sdk:LLVM_NINJA_TOOLCHAIN",
       "deliverable" : "trufflenfi",
+      "multitarget": {
+        "libc": ["glibc", "musl", "default"],
+      },
       "use_jdk_headers" : True,
       "buildDependencies" : [
         "libffi",
@@ -1031,12 +1052,6 @@ suite = {
         "linux" : {
           "<others>" : {
             "cflags" : ["-g", "-O3", "-Wall", "-Werror", "-D_GNU_SOURCE", "-fvisibility=hidden"],
-            "ldlibs" : ["-ldl"],
-          },
-        },
-        "linux-musl" : {
-          "<others>" : {
-            "cflags" : ["-g", "-O3", "-Wall", "-Werror", "-fvisibility=hidden"],
             "ldlibs" : ["-ldl"],
           },
         },
@@ -1658,7 +1673,7 @@ suite = {
         "TRUFFLE_API",
         "TRUFFLE_COMPILER",
       ],
-      "description" : "The community edition of the Truffle runtime for Graal Languages. It is not recommended to depend on this artifact directly. Instead, use a POM dependency of one or more Graal Languages (for example `org.graalvm.polyglot:js-community`) to ensure all dependencies are pulled in correctly.", # pylint: disable=line-too-long
+      "description" : "The Truffle runtime for Graal Languages. It is not recommended to depend on this artifact directly. Instead, use a POM dependency of one or more Graal Languages (for example `org.graalvm.polyglot:js`) to ensure all dependencies are pulled in correctly.", # pylint: disable=line-too-long
       "useModulePath": True,
       "maven": {
           "artifactId": "truffle-runtime",
@@ -1920,7 +1935,7 @@ suite = {
           "darwin-aarch64",
       ],
       "layout" : {
-        "bin/" : "dependency:com.oracle.truffle.nfi.native",
+        "bin/" : "dependency:com.oracle.truffle.nfi.native/*",
         "include/" : "dependency:com.oracle.truffle.nfi.native/include/*.h",
       },
       "include_dirs" : ["include"],
@@ -1944,8 +1959,18 @@ suite = {
           "windows-amd64",
           "windows-aarch64",
       ],
-      "layout" : {
-        "META-INF/resources/nfi-native/libnfi/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native",
+      "os": {
+        "linux": {
+          "layout": {
+            # only glibc.
+            "META-INF/resources/nfi-native/libnfi/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native/linux-*/glibc/*"
+          },
+        },
+        "<others>": {
+          "layout": {
+            "META-INF/resources/nfi-native/libnfi/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native/*/*/*",
+          },
+        },
       },
       "description" : "Contains the native library needed by the libffi NFI backend.",
       "maven": False,
@@ -2291,8 +2316,18 @@ suite = {
       "native" : True,
       "platformDependent" : True,
       "description" : "Truffle NFI support distribution for the GraalVM",
-      "layout" : {
-        "./" : ["dependency:com.oracle.truffle.nfi.native"],
+      "os": {
+        "linux": {
+          "layout": {
+            # only glibc.
+            "./" : "dependency:com.oracle.truffle.nfi.native/linux-*/glibc/*"
+          },
+        },
+        "<others>": {
+          "layout": {
+            "./" : "dependency:com.oracle.truffle.nfi.native/*/*/*",
+          },
+        },
       },
       "maven" : False,
       "graalCompilerSourceEdition": "ignore",

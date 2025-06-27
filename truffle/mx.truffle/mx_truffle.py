@@ -38,6 +38,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+import filecmp
 import fnmatch
 import itertools
 import json
@@ -448,6 +449,9 @@ def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_e
     else:
         native_image_args += ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain"]
     native_image_args += [target_path]
+    # GR-65661: we need to disable the check in GraalVM for 21 as it does not allow polyglot version 26.0.0-dev
+    if jdk.version < mx.VersionSpec("25"):
+        native_image_args = ['-Dpolyglotimpl.DisableVersionChecks=true'] + native_image_args
     mx.log("Running {} {}".format(mx.exe_suffix('native-image'), " ".join(native_image_args)))
     mx.run([native_image_path] + native_image_args)
     return target_path
@@ -479,7 +483,9 @@ def _truffle_gate_runner(args, tasks):
     with Task('Truffle Signature Tests', tasks, tags=TruffleGateTags.sigtest) as t:
         if t: sigtest(['--check', 'binary'])
     with Task('Truffle UnitTests', tasks, tags=TruffleGateTags.truffle_test) as t:
-        if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25']))
+        if t:
+            unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25'])
+            unittest(['--suite', 'truffle', '--enable-timing', '-Dtruffle.object.LayoutFactory=com.oracle.truffle.api.object.CoreLayoutFactory', 'com.oracle.truffle.object'])
     if jdk.javaCompliance >= '22':
         with Task('Truffle NFI tests with Panama Backend', tasks, tags=TruffleGateTags.panama_test) as t:
             if t:
@@ -675,6 +681,9 @@ def native_truffle_unittest(args):
             f'-Djunit.platform.listeners.uid.tracking.output.dir={os.path.join(tmp, "test-ids")}'
         ]
         vm_args = enable_asserts_args + uid_tracking_args + mx.get_runtime_jvm_args(names=unittest_distributions + truffle_runtime_distributions) + module_args
+        # GR-65661: we need to disable the check in GraalVM for 21 as it does not allow polyglot version 26.0.0-dev
+        if jdk.version < mx.VersionSpec("25"):
+            vm_args = ['-Dpolyglotimpl.DisableVersionChecks=true'] + vm_args
 
         # 2. Collect test ids for a native image build
         junit_console_launcher_with_args = [
@@ -1661,7 +1670,8 @@ class PolyglotIsolateProject(mx_sdk_vm_ng.NativeImageLibraryProject):
         build_args = [
             '--features=com.oracle.svm.enterprise.truffle.PolyglotIsolateGuestFeature',
             '-H:APIFunctionPrefix=truffle_isolate_',
-            '-H:+CopyLanguageResources'
+            '-H:+CopyLanguageResources',
+            '-H:+ProtectionKeys'
         ] + isolate_build_options
         super().__init__(language_suite, f'{language_id}.isolate', isolate_deps, ['Truffle'], None, f'{language_id}vm', **{'build_args': build_args})
 
@@ -1673,16 +1683,14 @@ class PolyglotIsolateProject(mx_sdk_vm_ng.NativeImageLibraryProject):
         delattr(self, 'ignore')
 
 
-class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency):  # pylint: disable=too-many-ancestors
+class LibffiBuilderProject(mx_native.MultitargetProject):
     """Project for building libffi from source.
 
-    The build is performed by:
+    The build is performed for each toolchain by:
         1. Extracting the sources,
         2. Applying the platform dependent patches, and
         3. Invoking the platform dependent builder that we delegate to.
     """
-
-    libs = property(lambda self: self.delegate.libs)
 
     def __init__(self, suite, name, deps, workingSets, **kwargs):
         subDir = 'src'
@@ -1691,13 +1699,21 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
         super(LibffiBuilderProject, self).__init__(suite, name, subDir, srcDirs, deps, workingSets, d, **kwargs)
 
         self.out_dir = self.get_output_root()
+        self.delegates = {}
+        self.include_dirs = None
+
+    def _get_or_create_delegate(self, toolchain):
+        delegate = self.delegates.get(toolchain)
+        if delegate is not None:
+            return delegate
+
         if mx.get_os() == 'windows':
-            self.delegate = mx_native.DefaultNativeProject(suite, name, subDir, [], [], None,
-                                                           os.path.join(self.out_dir, 'libffi-3.4.8'),
+            delegate = mx_native.DefaultNativeProject(self.suite, self.name, self.subDir, [], [], None,
+                                                           os.path.join(self.out_dir, toolchain.spec.target.subdir, 'libffi-3.4.8'),
                                                            'static_lib',
                                                            deliverable='ffi',
                                                            cflags=['-MD', '-O2', '-DFFI_STATIC_BUILD'])
-            self.delegate._source = dict(tree=['include',
+            delegate._source = dict(tree=['include',
                                                'src',
                                                os.path.join('src', 'x86')],
                                          files={'.h': [os.path.join('include', 'ffi.h'),
@@ -1716,6 +1732,12 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                                        mx_native.NativeDependency):
                 include_dirs = property(lambda self: [os.path.join(self.getOutput(), 'include')])
                 libs = property(lambda self: [next(self.getArchivableResults(single=True))[0]])
+                source_tree = [] # expected by NinjaManifestGenerator
+
+                def __init__(self, suite, name, subDir, srcDirs, deps, workingSets, results, output, d, refIncludeDirs, theLicense=None, testProject=False, vpath=False, **kwArgs):
+                    super(LibtoolNativeProject, self).__init__(suite, name, subDir, srcDirs, deps, workingSets, results, output, d, theLicense, testProject, vpath, **kwArgs)
+                    self.out_dir = self.get_output_root()
+                    self.ref_include_dirs = refIncludeDirs
 
                 def getArchivableResults(self, use_relpath=True, single=False):
                     for file_path, archive_path in super(LibtoolNativeProject, self).getArchivableResults(use_relpath):
@@ -1725,42 +1747,130 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                             assert path_in_lt_objdir, 'the first build result must be from LT_OBJDIR'
                             break
 
-            self.delegate = LibtoolNativeProject(suite, name, subDir, [], [], None,
+                def getBuildTask(self, args):
+                    return LibtoolNativeBuildTask(args, self, self.ref_include_dirs)
+
+            class LibtoolNativeBuildTask(mx.NativeBuildTask):
+                def __init__(self, args, project, refIncludeDirs):
+                    super(LibtoolNativeBuildTask, self).__init__(args, project)
+                    self.ref_include_dirs = refIncludeDirs
+
+                def _build_run_args(self):
+                    cmdline, cwd, env = super(LibtoolNativeBuildTask, self)._build_run_args()
+
+                    if env.get('CC') != os.environ.get('CC'):
+                        mx.abort("super()._build_run_args() set CC unexpectedly.")
+                    if 'CC' in env:
+                        mx.warn(f"Current $CC ({env['CC']}) will be overridden for '{self}'.")
+
+                    # extract CC from toolchain definition and pass it to configure via the environment
+                    def _find_cc_var():
+                        target = 'printCC'
+                        filename = 'extract_toolchain_info.ninja'
+
+                        with mx_native.NinjaManifestGenerator(self.subject, cwd, filename, toolchain=self.toolchain) as gen:
+                            gen.comment("ninja file to extract toolchain paths")
+
+                            gen.include(os.path.join(self.toolchain.get_path(), 'toolchain.ninja'))
+                            gen.newline()
+
+                            gen.n.rule(target + 'var', command='echo $CC')
+                            gen.n.build(target, target + 'var')
+                            gen.newline()
+
+                        capture = mx.OutputCapture()
+                        mx.run([mx_native.Ninja.binary, target, '-f', os.path.join(cwd, filename)], cwd=cwd, out=capture)
+                        return capture.data.strip().split('\n')[-1]
+
+                    env['CC'] = _find_cc_var()
+                    return cmdline, cwd, env
+
+                def verify_include_dirs(self):
+                    if self.ref_include_dirs is None:
+                        return
+
+                    len_ref = len(self.ref_include_dirs)
+                    if len_ref != 1:
+                        mx.abort(f"Expected only one include_dirs: {self.ref_include_dirs}")
+                    if len(self.subject.include_dirs) != len_ref:
+                        mx.abort(f"Number of include_dirs between delegates are not matching:\nlen({self.ref_include_dirs})\n!=\nlen({self.subject.include_dirs})")
+
+                    def _list_header_files(directory):
+                        return [file for file in os.listdir(directory) if file.endswith('.h')]
+
+                    ref_header_files = _list_header_files(self.ref_include_dirs[0])
+                    subject_header_files = _list_header_files(self.subject.include_dirs[0])
+
+                    if len(ref_header_files) != 2 or len(subject_header_files) != 2:
+                        mx.abort(f"Unexpected number of header files:\n{ref_header_files}\n{subject_header_files}")
+
+                    for header in ['ffi.h', 'ffitarget.h']:
+                        reference = os.path.join(self.ref_include_dirs[0], header)
+                        h = os.path.join(self.subject.include_dirs[0], header)
+
+                        if not os.path.exists(reference):
+                            mx.abort(f"File {reference} expected but does not exist.")
+                        if not os.path.exists(h):
+                            mx.abort(f"File {h} expected but does not exist.")
+
+                        if not filecmp.cmp(reference, h):
+                            mx.abort(f"Content of {reference} and {h} are expected to be the same, but are not.")
+
+
+            delegate = LibtoolNativeProject(self.suite, self.name, self.subDir, [], [], None,
                                                  ['.libs/libffi.a',
                                                   'include/ffi.h',
                                                   'include/ffitarget.h'],
-                                                 os.path.join(self.out_dir, 'libffi-build'),
-                                                 os.path.join(self.out_dir, 'libffi-3.4.8'))
+                                                 os.path.join(self.out_dir, toolchain.spec.target.subdir, 'libffi-build'),
+                                                 os.path.join(self.out_dir, toolchain.spec.target.subdir, 'libffi-3.4.8'),
+                                                 self.include_dirs)
             configure_args = ['--disable-dependency-tracking',
                               '--disable-shared',
                               '--with-pic']
 
             if mx.get_os() == 'darwin':
                 configure_args += ['--disable-multi-os-directory']
+            else:
+                assert toolchain.spec.target.os == 'linux'
+
+                configure_arch = {'amd64': 'x86_64', 'aarch64': 'aarch64'}.get(toolchain.spec.target.arch)
+                assert configure_arch, "translation to configure style arch is not supported yet for " + str(toolchain.spec.target.arch)
+
+                configure_libc = {'glibc': 'gnu', 'musl': 'musl'}.get(toolchain.spec.target.libc)
+                assert configure_libc, "translation to configure style libc is not supported yet for" + str(toolchain.spec.target.libc)
+
+                configure_args += ['--host={}-pc-linux-{}'.format(configure_arch, configure_libc)]
 
             configure_args += [' CFLAGS="{}"'.format(' '.join(['-g', '-O3', '-fvisibility=hidden'] + (['-m64'] if mx.get_os() == 'solaris' else []))),
                                'CPPFLAGS="-DNO_JAVA_RAW_API"']
 
-            self.delegate.buildEnv = dict(
-                SOURCES=os.path.basename(self.delegate.dir),
-                OUTPUT=os.path.basename(self.delegate.getOutput()),
+            delegate.buildEnv = dict(
+                SOURCES=os.path.basename(delegate.dir),
+                OUTPUT=os.path.basename(delegate.getOutput()),
                 CONFIGURE_ARGS=' '.join(configure_args)
             )
 
-        self.include_dirs = self.delegate.include_dirs
+        if self.include_dirs is None:
+            # include files of first delegate are used by users of this project.
+            self.include_dirs = delegate.include_dirs
+
+        self.delegates[toolchain] = delegate
+        return delegate
 
     def resolveDeps(self):
         super(LibffiBuilderProject, self).resolveDeps()
-        self.delegate.resolveDeps()
-        self.buildDependencies += self.delegate.buildDependencies
+
+        for toolchain in self.toolchains:
+            delegate = self._get_or_create_delegate(toolchain)
+            delegate.resolveDeps()
+            self.buildDependencies += delegate.buildDependencies
 
     @property
     def sources(self):
         assert len(self.deps) == 1, '{} must depend only on its sources'.format(self.name)
         return self.deps[0]
 
-    @property
-    def patches(self):
+    def patches(self, toolchain):
         """A list of patches that will be applied during a build."""
         def patch_dir(d):
             return os.path.join(self.source_dirs()[0], d)
@@ -1772,28 +1882,54 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
 
         for p in get_patches(patch_dir('common')):
             yield p
+
+        os_arch_libc_variant_dir = patch_dir('{}-{}-{}-{}'.format(mx.get_os(), mx.get_arch(), toolchain.spec.target.libc, toolchain.spec.target.variant))
         os_arch_dir = patch_dir('{}-{}'.format(mx.get_os(), mx.get_arch()))
-        if os.path.exists(os_arch_dir):
+
+        if os.path.exists(os_arch_libc_variant_dir):
+            for p in get_patches(os_arch_libc_variant_dir):
+                yield p
+        elif os.path.exists(os_arch_dir):
             for p in get_patches(os_arch_dir):
                 yield p
         else:
             for p in get_patches(patch_dir('others')):
                 yield p
 
-    def getBuildTask(self, args):
-        return LibffiBuildTask(args, self)
+    def _build_task(self, target_arch, args, toolchain=None):
+        project_delegate = self._get_or_create_delegate(toolchain)
+        return LibffiBuildTask(args, self, project_delegate, target_arch, toolchain)
 
     def getArchivableResults(self, use_relpath=True, single=False):
-        return self.delegate.getArchivableResults(use_relpath, single)
+        # alas `_archivable_results` doesn't give use the toolchain in use.
+        for toolchain in self.toolchains:
+            for file_path, archive_path in self.delegates[toolchain].getArchivableResults(use_relpath, single):
+                subdir = toolchain.spec.target.subdir
+                yield file_path, os.path.join(subdir, archive_path)
 
+    def _archivable_results(self, use_relpath, base_dir, file_path):
+        mx.abort("Should not be reached")
 
-class LibffiBuildTask(mx.AbstractNativeBuildTask):
-    def __init__(self, args, project):
-        super(LibffiBuildTask, self).__init__(args, project)
-        self.delegate = project.delegate.getBuildTask(args)
+    @property
+    def toolchain_kind(self):
+        # not a Ninja project, but extracting CC from a given Ninja toolchain definition
+        return "ninja"
+
+    def target_libs(self, target):
+        for toolchain, delegate in self.delegates.items():
+            if toolchain.spec.target == target:
+                return delegate.libs
+        mx.abort("could not find libs for target " + target.name)
+
+class LibffiBuildTask(mx_native.TargetArchBuildTask):
+    def __init__(self, args, project, project_delegate, target_arch, toolchain=None):
+        super(LibffiBuildTask, self).__init__(args, project, target_arch, toolchain)
+        self.delegate = project_delegate.getBuildTask(args)
+        self.delegate.toolchain = toolchain
+        self.srcDir = os.path.basename(project_delegate.dir) # something like `libffi-3.4.6`
 
     def __str__(self):
-        return 'Building {}'.format(self.subject.name)
+        return 'Building {} for target_arch {} and toolchain {}'.format(self.subject.name, self.target_arch, self.toolchain)
 
     def needsBuild(self, newestInput):
         is_needed, reason = super(LibffiBuildTask, self).needsBuild(newestInput)
@@ -1801,7 +1937,7 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
             return True, reason
 
         output = self.newestOutput()
-        newest_patch = mx.TimeStampFile.newest(self.subject.patches)
+        newest_patch = mx.TimeStampFile.newest(self.subject.patches(self.delegate.toolchain))
         if newest_patch and output.isOlderThan(newest_patch):
             return True, '{} is older than {}'.format(output, newest_patch)
 
@@ -1812,22 +1948,25 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
         return None if output and not output.exists() else output
 
     def build(self):
-        assert not os.path.exists(self.subject.out_dir), '{} must be cleaned before build'.format(self.subject.name)
+        assert not os.path.exists(self.out_dir), '{} must be cleaned before build'.format(self.subject.name)
 
         mx.log('Extracting {}...'.format(self.subject.sources))
-        mx.Extractor.create(self.subject.sources.get_path(False)).extract(self.subject.out_dir)
+        mx.Extractor.create(self.subject.sources.get_path(False)).extract(self.out_dir)
 
         mx.log('Applying patches...')
         git_apply = ['git', 'apply', '--whitespace=nowarn', '--unsafe-paths', '--directory',
-                     os.path.realpath(self.subject.delegate.dir)]
-        for patch in self.subject.patches:
+                     os.path.join(os.path.realpath(self.out_dir), self.srcDir)]
+        for patch in self.subject.patches(self.delegate.toolchain):
             mx.run(git_apply + [patch], cwd=self.subject.suite.vc_dir)
 
         self.delegate.logBuild()
         self.delegate.build()
 
+        if hasattr(self.delegate, 'verify_include_dirs'):
+            self.delegate.verify_include_dirs()
+
     def clean(self, forBuild=False):
-        mx.rmtree(self.subject.out_dir, ignore_errors=True)
+        mx.rmtree(self.out_dir, ignore_errors=True)
 
 
 

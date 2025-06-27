@@ -166,7 +166,7 @@ local sulong_deps = common.deps.sulong;
       skipPlatform:: coverageTags == [],
       gateTags:: ["build"] + coverageTags,
       # The Jacoco annotations interfere with partial evaluation. Use the DefaultTruffleRuntime to disable compilation just for the coverage runs.
-      extra_mx_args+: ["--no-jacoco-exclude-truffle", "-J-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime", "-J-Dpolyglot.engine.WarnInterpreterOnly=false"],
+      extra_mx_args+: ["-J-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime", "-J-Dpolyglot.engine.WarnInterpreterOnly=false"],
       extra_gate_args+: ["--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
       teardown+: [
         ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
@@ -193,8 +193,14 @@ local sulong_deps = common.deps.sulong;
   },
 } + {
 
-  [std.strReplace(name, "-", "_")]: common[name]
+  [std.strReplace(name, "-", "_")]: common[name] + { _jdkIsGraalVM:: false }
   for name in std.objectFieldsAll(common)
   if std.startsWith(name, "labsjdk")
+
+} + {
+
+  [name]: common[name] + { _jdkIsGraalVM:: true }
+  for name in std.objectFieldsAll(common)
+  if std.startsWith(name, "graalvm")
 
 }

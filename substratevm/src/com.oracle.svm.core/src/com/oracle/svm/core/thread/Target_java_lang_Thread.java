@@ -91,9 +91,6 @@ public final class Target_java_lang_Thread {
     volatile String name;
 
     @Alias//
-    Target_java_lang_ThreadLocal_ThreadLocalMap threadLocals = null;
-
-    @Alias//
     Target_java_lang_ThreadLocal_ThreadLocalMap inheritableThreadLocals = null;
 
     @Alias //
@@ -212,9 +209,30 @@ public final class Target_java_lang_Thread {
         /* Injected Target_java_lang_Thread instance field initialization. */
         this.threadData = new ThreadData();
 
-        String nameLocal = (name != null) ? name : genThreadName();
+        this.name = (name != null) ? name : genThreadName();
         boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
-        JavaThreads.initializeNewThread(this, g, target, nameLocal, stackSize, inheritThreadLocals);
+
+        final Thread parent = Thread.currentThread();
+        final ThreadGroup group = ((g != null) ? g : parent.getThreadGroup());
+
+        int priority;
+        boolean daemon;
+        if (JavaThreads.toTarget(parent) == this) {
+            priority = Thread.NORM_PRIORITY;
+            daemon = false;
+        } else {
+            priority = parent.getPriority();
+            daemon = parent.isDaemon();
+        }
+
+        JavaThreads.initThreadFields(this, group, target, stackSize, priority, daemon);
+
+        PlatformThreads.setThreadStatus(JavaThreads.fromTarget(this), ThreadStatus.NEW);
+
+        JavaThreads.initNewThreadLocalsAndLoader(this, inheritThreadLocals, parent);
+
+        /* Set thread ID */
+        tid = JavaThreads.nextThreadID();
 
         this.scopedValueBindings = NEW_THREAD_BINDINGS;
     }

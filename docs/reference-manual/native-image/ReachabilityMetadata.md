@@ -130,8 +130,7 @@ The _reachability-metadata.json_ configuration contains a single object with one
 ```json
 {
   "reflection":[],
-  "resources":[],
-  "bundles":[]
+  "resources":[]
 }
 ```
 
@@ -241,6 +240,40 @@ Metadata, for proxy classes, is in the form an ordered collection of interfaces 
   }
 }
 ```
+
+To provide metadata for a lambda class, the following metadata must be added to the `reflection` array in
+_reachability-metadata.json_
+
+```json
+{
+  "type": {
+    "lambda": {
+      "declaringClass": "FullyQualifiedLambdaDeclaringType",
+      "declaringMethod": {
+        "name": "declaringMethodName",
+        "parameterType": [
+          "FullyQualifiedParameterType1",
+          "...",
+          "FullyQualifiedParameterType2"
+        ]
+      },
+      "interfaces": [
+        "FullyQualifiedLambdaInterface1",
+        "...",
+        "FullyQualifiedLamdbaInterface2"
+      ]
+    }
+  }
+}
+```
+
+The `"declaringClass"` field specifies in which class, and the optional `"declaringMethod"` field specifies in which
+method the lambda is defined.
+If `"declaringMethod"` is not specified, the lambda class is searched through all methods of the specified declaring
+class.
+The `"interfaces"` field specifies which interfaces are implemented by the lambda class.
+Such a definition can match multiple lambda classes. If that is the case, the registration entry applies to all those
+classes.
 
 Invocation of methods above without the provided metadata will result in throwing `MissingReflectionRegistrationError` which extends `java.lang.Error` and
 should not be handled. Note that even if a type does not exist on the classpath, the methods above will throw a `MissingReflectionRegistrationError`.
@@ -562,13 +595,13 @@ For each registered resource you get:
 Java localization support (`java.util.ResourceBundle`) enables to load L10N resources and show messages localized for a specific _locale_.
 Native Image needs knowledge of the resource bundles that your application uses so that it can include appropriate resources and program elements to the application.
 
-A simple bundle can be specified in the `bundles` section of _reachability-metadata.json_:
+A simple bundle can be specified in the `resources` section of _reachability-metadata.json_:
 
 ```json
 {
-  "bundles": [
+  "resources": [
     {
-      "name":"your.pkg.Bundle"
+      "bundle": "your.pkg.Bundle"
     }
   ]
 }
@@ -577,26 +610,15 @@ A simple bundle can be specified in the `bundles` section of _reachability-metad
 To request a bundle from a specific module:
 ```json
 {
-  "bundles": [
+  "resources": [
     {
-      "name":"app.module:module.pkg.Bundle"
+      "bundle": "app.module:module.pkg.Bundle"
     }
   ]
 }
 ```
 
-By default, resource bundles are included for all locales that are [included into the image](#locales). 
-Below is the example how to include only specific locales for a bundle:
-```json
-{
-  "bundles": [
-    {
-      "name": "specific.locales.Bundle",
-      "locales": ["en", "de", "sk"]
-    }
-  ]
-}
-```
+Resource bundles are included for all locales that are [included into the image](#locales).
 
 ### Locales
 
@@ -737,12 +759,9 @@ See below is a sample reachability metadata configuration that you can use in _r
     {
       "module": "optional.module.of.a.resource",
       "glob": "path1/level*/**"
-    }
-  ],
-  "bundles": [
+    },
     {
-      "name": "fully.qualified.bundle.name",
-      "locales": ["en", "de", "other_optional_locales"]
+      "bundle": "fully.qualified.bundle.name"
     }
   ]
 }

@@ -51,7 +51,7 @@ import jdk.graal.compiler.word.Word;
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+25/src/hotspot/share/gc/parallel/psParallelCompact.cpp#L964-L1181")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+25/src/hotspot/share/gc/parallel/psScavenge.cpp#L319-L635")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L303-L407")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+26/src/hotspot/share/gc/shared/gc_globals.hpp#L303-L407")
 class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
     /*

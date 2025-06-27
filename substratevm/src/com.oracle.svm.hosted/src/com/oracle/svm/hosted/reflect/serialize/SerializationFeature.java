@@ -655,7 +655,11 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     private boolean superHasAccessibleConstructor(Class<?> prev) {
-        return ReflectionUtil.invokeMethod(superHasAccessibleConstructor, ReflectionFactory.getReflectionFactory(), prev);
+        try {
+            return ReflectionUtil.invokeMethod(superHasAccessibleConstructor, ReflectionFactory.getReflectionFactory(), prev);
+        } catch (LinkageError le) {
+            return false;
+        }
     }
 
     private boolean disableSerialConstructorChecks() {

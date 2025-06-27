@@ -29,6 +29,7 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.graph.Graph.NodeEvent;
 import jdk.graal.compiler.graph.Graph.NodeEventListener;
 import jdk.graal.compiler.graph.Node;
@@ -50,7 +51,7 @@ public class EconomicSetNodeEventListener extends NodeEventListener {
      */
     public EconomicSetNodeEventListener() {
         this.nodes = EconomicSet.create(Equivalence.IDENTITY);
-        this.filter = EnumSet.of(NodeEvent.INPUT_CHANGED, NodeEvent.NODE_ADDED, NodeEvent.ZERO_USAGES);
+        this.filter = EnumSet.of(NodeEvent.INPUT_CHANGED, NodeEvent.CONTROL_FLOW_CHANGED, NodeEvent.NODE_ADDED, NodeEvent.ZERO_USAGES);
     }
 
     /**

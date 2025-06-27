@@ -140,11 +140,6 @@ def jvm_standalone_deps():
             "sulong:SULONG_NATIVE",
             "sulong:SULONG_NFI",
         ]
-        if mx.suite('sulong-managed', fatalIfMissing=False):
-            result += [
-                'sulong-managed:SULONG_ENTERPRISE',
-                'sulong-managed:SULONG_ENTERPRISE_NATIVE',
-            ]
     if mx.suite('truffle-enterprise', fatalIfMissing=False):
         result.append('truffle-enterprise:TRUFFLE_ENTERPRISE')
     return result
@@ -181,9 +176,9 @@ def _run_java_truffle(args=None, cwd=None, nonZeroIsFatal=True, out=None, err=No
 
 def _run_espresso(args=None, cwd=None, nonZeroIsFatal=True, out=None, err=None, timeout=None):
     if _has_native_espresso_standalone():
-        _run_java_truffle(args, cwd, nonZeroIsFatal, out, err, timeout)
+        return _run_java_truffle(args, cwd, nonZeroIsFatal, out, err, timeout)
     else:
-        _run_espresso_launcher(args, cwd, nonZeroIsFatal, out, err, timeout)
+        return _run_espresso_launcher(args, cwd, nonZeroIsFatal, out, err, timeout)
 
 
 def _run_espresso_meta(args, nonZeroIsFatal=True, timeout=None):
@@ -572,12 +567,19 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         }, None, True, None, platforms='local', ignore=ignore_msg))
 
     register_espresso_runtime_resources(register_project, register_distribution, _suite)
+    deliverable_variant = mx.get_env('ESPRESSO_DELIVERABLE_VARIANT')
+    if deliverable_variant:
+        suffix = '-' + deliverable_variant.lower()
+        dist_suffix = '_' + deliverable_variant.upper()
+    else:
+        suffix = ''
+        dist_suffix = ''
     register_distribution(DeliverableStandaloneArchive(_suite,
         standalone_dist='ESPRESSO_NATIVE_STANDALONE',
-        community_archive_name="espresso-community",
-        enterprise_archive_name="espresso",
-        community_dist_name=f'GRAALVM_ESPRESSO_COMMUNITY_JAVA{java_home_dep.major_version}',
-        enterprise_dist_name=f'GRAALVM_ESPRESSO_JAVA{java_home_dep.major_version}'))
+        community_archive_name=f"espresso-community-java{java_home_dep.major_version}{suffix}",
+        enterprise_archive_name=f"espresso-java{java_home_dep.major_version}{suffix}",
+        community_dist_name=f'GRAALVM_ESPRESSO_COMMUNITY_JAVA{java_home_dep.major_version}{dist_suffix}',
+        enterprise_dist_name=f'GRAALVM_ESPRESSO_JAVA{java_home_dep.major_version}{dist_suffix}'))
 
 
 def espresso_resources_suite():
@@ -727,12 +729,20 @@ class EspressoRuntimeResourceProject(mx.JavaProject):
 
 
 class EspressoRuntimeResourceBuildTask(mx.JavaBuildTask):
+    subject: EspressoRuntimeResourceProject
+
     def __str__(self):
         return f'Generating {self.subject.name} internal resource and compiling it with {self._getCompiler().name()}'
 
     @staticmethod
     def _template_file():
         return join(_suite.mxDir, 'espresso_runtime_resource.template')
+
+    def witness_file(self):
+        return join(self.subject.get_output_root(), 'witness')
+
+    def witness_contents(self):
+        return self.subject.resource_id
 
     def needsBuild(self, newestInput):
         is_needed, reason = mx.ProjectBuildTask.needsBuild(self, newestInput)
@@ -748,6 +758,13 @@ class EspressoRuntimeResourceBuildTask(mx.JavaBuildTask):
         ])
         if newestInput is None or newestInput.isOlderThan(template_ts):
             newestInput = template_ts
+        witness_file = self.witness_file()
+        if not exists(witness_file):
+            return True, witness_file + " doesn't exist"
+        expected = self.witness_contents()
+        with open(witness_file, 'r', encoding='utf-8') as f:
+            if f.read() != expected:
+                return True, "Outdated content"
         return super().needsBuild(newestInput)
 
     @staticmethod
@@ -791,6 +808,10 @@ class EspressoRuntimeResourceBuildTask(mx.JavaBuildTask):
         with mx_util.SafeFileCreation(target_file) as sfc, open(sfc.tmpPath, 'w', encoding='utf-8') as f:
             f.write(file_content)
         super(EspressoRuntimeResourceBuildTask, self).build()
+        witness_file = self.witness_file()
+        mx_util.ensure_dirname_exists(witness_file)
+        with mx_util.SafeFileCreation(witness_file) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as outfile:
+            outfile.write(self.witness_contents())
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(

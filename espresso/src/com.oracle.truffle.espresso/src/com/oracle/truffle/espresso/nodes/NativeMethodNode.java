@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import static com.oracle.truffle.espresso.threads.ThreadState.IN_NATIVE;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -50,6 +52,7 @@ import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.VM;
 
 /**
@@ -106,11 +109,10 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
 
     @Override
     public Object execute(VirtualFrame frame) {
+        NATIVE_METHOD_CALLS.inc();
         JNIHandles handles = getContext().getHandles();
         int nativeFrame = handles.pushFrame();
-        NATIVE_METHOD_CALLS.inc();
-        var tls = getLanguage().getThreadLocalState();
-        tls.blockContinuationSuspension();   // Can't unwind through native frames.
+        Transition transition = Transition.transition(IN_NATIVE, this);
         try {
             Object[] nativeArgs = preprocessArgs(handles, frame.getArguments());
             Object result = executeNative.execute(boundNative, nativeArgs);
@@ -119,7 +121,7 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         } finally {
-            tls.unblockContinuationSuspension();
+            transition.restore(this);
             handles.popFramesIncluding(nativeFrame);
         }
     }

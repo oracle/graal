@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.SubstrateOptions.DeprecatedOptions.TearDownFailureNanos;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
@@ -73,6 +74,7 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import com.oracle.svm.core.thread.VMOperationControl;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
@@ -609,6 +611,18 @@ public class SubstrateOptions {
                 }
             }
         };
+
+        public static final String TEAR_DOWN_WARNING_NANOS_ERROR = "Can't set both TearDownWarningSeconds and TearDownWarningNanos at the same time. Use TearDownWarningSeconds.";
+        @Option(help = "The number of nanoseconds before and between which tearing down an isolate gives a warning message. 0 implies no warning.", //
+                        deprecated = true, deprecationMessage = "Use -XX:TearDownWarningSeconds=<secs> instead")//
+        public static final RuntimeOptionKey<Long> TearDownWarningNanos = new RuntimeOptionKey<>(0L,
+                        (key) -> UserError.guarantee(!(key.hasBeenSet() && TearDownWarningSeconds.hasBeenSet()), TEAR_DOWN_WARNING_NANOS_ERROR),
+                        RelevantForCompilationIsolates);
+
+        @Option(help = "The number of nanoseconds before tearing down an isolate gives a failure message and returns from a tear-down call. 0 implies no message.", //
+                        deprecated = true, deprecationMessage = "This call leaks resources. Instead, terminate java threads cooperatively, or use System#exit")//
+        public static final RuntimeOptionKey<Long> TearDownFailureNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
+
     }
 
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
@@ -791,9 +805,6 @@ public class SubstrateOptions {
 
     public static final String NATIVE_IMAGE_OPTIONS_ENV_VAR = "NATIVE_IMAGE_OPTIONS";
 
-    @Option(help = "Internal option to forward the value of " + NATIVE_IMAGE_OPTIONS_ENV_VAR)//
-    public static final HostedOptionKey<String> BuildOutputNativeImageOptionsEnvVarValue = new HostedOptionKey<>(null);
-
     public static final String BUILD_MEMORY_USAGE_REASON_TEXT_PROPERTY = "svm.build.memoryUsageReasonText";
 
     /*
@@ -863,15 +874,17 @@ public class SubstrateOptions {
      */
 
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
-    @Option(help = "The number of nanoseconds before and between which tearing down an isolate gives a warning message.  0 implies no warning.")//
-    public static final RuntimeOptionKey<Long> TearDownWarningNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
-
-    @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
-    @Option(help = "The number of nanoseconds before tearing down an isolate gives a failure message.  0 implies no message.")//
-    public static final RuntimeOptionKey<Long> TearDownFailureNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
+    @Option(help = "The number of seconds before and between which tearing down an isolate gives a warning message. 0 implies no warning.")//
+    public static final RuntimeOptionKey<Long> TearDownWarningSeconds = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
 
     public static long getTearDownWarningNanos() {
-        return TearDownWarningNanos.getValue();
+        if (TearDownWarningSeconds.hasBeenSet() && DeprecatedOptions.TearDownWarningNanos.hasBeenSet()) {
+            throw new IllegalArgumentException(DeprecatedOptions.TEAR_DOWN_WARNING_NANOS_ERROR);
+        }
+        if (DeprecatedOptions.TearDownWarningNanos.hasBeenSet()) {
+            return DeprecatedOptions.TearDownWarningNanos.getValue();
+        }
+        return TearDownWarningSeconds.getValue() * TimeUtils.nanosPerSecond;
     }
 
     public static long getTearDownFailureNanos() {
@@ -1561,7 +1574,7 @@ public class SubstrateOptions {
         return !Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) && ConcealedOptions.DumpRuntimeCompiledMethods.getValue();
     }
 
-    @Option(help = "file:doc-files/TrackDynamicAccessHelp.txt")//
+    @Option(help = "file:doc-files/TrackDynamicAccessHelp.txt", stability = OptionStability.EXPERIMENTAL)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> TrackDynamicAccess = new HostedOptionKey<>(
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 

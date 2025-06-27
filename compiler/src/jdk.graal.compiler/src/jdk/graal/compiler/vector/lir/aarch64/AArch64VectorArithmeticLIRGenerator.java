@@ -872,4 +872,14 @@ public class AArch64VectorArithmeticLIRGenerator extends AArch64ArithmeticLIRGen
     public Value emitMoveIntegerToOpMask(LIRKind resultKind, Value mask) {
         throw new UnsupportedOperationException();
     }
+
+    @Override
+    public Variable emitVectorCompress(LIRKind resultKind, Value source, Value mask) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Variable emitVectorExpand(LIRKind resultKind, Value source, Value mask) {
+        throw new UnsupportedOperationException();
+    }
 }

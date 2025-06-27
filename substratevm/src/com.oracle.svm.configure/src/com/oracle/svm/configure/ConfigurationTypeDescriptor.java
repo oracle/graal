@@ -40,7 +40,8 @@ import jdk.graal.compiler.util.json.JsonPrintable;
 public interface ConfigurationTypeDescriptor extends Comparable<ConfigurationTypeDescriptor>, JsonPrintable {
     enum Kind {
         NAMED,
-        PROXY
+        PROXY,
+        LAMBDA
     }
 
     Kind getDescriptorType();

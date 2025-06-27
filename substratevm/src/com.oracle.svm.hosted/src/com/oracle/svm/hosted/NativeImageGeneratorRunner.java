@@ -64,6 +64,7 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
@@ -80,7 +81,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import com.oracle.svm.core.JavaVersionUtil;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -495,19 +496,9 @@ public class NativeImageGeneratorRunner {
                          * If no C-level main method was found, look for a Java-level main method
                          * and use our wrapper to invoke it.
                          */
-                        if ("main".equals(mainEntryPointName) && JavaMainWrapper.instanceMainMethodSupported()) {
-                            // Instance main method only supported for "main" method name
+                        if ("main".equals(mainEntryPointName)) {
                             try {
-                                /*
-                                 * JDK-8306112: Implementation of JEP 445: Unnamed Classes and
-                                 * Instance Main Methods (Preview)
-                                 *
-                                 * MainMethodFinder will perform all the necessary checks
-                                 */
-                                String mainMethodFinderClassName = "jdk.internal.misc.MethodFinder";
-                                Class<?> mainMethodFinder = ReflectionUtil.lookupClass(false, mainMethodFinderClassName);
-                                Method findMainMethod = ReflectionUtil.lookupMethod(mainMethodFinder, "findMainMethod", Class.class);
-                                javaMainMethod = (Method) findMainMethod.invoke(null, mainClass);
+                                javaMainMethod = findDefaultJavaMainMethod(mainClass);
                             } catch (InvocationTargetException ex) {
                                 assert ex.getTargetException() instanceof NoSuchMethodException;
                                 throw UserError.abort(ex.getCause(),
@@ -616,6 +607,27 @@ public class NativeImageGeneratorRunner {
             ImageSingletonsSupportImpl.HostedManagement.clear();
         }
         return ExitStatus.OK.getValue();
+    }
+
+    /*
+     * Finds the main method using the {@code jdk.internal.misc.MethodFinder}.
+     *
+     * The {@code MethodFinder} was introduced by JDK-8344706 (Implement JEP 512: Compact Source
+     * Files and Instance Main Methods) and will perform all the necessary checks.
+     */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+24/src/java.base/share/classes/jdk/internal/misc/MethodFinder.java#L45-L106")
+    private static Method findDefaultJavaMainMethod(Class<?> mainClass) throws IllegalAccessException, InvocationTargetException {
+        Class<?> mainMethodFinder = ReflectionUtil.lookupClass(false, "jdk.internal.misc.MethodFinder");
+        Method findMainMethod = ReflectionUtil.lookupMethod(mainMethodFinder, "findMainMethod", Class.class);
+        /*
+         * We are using Method.invoke and throwing checked exceptions on purpose instead of
+         * ReflectionUtil to issue a proper error message.
+         */
+        Method invoke = (Method) findMainMethod.invoke(null, mainClass);
+        /*
+         * Use ReflectionUtil get a Method object with the right accessibility.
+         */
+        return ReflectionUtil.lookupMethod(invoke.getDeclaringClass(), invoke.getName(), invoke.getParameterTypes());
     }
 
     private static void reportConflictingOptions(HostedOptionKey<Boolean> o1, HostedOptionKey<?> o2) {

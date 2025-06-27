@@ -50,6 +50,7 @@ import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIBinaryOpN
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIBlendNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIBroadcastIntNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPICompareNode;
+import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPICompressExpandOpNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIConvertNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIExtractNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIFromBitsCoercedNode;
@@ -138,6 +139,7 @@ public class VectorAPIIntrinsics {
         OptionalLazySymbol vectorBroadcastIntOp = new OptionalLazySymbol(vectorSupportName + "$VectorBroadcastIntOp");
         OptionalLazySymbol vectorConvertOp = new OptionalLazySymbol(vectorSupportName + "$VectorConvertOp");
         OptionalLazySymbol vectorRearrangeOp = new OptionalLazySymbol(vectorSupportName + "$VectorRearrangeOp");
+        OptionalLazySymbol compressExpandOperation = new OptionalLazySymbol(vectorSupportName + "$CompressExpandOperation");
         OptionalLazySymbol vectorMaskOp = new OptionalLazySymbol(vectorSupportName + "$VectorMaskOp");
 
         r.register(new InlineOnlyInvocationPlugin("fromBitsCoerced", Class.class, Class.class, int.class, long.class, int.class, vectorSpecies, fromBitsCoercedOperation) {
@@ -397,6 +399,16 @@ public class VectorAPIIntrinsics {
                 ValueNode mask = m.isNullConstant() ? m : b.nullCheckedValue(m);
                 MacroParams params = MacroParams.of(b, targetMethod, returnStamp, vClass, shClass, mClass, eClass, length, b.nullCheckedValue(v), b.nullCheckedValue(sh), mask, defaultImpl);
                 b.addPush(JavaKind.Object, VectorAPIRearrangeOpNode.create(params, b));
+                return true;
+            }
+        });
+
+        r.register(new InlineOnlyInvocationPlugin("compressExpandOp", int.class, Class.class, Class.class, Class.class, int.class, vector, vectorMask, compressExpandOperation) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver type, ValueNode opr, ValueNode vClass, ValueNode mClass, ValueNode eClass, ValueNode length,
+                            ValueNode v, ValueNode m, ValueNode defaultImpl) {
+                MacroParams params = MacroParams.of(b, targetMethod, opr, vClass, mClass, eClass, length, v.isNullConstant() ? v : b.nullCheckedValue(v), b.nullCheckedValue(m), defaultImpl);
+                b.addPush(JavaKind.Object, VectorAPICompressExpandOpNode.create(params, b));
                 return true;
             }
         });

@@ -242,6 +242,7 @@ import jdk.graal.compiler.lir.amd64.vector.AMD64VectorGather;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorMove;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorShuffle;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorUnary;
+import jdk.graal.compiler.lir.amd64.vector.AVX512CompressExpand;
 import jdk.graal.compiler.lir.amd64.vector.AVX512MaskedOp;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.AbsNode;
@@ -2018,5 +2019,19 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
         } else {
             return null;
         }
+    }
+
+    @Override
+    public Variable emitVectorCompress(LIRKind resultKind, Value source, Value mask) {
+        Variable result = getLIRGen().newVariable(resultKind);
+        getLIRGen().append(new AVX512CompressExpand.CompressOp(result, asAllocatable(source), asAllocatable(mask)));
+        return result;
+    }
+
+    @Override
+    public Variable emitVectorExpand(LIRKind resultKind, Value source, Value mask) {
+        Variable result = getLIRGen().newVariable(resultKind);
+        getLIRGen().append(new AVX512CompressExpand.ExpandOp(result, asAllocatable(source), asAllocatable(mask)));
+        return result;
     }
 }

@@ -318,6 +318,10 @@ public class ParserState {
         bytecode.add(instruction);
     }
 
+    public void addSelectInstruction(int instruction) {
+        bytecode.addSelect(instruction);
+    }
+
     /**
      * Performs the necessary branch checks and adds the conditional branch information in the extra
      * data array.

@@ -51,4 +51,29 @@ public abstract class JMXService {
      * @throws IOException if an IO error occurred during dumping
      */
     protected abstract void dumpHeap(String outputFile, boolean live) throws IOException;
+
+    /**
+     * Reports information about time in the garbage collector.
+     */
+    public interface GCTimeStatistics {
+        /**
+         * The number of GCs since the creation of this object.
+         */
+        long getGCCount();
+
+        /**
+         * The amount of time spent in the garbage collector since the creation of this object.
+         */
+        long getGCTimeMills();
+
+        /**
+         * The time since the creation of this object.
+         */
+        long getElapsedTimeMillis();
+    }
+
+    /**
+     * Provides access to information about time spent in the garbage collector.
+     */
+    protected abstract GCTimeStatistics getGCTimeStatistics();
 }

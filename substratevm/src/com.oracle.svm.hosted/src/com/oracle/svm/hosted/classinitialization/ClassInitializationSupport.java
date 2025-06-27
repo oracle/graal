@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,7 +48,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
-import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -125,6 +124,14 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
     final ConcurrentMap<Class<?>, InitKind> classInitKinds = new ConcurrentHashMap<>();
 
     /**
+     * Store classes that were configured with --initialize-at-build-time but for which
+     * initialization failed and were registered as initialized at run time either because
+     * initialization errors during registration were allowed or they were not configured with
+     * --link-at-build-time.
+     */
+    final Set<Class<?>> requestedAtBuildTimeButFailedInit = ConcurrentHashMap.newKeySet();
+
+    /**
      * We need always-reached types to avoid users injecting class initialization checks in our VM
      * implementation and hot paths and to prevent users from making the whole class hierarchy
      * require initialization nodes.
@@ -197,10 +204,24 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
     }
 
     /**
-     * Returns an init kind for {@code clazz}.
+     * Returns the configured init kind for {@code clazz}.
      */
     InitKind specifiedInitKindFor(Class<?> clazz) {
         return classInitializationConfiguration.lookupKind(clazz.getTypeName()).getLeft();
+    }
+
+    /**
+     * Returns the computed init kind for {@code clazz}, which can differ from the configured init
+     * kind returned by {@link #specifiedInitKindFor(Class)}.
+     */
+    InitKind computedInitKindFor(Class<?> clazz) {
+        return classInitKinds.get(clazz);
+    }
+
+    public boolean isFailedInitialization(Class<?> clazz) {
+        boolean failedInit = requestedAtBuildTimeButFailedInit.contains(clazz);
+        VMError.guarantee(!failedInit || specifiedInitKindFor(clazz) == InitKind.BUILD_TIME && computedInitKindFor(clazz) == InitKind.RUN_TIME);
+        return failedInit;
     }
 
     Boolean isStrictlyDefined(Class<?> clazz) {
@@ -248,7 +269,7 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
      */
     @SuppressWarnings("try")
     InitKind ensureClassInitialized(Class<?> clazz, boolean allowErrors) {
-        LibGraalLoader libGraalLoader = loader.classLoaderSupport.getLibGraalLoader();
+        ClassLoader libGraalLoader = (ClassLoader) loader.classLoaderSupport.getLibGraalLoader();
         ClassLoader cl = clazz.getClassLoader();
         // Graal and JVMCI make use of ServiceLoader which uses the
         // context class loader so it needs to be the libgraal loader.
@@ -411,19 +432,15 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
         InitKind initKind = ensureClassInitialized(clazz, allowInitializationErrors);
         if (initKind == InitKind.RUN_TIME) {
             assert allowInitializationErrors || !LinkAtBuildTimeSupport.singleton().linkAtBuildTime(clazz);
-            if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
                 /*
-                 * Special case for application layer building. If a base layer class was configured
-                 * with --initialize-at-build-time but its initialization failed, then the computed
-                 * init kind will be RUN_TIME, different from its configured init kind of
-                 * BUILD_TIME. In the app layer the computed init kind from the previous layer is
-                 * registered as the configured init kind, but if the --initialize-at-build-time was
-                 * already processed for the class then it will already have a conflicting
-                 * configured init kind of BUILD_TIME. Update the configuration registry to allow
-                 * the RUN_TIME registration coming from the base layer. (GR-65405)
+                 * Record class configured with --initialize-at-build-time but for which
+                 * initialization failed so it's registered as initialized at run time. To ensure
+                 * that the state of class initialization registries is consistent between layers
+                 * we'll attempt to init it again in the next layer and verify that it fails. Class
+                 * initialization in layered images will be further refined by (GR-65405).
                  */
-                classInitializationConfiguration.updateStrict(clazz.getTypeName(), InitKind.BUILD_TIME, InitKind.RUN_TIME,
-                                "Allow the registration of the computed run time initialization kind from a previous layer for classes whose build time initialization fails.");
+                requestedAtBuildTimeButFailedInit.add(clazz);
             }
         }
         classInitKinds.put(clazz, initKind);

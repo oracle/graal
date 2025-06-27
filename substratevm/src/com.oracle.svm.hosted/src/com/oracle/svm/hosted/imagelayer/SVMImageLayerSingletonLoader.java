@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import static com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader.getBooleans;
-
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,15 +31,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
-import com.oracle.svm.shaded.org.capnproto.Text;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -75,9 +69,9 @@ public class SVMImageLayerSingletonLoader {
                     case I -> v.getI();
                     case J -> v.getJ();
                     case STR -> v.getStr().toString();
-                    case IL -> Stream.of(v.getIl()).flatMapToInt(r -> IntStream.range(0, r.size()).map(r::get)).toArray();
-                    case ZL -> getBooleans(v.getZl());
-                    case STRL -> StreamSupport.stream(v.getStrl().spliterator(), false).map(Text.Reader::toString).toArray(String[]::new);
+                    case IL -> CapnProtoAdapters.toIntArray(v.getIl());
+                    case ZL -> CapnProtoAdapters.toBooleanArray(v.getZl());
+                    case STRL -> CapnProtoAdapters.toStringArray(v.getStrl());
                     case _NOT_IN_SCHEMA -> throw new IllegalStateException("Unexpected value: " + v.which());
                 };
                 keyStore.put(entry.getKey().toString(), value);
@@ -112,11 +106,9 @@ public class SVMImageLayerSingletonLoader {
                 Class<?> clazz = imageLayerBuildingSupport.lookupClass(false, className);
                 singletonInitializationMap.computeIfAbsent(forbiddenObject, (k) -> new HashSet<>());
                 singletonInitializationMap.get(forbiddenObject).add(clazz);
-                if (InitialLayerOnlyImageSingleton.class.isAssignableFrom(clazz)) {
+                if (entry.getIsInitialLayerOnly()) {
                     int constantId = entry.getConstantId();
-                    if (constantId != -1) {
-                        initialLayerKeyToIdMap.put(clazz, constantId);
-                    }
+                    initialLayerKeyToIdMap.put(clazz, constantId);
                 }
             } else {
                 assert persistInfo == PersistFlags.NOTHING : "Unexpected PersistFlags value: " + persistInfo;
@@ -127,6 +119,10 @@ public class SVMImageLayerSingletonLoader {
         initialLayerOnlySingletonConstantIds = Map.copyOf(initialLayerKeyToIdMap);
 
         return singletonInitializationMap;
+    }
+
+    public boolean isInitialLayerOnlyImageSingleton(Class<?> key) {
+        return initialLayerOnlySingletonConstantIds.containsKey(key);
     }
 
     public JavaConstant loadInitialLayerOnlyImageSingleton(Class<?> key) {

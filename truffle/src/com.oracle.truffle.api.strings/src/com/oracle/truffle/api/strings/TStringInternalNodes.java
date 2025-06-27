@@ -2010,13 +2010,14 @@ final class TStringInternalNodes {
                 }
             }
             int hash = TStringUnsafe.getJavaStringHashMasked(javaString);
-            TruffleString ret = TruffleString.createFromByteArray(array, offset, length, stride, Encoding.UTF_16, codePointLength, codeRange, hash, true);
+            final TruffleString cacheEntry;
             if (length == javaString.length()) {
                 assert charOffset == 0;
-                TruffleString wrapped = TruffleString.createWrapJavaString(javaString, codePointLength, codeRange);
-                ret.cacheInsertFirstBeforePublished(wrapped);
+                cacheEntry = TruffleString.createWrapJavaString(javaString, codePointLength, codeRange);
+            } else {
+                cacheEntry = null;
             }
-            return ret;
+            return TruffleString.createFromByteArrayWithCacheEntry(array, offset, length, stride, Encoding.UTF_16, codePointLength, codeRange, hash, cacheEntry);
         }
     }
 

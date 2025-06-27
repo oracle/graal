@@ -102,8 +102,6 @@ _base_jdk_version_info = None
 
 default_components = []
 
-USE_LEGACY_GU = mx.str_to_bool(mx.get_env('LEGACY_GU', 'false'))
-
 mx.add_argument('--base-dist-name', help='Sets the name of the GraalVM base image ( for complete, ruby ... images), default to "base"', default='base')
 
 
@@ -126,6 +124,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             '--features=org.graalvm.launcher.PolyglotLauncherFeature',
             '--tool:all',
         ] + svm_experimental_options(['-H:-ParseRuntimeOptions']),
+        # No need to pass --enable-native-access=org.graalvm.shadowed.jline, because the polyglot bash launcher
+        # script adds JLine to class-path, not module-path, so we do not need to enable native access
         is_main_launcher=True,
         default_symlinks=True,
         is_sdk_launcher=True,

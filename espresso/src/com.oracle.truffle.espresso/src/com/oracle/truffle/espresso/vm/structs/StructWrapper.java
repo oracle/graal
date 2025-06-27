@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.vm.structs;
 
+import static com.oracle.truffle.espresso.ffi.NativeType.BITFIELD_INT;
 import static com.oracle.truffle.espresso.ffi.NativeType.BOOLEAN;
 import static com.oracle.truffle.espresso.ffi.NativeType.INT;
 import static com.oracle.truffle.espresso.ffi.NativeType.LONG;
@@ -719,6 +720,43 @@ import com.oracle.truffle.espresso.vm.structs.GenerateStructs.KnownStruct;
                                                 POINTER,
                                                 POINTER,
                                 }),
+                /*-
+                 * typedef struct jmmOptionalSupport {
+                 *   unsigned int isLowMemoryDetectionSupported : 1;
+                 *   unsigned int isCompilationTimeMonitoringSupported : 1;
+                 *   unsigned int isThreadContentionMonitoringSupported : 1;
+                 *   unsigned int isCurrentThreadCpuTimeSupported : 1;
+                 *   unsigned int isOtherThreadCpuTimeSupported : 1;
+                 *   unsigned int isObjectMonitorUsageSupported : 1;
+                 *   unsigned int isSynchronizerUsageSupported : 1;
+                 *   unsigned int isThreadAllocatedMemorySupported : 1;
+                 *   unsigned int isRemoteDiagnosticCommandsSupported : 1;
+                 *   unsigned int : 22;
+                 * } jmmOptionalSupport;
+                 */
+                @KnownStruct(structName = "jmmOptionalSupport", //
+                                memberNames = {
+                                                "isLowMemoryDetectionSupported",
+                                                "isCompilationTimeMonitoringSupported",
+                                                "isThreadContentionMonitoringSupported",
+                                                "isCurrentThreadCpuTimeSupported",
+                                                "isOtherThreadCpuTimeSupported",
+                                                "isObjectMonitorUsageSupported",
+                                                "isSynchronizerUsageSupported",
+                                                "isThreadAllocatedMemorySupported",
+                                                "isRemoteDiagnosticCommandsSupported",
+                                }, //
+                                types = {
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                }),
 })
 public abstract class StructWrapper {
     private final JNIHandles handles;
@@ -778,6 +816,53 @@ public abstract class StructWrapper {
 
     protected void putInt(int offset, int value) {
         buffer.putInt(offset, value);
+    }
+
+    protected int getBitFieldInt(int offset, byte startBit, byte endBit) {
+        assert 0 <= startBit && startBit < 8 : startBit;
+        assert endBit > 0 : endBit;
+        assert startBit != endBit : startBit + "!=" + endBit;
+        assert endBit - startBit <= 32 : startBit + ".." + endBit;
+        long v = getBits(offset, endBit) >> startBit;
+        long mask = (1L << (endBit - startBit)) - 1;
+        return Math.toIntExact(v & mask);
+    }
+
+    private long getBits(int offset, byte endBit) {
+        long v;
+        if (endBit <= 8) {
+            v = buffer.get(offset) & 0xff;
+        } else if (endBit <= 16) {
+            v = buffer.getChar(offset);
+        } else if (endBit <= 32) {
+            v = buffer.getInt(offset) & 0xffff_ffffL;
+        } else {
+            v = buffer.getLong(offset);
+        }
+        return v;
+    }
+
+    protected void putBitFieldInt(int offset, byte startBit, byte endBit, int value) {
+        assert 0 <= startBit && startBit < 8 : startBit;
+        assert endBit > 0 : endBit;
+        assert startBit != endBit : startBit + "!=" + endBit;
+        assert endBit - startBit <= 32 : startBit + ".." + endBit;
+        long mask = ((1L << (endBit - startBit)) - 1) << startBit;
+        long v = getBits(offset, endBit);
+        v = (v & ~mask) | (((long) value << startBit) & mask);
+        putBits(offset, endBit, v);
+    }
+
+    private void putBits(int offset, byte endBit, long v) {
+        if (endBit <= 8) {
+            buffer.put(offset, (byte) v);
+        } else if (endBit <= 16) {
+            buffer.putChar(offset, (char) v);
+        } else if (endBit <= 32) {
+            buffer.putInt(offset, (int) v);
+        } else {
+            buffer.putLong(offset, v);
+        }
     }
 
     protected float getFloat(int offset) {
