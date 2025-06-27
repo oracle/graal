@@ -7,7 +7,7 @@ import jdk.graal.compiler.graph.Node;
 
 /**
  * This interface provides functionality for executing operations
- * on nodes and edges within the GraalIR of an analyzed method.
+ * on nodes and edges within the Graal IR of an analyzed method.
  *
  * @param <Domain> type of the derived {@link AbstractDomain} used in the analysis
  */
@@ -15,7 +15,7 @@ public interface AbstractInterpreter<Domain extends AbstractDomain<Domain>> {
 
     /**
      * Simulate the effect of executing an edge between two nodes {@link AbstractState}.
-     * For efficiency, this method should not modify the {@link AbstractState} directly.
+     * For efficiency, this method should modify the {@link AbstractState} directly.
      *
      * @param source        the node from which the edge originates
      * @param target        the node to which the edge goes
@@ -25,7 +25,7 @@ public interface AbstractInterpreter<Domain extends AbstractDomain<Domain>> {
 
     /**
      * Simulate the effect of executing a node in the GraalIR on the {@link AbstractState}.
-     * For efficiency, this method should not modify the {@link AbstractState} directly.
+     * For efficiency, this method should modify the {@link AbstractState} directly.
      *
      * @param node           to analyze
      * @param abstractState  of the analyzed method
