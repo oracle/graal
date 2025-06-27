@@ -59,6 +59,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -72,10 +73,13 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.test.OSUtils;
 import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
 import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -91,6 +95,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
+import static org.junit.Assume.assumeFalse;
 
 public class InternalResourceTest {
 
@@ -1305,6 +1310,83 @@ public class InternalResourceTest {
             }
             verifyResources(root, SourcesResource.RESOURCES);
             return null;
+        }
+    }
+
+    @Test
+    public void testUnsupportedPlatformDisabled() throws IOException, InterruptedException {
+        assumeFalse(ImageInfo.inImageCode());
+        SubprocessTestUtils.newBuilder(InternalResourceTest.class, () -> {
+            var prevProperties = setUnsupportedArchitecture();
+            try {
+                AbstractPolyglotTest.assertFails(() -> Context.create(), PolyglotException.class, (e) -> {
+                    assertEquals("java.lang.IllegalStateException: Unsupported operating system: 'z/os'. " +
+                                    "If you want to continue using this unsupported platform, set the system property '-Dpolyglot.engine.allowUnsupportedPlatform=true'. " +
+                                    "Note that unsupported platforms require additional command line options to be functional.", e.getMessage());
+                });
+            } finally {
+                restoreArchitecture(prevProperties);
+            }
+        }).removeOptimizedRuntimeOptions(true).run();
+    }
+
+    @Test
+    public void testUnsupportedPlatformEnabled() throws IOException, InterruptedException {
+        assumeFalse(ImageInfo.inImageCode());
+        SubprocessTestUtils.newBuilder(InternalResourceTest.class, () -> {
+            var prevProperties = setUnsupportedArchitecture();
+            try {
+                AbstractPolyglotTest.assertFails(() -> Context.create(), PolyglotException.class, (e) -> {
+                    assertEquals("java.lang.IllegalStateException: Truffle is running on an unsupported platform. " +
+                                    "On unsupported platforms, you must explicitly set the default cache directory " +
+                                    "using the system property '-Dpolyglot.engine.userResourceCache=<path_to_cache_folder>'.", e.getMessage());
+                });
+            } finally {
+                restoreArchitecture(prevProperties);
+            }
+        }).removeOptimizedRuntimeOptions(true).prefixVmOption("-Dpolyglot.engine.allowUnsupportedPlatform=true").run();
+    }
+
+    @Test
+    public void testUnsupportedPlatformEnabledWithExplicitCacheFolder() throws IOException, InterruptedException {
+        assumeFalse(ImageInfo.inImageCode());
+        Path tmp = SubprocessTestUtils.isSubprocess() ? null : Files.createTempDirectory("test_cache_root").toAbsolutePath();
+        try {
+            SubprocessTestUtils.newBuilder(InternalResourceTest.class, () -> {
+                var prevProperties = setUnsupportedArchitecture();
+                try {
+                    Context context = Context.create();
+                    context.close();
+                } finally {
+                    restoreArchitecture(prevProperties);
+                }
+            }).//
+                            prefixVmOption("-Dpolyglot.engine.allowUnsupportedPlatform=true").//
+                            prefixVmOption("-Dpolyglot.engine.userResourceCache=" + tmp).//
+                            removeOptimizedRuntimeOptions(true).//
+                            onExit((subprocess) -> {
+                                assertTrue(subprocess.output.stream().anyMatch((l) -> l.contains("Truffle is running on an unsupported platform where the TruffleAttach library is unavailable.")));
+                            }).//
+                            run();
+        } finally {
+            if (tmp != null) {
+                delete(tmp);
+            }
+        }
+    }
+
+    private static Map<String, String> setUnsupportedArchitecture() {
+        Map<String, String> prev = new HashMap<>();
+        prev.put("os.name", System.getProperty("os.name"));
+        prev.put("os.arch", System.getProperty("os.arch"));
+        System.setProperty("os.name", "z/os");
+        System.setProperty("os.arch", "s390x");
+        return prev;
+    }
+
+    private static void restoreArchitecture(Map<String, String> properties) {
+        for (var entry : properties.entrySet()) {
+            System.setProperty(entry.getKey(), entry.getValue());
         }
     }
 

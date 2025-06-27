@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 26.0.0
+* GR-65048: GR-65048: Introduced the `-Dpolyglot.engine.allowUnsupportedPlatform=true` system property to enable Truffle to run on unsupported platforms. If this property is enabled then the failure will be suppressed. Please see follow-up errors and warnings for instructions on how to continue. Note that using an unsupported platform will also force the fallback runtime without runtime optimization.
+
 ## Version 25.0.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.
 * GR-51664 Improved `PolyglotException#toString` and `PolyglotException#printStackTrace`.

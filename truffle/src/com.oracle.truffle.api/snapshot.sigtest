@@ -181,6 +181,7 @@ CLSS public final static !enum com.oracle.truffle.api.InternalResource$CPUArchit
  outer com.oracle.truffle.api.InternalResource
 fld public final static com.oracle.truffle.api.InternalResource$CPUArchitecture AARCH64
 fld public final static com.oracle.truffle.api.InternalResource$CPUArchitecture AMD64
+fld public final static com.oracle.truffle.api.InternalResource$CPUArchitecture UNSUPPORTED
 meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.InternalResource$CPUArchitecture getCurrent()
 meth public static com.oracle.truffle.api.InternalResource$CPUArchitecture valueOf(java.lang.String)
@@ -213,13 +214,14 @@ CLSS public final static !enum com.oracle.truffle.api.InternalResource$OS
  outer com.oracle.truffle.api.InternalResource
 fld public final static com.oracle.truffle.api.InternalResource$OS DARWIN
 fld public final static com.oracle.truffle.api.InternalResource$OS LINUX
+fld public final static com.oracle.truffle.api.InternalResource$OS UNSUPPORTED
 fld public final static com.oracle.truffle.api.InternalResource$OS WINDOWS
 meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.InternalResource$OS getCurrent()
 meth public static com.oracle.truffle.api.InternalResource$OS valueOf(java.lang.String)
 meth public static com.oracle.truffle.api.InternalResource$OS[] values()
 supr java.lang.Enum<com.oracle.truffle.api.InternalResource$OS>
-hfds id
+hfds PROPERTY_ALLOW_UNSUPPORTED_PLATFORM,allowsUnsupportedPlatformValue,id
 
 CLSS public com.oracle.truffle.api.OptimizationFailedException
 cons public init(java.lang.Throwable,com.oracle.truffle.api.RootCallTarget)
