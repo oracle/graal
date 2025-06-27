@@ -32,6 +32,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 Run-time initialization of security providers helps reduce image heap size by avoiding unnecessary objects inclusion.
 * (GR-48191) Enable lambda classes to be registered for reflection and serialization in _reachability-metadata.json_. The format is detailed [here](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/ReachabilityMetadata.md).
 * (GR-54697) Parallelize debug info generation and add support for run-time debug info generation. `-H:+RuntimeDebugInfo` adds a run-time debug info generator into a native image for use with GDB.
+* (GR-65773) Integrate Foreign Function and Memory (FFM) API metadata into _reachability-metadata.json_.
 
 ## GraalVM for JDK 24 (Internal Version 24.2.0)
 * (GR-59717) Added `DuringSetupAccess.registerObjectReachabilityHandler` to allow registering a callback that is executed when an object of a specified type is marked as reachable during heap scanning.
