@@ -98,6 +98,18 @@ final class Target_jdk_internal_util_StaticProperty {
 
     @Alias//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    private static String STDIN_ENCODING;
+
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    private static String STDERR_ENCODING;
+
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    private static String STDOUT_ENCODING;
+
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     private static String SUN_JNU_ENCODING;
 
     @Alias//
@@ -193,6 +205,10 @@ final class Target_jdk_internal_util_StaticProperty {
             NATIVE_ENCODING = p.getInitialProperty("native.encoding");
             FILE_ENCODING = p.getInitialProperty("file.encoding");
             JAVA_PROPERTIES_DATE = p.getInitialProperty("java.properties.date");
+            STDIN_ENCODING = p.getInitialProperty("stdin.encoding");
+            STDERR_ENCODING = p.getInitialProperty("stderr.encoding");
+            STDOUT_ENCODING = p.getInitialProperty("stdout.encoding");
+
             SUN_JNU_ENCODING = p.getInitialProperty("sun.jnu.encoding");
             JAVA_LOCALE_USE_OLD_ISO_CODES = p.getInitialProperty("java.locale.useOldISOCodes", "");
 
@@ -295,6 +311,24 @@ final class Target_jdk_internal_util_StaticProperty {
     public static String javaPropertiesDate() {
         assert Objects.equals(JAVA_PROPERTIES_DATE, SystemPropertiesSupport.singleton().getInitialProperty("java.properties.date"));
         return JAVA_PROPERTIES_DATE;
+    }
+
+    @Substitute
+    public static String javaStdinEncoding() {
+        assert Objects.equals(STDIN_ENCODING, SystemPropertiesSupport.singleton().getInitialProperty("stdin.encoding"));
+        return STDIN_ENCODING;
+    }
+
+    @Substitute
+    public static String javaStdoutEncoding() {
+        assert Objects.equals(STDOUT_ENCODING, SystemPropertiesSupport.singleton().getInitialProperty("stdout.encoding"));
+        return STDOUT_ENCODING;
+    }
+
+    @Substitute
+    public static String javaStderrEncoding() {
+        assert Objects.equals(STDERR_ENCODING, SystemPropertiesSupport.singleton().getInitialProperty("stderr.encoding"));
+        return STDERR_ENCODING;
     }
 
     @Substitute
