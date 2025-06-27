@@ -28,6 +28,7 @@ import java.lang.reflect.Field;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.FutureDefaultsOptions;
@@ -110,7 +111,7 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("sun.net", JDK_CLASS_REASON);
 
         rci.initializeAtBuildTime("sun.nio", JDK_CLASS_REASON);
-        if (Platform.includedIn(Platform.WINDOWS_BASE.class)) {
+        if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
             rci.initializeAtRunTime("sun.nio.ch.PipeImpl", "Contains SecureRandom reference, therefore can't be included in the image heap");
         }
 

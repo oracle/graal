@@ -39,8 +39,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
@@ -92,7 +92,7 @@ import jdk.graal.compiler.core.common.NumUtil;
  *      x64 exception handling</a>
  */
 @AutomaticallyRegisteredFeature
-@Platforms(Platform.WINDOWS_BASE.class)
+@Platforms(InternalPlatform.WINDOWS_BASE.class)
 public class WindowsUnwindInfoFeature implements InternalFeature {
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {

@@ -34,6 +34,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.hosted.c.DirectivesExtension;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
@@ -72,7 +73,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         writer = new CSourceCodeWriter(tempDirectory);
         elementForLineNumber = new ArrayList<>();
 
-        boolean isWindows = Platform.includedIn(Platform.WINDOWS_BASE.class);
+        boolean isWindows = Platform.includedIn(InternalPlatform.WINDOWS_BASE.class);
         String formatL64 = "%" + (isWindows ? "ll" : "l");
         formatSInt64 = formatL64 + "d";
         formatUInt64 = formatL64 + "u";
