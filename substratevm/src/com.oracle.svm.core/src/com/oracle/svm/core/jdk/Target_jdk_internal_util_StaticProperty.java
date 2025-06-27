@@ -314,19 +314,19 @@ final class Target_jdk_internal_util_StaticProperty {
     }
 
     @Substitute
-    public static String javaStdinEncoding() {
+    public static String stdinEncoding() {
         assert Objects.equals(STDIN_ENCODING, SystemPropertiesSupport.singleton().getInitialProperty("stdin.encoding"));
         return STDIN_ENCODING;
     }
 
     @Substitute
-    public static String javaStdoutEncoding() {
+    public static String stdoutEncoding() {
         assert Objects.equals(STDOUT_ENCODING, SystemPropertiesSupport.singleton().getInitialProperty("stdout.encoding"));
         return STDOUT_ENCODING;
     }
 
     @Substitute
-    public static String javaStderrEncoding() {
+    public static String stderrEncoding() {
         assert Objects.equals(STDERR_ENCODING, SystemPropertiesSupport.singleton().getInitialProperty("stderr.encoding"));
         return STDERR_ENCODING;
     }
