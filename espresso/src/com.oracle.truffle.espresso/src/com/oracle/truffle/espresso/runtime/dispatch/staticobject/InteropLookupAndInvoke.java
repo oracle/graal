@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -29,6 +30,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -71,7 +73,8 @@ public abstract class InteropLookupAndInvoke extends EspressoNode {
     @GenerateUncached
     public abstract static class Virtual extends InteropLookupAndInvoke {
         @Specialization
-        public Object doVirtual(StaticObject receiver, Klass klass, Object[] arguments, String member,
+        Object doVirtual(StaticObject receiver, Klass klass, Object[] arguments, String member,
+                        @Bind Node node,
                         @Cached LookupVirtualMethodNode lookup,
                         @Cached SelectAndInvokeNode selectAndInvoke,
                         @Cached InlinedBranchProfile error,
@@ -80,9 +83,9 @@ public abstract class InteropLookupAndInvoke extends EspressoNode {
             assert receiver != null;
             Method[] candidates = lookup.execute(klass, member, arguments.length);
             if (candidates != null) {
-                return selectAndInvoke(selectAndInvoke, exception, receiver, arguments, candidates);
+                return selectAndInvoke(selectAndInvoke, exception, node, receiver, arguments, candidates);
             }
-            error.enter(this);
+            error.enter(node);
             throw ArityException.create(arguments.length + 1, -1, arguments.length);
         }
     }
@@ -90,7 +93,8 @@ public abstract class InteropLookupAndInvoke extends EspressoNode {
     @GenerateUncached
     public abstract static class NonVirtual extends InteropLookupAndInvoke {
         @Specialization
-        public Object doNonVirtual(StaticObject receiver, Klass klass, Object[] arguments, String member,
+        Object doNonVirtual(StaticObject receiver, Klass klass, Object[] arguments, String member,
+                        @Bind Node node,
                         @Cached LookupDeclaredMethod lookup,
                         @Cached SelectAndInvokeNode selectAndInvoke,
                         @Cached InlinedBranchProfile error,
@@ -99,19 +103,20 @@ public abstract class InteropLookupAndInvoke extends EspressoNode {
             boolean isStatic = receiver == null;
             Method[] candidates = lookup.execute(klass, member, true, isStatic, arguments.length);
             if (candidates != null) {
-                return selectAndInvoke(selectAndInvoke, exception, receiver, arguments, candidates);
+                return selectAndInvoke(selectAndInvoke, exception, node, receiver, arguments, candidates);
             }
-            error.enter(this);
+            error.enter(node);
             throw ArityException.create(arguments.length + 1, -1, arguments.length);
         }
     }
 
-    Object selectAndInvoke(SelectAndInvokeNode selectAndInvoke, InlinedBranchProfile exception,
+    Object selectAndInvoke(SelectAndInvokeNode selectAndInvoke,
+                    InlinedBranchProfile exception, Node node,
                     StaticObject receiver, Object[] args, Method[] candidates) throws UnsupportedTypeException, ArityException {
         try {
             return selectAndInvoke.execute(receiver, args, candidates);
         } catch (EspressoException e) {
-            exception.enter(this);
+            exception.enter(node);
             throw InteropUtils.unwrapExceptionBoundary(getLanguage(), e, getMeta());
         }
     }
@@ -121,7 +126,7 @@ public abstract class InteropLookupAndInvoke extends EspressoNode {
         public abstract Object execute(StaticObject receiver, Object[] args, Method[] candidates) throws ArityException, UnsupportedTypeException;
 
         @Specialization(guards = {"isSingleNonVarargs(candidates)"})
-        Object doSingleNonVarargs(StaticObject receiver, Object[] args, Method[] candidates,
+        static Object doSingleNonVarargs(StaticObject receiver, Object[] args, Method[] candidates,
                         @Cached @Exclusive InvokeEspressoNode invoke,
                         @Cached InteropUnwrapNode unwrapNode)
                         throws ArityException, UnsupportedTypeException {
@@ -133,7 +138,8 @@ public abstract class InteropLookupAndInvoke extends EspressoNode {
         }
 
         @Specialization(guards = {"isSingleVarargs(candidates)"})
-        Object doSingleVarargs(StaticObject receiver, Object[] args, Method[] candidates,
+        static Object doSingleVarargs(StaticObject receiver, Object[] args, Method[] candidates,
+                        @Bind Node node,
                         @Cached @Exclusive InvokeEspressoNode invoke,
                         @Cached ToEspressoNode.DynamicToEspresso toEspresso,
                         @Cached InteropUnwrapNode unwrapNode,
@@ -148,12 +154,13 @@ public abstract class InteropLookupAndInvoke extends EspressoNode {
                 assert matched != null;
                 return invoke.execute(matched.getMethod(), receiver, matched.getConvertedArgs(), true, unwrapNode);
             }
-            error.enter(this);
+            error.enter(node);
             throw UnsupportedTypeException.create(args);
         }
 
         @Specialization(guards = {"isMulti(candidates)"})
-        Object doMulti(StaticObject receiver, Object[] args, Method[] candidates,
+        static Object doMulti(StaticObject receiver, Object[] args, Method[] candidates,
+                        @Bind Node node,
                         @Cached OverLoadedMethodSelectorNode selector,
                         @Cached @Exclusive InvokeEspressoNode invoke,
                         @Cached InteropUnwrapNode unwrapNode,
@@ -165,7 +172,7 @@ public abstract class InteropLookupAndInvoke extends EspressoNode {
                 return invoke.execute(typeMatched.getMethod(), receiver, typeMatched.getConvertedArgs(), true, unwrapNode);
             } else {
                 // unable to select exactly one best candidate for the input args!
-                error.enter(this);
+                error.enter(node);
                 throw UnsupportedTypeException.create(args);
             }
         }
