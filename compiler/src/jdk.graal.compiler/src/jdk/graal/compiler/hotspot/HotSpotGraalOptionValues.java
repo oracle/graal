@@ -59,17 +59,13 @@ public class HotSpotGraalOptionValues {
      * {@code GRAAL_OPTION_PROPERTY_PREFIX + "MyOption"}.
      */
     public static final String GRAAL_OPTION_PROPERTY_PREFIX = "jdk.graal.";
-    public static final String LEGACY_GRAAL_OPTION_PROPERTY_PREFIX = "graal.";
+
+    private static final String LEGACY_GRAAL_OPTION_PROPERTY_PREFIX = "graal.";
 
     /**
      * Prefix for system properties that correspond to libgraal Native Image options.
      */
     public static final String LIBGRAAL_VM_OPTION_PROPERTY_PREFIX = "jdk.graal.internal.";
-
-    /**
-     * Guard for issuing warning about deprecated Graal option prefix at most once.
-     */
-    private static final GlobalAtomicLong LEGACY_OPTION_DEPRECATION_WARNED = new GlobalAtomicLong("LEGACY_OPTION_DEPRECATION_WARNED", 0L);
 
     /**
      * Gets the system property assignment that would set the current value for a given option.
@@ -114,14 +110,8 @@ public class HotSpotGraalOptionValues {
                 String name = e.getKey();
                 if (name.startsWith(LEGACY_GRAAL_OPTION_PROPERTY_PREFIX)) {
                     String baseName = name.substring(LEGACY_GRAAL_OPTION_PROPERTY_PREFIX.length());
-                    name = GRAAL_OPTION_PROPERTY_PREFIX + baseName;
-                    if (LEGACY_OPTION_DEPRECATION_WARNED.compareAndSet(0L, 1L)) {
-                        System.err.printf("""
-                                        WARNING: The 'graal.' property prefix for the Graal option %s
-                                        WARNING: (and all other Graal options) is deprecated and will be ignored
-                                        WARNING: in a future release. Please use 'jdk.graal.%s' instead.%n""",
-                                        baseName, baseName);
-                    }
+                    String msg = String.format("The 'graal.' prefix for %s is unsupported - use 'jdk.graal.%s' instead.", baseName, baseName);
+                    throw new IllegalArgumentException(msg);
                 }
                 if (name.startsWith(GRAAL_OPTION_PROPERTY_PREFIX)) {
                     if (name.startsWith(LIBGRAAL_VM_OPTION_PROPERTY_PREFIX)) {

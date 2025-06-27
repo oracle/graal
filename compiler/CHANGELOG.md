@@ -2,6 +2,15 @@
 
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
+## GraalVM for JDK 26 (Internal Version 26.0.0)
+* (GR-54646): Using the `graal.` prefix for Graal options is no longer supported and causes an error at startup.
+  For example:
+  ```
+  > java -Dgraal.ShowConfiguration=info Hello.java
+  Error parsing Graal options: The 'graal.' prefix for ShowConfiguration is unsupported - use 'jdk.graal.ShowConfiguration' instead.
+  Error: A fatal exception has occurred. Program will exit.
+  ```
+
 ## GraalVM for JDK 25 (Internal Version 25.0.0)
 * (GR-60088): This PR adds the `org.graalvm.nativeimage.libgraal` SDK module. With this module, all logic for building
   libgraal has been moved into the compiler suite in a new `jdk.graal.compiler.libgraal` module
