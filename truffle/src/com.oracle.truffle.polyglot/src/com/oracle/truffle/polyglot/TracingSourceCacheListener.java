@@ -51,8 +51,8 @@ import com.oracle.truffle.api.source.Source;
 
 final class TracingSourceCacheListener implements SourceCacheListener {
 
-    private static final int MAX_SOURCE_NAME_LENGTH = 50;
-    private static final int MAX_ERROR_MESSAGE_LENGTH = 100;
+    static final int MAX_SOURCE_NAME_LENGTH = 50;
+    static final int MAX_EXCEPTION_STRING_LENGTH = 175;
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS").withZone(ZoneId.of("UTC"));
     // @formatter:off
     private static final String COMMON_PARAMS   =             "|Engine %-2d|Layer %-2d|CallTarget %-5d|Lang %-10s|Policy %-9s|%-8s|UTC %s";
@@ -67,7 +67,7 @@ final class TracingSourceCacheListener implements SourceCacheListener {
         sharingLayer.engine.getEngineLogger().log(Level.INFO, String.format(logFormat, params));
     }
 
-    private static String truncateString(String s, int maxLength) {
+    static String truncateString(String s, int maxLength) {
         if (s == null || s.length() <= maxLength) {
             return s;
         } else {
@@ -140,7 +140,7 @@ final class TracingSourceCacheListener implements SourceCacheListener {
                         sharingLayer.getContextPolicy().name(),
                         cacheType,
                         TIME_FORMATTER.format(ZonedDateTime.now()),
-                        truncateString(throwable.getMessage(), MAX_ERROR_MESSAGE_LENGTH));
+                        truncateString(throwable.toString(), MAX_EXCEPTION_STRING_LENGTH));
     }
 
     @Override

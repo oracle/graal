@@ -64,9 +64,9 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.function.ThrowingRunnable;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Option;
@@ -81,19 +81,74 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class SourceCacheTest {
 
+    private static final String STATISTICS_RESULT_PATTERN_STRING = """
+                    \\[engine] Polyglot source cache statistics for engine \\d+\\s?
+                    --- SHARING LAYER \\d+; WEAK CACHE -------------------------\\s?
+                        Languages                                  :\\s?
+                             com_oracle_truffle_api_test_source_sourcecachetest_sourcecachetestlanguage:\\s?
+                                Character Based Sources Stats      :\\s?
+                                    Sources                        : count=              1\\s?
+                                        Size \\(C\\)                   : count=              1, sum=                       0, min=       0, avg=     0\\.00, max=          0, maxSource=0x12ea5c6b TestSource\\s?
+                                        Biggest Sources            :\\s?
+                                            0x12ea5c6b             : size=               0, name=TestSource\\s?
+                                    Cache                          : parse time\\(ms\\)= +\\d+, parse rate\\(C/s\\)= +(\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    0, failures=    0, hit rate=50%\\s?
+                                        Parse Successful           : count=              1\\s?
+                                            Time \\(ms\\)              : count=              1, sum= +\\d+, min= +\\d+, avg= +\\d+\\.\\d+, max= +\\d+, maxSource=0x12ea5c6b TestSource\\s?
+                                            Size \\(C\\)               : count=              1, sum=                       0, min=       0, avg=     0\\.00, max=          0, maxSource=0x12ea5c6b TestSource\\s?
+                                        Sources With Most Hits     :\\s?
+                                            0x12ea5c6b             : parse time\\(ms\\)= +\\d+, parse rate\\(C/s\\)= +(\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    0, failures=    0, hit rate=50%, name=TestSource\\s?
+                                        Sources With Most Misses   :\\s?
+                                            0x12ea5c6b             : parse time\\(ms\\)= +\\d+, parse rate\\(C/s\\)= +(\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    0, failures=    0, hit rate=50%, name=TestSource\\s?
+                                        Sources With Most Evictions:\\s?
+                                            0x12ea5c6b             : parse time\\(ms\\)= +\\d+, parse rate\\(C/s\\)= +(\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    0, failures=    0, hit rate=50%, name=TestSource\\s?
+                                        Failures                   : count=              0\\s?
+                                Byte Based Sources Stats           :\\s?
+                                    Sources                        : count=              1\\s?
+                                        Size \\(B\\)                   : count=              1, sum=                       0, min=       0, avg=     0\\.00, max=          0, maxSource=0xb9ecef28 TestSource\\s?
+                                        Biggest Sources            :\\s?
+                                            0xb9ecef28             : size=               0, name=TestSource\\s?
+                                    Cache                          : parse time\\(ms\\)= +\\d+, parse rate\\(B/s\\)= +(\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    0, failures=    0, hit rate=50%\\s?
+                                        Parse Successful           : count=              1\\s?
+                                            Time \\(ms\\)              : count=              1, sum= +\\d+, min= +\\d+, avg= +\\d+\\.\\d+, max= +\\d+, maxSource=0xb9ecef28 TestSource\\s?
+                                            Size \\(B\\)               : count=              1, sum=                       0, min=       0, avg=     0\\.00, max=          0, maxSource=0xb9ecef28 TestSource\\s?
+                                        Sources With Most Hits     :\\s?
+                                            0xb9ecef28             : parse time\\(ms\\)= +\\d+, parse rate\\(B/s\\)= +(\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    0, failures=    0, hit rate=50%, name=TestSource\\s?
+                                        Sources With Most Misses   :\\s?
+                                            0xb9ecef28             : parse time\\(ms\\)= +\\d+, parse rate\\(B/s\\)= +(\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    0, failures=    0, hit rate=50%, name=TestSource\\s?
+                                        Sources With Most Evictions:\\s?
+                                            0xb9ecef28             : parse time\\(ms\\)= +\\d+, parse rate\\(B/s\\)= +(\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    0, failures=    0, hit rate=50%, name=TestSource\\s?
+                                        Failures                   : count=              0\\s?
+                    \\s?
+                    """;
+
+    private static final String FAILURE_RESULT_PATTERN_STRING = """
+                                        Failures                   : count=              1\\s?
+                                            Sources With Failures  : count=              1\\s?
+                                                0x7595adef         : parse time\\(ms\\)= +\\d+, parse rate\\(C/s\\)= +(\\d+\\.\\d+|NaN), hits=      0, misses=     1, evictions=    0, failures=    1, hit rate= 0%, name=TestSource\\s?
+                                                    Failure #1     : count=              1, failure=com\\.oracle\\.truffle\\.api\\.test\\.source\\.SourceCacheTest\\$ParseException: DummyParseException\\s?
+                    [\\s\\S]*
+                                        Failures                   : count=              1\\s?
+                                            Sources With Failures  : count=              1\\s?
+                                                0x1c9840ac         : parse time\\(ms\\)= +\\d+, parse rate\\(B/s\\)= +(\\d+\\.\\d+|NaN), hits=      0, misses=     1, evictions=    0, failures=    1, hit rate= 0%, name=TestSource\\s?
+                                                    Failure #1     : count=              1, failure=com\\.oracle\\.truffle\\.api\\.test\\.source\\.SourceCacheTest\\$ParseException: DummyParseException\\s?
+                    """;
+
+    private static final Pattern STATISTICS_RESULT_PATTERN = Pattern.compile(STATISTICS_RESULT_PATTERN_STRING);
+    private static final Pattern FAILURE_RESULT_PATTERN = Pattern.compile(FAILURE_RESULT_PATTERN_STRING);
+
     @Test
     public void testTraceSourceCache() throws Throwable {
-        testCommon(SourceCacheTestLanguage.ID, Map.of("engine.TraceSourceCache", "true"), "[miss]", null);
+        testCommon(SourceCacheTestLanguage.ID, Map.of("engine.TraceSourceCache", "true", "engine.SourceCacheStatistics", "true"), "[miss, miss]", null);
     }
 
     @Test
     public void testTraceSourceCacheDetails() throws Throwable {
-        testCommon(SourceCacheTestLanguage.ID, Map.of("engine.TraceSourceCacheDetails", "true"), "[miss, hit]", null);
+        testCommon(SourceCacheTestLanguage.ID, Map.of("engine.TraceSourceCacheDetails", "true", "engine.SourceCacheStatistics", "true"), "[miss, miss, hit, hit]", null);
     }
 
     @Test
     public void testTraceSourceCacheFailure() throws Throwable {
-        testCommon(SourceCacheFailureTestLanguage.ID, Map.of("engine.TraceSourceCache", "true"), "[fail]", "DummyParseException");
+        testCommon(SourceCacheFailureTestLanguage.ID, Map.of("engine.TraceSourceCache", "true", "engine.SourceCacheStatistics", "true"), "[fail, fail]", "DummyParseException");
     }
 
     @Test
@@ -151,36 +206,58 @@ public class SourceCacheTest {
     }
 
     private static void testCommon(String languageId, Map<String, String> options, String expectedLogs, String failMessage) throws Throwable {
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream(); Context context = Context.newBuilder().options(options).out(out).err(out).build()) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try (Context context = Context.newBuilder().options(options).out(out).err(out).build()) {
             String sourceName = "TestSource";
-            Source source = Source.newBuilder(languageId, "", sourceName).build();
-            String[] sourceHash = new String[1];
-            ThrowingRunnable testRunnable = () -> {
-                int sourceHashCode = context.eval(source).asInt();
-                sourceHash[0] = String.format("0x%08x", sourceHashCode);
-            };
+            Source source1 = Source.newBuilder(languageId, "", sourceName).build();
+            Source source2 = Source.newBuilder(languageId, ByteSequence.create(new byte[0]), sourceName).mimeType("text/binary").build();
+            String[] sourceHash = new String[2];
             if (failMessage != null) {
-                Assert.assertThrows(PolyglotException.class, testRunnable);
+                Assert.assertThrows(PolyglotException.class, () -> context.eval(source1));
+                Assert.assertThrows(PolyglotException.class, () -> context.eval(source2));
             } else {
-                testRunnable.run();
-                context.eval(source);
+                int sourceHashCode = context.eval(source1).asInt();
+                sourceHash[0] = String.format("0x%08x", sourceHashCode);
+                sourceHashCode = context.eval(source2).asInt();
+                sourceHash[1] = String.format("0x%08x", sourceHashCode);
+                context.eval(source1);
+                context.eval(source2);
             }
             List<String> logs = new ArrayList<>();
+            int[] cnt = new int[1];
             forEachLog(out.toByteArray(), (matcher) -> {
                 String logType = matcher.group(1);
                 logs.add(logType);
                 if (!"fail".equals(logType)) {
-                    Assert.assertEquals(sourceHash[0], matcher.group(2));
+                    Assert.assertEquals(sourceHash[cnt[0] % 2], matcher.group(2));
                 } else {
-                    Assert.assertTrue(matcher.group().endsWith("Error " + failMessage));
+                    Assert.assertTrue(matcher.group(), matcher.group().endsWith("Error " + ParseException.class.getName() + ": " + failMessage));
                 }
                 Assert.assertEquals(sourceName, matcher.group(3));
+                cnt[0]++;
             });
             Assert.assertEquals(expectedLogs, Arrays.toString(logs.toArray()));
         }
+        String fullOutput = out.toString();
+        int statisticsBeginIndex = fullOutput.indexOf("[engine] Polyglot source cache statistics for engine");
+        if (statisticsBeginIndex < 0) {
+            throw new AssertionError("Source cache statistics not found in the output: " + fullOutput);
+        }
+        String statisticsOutput = fullOutput.substring(statisticsBeginIndex);
+        if (failMessage == null) {
+            Matcher matcher = STATISTICS_RESULT_PATTERN.matcher(statisticsOutput);
+            if (!matcher.matches()) {
+                throw new AssertionError("Statistics output doesn't match the expected pattern. Check the output: " + statisticsOutput);
+            }
+        } else {
+            Matcher matcher = FAILURE_RESULT_PATTERN.matcher(statisticsOutput);
+            if (!matcher.find()) {
+                throw new AssertionError("Statistics output doesn't match the expected pattern. Check the output: " + statisticsOutput);
+            }
+        }
     }
 
-    @TruffleLanguage.Registration(contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
+    @TruffleLanguage.Registration(contextPolicy = TruffleLanguage.ContextPolicy.SHARED, characterMimeTypes = "text/plain", byteMimeTypes = "text/binary", defaultMimeType = "text/plain")
     static class SourceCacheTestLanguage extends TruffleLanguage<TruffleLanguage.Env> {
         static final String ID = TestUtils.getDefaultLanguageId(SourceCacheTestLanguage.class);
 
@@ -226,7 +303,7 @@ public class SourceCacheTest {
         }
     }
 
-    @TruffleLanguage.Registration
+    @TruffleLanguage.Registration(characterMimeTypes = "text/plain", byteMimeTypes = "text/binary", defaultMimeType = "text/plain")
     static class SourceCacheFailureTestLanguage extends TruffleLanguage<TruffleLanguage.Env> {
         static final String ID = TestUtils.getDefaultLanguageId(SourceCacheFailureTestLanguage.class);
 

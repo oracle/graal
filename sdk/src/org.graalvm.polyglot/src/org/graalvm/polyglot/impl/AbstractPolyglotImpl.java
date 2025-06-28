@@ -668,6 +668,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract URI getURI(Object impl);
 
+        public abstract URI getOriginalURI(Object impl);
+
         public abstract Reader getReader(Object impl);
 
         public abstract InputStream getInputStream(Object impl);

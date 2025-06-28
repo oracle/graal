@@ -262,6 +262,8 @@ public abstract class Accessor {
         public abstract void setPath(SourceBuilder builder, String path);
 
         public abstract Map<String, String> getSourceOptions(Source source);
+
+        public abstract URI getOriginalURI(Source source);
     }
 
     public abstract static class InteropSupport extends Support {
