@@ -791,9 +791,9 @@ public abstract class StrengthenGraphs {
              */
             JavaMethodProfile methodProfile = makeMethodProfile(callees, assumeNotRecorded);
 
-            assert typeProfile == null || typeProfile.getTypes().length > 1 || assumeNotRecorded : "Should devirtualize with typeProfile=" + typeProfile + " and methodProfile=" + methodProfile +
+            assert typeProfile == null || typeProfile.getTypes().size() > 1 || assumeNotRecorded : "Should devirtualize with typeProfile=" + typeProfile + " and methodProfile=" + methodProfile +
                             " and callees" + callees + " invoke " + invokeFlow + " " + invokeFlow.getReceiver() + " in method " + getQualifiedName(graph);
-            assert methodProfile == null || methodProfile.getMethods().length > 1 || assumeNotRecorded : "Should devirtualize with typeProfile=" + typeProfile + " and methodProfile=" + methodProfile +
+            assert methodProfile == null || methodProfile.getMethods().size() > 1 || assumeNotRecorded : "Should devirtualize with typeProfile=" + typeProfile + " and methodProfile=" + methodProfile +
                             " and callees" + callees + " invoke " + invokeFlow + " " + invokeFlow.getReceiver() + " in method " + getQualifiedName(graph);
 
             setInvokeProfiles(invoke, typeProfile, methodProfile);

@@ -118,7 +118,7 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
             parameters.add(providers.getMetaAccess().lookupJavaType(JNIMethodId.class));
             ResolvedJavaType returnType = providers.getWordTypes().getWordImplType();
             CallingConvention callingConvention = backend.getCodeCache().getRegisterConfig().getCallingConvention(
-                            SubstrateCallingConventionKind.Native.toType(true), returnType, parameters.toArray(new JavaType[0]), backend);
+                            SubstrateCallingConventionKind.Native.toType(true), returnType, parameters, backend);
             RegisterValue threadArg = (RegisterValue) callingConvention.getArgument(0); // JNIEnv
             int threadIsolateOffset = ImageSingletons.lookup(VMThreadFeature.class).offsetOf(VMThreads.IsolateTL);
             RegisterValue methodIdArg = (RegisterValue) callingConvention.getArgument(parameters.size() - 1);

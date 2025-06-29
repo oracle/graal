@@ -231,10 +231,10 @@ public class UniverseBuilder {
         assert !typeName.contains("/analysis/meta/") : "Analysis meta object in image " + typeName;
         assert !typeName.contains("/hosted/meta/") : "Hosted meta object in image " + typeName;
 
-        AnalysisType[] aInterfaces = aType.getInterfaces();
-        HostedInterface[] sInterfaces = aInterfaces.length == 0 ? HostedInterface.EMPTY_ARRAY : new HostedInterface[aInterfaces.length];
-        for (int i = 0; i < aInterfaces.length; i++) {
-            sInterfaces[i] = (HostedInterface) makeType(aInterfaces[i]);
+        List<AnalysisType> aInterfaces = aType.getInterfaces();
+        HostedInterface[] sInterfaces = aInterfaces.isEmpty() ? HostedInterface.EMPTY_ARRAY : new HostedInterface[aInterfaces.size()];
+        for (int i = 0; i < aInterfaces.size(); i++) {
+            sInterfaces[i] = (HostedInterface) makeType(aInterfaces.get(i));
         }
 
         JavaKind kind = aType.getJavaKind();
@@ -346,10 +346,10 @@ public class UniverseBuilder {
             constantPool = makeConstantPool(aMethod.getConstantPool(), aDeclaringClass);
         }
 
-        ExceptionHandler[] aHandlers = aMethod.getExceptionHandlers();
-        ExceptionHandler[] sHandlers = new ExceptionHandler[aHandlers.length];
-        for (int i = 0; i < aHandlers.length; i++) {
-            ExceptionHandler h = aHandlers[i];
+        List<ExceptionHandler> aHandlers = aMethod.getExceptionHandlers();
+        ExceptionHandler[] sHandlers = new ExceptionHandler[aHandlers.size()];
+        for (int i = 0; i < aHandlers.size(); i++) {
+            ExceptionHandler h = aHandlers.get(i);
             JavaType catchType = h.getCatchType();
             if (h.getCatchType() instanceof AnalysisType) {
                 catchType = lookupType((AnalysisType) catchType);
@@ -848,9 +848,9 @@ public class UniverseBuilder {
         for (HostedType type : hUniverse.getTypes()) {
             List<HostedField> fieldsOfType = fieldsOfTypes[type.getTypeID()];
             if (fieldsOfType != null) {
-                type.staticFields = fieldsOfType.toArray(new HostedField[fieldsOfType.size()]);
+                type.staticFields = List.copyOf(fieldsOfType);
             } else {
-                type.staticFields = HostedField.EMPTY_ARRAY;
+                type.staticFields = List.of();
             }
         }
 
@@ -888,9 +888,8 @@ public class UniverseBuilder {
 
     private void collectMethodImplementations() {
         for (HostedMethod method : hUniverse.methods.values()) {
-
             // Reuse the implementations from the analysis method.
-            method.implementations = hUniverse.lookup(method.wrapped.collectMethodImplementations(false).toArray(AnalysisMethod.EMPTY_ARRAY));
+            method.implementations = hUniverse.lookup(List.copyOf(method.wrapped.collectMethodImplementations(false))).toArray(HostedMethod.EMPTY_ARRAY);
             Arrays.sort(method.implementations, HostedUniverse.METHOD_COMPARATOR);
         }
     }
@@ -1018,9 +1017,8 @@ public class UniverseBuilder {
     }
 
     private static ReferenceMapEncoder.Input createReferenceMap(HostedType type) {
-        HostedField[] fields = type.getInstanceFields(true);
         SubstrateReferenceMap referenceMap = new SubstrateReferenceMap();
-        for (HostedField field : fields) {
+        for (HostedField field : type.getInstanceFields(true)) {
             if (field.getType().getStorageKind() == JavaKind.Object && field.hasLocation() && !excludeFromReferenceMap(field)) {
                 referenceMap.markReferenceAtOffset(field.getLocation(), true);
             }

@@ -27,6 +27,7 @@ package jdk.graal.compiler.hotspot;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 import java.util.Arrays;
+import java.util.List;
 
 import org.graalvm.collections.EconomicSet;
 
@@ -203,7 +204,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
             StackOnlyCallingConvention conventionType = (StackOnlyCallingConvention) ccType;
             return conventionType.getCallingConvention(codeCache.getTarget(), returnType, parameterTypes, valueKindFactory);
         }
-        return regConfig.getCallingConvention(ccType, returnType, parameterTypes, valueKindFactory);
+        return regConfig.getCallingConvention(ccType, returnType, List.of(parameterTypes), valueKindFactory);
     }
 
     private static JavaType asJavaType(Class<?> type, MetaAccessProvider metaAccess, WordTypes wordTypes) {

@@ -40,13 +40,15 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import java.util.List;
+
 public final class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
 
     private final InterpreterResolvedJavaType componentType;
     private final int modifiers;
     private final InterpreterResolvedObjectType superclass;
-    private final InterpreterResolvedObjectType[] interfaces;
-    private InterpreterResolvedJavaMethod[] declaredMethods;
+    private final List<InterpreterResolvedObjectType> interfaces;
+    private List<InterpreterResolvedJavaMethod> declaredMethods;
 
     // Populated after analysis.
     private InterpreterConstantPool constantPool;
@@ -79,7 +81,7 @@ public final class InterpreterResolvedObjectType extends InterpreterResolvedJava
         this.modifiers = modifiers;
         this.componentType = componentType;
         this.superclass = superclass;
-        this.interfaces = interfaces;
+        this.interfaces = List.of(interfaces);
         this.constantPool = constantPool;
         this.sourceFileName = sourceFileName;
     }
@@ -93,7 +95,7 @@ public final class InterpreterResolvedObjectType extends InterpreterResolvedJava
         assert isWordType == WordBase.class.isAssignableFrom(javaClass);
         this.modifiers = modifiers;
         this.superclass = superclass;
-        this.interfaces = interfaces;
+        this.interfaces = List.of(interfaces);
         this.componentType = componentType;
         this.constantPool = constantPool;
         this.sourceFileName = DynamicHub.fromClass(javaClass).getSourceFileName();
@@ -109,7 +111,7 @@ public final class InterpreterResolvedObjectType extends InterpreterResolvedJava
         this.modifiers = modifiers;
         this.componentType = componentType;
         this.superclass = superclass;
-        this.interfaces = interfaces;
+        this.interfaces = List.of(interfaces);
         this.constantPool = constantPool;
         this.sourceFileName = sourceFileName;
     }
@@ -181,7 +183,7 @@ public final class InterpreterResolvedObjectType extends InterpreterResolvedJava
     }
 
     @Override
-    public InterpreterResolvedObjectType[] getInterfaces() {
+    public List<InterpreterResolvedObjectType> getInterfaces() {
         return this.interfaces;
     }
 
@@ -228,11 +230,11 @@ public final class InterpreterResolvedObjectType extends InterpreterResolvedJava
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods() {
+    public List<? extends ResolvedJavaMethod> getDeclaredMethods() {
         return declaredMethods;
     }
 
     public void setDeclaredMethods(InterpreterResolvedJavaMethod[] declaredMethods) {
-        this.declaredMethods = declaredMethods;
+        this.declaredMethods = List.of(declaredMethods);
     }
 }

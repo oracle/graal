@@ -453,7 +453,7 @@ public final class Serializers {
                         return new LocalVariableTable(locals);
                     },
                     (context, out, value) -> {
-                        context.writerFor(Local[].class).write(context, out, value.getLocals());
+                        context.writerFor(Local[].class).write(context, out, value.getLocals().toArray(new Local[0]));
                     });
 
     static final int[] EMPTY_INT_ARRAY = new int[0];
@@ -581,7 +581,7 @@ public final class Serializers {
                         InterpreterResolvedJavaType componentType = value.getComponentType();
 
                         InterpreterResolvedObjectType superclass = value.getSuperclass();
-                        InterpreterResolvedObjectType[] interfaces = value.getInterfaces();
+                        InterpreterResolvedObjectType[] interfaces = value.getInterfaces().toArray(new InterpreterResolvedObjectType[0]);
 
                         // Constant pools are serialized separately, to break reference cycles, and
                         // patched after deserialization.
@@ -644,7 +644,7 @@ public final class Serializers {
                         InterpreterResolvedObjectType declaringClass = value.getDeclaringClass();
                         InterpreterUnresolvedSignature signature = value.getSignature();
                         byte[] code = value.getInterpretedCode();
-                        ExceptionHandler[] exceptionHandlers = value.getExceptionHandlers();
+                        ExceptionHandler[] exceptionHandlers = value.getExceptionHandlers().toArray(new ExceptionHandler[0]);
                         LineNumberTable lineNumberTable = value.getLineNumberTable();
                         LocalVariableTable localVariableTable = value.getLocalVariableTable();
                         /*

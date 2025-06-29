@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.substitute;
 
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -58,13 +59,16 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
      */
     private final boolean isUserSubstitution;
 
-    private final ResolvedJavaField[][] instanceFields;
+    private final List<ResolvedJavaField> instanceFieldsWithoutSuper;
+    private final List<ResolvedJavaField> instanceFieldsWithSuper;
 
     public SubstitutionType(ResolvedJavaType original, ResolvedJavaType annotated, boolean isUserSubstitution) {
         this.annotated = annotated;
         this.original = original;
         this.isUserSubstitution = isUserSubstitution;
-        this.instanceFields = new ResolvedJavaField[][]{annotated.getInstanceFields(false), annotated.getInstanceFields(true)};
+
+        this.instanceFieldsWithoutSuper = new ArrayList<>(annotated.getInstanceFields(false));
+        this.instanceFieldsWithSuper = new ArrayList<>(annotated.getInstanceFields(true));
     }
 
     public boolean isUserSubstitution() {
@@ -85,16 +89,13 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     void addInstanceField(ResolvedJavaField field) {
-        for (int i = 0; i < instanceFields.length; i++) {
-            ResolvedJavaField[] newFields = Arrays.copyOf(instanceFields[i], instanceFields[i].length + 1, ResolvedJavaField[].class);
-            newFields[newFields.length - 1] = field;
-            instanceFields[i] = newFields;
-        }
+        instanceFieldsWithoutSuper.add(field);
+        instanceFieldsWithSuper.add(field);
     }
 
     @Override
-    public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
-        return instanceFields[includeSuperclasses ? 1 : 0];
+    public List<ResolvedJavaField> getInstanceFields(boolean includeSuperclasses) {
+        return List.copyOf(includeSuperclasses ? instanceFieldsWithSuper : instanceFieldsWithoutSuper);
     }
 
     @Override
@@ -188,7 +189,7 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     @Override
-    public ResolvedJavaType[] getInterfaces() {
+    public List<? extends ResolvedJavaType> getInterfaces() {
         return annotated.getInterfaces();
     }
 
@@ -245,7 +246,7 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     @Override
-    public ResolvedJavaField[] getStaticFields() {
+    public List<? extends ResolvedJavaField> getStaticFields() {
         return annotated.getStaticFields();
     }
 
@@ -280,29 +281,29 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredConstructors() {
+    public List<? extends ResolvedJavaMethod> getDeclaredConstructors() {
         return getDeclaredConstructors(true);
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
+    public List<? extends ResolvedJavaMethod> getDeclaredConstructors(boolean forceLink) {
         VMError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
         return annotated.getDeclaredConstructors(forceLink);
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods() {
+    public List<? extends ResolvedJavaMethod> getDeclaredMethods() {
         return getDeclaredMethods(true);
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
+    public List<? extends ResolvedJavaMethod> getDeclaredMethods(boolean forceLink) {
         VMError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
         return annotated.getDeclaredMethods(forceLink);
     }
 
     @Override
-    public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
+    public List<? extends ResolvedJavaMethod> getAllMethods(boolean forceLink) {
         VMError.guarantee(forceLink == false, "only use getAllMethods without forcing to link, because linking can throw LinkageError");
         return annotated.getAllMethods(forceLink);
     }
@@ -336,12 +337,6 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     @Override
     public boolean isCloneableWithAllocation() {
         throw JVMCIError.unimplemented();
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        return original.getHostClass();
     }
 
     @Override

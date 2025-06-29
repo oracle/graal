@@ -36,6 +36,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.svm.core.encoder.SymbolEncoder;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -777,13 +778,13 @@ public class FrameInfoEncoder {
              * We must add filling constants for padding, so that values are contiguous. The
              * deoptimization code does not have access to field information.
              */
-            SharedField[] fields = (SharedField[]) type.getInstanceFields(true);
+            List<? extends ResolvedJavaField> fields = type.getInstanceFields(true);
 
             long curOffset = objectLayout.getFirstFieldOffset();
             int fieldIdx = 0;
             int valueIdx = 0;
             while (valueIdx < virtualObject.getValues().length) {
-                SharedField field = fields[fieldIdx];
+                SharedField field = (SharedField) fields.get(fieldIdx);
                 fieldIdx += 1;
                 JavaValue value = virtualObject.getValues()[valueIdx];
                 JavaKind valueKind = virtualObject.getSlotKind(valueIdx);
@@ -797,7 +798,7 @@ public class FrameInfoEncoder {
                      * These values span two fields - so we have to ignore a field.
                      */
                     kind = valueKind;
-                    assert fields[fieldIdx].getJavaKind() == field.getJavaKind() : field;
+                    assert fields.get(fieldIdx).getJavaKind() == field.getJavaKind() : field;
                     fieldIdx++;
                 }
 

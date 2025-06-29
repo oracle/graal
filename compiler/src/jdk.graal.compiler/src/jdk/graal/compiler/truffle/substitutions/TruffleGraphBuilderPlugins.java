@@ -1119,7 +1119,7 @@ public class TruffleGraphBuilderPlugins {
             types.UnsafeAccess.initialize();
         }
 
-        ResolvedJavaField[] staticFields = types.UnsafeAccess.getStaticFields();
+        List<? extends ResolvedJavaField> staticFields = types.UnsafeAccess.getStaticFields();
         JavaConstant anyConstant = null;
         for (ResolvedJavaField field : staticFields) {
             if (field.getName().equals("ANY_LOCATION")) {

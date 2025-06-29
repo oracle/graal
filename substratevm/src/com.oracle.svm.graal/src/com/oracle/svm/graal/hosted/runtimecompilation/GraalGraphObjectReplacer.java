@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.graal.hosted.runtimecompilation;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -378,10 +379,10 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
     }
 
     private SubstrateField[] createAllInstanceFields(ResolvedJavaType originalType) {
-        ResolvedJavaField[] originalFields = originalType.getInstanceFields(true);
-        SubstrateField[] sFields = new SubstrateField[originalFields.length];
-        for (int idx = 0; idx < originalFields.length; idx++) {
-            sFields[idx] = createField(originalFields[idx]);
+        List<? extends ResolvedJavaField> originalFields = originalType.getInstanceFields(true);
+        SubstrateField[] sFields = new SubstrateField[originalFields.size()];
+        for (int idx = 0; idx < originalFields.size(); idx++) {
+            sFields[idx] = createField(originalFields.get(idx));
         }
         return sFields;
     }

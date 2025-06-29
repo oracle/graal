@@ -89,8 +89,7 @@ public class BytecodeDisassemblerTest extends GraalCompilerTest {
             BytecodeDisassembler disassembler = new BytecodeDisassembler(multiline, newLine, format, f);
 
             ResolvedJavaType type = getMetaAccess().lookupJavaType(c);
-            ResolvedJavaMethod[] methods = type.getDeclaredMethods();
-            for (ResolvedJavaMethod m : methods) {
+            for (ResolvedJavaMethod m : type.getDeclaredMethods()) {
                 int codeSize = m.getCodeSize();
                 String dis = disassembler.disassemble(m);
                 if (codeSize <= 0) {

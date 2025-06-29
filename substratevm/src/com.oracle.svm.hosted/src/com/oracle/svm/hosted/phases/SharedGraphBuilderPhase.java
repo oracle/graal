@@ -437,18 +437,18 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             final ResolvedJavaType classType = ((SubstitutionType) ((AnalysisType) metaAccess.lookupJavaType(Class.class)).getWrapped()).getOriginal();
             assert classType != null;
 
-            Parameter[] p = method.getParameters();
-            if (!p[0].getType().equals(sessionType)) {
+            List<Parameter> p = method.getParameters();
+            if (!p.getFirst().getType().equals(sessionType)) {
                 // no sessions involved
                 return List.of();
             }
-            if (p.length < 3) {
+            if (p.size() < 3) {
                 // length does not match
                 return List.of();
             }
 
             int pIndex = method.hasReceiver() ? 1 : 0;
-            if (p[1].getType().equals(utilsType)) {
+            if (p.get(1).getType().equals(utilsType)) {
                 // eg forceInternal(MemorySessionImpl session, MappedMemoryUtilsProxy mappedUtils,
                 // FileDescriptor fd, long address, boolean isSync, long index, long length) {
                 ValueNode session = graph.getParameter(pIndex++);
@@ -458,7 +458,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 SessionCheck check = new SessionCheck(session, null, offset);
                 verifySession(sessionType, baseType, offsetType, check, metaAccess);
                 return List.of(check);
-            } else if (p[1].getType().equals(sessionType)) {
+            } else if (p.get(1).getType().equals(sessionType)) {
                 // 2 session case
                 ValueNode s1Session = graph.getParameter(pIndex++);
                 ValueNode s2Session = graph.getParameter(pIndex++);
@@ -474,7 +474,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             } else {
                 // 1 session case
                 ValueNode session = graph.getParameter(pIndex++);
-                if (p[1].getType().equals(classType)) {
+                if (p.get(1).getType().equals(classType)) {
                     // example with a vmClass -
                     // storeIntoMemorySegmentScopedInternal(MemorySessionImpl session,
                     // Class<? extends V> vmClass, Class<E> e, int length,V v,
@@ -493,7 +493,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                      * If any of these invariants stops holding the verifySession call below will
                      * fail hard and we will be noticed of new/changed API.
                      */
-                    while (!p[pIndex].getType().equals(abstractSegmentImpl)) {
+                    while (!p.get(pIndex).getType().equals(abstractSegmentImpl)) {
                         pIndex++;
                     }
 
@@ -1418,7 +1418,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                     }
 
                     if (!BootstrapMethodConfiguration.singleton().isCondyAllowedAtBuildTime(bootstrapMethod)) {
-                        int parameterLength = bootstrap.getMethod().getParameters().length;
+                        int parameterLength = bootstrap.getMethod().getParameters().size();
                         List<JavaConstant> staticArguments = bootstrap.getStaticArguments();
                         boolean isVarargs = bootstrap.getMethod().isVarArgs();
                         Class<?> typeClass = getSnippetReflection().asObject(Class.class, bootstrap.getType());
@@ -1508,7 +1508,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                  * arguments in an array.
                  */
                 if (isVarargs) {
-                    JavaType varargClass = bootstrapMethod.getParameters()[parameterLength - 1].getType().getComponentType();
+                    JavaType varargClass = bootstrapMethod.getParameters().get(parameterLength - 1).getType().getComponentType();
                     arguments[arguments.length - 1] = append(new NewArrayNode(((AnalysisMetaAccess) getMetaAccess()).getUniverse().lookup(varargClass),
                                     ConstantNode.forInt(staticArgumentsList.size() - arguments.length + 4, getGraph()), true));
                 }
@@ -1524,8 +1524,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                         int argCpi = primitiveConstant.asInt();
                         Object argConstant = loadConstantDynamic(argCpi, opcode == Opcodes.INVOKEDYNAMIC ? Opcodes.LDC : opcode);
                         if (argConstant instanceof ValueNode valueNode) {
-                            ResolvedJavaMethod.Parameter[] parameters = bootstrapMethod.getParameters();
-                            if (valueNode.getStackKind().isPrimitive() && i + 3 <= parameters.length && !parameters[i + 3].getKind().isPrimitive()) {
+                            List<ResolvedJavaMethod.Parameter> parameters = bootstrapMethod.getParameters();
+                            if (valueNode.getStackKind().isPrimitive() && i + 3 <= parameters.size() && !parameters.get(i + 3).getKind().isPrimitive()) {
                                 currentNode = append(BoxNode.create(valueNode, getMetaAccess().lookupJavaType(valueNode.getStackKind().toBoxedJavaClass()), valueNode.getStackKind()));
                             } else {
                                 currentNode = valueNode;
@@ -1732,7 +1732,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             }
 
             protected boolean checkBootstrapParameters(ResolvedJavaMethod bootstrapMethod, List<JavaConstant> staticArguments, boolean condy) {
-                int parametersLength = bootstrapMethod.getParameters().length;
+                int parametersLength = bootstrapMethod.getParameters().size();
                 Class<?>[] parameters = signatureToClasses(bootstrapMethod);
                 if (bootstrapMethod.isVarArgs()) {
                     /*

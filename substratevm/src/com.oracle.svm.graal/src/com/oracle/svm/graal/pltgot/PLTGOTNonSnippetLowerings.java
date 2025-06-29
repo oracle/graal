@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.graal.pltgot;
 
+import java.util.List;
 import java.util.Map;
 
 import org.graalvm.nativeimage.Platform;
@@ -85,7 +86,7 @@ public final class PLTGOTNonSnippetLowerings {
         }
 
         @Override
-        protected LoweredCallTargetNode createDirectCall(StructuredGraph graph, MethodCallTargetNode callTarget, NodeInputList<ValueNode> parameters, JavaType[] signature,
+        protected LoweredCallTargetNode createDirectCall(StructuredGraph graph, MethodCallTargetNode callTarget, NodeInputList<ValueNode> parameters, List<JavaType> signature,
                         CallingConvention.Type callType, CallTargetNode.InvokeKind invokeKind, SharedMethod callee, FixedNode node) {
             SharedMethod caller = (SharedMethod) graph.method();
             if (methodAddressResolutionSupport.shouldCallViaPLTGOT(caller, callee)) {
@@ -106,7 +107,7 @@ public final class PLTGOTNonSnippetLowerings {
         }
 
         @Override
-        protected IndirectCallTargetNode createIndirectCall(StructuredGraph graph, MethodCallTargetNode callTarget, NodeInputList<ValueNode> parameters, SharedMethod callee, JavaType[] signature,
+        protected IndirectCallTargetNode createIndirectCall(StructuredGraph graph, MethodCallTargetNode callTarget, NodeInputList<ValueNode> parameters, SharedMethod callee, List<JavaType> signature,
                         CallingConvention.Type callType, CallTargetNode.InvokeKind invokeKind, ValueNode entry) {
             SharedMethod caller = (SharedMethod) graph.method();
             /*

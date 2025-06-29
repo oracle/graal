@@ -461,17 +461,17 @@ public class AnalysisUniverse implements Universe {
         }
     }
 
-    public AnalysisMethod[] lookup(JavaMethod[] inputs) {
-        List<AnalysisMethod> result = new ArrayList<>(inputs.length);
-        for (JavaMethod method : inputs) {
-            if (hostVM.platformSupported((ResolvedJavaMethod) method)) {
+    public List<AnalysisMethod> lookup(List<? extends ResolvedJavaMethod> inputs) {
+        List<AnalysisMethod> result = new ArrayList<>(inputs.size());
+        for (ResolvedJavaMethod method : inputs) {
+            if (hostVM.platformSupported(method)) {
                 AnalysisMethod aMethod = lookup(method);
                 if (aMethod != null) {
                     result.add(aMethod);
                 }
             }
         }
-        return result.toArray(AnalysisMethod.EMPTY_ARRAY);
+        return result;
     }
 
     @Override

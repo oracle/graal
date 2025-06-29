@@ -42,6 +42,8 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.List;
+
 public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
 
     private static final int ITERATIONS = 100000;
@@ -84,11 +86,11 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
             ResolvedJavaMethod m = graph.method();
             Object receiver = isStatic(m.getModifiers()) ? null : this;
             Object[] args = argsWithReceiver(receiver, argsToBind);
-            JavaType[] parameterTypes = m.toParameterTypes();
-            assert parameterTypes.length == args.length;
+            List<JavaType> parameterTypes = m.toParameterTypes();
+            assert parameterTypes.size() == args.length;
             for (int i = 0; i < argsToBind.length; i++) {
                 ParameterNode param = graph.getParameter(i);
-                JavaConstant c = getSnippetReflection().forBoxed(parameterTypes[i].getJavaKind(), argsToBind[i]);
+                JavaConstant c = getSnippetReflection().forBoxed(parameterTypes.get(i).getJavaKind(), argsToBind[i]);
                 ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
                 param.replaceAtUsages(replacement);
             }

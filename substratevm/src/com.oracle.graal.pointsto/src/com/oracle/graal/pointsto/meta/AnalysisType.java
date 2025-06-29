@@ -83,10 +83,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private static final AtomicReferenceFieldUpdater<AnalysisType, AnalysisObject> UNIQUE_CONSTANT_UPDATER = //
                     AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, AnalysisObject.class, "uniqueConstant");
 
-    @SuppressWarnings("rawtypes")//
-    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> INTERCEPTORS_UPDATER = //
-                    AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, Object.class, "interceptors");
-
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> subtypeReachableNotificationsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "subtypeReachableNotifications");
 
@@ -171,8 +167,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private final AnalysisType componentType;
     private final AnalysisType elementalType;
 
-    private final AnalysisType[] interfaces;
-    private AnalysisMethod[] declaredMethods;
+    private final List<AnalysisType> interfaces;
+    private List<AnalysisMethod> declaredMethods;
     private Set<AnalysisMethod> dispatchTableMethods;
 
     private AnalysisType[] allInterfaces;
@@ -327,7 +323,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         if (superClass != null) {
             superClass.addSubType(this);
         }
-        if (isInterface() && interfaces.length == 0) {
+        if (isInterface() && interfaces.isEmpty()) {
             objectType.addSubType(this);
         }
         for (AnalysisType interf : interfaces) {
@@ -354,15 +350,15 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         });
     }
 
-    private AnalysisType[] convertTypes(ResolvedJavaType[] originalTypes) {
-        List<AnalysisType> result = new ArrayList<>(originalTypes.length);
+    private List<AnalysisType> convertTypes(List<? extends ResolvedJavaType> originalTypes) {
+        List<AnalysisType> result = new ArrayList<>(originalTypes.size());
         for (ResolvedJavaType originalType : originalTypes) {
             if (universe.hostVM.skipInterface(universe, originalType, wrapped)) {
                 continue;
             }
             result.add(universe.lookup(originalType));
         }
-        return result.toArray(AnalysisType.EMPTY_ARRAY);
+        return List.copyOf(result);
     }
 
     public AnalysisType getArrayClass(int dim) {
@@ -1044,7 +1040,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
-    public AnalysisType[] getInterfaces() {
+    public List<AnalysisType> getInterfaces() {
         return interfaces;
     }
 
@@ -1201,8 +1197,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * Although all elements are of type AnalysisField, we set this array to be of type
      * ResolvedJavaField so that runtime compilation does not need to convert the array type.
      */
-    private volatile ResolvedJavaField[] instanceFieldsWithSuper;
-    private volatile ResolvedJavaField[] instanceFieldsWithoutSuper;
+    private volatile List<ResolvedJavaField> instanceFieldsWithSuper;
+    private volatile List<ResolvedJavaField> instanceFieldsWithoutSuper;
 
     public void clearInstanceFieldsCache() {
         instanceFieldsWithSuper = null;
@@ -1214,8 +1210,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * AnalysisField and can be casted to AnalysisField without problem.
      */
     @Override
-    public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
-        ResolvedJavaField[] result = includeSuperclasses ? instanceFieldsWithSuper : instanceFieldsWithoutSuper;
+    public List<ResolvedJavaField> getInstanceFields(boolean includeSuperclasses) {
+        List<ResolvedJavaField> result = includeSuperclasses ? instanceFieldsWithSuper : instanceFieldsWithoutSuper;
         if (result != null) {
             return result;
         } else {
@@ -1223,12 +1219,12 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
     }
 
-    private ResolvedJavaField[] initializeInstanceFields(boolean includeSuperclasses) {
+    private List<ResolvedJavaField> initializeInstanceFields(boolean includeSuperclasses) {
         List<ResolvedJavaField> list = new ArrayList<>();
         if (includeSuperclasses && getSuperclass() != null) {
-            list.addAll(Arrays.asList(getSuperclass().getInstanceFields(true)));
+            list.addAll(getSuperclass().getInstanceFields(true));
         }
-        ResolvedJavaField[] result = convertFields(interceptInstanceFields(wrapped.getInstanceFields(false)), list, includeSuperclasses);
+        List<ResolvedJavaField> result = convertFields(wrapped.getInstanceFields(false), list, includeSuperclasses);
         if (includeSuperclasses) {
             instanceFieldsWithSuper = result;
         } else {
@@ -1245,11 +1241,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     static final Comparator<ResolvedJavaField> FIELD_COMPARATOR = Comparator.comparing(ResolvedJavaField::getName).thenComparing(f -> f.getType().toJavaName());
 
-    private ResolvedJavaField[] convertFields(ResolvedJavaField[] originals, List<ResolvedJavaField> list, boolean listIncludesSuperClassesFields) {
-        ResolvedJavaField[] localOriginals = originals;
+    private List<ResolvedJavaField> convertFields(List<? extends ResolvedJavaField> originals, List<ResolvedJavaField> list, boolean listIncludesSuperClassesFields) {
+        ResolvedJavaField[] localOriginals = originals.toArray(new ResolvedJavaField[originals.size()]);
         if (universe.hostVM.sortFields()) {
             /* Clone the originals; it is a reference to the wrapped type's instanceFields array. */
-            localOriginals = originals.clone();
             Arrays.sort(localOriginals, FIELD_COMPARATOR);
         }
         for (ResolvedJavaField original : localOriginals) {
@@ -1270,7 +1265,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
                 }
             }
         }
-        return list.toArray(new ResolvedJavaField[list.size()]);
+        return List.copyOf(list);
     }
 
     /**
@@ -1278,7 +1273,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * AnalysisField and can be casted to AnalysisField without problem.
      */
     @Override
-    public ResolvedJavaField[] getStaticFields() {
+    public List<ResolvedJavaField> getStaticFields() {
         return convertFields(wrapped.getStaticFields(), new ArrayList<>(), false);
     }
 
@@ -1320,14 +1315,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods() {
+    public List<AnalysisMethod> getDeclaredMethods() {
         return getDeclaredMethods(true);
     }
 
     @Override
-    public AnalysisMethod[] getDeclaredMethods(boolean forceLink) {
+    public List<AnalysisMethod> getDeclaredMethods(boolean forceLink) {
         GraalError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
-        AnalysisMethod[] result = declaredMethods;
+        List<AnalysisMethod> result = declaredMethods;
         if (result == null) {
             result = universe.lookup(wrapped.getDeclaredMethods(forceLink));
             /* Ensure array element initializations are published before publishing the array. */
@@ -1346,14 +1341,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredConstructors() {
+    public List<AnalysisMethod> getDeclaredConstructors() {
         return getDeclaredConstructors(true);
     }
 
     @Override
-    public AnalysisMethod[] getDeclaredConstructors(boolean forceLink) {
+    public List<AnalysisMethod> getDeclaredConstructors(boolean forceLink) {
         GraalError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
-        return universe.lookup(wrapped.getDeclaredConstructors(forceLink));
+        return List.copyOf(universe.lookup(wrapped.getDeclaredConstructors(forceLink)));
     }
 
     public AnalysisMethod findConstructor(Signature signature) {
@@ -1469,12 +1464,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return isCloneableWithAllocation;
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        return universe.lookup(wrapped.getHostClass());
-    }
-
     @Override
     public AnalysisUniverse getUniverse() {
         return universe;
@@ -1502,21 +1491,5 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     /* Method copied from java.lang.Class. */
     public boolean isAnnotation() {
         return (getModifiers() & ANNOTATION) != 0;
-    }
-
-    public void addInstanceFieldsInterceptor(InstanceFieldsInterceptor interceptor) {
-        ConcurrentLightHashSet.addElement(this, INTERCEPTORS_UPDATER, interceptor);
-    }
-
-    private ResolvedJavaField[] interceptInstanceFields(ResolvedJavaField[] fields) {
-        ResolvedJavaField[] result = fields;
-        for (Object interceptor : ConcurrentLightHashSet.getElements(this, INTERCEPTORS_UPDATER)) {
-            result = ((InstanceFieldsInterceptor) interceptor).interceptInstanceFields(universe, result, this);
-        }
-        return result;
-    }
-
-    public interface InstanceFieldsInterceptor {
-        ResolvedJavaField[] interceptInstanceFields(AnalysisUniverse universe, ResolvedJavaField[] fields, AnalysisType type);
     }
 }

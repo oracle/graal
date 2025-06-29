@@ -618,11 +618,10 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
         }
         HotSpotMetaAccessProvider meta = (HotSpotMetaAccessProvider) getMetaAccess();
         ResolvedJavaType javaType = meta.lookupJavaType(type);
-        ResolvedJavaField[] fields = javaType.getInstanceFields(includeSuperclasses);
-        int[] fieldOffsets = new int[fields.length];
+        List<? extends ResolvedJavaField> fields = javaType.getInstanceFields(includeSuperclasses);
+        int[] fieldOffsets = new int[fields.size()];
         int fieldsCount = 0;
-        for (int i = 0; i < fields.length; i++) {
-            final ResolvedJavaField f = fields[i];
+        for (final ResolvedJavaField f : fields) {
             if ((includePrimitive || !f.getJavaKind().isPrimitive()) && !fieldIsNotEligible(type, f)) {
                 fieldOffsets[fieldsCount++] = f.getOffset();
             }

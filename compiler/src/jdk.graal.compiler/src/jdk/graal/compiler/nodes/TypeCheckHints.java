@@ -25,6 +25,7 @@
 package jdk.graal.compiler.nodes;
 
 import java.util.Arrays;
+import java.util.List;
 
 import jdk.graal.compiler.core.common.type.TypeReference;
 
@@ -113,9 +114,9 @@ public class TypeCheckHints {
         Hint[] hintsBuf = NO_HINTS;
         if (profile != null) {
             double notRecordedTypes = profile.getNotRecordedProbability();
-            ProfiledType[] ptypes = profile.getTypes();
-            if (notRecordedTypes < (1D - minHintHitProbability) && ptypes != null && ptypes.length > 0) {
-                hintsBuf = new Hint[ptypes.length];
+            List<ProfiledType> ptypes = profile.getTypes();
+            if (notRecordedTypes < (1D - minHintHitProbability) && ptypes != null && !ptypes.isEmpty()) {
+                hintsBuf = new Hint[ptypes.size()];
                 int hintCount = 0;
                 for (ProfiledType ptype : ptypes) {
                     if (targetType != null) {

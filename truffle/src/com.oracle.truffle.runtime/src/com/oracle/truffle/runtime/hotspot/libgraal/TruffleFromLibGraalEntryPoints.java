@@ -155,8 +155,8 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(GetConstantFieldInfo)
     static int getConstantFieldInfo(Object truffleRuntime, long typeHandle, boolean isStatic, int fieldIndex) {
         ResolvedJavaType enclosing = LibGraal.unhand(ResolvedJavaType.class, typeHandle);
-        ResolvedJavaField[] declaredFields = isStatic ? enclosing.getStaticFields() : enclosing.getInstanceFields(false);
-        ResolvedJavaField field = declaredFields[fieldIndex];
+        List<? extends ResolvedJavaField> declaredFields = isStatic ? enclosing.getStaticFields() : enclosing.getInstanceFields(false);
+        ResolvedJavaField field = declaredFields.get(fieldIndex);
 
         ConstantFieldInfo constantFieldInfo = ((TruffleCompilerRuntime) truffleRuntime).getConstantFieldInfo(field);
         if (constantFieldInfo == null) {

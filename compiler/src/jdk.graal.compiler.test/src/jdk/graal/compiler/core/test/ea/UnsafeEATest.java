@@ -25,6 +25,7 @@
 package jdk.graal.compiler.core.test.ea;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -60,8 +61,8 @@ public class UnsafeEATest extends EATestBase {
             // Check that a compiled version of this method returns the same value if we expect a
             // constant result.
             ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
-            JavaKind[] javaKinds = method.getSignature().toParameterKinds(false);
-            Object[] args = new Object[javaKinds.length];
+            List<JavaKind> javaKinds = method.getSignature().toParameterKinds(false);
+            Object[] args = new Object[javaKinds.size()];
             int i = 0;
             for (JavaKind k : javaKinds) {
                 args[i++] = JavaConstant.defaultForKind(k).asBoxedPrimitive();

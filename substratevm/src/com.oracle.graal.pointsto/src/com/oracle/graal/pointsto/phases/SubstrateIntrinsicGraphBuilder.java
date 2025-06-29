@@ -63,7 +63,7 @@ public class SubstrateIntrinsicGraphBuilder extends IntrinsicGraphBuilder {
 
     private FrameState getFrameState(ValueNode returnVal) {
         ValueNode[] locals = arguments;
-        JavaKind[] pushedSlotKinds = null;
+        List<JavaKind> pushedSlotKinds = List.of();
         ValueNode[] pushedValues = null;
         ValueNode[] locks = ValueNode.EMPTY_ARRAY;
         ValueNode[] stack;
@@ -92,7 +92,7 @@ public class SubstrateIntrinsicGraphBuilder extends IntrinsicGraphBuilder {
     protected void setExceptionState(StateSplit exceptionObject) {
         ValueNode[] locals = arguments;
         ValueNode[] stack = {exceptionObject.asNode()};
-        JavaKind[] pushedSlotKinds = null;
+        List<JavaKind> pushedSlotKinds = List.of();
         ValueNode[] pushedValues = null;
         ValueNode[] locks = ValueNode.EMPTY_ARRAY;
         List<MonitorIdNode> monitorIds = null;
@@ -124,7 +124,7 @@ public class SubstrateIntrinsicGraphBuilder extends IntrinsicGraphBuilder {
             /* Creating FrameState for new UnwindNode. */
             ValueNode[] locals = arguments;
             ValueNode[] stack = {exceptionValue};
-            JavaKind[] pushedSlotKinds = null;
+            List<JavaKind> pushedSlotKinds = List.of();
             ValueNode[] pushedValues = null;
             ValueNode[] locks = ValueNode.EMPTY_ARRAY;
             List<MonitorIdNode> monitorIds = null;

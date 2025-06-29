@@ -62,6 +62,8 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import java.util.List;
+
 /**
  * Utilities related to unboxing Vector API values from constants or from memory.
  * <p/>
@@ -106,9 +108,9 @@ public class VectorAPIBoxingUtils {
         if (vectorType == null) {
             return null;
         }
-        ResolvedJavaField[] fields = type.getInstanceFields(true);
-        GraalError.guarantee(fields.length == 1 && fields[0].getName().equals("payload"), "expected exactly one payload field in Vector API constant: %s", constant);
-        ResolvedJavaField payloadField = fields[0];
+        List<? extends ResolvedJavaField> fields = type.getInstanceFields(true);
+        GraalError.guarantee(fields.size() == 1 && fields.getFirst().getName().equals("payload"), "expected exactly one payload field in Vector API constant: %s", constant);
+        ResolvedJavaField payloadField = fields.getFirst();
         JavaConstant payloadConstant = constantReflection.readFieldValue(payloadField, constant);
         ResolvedJavaType payloadType = metaAccess.lookupJavaType(payloadConstant);
         GraalError.guarantee(payloadType.isArray() && payloadType.getElementalType().isPrimitive(), "expected primitive payload array: %s", payloadType);
@@ -142,9 +144,9 @@ public class VectorAPIBoxingUtils {
             return null;
         }
 
-        ResolvedJavaField[] fields = type.getInstanceFields(true);
-        GraalError.guarantee(fields.length == 1 && fields[0].getName().equals("payload"), "expected exactly one payload field in Vector API constant: %s", constant);
-        ResolvedJavaField payloadField = fields[0];
+        List<? extends ResolvedJavaField> fields = type.getInstanceFields(true);
+        GraalError.guarantee(fields.size() == 1 && fields.getFirst().getName().equals("payload"), "expected exactly one payload field in Vector API constant: %s", constant);
+        ResolvedJavaField payloadField = fields.getFirst();
         JavaConstant payloadConstant = constantReflection.readFieldValue(payloadField, constant);
         ResolvedJavaType payloadType = metaAccess.lookupJavaType(payloadConstant);
         GraalError.guarantee(payloadType.isArray(), "must be an array %s", payloadType);
@@ -215,9 +217,9 @@ public class VectorAPIBoxingUtils {
 
         ObjectStamp objectStamp = (ObjectStamp) value.stamp(NodeView.DEFAULT);
         ResolvedJavaType type = objectStamp.type();
-        ResolvedJavaField[] fields = type.getInstanceFields(true);
-        GraalError.guarantee(fields.length == 1 && fields[0].getName().equals("payload"), "expected exactly one payload field in Vector API class %s: %s", type, fields);
-        ResolvedJavaField payloadField = fields[0];
+        List<? extends ResolvedJavaField> fields = type.getInstanceFields(true);
+        GraalError.guarantee(fields.size() == 1 && fields.getFirst().getName().equals("payload"), "expected exactly one payload field in Vector API class %s: %s", type, fields);
+        ResolvedJavaField payloadField = fields.getFirst();
         FixedWithNextNode insertionPoint;
         if (value instanceof FixedWithNextNode fixed) {
             insertionPoint = fixed;

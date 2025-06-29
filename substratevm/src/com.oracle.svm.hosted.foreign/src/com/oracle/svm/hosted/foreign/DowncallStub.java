@@ -90,7 +90,7 @@ import jdk.vm.ci.meta.Signature;
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+3/src/hotspot/cpu/aarch64/downcallLinker_aarch64.cpp")
 class DowncallStub extends NonBytecodeMethod {
     public static Signature createSignature(MetaAccessProvider metaAccess) {
-        return ResolvedSignature.fromKinds(new JavaKind[]{JavaKind.Object}, JavaKind.Object, metaAccess);
+        return ResolvedSignature.fromKinds(List.of(JavaKind.Object), JavaKind.Object, metaAccess);
     }
 
     private final NativeEntryPointInfo nep;

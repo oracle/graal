@@ -28,6 +28,8 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.meta.JavaKind;
 
+import java.util.List;
+
 public class HostedPrimitiveType extends HostedType {
 
     public HostedPrimitiveType(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind) {
@@ -80,8 +82,8 @@ public class HostedPrimitiveType extends HostedType {
     }
 
     @Override
-    public HostedField[] getInstanceFields(boolean includeSuperclasses) {
-        return HostedField.EMPTY_ARRAY;
+    public List<HostedField> getInstanceFields(boolean includeSuperclasses) {
+        return List.of();
     }
 
     @Override

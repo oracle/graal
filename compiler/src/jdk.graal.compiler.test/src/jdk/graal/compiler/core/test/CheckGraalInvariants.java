@@ -447,8 +447,8 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                 ResolvedJavaType type = metaAccess.lookupJavaType(c);
                 List<ResolvedJavaMethod> methods = new ArrayList<>();
                 try {
-                    methods.addAll(Arrays.asList(type.getDeclaredMethods(false)));
-                    methods.addAll(Arrays.asList(type.getDeclaredConstructors(false)));
+                    methods.addAll(type.getDeclaredMethods(false));
+                    methods.addAll(type.getDeclaredConstructors(false));
                 } catch (Throwable e) {
                     errors.add(String.format("Error while checking %s:%n%s", className, printStackTraceToString(e)));
                 }

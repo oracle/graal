@@ -28,6 +28,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
+import java.util.List;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
@@ -100,7 +101,7 @@ public abstract class NonBytecodeMethod implements GraphProvider, ResolvedJavaMe
     }
 
     @Override
-    public Parameter[] getParameters() {
+    public List<Parameter> getParameters() {
         throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
@@ -170,8 +171,8 @@ public abstract class NonBytecodeMethod implements GraphProvider, ResolvedJavaMe
     }
 
     @Override
-    public ExceptionHandler[] getExceptionHandlers() {
-        return new ExceptionHandler[0];
+    public List<ExceptionHandler> getExceptionHandlers() {
+        return List.of();
     }
 
     @Override
@@ -198,7 +199,7 @@ public abstract class NonBytecodeMethod implements GraphProvider, ResolvedJavaMe
     }
 
     @Override
-    public Type[] getGenericParameterTypes() {
+    public List<Type> getGenericParameterTypes() {
         throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 

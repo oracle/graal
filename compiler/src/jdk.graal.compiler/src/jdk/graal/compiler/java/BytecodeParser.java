@@ -509,7 +509,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         if (returnVal != null) {
             // Push the return value on the top of stack
             FrameState newFrameState = frameStateBuilder.create(stream.nextBCI(), getNonIntrinsicAncestor(), false,
-                            new JavaKind[]{returnKind}, new ValueNode[]{returnVal});
+                            List.of(returnKind), new ValueNode[]{returnVal});
             return newFrameState;
         } else if (returnKind != JavaKind.Void) {
             throw new InternalError();
@@ -524,7 +524,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     public FrameState getInvocationPluginBeforeState() {
         assert isParsingInvocationPlugin();
         ResolvedJavaMethod callee = invocationPluginContext.targetMethod;
-        JavaKind[] argSlotKinds = callee.getSignature().toParameterKinds(!callee.isStatic());
+        List<JavaKind> argSlotKinds = callee.getSignature().toParameterKinds(!callee.isStatic());
         return frameState.create(bci(), getNonIntrinsicAncestor(), false, argSlotKinds, invocationPluginContext.args);
     }
 
@@ -568,7 +568,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             assert !parser.parsingIntrinsic();
             this.parser = parser;
             mark = parser.getGraph().getMark();
-            JavaKind[] argSlotKinds = callee.getSignature().toParameterKinds(!callee.isStatic());
+            List<JavaKind> argSlotKinds = callee.getSignature().toParameterKinds(!callee.isStatic());
             stateBefore = parser.frameState.create(parser.bci(), parser.getNonIntrinsicAncestor(), false, argSlotKinds, args);
         }
 
@@ -602,7 +602,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                                 // Swap the top-of-stack value with the return value
                                 ValueNode tos = frameStateBuilder.pop(returnKind);
                                 assert tos.getStackKind() == returnVal.getStackKind() : Assertions.errorMessage(tos, returnVal);
-                                FrameState newFrameState = frameStateBuilder.create(parser.stream.nextBCI(), parser.getNonIntrinsicAncestor(), false, new JavaKind[]{returnKind},
+                                FrameState newFrameState = frameStateBuilder.create(parser.stream.nextBCI(), parser.getNonIntrinsicAncestor(), false, List.of(returnKind),
                                                 new ValueNode[]{returnVal});
                                 frameState.replaceAndDelete(newFrameState);
                                 newFrameState.setNodeSourcePosition(frameState.getNodeSourcePosition());
@@ -2214,7 +2214,6 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      */
     protected void emitCheckForInvokeSuperSpecial(ValueNode[] args) {
         ResolvedJavaType callingClass = method.getDeclaringClass();
-        callingClass = getHostClass(callingClass);
         if (callingClass.isInterface()) {
             args[0] = emitIncompatibleClassChangeCheck(args[0], callingClass);
         }
@@ -2230,12 +2229,6 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             guardingNode = append(new FixedGuardNode(condition, ClassCastException, None, false));
         }
         return append(PiNode.create(object, StampFactory.object(checkedTypeRef, true), guardingNode));
-    }
-
-    @SuppressWarnings("deprecation")
-    private static ResolvedJavaType getHostClass(ResolvedJavaType type) {
-        ResolvedJavaType hostClass = type.getHostClass();
-        return hostClass != null ? hostClass : type;
     }
 
     protected JavaTypeProfile getProfileForInvoke(InvokeKind invokeKind) {
@@ -5453,9 +5446,8 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         ResolvedJavaType holder = resolvedField.getDeclaringClass();
         if (classInitializationPlugin != null) {
             Supplier<FrameState> stateBefore = () -> {
-                JavaKind[] pushedSlotKinds = {field.getJavaKind()};
                 ValueNode[] pushedValues = {value};
-                FrameState fs = frameState.create(bci(), getNonIntrinsicAncestor(), false, pushedSlotKinds, pushedValues);
+                FrameState fs = frameState.create(bci(), getNonIntrinsicAncestor(), false, List.of(field.getJavaKind()), pushedValues);
                 assert stackSizeBefore == fs.stackSize() : Assertions.errorMessageContext("stackSizeBefore", stackSizeBefore, "fs.stackSize", fs.stackSize(), "fs", fs);
                 return fs;
             };

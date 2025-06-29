@@ -217,7 +217,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
     }
 
     @Override
-    public CallingConvention getCallingConvention(Type t, JavaType returnType, JavaType[] parameterTypes, ValueKindFactory<?> valueKindFactory) {
+    public CallingConvention getCallingConvention(Type t, JavaType returnType, List<? extends JavaType> parameterTypes, ValueKindFactory<?> valueKindFactory) {
         SubstrateCallingConventionType type = (SubstrateCallingConventionType) t;
         if (type.fixedParameterAssignment != null || type.returnSaving != null) {
             throw unsupportedFeature("Fixed parameter assignments and return saving are not yet supported on this platform.");
@@ -225,7 +225,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
 
         boolean isEntryPoint = type.nativeABI() && !type.outgoing;
 
-        AllocatableValue[] locations = new AllocatableValue[parameterTypes.length];
+        AllocatableValue[] locations = new AllocatableValue[parameterTypes.size()];
 
         int currentGeneral = 0;
         int currentFP = 0;
@@ -238,8 +238,8 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
         int currentStackOffset = (type.nativeABI() ? nativeParamsStackOffset : target.wordSize);
 
         JavaKind[] kinds = new JavaKind[locations.length];
-        for (int i = 0; i < parameterTypes.length; i++) {
-            JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, parameterTypes[i], metaAccess, target);
+        for (int i = 0; i < parameterTypes.size(); i++) {
+            JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, parameterTypes.get(i), metaAccess, target);
             kinds[i] = kind;
 
             Register register = null;

@@ -1111,13 +1111,13 @@ public class HostInliningPhase extends AbstractInliningPhase {
             return false;
         }
 
-        JavaTypeProfile.ProfiledType[] ptypes = typeProfile.getTypes();
-        if (ptypes == null || ptypes.length <= 0) {
+        List<JavaTypeProfile.ProfiledType> ptypes = typeProfile.getTypes();
+        if (ptypes.isEmpty()) {
             call.reason = "not direct call: no parameter types in profile";
             return false;
         }
 
-        if (ptypes.length != 1) {
+        if (ptypes.size() != 1) {
             var sb = new StringBuilder("not direct call: polymorphic inlining not supported. Types: ");
             for (ProfiledType type : ptypes) {
                 sb.append(type.getType().toJavaName(false)).append(", ");
@@ -1145,7 +1145,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
             return false;
         }
 
-        ResolvedJavaType type = ptypes[0].getType();
+        ResolvedJavaType type = ptypes.getFirst().getType();
         ResolvedJavaMethod concrete = type.resolveConcreteMethod(targetMethod, invoke.getContextType());
         if (!shouldInlineTarget(context, call, concrete)) {
             return false;
@@ -1205,7 +1205,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
             SpeculationLog.SpeculationReason speculationReason = InliningUtil.createSpeculation(invoke, typeProfile);
             SpeculationLog speculationLog = targetGraph.getSpeculationLog();
 
-            ResolvedJavaType resolvedType = typeProfile.getTypes()[0].getType();
+            ResolvedJavaType resolvedType = typeProfile.getTypes().getFirst().getType();
             InliningUtil.insertTypeGuard(context.highTierContext, invoke, resolvedType, speculationLog.speculate(speculationReason));
             InliningUtil.replaceInvokeCallTarget(invoke, targetGraph, InvokeKind.Special, targetMethod);
         }

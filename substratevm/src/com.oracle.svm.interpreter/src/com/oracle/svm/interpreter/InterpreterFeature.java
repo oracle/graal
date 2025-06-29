@@ -183,7 +183,7 @@ public class InterpreterFeature implements InternalFeature {
         }
     }
 
-    private static int findLocalSlotByName(String localName, Local[] locals) {
+    private static int findLocalSlotByName(String localName, List<Local> locals) {
         for (Local local : locals) {
             if (localName.equals(local.getName())) {
                 return local.getSlot();
@@ -197,7 +197,7 @@ public class InterpreterFeature implements InternalFeature {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
 
         BuildTimeInterpreterUniverse.freshSingletonInstance();
-        AnalysisMethod interpreterRoot = accessImpl.getMetaAccess().lookupJavaType(Interpreter.Root.class).getDeclaredMethods(false)[0];
+        AnalysisMethod interpreterRoot = accessImpl.getMetaAccess().lookupJavaType(Interpreter.Root.class).getDeclaredMethods(false).getFirst();
 
         accessImpl.registerAsRoot(interpreterRoot, true, "interpreter main loop");
         LocalVariableTable interpreterVariableTable = interpreterRoot.getLocalVariableTable();

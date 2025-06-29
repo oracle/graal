@@ -319,7 +319,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                     ValueNode[] locals,
                     ValueNode[] stack,
                     int stackSize,
-                    JavaKind[] pushedSlotKinds,
+                    List<JavaKind> pushedSlotKinds,
                     ValueNode[] pushedValues,
                     ValueNode[] locks,
                     List<MonitorIdNode> monitorIds,
@@ -336,7 +336,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         validForDeoptimization = false;
     }
 
-    private static int computeSize(JavaKind[] slotKinds) {
+    private static int computeSize(List<JavaKind> slotKinds) {
         int result = 0;
         if (slotKinds != null) {
             for (JavaKind slotKind : slotKinds) {
@@ -346,7 +346,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         return result;
     }
 
-    private void createValues(ValueNode[] locals, ValueNode[] stack, int initialStackSize, JavaKind[] pushedSlotKinds, ValueNode[] pushedValues, ValueNode[] locks) {
+    private void createValues(ValueNode[] locals, ValueNode[] stack, int initialStackSize, List<JavaKind> pushedSlotKinds, ValueNode[] pushedValues, ValueNode[] locks) {
         assert this.values == null : Assertions.errorMessage(this.values);
         int lastNonNullLocal = locals.length - 1;
         while (lastNonNullLocal >= 0) {
@@ -373,10 +373,10 @@ public final class FrameState extends VirtualState implements IterableNodeType {
             this.values.initialize(index++, value);
         }
         if (pushedValues != null) {
-            assert pushedSlotKinds.length == pushedValues.length : Assertions.errorMessage(pushedSlotKinds, pushedValues, this);
+            assert pushedSlotKinds.size() == pushedValues.length : Assertions.errorMessage(pushedSlotKinds, pushedValues, this);
             for (int i = 0; i < pushedValues.length; i++) {
                 this.values.initialize(index++, pushedValues[i]);
-                if (pushedSlotKinds[i].needsTwoSlots()) {
+                if (pushedSlotKinds.get(i).needsTwoSlots()) {
                     this.values.initialize(index++, null);
                 }
             }
@@ -557,7 +557,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
 
     public FrameState duplicateModifiedBeforeCall(int newBci,
                     JavaKind popKind,
-                    JavaKind[] pushedSlotKinds,
+                    List<JavaKind> pushedSlotKinds,
                     ValueNode[] pushedValues,
                     List<EscapeObjectState> pushedVirtualObjectMappings) {
         return duplicateModified(graph(), newBci, StackState.BeforePop, popKind, pushedSlotKinds, pushedValues, pushedVirtualObjectMappings);
@@ -573,14 +573,14 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                     List<EscapeObjectState> pushedVirtualObjectMappings) {
         assert pushedValue != null;
         assert pushedValue.getStackKind() == pushedSlotKind : Assertions.errorMessage(pushedValue, popKind, this);
-        return duplicateModified(graph(), bci, stackState, popKind, new JavaKind[]{pushedSlotKind}, new ValueNode[]{pushedValue}, pushedVirtualObjectMappings);
+        return duplicateModified(graph(), bci, stackState, popKind, List.of(pushedSlotKind), new ValueNode[]{pushedValue}, pushedVirtualObjectMappings);
     }
 
     public FrameState duplicateModified(StructuredGraph graph,
                     int newBci,
                     StackState newStackState,
                     JavaKind popKind,
-                    JavaKind[] pushedSlotKinds,
+                    List<JavaKind> pushedSlotKinds,
                     ValueNode[] pushedValues,
                     List<EscapeObjectState> pushedVirtualObjectMappings) {
         return duplicateModified(graph, newBci, newStackState, popKind, pushedSlotKinds, pushedValues, pushedVirtualObjectMappings, true);
@@ -596,7 +596,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                     int newBci,
                     StackState newStackState,
                     JavaKind popKind,
-                    JavaKind[] pushedSlotKinds,
+                    List<JavaKind> pushedSlotKinds,
                     ValueNode[] pushedValues,
                     List<EscapeObjectState> pushedVirtualObjectMappings,
                     boolean checkStackDepth) {
@@ -605,9 +605,9 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         int copyStackSize;
         int newStackSize = 0;
         if (pushedValues != null) {
-            assert pushedSlotKinds.length == pushedValues.length : Assertions.errorMessage(pushedSlotKinds, pushedValues);
+            assert pushedSlotKinds.size() == pushedValues.length : Assertions.errorMessage(pushedSlotKinds, pushedValues);
             for (int i = 0; i < pushedValues.length; i++) {
-                newStackSize += pushedSlotKinds[i].getSlotCount();
+                newStackSize += pushedSlotKinds.get(i).getSlotCount();
             }
         }
         if (newStackState == StackState.Rethrow && stackState != StackState.Rethrow && popKind == JavaKind.Void) {
@@ -651,7 +651,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                     copiedVirtualObjectMappings = ensureHasVirtualObjectMapping((VirtualObjectNode) pushedValue, pushedVirtualObjectMappings, copiedVirtualObjectMappings);
                 }
                 newValues.add(pushedValue);
-                if (pushedSlotKinds[i].needsTwoSlots()) {
+                if (pushedSlotKinds.get(i).needsTwoSlots()) {
                     newValues.add(null);
                 }
             }

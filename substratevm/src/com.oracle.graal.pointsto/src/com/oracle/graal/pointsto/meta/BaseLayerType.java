@@ -62,10 +62,10 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     private final ResolvedJavaType enclosingType;
     private final ResolvedJavaType componentType;
     private final ResolvedJavaType superClass;
-    private final ResolvedJavaType[] interfaces;
+    private final List<ResolvedJavaType> interfaces;
     private final ResolvedJavaType objectType;
-    private ResolvedJavaField[] instanceFields;
-    private ResolvedJavaField[] instanceFieldsWithSuper;
+    private List<ResolvedJavaField> instanceFields;
+    private List<ResolvedJavaField> instanceFieldsWithSuper;
 
     public BaseLayerType(String name, int baseLayerId, int modifiers, boolean isInterface, boolean isEnum, boolean isInitialized, boolean isLinked,
                     String sourceFileName, ResolvedJavaType enclosingType, ResolvedJavaType componentType, ResolvedJavaType superClass, ResolvedJavaType[] interfaces, ResolvedJavaType objectType,
@@ -82,16 +82,16 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
         this.enclosingType = enclosingType;
         this.componentType = componentType;
         this.superClass = superClass;
-        this.interfaces = interfaces;
+        this.interfaces = List.of(interfaces);
         this.objectType = objectType;
     }
 
     public void setInstanceFields(ResolvedJavaField[] instanceFields) {
-        this.instanceFields = instanceFields;
+        this.instanceFields = List.of(instanceFields);
     }
 
     public void setInstanceFieldsWithSuper(ResolvedJavaField[] instanceFieldsWithSuper) {
-        this.instanceFieldsWithSuper = instanceFieldsWithSuper;
+        this.instanceFieldsWithSuper = List.of(instanceFieldsWithSuper);
     }
 
     @Override
@@ -184,7 +184,7 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     }
 
     @Override
-    public ResolvedJavaType[] getInterfaces() {
+    public List<ResolvedJavaType> getInterfaces() {
         return interfaces;
     }
 
@@ -247,8 +247,8 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
-        return new ResolvedJavaMethod[0];
+    public List<ResolvedJavaMethod> getDeclaredMethods(boolean forceLink) {
+        return List.of();
     }
 
     @Override
@@ -257,12 +257,12 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     }
 
     @Override
-    public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
+    public List<ResolvedJavaField> getInstanceFields(boolean includeSuperclasses) {
         return includeSuperclasses ? instanceFieldsWithSuper : instanceFields;
     }
 
     @Override
-    public ResolvedJavaField[] getStaticFields() {
+    public List<ResolvedJavaField> getStaticFields() {
         throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
     }
 
@@ -292,12 +292,12 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredConstructors() {
+    public List<ResolvedJavaMethod> getDeclaredConstructors() {
         throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods() {
+    public List<ResolvedJavaMethod> getDeclaredMethods() {
         throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
     }
 
