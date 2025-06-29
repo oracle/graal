@@ -67,9 +67,9 @@ public class TestJfrStreamingStress extends JfrStreamingTest {
         String[] events = new String[]{"com.jfr.String", "com.jfr.Integer", "com.jfr.Class", JfrEvent.JavaMonitorWait.getName()};
         RecordingStream stream = startStream(events);
 
-        stream.onEvent("com.jfr.Class", event -> classEvents.incrementAndGet());
-        stream.onEvent("com.jfr.Integer", event -> integerEvents.incrementAndGet());
-        stream.onEvent("com.jfr.String", event -> stringEvents.incrementAndGet());
+        stream.onEvent("com.jfr.Class", _ -> classEvents.incrementAndGet());
+        stream.onEvent("com.jfr.Integer", _ -> integerEvents.incrementAndGet());
+        stream.onEvent("com.jfr.String", _ -> stringEvents.incrementAndGet());
         stream.onEvent(JfrEvent.JavaMonitorWait.getName(), event -> {
             if (event.<RecordedClass> getValue("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
                 waitEvents.incrementAndGet();

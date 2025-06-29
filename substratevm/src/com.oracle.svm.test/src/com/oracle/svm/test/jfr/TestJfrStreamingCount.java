@@ -60,9 +60,9 @@ public class TestJfrStreamingCount extends JfrStreamingTest {
         String[] events = new String[]{"com.jfr.String", "com.jfr.Integer", "com.jfr.Class"};
         RecordingStream stream = startStream(events);
 
-        stream.onEvent("com.jfr.Class", event -> classEvents.incrementAndGet());
-        stream.onEvent("com.jfr.Integer", event -> integerEvents.incrementAndGet());
-        stream.onEvent("com.jfr.String", event -> stringEvents.incrementAndGet());
+        stream.onEvent("com.jfr.Class", _ -> classEvents.incrementAndGet());
+        stream.onEvent("com.jfr.Integer", _ -> integerEvents.incrementAndGet());
+        stream.onEvent("com.jfr.String", _ -> stringEvents.incrementAndGet());
 
         Runnable eventEmitter = () -> {
             for (int i = 0; i < COUNT; i++) {

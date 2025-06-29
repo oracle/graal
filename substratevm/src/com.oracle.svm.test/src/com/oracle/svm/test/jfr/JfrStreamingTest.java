@@ -62,10 +62,10 @@ public abstract class JfrStreamingTest extends AbstractJfrTest {
         stream.setMaxSize(JFR_MAX_SIZE);
 
         stream.enable("com.jfr.StartStream");
-        stream.onEvent("com.jfr.StartStream", e -> streamStates.get(stream).started = true);
+        stream.onEvent("com.jfr.StartStream", _ -> streamStates.get(stream).started = true);
 
         stream.enable("com.jfr.EndStream");
-        stream.onEvent("com.jfr.EndStream", e -> {
+        stream.onEvent("com.jfr.EndStream", _ -> {
             stream.close();
             streamStates.get(stream).endedSuccessfully = true;
         });
