@@ -49,6 +49,7 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.Hybrid;
+import com.oracle.svm.core.image.ImageHeapLayouter.ImageHeapLayouterCallback;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.VMError;
@@ -273,7 +274,7 @@ public class WasmGCHeapWriter {
 
     public WasmGCImageHeapLayoutInfo layout() {
         collectObjectData();
-        return (WasmGCImageHeapLayoutInfo) heap.getLayouter().layout(heap, WasmUtil.PAGE_SIZE);
+        return (WasmGCImageHeapLayoutInfo) heap.getLayouter().layout(heap, WasmUtil.PAGE_SIZE, ImageHeapLayouterCallback.NONE);
     }
 
     public void write(WasmGCImageHeapLayoutInfo layout, WasmModule module) {
