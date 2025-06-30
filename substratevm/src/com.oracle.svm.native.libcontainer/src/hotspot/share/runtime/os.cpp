@@ -86,7 +86,9 @@
 #include "utilities/fastrand.hpp"
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/macros.hpp"
+#endif // !NATIVE_IMAGE
 #include "utilities/permitForbiddenFunctions.hpp"
+#ifndef NATIVE_IMAGE
 #include "utilities/powerOfTwo.hpp"
 
 #ifdef LINUX

@@ -28,7 +28,9 @@
 
 #include "utilities/compilerWarnings.hpp"
 #include "utilities/debug.hpp"
+#ifndef NATIVE_IMAGE
 #include "utilities/forbiddenFunctions.hpp"
+#endif // !NATIVE_IMAGE
 #include "utilities/macros.hpp"
 
 #ifndef NATIVE_IMAGE
