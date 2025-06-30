@@ -116,6 +116,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                     "engine.Cache",
                     "engine.CacheLoad",
                     "engine.CacheStore",
+                    "engine.CacheStoreEnabled",
                     "engine.DebugCacheLoad",
                     "engine.DebugCacheStore",
                     "engine.SpawnIsolate");

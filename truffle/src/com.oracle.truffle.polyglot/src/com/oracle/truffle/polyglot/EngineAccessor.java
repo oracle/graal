@@ -130,6 +130,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.FileSystems.ResetablePath;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.FileSystemConfig;
+import com.oracle.truffle.polyglot.PolyglotEngineImpl.FinalizationResult;
 import com.oracle.truffle.polyglot.PolyglotImpl.EmbedderFileSystemContext;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
@@ -1323,8 +1324,13 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public void finalizeStore(Object polyglotEngine) {
-            ((PolyglotEngineImpl) polyglotEngine).finalizeStore();
+        public Object finalizeStore(Object polyglotEngine) {
+            return ((PolyglotEngineImpl) polyglotEngine).finalizeStore();
+        }
+
+        @Override
+        public void restoreStore(Object polyglotEngine, Object finalizationResult) {
+            ((PolyglotEngineImpl) polyglotEngine).restoreStore((FinalizationResult) finalizationResult);
         }
 
         @Override

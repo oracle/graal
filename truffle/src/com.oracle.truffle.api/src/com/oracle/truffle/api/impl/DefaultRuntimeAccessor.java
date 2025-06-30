@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.nio.file.Path;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -253,6 +254,11 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public boolean onEngineClosing(Object runtimeData) {
             return false;
+        }
+
+        @Override
+        public boolean onStoreCache(Object runtimeData, Path targetPath, long cancelledWord) {
+            throw new UnsupportedOperationException("Persisting an engine is not supported with the the Truffle fallback runtime. It is only supported on native-image hosts.");
         }
 
         @Override

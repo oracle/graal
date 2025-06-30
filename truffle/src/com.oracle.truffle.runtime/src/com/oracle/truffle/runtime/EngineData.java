@@ -83,6 +83,7 @@ import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueue
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueWeightingBothTiers;
 import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.getRuntime;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -90,6 +91,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.logging.Level;
 
@@ -173,6 +175,8 @@ public final class EngineData {
     @CompilationFinal public int callAndLoopThresholdInFirstTier;
     @CompilationFinal public long interpreterCallStackHeadRoom;
 
+    public BooleanSupplier cancelledPredicate;
+
     // Cached parsed CompileOnly includes and excludes
     private volatile Pair<List<String>, List<String>> parsedCompileOnly;
     private Map<String, String> compilerOptions;
@@ -215,8 +219,12 @@ public final class EngineData {
         OptimizedRuntimeAccessor.ENGINE.preinitializeContext(this.polyglotEngine);
     }
 
-    public void finalizeStore() {
-        OptimizedRuntimeAccessor.ENGINE.finalizeStore(this.polyglotEngine);
+    public Object finalizeStore() {
+        return OptimizedRuntimeAccessor.ENGINE.finalizeStore(this.polyglotEngine);
+    }
+
+    public void restoreStore(Object finalizationResult) {
+        OptimizedRuntimeAccessor.ENGINE.restoreStore(this.polyglotEngine, finalizationResult);
     }
 
     public Object getEngineLock() {
@@ -289,6 +297,10 @@ public final class EngineData {
          * reset disables logging.
          */
         this.polyglotEngine = null;
+    }
+
+    public boolean onStoreCache(Path targetPath, long cancelledWord) {
+        return getRuntime().getEngineCacheSupport().onStoreCache(this, targetPath, cancelledWord);
     }
 
     private void loadOptions(OptionValues options, SandboxPolicy sandboxPolicy) {
