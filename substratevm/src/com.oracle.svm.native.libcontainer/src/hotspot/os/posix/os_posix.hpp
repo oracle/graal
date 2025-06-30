@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation. Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,6 +19,7 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
 #ifndef OS_POSIX_OS_POSIX_HPP
@@ -30,7 +29,6 @@
 
 #include <errno.h>
 
-#ifndef NATIVE_IMAGE
 // Note: the Posix API aims to capture functionality available on all Posix
 // compliant platforms, but in practice the implementations may depend on
 // non-Posix functionality.
@@ -97,6 +95,5 @@ public:
                                     const void* ucVoid,
                                     address* stub);
 };
-#endif // !NATIVE_IMAGE
 
 #endif // OS_POSIX_OS_POSIX_HPP

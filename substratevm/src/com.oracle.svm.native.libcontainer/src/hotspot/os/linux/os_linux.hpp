@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation. Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,6 +19,7 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
 #ifndef OS_LINUX_OS_LINUX_HPP
@@ -33,7 +32,6 @@
 class os::Linux {
   friend class os;
 
-#ifndef NATIVE_IMAGE
   static int (*_pthread_getcpuclockid)(pthread_t, clockid_t *);
   static int (*_pthread_setname_np)(pthread_t, const char*);
 
@@ -49,25 +47,18 @@ class os::Linux {
   static GrowableArray<int>* _nindex_to_node;
 
   static julong available_memory_in_container();
-#endif // !NATIVE_IMAGE
 
  protected:
 
   static julong _physical_memory;
-#ifndef NATIVE_IMAGE
   static pthread_t _main_thread;
 
   static julong available_memory();
   static julong free_memory();
-#endif // !NATIVE_IMAGE
 
 
-#ifdef NATIVE_IMAGE
- public:
-#endif // NATIVE_IMAGE
   static void initialize_system_info();
 
-#ifndef NATIVE_IMAGE
   static int commit_memory_impl(char* addr, size_t bytes, bool exec);
   static int commit_memory_impl(char* addr, size_t bytes,
                                 size_t alignment_hint, bool exec);
@@ -99,9 +90,7 @@ class os::Linux {
     bool     has_steal_ticks;
   };
 
-#endif // !NATIVE_IMAGE
   static int active_processor_count();
-#ifndef NATIVE_IMAGE
   static void kernel_version(long* major, long* minor, long* patch);
 
   // If kernel1 > kernel2 return  1
@@ -127,12 +116,10 @@ class os::Linux {
 
   static address   initial_thread_stack_bottom(void)                { return _initial_thread_stack_bottom; }
   static uintptr_t initial_thread_stack_size(void)                  { return _initial_thread_stack_size; }
-#endif // !NATIVE_IMAGE
 
   static julong physical_memory() { return _physical_memory; }
   static julong host_swap();
 
-#ifndef NATIVE_IMAGE
   static intptr_t* ucontext_get_sp(const ucontext_t* uc);
   static intptr_t* ucontext_get_fp(const ucontext_t* uc);
 
@@ -472,7 +459,6 @@ class os::Linux {
   // otherwise does nothing and returns -2.
   static int malloc_info(FILE* stream);
 #endif // GLIBC
-#endif // !NATIVE_IMAGE
 };
 
 #endif // OS_LINUX_OS_LINUX_HPP

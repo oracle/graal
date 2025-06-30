@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation. Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,21 +19,19 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
 #ifndef SHARE_RUNTIME_OS_HPP
 #define SHARE_RUNTIME_OS_HPP
 
 #include "jvm_md.h"
-#ifndef NATIVE_IMAGE
 #include "runtime/osInfo.hpp"
 #include "utilities/align.hpp"
 #include "utilities/exceptions.hpp"
-#endif // !NATIVE_IMAGE
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/macros.hpp"
 #include "utilities/ostream.hpp"
-#ifndef NATIVE_IMAGE
 #ifdef __APPLE__
 # include <mach/mach_time.h>
 #endif
@@ -157,7 +153,6 @@ const bool ExecMem = true;
 typedef void (*java_call_t)(JavaValue* value, const methodHandle& method, JavaCallArguments* args, JavaThread* thread);
 
 class MallocTracker;
-#endif // !NATIVE_IMAGE
 
 // Preserve errno across a range of calls
 
@@ -177,7 +172,6 @@ class os: AllStatic {
   friend class JVMCIVMStructs;
   friend class MallocTracker;
 
-#ifndef NATIVE_IMAGE
 #ifdef ASSERT
  private:
   static bool _mutex_init_done;
@@ -262,10 +256,8 @@ class os: AllStatic {
   static void initialize_initial_active_processor_count();
 
   LINUX_ONLY(static void pd_init_container_support();)
-#endif // !NATIVE_IMAGE
 
  public:
-#ifndef NATIVE_IMAGE
   static void init(void);                      // Called before command line parsing
 
   static void init_container_support() {       // Called during command line parsing.
@@ -351,10 +343,8 @@ class os: AllStatic {
 
   static jlong total_swap_space();
   static jlong free_swap_space();
-#endif // !NATIVE_IMAGE
 
   static julong physical_memory();
-#ifndef NATIVE_IMAGE
   static bool has_allocatable_memory_limit(size_t* limit);
   static bool is_server_class_machine();
   static size_t rss();
@@ -362,7 +352,6 @@ class os: AllStatic {
   // Returns the id of the processor on which the calling thread is currently executing.
   // The returned value is guaranteed to be between 0 and (os::processor_count() - 1).
   static uint processor_id();
-#endif // !NATIVE_IMAGE
 
   // number of CPUs
   static int processor_count() {
@@ -370,7 +359,6 @@ class os: AllStatic {
   }
   static void set_processor_count(int count) { _processor_count = count; }
 
-#ifndef NATIVE_IMAGE
   // Returns the number of CPUs this process is currently allowed to run on.
   // Note that on some OSes this can change dynamically.
   static int active_processor_count();
@@ -679,13 +667,9 @@ class os: AllStatic {
   // File i/o operations
   static int open(const char *path, int oflag, int mode);
   static FILE* fdopen(int fd, const char* mode);
-#endif // !NATIVE_IMAGE
   static FILE* fopen(const char* path, const char* mode);
-#ifndef NATIVE_IMAGE
   static jlong lseek(int fd, jlong offset, int whence);
-#endif // !NATIVE_IMAGE
   static bool file_exists(const char* file);
-#ifndef NATIVE_IMAGE
   // This function, on Windows, canonicalizes a given path (see os_windows.cpp for details).
   // On Posix, this function is a noop: it does not change anything and just returns
   // the input pointer.
@@ -807,20 +791,16 @@ class os: AllStatic {
 
   // Find agent entry point
   static void* find_agent_function(JvmtiAgent* agent_lib, bool check_lib, const char* sym);
-#endif // !NATIVE_IMAGE
 
   // Provide wrapper versions of these functions to guarantee NUL-termination
   // in all cases.
   static int vsnprintf(char* buf, size_t len, const char* fmt, va_list args) ATTRIBUTE_PRINTF(3, 0);
-#ifndef NATIVE_IMAGE
   static int snprintf(char* buf, size_t len, const char* fmt, ...) ATTRIBUTE_PRINTF(3, 4);
-#endif // !NATIVE_IMAGE
 
   // Performs snprintf and asserts the result is non-negative (so there was not
   // an encoding error) and that the output was not truncated.
   static int snprintf_checked(char* buf, size_t len, const char* fmt, ...) ATTRIBUTE_PRINTF(3, 4);
 
-#ifndef NATIVE_IMAGE
   // Get host name in buffer provided
   static bool get_host_name(char* buf, size_t buflen);
 
@@ -859,7 +839,6 @@ class os: AllStatic {
 
   // Send JFR memory info event
   static void jfr_report_memory_info() NOT_JFR_RETURN();
-#endif // !NATIVE_IMAGE
 
   // Replacement for strerror().
   // Will return the english description of the error (e.g. "File not found", as
@@ -877,7 +856,6 @@ class os: AllStatic {
   // Will not change the value of errno.
   static const char* errno_name(int e);
 
-#ifndef NATIVE_IMAGE
   // wait for a key press if PauseAtExit is set
   static void wait_for_keypress_at_exit(void);
 
@@ -919,10 +897,8 @@ class os: AllStatic {
   // Init os specific system properties values
   static void init_system_properties_values();
 
-#endif // !NATIVE_IMAGE
   // IO operations, non-JVM_ version.
   static int stat(const char* path, struct stat* sbuf);
-#ifndef NATIVE_IMAGE
   static bool dir_is_empty(const char* path);
 
   // IO operations on binary files
@@ -937,22 +913,16 @@ class os: AllStatic {
   //   toSkip: number of stack frames to skip at the beginning.
   // Return: number of stack frames captured.
   static int get_native_stack(address* stack, int size, int toSkip = 0);
-#endif // !NATIVE_IMAGE
 
   // General allocation (must be MT-safe)
-#ifndef NATIVE_IMAGE
   static void* malloc  (size_t size, MemTag mem_tag, const NativeCallStack& stack);
-#endif // !NATIVE_IMAGE
   static void* malloc  (size_t size, MemTag mem_tag);
-#ifndef NATIVE_IMAGE
   static void* realloc (void *memblock, size_t size, MemTag mem_tag, const NativeCallStack& stack);
-#endif // !NATIVE_IMAGE
   static void* realloc (void *memblock, size_t size, MemTag mem_tag);
 
   // handles null pointers
   static void  free    (void *memblock);
   static char* strdup(const char *, MemTag mem_tag = mtInternal);  // Like strdup
-#ifndef NATIVE_IMAGE
   // Like strdup, but exit VM when strdup() returns null
   static char* strdup_check_oom(const char*, MemTag mem_tag = mtInternal);
 
@@ -1045,7 +1015,6 @@ class os: AllStatic {
   // Used to register dynamic code cache area with the OS
   // Note: Currently only used in 64 bit Windows implementations
   inline static bool register_code_area(char *low, char *high);
-#endif // !NATIVE_IMAGE
 
   // Platform-specific code for interacting with individual OSes.
   // TODO: This is for compatibility only with current usage of os::Linux, etc.
@@ -1066,7 +1035,6 @@ class os: AllStatic {
   class Posix;
 #endif
 
-#ifndef NATIVE_IMAGE
 #ifndef OS_NATIVE_THREAD_CREATION_FAILED_MSG
 #define OS_NATIVE_THREAD_CREATION_FAILED_MSG "unable to create native thread: possibly out of memory or process/resource limits reached"
 #endif
@@ -1103,14 +1071,10 @@ class os: AllStatic {
   // Enables write or execute access to writeable and executable pages.
   static void current_thread_enable_wx(WXMode mode);
 #endif // __APPLE__ && AARCH64
-#endif // !NATIVE_IMAGE
 
  protected:
-#ifndef NATIVE_IMAGE
   static volatile unsigned int _rand_seed;    // seed for random number generator
-#endif // !NATIVE_IMAGE
   static int _processor_count;                // number of processors
-#ifndef NATIVE_IMAGE
   static int _initial_active_processor_count; // number of active processors during initialization.
 
   static char* format_boot_path(const char* format_string,
@@ -1121,16 +1085,13 @@ class os: AllStatic {
   static bool set_boot_path(char fileSep, char pathSep);
 
   static bool pd_dll_unload(void* libhandle, char* ebuf, int ebuflen);
-#endif // !NATIVE_IMAGE
 };
 
-#ifndef NATIVE_IMAGE
 // Note that "PAUSE" is almost always used with synchronization
 // so arguably we should provide Atomic::SpinPause() instead
 // of the global SpinPause() with C linkage.
 // It'd also be eligible for inlining on many platforms.
 
 extern "C" int SpinPause();
-#endif // !NATIVE_IMAGE
 
 #endif // SHARE_RUNTIME_OS_HPP

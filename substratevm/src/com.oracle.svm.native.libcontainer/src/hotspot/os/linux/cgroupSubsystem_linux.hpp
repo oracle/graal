@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation. Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,6 +19,7 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
 #ifndef CGROUP_SUBSYSTEM_LINUX_HPP
@@ -173,24 +172,17 @@ class CachedMetric : public CHeapObj<mtInternal>{
       _next_check_counter = min_jlong;
     }
     bool should_check_metric() {
-#ifdef NATIVE_IMAGE
-      // NOTE (chaeubl): we do all caching on the Java-side instead of the C-side
-      return true;
-#else
       return os::elapsed_counter() > _next_check_counter;
-#endif // NATIVE_IMAGE
     }
     jlong value() { return _metric; }
     void set_value(jlong value, jlong timeout) {
       _metric = value;
-#ifndef NATIVE_IMAGE
       // Metric is unlikely to change, but we want to remain
       // responsive to configuration changes. A very short grace time
       // between re-read avoids excessive overhead during startup without
       // significantly reducing the VMs ability to promptly react to changed
       // metric config
       _next_check_counter = os::elapsed_counter() + timeout;
-#endif // !NATIVE_IMAGE
     }
 };
 
@@ -235,9 +227,7 @@ class CgroupMemoryController: public CHeapObj<mtInternal> {
     virtual jlong memory_max_usage_in_bytes() = 0;
     virtual jlong rss_usage_in_bytes() = 0;
     virtual jlong cache_usage_in_bytes() = 0;
-#ifndef NATIVE_IMAGE
     virtual void print_version_specific_info(outputStream* st, julong host_mem) = 0;
-#endif // !NATIVE_IMAGE
     virtual bool needs_hierarchy_adjustment() = 0;
     virtual bool is_read_only() = 0;
     virtual const char* subsystem_path() = 0;
@@ -272,9 +262,7 @@ class CgroupSubsystem: public CHeapObj<mtInternal> {
     jlong memory_max_usage_in_bytes();
     jlong rss_usage_in_bytes();
     jlong cache_usage_in_bytes();
-#ifndef NATIVE_IMAGE
     void print_version_specific_info(outputStream* st);
-#endif // !NATIVE_IMAGE
 };
 
 // Utility class for storing info retrieved from /proc/cgroups,

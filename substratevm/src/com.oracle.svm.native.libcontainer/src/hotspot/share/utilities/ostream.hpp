@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation. Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,21 +19,18 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
 #ifndef SHARE_UTILITIES_OSTREAM_HPP
 #define SHARE_UTILITIES_OSTREAM_HPP
 
 #include "memory/allocation.hpp"
-#ifndef NATIVE_IMAGE
 #include "runtime/timer.hpp"
-#endif // !NATIVE_IMAGE
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/macros.hpp"
 
-#ifndef NATIVE_IMAGE
 DEBUG_ONLY(class ResourceMark;)
-#endif // !NATIVE_IMAGE
 
 // Output streams for printing
 //
@@ -49,7 +44,6 @@ DEBUG_ONLY(class ResourceMark;)
 // -XX:+DisplayVMOutputToStderr.
 
 class outputStream : public CHeapObjBase {
-#ifndef NATIVE_IMAGE
  private:
    NONCOPYABLE(outputStream);
    int _indentation; // current indentation
@@ -92,10 +86,8 @@ class outputStream : public CHeapObjBase {
    void do_vsnprintf_and_write_with_scratch_buffer(const char* format, va_list ap, bool add_cr) ATTRIBUTE_PRINTF(2, 0);
    // calls do_vsnprintf, then writes output to stream.
    void do_vsnprintf_and_write(const char* format, va_list ap, bool add_cr) ATTRIBUTE_PRINTF(2, 0);
-#endif // !NATIVE_IMAGE
 
  public:
-#ifndef NATIVE_IMAGE
    class TestSupport;  // Unit test support
 
    // creation
@@ -135,10 +127,8 @@ class outputStream : public CHeapObjBase {
    void print_cr(const char* format, ...) ATTRIBUTE_PRINTF(2, 3);
    void vprint(const char *format, va_list argptr) ATTRIBUTE_PRINTF(2, 0);
    void vprint_cr(const char* format, va_list argptr) ATTRIBUTE_PRINTF(2, 0);
-#endif // !NATIVE_IMAGE
    void print_raw(const char* str)                { print_raw(str, strlen(str)); }
    void print_raw(const char* str, size_t len);
-#ifndef NATIVE_IMAGE
    void print_raw_cr(const char* str)             { print_raw(str); cr(); }
    void print_raw_cr(const char* str, size_t len) { print_raw(str, len); cr(); }
    void print_data(void* data, size_t len, bool with_ascii, bool rel_addr=true);
@@ -169,9 +159,7 @@ class outputStream : public CHeapObjBase {
 
    // flushing
    virtual void flush() {}
-#endif // !NATIVE_IMAGE
    virtual void write(const char* str, size_t len) = 0;
-#ifndef NATIVE_IMAGE
    virtual void rotate_log(bool force, outputStream* out = nullptr) {} // GC log rotation
    virtual ~outputStream() {}   // close properly on deletion
 
@@ -181,10 +169,8 @@ class outputStream : public CHeapObjBase {
 
    void dec_cr() { dec(); cr(); }
    void inc_cr() { inc(); cr(); }
-#endif // !NATIVE_IMAGE
 };
 
-#ifndef NATIVE_IMAGE
 // standard output
 // ANSI C++ name collision
 extern outputStream* tty;           // tty output
@@ -241,7 +227,6 @@ class ttyUnlocker: StackObj {
     }
   }
 };
-#endif // !NATIVE_IMAGE
 
 // for writing to strings; buffer will expand automatically.
 // Buffer will always be zero-terminated.
@@ -263,11 +248,9 @@ class stringStream : public outputStream {
   // Create a stringStream using an internal buffer of initially initial_bufsize size;
   // will be enlarged on demand. There is no maximum cap.
   stringStream(size_t initial_capacity = 0);
-#ifndef NATIVE_IMAGE
   // Creates a stringStream using a caller-provided buffer. Will truncate silently if
   // it overflows.
   stringStream(char* fixed_buffer, size_t fixed_buffer_size);
-#endif // !NATIVE_IMAGE
   ~stringStream();
   virtual void write(const char* c, size_t len);
   // Return number of characters written into buffer, excluding terminating zero and
@@ -283,16 +266,13 @@ class stringStream : public outputStream {
     DEBUG_ONLY(_is_frozen = true);
     return _buffer;
   };
-#ifndef NATIVE_IMAGE
   void  reset();
   bool is_empty() const { return _buffer[0] == '\0'; }
   // Copy to a resource, or C-heap, array as requested
   char* as_string(bool c_heap = false) const;
   char* as_string(Arena* arena) const;
-#endif // !NATIVE_IMAGE
 };
 
-#ifndef NATIVE_IMAGE
 class fileStream : public outputStream {
  protected:
   FILE* _file;
@@ -397,6 +377,5 @@ class networkStream : public bufferedStream {
 };
 
 #endif
-#endif // !NATIVE_IMAGE
 
 #endif // SHARE_UTILITIES_OSTREAM_HPP
