@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation. Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,18 +19,16 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
-#ifndef NATIVE_IMAGE
 #include "classfile/classLoader.hpp"
 #include "jvm.h"
 #include "jvmtifiles/jvmti.h"
 #include "logging/log.hpp"
 #include "memory/allocation.inline.hpp"
 #include "nmt/memTracker.hpp"
-#endif // !NATIVE_IMAGE
 #include "os_posix.inline.hpp"
-#ifndef NATIVE_IMAGE
 #include "runtime/arguments.hpp"
 #include "runtime/atomic.hpp"
 #include "runtime/frame.inline.hpp"
@@ -46,10 +42,8 @@
 #include "runtime/sharedRuntime.hpp"
 #include "services/attachListener.hpp"
 #include "utilities/align.hpp"
-#endif // !NATIVE_IMAGE
 #include "utilities/checkedCast.hpp"
 #include "utilities/debug.hpp"
-#ifndef NATIVE_IMAGE
 #include "utilities/defaultStream.hpp"
 #include "utilities/events.hpp"
 #include "utilities/formatBuffer.hpp"
@@ -1024,13 +1018,9 @@ char* os::realpath(const char* filename, char* outbuf, size_t outbuflen) {
   return result;
 }
 
-#endif // !NATIVE_IMAGE
-
 int os::stat(const char *path, struct stat *sbuf) {
   return ::stat(path, sbuf);
 }
-
-#ifndef NATIVE_IMAGE
 
 char * os::native_path(char *path) {
   return path;
@@ -2196,4 +2186,3 @@ const void* os::get_saved_assert_context(const void** sigInfo) {
   *sigInfo = nullptr;
   return nullptr;
 }
-#endif // !NATIVE_IMAGE
