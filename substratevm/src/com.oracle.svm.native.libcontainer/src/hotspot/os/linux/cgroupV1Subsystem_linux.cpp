@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation. Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -19,7 +21,6 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
 #include <string.h>
@@ -350,6 +351,7 @@ jlong CgroupV1MemoryController::kernel_memory_max_usage_in_bytes() {
   return (jlong)kmem_max_usage;
 }
 
+#ifndef NATIVE_IMAGE
 void CgroupV1MemoryController::print_version_specific_info(outputStream* st, julong phys_mem) {
   jlong kmem_usage = kernel_memory_usage_in_bytes();
   jlong kmem_limit = kernel_memory_limit_in_bytes(phys_mem);
@@ -359,6 +361,7 @@ void CgroupV1MemoryController::print_version_specific_info(outputStream* st, jul
   OSContainer::print_container_helper(st, kmem_usage, "kernel_memory_usage_in_bytes");
   OSContainer::print_container_helper(st, kmem_max_usage, "kernel_memory_max_usage_in_bytes");
 }
+#endif // !NATIVE_IMAGE
 
 char* CgroupV1Subsystem::cpu_cpuset_cpus() {
   char cpus[1024];

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation. Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -19,7 +21,6 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
 #ifndef SHARE_UTILITIES_GLOBALDEFINITIONS_HPP
@@ -30,8 +31,10 @@
 #include "utilities/forbiddenFunctions.hpp"
 #include "utilities/macros.hpp"
 
+#ifndef NATIVE_IMAGE
 // Get constants like JVM_T_CHAR and JVM_SIGNATURE_INT, before pulling in <jvm.h>.
 #include "classfile_constants.h"
+#endif // !NATIVE_IMAGE
 
 #include COMPILER_HEADER(utilities/globalDefinitions)
 
@@ -40,7 +43,9 @@
 #include <limits>
 #include <type_traits>
 
+#ifndef NATIVE_IMAGE
 class oopDesc;
+#endif // !NATIVE_IMAGE
 
 // Defaults for macros that might be defined per compiler.
 #ifndef NOINLINE
@@ -50,6 +55,7 @@ class oopDesc;
 #define ALWAYSINLINE inline
 #endif
 
+#ifndef NATIVE_IMAGE
 #ifndef ATTRIBUTE_ALIGNED
 #define ATTRIBUTE_ALIGNED(x) alignas(x)
 #endif
@@ -122,6 +128,7 @@ class oopDesc;
 #define UINT32_FORMAT_X          "0x%"        PRIx32
 #define UINT32_FORMAT_X_0        "0x%08"      PRIx32
 #define UINT32_FORMAT_W(width)   "%"   #width PRIu32
+#endif // !NATIVE_IMAGE
 
 // Format 64-bit quantities.
 #define INT64_FORMAT             "%"          PRId64
@@ -149,6 +156,7 @@ class oopDesc;
 #define JULONG_FORMAT_X          UINT64_FORMAT_X
 #endif
 
+#ifndef NATIVE_IMAGE
 // Format pointers and padded integral values which change size between 32- and 64-bit.
 #ifdef  _LP64
 #define INTPTR_FORMAT            "0x%016"     PRIxPTR
@@ -258,6 +266,7 @@ inline size_t heap_word_size(size_t byte_size) {
 
 inline jfloat jfloat_cast(jint x);
 inline jdouble jdouble_cast(jlong x);
+#endif // !NATIVE_IMAGE
 
 //-------------------------------------------
 // Constant for jlong (standardized by C++11)
@@ -272,16 +281,19 @@ const jlong max_jlong = CONST64(0x7fffffffffffffff);
 // for timer info max values which include all bits, 0xffffffffffffffff
 const jlong all_bits_jlong = ~jlong(0);
 
+#ifndef NATIVE_IMAGE
 //-------------------------------------------
 // Constant for jdouble
 const jlong min_jlongDouble = CONST64(0x0000000000000001);
 const jdouble min_jdouble = jdouble_cast(min_jlongDouble);
 const jlong max_jlongDouble = CONST64(0x7fefffffffffffff);
 const jdouble max_jdouble = jdouble_cast(max_jlongDouble);
+#endif // !NATIVE_IMAGE
 
 const size_t K                  = 1024;
 const size_t M                  = K*K;
 const size_t G                  = M*K;
+#ifndef NATIVE_IMAGE
 
 // Constants for converting from a base unit to milli-base units.  For
 // example from seconds to milliseconds and microseconds
@@ -290,11 +302,13 @@ const int MILLIUNITS    = 1000;         // milli units per base unit
 const int MICROUNITS    = 1000000;      // micro units per base unit
 const int NANOUNITS     = 1000000000;   // nano units per base unit
 const int NANOUNITS_PER_MILLIUNIT = NANOUNITS / MILLIUNITS;
+#endif // !NATIVE_IMAGE
 
 const jlong NANOSECS_PER_SEC      = CONST64(1000000000);
 const jint  NANOSECS_PER_MILLISEC = 1000000;
 
 
+#ifndef NATIVE_IMAGE
 // Unit conversion functions
 // The caller is responsible for considering overflow.
 
@@ -479,6 +493,7 @@ inline int pointer_delta_as_int(const volatile T* left, const volatile T* right)
 extern "C" {
   typedef int (*_sort_Fn)(const void *, const void *);
 }
+#endif // !NATIVE_IMAGE
 
 // Additional Java basic types
 
@@ -507,6 +522,7 @@ typedef jshort s2;
 typedef jint   s4;
 typedef jlong  s8;
 
+#ifndef NATIVE_IMAGE
 const jbyte min_jbyte = -(1 << 7);       // smallest jbyte
 const jbyte max_jbyte = (1 << 7) - 1;    // largest jbyte
 const jshort min_jshort = -(1 << 15);    // smallest jshort
@@ -1080,6 +1096,7 @@ inline intptr_t bitfield(intptr_t x, int start_bit_no, int field_length) {
 #ifdef min
 #undef min
 #endif
+#endif // !NATIVE_IMAGE
 
 // It is necessary to use templates here. Having normal overloaded
 // functions does not work because it is necessary to provide both 32-
@@ -1088,6 +1105,7 @@ inline intptr_t bitfield(intptr_t x, int start_bit_no, int field_length) {
 // will be even more error-prone than macros.
 template<class T> constexpr T MAX2(T a, T b)           { return (a > b) ? a : b; }
 template<class T> constexpr T MIN2(T a, T b)           { return (a < b) ? a : b; }
+#ifndef NATIVE_IMAGE
 template<class T> constexpr T MAX3(T a, T b, T c)      { return MAX2(MAX2(a, b), c); }
 template<class T> constexpr T MIN3(T a, T b, T c)      { return MIN2(MIN2(a, b), c); }
 template<class T> constexpr T MAX4(T a, T b, T c, T d) { return MAX2(MAX3(a, b, c), d); }
@@ -1339,5 +1357,6 @@ std::add_rvalue_reference_t<T> declval() noexcept;
 // Quickly test to make sure IEEE-754 subnormal numbers are correctly
 // handled.
 bool IEEE_subnormal_handling_OK();
+#endif // !NATIVE_IMAGE
 
 #endif // SHARE_UTILITIES_GLOBALDEFINITIONS_HPP
