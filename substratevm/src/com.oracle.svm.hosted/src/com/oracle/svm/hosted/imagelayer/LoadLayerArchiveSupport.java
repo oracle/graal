@@ -158,18 +158,16 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
                                     case Added -> "Current layer gets";
                                     case Equal -> throw VMError.shouldNotReachHere("diff for equal");
                                 } + " built with option argument '" + argument + "' from " + OptionOrigin.from(argumentOrigin.origin) + ".";
-                                String suffix;
                                 if (!request.message().isEmpty()) {
-                                    suffix = request.message();
+                                    message += " " + request.message();
                                 } else {
                                     /* fallback to generic verification message */
-                                    suffix = "This is also required to be specified for the " + switch (diffResultKind) {
+                                    message += " This is also required to be specified for the " + switch (diffResultKind) {
                                         case Removed -> "current layered image build";
                                         case Added -> "previous layer build";
                                         case Equal -> throw VMError.shouldNotReachHere("diff for equal");
-                                    };
+                                    } + (positional ? " at the same position." : ".");
                                 }
-                                message += " " + suffix + (positional ? " at the same position." : ".");
                                 Severity severity = request.severity();
                                 violations.put(diffResult, severity);
                                 if (verbose) {

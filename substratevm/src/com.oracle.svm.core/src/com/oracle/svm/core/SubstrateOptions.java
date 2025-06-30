@@ -1066,7 +1066,7 @@ public class SubstrateOptions {
     private static final String ENABLE_DEBUGINFO_OPTION = "-g";
     // Only raise error if -g is used in current layer build but missing in the previous layer build
     @LayerVerifiedOption(apiOption = ENABLE_DEBUGINFO_OPTION, kind = Kind.Added, severity = Severity.Error, message = "If you want to use " + ENABLE_DEBUGINFO_OPTION +
-                    " in this layer, use a layer that was also built with " + ENABLE_DEBUGINFO_OPTION)//
+                    " in this layer, use a base layer that also got built with " + ENABLE_DEBUGINFO_OPTION + ".")//
     // ... but use stricter check for raw (non-API) use of GenerateDebugInfo
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @APIOption(name = ENABLE_DEBUGINFO_OPTION, fixedValue = "2", customHelp = "generate debugging information")//
