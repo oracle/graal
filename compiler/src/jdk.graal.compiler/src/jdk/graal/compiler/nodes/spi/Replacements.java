@@ -58,8 +58,8 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
     GraphBuilderConfiguration.Plugins getGraphBuilderPlugins();
 
     /**
-     * Least recently used cache for snippet templates. When a new element is added to this map, it evicts the least
-     * recently used element in case of full capacity.
+     * Least recently used cache for snippet templates. When a new element is added to this map, it
+     * evicts the least recently used element in case of full capacity.
      */
     Map<SnippetTemplate.CacheKey, SnippetTemplate> getTemplatesCache();
 
