@@ -1,11 +1,13 @@
 /*
  * Copyright (c) 1999, 2025, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2015, 2024 SAP SE. All rights reserved.
+ * Copyright (c) 2015, 2024, SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation. Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,9 +22,9 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
+#ifndef NATIVE_IMAGE
 #include "classfile/vmSymbols.hpp"
 #include "code/vtableStubs.hpp"
 #include "compiler/compileBroker.hpp"
@@ -31,19 +33,25 @@
 #include "interpreter/interpreter.hpp"
 #include "jvm.h"
 #include "jvmtifiles/jvmti.h"
+#endif // !NATIVE_IMAGE
 #include "logging/log.hpp"
+#ifndef NATIVE_IMAGE
 #include "logging/logStream.hpp"
 #include "memory/allocation.inline.hpp"
 #include "nmt/memTracker.hpp"
 #include "oops/oop.inline.hpp"
+#endif // !NATIVE_IMAGE
 #include "osContainer_linux.hpp"
 #include "os_linux.inline.hpp"
 #include "os_posix.inline.hpp"
+#ifndef NATIVE_IMAGE
 #include "prims/jniFastGetField.hpp"
 #include "prims/jvm_misc.hpp"
 #include "runtime/arguments.hpp"
 #include "runtime/atomic.hpp"
+#endif // !NATIVE_IMAGE
 #include "runtime/globals.hpp"
+#ifndef NATIVE_IMAGE
 #include "runtime/globals_extension.hpp"
 #include "runtime/init.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
@@ -65,7 +73,9 @@
 #include "services/runtimeService.hpp"
 #include "signals_posix.hpp"
 #include "utilities/align.hpp"
+#endif // !NATIVE_IMAGE
 #include "utilities/checkedCast.hpp"
+#ifndef NATIVE_IMAGE
 #include "utilities/debug.hpp"
 #include "utilities/decoder.hpp"
 #include "utilities/defaultStream.hpp"
@@ -80,6 +90,7 @@
 #include "jfr/jfrEvents.hpp"
 #include "jfr/support/jfrNativeLibraryLoadEvent.hpp"
 #endif
+#endif // !NATIVE_IMAGE
 
 // put OS-includes here
 # include <ctype.h>
@@ -129,6 +140,7 @@
   #include <sched.h>
 #endif
 
+#ifndef NATIVE_IMAGE
 // if RUSAGE_THREAD for getrusage() has not been defined, do it here. The code calling
 // getrusage() is prepared to handle the associated failure.
 #ifndef RUSAGE_THREAD
@@ -154,11 +166,13 @@ enum CoredumpFilterBit {
   LARGEPAGES_BIT = 1 << 6,
   DAX_SHARED_BIT = 1 << 8
 };
+#endif // !NATIVE_IMAGE
 
 ////////////////////////////////////////////////////////////////////////////////
 // global variables
 julong os::Linux::_physical_memory = 0;
 
+#ifndef NATIVE_IMAGE
 address   os::Linux::_initial_thread_stack_bottom = nullptr;
 uintptr_t os::Linux::_initial_thread_stack_size   = 0;
 
@@ -333,6 +347,7 @@ jlong os::free_swap_space() {
   }
   return host_free_swap_val;
 }
+#endif // !NATIVE_IMAGE
 
 julong os::physical_memory() {
   jlong phys_mem = 0;
@@ -349,6 +364,7 @@ julong os::physical_memory() {
   return phys_mem;
 }
 
+#ifndef NATIVE_IMAGE
 size_t os::rss() {
   size_t size = 0;
   os::Linux::meminfo_t info;
@@ -490,6 +506,7 @@ pid_t os::Linux::gettid() {
   assert(rslt != -1, "must be."); // old linuxthreads implementation?
   return (pid_t)rslt;
 }
+#endif // !NATIVE_IMAGE
 
 // Returns the amount of swap currently configured, in bytes.
 // This can change at any time.
@@ -499,6 +516,7 @@ julong os::Linux::host_swap() {
   return (julong)(si.totalswap * si.mem_unit);
 }
 
+#ifndef NATIVE_IMAGE
 // Most versions of linux have a bug where the number of processors are
 // determined by looking at the /proc file system.  In a chroot environment,
 // the system call returns 1.
@@ -506,9 +524,11 @@ static bool unsafe_chroot_detected = false;
 static const char *unstable_chroot_error = "/proc file system not found.\n"
                      "Java may be unstable running multithreaded in a chroot "
                      "environment on Linux when /proc filesystem is not mounted.";
+#endif // !NATIVE_IMAGE
 
 void os::Linux::initialize_system_info() {
   set_processor_count((int)sysconf(_SC_NPROCESSORS_CONF));
+#ifndef NATIVE_IMAGE
   if (processor_count() == 1) {
     pid_t pid = os::Linux::gettid();
     char fname[32];
@@ -520,10 +540,12 @@ void os::Linux::initialize_system_info() {
       fclose(fp);
     }
   }
+#endif // !NATIVE_IMAGE
   _physical_memory = (julong)sysconf(_SC_PHYS_PAGES) * (julong)sysconf(_SC_PAGESIZE);
   assert(processor_count() > 0, "linux error");
 }
 
+#ifndef NATIVE_IMAGE
 void os::init_system_properties_values() {
   // The next steps are taken in the product version:
   //
@@ -4638,6 +4660,7 @@ static int _cpu_count(const cpu_set_t* cpus) {
 #define CPU_COUNT(cpus) _cpu_count(cpus)
 
 #endif // CPU_COUNT
+#endif // !NATIVE_IMAGE
 
 // Get the current number of available processors for this process.
 // This value can change at any time during a process's lifetime.
@@ -4723,6 +4746,7 @@ int os::Linux::active_processor_count() {
   return get_active_processor_count();
 }
 
+#ifndef NATIVE_IMAGE
 // Determine the active processor count from one of
 // three different sources:
 //
@@ -5406,3 +5430,5 @@ bool os::pd_dll_unload(void* libhandle, char* ebuf, int ebuflen) {
 
   return res;
 } // end: os::pd_dll_unload()
+
+#endif // !NATIVE_IMAGE

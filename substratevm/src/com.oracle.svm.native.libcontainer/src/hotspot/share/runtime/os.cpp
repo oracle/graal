@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation. Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -19,9 +21,9 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
+#ifndef NATIVE_IMAGE
 #include "cds/cdsConfig.hpp"
 #include "classfile/javaClasses.hpp"
 #include "classfile/moduleEntry.hpp"
@@ -36,7 +38,9 @@
 #include "jvm.h"
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
+#endif // !NATIVE_IMAGE
 #include "memory/allocation.inline.hpp"
+#ifndef NATIVE_IMAGE
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
 #include "nmt/mallocHeader.inline.hpp"
@@ -59,7 +63,9 @@
 #include "runtime/javaThread.hpp"
 #include "runtime/jniHandles.hpp"
 #include "runtime/mutexLocker.hpp"
+#endif // !NATIVE_IMAGE
 #include "runtime/os.inline.hpp"
+#ifndef NATIVE_IMAGE
 #include "runtime/osThread.hpp"
 #include "runtime/safefetch.hpp"
 #include "runtime/sharedRuntime.hpp"
@@ -71,7 +77,9 @@
 #include "services/attachListener.hpp"
 #include "services/threadService.hpp"
 #include "utilities/align.hpp"
+#endif // !NATIVE_IMAGE
 #include "utilities/checkedCast.hpp"
+#ifndef NATIVE_IMAGE
 #include "utilities/count_trailing_zeros.hpp"
 #include "utilities/defaultStream.hpp"
 #include "utilities/events.hpp"
@@ -94,7 +102,9 @@
 
 OSThread*         os::_starting_thread    = nullptr;
 volatile unsigned int os::_rand_seed      = 1234567;
+#endif // !NATIVE_IMAGE
 int               os::_processor_count    = 0;
+#ifndef NATIVE_IMAGE
 int               os::_initial_active_processor_count = 0;
 os::PageSizes     os::_page_sizes;
 
@@ -107,6 +117,7 @@ int os::snprintf(char* buf, size_t len, const char* fmt, ...) {
   va_end(args);
   return result;
 }
+#endif // !NATIVE_IMAGE
 
 int os::snprintf_checked(char* buf, size_t len, const char* fmt, ...) {
   va_list args;
@@ -128,6 +139,7 @@ int os::vsnprintf(char* buf, size_t len, const char* fmt, va_list args) {
   return result;
 }
 
+#ifndef NATIVE_IMAGE
 // Fill in buffer with current local time as an ISO-8601 string.
 // E.g., YYYY-MM-DDThh:mm:ss.mmm+zzzz.
 // Returns buffer, or null if it failed.
@@ -591,6 +603,7 @@ bool os::find_builtin_agent(JvmtiAgent* agent, const char* sym) {
   agent->set_os_lib(save_handle);
   return false;
 }
+#endif // !NATIVE_IMAGE
 
 // --------------------- heap allocation utilities ---------------------
 
@@ -602,6 +615,7 @@ char *os::strdup(const char *str, MemTag mem_tag) {
   return dup_str;
 }
 
+#ifndef NATIVE_IMAGE
 char* os::strdup_check_oom(const char* str, MemTag mem_tag) {
   char* p = os::strdup(str, mem_tag);
   if (p == nullptr) {
@@ -622,7 +636,36 @@ static void break_if_ptr_caught(void* ptr) {
   }
 }
 #endif // ASSERT
+#endif // !NATIVE_IMAGE
 
+#ifdef NATIVE_IMAGE
+void* os::malloc(size_t size, MemTag mem_tag) {
+  // On malloc(0), implementations of malloc(3) have the choice to return either
+  // null or a unique non-null pointer. To unify libc behavior across our platforms
+  // we chose the latter.
+  size = MAX2((size_t)1, size);
+  return ::malloc(size);
+}
+
+void* os::realloc(void *memblock, size_t size, MemTag mem_tag) {
+  if (memblock == nullptr) {
+    return os::malloc(size, mem_tag);
+  }
+
+  // On realloc(p, 0), implementers of realloc(3) have the choice to return either
+  // null or a unique non-null pointer. To unify libc behavior across our platforms
+  // we chose the latter.
+  size = MAX2((size_t)1, size);
+  return ::realloc(memblock, size);
+}
+
+void  os::free(void *memblock) {
+  if (memblock == nullptr) {
+    return;
+  }
+  ::free(memblock);
+}
+#else
 void* os::malloc(size_t size, MemTag mem_tag) {
   return os::malloc(size, mem_tag, CALLER_PC);
 }
@@ -1478,6 +1521,7 @@ char* os::format_boot_path(const char* format_string,
     assert((q - formatted_path) == formatted_path_len, "formatted_path size botched");
     return formatted_path;
 }
+#endif // !NATIVE_IMAGE
 
 // This function is a proxy to fopen, it tries to add a non standard flag ('e' or 'N')
 // that ensures automatic closing of the file on exec. If it can not find support in
@@ -1506,6 +1550,7 @@ FILE* os::fopen(const char* path, const char* mode) {
   return file;
 }
 
+#ifndef NATIVE_IMAGE
 bool os::set_boot_path(char fileSep, char pathSep) {
   const char* home = Arguments::get_java_home();
   int home_len = (int)strlen(home);
@@ -1587,6 +1632,7 @@ void os::print_image_release_file(outputStream* st) {
   }
 }
 
+#endif // !NATIVE_IMAGE
 bool os::file_exists(const char* filename) {
   struct stat statbuf;
   if (filename == nullptr || strlen(filename) == 0) {
@@ -1594,6 +1640,7 @@ bool os::file_exists(const char* filename) {
   }
   return os::stat(filename, &statbuf) == 0;
 }
+#ifndef NATIVE_IMAGE
 
 bool os::write(int fd, const void *buf, size_t nBytes) {
   ssize_t res;
@@ -1736,6 +1783,7 @@ void os::pause() {
                 "Could not open pause file '%s', continuing immediately.\n", filename);
   }
 }
+#endif // !NATIVE_IMAGE
 
 static const char* errno_to_string (int e, bool short_text) {
   #define ALL_SHARED_ENUMS(X) \
@@ -1862,6 +1910,7 @@ const char* os::errno_name(int e) {
   return errno_to_string(e, true);
 }
 
+#ifndef NATIVE_IMAGE
 // create binary file, rewriting existing file if required
 int os::create_binary_file(const char* path, bool rewrite_existing) {
   int oflags = O_WRONLY | O_CREAT WINDOWS_ONLY(| O_BINARY);
@@ -2630,3 +2679,4 @@ char* os::build_agent_function_name(const char *sym_name, const char *lib_name,
   }
   return agent_entry_name;
 }
+#endif // !NATIVE_IMAGE
