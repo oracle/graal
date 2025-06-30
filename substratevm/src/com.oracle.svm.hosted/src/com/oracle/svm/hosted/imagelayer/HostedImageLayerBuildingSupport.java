@@ -44,6 +44,7 @@ import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LayerVerifiedOption;
 import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
 import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
@@ -316,6 +317,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     record OptionLayerVerificationRequests(OptionDescriptor option, List<LayerVerifiedOption> requests) {
         OptionLayerVerificationRequests(OptionDescriptor option) {
             this(option, new ArrayList<>());
+            assert !(option.getOptionKey() instanceof RuntimeOptionKey) : "LayerVerifiedOption annotation on NI runtime-option";
         }
     }
 
