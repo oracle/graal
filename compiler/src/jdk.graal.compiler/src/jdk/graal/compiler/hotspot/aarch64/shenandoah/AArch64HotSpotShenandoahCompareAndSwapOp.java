@@ -197,7 +197,7 @@ public class AArch64HotSpotShenandoahCompareAndSwapOp extends AArch64AtomicMove.
                 masm.bind(resultNullFailure);
                 // Clear zero flag to indicate failure. We come here knowing that result is null,
                 // so comparing it to 1 results in the zero (EQ) flag getting cleared.
-                masm.subs(32, zr, result,1);
+                masm.subs(32, zr, result, 1);
                 masm.jmp(done);
             }
         });
