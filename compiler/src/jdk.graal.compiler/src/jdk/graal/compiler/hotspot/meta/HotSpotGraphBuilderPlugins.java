@@ -1607,6 +1607,18 @@ public class HotSpotGraphBuilderPlugins {
                 return Options.ForceExplicitReachabilityFence.getValue(b.getOptions());
             }
         });
+        r.register(new InlineOnlyInvocationPlugin("get0", Receiver.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
+                AddressNode address = b.add(new OffsetAddressNode(receiver.get(true), offset));
+                FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
+                JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.REFERENCE_GET, MemoryOrderMode.PLAIN, true));
+                b.add(new MembarNode(MembarNode.FenceKind.NONE, locationIdentity));
+                b.addPush(JavaKind.Object, read);
+                return true;
+            }
+        });
         r.register(new InlineOnlyInvocationPlugin("refersTo0", Receiver.class, Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
@@ -1614,6 +1626,7 @@ public class HotSpotGraphBuilderPlugins {
                 AddressNode address = b.add(new OffsetAddressNode(receiver.get(true), offset));
                 FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
                 JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.WEAK_REFERS_TO, MemoryOrderMode.PLAIN, true));
+                b.add(new MembarNode(MembarNode.FenceKind.NONE, locationIdentity));
                 LogicNode objectEquals = b.add(ObjectEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), read, o, NodeView.DEFAULT));
                 b.addPush(JavaKind.Boolean, ConditionalNode.create(objectEquals, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
                 return true;
