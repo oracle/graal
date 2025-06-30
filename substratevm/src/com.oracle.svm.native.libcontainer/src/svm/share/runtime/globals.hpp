@@ -29,7 +29,13 @@
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/macros.hpp"
 
+
+namespace svm_container {
+
 constexpr bool UseCpuAllocPath = false;
 constexpr bool UseContainerSupport = true;
+
+
+} // namespace svm_container
 
 #endif // SHARE_RUNTIME_GLOBALS_HPP

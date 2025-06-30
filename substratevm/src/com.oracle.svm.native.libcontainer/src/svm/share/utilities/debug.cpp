@@ -31,6 +31,9 @@
 #include <stdarg.h>
 
 #ifdef PRINT_WARNINGS
+
+namespace svm_container {
+
 ATTRIBUTE_PRINTF(1, 2)
 void warning(const char* format, ...) {
   FILE* const err = stderr;
@@ -40,9 +43,15 @@ void warning(const char* format, ...) {
   va_end(ap);
   fputc('\n', err);
 }
+
+} // namespace svm_container
+
 #endif
 
 #ifdef ASSERT
+
+namespace svm_container {
+
 ATTRIBUTE_PRINTF(4, 5)
 void report_vm_error(const char* file, int line, const char* error_msg, const char* detail_fmt, ...) {
   FILE* const err = stderr;
@@ -58,4 +67,7 @@ void report_vm_error(const char* file, int line, const char* error_msg)
 {
   report_vm_error(file, line, error_msg, "%s", "");
 }
+
+} // namespace svm_container
+
 #endif

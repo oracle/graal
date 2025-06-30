@@ -30,6 +30,9 @@
 
 // os::Linux defines the interface to Linux operating systems
 
+
+namespace svm_container {
+
 class os::Linux {
   friend class os;
 
@@ -474,5 +477,8 @@ class os::Linux {
 #endif // GLIBC
 #endif // !NATIVE_IMAGE
 };
+
+
+} // namespace svm_container
 
 #endif // OS_LINUX_OS_LINUX_HPP

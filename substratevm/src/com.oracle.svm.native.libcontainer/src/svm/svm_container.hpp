@@ -40,6 +40,9 @@
   #endif
 #endif
 
+
+namespace svm_container {
+
 extern "C" {
   EXPORT_FOR_SVM int svm_container_initialize(int version);
   EXPORT_FOR_SVM jlong svm_container_physical_memory();
@@ -52,5 +55,8 @@ extern "C" {
   EXPORT_FOR_SVM jlong svm_container_cache_usage_in_bytes();
   EXPORT_FOR_SVM int svm_container_active_processor_count();
 }
+
+
+} // namespace svm_container
 
 #endif // SVM_CONTAINER_HPP

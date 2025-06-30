@@ -103,6 +103,9 @@
 #endif
 
 /* Input/Output types for mincore(2) */
+
+namespace svm_container {
+
 typedef LINUX_ONLY(unsigned) char mincore_vec_t;
 
 static jlong initial_time_count = 0;
@@ -1027,7 +1030,13 @@ char* os::realpath(const char* filename, char* outbuf, size_t outbuflen) {
   return result;
 }
 
+
+} // namespace svm_container
+
 #endif // !NATIVE_IMAGE
+
+
+namespace svm_container {
 
 int os::stat(const char *path, struct stat *sbuf) {
   return ::stat(path, sbuf);
@@ -2299,3 +2308,6 @@ const void* os::get_saved_assert_context(const void** sigInfo) {
   return nullptr;
 }
 #endif // !NATIVE_IMAGE
+
+} // namespace svm_container
+
