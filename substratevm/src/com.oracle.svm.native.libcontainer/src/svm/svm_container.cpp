@@ -28,9 +28,6 @@
 #include "osContainer_linux.hpp"
 #include "svm_container.hpp"
 
-
-namespace svm_container {
-
 extern "C" {
 
 // keep in sync with ContainerLibrary.java
@@ -114,6 +111,3 @@ EXPORT_FOR_SVM int svm_container_active_processor_count() {
 }
 
 } // extern C
-
-} // namespace svm_container
-

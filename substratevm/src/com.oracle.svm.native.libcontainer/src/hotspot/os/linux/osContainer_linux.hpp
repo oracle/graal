@@ -36,9 +36,6 @@
 // 20ms timeout between re-reads of memory limit and _active_processor_count.
 #define OSCONTAINER_CACHE_TIMEOUT (NANOSECS_PER_SEC/50)
 
-
-namespace svm_container {
-
 class OSContainer: AllStatic {
 
  private:
@@ -82,8 +79,5 @@ class OSContainer: AllStatic {
 inline bool OSContainer::is_containerized() {
   return _is_containerized;
 }
-
-
-} // namespace svm_container
 
 #endif // OS_LINUX_OSCONTAINER_LINUX_HPP

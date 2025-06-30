@@ -33,9 +33,6 @@
 
 // Cgroups version 1 specific implementation
 
-
-namespace svm_container {
-
 class CgroupV1Controller: public CgroupController {
   private:
     /* mountinfo contents */
@@ -181,8 +178,5 @@ class CgroupV1Subsystem: public CgroupSubsystem {
     CgroupV1Controller* _pids = nullptr;
 
 };
-
-
-} // namespace svm_container
 
 #endif // CGROUP_V1_SUBSYSTEM_LINUX_HPP
