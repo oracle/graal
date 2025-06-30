@@ -52,6 +52,9 @@
   return _result; \
 } while(false)
 
+
+namespace svm_container {
+
 class os::Posix {
   friend class os;
 
@@ -102,6 +105,9 @@ public:
                                     const void* ucVoid,
                                     address* stub);
 };
+
+} // namespace svm_container
+
 #endif // !NATIVE_IMAGE
 
 #endif // OS_POSIX_OS_POSIX_HPP

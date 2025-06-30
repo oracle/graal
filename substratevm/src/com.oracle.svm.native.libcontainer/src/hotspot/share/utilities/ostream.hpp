@@ -34,7 +34,13 @@
 #include "utilities/macros.hpp"
 
 #ifndef NATIVE_IMAGE
+
+namespace svm_container {
+
 DEBUG_ONLY(class ResourceMark;)
+
+} // namespace svm_container
+
 #endif // !NATIVE_IMAGE
 
 // Output streams for printing
@@ -47,6 +53,9 @@ DEBUG_ONLY(class ResourceMark;)
 //     jio_fprintf(defaultStream::output_stream(), "Message");
 // This allows for redirection via -XX:+DisplayVMOutputToStdout and
 // -XX:+DisplayVMOutputToStderr.
+
+
+namespace svm_container {
 
 class outputStream : public CHeapObjBase {
   friend class StreamIndentor;
@@ -398,5 +407,8 @@ class networkStream : public bufferedStream {
 
 #endif
 #endif // !NATIVE_IMAGE
+
+
+} // namespace svm_container
 
 #endif // SHARE_UTILITIES_OSTREAM_HPP

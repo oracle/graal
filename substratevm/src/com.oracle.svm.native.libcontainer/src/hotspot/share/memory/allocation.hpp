@@ -34,6 +34,9 @@
 
 #include <new>
 
+
+namespace svm_container {
+
 class outputStream;
 class Thread;
 class JavaThread;
@@ -594,5 +597,8 @@ class MallocArrayAllocator : public AllStatic {
   static void free(E* addr);
 };
 #endif // !NATIVE_IMAGE
+
+
+} // namespace svm_container
 
 #endif // SHARE_MEMORY_ALLOCATION_HPP

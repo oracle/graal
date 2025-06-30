@@ -30,6 +30,9 @@
 #include "cgroupSubsystem_linux.hpp"
 #include "cgroupUtil_linux.hpp"
 
+
+namespace svm_container {
+
 class CgroupV2Controller: public CgroupController {
   private:
     bool _read_only;
@@ -175,5 +178,8 @@ class CgroupV2Subsystem: public CgroupSubsystem {
     CachingCgroupController<CgroupCpuController>* cpu_controller() override { return _cpu; }
     CgroupCpuacctController* cpuacct_controller() override { return _cpuacct; };
 };
+
+
+} // namespace svm_container
 
 #endif // CGROUP_V2_SUBSYSTEM_LINUX_HPP

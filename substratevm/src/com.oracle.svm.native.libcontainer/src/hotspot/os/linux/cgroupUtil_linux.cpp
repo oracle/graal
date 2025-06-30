@@ -27,6 +27,9 @@
 #include "os_linux.hpp"
 #include "cgroupUtil_linux.hpp"
 
+
+namespace svm_container {
+
 int CgroupUtil::processor_count(CgroupCpuController* cpu_ctrl, int host_cpus) {
   assert(host_cpus > 0, "physical host cpus must be positive");
   int limit_count = host_cpus;
@@ -175,3 +178,6 @@ void CgroupUtil::adjust_controller(CgroupCpuController* cpu) {
   os::free(orig);
   os::free(limit_cg_path);
 }
+
+} // namespace svm_container
+

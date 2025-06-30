@@ -34,6 +34,9 @@
 #include "cgroupSubsystem_linux.hpp"
 
 
+
+namespace svm_container {
+
 bool  OSContainer::_is_initialized   = false;
 bool  OSContainer::_is_containerized = false;
 CgroupSubsystem* cgroup_subsystem;
@@ -214,3 +217,6 @@ void OSContainer::print_container_helper(outputStream* st, jlong j, const char* 
   }
 }
 #endif // !NATIVE_IMAGE
+
+} // namespace svm_container
+

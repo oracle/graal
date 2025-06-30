@@ -103,6 +103,9 @@
   log_trace(os, container)(log_string " is: %s", retval);                                 \
 }
 
+
+namespace svm_container {
+
 class CgroupController: public CHeapObj<mtInternal> {
   protected:
     char* _cgroup_path;
@@ -360,5 +363,8 @@ class CgroupSubsystemFactory: AllStatic {
                                u1* flags);
     static void cleanup(CgroupInfo* cg_infos);
 };
+
+
+} // namespace svm_container
 
 #endif // CGROUP_SUBSYSTEM_LINUX_HPP
