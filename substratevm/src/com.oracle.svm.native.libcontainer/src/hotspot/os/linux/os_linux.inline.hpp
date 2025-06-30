@@ -32,9 +32,6 @@
 #include "os_posix.inline.hpp"
 
 #ifndef NATIVE_IMAGE
-
-namespace svm_container {
-
 inline bool os::zero_page_read_protected() {
   return true;
 }
@@ -60,9 +57,6 @@ inline bool os::can_trim_native_heap() {
   return false; // musl
 #endif
 }
-
-} // namespace svm_container
-
 #endif // !NATIVE_IMAGE
 
 #endif // OS_LINUX_OS_LINUX_INLINE_HPP

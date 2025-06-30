@@ -44,9 +44,6 @@
 #endif
 
 // controller names have to match the *_IDX indices
-
-namespace svm_container {
-
 static const char* cg_controller_name[] = { "cpuset", "cpu", "cpuacct", "memory", "pids" };
 static inline int cg_v2_controller_index(const char* name) {
   if (strcmp(name, "cpuset") == 0) {
@@ -893,6 +890,3 @@ void CgroupSubsystem::print_version_specific_info(outputStream* st) {
   memory_controller()->controller()->print_version_specific_info(st, phys_mem);
 }
 #endif // !NATIVE_IMAGE
-
-} // namespace svm_container
-

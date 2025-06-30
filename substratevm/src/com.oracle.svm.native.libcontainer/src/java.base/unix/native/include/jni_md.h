@@ -52,9 +52,6 @@
   #define JNIIMPORT
 #endif
 
-
-namespace svm_container {
-
 typedef int jint;
 #ifdef _LP64
 typedef long jlong;
@@ -63,8 +60,5 @@ typedef long long jlong;
 #endif
 
 typedef signed char jbyte;
-
-
-} // namespace svm_container
 
 #endif /* !_JAVASOFT_JNI_MD_H_ */

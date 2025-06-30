@@ -36,53 +36,29 @@
 // Provide default empty implementation.
 
 #ifndef HAVE_PLATFORM_PRINT_NATIVE_STACK
-
-namespace svm_container {
-
 inline bool os::platform_print_native_stack(outputStream* st, const void* context,
                                      char *buf, int buf_size, address& lastpc) {
   return false;
 }
-
-} // namespace svm_container
-
 #endif
 
 #ifndef HAVE_CDS_CORE_REGION_ALIGNMENT
-
-namespace svm_container {
-
 inline size_t os::cds_core_region_alignment() {
   return (size_t)os::vm_allocation_granularity();
 }
-
-} // namespace svm_container
-
 #endif
 
 #ifndef _WINDOWS
 // Currently used only on Windows.
-
-namespace svm_container {
-
 inline bool os::register_code_area(char *low, char *high) {
   return true;
 }
-
-} // namespace svm_container
-
 #endif
 
 #ifndef HAVE_FUNCTION_DESCRIPTORS
-
-namespace svm_container {
-
 inline void* os::resolve_function_descriptor(void* p) {
   return nullptr;
 }
-
-} // namespace svm_container
-
 #endif
 #endif // !NATIVE_IMAGE
 

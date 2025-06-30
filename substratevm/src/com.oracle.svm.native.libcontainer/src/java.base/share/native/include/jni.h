@@ -44,9 +44,6 @@
 
 #include "jni_md.h"
 
-
-namespace svm_container {
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -2012,8 +2009,5 @@ JNI_OnUnload(JavaVM *vm, void *reserved);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif /* __cplusplus */
-
-
-} // namespace svm_container
 
 #endif /* !_JAVASOFT_JNI_H_ */

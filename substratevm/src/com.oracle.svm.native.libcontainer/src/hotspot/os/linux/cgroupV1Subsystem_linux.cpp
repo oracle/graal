@@ -80,9 +80,6 @@
  * component is found. The subsystem path will be set to
  * the _mount_point joined with the subgroup path.
  */
-
-namespace svm_container {
-
 void CgroupV1Controller::set_subsystem_path(const char* cgroup_path) {
   if (_cgroup_path != nullptr) {
     os::free(_cgroup_path);
@@ -452,6 +449,3 @@ jlong CgroupV1Subsystem::pids_current() {
   CONTAINER_READ_NUMBER_CHECKED(_pids, "/pids.current", "Current number of tasks", pids_current);
   return (jlong)pids_current;
 }
-
-} // namespace svm_container
-

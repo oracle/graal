@@ -28,9 +28,6 @@
 #include "cgroupUtil_linux.hpp"
 
 // Constructor
-
-namespace svm_container {
-
 CgroupV2Controller::CgroupV2Controller(char* mount_path,
                                        char *cgroup_path,
                                        bool ro) :  _read_only(ro),
@@ -359,6 +356,3 @@ jlong CgroupV2Subsystem::pids_current() {
   CONTAINER_READ_NUMBER_CHECKED(unified(), "/pids.current", "Current number of tasks", pids_current);
   return pids_current;
 }
-
-} // namespace svm_container
-
