@@ -70,6 +70,8 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.InternalResource.OS;
+import com.oracle.truffle.api.InternalResource.CPUArchitecture;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.Accessor.JavaLangSupport;
@@ -112,6 +114,10 @@ final class JDKSupport {
     private static ModulesAccessor initializeModuleAccessor() {
         String attachLibPath = System.getProperty("truffle.attach.library");
         if (attachLibPath == null) {
+            if (isUnsupportedPlatform()) {
+                performTruffleAttachLoadFailureAction("Truffle is running on an unsupported platform where the TruffleAttach library is unavailable.", null);
+                return null;
+            }
             try {
                 Path truffleAttachRoot = InternalResourceCache.installRuntimeResource(new LibTruffleAttachResource());
                 Path libAttach = truffleAttachRoot.resolve("bin").resolve(System.mapLibraryName("truffleattach"));
@@ -145,6 +151,19 @@ final class JDKSupport {
             return accessor;
         } catch (ReflectiveOperationException re) {
             throw new InternalError(re);
+        }
+    }
+
+    private static boolean isUnsupportedPlatform() {
+        try {
+            return OS.getCurrent() == OS.UNSUPPORTED || CPUArchitecture.getCurrent() == CPUArchitecture.UNSUPPORTED;
+        } catch (IllegalStateException ise) {
+            /*
+             * We suppress this error in the JDKSupport static initializer to prevent it from being
+             * obscured by a long and unreadable chain of exception causes. If this error occurs
+             * here, it will be handled later during engine creation.
+             */
+            return true;
         }
     }
 
