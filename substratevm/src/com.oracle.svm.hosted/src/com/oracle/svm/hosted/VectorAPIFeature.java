@@ -25,10 +25,12 @@
 package com.oracle.svm.hosted;
 
 import java.lang.reflect.AccessFlag;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.function.Function;
 import java.util.function.IntFunction;
@@ -62,6 +64,7 @@ import jdk.vm.ci.meta.JavaKind;
 public class VectorAPIFeature implements InternalFeature {
 
     public static final String VECTOR_API_PACKAGE_NAME = "jdk.incubator.vector";
+    public static final Class<?> PAYLOAD_CLASS = ReflectionUtil.lookupClass("jdk.internal.vm.vector.VectorSupport$VectorPayload");
 
     static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
@@ -156,10 +159,15 @@ public class VectorAPIFeature implements InternalFeature {
 
             String maxVectorName = VECTOR_API_PACKAGE_NAME + "." + elementName + "MaxVector";
             Class<?> maxVectorClass = ReflectionUtil.lookupClass(maxVectorName);
+            int laneCount = VectorAPISupport.singleton().getMaxLaneCount(vectorElement);
             access.registerFieldValueTransformer(ReflectionUtil.lookupField(maxVectorClass, "VSIZE"),
                             (receiver, originalValue) -> maxVectorBits);
             access.registerFieldValueTransformer(ReflectionUtil.lookupField(maxVectorClass, "VLENGTH"),
-                            (receiver, originalValue) -> VectorAPISupport.singleton().getMaxLaneCount(vectorElement));
+                            (receiver, originalValue) -> laneCount);
+            access.registerFieldValueTransformer(ReflectionUtil.lookupField(maxVectorClass, "ZERO"),
+                            (receiver, originalValue) -> makeZeroVector(maxVectorClass, vectorElement, laneCount));
+            access.registerFieldValueTransformer(ReflectionUtil.lookupField(maxVectorClass, "IOTA"),
+                            (receiver, originalValue) -> makeIotaVector(maxVectorClass, vectorElement, laneCount));
         }
 
         Class<?> speciesClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".AbstractSpecies");
@@ -173,7 +181,8 @@ public class VectorAPIFeature implements InternalFeature {
          * intrinsify operations, we may need to access information about a type before the analysis
          * has seen it.
          */
-        for (String elementName : vectorElementNames) {
+        for (Class<?> vectorElement : vectorElements) {
+            String elementName = vectorElement.getName().substring(0, 1).toUpperCase(Locale.ROOT) + vectorElement.getName().substring(1);
             for (String size : vectorSizes) {
                 String baseName = elementName + size;
                 String vectorClassName = VECTOR_API_PACKAGE_NAME + "." + baseName + "Vector";
@@ -183,6 +192,16 @@ public class VectorAPIFeature implements InternalFeature {
                 Class<?> maskClass = ReflectionUtil.lookupClass(vectorClassName + "$" + baseName + "Mask");
                 UNSAFE.ensureClassInitialized(maskClass);
                 access.registerAsUsed(maskClass);
+                if (size.equals("Max")) {
+                    int laneCount = VectorAPISupport.singleton().getMaxLaneCount(vectorElement);
+                    Class<?> shuffleElement = (vectorElement == float.class ? int.class : vectorElement == double.class ? long.class : vectorElement);
+                    access.registerFieldValueTransformer(ReflectionUtil.lookupField(shuffleClass, "IOTA"),
+                                    (receiver, originalValue) -> makeIotaVector(shuffleClass, shuffleElement, laneCount));
+                    access.registerFieldValueTransformer(ReflectionUtil.lookupField(maskClass, "TRUE_MASK"),
+                                    (receiver, originalValue) -> makeNewInstanceWithBooleanPayload(maskClass, laneCount, true));
+                    access.registerFieldValueTransformer(ReflectionUtil.lookupField(maskClass, "FALSE_MASK"),
+                                    (receiver, originalValue) -> makeNewInstanceWithBooleanPayload(maskClass, laneCount, false));
+                }
             }
         }
 
@@ -367,6 +386,42 @@ public class VectorAPIFeature implements InternalFeature {
                 }
             }
         }
+    }
+
+    private static Object makeZeroVector(Class<?> vectorClass, Class<?> vectorElement, int laneCount) {
+        Object zeroPayload = Array.newInstance(vectorElement, laneCount);
+        return ReflectionUtil.newInstance(ReflectionUtil.lookupConstructor(vectorClass, zeroPayload.getClass()), zeroPayload);
+    }
+
+    private static Object makeNewInstanceWithBooleanPayload(Class<?> maskClass, int laneCount, boolean fillValue) {
+        /*
+         * The constructors for Mask classes allocate new arrays based on the species length, which
+         * we also substitute but whose substituted value will not be used yet. So instead of just
+         * calling a constructor with a boolean array, we brute force this: We allocate a new
+         * instance which may have a payload with an incorrect length, then override its payload
+         * field.
+         */
+        Object newInstance = ReflectionUtil.newInstance(ReflectionUtil.lookupConstructor(maskClass, boolean.class), true);
+        boolean[] payload = new boolean[laneCount];
+        Arrays.fill(payload, fillValue);
+        ReflectionUtil.writeField(PAYLOAD_CLASS, "payload", newInstance, payload);
+        return newInstance;
+    }
+
+    private static Object makeIotaVector(Class<?> vectorClass, Class<?> vectorElement, int laneCount) {
+        Object iotaPayload = Array.newInstance(vectorElement, laneCount);
+        for (int i = 0; i < laneCount; i++) {
+            // adapted from AbstractSpecies.iotaArray
+            if ((byte) i == i) {
+                Array.setByte(iotaPayload, i, (byte) i);
+            } else if ((short) i == i) {
+                Array.setShort(iotaPayload, i, (short) i);
+            } else {
+                Array.setInt(iotaPayload, i, i);
+            }
+            VMError.guarantee(Array.getDouble(iotaPayload, i) == i, "wrong initialization of iota array: %s at %s", Array.getDouble(iotaPayload, i), i);
+        }
+        return ReflectionUtil.newInstance(ReflectionUtil.lookupConstructor(vectorClass, iotaPayload.getClass()), iotaPayload);
     }
 
     @Override
