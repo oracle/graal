@@ -62,6 +62,7 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.common.ReportHotCodePhase;
 import jdk.graal.compiler.phases.contract.NodeCostUtil;
 import jdk.graal.compiler.phases.contract.PhaseSizeContract;
 import jdk.graal.compiler.serviceprovider.GraalServices;
@@ -203,6 +204,8 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         public static final OptionKey<Integer> MinimalGraphNodeSizeCheckSize = new OptionKey<>(1000);
         @Option(help = "Exclude certain phases from compilation based on the given phase filter(s)." + PhaseFilterKey.HELP, type = OptionType.Debug)
         public static final PhaseFilterKey CompilationExcludePhases = new PhaseFilterKey(null, null);
+        @Option(help = "Report hot metrics after each phase matching the given phase filter(s).", type = OptionType.Debug)
+        public static final PhaseFilterKey ReportHotMetricsAfterPhases = new PhaseFilterKey(null, null);        
         // @formatter:on
     }
 
@@ -493,6 +496,12 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 } catch (IOException | UnsupportedOperationException e) {
                     e.printStackTrace(System.out);
                 }
+            }
+
+            if (PhaseOptions.ReportHotMetricsAfterPhases.matches(options, this, graph)) {
+                String label = graph.name != null ? graph.name : graph.method().format("%H.%n(%p)");
+                TTY.println("Reporting hot metrics after " + getName() + " during compilation of " + label);
+                new ReportHotCodePhase().apply(graph, context);
             }
 
         } catch (Throwable t) {
