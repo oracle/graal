@@ -24,7 +24,7 @@ public interface AbstractInterpreter<Domain extends AbstractDomain<Domain>> {
     void execEdge(Node source, Node target, AbstractState<Domain> abstractState);
 
     /**
-     * Simulate the effect of executing a node in the GraalIR on the {@link AbstractState}.
+     * Simulate the effect of executing a Graal IR node on the {@link AbstractState}.
      * For efficiency, this method should modify the {@link AbstractState} directly.
      *
      * @param node           to analyze

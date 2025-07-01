@@ -18,16 +18,14 @@ import java.util.List;
  * This class is responsible for running the abstract interpretation analyses,
  * that were configured by {@link AbstractInterpretationDriver}.
  */
-
-// TODO: set an option that can set from where to run the analysis
 public class AbstractInterpretationEngine {
 
-    private final AnalyzerManager analyzerManager;
+    private final AnalyzerManager analyzerManager; /* Wrapper for used analyzers */
     private final AnalysisMethod root; /* The main method of the analyzed program */
-    private final DebugContext debug;
+    private final DebugContext debug; /* Current DebugContext */
     private final List<AnalysisMethod> rootMethods; /* Roots of the call-graph */
     private final List<AnalysisMethod> invokedMethods; /* Methods that may-be invoked according to points-to analysis */
-    private boolean analyzeMainOnly; // New field to control analysis mode
+    private boolean analyzeMainOnly; /* Field to control analysis mode */
 
     public AbstractInterpretationEngine(AnalyzerManager analyzerManager,
                                         AnalysisMethod root,
@@ -40,7 +38,6 @@ public class AbstractInterpretationEngine {
         var universe = bigBang.getUniverse();
         this.rootMethods = AnalysisUniverse.getCallTreeRoots(universe);
         this.invokedMethods = universe.getMethods().stream().filter(AnalysisMethod::isSimplyImplementationInvoked).toList();
-        /* Initialize resolvedJavaTypeUtil so that the developers can use it in the analyses */
         BigBangUtil.getInstance(bigBang);
     }
 
@@ -71,9 +68,9 @@ public class AbstractInterpretationEngine {
 
     private void executeAnalyzer(Analyzer<?> analyzer) {
         if (analyzer instanceof InterProceduralAnalyzer) {
-            executeInterProcedurally(analyzer);
+            executeInterProceduralAnalysis(analyzer);
         } else {
-            executeIntraProcedurally(analyzer);
+            executeIntraProceduralAnalysis(analyzer);
         }
     }
 
@@ -83,7 +80,7 @@ public class AbstractInterpretationEngine {
      *
      * @param analyzer the analyzer to be used for the analysis.
      */
-    private void executeIntraProcedurally(Analyzer<?> analyzer) {
+    private void executeIntraProceduralAnalysis(Analyzer<?> analyzer) {
         if (analyzeMainOnly) {
             try {
                 analyzer.runAnalysis(root);
@@ -110,7 +107,7 @@ public class AbstractInterpretationEngine {
      *
      * @param analyzer the analyzer to be used for the analysis.
      */
-    private void executeInterProcedurally(Analyzer<?> analyzer) {
+    private void executeInterProceduralAnalysis(Analyzer<?> analyzer) {
         if (analyzeMainOnly) {
             try {
                 analyzer.runAnalysis(root);

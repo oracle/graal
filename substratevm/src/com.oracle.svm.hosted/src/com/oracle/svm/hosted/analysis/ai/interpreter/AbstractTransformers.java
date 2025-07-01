@@ -12,11 +12,11 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
 /**
  * Represents the transfer functions used in abstract interpretation.
  * This class is responsible for applying abstract operations corresponding to the semantics
- * of GraalIR nodes and edges, effectively transforming the abstract state as the analysis progresses.
+ * of Graal IR nodes and edges, effectively transforming the abstract state as the analysis progresses.
  * It uses an {@link AbstractInterpreter} to define the specific abstract semantics for each node type
  * and an {@link InvokeCallBack} to handle method invocations.
  *
- * @param <Domain> The type of the abstract domain used in the analysis.
+ * @param <Domain> type of the derived {@link AbstractDomain} used in the analysis.
  */
 public record AbstractTransformers<Domain extends AbstractDomain<Domain>>(
         AbstractInterpreter<Domain> abstractInterpreter,
