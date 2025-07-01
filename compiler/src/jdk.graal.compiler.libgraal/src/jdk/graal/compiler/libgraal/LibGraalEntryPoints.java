@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,27 @@
  */
 package jdk.graal.compiler.libgraal;
 
+import static jdk.graal.compiler.serviceprovider.GraalServices.getCurrentThreadAllocatedBytes;
+import static jdk.graal.compiler.serviceprovider.GraalServices.isThreadAllocatedMemorySupported;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNIExceptionWrapper;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.PointerBase;
+
 import jdk.graal.compiler.debug.GlobalMetrics;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.CompilationContext;
 import jdk.graal.compiler.hotspot.CompilationTask;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
@@ -42,7 +57,9 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.util.OptionsEncoder;
 import jdk.graal.compiler.word.Word;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -53,21 +70,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.runtime.JVMCIBackend;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.jniutils.JNI.JNIEnv;
-import org.graalvm.jniutils.JNIExceptionWrapper;
-import org.graalvm.jniutils.JNIMethodScope;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.PointerBase;
-
-import jdk.internal.misc.Unsafe;
-
-import static jdk.graal.compiler.serviceprovider.GraalServices.getCurrentThreadAllocatedBytes;
-import static jdk.graal.compiler.serviceprovider.GraalServices.isThreadAllocatedMemorySupported;
 
 /**
  * Encapsulates {@link CEntryPoint} implementations.
@@ -185,7 +187,10 @@ final class LibGraalEntryPoints {
                     String profileLoadPath = CTypeConversion.toJavaString(Word.pointer(profilePathBufferAddress));
                     options = new OptionValues(options, ProfileReplaySupport.Options.LoadProfiles, profileLoadPath);
                 }
-                task.runCompilation(options);
+                HotSpotCompilationRequestResult compilationRequestResult = task.runCompilation(options);
+                if (compilationRequestResult.getFailure() != null) {
+                    throw new GraalError(compilationRequestResult.getFailureMessage());
+                }
                 if (timeAndMemBufferAddress != 0) {
                     long allocatedBytesAfter = allocatedBytesBefore == -1 ? -1 : getCurrentThreadAllocatedBytes();
                     long bytesAllocated = allocatedBytesAfter - allocatedBytesBefore;
