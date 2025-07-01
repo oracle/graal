@@ -20,6 +20,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-66339 Truffle now checks that its multi-release classes ([JEP 238](https://openjdk.org/jeps/238)) are loaded correctly and provides a descriptive error message if they are not.
 * GR-55996 Added the options `engine.SourceCacheStatistics` and `engine.SourceCacheStatisticDetails` to print polyglot source cache statistics on engine close.
 
+* GR-65561 Added `Context.Builder#apply`, `ContextBuilder#extendIO`, and `ContextBuilder#extendHostAccess` to enable composable Context configuration
 
 ## Version 24.2.0
 * GR-54905 When using Truffle NFI with the Panama backend, native access must now be granted to the Truffle module instead of the NFI Panama module. Use the `--enable-native-access=org.graalvm.truffle` Java command line option to enable the native access for the NFI Panama backend.

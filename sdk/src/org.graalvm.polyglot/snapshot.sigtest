@@ -90,7 +90,7 @@ meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.Object
-hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,jfrTracing,serialVersionUID,stackTrace,suppressedExceptions
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
 hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
 
 CLSS public abstract interface java.lang.annotation.Annotation
@@ -178,12 +178,15 @@ meth public org.graalvm.polyglot.Context$Builder allowInnerContextOptions(boolea
 meth public org.graalvm.polyglot.Context$Builder allowNativeAccess(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowPolyglotAccess(org.graalvm.polyglot.PolyglotAccess)
 meth public org.graalvm.polyglot.Context$Builder allowValueSharing(boolean)
+meth public org.graalvm.polyglot.Context$Builder apply(java.util.function.Consumer<org.graalvm.polyglot.Context$Builder>)
 meth public org.graalvm.polyglot.Context$Builder arguments(java.lang.String,java.lang.String[])
 meth public org.graalvm.polyglot.Context$Builder currentWorkingDirectory(java.nio.file.Path)
 meth public org.graalvm.polyglot.Context$Builder engine(org.graalvm.polyglot.Engine)
 meth public org.graalvm.polyglot.Context$Builder environment(java.lang.String,java.lang.String)
 meth public org.graalvm.polyglot.Context$Builder environment(java.util.Map<java.lang.String,java.lang.String>)
 meth public org.graalvm.polyglot.Context$Builder err(java.io.OutputStream)
+meth public org.graalvm.polyglot.Context$Builder extendHostAccess(org.graalvm.polyglot.HostAccess,java.util.function.Consumer<org.graalvm.polyglot.HostAccess$Builder>)
+meth public org.graalvm.polyglot.Context$Builder extendIO(org.graalvm.polyglot.io.IOAccess,java.util.function.Consumer<org.graalvm.polyglot.io.IOAccess$Builder>)
 meth public org.graalvm.polyglot.Context$Builder fileSystem(org.graalvm.polyglot.io.FileSystem)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="23.0")
 meth public org.graalvm.polyglot.Context$Builder hostClassFilter(java.util.function.Predicate<java.lang.String>)
