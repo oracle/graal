@@ -6226,7 +6226,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                         if (op.isVariadic && model.hasVariadicReturn) {
                             if (op.instruction.signature.dynamicOperandCount > 1) {
-                                b.startIf().string("childIndex > ").string(op.instruction.signature.dynamicOperandCount - 1).end().startBlock();
+                                b.startIf().string("childIndex > ").string(op.instruction.signature.dynamicOperandCount - 2).end().startBlock();
                             }
 
                             b.startIf().string("isVariadicReturn(operationCode)").end().startBlock();
@@ -6239,7 +6239,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                                             "variadicReturnIndices.length * 2").end().end();
                             b.tree(operationStack.write(op, operationFields.variadicReturnIndices, "variadicReturnIndices"));
                             b.end();
-                            b.statement("variadicReturnIndices[numVariadicReturnIndices] = childIndex");
+                            if (op.instruction.signature.dynamicOperandCount > 1) {
+                                b.statement("variadicReturnIndices[numVariadicReturnIndices] = childIndex - " + (op.instruction.signature.dynamicOperandCount - 1));
+                            } else {
+                                b.statement("variadicReturnIndices[numVariadicReturnIndices] = childIndex");
+                            }
                             b.tree(operationStack.write(op, operationFields.numVariadicReturnIndices, "numVariadicReturnIndices + 1"));
 
                             b.end(); // if isVariadicReturn
