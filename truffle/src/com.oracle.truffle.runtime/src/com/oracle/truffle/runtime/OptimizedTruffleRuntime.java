@@ -168,8 +168,11 @@ import jdk.vm.ci.services.Services;
 public abstract class OptimizedTruffleRuntime implements TruffleRuntime, TruffleCompilerRuntime {
 
     private static final int JAVA_SPECIFICATION_VERSION = Runtime.version().feature();
-    public static final Version MIN_COMPILER_VERSION = Version.create(23, 1, 2);
-    public static final int MIN_JDK_VERSION = 21;
+    /**
+     * When modifying the version values defined below, ensure that the corresponding version fields
+     * in {@code TruffleBaseFeature} are also updated accordingly to maintain consistency.
+     */
+    public static final int MIN_JDK_VERSION = 25;
     public static final int MAX_JDK_VERSION = 29;
     public static final Version NEXT_VERSION_UPDATE = Version.create(29, 1);
 

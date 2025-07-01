@@ -182,6 +182,10 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     private static final String NATIVE_IMAGE_FILELIST_FILE_NAME = "native-image-resources.filelist";
+    /**
+     * When modifying the version values defined below, ensure that the corresponding version fields
+     * in {@code OptimizedTruffleRuntime} are also updated accordingly to maintain consistency.
+     */
     private static final Version NEXT_POLYGLOT_VERSION_UPDATE = Version.create(29, 1);
     private static final int MAX_JDK_VERSION = 29;
 

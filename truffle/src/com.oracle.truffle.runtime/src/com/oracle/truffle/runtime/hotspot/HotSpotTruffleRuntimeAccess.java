@@ -41,7 +41,6 @@
 package com.oracle.truffle.runtime.hotspot;
 
 import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.MAX_JDK_VERSION;
-import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.MIN_COMPILER_VERSION;
 import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.MIN_JDK_VERSION;
 import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.NEXT_VERSION_UPDATE;
 
@@ -169,11 +168,6 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                                     Your Java runtime '%s' with compiler version '%s' is incompatible with polyglot version '%s'.
                                     Update the org.graalvm.polyglot versions to at least '%s' to resolve this.
                                     """, Runtime.version(), compilerVersion, truffleVersion, compilerVersion));
-                } else if (compilerVersion.compareTo(MIN_COMPILER_VERSION) < 0) {
-                    return new DefaultTruffleRuntime(formatVersionWarningMessage("""
-                                    Your Java runtime '%s' with compiler version '%s' is incompatible with polyglot version '%s'.
-                                    Update the Java runtime to the latest update release of JDK '%d'.
-                                    """, Runtime.version(), compilerVersion, truffleVersion, jdkFeatureVersion));
                 }
             }
         } else {
