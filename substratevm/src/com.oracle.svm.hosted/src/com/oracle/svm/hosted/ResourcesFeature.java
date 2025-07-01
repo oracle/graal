@@ -434,7 +434,7 @@ public class ResourcesFeature implements InternalFeature {
          * enabled. Until a clear SVM core separation is created and included in the base layer,
          * those types should be manually registered as instantiated before the analysis.
          */
-        if (HostedImageLayerBuildingSupport.buildingSharedLayer()) {
+        if (HostedImageLayerBuildingSupport.buildingImageLayer()) {
             String reason = "Included in the base image";
             access.getMetaAccess().lookupJavaType(ReflectionUtil.lookupClass(false, "com.oracle.svm.core.jdk.resources.CompressedGlobTrie.LiteralNode")).registerAsInstantiated(reason);
             access.getMetaAccess().lookupJavaType(ReflectionUtil.lookupClass(false, "com.oracle.svm.core.jdk.resources.CompressedGlobTrie.DoubleStarNode")).registerAsInstantiated(reason);
