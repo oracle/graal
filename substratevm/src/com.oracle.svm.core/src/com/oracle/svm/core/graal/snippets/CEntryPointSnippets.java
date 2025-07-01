@@ -87,6 +87,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
@@ -216,7 +217,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             int codeStartEntry = ImageLayerSection.getEntryOffset(ImageLayerSection.SectionEntries.CODE_START);
             codeBase = initialLayerSection.readWord(codeStartEntry);
         } else {
-            ImageCodeInfo imageCodeInfo = ImageSingletons.lookup(ImageCodeInfo.class);
+            ImageCodeInfo imageCodeInfo = MultiLayeredImageSingleton.getForLayer(ImageCodeInfo.class, MultiLayeredImageSingleton.INITIAL_LAYER_NUMBER);
             codeBase = imageCodeInfo.getCodeStart();
         }
         writeCurrentVMCodeBase(codeBase);

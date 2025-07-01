@@ -268,7 +268,8 @@ public final class NativeImageHeapWriter {
             if (!(method instanceof HostedMethod)) {
                 method = metaAccess.getUniverse().lookup(method);
             }
-            if (NativeImage.isInjectedNotCompiled((HostedMethod) method)) {
+            if (imageLayer && NativeImage.isInjectedNotCompiled((HostedMethod) method)) {
+                // Will be patched in a future layer (even if it ends up not being compiled at all)
                 addWordConstantRelocation(buffer, index, methodOffset);
                 return;
             }
