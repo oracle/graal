@@ -274,9 +274,10 @@ local common_json = import "../common.json";
 
     graalpy:: self.gradle + self.cmake + {
       packages+: if (self.os == "linux") then {
-        libffi: '>=3.2.1',
-        bzip2: '>=1.0.6',
-        maven: ">=3.3.9",
+        libffi: '==3.2.1',
+        bzip2: '==1.0.6',
+        zlib: '==1.2.11',
+        maven: "==3.6.3",
       } else {},
     },
 
