@@ -654,7 +654,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         }
     }
 
-    private static final String[] KNOWN_ESPRESSO_RUNTIMES = {"jdk21", "openjdk21"};
+    private static final String[] KNOWN_ESPRESSO_RUNTIMES = {"jdk25", "openjdk25", "jdk21", "openjdk21", "jdk" + JavaVersion.HOST_VERSION, "openjdk" + JavaVersion.HOST_VERSION};
     private static final Pattern VALID_RESOURCE_ID = Pattern.compile("[0-9a-z\\-]+");
 
     public static Path getEspressoRuntime(TruffleLanguage.Env env) {
