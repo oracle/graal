@@ -1255,7 +1255,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         }
     }
 
-    public void invalidateLoopInformation() {
+    public void resetLoopInformation() {
         if (buildConfig.loopsComputed) {
             buildConfig.loopsComputed = false;
             /*
@@ -1265,6 +1265,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
             for (HIRBlock b : getBlocks()) {
                 b.loop = null;
             }
+            loops = null;
         }
     }
 
