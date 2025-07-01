@@ -40,6 +40,7 @@ import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_SIGNERS_FL
 import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllTypeReachableConditionsAsTypeReached;
 
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
@@ -87,6 +88,7 @@ import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
+import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
@@ -1243,6 +1245,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public void registerHeapReflectionExecutable(Executable reflectExecutable, ScanReason reason) {
+        if (reflectExecutable instanceof Constructor<?> reflectConstructor && ReflectionSubstitutionSupport.singleton().isCustomSerializationConstructor(reflectConstructor)) {
+            /*
+             * Constructors created by Constructor.newWithAccessor are indistinguishable from an
+             * equivalent constructor with a "correct" accessor, and as such could hide this
+             * constructor from reflection queries. We therefore exclude such constructors from the
+             * internal reflection metadata.
+             */
+            return;
+        }
         AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(reflectExecutable);
         if (heapMethods.put(analysisMethod, reflectExecutable) == null) {
             if (sealed) {

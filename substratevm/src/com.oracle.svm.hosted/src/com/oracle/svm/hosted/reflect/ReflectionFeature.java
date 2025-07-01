@@ -50,6 +50,7 @@ import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.configure.ConfigurationFile;
@@ -268,6 +269,16 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     private MethodPointer asMethodPointer(ResolvedJavaMethod method) {
         AnalysisMethod aMethod = method instanceof AnalysisMethod ? (AnalysisMethod) method : analysisAccess.getUniverse().lookup(method);
         return new MethodPointer(aMethod);
+    }
+
+    @Override
+    public boolean isCustomSerializationConstructor(Constructor<?> reflectConstructor) {
+        if (ReflectionUtil.readField(Constructor.class, "constructorAccessor", reflectConstructor) instanceof SubstrateConstructorAccessor accessor) {
+            AnalysisMetaAccess analysisMetaAccess = analysisAccess.getMetaAccess();
+            AnalysisMethod analysisConstructor = analysisMetaAccess.lookupJavaMethod(reflectConstructor);
+            return !accessor.getFactoryMethod().equals(FactoryMethodSupport.singleton().lookup(analysisMetaAccess, analysisConstructor, analysisConstructor.getDeclaringClass(), false));
+        }
+        return false;
     }
 
     @Override
