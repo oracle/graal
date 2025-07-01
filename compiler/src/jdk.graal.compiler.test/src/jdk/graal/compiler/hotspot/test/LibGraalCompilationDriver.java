@@ -340,7 +340,7 @@ public class LibGraalCompilationDriver {
         public static class ProfilePathBuffer extends NativeBuffer {
             private final byte[] profilesPathBytes;
 
-            ProfilePathBuffer(String profilesPath) {
+            public ProfilePathBuffer(String profilesPath) {
                 /* Append the terminating 0. */
                 byte[] stringBytes = profilesPath.getBytes();
                 this.profilesPathBytes = Arrays.copyOf(stringBytes, stringBytes.length + 1);
