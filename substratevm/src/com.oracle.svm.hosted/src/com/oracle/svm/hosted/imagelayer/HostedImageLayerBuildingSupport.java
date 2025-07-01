@@ -48,7 +48,6 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -337,15 +336,9 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
 
     @SuppressFBWarnings(value = "NP", justification = "FB reports null pointer dereferencing because it doesn't see through UserError.guarantee.")
     public static void setupSharedLayerLibrary(NativeLibraries nativeLibs) {
-        Path sharedLibPath = HostedImageLayerBuildingSupport.singleton().getLoadLayerArchiveSupport().getSharedLibraryPath();
-        Path parent = sharedLibPath.getParent();
-        VMError.guarantee(parent != null, "Shared layer library path doesn't have a parent.");
-        nativeLibs.getLibraryPaths().add(parent.toString());
-        Path fileName = sharedLibPath.getFileName();
-        VMError.guarantee(fileName != null, "Cannot determine shared layer library file name.");
-        String fullLibName = fileName.toString();
-        VMError.guarantee(fullLibName.startsWith("lib") && fullLibName.endsWith(".so"), "Expecting that shared layer library file starts with lib and ends with .so. Found: %s", fullLibName);
-        String libName = fullLibName.substring("lib".length(), fullLibName.length() - ".so".length());
+        LoadLayerArchiveSupport archiveSupport = HostedImageLayerBuildingSupport.singleton().getLoadLayerArchiveSupport();
+        nativeLibs.getLibraryPaths().add(archiveSupport.getSharedLibraryPath().toString());
+        String libName = archiveSupport.getSharedLibraryBaseName();
         HostedDynamicLayerInfo.singleton().registerLibName(libName);
         nativeLibs.addDynamicNonJniLibrary(libName);
     }
