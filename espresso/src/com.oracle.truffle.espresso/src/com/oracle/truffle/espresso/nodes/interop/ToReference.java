@@ -1858,6 +1858,7 @@ public abstract class ToReference extends ToEspressoNode {
                         "isHostObject(getContext(), value)"
         })
         StaticObject doForeignInternalConverter(Object value,
+                        @Bind Node node,
                         @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached LookupInternalTypeConverterNode lookupTypeConverterNode,
                         @Cached ToReference.DynamicToReference converterToEspresso,
@@ -1875,7 +1876,7 @@ public abstract class ToReference extends ToEspressoNode {
             } catch (UnsupportedMessageException e) {
                 // no meta object, fall through to throw unsupported type
             }
-            errorProfile.enter(this);
+            errorProfile.enter(node);
             throw ToEspressoNode.unsupportedType(value, targetType.getRawType());
         }
     }
