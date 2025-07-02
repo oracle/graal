@@ -22,20 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.image;
-
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.UniqueShortNameProvider;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.c.NativeLibraries;
-import com.oracle.svm.hosted.meta.HostedType;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
-import jdk.vm.ci.meta.UnresolvedJavaType;
-import org.graalvm.collections.EconomicMap;
+package com.oracle.svm.core.debug;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -44,11 +31,24 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
+
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.UniqueShortNameProvider;
+import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.UnresolvedJavaType;
+
 /**
  * A unique name provider employed when debug info generation is enabled on Linux. Names are
  * generated in the C++ mangled format that is understood by the Linux binutils BFD library. An ELF
  * symbol defined using a BFD mangled name is linked to a corresponding DWARF method or field info
- * declaration (DIE) by inserting it as the value of the the <code>linkage_name</code> attribute. In
+ * declaration (DIE) by inserting it as the value of the <code>linkage_name</code> attribute. In
  * order for this linkage to be correctly recognised by the debugger and Linux tools the
  * <code>name</code> attributes of the associated class, method, field, parameter types and return
  * type must be the same as the corresponding names encoded in the mangled name.
@@ -56,15 +56,11 @@ import java.util.List;
  * Note that when the class component of a mangled name needs to be qualified with a class loader id
  * the corresponding DWARF class record must embed the class in a namespace whose name matches the
  * classloader id otherwise the mangled name will not be recognised and demangled successfully.
- * TODO: Namespace embedding is not yet implemented.
  */
-class NativeImageBFDNameProvider implements UniqueShortNameProvider {
+public class BFDNameProvider implements UniqueShortNameProvider {
 
-    private NativeLibraries nativeLibs;
-
-    NativeImageBFDNameProvider(List<ClassLoader> ignore) {
+    public BFDNameProvider(List<ClassLoader> ignore) {
         this.ignoredLoaders = ignore;
-        this.nativeLibs = null;
     }
 
     @Override
@@ -113,9 +109,8 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
         if (type.isArray()) {
             return getClassLoader(type.getElementalType());
         }
-        if (type instanceof HostedType) {
-            HostedType hostedType = (HostedType) type;
-            return hostedType.getJavaClass().getClassLoader();
+        if (type instanceof SharedType sharedType && sharedType.getHub().isLoaded()) {
+            return sharedType.getHub().getClassLoader();
         }
         return null;
     }
@@ -410,17 +405,6 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
         return new BFDMangler(this).mangle(m);
     }
 
-    /**
-     * Make the provider aware of the current native libraries. This is needed because the provider
-     * is created in a feature after registration but the native libraries are only available before
-     * analysis.
-     *
-     * @param nativeLibs the current native libraries singleton.
-     */
-    public void setNativeLibs(NativeLibraries nativeLibs) {
-        this.nativeLibs = nativeLibs;
-    }
-
     private static class BFDMangler {
 
         /*
@@ -464,7 +448,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
          * arise. A name can always be correctly encoded without repeats. In the above example that
          * would be _ZN5Hello9compareToEJiPS_.
          */
-        final NativeImageBFDNameProvider nameProvider;
+        final BFDNameProvider nameProvider;
         final StringBuilder sb;
 
         // A list of lookup names identifying substituted elements. A prospective name for an
@@ -524,7 +508,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
             }
         }
 
-        BFDMangler(NativeImageBFDNameProvider provider) {
+        BFDMangler(BFDNameProvider provider) {
             nameProvider = provider;
             sb = new StringBuilder("_Z");
             bindings = EconomicMap.create();
@@ -748,7 +732,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
             } else {
                 String loaderName = nameProvider.classLoaderNameAndId(type);
                 String className = type.toJavaName();
-                if (nameProvider.needsPointerPrefix(type)) {
+                if (needsPointerPrefix(type)) {
                     mangleClassPointer(loaderName, className);
                 } else {
                     mangleClassName(loaderName, className);
@@ -907,17 +891,11 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
      * @param type The type to be checked.
      * @return true if the type needs to be encoded using pointer prefix P otherwise false.
      */
-    private boolean needsPointerPrefix(ResolvedJavaType type) {
-        ResolvedJavaType target = type;
-        if (type instanceof HostedType) {
-            // unwrap to analysis type as that is what native libs checks test against
-            target = ((HostedType) target).getWrapped();
+    private static boolean needsPointerPrefix(ResolvedJavaType type) {
+        if (type instanceof SharedType sharedType) {
+            /* Word types have the kind Object, but a primitive storageKind. */
+            return sharedType.getJavaKind() == JavaKind.Object && sharedType.getStorageKind() == sharedType.getJavaKind();
         }
-        if (target instanceof AnalysisType) {
-            assert nativeLibs != null : "No native libs during or after analysis!";
-            return !nativeLibs.isWordBase(target);
-        }
-        return true;
+        return false;
     }
-
 }
