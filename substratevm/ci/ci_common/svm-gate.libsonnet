@@ -67,6 +67,9 @@
   }),
 
   gate:: $.target("gate"),
+  tier1:: $.target("tier1"),
+  tier2:: $.target("tier2"),
+  tier3:: $.target("tier3"),
   daily:: $.target("daily"),
   weekly:: $.target("weekly"),
   ondemand:: $.target("ondemand"),
