@@ -498,7 +498,7 @@ public final class Resources implements MultiLayeredImageSingleton {
 
     @AlwaysInline("tracing should fold away when disabled")
     private static void traceResource(String resourceName, String moduleName) {
-        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+        if (MetadataTracer.enabled()) {
             MetadataTracer.singleton().traceResource(resourceName, moduleName);
         }
     }
@@ -510,7 +510,7 @@ public final class Resources implements MultiLayeredImageSingleton {
 
     @AlwaysInline("tracing should fold away when disabled")
     private static void traceResourceMissingMetadata(String resourceName, String moduleName, boolean probe) {
-        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled() && !probe) {
+        if (MetadataTracer.enabled() && !probe) {
             // Do not trace missing metadata for probing queries, otherwise we'll trace an entry for
             // every module. The caller is responsible for tracing missing entries if it uses
             // probing.
