@@ -340,7 +340,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         return str(nib_candidates[0])
 
     def get_latest_layer(self) -> Optional[Layer]:
-        latest_image_stage = self.execution_context.virtual_machine.stages_info.get_latest_image_stage()
+        latest_image_stage = self.stages_info.get_latest_image_stage()
         if latest_image_stage is None or not latest_image_stage.is_layered():
             return None
         return latest_image_stage.layer_info
@@ -391,9 +391,9 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             # we need to move the image from the path that is set inside the nib to the path expected by our vm.
             # This code has no effect if the image is already at the desired location.
             vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
-            if vm.stages_info.should_produce_datapoints(StageName.INSTRUMENT_IMAGE):
+            if self.stages_info.should_produce_datapoints(StageName.INSTRUMENT_IMAGE):
                 desired_image_path = vm.config.instrumented_image_path
-            elif vm.stages_info.should_produce_datapoints(StageName.IMAGE):
+            elif self.stages_info.should_produce_datapoints(StageName.IMAGE):
                 desired_image_path = vm.config.image_path
             else:
                 return
@@ -515,53 +515,55 @@ mx_benchmark.add_bm_suite(BaristaNativeImageBenchmarkSuite())
 # and the scenario files (GR-65000)
 _graalosConfig = {
     "benchmarks": {
-        "local_binary": {
-            "app": "rawhttp-function",
-            "scenario-path": "local_binary.toml",
-        },
-        "dataplane_smoke_test": {
-            "app": "rawhttp-function",
-            "scenario-path": "dataplane_smoke_test.toml",
-        },
-        "graal-ci-round-robin-rawhttp-function-256": {
-            "app": "rawhttp-function",
-            "scenario-path": "graal-ci/round-robin/rawhttp-function-256.toml",
-        },
-        "graal-ci-single-app-micronaut-pegasus-function-256": {
+        "round-robin-micronaut-pegasus-function": {
             "app": "micronaut-pegasus-function",
-            "scenario-path": "graal-ci/single-app/micronaut-pegasus-function-256.toml",
+            "scenario-path": "graalos-bench-suite/round-robin/micronaut-pegasus-function.toml",
         },
-        "graal-ci-single-app-micronaut-pegasus-function-2048": {
+        "round-robin-rawhttp-function": {
+            "app": "rawhttp-function",
+            "scenario-path": "graalos-bench-suite/round-robin/rawhttp-function.toml",
+        },
+        "single-app-micronaut-pegasus-function": {
             "app": "micronaut-pegasus-function",
-            "scenario-path": "graal-ci/single-app/micronaut-pegasus-function-2048.toml",
+            "scenario-path": "graalos-bench-suite/single-app/micronaut-pegasus-function.toml",
         },
-        "graal-ci-single-app-rawhttp-function-256": {
+        "single-app-rawhttp-function": {
             "app": "rawhttp-function",
-            "scenario-path": "graal-ci/single-app/rawhttp-function-256.toml",
-        },
-        "graal-ci-single-app-rawhttp-function-2048": {
-            "app": "rawhttp-function",
-            "scenario-path": "graal-ci/single-app/rawhttp-function-2048.toml",
-        },
-        "graal-ci-smoke-test-rawhttp-function-256": {
-            "app": "rawhttp-function",
-            "scenario-path": "graal-ci/smoke-test/rawhttp-function-256.toml",
-        },
-        "graal-ci-stress-test-timed-compute-function-256": {
-            "app": "timed-compute-function",
-            "scenario-path": "graal-ci/stress-test/timed-compute-function-256.toml",
+            "scenario-path": "graalos-bench-suite/single-app/rawhttp-function.toml",
         },
     },
 }
 
 class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
                                        mx_sdk_benchmark.NativeImageBenchmarkMixin,
-                                       mx_sdk_benchmark.NativeImageBundleBasedBenchmarkMixin):
+                                       mx_sdk_benchmark.LayeredNativeImageBundleBasedBenchmarkMixin):
     """
     A collection of benchmarks designed for benchmarking the performance of apps built for GraalOS.
 
     This benchmark suite utilizes the `graalos-load-tester` harness to execute scenarios that run workloads against
     images of apps located in the `vm-benchmarks/graalos` repository.
+
+    The run arguments (arguments that are specified after the second '--' instance of the 'mx benchmark' command) are
+    passed to the 'gos-scenario' tool. For example:
+    ```
+    mx ... benchmark graalos:... -- ... -- -p app_count=1
+    ```
+    will propagate '-p app_count=1' to the 'gos-scenario' harness and thus set the 'app_count' parameter of the
+    selected scenario to 1.
+
+    DEVELOPER NOTE:
+    The automatic dependency setup implemented as part of this suite does not work when multiple 'mx benchmark'
+    processes are running concurrently. Namely, the bench suite automatically executes the following steps, if they
+    haven't already been executed:
+    * cloning the 'graalos-load-tester' repository as a sibling to the 'graal' repository
+    * downloading the tools which graalos-load-tester depends on (e.g. wrk, wrk2, nginx)
+    * generating the native image bundle from which the application image is built
+    These steps aren't executed if:
+    * the 'graalos-load-tester' repository is already present as a sibling to the 'graal' repository
+    * all of the tools which graalos-load-tester depends on are installed and available on the PATH
+    * the native image bundle for the application is present in the application source code directory
+    Only in the case that these requirements are satisfied running concurrent 'mx benchmark' processes will not crash.
+    (GR-66385)
     """
     def __init__(self, custom_harness_command: mx_benchmark.CustomHarnessCommand = None):
         if custom_harness_command is None:
@@ -590,6 +592,19 @@ class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
             self._version = self._read_gos_scenario_version()
             mx.log(f"Running GraalOS Load Tester version '{self._version}'")
         return self._version
+
+    def layers(self, bm_suite_args: List[str]) -> List[Layer]:
+        if self._get_benchmark_config(self.benchmarkName())["app"] == "micronaut-pegasus-function":
+            return [Layer(0, True), Layer(1, False)]
+        # Currently, "micronaut-pegasus-function" is the only app that supports running with layers
+        # Support for other benchmarks, or even suites? (GR-64772)
+        mx.abort(f"The '{self.benchmarkName()}' benchmark does not support layered native images!")
+
+    def get_latest_layer(self) -> Optional[Layer]:
+        latest_image_stage = self.stages_info.get_latest_image_stage()
+        if latest_image_stage is None or not latest_image_stage.is_layered():
+            return None
+        return latest_image_stage.layer_info
 
     @property
     def gos_scenario_home(self) -> Path:
@@ -730,45 +745,77 @@ class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
         """
         return _graalosConfig["benchmarks"][benchmark]
 
-    def applicationDist(self):
+    def get_bundle_path(self) -> str:
         app_name = self._get_benchmark_config(self.benchmarkName())["app"]
-        if app_name not in self._bundle_paths:
-            self._bundle_paths[app_name] = self.generate_or_lookup_bundle()
-            mx.log(f"Using bundle at '{self._bundle_paths[app_name]}' for app '{app_name}'.")
-        return self._bundle_paths[app_name].parent
+        layer_info = self.get_latest_layer()
+        if layer_info is not None:
+            key = f"{app_name}-layer{layer_info.index}"
+        else:
+            key = app_name
 
-    def generate_or_lookup_bundle(self) -> Path:
+        if key not in self._bundle_paths:
+            app_dir = self._app_source_dir(app_name)
+            self._bundle_paths[key] = self.generate_or_lookup_bundle(app_name, layer_info, app_dir)
+            mx.log(f"Using bundle at '{self._bundle_paths[key]}' to generate the image for '{key}'.")
+        return self._bundle_paths[key]
+
+    def lookup_bundle(self, app_name: str, layer_info: Layer, app_dir: Path) -> List[Path]:
+        """
+        Looks up the path to the NIB file for the app-layer pair associated with the current benchmark stage.
+
+        The files are searched for in the subtree of the app's root directory. All the files that match the expected
+        naming pattern are matched. The naming pattern depends on whether the bundle has been generated for a standalone
+        application or a single layer of a layered application build. The name of the NIB file should:
+        * start with anything other than 'layer<NUMBER>-' if it is meant for building a standalone app image.
+        * start with 'layer<NUMBER>-' if it is meant for building a layer, where NUMBER is the index of the layer.
+        """
+        # Lookup all the NIB files located inside the subtree of the app root directory
+        nib_candidates = list(app_dir.glob("**/*.nib"))
+
+        # Filter for only the NIB files that correspond to the naming scheme associated with the current layer
+        if layer_info is None:
+            # Select only the nib files that do not start with r'layer\d+-'
+            nib_naming_pattern = r"^(?!layer\d+-).*\.nib$"
+        else:
+            # Select only the nib files that start with fr'layer{layer_info.index}-'
+            nib_naming_pattern = fr"^layer{layer_info.index}-.*\.nib$"
+        return [nib for nib in nib_candidates if re.match(nib_naming_pattern, nib.name)]
+
+    def generate_bundle(self, app_name: str, layer_info: Layer):
+        """Generates the NIB file for the app-layer pair associated with the current benchmark stage."""
+        if app_name == "micronaut-pegasus-function" and mx.get_env("JDK17_HOME") is None:
+            mx.abort(f"App '{app_name}' requires JDK17_HOME env var to point to a JDK 17 distribution in order to build maven project.")
+
+        nib_generation_cmd = ["./graalos-gate.py", "build", "--build-profile", "nib", app_name]
+        if layer_info is not None:
+            assert app_name == "micronaut-pegasus-function", f"Cannot generate a layer bundle for '{app_name}' app!"
+            assert layer_info.index in [0, 1], f"Cannot generate layer#{layer_info.index} bundle for '{app_name}' app!"
+            if layer_info.index == 0:
+                nib_generation_cmd += ["--extra-build-options=--maven-options=-Pbase-layer"]
+            else:
+                nib_generation_cmd += ["--extra-build-options=--maven-options=-Papp-layer"]
+        working_dir = self._vm_benchmarks_graalos_dir()
+        mx.log(f"Generating the NIB file by running {nib_generation_cmd} in working dir '{working_dir}'. This can take a while.")
+        try:
+            mx.run(nib_generation_cmd, cwd=working_dir, env=self.get_nib_generation_env())
+        except BaseException as e:
+            if isinstance(e, SystemExit):
+                mx.abort(f"Generating the NIB file failed with exit code {e}!")
+            else:
+                mx.abort(f"{e}\nGenerating the NIB file failed!")
+
+    def generate_or_lookup_bundle(self, app_name: str, layer_info: Layer, app_dir: Path) -> Path:
         """
         Looks up the path to the NIB file for the app asociated with the current benchmark,
         generating it first if it does not exist.
         """
-        # Initial NIB lookup
-        app_name = self._get_benchmark_config(self.benchmarkName())["app"]
-        app_dir = self._app_source_dir(app_name)
-        nib_candidates = list(app_dir.glob("**/*.nib"))
+        nib_candidates = self.lookup_bundle(app_name, layer_info, app_dir)
 
         # Generate a NIB file for the app if none exists
         if len(nib_candidates) == 0:
-            nib_generation_cmd = ["./graalos-gate.py", "build", "--build-profile", "nib", app_name]
-            working_dir = self._vm_benchmarks_graalos_dir()
-            mx.log(f"Generating the NIB file by running {nib_generation_cmd} in working dir {working_dir}")
-            out = mx.OutputCapture()
-            err = mx.OutputCapture()
-            try:
-                mx.run(nib_generation_cmd, cwd=working_dir, out=out, err=err, env=self.get_nib_generation_env())
-            except BaseException as e:
-                for line in out.data.split("\n"):
-                    mx.log(line)
-                for line in err.data.split("\n"):
-                    mx.log_error(line)
-                if isinstance(e, SystemExit):
-                    mx.abort(f"Generating the NIB file failed with exit code {e}!")
-                else:
-                    mx.abort(f"{e}\nGenerating the NIB file failed!")
-            for line in out.data.split("\n"):
-                mx.logvv(line)
+            self.generate_bundle(app_name, layer_info)
             # Repeat the lookup
-            nib_candidates = list(app_dir.glob("**/*.nib"))
+            nib_candidates = self.lookup_bundle(app_name, layer_info, app_dir)
 
         # Final check
         if len(nib_candidates) == 0:
@@ -800,6 +847,12 @@ class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
     def extra_run_arg(self, benchmark, args, image_run_args):
         # Added by GraalOSLoadTesterCommand
         return []
+
+    def build_assertions(self, benchmark: str, is_gate: bool) -> List[str]:
+        # We cannot enable assertions along with emitting a build report for layered images, due to GR-65751
+        if self.stages_info.current_stage.is_layered:
+            return []
+        return super().build_assertions(benchmark, is_gate)
 
     def rules(self, output, benchmarks, bmSuiteArgs) -> List[Rule]:
         json_file_group_name = "graalos_json_results_file_path"
@@ -891,8 +944,13 @@ class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
     def get_nib_generation_env(self):
         env = self.get_stage_env().copy()
         graalvm_home = self.execution_context.virtual_machine.home()
-        env["GRAALVM_HOME"] = graalvm_home
-        env["GRADLE_CLIENT_JAVA_HOME"] = graalvm_home
+        # graalos-gate.py (the script we use to generate the NIB files) requires these env vars
+        # - GRAALVM_HOME so the underlying maven/gradle/custom build command can invoke native-image
+        # - GRADLE_CLIENT_JAVA_HOME so that gradle has a JVM to execute its goals
+        if not env.get("GRAALVM_HOME"):
+            env["GRAALVM_HOME"] = graalvm_home
+        if not env.get("GRADLE_CLIENT_JAVA_HOME"):
+            env["GRADLE_CLIENT_JAVA_HOME"] = graalvm_home
         return env
 
     def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
@@ -919,7 +977,6 @@ class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
             app_cmd = source_cmd_prefix
             app_cmd += [str(suite._get_runnable_app_image())]
             app_cmd += options_from_source_cmd
-            app_cmd += suite.runArgs(bmSuiteArgs)
             app_cmd += parse_prefixed_args("-Dnative-image.benchmark.extra-jvm-arg=", bmSuiteArgs)
             if suite.stages_info.current_stage.is_instrument():
                 # Add explicit instrument stage args
@@ -933,6 +990,7 @@ class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
             gos_log_file_name = f"{timestamp}-gos-out.log"
             gos_cmd += ["--log-to", f"stdout,file:{gos_log_file_name}"]
+            gos_cmd += suite.runArgs(bmSuiteArgs)
             app_cmd_str = " ".join(app_cmd)
             gos_cmd += ["-p", f"command=\"{app_cmd_str}\""]
             mx.log(f"Produced 'gos-scenario' command: '{' '.join(gos_cmd)}'")
