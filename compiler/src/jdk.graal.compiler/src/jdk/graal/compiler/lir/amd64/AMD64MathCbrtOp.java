@@ -33,7 +33,6 @@ import static jdk.vm.ci.amd64.AMD64.r9;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rcx;
 import static jdk.vm.ci.amd64.AMD64.rdx;
-import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.amd64.AMD64.xmm1;
 import static jdk.vm.ci.amd64.AMD64.xmm2;
@@ -73,8 +72,8 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
  * </pre>
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/83cb0c6de5988de526545d0926c2c6ef60efc1c7/src/hotspot/cpu/x86/stubGenerator_x86_64_cbrt.cpp#L30-L364",
-          sha1 = "1cf43819053aac54cbe343f9b8a8bfcc3e3dd6c8")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/38f59f84c98dfd974eec0c05541b2138b149def7/src/hotspot/cpu/x86/stubGenerator_x86_64_cbrt.cpp#L30-L339",
+          sha1 = "ba7a498e0e5dd3aab7f6eacf50753b5e5999911e")
 // @formatter:on
 public final class AMD64MathCbrtOp extends AMD64MathIntrinsicUnaryOp {
 
@@ -84,6 +83,10 @@ public final class AMD64MathCbrtOp extends AMD64MathIntrinsicUnaryOp {
         super(TYPE, /* GPR */ rax, rcx, rdx, r8, r9,
                         /* XMM */ xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
     }
+
+    private static ArrayDataPointerConstant absMask = pointerConstant(16, new int[]{
+                    0xFFFFFFFF, 0x7FFFFFFF, 0x00000000, 0x00000000
+    });
 
     private static ArrayDataPointerConstant sigMask = pointerConstant(16, new int[]{
                     0x00000000, 0x000fc000
@@ -111,10 +114,6 @@ public final class AMD64MathCbrtOp extends AMD64MathIntrinsicUnaryOp {
 
     private static ArrayDataPointerConstant inf = pointerConstant(16, new int[]{
                     0x00000000, 0x7ff00000
-    });
-
-    private static ArrayDataPointerConstant negInf = pointerConstant(16, new int[]{
-                    0x00000000, 0xfff00000
     });
 
     private static ArrayDataPointerConstant coeffTable = pointerConstant(16, new int[]{
@@ -226,17 +225,17 @@ public final class AMD64MathCbrtOp extends AMD64MathIntrinsicUnaryOp {
         Label l2TAGPACKET001 = new Label();
         Label l2TAGPACKET101 = new Label();
         Label l2TAGPACKET201 = new Label();
-        Label l2TAGPACKET301 = new Label();
-        Label l2TAGPACKET401 = new Label();
-        Label l2TAGPACKET501 = new Label();
-        Label l2TAGPACKET601 = new Label();
         Label lB11 = new Label();
         Label lB12 = new Label();
         Label lB14 = new Label();
 
         masm.bind(lB11);
-        masm.subq(rsp, 24);
-        masm.movsd(new AMD64Address(rsp), xmm0);
+        masm.ucomisd(xmm0, recordExternalAddress(crb, zeron));
+        masm.jcc(ConditionFlag.Equal, l2TAGPACKET101);
+        masm.movq(xmm1, xmm0);
+        masm.andpd(xmm1, recordExternalAddress(crb, absMask));
+        masm.ucomisd(xmm1, recordExternalAddress(crb, inf));
+        masm.jcc(ConditionFlag.Equal, lB14);
 
         masm.bind(lB12);
         masm.movq(xmm7, xmm0);
@@ -255,8 +254,6 @@ public final class AMD64MathCbrtOp extends AMD64MathIntrinsicUnaryOp {
         masm.andl(rdx, rax);
         // Branch only if |x| is denormalized
         masm.cmplAndJcc(rdx, 0, ConditionFlag.Equal, l2TAGPACKET001, false);
-        // Branch only if |x| is INF or NaN
-        masm.cmplAndJcc(rdx, 0x7ff00, ConditionFlag.Equal, l2TAGPACKET101, false);
         masm.shrl(rdx, 8);
         masm.shrq(r9, 8);
         masm.andpd(xmm2, xmm0);
@@ -324,8 +321,6 @@ public final class AMD64MathCbrtOp extends AMD64MathIntrinsicUnaryOp {
         masm.andl(rdx, rax);
         masm.shrl(rdx, 8);
         masm.shrq(r9, 8);
-        // Branch only if |x| is zero
-        masm.cmplAndJcc(rdx, 0, ConditionFlag.Equal, l2TAGPACKET301, false);
         masm.andpd(xmm2, xmm0);
         masm.andpd(xmm0, xmm5);
         masm.orpd(xmm3, xmm2);
@@ -349,40 +344,9 @@ public final class AMD64MathCbrtOp extends AMD64MathIntrinsicUnaryOp {
         masm.psllq(xmm7, 52);
         masm.jmp(l2TAGPACKET201);
 
-        masm.bind(l2TAGPACKET301);
-        // Branch only if x is negative zero
-        masm.cmpqAndJcc(r9, 0, ConditionFlag.NotEqual, l2TAGPACKET401, false);
-        masm.xorpd(xmm0, xmm0);
-        masm.jmp(lB14);
-
-        masm.bind(l2TAGPACKET401);
-        masm.movsd(xmm0, recordExternalAddress(crb, zeron));
-        masm.jmp(lB14);
-
         masm.bind(l2TAGPACKET101);
-        masm.movl(rax, new AMD64Address(rsp, 4));
-        masm.movl(rdx, new AMD64Address(rsp));
-        masm.movl(rcx, rax);
-        masm.andl(rcx, 0x7fffffff);
-        // Branch only if |x| is NaN
-        masm.cmplAndJcc(rcx, 0x7ff00000, ConditionFlag.Above, l2TAGPACKET501, false);
-        // Branch only if |x| is NaN
-        masm.cmplAndJcc(rdx, 0, ConditionFlag.NotEqual, l2TAGPACKET501, false);
-        // Branch only if x is negative INF
-        masm.cmplAndJcc(rax, 0x7ff00000, ConditionFlag.NotEqual, l2TAGPACKET601, false);
-        masm.movsd(xmm0, recordExternalAddress(crb, inf));
-        masm.jmp(lB14);
-
-        masm.bind(l2TAGPACKET601);
-        masm.movsd(xmm0, recordExternalAddress(crb, negInf));
-        masm.jmp(lB14);
-
-        masm.bind(l2TAGPACKET501);
-        masm.movsd(xmm0, new AMD64Address(rsp));
         masm.addsd(xmm0, xmm0);
-        masm.movq(new AMD64Address(rsp, 8), xmm0);
 
         masm.bind(lB14);
-        masm.addq(rsp, 24);
     }
 }
