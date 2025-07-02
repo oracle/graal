@@ -32,7 +32,7 @@ import sys
 
 import gdb
 
-logfile = os.environ.get('gdbdebughelperstest_logfile', 'debug_helper.log')
+logfile = os.environ.get('gdb_logfile', 'debug_helper.log')
 logging.basicConfig(filename=logfile,
                     format='%(name)s %(levelname)s: %(message)s', level=logging.DEBUG)
 logger = logging.getLogger('[DebugTest]')
@@ -100,7 +100,7 @@ def gdb_advanced_print(var: str, output_format: str = None) -> str:
 
 def gdb_set_breakpoint(location: str) -> None:
     logger.info(f"Setting breakpoint at: {location}")
-    gdb_execute(f"break {location}")
+    gdb.Breakpoint(location)
 
 
 def gdb_set_param(name: str, value: str) -> None:

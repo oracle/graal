@@ -30,12 +30,12 @@ package com.oracle.objectfile.elf.dwarf.constants;
  * Values for DW_AT_inline attribute.
  */
 public enum DwarfInline {
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused")//
     DW_INL_not_inlined((byte) 0),
     DW_INL_inlined((byte) 1),
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused")//
     DW_INL_declared_not_inlined((byte) 2),
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused")//
     DW_INL_declared_inlined((byte) 3);
 
     private final byte value;
