@@ -52,6 +52,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
+import com.oracle.svm.core.graal.code.SharedCompilationResult;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
@@ -1326,6 +1327,10 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         CompilationResultBuilder crb = factory.createBuilder(getProviders(), lirGenResult.getFrameMap(), masm, dataBuilder, frameContext, options, debug, compilationResult,
                         uncompressedNullRegister, lir);
         crb.setTotalFrameSize(lirGenResult.getFrameMap().totalFrameSize());
+        if (SubstrateUtil.HOSTED) {
+            var sharedCompilationResult = (SharedCompilationResult) compilationResult;
+            sharedCompilationResult.setCodeAlignment(SubstrateOptions.codeAlignment(options));
+        }
         return crb;
     }
 

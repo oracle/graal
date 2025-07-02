@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.code.SharedCompilationResult;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.code.HostedDirectCallTrampolineSupport;
@@ -96,9 +97,9 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
         if (orderedTrampolineMap.containsKey(method)) {
             List<Pair<HostedMethod, Integer>> trampolineList = orderedTrampolineMap.get(method);
             int lastTrampolineStart = trampolineList.get(trampolineList.size() - 1).getRight();
-            methodEnd = computeNextMethodStart(lastTrampolineStart, HostedDirectCallTrampolineSupport.singleton().getTrampolineSize());
+            methodEnd = addOffset(lastTrampolineStart, HostedDirectCallTrampolineSupport.singleton().getTrampolineSize());
         } else {
-            methodEnd = computeNextMethodStart(methodStart, compilationResultFor(method).getTargetCodeSize());
+            methodEnd = addOffset(methodStart, compilationResultFor(method).getTargetCodeSize());
         }
 
         return methodEnd - methodStart;
@@ -112,22 +113,22 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             CompilationResult compilation = entry.getRight();
 
             int methodStart = method.getCodeAddressOffset();
+            currentPos = align(currentPos, SharedCompilationResult.getCodeAlignment(compilation));
             assert currentPos == methodStart;
 
-            currentPos += compilation.getTargetCodeSize();
+            currentPos = addOffset(currentPos, compilation.getTargetCodeSize());
 
             if (orderedTrampolineMap.containsKey(method)) {
                 for (var trampoline : orderedTrampolineMap.get(method)) {
                     int trampolineOffset = trampoline.getRight();
 
-                    currentPos = NumUtil.roundUp(currentPos, trampolineSupport.getTrampolineAlignment());
+                    currentPos = align(currentPos, trampolineSupport.getTrampolineAlignment());
                     assert trampolineOffset == currentPos;
 
                     currentPos += trampolineSupport.getTrampolineSize();
                 }
             }
 
-            currentPos = computeNextMethodStart(currentPos, 0);
             int size = currentPos - method.getCodeAddressOffset();
             assert codeSizeFor(method) == size;
         }
@@ -148,13 +149,14 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             for (Pair<HostedMethod, CompilationResult> entry : getOrderedCompilations()) {
                 HostedMethod method = entry.getLeft();
                 CompilationResult compilation = entry.getRight();
+                curPos = align(curPos, SharedCompilationResult.getCodeAlignment(compilation));
 
                 if (!trampolineSupport.mayNeedTrampolines()) {
                     method.setCodeAddressOffset(curPos);
                 } else {
                     curOffsetMap.put(method, curPos);
                 }
-                curPos = computeNextMethodStart(curPos, compilation.getTargetCodeSize());
+                curPos = addOffset(curPos, compilation.getTargetCodeSize());
             }
 
             if (trampolineSupport.mayNeedTrampolines()) {
@@ -168,7 +170,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     int methodStartOffset = curOffsetMap.get(method);
                     method.setCodeAddressOffset(methodStartOffset);
                     Map<HostedMethod, Integer> trampolines = trampolineMap.get(method);
-                    if (trampolines.size() != 0) {
+                    if (!trampolines.isEmpty()) {
                         // assign an offset to each trampoline
                         List<Pair<HostedMethod, Integer>> sortedTrampolines = new ArrayList<>(trampolines.size());
                         int position = methodStartOffset + pair.getRight().getTargetCodeSize();
@@ -177,10 +179,10 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                          * positions.
                          */
                         for (HostedMethod callTarget : trampolines.keySet().toArray(HostedMethod.EMPTY_ARRAY)) {
-                            position = NumUtil.roundUp(position, trampolineSupport.getTrampolineAlignment());
+                            position = align(position, trampolineSupport.getTrampolineAlignment());
                             trampolines.put(callTarget, position);
                             sortedTrampolines.add(Pair.create(callTarget, position));
-                            position += trampolineSupport.getTrampolineSize();
+                            position = addOffset(position, trampolineSupport.getTrampolineSize());
                         }
                         orderedTrampolineMap.put(method, sortedTrampolines);
                     }
@@ -192,15 +194,16 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             Pair<HostedMethod, CompilationResult> lastCompilation = getLastCompilation();
             HostedMethod lastMethod = lastCompilation.getLeft();
 
-            // the total code size is the hypothetical start of the next method
+            // the total code size is aligned up to SubstrateOptions.codeAlignment()
             int totalSize;
             if (orderedTrampolineMap.containsKey(lastMethod)) {
                 var trampolines = orderedTrampolineMap.get(lastMethod);
                 int lastTrampolineStart = trampolines.get(trampolines.size() - 1).getRight();
-                totalSize = computeNextMethodStart(lastTrampolineStart, trampolineSupport.getTrampolineSize());
+                totalSize = addOffset(lastTrampolineStart, trampolineSupport.getTrampolineSize());
             } else {
-                totalSize = computeNextMethodStart(lastCompilation.getLeft().getCodeAddressOffset(), lastCompilation.getRight().getTargetCodeSize());
+                totalSize = addOffset(lastCompilation.getLeft().getCodeAddressOffset(), lastCompilation.getRight().getTargetCodeSize());
             }
+            totalSize = align(totalSize, SubstrateOptions.codeAlignment());
 
             setCodeAreaSize(totalSize);
 
@@ -209,14 +212,21 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
         }
     }
 
-    private static int computeNextMethodStart(int current, int addend) {
-        int result;
-        try {
-            result = NumUtil.roundUp(Math.addExact(current, addend), SubstrateOptions.codeAlignment());
-        } catch (ArithmeticException e) {
+    private static int align(int current, int alignment) {
+        VMError.guarantee(current >= 0 && alignment > 0 && NumUtil.isUnsignedPowerOf2(alignment), "invalid argument %d - %d", current, alignment);
+        int result = NumUtil.roundUp(current, alignment);
+        if (result < current) {
             throw VMError.shouldNotReachHere("Code size is larger than 2GB");
         }
+        return result;
+    }
 
+    private static int addOffset(int current, int offset) {
+        VMError.guarantee(current >= 0 && offset >= 0, "invalid argument %d - %d", current, offset);
+        int result = current + offset;
+        if (result < 0) {
+            throw VMError.shouldNotReachHere("Code size is larger than 2GB");
+        }
         return result;
     }
 
@@ -236,21 +246,22 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             for (Pair<HostedMethod, CompilationResult> entry : getOrderedCompilations()) {
                 HostedMethod caller = entry.getLeft();
                 CompilationResult compilation = entry.getRight();
+                curPos = align(curPos, SharedCompilationResult.getCodeAlignment(compilation));
 
                 int originalStart = curOffsetMap.get(caller);
                 int newStart = curPos;
                 curOffsetMap.put(caller, newStart);
 
                 // move curPos to the end of the method code
-                curPos += compilation.getTargetCodeSize();
+                curPos = addOffset(curPos, compilation.getTargetCodeSize());
                 int newEnd = curPos;
 
                 Map<HostedMethod, Integer> trampolines = trampolineMap.computeIfAbsent(caller, k -> new HashMap<>());
 
                 // update curPos to account for current trampolines
                 for (int j = 0; j < trampolines.size(); j++) {
-                    curPos = NumUtil.roundUp(curPos, trampolineSupport.getTrampolineAlignment());
-                    curPos += trampolineSupport.getTrampolineSize();
+                    curPos = align(curPos, trampolineSupport.getTrampolineAlignment());
+                    curPos = addOffset(curPos, trampolineSupport.getTrampolineSize());
                 }
                 for (Infopoint infopoint : compilation.getInfopoints()) {
                     if (infopoint instanceof Call && ((Call) infopoint).direct) {
@@ -289,13 +300,11 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                             // need to add another trampoline
                             changed = true;
                             trampolines.put(callee, 0);
-                            curPos = NumUtil.roundUp(curPos, trampolineSupport.getTrampolineAlignment());
-                            curPos += trampolineSupport.getTrampolineSize();
+                            curPos = align(curPos, trampolineSupport.getTrampolineAlignment());
+                            curPos = addOffset(curPos, trampolineSupport.getTrampolineSize());
                         }
                     }
                 }
-                // align curPos for start of next method
-                curPos = computeNextMethodStart(curPos, 0);
                 callerCompilationNum++;
             }
 
