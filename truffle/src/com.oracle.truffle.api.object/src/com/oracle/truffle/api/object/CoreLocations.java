@@ -757,7 +757,10 @@ abstract class CoreLocations {
 
         @Override
         public int hashCode() {
-            return longLocation.hashCode();
+            final int prime = 31;
+            int result = super.hashCode();
+            result = prime * result + longLocation.hashCode();
+            return result;
         }
     }
 
