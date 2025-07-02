@@ -267,7 +267,7 @@ public class SerializationSupport implements MultiLayeredImageSingleton, Seriali
                 return constructorAccessor;
             }
         } else {
-            if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+            if (MetadataTracer.enabled()) {
                 MetadataTracer.singleton().traceSerializationType(declaringClass.getName());
             }
             for (var singleton : layeredSingletons()) {

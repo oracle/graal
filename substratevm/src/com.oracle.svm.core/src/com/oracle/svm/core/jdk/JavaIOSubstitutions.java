@@ -65,7 +65,7 @@ final class Target_java_io_ObjectStreamClass {
         }
 
         if (Serializable.class.isAssignableFrom(cl) && !cl.isArray()) {
-            if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+            if (MetadataTracer.enabled()) {
                 MetadataTracer.singleton().traceSerializationType(cl.getName());
             }
             if (!DynamicHub.fromClass(cl).isRegisteredForSerialization()) {
