@@ -81,6 +81,7 @@ import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
@@ -390,10 +391,14 @@ public class SubstrateOptions {
         disable(GraalOptions.PartialUnroll, values);
 
         /*
-         * Do not align loop headers to further reduce code size.
+         * Do not align code to further reduce code size.
          */
+        ConcealedOptions.CodeAlignment.update(values, 1);
         GraalOptions.LoopHeaderAlignment.update(values, 0);
         GraalOptions.IsolatedLoopHeaderAlignment.update(values, 0);
+        if (ConfigurationValues.getTarget().arch instanceof AMD64) {
+            disable(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
+        }
 
         /*
          * Do not run PEA - it can fan out allocations too much.
@@ -1050,10 +1055,16 @@ public class SubstrateOptions {
             return value;
         }
 
-        if (ConfigurationValues.getTarget().arch instanceof AMD64 && optimizationLevel() != OptimizationLevel.SIZE) {
+        if (ConfigurationValues.getTarget().arch instanceof AMD64) {
             return 32;
         }
         return 16;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static int codeAlignment(OptionValues options) {
+        int value = ConcealedOptions.CodeAlignment.getValue(options);
+        return value > 0 ? value : codeAlignment();
     }
 
     @Option(help = "Determines if VM internal threads (e.g., a dedicated VM operation or reference handling thread) are allowed in this image.", type = OptionType.Expert) //
