@@ -43,7 +43,9 @@
           for f in _fields
         ],
         mxgate_name:: outer.task_name,
-        name: std.join("-", [outer.target, suite_short, self.mxgate_name] + config + [outer.jdk_name] + target_arch_suffix + [outer.os, outer.arch]) + batch_suffix,
+        # we use the "gate-" prefix also for tiered jobs to avoid changing existing job names
+        local name_prefix = if std.startsWith(outer.target, "tier") then "gate" else outer.target,
+        name: std.join("-", [name_prefix, suite_short, self.mxgate_name] + config + [outer.jdk_name] + target_arch_suffix + [outer.os, outer.arch]) + batch_suffix,
         run+: [["mx", "--kill-with-sigquit", "--strict-compliance"] + dynamic_imports + ["gate", "--strict-mode", "--tags", std.join(",", outer.mxgate_tags)] + outer.mxgate_extra_args],
       }
     })),
