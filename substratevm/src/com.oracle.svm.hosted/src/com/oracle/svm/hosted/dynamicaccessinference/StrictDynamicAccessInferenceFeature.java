@@ -592,7 +592,7 @@ public final class StrictDynamicAccessInferenceFeature implements InternalFeatur
 
         public void register(GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
             Method getResource = ReflectionUtil.lookupMethod(true, Class.class, "getResource", String.class);
-            Method getResourceAsStream = ReflectionUtil.lookupMethod(true, Class.class, "getResource", String.class);
+            Method getResourceAsStream = ReflectionUtil.lookupMethod(true, Class.class, "getResourceAsStream", String.class);
             Stream.of(getResource, getResourceAsStream)
                             .filter(Objects::nonNull)
                             .forEach(m -> registerResourcePlugin(plugins.getInvocationPlugins(), reason, m));

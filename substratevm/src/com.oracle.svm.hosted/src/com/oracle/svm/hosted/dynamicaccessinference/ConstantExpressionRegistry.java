@@ -100,7 +100,7 @@ public final class ConstantExpressionRegistry {
             return null;
         }
         int numOfParameters = targetMethod.getSignature().getParameterCount(false);
-        ConstantExpressionAnalyzer.Value receiver = frame.operandStack().getOperand(numOfParameters);
+        ConstantExpressionAnalyzer.Value receiver = frame.getOperand(numOfParameters);
         if (receiver instanceof ConstantExpressionAnalyzer.CompileTimeConstant constant) {
             Object receiverValue = constant.getValue();
             return receiverValue == null ? NULL_MARKER : receiverValue;
@@ -145,7 +145,7 @@ public final class ConstantExpressionRegistry {
         if (frame == null) {
             return null;
         }
-        ConstantExpressionAnalyzer.Value argument = frame.operandStack().getOperand(numOfParameters - index - 1);
+        ConstantExpressionAnalyzer.Value argument = frame.getOperand(numOfParameters - index - 1);
         if (argument instanceof ConstantExpressionAnalyzer.CompileTimeConstant constant) {
             Object argumentValue = constant.getValue();
             if (argumentValue == null) {

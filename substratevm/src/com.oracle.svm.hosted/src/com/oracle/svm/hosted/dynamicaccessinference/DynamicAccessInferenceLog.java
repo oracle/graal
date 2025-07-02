@@ -38,6 +38,7 @@ import java.util.stream.Stream;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -239,5 +240,13 @@ public final class DynamicAccessInferenceLog {
         public String toString() {
             return "<ignored>";
         }
+    }
+}
+
+final class DynamicAccessInferenceLogFeature implements InternalFeature {
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(DynamicAccessInferenceLog.class, new DynamicAccessInferenceLog());
     }
 }

@@ -80,8 +80,7 @@ public abstract class ForwardDataFlowAnalyzer<S> {
         workList.add(controlFlowGraph.getStartBlock());
 
         while (!workList.isEmpty()) {
-            BciBlock currentBlock = workList.getFirst();
-            workList.remove(currentBlock);
+            BciBlock currentBlock = workList.removeFirst();
 
             Pair<Integer, S> outStateAndEndBCI = processBlock(currentBlock, controlFlowGraph.code, states);
             /*

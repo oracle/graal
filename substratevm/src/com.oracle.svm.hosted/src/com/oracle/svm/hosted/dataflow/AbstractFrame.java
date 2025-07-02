@@ -24,40 +24,68 @@
  */
 package com.oracle.svm.hosted.dataflow;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Arrays;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-/**
- * Abstract representation of a bytecode execution frame, i.e., its
- * {@link AbstractFrame#operandStack operand stack} and {@link AbstractFrame#localVariableTable
- * local variable table}.
- *
- * @param <T> The abstract representation of values pushed and popped from the operand stack and
- *            stored in the local variable table.
- */
-public class AbstractFrame<T> {
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-    private final OperandStack<T> operandStack;
-    private final LocalVariableTable<T> localVariableTable;
+/**
+ * Abstract representation of a bytecode execution frame for an instruction, i.e., its
+ * {@link AbstractFrame#operandStack operand stack} and {@link AbstractFrame#localVariableTable
+ * local variable table}, right before the execution of said instruction.
+ *
+ * @param <T> The abstract representation of values stored in the frame.
+ */
+public final class AbstractFrame<T> {
 
     /**
-     * Get the operand stack of this abstract frame.
+     * Second slot marker for values requiring two slots on the operand stack and in the local
+     * variable table (i.e., values of type long and double).
      */
-    public OperandStack<T> operandStack() {
-        return operandStack;
+    private static final ValueFrame<Object> TWO_SLOT_MARKER = new ValueFrame<>(null);
+
+    @SuppressWarnings("unchecked")
+    private static <T> ValueFrame<T> twoSlotMarker() {
+        return (ValueFrame<T>) TWO_SLOT_MARKER;
+    }
+
+    final OperandStack operandStack;
+    final LocalVariableTable localVariableTable;
+
+    AbstractFrame(ResolvedJavaMethod method) {
+        this.operandStack = new OperandStack(method.getMaxStackSize());
+        this.localVariableTable = new LocalVariableTable(method.getMaxLocals());
+    }
+
+    AbstractFrame(AbstractFrame<T> other) {
+        this.operandStack = new OperandStack(other.operandStack);
+        this.localVariableTable = new LocalVariableTable(other.localVariableTable);
+    }
+
+    private AbstractFrame(OperandStack operandStack, LocalVariableTable localVariableTable) {
+        this.operandStack = operandStack;
+        this.localVariableTable = localVariableTable;
     }
 
     /**
-     * Get the local variable table of this abstract frame.
+     * Get the value on the operand stack at the specified {@code depth}. The {@code depth}
+     * parameter corresponds to actual values on the operand stack, and not the frames. This means
+     * that a value occupying two stack frames contributes only once to the operand depth.
      */
-    public LocalVariableTable<T> localVariableTable() {
-        return localVariableTable;
+    public T getOperand(int depth) {
+        int currentDepth = 0;
+        int frameFromTop = 0;
+        while (currentDepth <= depth) {
+            ValueFrame<T> frame = operandStack.peekFrame(frameFromTop);
+            if (frame != TWO_SLOT_MARKER) {
+                currentDepth++;
+            }
+            frameFromTop++;
+        }
+        return operandStack.peekFrame(frameFromTop - 1).value;
     }
 
     /**
@@ -73,19 +101,10 @@ public class AbstractFrame<T> {
         localVariableTable.transform(filterFunction, transformFunction);
     }
 
-    AbstractFrame() {
-        this.operandStack = new OperandStack<>();
-        this.localVariableTable = new LocalVariableTable<>();
-    }
-
-    AbstractFrame(AbstractFrame<T> state) {
-        this.operandStack = new OperandStack<>(state.operandStack);
-        this.localVariableTable = new LocalVariableTable<>(state.localVariableTable);
-    }
-
-    void mergeWith(AbstractFrame<T> other, BiFunction<T, T, T> mergeFunction) {
-        operandStack.mergeWith(other.operandStack, mergeFunction);
-        localVariableTable.mergeWith(other.localVariableTable, mergeFunction);
+    AbstractFrame<T> merge(AbstractFrame<T> other, BiFunction<T, T, T> mergeFunction) {
+        OperandStack mergedOperandStack = operandStack.merge(other.operandStack, mergeFunction);
+        LocalVariableTable mergedLocalVariableTable = localVariableTable.merge(other.localVariableTable, mergeFunction);
+        return new AbstractFrame<>(mergedOperandStack, mergedLocalVariableTable);
     }
 
     @Override
@@ -110,93 +129,169 @@ public class AbstractFrame<T> {
         return operandStack + System.lineSeparator() + localVariableTable;
     }
 
-    /**
-     * Abstract representation of a bytecode operand stack.
-     */
-    public static final class OperandStack<T> {
+    final class OperandStack {
 
-        /*
-         * An ArrayList is used in order to allow for efficient lookups at arbitrary stack
-         * positions, as well as to preserve memory in comparison to allocating a plain array with a
-         * max stack size.
-         */
-        private final ArrayList<ValueWithSlots<T>> stack;
+        private final ValueFrame<T>[] stack;
+        private int size;
 
-        /**
-         * Get a value at the specified depth of the operand stack. The {@code depth} does not take
-         * into account the size of values, i.e., a {@link ValueWithSlots} with size equal to
-         * {@link ValueWithSlots.Slots#TWO_SLOTS TWO_SLOTS} contributes only as one value to the
-         * depth of the operand stack.
-         */
-        public T getOperand(int depth) {
-            return peek(depth).value;
+        @SuppressWarnings("unchecked")
+        OperandStack(int maxStackSize) {
+            this.stack = new ValueFrame[maxStackSize];
+            this.size = 0;
         }
 
-        /**
-         * Get the number of values currently on the operand stack. This does not take into account
-         * the size of values, i.e., a {@link ValueWithSlots} with size equal to
-         * {@link ValueWithSlots.Slots#TWO_SLOTS TWO_SLOTS} contributes only as one value for this
-         * method.
-         */
-        public int size() {
-            return stack.size();
+        OperandStack(OperandStack other) {
+            this.stack = other.stack.clone();
+            this.size = other.size;
         }
 
-        /**
-         * Transform the chosen values on the operand stack.
-         *
-         * @param filterFunction Values which satisfy this predicate are subject to transformation
-         *            with {@code transformFunction}.
-         * @param transformFunction The transformation function.
-         */
-        public void transform(Predicate<T> filterFunction, Function<T, T> transformFunction) {
-            for (int i = 0; i < stack.size(); i++) {
-                ValueWithSlots<T> value = stack.get(i);
-                if (filterFunction.test(value.value())) {
-                    stack.set(i, new ValueWithSlots<>(transformFunction.apply(value.value()), value.size()));
+        void push(T value, boolean needsTwoSlots) {
+            pushFrame(new ValueFrame<>(value));
+            if (needsTwoSlots) {
+                pushFrame(twoSlotMarker());
+            }
+        }
+
+        T pop() {
+            ValueFrame<T> frame = popFrame();
+            if (frame == TWO_SLOT_MARKER) {
+                return popFrame().value;
+            } else {
+                return frame.value;
+            }
+        }
+
+        void clear() {
+            Arrays.fill(stack, null);
+            size = 0;
+        }
+
+        void applyPop() {
+            ValueFrame<T> f1 = popFrame();
+            assert f1 != TWO_SLOT_MARKER;
+        }
+
+        void applyPop2() {
+            popFrame();
+            ValueFrame<T> f2 = popFrame();
+            assert f2 != TWO_SLOT_MARKER;
+        }
+
+        void applyDup() {
+            ValueFrame<T> f1 = peekFrame();
+            assert f1 != TWO_SLOT_MARKER;
+            pushFrame(f1);
+        }
+
+        void applyDupX1() {
+            ValueFrame<T> f1 = popFrame();
+            ValueFrame<T> f2 = popFrame();
+            assert f1 != TWO_SLOT_MARKER && f2 != TWO_SLOT_MARKER;
+            pushFrame(f1);
+            pushFrame(f2);
+            pushFrame(f1);
+        }
+
+        void applyDupX2() {
+            ValueFrame<T> f1 = popFrame();
+            ValueFrame<T> f2 = popFrame();
+            ValueFrame<T> f3 = popFrame();
+            assert f1 != TWO_SLOT_MARKER && f3 != TWO_SLOT_MARKER;
+            pushFrame(f1);
+            pushFrame(f3);
+            pushFrame(f2);
+            pushFrame(f1);
+        }
+
+        void applyDup2() {
+            ValueFrame<T> f1 = popFrame();
+            ValueFrame<T> f2 = popFrame();
+            assert f2 != TWO_SLOT_MARKER;
+            pushFrame(f2);
+            pushFrame(f1);
+            pushFrame(f2);
+            pushFrame(f1);
+        }
+
+        void applyDup2X1() {
+            ValueFrame<T> f1 = popFrame();
+            ValueFrame<T> f2 = popFrame();
+            ValueFrame<T> f3 = popFrame();
+            assert f2 != TWO_SLOT_MARKER && f3 != TWO_SLOT_MARKER;
+            pushFrame(f2);
+            pushFrame(f1);
+            pushFrame(f3);
+            pushFrame(f2);
+            pushFrame(f1);
+        }
+
+        void applyDup2X2() {
+            ValueFrame<T> f1 = popFrame();
+            ValueFrame<T> f2 = popFrame();
+            ValueFrame<T> f3 = popFrame();
+            ValueFrame<T> f4 = popFrame();
+            pushFrame(f2);
+            pushFrame(f1);
+            pushFrame(f4);
+            pushFrame(f3);
+            pushFrame(f2);
+            pushFrame(f1);
+        }
+
+        void applySwap() {
+            ValueFrame<T> f1 = popFrame();
+            ValueFrame<T> f2 = popFrame();
+            assert f1 != TWO_SLOT_MARKER && f2 != TWO_SLOT_MARKER;
+            pushFrame(f1);
+            pushFrame(f2);
+        }
+
+        private void transform(Predicate<T> filterFunction, Function<T, T> transformFunction) {
+            for (int i = 0; i < size; i++) {
+                ValueFrame<T> frame = stack[i];
+                if (frame != null && frame != TWO_SLOT_MARKER && filterFunction.test(frame.value)) {
+                    stack[i] = new ValueFrame<>(transformFunction.apply(frame.value));
                 }
             }
         }
 
-        OperandStack() {
-            this.stack = new ArrayList<>();
-        }
-
-        OperandStack(OperandStack<T> stack) {
-            this.stack = new ArrayList<>(stack.stack);
-        }
-
-        void push(ValueWithSlots<T> value) {
-            stack.add(value);
-        }
-
-        ValueWithSlots<T> pop() {
-            assert !stack.isEmpty() : "Cannot pop from empty stack";
-            return stack.removeLast();
-        }
-
-        ValueWithSlots<T> peek(int depth) {
-            assert 0 <= depth && depth < size() : "Operand stack doesn't contain enough values";
-            return stack.get(stack.size() - depth - 1);
-        }
-
-        ValueWithSlots<T> peek() {
-            return peek(0);
-        }
-
-        void clear() {
-            stack.clear();
-        }
-
-        void mergeWith(OperandStack<T> other, BiFunction<T, T, T> mergeFunction) {
-            assert size() == other.size() : "Operand stack size must match upon merging";
-            for (int i = 0; i < stack.size(); i++) {
-                ValueWithSlots<T> thisValue = stack.get(i);
-                ValueWithSlots<T> thatValue = other.stack.get(i);
-                assert thisValue.size() == thatValue.size() : "The size of operand stack values must match upon merging";
-                ValueWithSlots<T> mergedValue = new ValueWithSlots<>(mergeFunction.apply(thisValue.value(), thatValue.value()), thisValue.size());
-                stack.set(i, mergedValue);
+        private OperandStack merge(OperandStack other, BiFunction<T, T, T> mergeFunction) {
+            assert size == other.size;
+            OperandStack merged = new OperandStack(operandStack);
+            for (int i = 0; i < size; i++) {
+                ValueFrame<T> thisFrame = stack[i];
+                ValueFrame<T> otherFrame = other.stack[i];
+                if (thisFrame == TWO_SLOT_MARKER) {
+                    assert otherFrame == TWO_SLOT_MARKER;
+                    merged.stack[i] = twoSlotMarker();
+                } else {
+                    assert otherFrame != TWO_SLOT_MARKER;
+                    T mergedValue = mergeFunction.apply(thisFrame.value, otherFrame.value);
+                    merged.stack[i] = new ValueFrame<>(mergedValue);
+                }
             }
+            return merged;
+        }
+
+        private void pushFrame(ValueFrame<T> frame) {
+            assert size < stack.length;
+            stack[size++] = frame;
+        }
+
+        private ValueFrame<T> popFrame() {
+            assert size > 0;
+            ValueFrame<T> popped = stack[--size];
+            stack[size] = null;
+            return popped;
+        }
+
+        private ValueFrame<T> peekFrame() {
+            return peekFrame(0);
+        }
+
+        private ValueFrame<T> peekFrame(int depth) {
+            assert 0 <= depth && depth < size;
+            return stack[size - depth - 1];
         }
 
         @Override
@@ -207,107 +302,104 @@ public class AbstractFrame<T> {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            OperandStack<?> that = (OperandStack<?>) o;
-            return Objects.equals(stack, that.stack);
+            @SuppressWarnings("unchecked")
+            OperandStack that = (OperandStack) o;
+            return size == that.size && Objects.deepEquals(stack, that.stack);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hashCode(stack);
+            return Objects.hash(Arrays.hashCode(stack), size);
         }
 
         @Override
         public String toString() {
-            StringBuilder builder = new StringBuilder();
-            builder.append("Operand stack:\n");
-            for (ValueWithSlots<T> value : stack.reversed()) {
-                builder.append("[").append(value.value()).append("]").append(System.lineSeparator());
+            StringBuilder sb = new StringBuilder();
+            sb.append("Operand stack:").append(System.lineSeparator());
+            for (int i = size - 1; i >= 0; i--) {
+                ValueFrame<T> frame = stack[i];
+                if (frame != TWO_SLOT_MARKER) {
+                    sb.append("[").append(frame.value).append("]").append(System.lineSeparator());
+                }
             }
-            return builder.toString();
+            return sb.toString();
         }
     }
 
-    /**
-     * Abstract representation of a bytecode local variable table.
-     */
-    public static final class LocalVariableTable<T> {
+    final class LocalVariableTable {
 
-        private final Map<Integer, ValueWithSlots<T>> variables;
+        private final ValueFrame<T>[] variables;
 
-        /**
-         * Get the value at the {@code index} slot of the local variable table. The {@code index}
-         * must be valid, i.e., must be in the set which would be returned by
-         * {@link #getVariableIndices()}.
-         */
-        public T getVariable(int index) {
-            return get(index).value;
+        @SuppressWarnings("unchecked")
+        LocalVariableTable(int maxLocals) {
+            this.variables = new ValueFrame[maxLocals];
         }
 
-        /**
-         * Get the local variable table indices of entries currently stored in it.
-         */
-        public Set<Integer> getVariableIndices() {
-            return variables.keySet();
+        LocalVariableTable(LocalVariableTable other) {
+            this.variables = other.variables.clone();
         }
 
-        /**
-         * Transform the chosen values in the local variable table.
-         *
-         * @param filterFunction Values which satisfy this predicate are subject to transformation
-         *            with {@code transformFunction}.
-         * @param transformFunction The transformation function.
-         */
-        public void transform(Predicate<T> filterFunction, Function<T, T> transformFunction) {
-            for (Map.Entry<Integer, ValueWithSlots<T>> entry : variables.entrySet()) {
-                ValueWithSlots<T> value = entry.getValue();
-                if (filterFunction.test(value.value())) {
-                    entry.setValue(new ValueWithSlots<>(transformFunction.apply(value.value()), value.size()));
-                }
-            }
-        }
-
-        LocalVariableTable() {
-            this.variables = new HashMap<>();
-        }
-
-        LocalVariableTable(LocalVariableTable<T> localVariableTable) {
-            this.variables = new HashMap<>(localVariableTable.variables);
-        }
-
-        void put(int index, ValueWithSlots<T> value) {
-            assert index >= 0 : "Local variable table index cannot be negative";
-            ValueWithSlots<T> previousInTable = variables.get(index - 1);
-            if (previousInTable != null && previousInTable.size == ValueWithSlots.Slots.TWO_SLOTS) {
+        void put(T value, int index, boolean needsTwoSlots) {
+            if (variables[index] == TWO_SLOT_MARKER) {
                 /*
                  * Store operations into a local variable slot occupied by the second half of a two
                  * slot value is a legal operation, but it invalidates the variable previously
                  * occupying two slots.
                  */
-                variables.remove(index - 1);
+                putFrame(null, index - 1);
             }
-            variables.put(index, value);
+            int nextIndex = index + 1;
+            if (nextIndex < variables.length && variables[nextIndex] == TWO_SLOT_MARKER) {
+                putFrame(null, nextIndex);
+            }
+            putFrame(new ValueFrame<>(value), index);
+            if (needsTwoSlots) {
+                putFrame(twoSlotMarker(), nextIndex);
+            }
         }
 
-        ValueWithSlots<T> get(int index) {
-            assert variables.containsKey(index) : "Attempted to access non-existent variable in local variable table";
-            return variables.get(index);
+        T get(int index) {
+            assert 0 <= index && index < variables.length;
+            ValueFrame<T> frame = variables[index];
+            assert frame != null && frame != TWO_SLOT_MARKER;
+            return frame.value;
         }
 
-        void mergeWith(LocalVariableTable<T> other, BiFunction<T, T, T> mergeFunction) {
-            for (Map.Entry<Integer, ValueWithSlots<T>> entry : variables.entrySet()) {
-                ValueWithSlots<T> thisValue = entry.getValue();
-                ValueWithSlots<T> thatValue = other.variables.get(entry.getKey());
-                if (thatValue != null && thisValue.size() == thatValue.size()) {
+        private void transform(Predicate<T> filterFunction, Function<T, T> transformFunction) {
+            for (int i = 0; i < variables.length; i++) {
+                ValueFrame<T> frame = variables[i];
+                if (frame != null && frame != TWO_SLOT_MARKER && filterFunction.test(frame.value)) {
+                    variables[i] = new ValueFrame<>(transformFunction.apply(frame.value));
+                }
+            }
+        }
+
+        private LocalVariableTable merge(LocalVariableTable other, BiFunction<T, T, T> mergeFunction) {
+            LocalVariableTable merged = new LocalVariableTable(localVariableTable);
+            for (int i = 0; i < variables.length; i++) {
+                ValueFrame<T> thisFrame = variables[i];
+                ValueFrame<T> otherFrame = other.variables[i];
+                if (thisFrame != null && otherFrame != null) {
                     /*
                      * We can always merge matching values from the local variable table. If the
-                     * merging makes no sense (i.e., the stored variable types do not match), we
+                     * merging makes no sense (i.e., the stored variable types do not match), we can
                      * still allow it, as the resulting value should not be used during execution
                      * anyway (or else the method would fail bytecode verification).
                      */
-                    ValueWithSlots<T> mergedValue = new ValueWithSlots<>(mergeFunction.apply(thisValue.value(), thatValue.value()), thisValue.size());
-                    entry.setValue(mergedValue);
+                    if (thisFrame == TWO_SLOT_MARKER && otherFrame == TWO_SLOT_MARKER) {
+                        merged.variables[i] = twoSlotMarker();
+                    } else if (thisFrame != TWO_SLOT_MARKER && otherFrame != TWO_SLOT_MARKER) {
+                        T mergedValue = mergeFunction.apply(thisFrame.value, otherFrame.value);
+                        merged.variables[i] = new ValueFrame<>(mergedValue);
+                    }
                 }
             }
+            return merged;
+        }
+
+        private void putFrame(ValueFrame<T> frame, int index) {
+            assert 0 <= index && index < variables.length;
+            variables[index] = frame;
         }
 
         @Override
@@ -318,41 +410,36 @@ public class AbstractFrame<T> {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            LocalVariableTable<?> that = (LocalVariableTable<?>) o;
-            return Objects.equals(variables, that.variables);
+            @SuppressWarnings("unchecked")
+            LocalVariableTable that = (LocalVariableTable) o;
+            return Objects.deepEquals(variables, that.variables);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hashCode(variables);
+            return Arrays.hashCode(variables);
         }
 
         @Override
         public String toString() {
-            StringBuilder builder = new StringBuilder();
-            builder.append("Local variable table:\n");
-            variables.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(
-                            e -> {
-                                Integer varIndex = e.getKey();
-                                ValueWithSlots<T> value = e.getValue();
-                                builder.append(varIndex).append(": ").append(value.value()).append(System.lineSeparator());
-                            });
-            return builder.toString();
+            StringBuilder sb = new StringBuilder();
+            sb.append("Local variable table:").append(System.lineSeparator());
+            for (int i = 0; i < variables.length; i++) {
+                ValueFrame<T> frame = variables[i];
+                if (frame != TWO_SLOT_MARKER && frame != null) {
+                    sb.append(i).append(": ").append(frame.value).append(System.lineSeparator());
+                }
+            }
+            return sb.toString();
         }
     }
 
     /**
-     * Wrapper which assigns a computational type category to a value, i.e., assigns the number of
-     * slots the value takes up in the local variable table or operand stack.
+     * A single frame/slot wrapper over a {@code value}. In case of values requiring two slots
+     * (i.e., values of type long and double), a {@link AbstractFrame#TWO_SLOT_MARKER} is used to
+     * represent the second slot.
      */
-    record ValueWithSlots<T>(T value, Slots size) {
-        public enum Slots {
-            ONE_SLOT,
-            TWO_SLOTS
-        }
+    private record ValueFrame<T>(T value) {
 
-        public static <T> ValueWithSlots<T> wrap(T value, Slots size) {
-            return new ValueWithSlots<>(value, size);
-        }
     }
 }
