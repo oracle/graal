@@ -66,6 +66,18 @@
     python_version: "3"
   },
 
+  tier1:: {
+    targets: ["tier1"],
+  },
+
+  tier2:: {
+    targets: ["tier2"],
+  },
+
+  tier3:: {
+    targets: ["tier3"],
+  },
+
   daily:: {
     # Re-use existing mailing list for weeklies
     notify_groups: ["compiler_weekly"],
@@ -87,7 +99,11 @@
   },
 
   test:: s.base(no_warning_as_error=true, extra_vm_args="-Djdk.graal.DetailedAsserts=true"),
+  unittest_compiler:: s.base(tags="build,unittest-compiler", no_warning_as_error=true, extra_vm_args="-Djdk.graal.DetailedAsserts=true"),
+  unittest_truffle:: s.base(tags="build,unittest-truffle", no_warning_as_error=true, extra_vm_args="-Djdk.graal.DetailedAsserts=true"),
   test_zgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
+  unittest_compiler_zgc:: s.base(tags="build,unittest-compiler", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
+  unittest_truffle_zgc:: s.base(tags="build,unittest-truffle", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
   test_serialgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseSerialGC"),
 
   jacoco_gate_args:: ["--jacoco-omit-excluded", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
@@ -175,10 +191,6 @@
     }
   },
 
-  many_cores:: {
-    capabilities+: ["manycores"]
-  },
-
   # Returns the value of the `name` field if it exists in `obj` otherwise `default`.
   get(obj, name, default=null)::
       if obj == null then default else
@@ -195,16 +207,6 @@
 
   manifest_match(manifest, name):: [key for key in std.objectFields(manifest) if key_matches_value(key, name)] != [],
 
-  # Request nodes with at least 16GB of RAM
-  ram16gb:: {
-    capabilities+: ["ram16gb"],
-  },
-
-  # Avoid using xgene3 nodes
-  avoid_xgene3:: {
-    capabilities+: ["!xgene3"],
-  },
-
   jdk_latest:: "Latest",
 
   # Filters out the non-style gate jobs if in CE
@@ -213,42 +215,43 @@
     for name in std.objectFields(gate_jobs) if utils.contains(name, "style")
   } else gate_jobs,
 
-  # Converts the non-style gate jobs to dailies if in CE
-  as_dailies(gate_jobs):: if config.graalvm_edition == "ce" then {
+  # Converts the non-style jobs to dailies if in CE
+  as_dailies(jobs):: if config.graalvm_edition == "ce" then {
     # Force daily timelimit (assumes it is greater than any specified gate timelimit)
-    [std.strReplace(name, "gate", "daily")]: gate_jobs[name] + {timelimit: $.daily.timelimit}
-    for name in std.objectFields(gate_jobs) if !utils.contains(name, "style")
+    [name]: jobs[name] + {timelimit: $.daily.timelimit}
+    for name in std.objectFields(jobs) if !utils.contains(name, "style")
   } else {},
 
-  # Candidates for gate jobs. In CE, these will be dailies instead of gates.
-  local gate_jobs = {
-    "gate-compiler-test-labsjdk-latest-linux-amd64": t("1:00:00"),
-    "gate-compiler-test-labsjdk-latest-linux-aarch64": t("1:50:00") + s.avoid_xgene3,
-    "gate-compiler-test-labsjdk-latest-darwin-amd64": t("1:00:00") + s.ram16gb,
-    "gate-compiler-test-labsjdk-latest-darwin-aarch64": t("1:00:00"),
-    "gate-compiler-test-labsjdk-latest-windows-amd64": t("1:30:00"),
-    "gate-compiler-test_zgc-labsjdk-latest-linux-amd64": t("1:00:00"),
-    "gate-compiler-test_zgc-labsjdk-latest-linux-aarch64": t("1:50:00") + s.avoid_xgene3,
-    "gate-compiler-test_zgc-labsjdk-latest-darwin-amd64": t("1:00:00") + s.ram16gb,
-    "gate-compiler-test_zgc-labsjdk-latest-darwin-aarch64": t("1:00:00"),
-
+  # Candidates for Tier1 jobs. In CE, these will be dailies.
+  local tier1_jobs = {
     # Style jobs need to stay on a JDK compatible with all the style
     # checking tools (SpotBugs, Checkstyle, Eclipse formatter etc).
-    "gate-compiler-style-labsjdk-latest-linux-amd64": t("45:00"),
-
-    "gate-compiler-ctw-labsjdk-latest-linux-amd64": {},
-    "gate-compiler-ctw-labsjdk-latest-windows-amd64": t("1:50:00"),
-    "gate-compiler-ctw_zgc-labsjdk-latest-linux-amd64": {},
-
-    "gate-compiler-ctw_economy-labsjdk-latest-linux-amd64": {},
-    "gate-compiler-ctw_economy-labsjdk-latest-windows-amd64": t("1:50:00"),
-
-    "gate-compiler-benchmarktest-labsjdk-latest-linux-amd64": {},
-    "gate-compiler-benchmarktest_zgc-labsjdk-latest-linux-amd64": {},
-
-    "gate-compiler-truffle_xcomp-labsjdk-latest-linux-amd64": t("1:30:00"),
-    "gate-compiler-truffle_xcomp_zgc-labsjdk-latest-linux-amd64": t("1:30:00")
+    "compiler-style-labsjdk-latest-linux-amd64": {},
   },
+
+  # Candidates for Tier2 jobs. In CE, these will be dailies.
+  local tier2_jobs = {
+    "compiler-unittest_compiler-labsjdk-latest-linux-amd64": {},
+    "compiler-unittest_truffle-labsjdk-latest-linux-amd64": {},
+    "compiler-ctw-labsjdk-latest-linux-amd64": {},
+    "compiler-ctw_economy-labsjdk-latest-linux-amd64": {},
+    "compiler-benchmarktest-labsjdk-latest-linux-amd64": {},
+  },
+
+  # Candidates for Tier3 jobs. In CE, these will be dailies.
+  local tier3_jobs = {
+    "compiler-unittest_compiler-labsjdk-latest-darwin-aarch64": {},
+    "compiler-unittest_truffle-labsjdk-latest-darwin-aarch64": {},
+    "compiler-unittest_compiler-labsjdk-latest-linux-aarch64": {},
+    "compiler-unittest_truffle-labsjdk-latest-linux-aarch64": {},
+
+    "compiler-unittest_compiler_zgc-labsjdk-latest-linux-amd64": {},
+
+    "compiler-truffle_xcomp-labsjdk-latest-linux-amd64": {},
+  },
+
+  # Candidates for gate jobs. In CE, these will be dailies instead of gates.
+  local gate_jobs = {},
 
   # This map defines the builders that run as gates. Each key in this map
   # must correspond to the name of a build created by `make_build`.
@@ -256,25 +259,62 @@
   # fields of the denoted build.
   local gates = $.as_gates(gate_jobs),
 
+  # This map defines the builders that run as tier1. Each key in this map
+  # must correspond to the name of a build created by `make_build`.
+  # Each value in this map is an object that overrides or extends the
+  # fields of the denoted build.
+  local tier1s = $.as_gates(tier1_jobs),
+
+  # This map defines the builders that run as tier2. Each key in this map
+  # must correspond to the name of a build created by `make_build`.
+  # Each value in this map is an object that overrides or extends the
+  # fields of the denoted build.
+  local tier2s = $.as_gates(tier2_jobs),
+
+  # This map defines the builders that run as tier3. Each key in this map
+  # must correspond to the name of a build created by `make_build`.
+  # Each value in this map is an object that overrides or extends the
+  # fields of the denoted build.
+  local tier3s = $.as_gates(tier3_jobs),
+
   # This map defines the builders that run daily. Each key in this map
   # must be the name of a build created by `make_build` (or be the prefix
   # of a build name if the key ends with "*").
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local dailies = {
-    "daily-compiler-ctw-labsjdk-latest-linux-aarch64": {},
-    "daily-compiler-ctw-labsjdk-latest-darwin-amd64": {},
-    "daily-compiler-ctw-labsjdk-latest-darwin-aarch64": {},
+    "compiler-test-labsjdk-latest-darwin-amd64": {},
+    "compiler-test-labsjdk-latest-windows-amd64": {},
 
-    "daily-compiler-ctw_economy-labsjdk-latest-linux-aarch64": {},
-    "daily-compiler-ctw_economy-labsjdk-latest-darwin-amd64": {},
-    "daily-compiler-ctw_economy-labsjdk-latest-darwin-aarch64": {},
+    "compiler-test_zgc-labsjdk-latest-darwin-aarch64": {},
+    "compiler-test_zgc-labsjdk-latest-darwin-amd64": {},
+    "compiler-test_zgc-labsjdk-latest-linux-aarch64": {},
+    "compiler-test_zgc-labsjdk-latest-linux-amd64": {},
 
-    "daily-compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": {},
+    "compiler-ctw-labsjdk-latest-darwin-aarch64": {},
+    "compiler-ctw-labsjdk-latest-darwin-amd64": {},
+    "compiler-ctw-labsjdk-latest-linux-aarch64": {},
+    "compiler-ctw-labsjdk-latest-windows-amd64": {},
 
-    "daily-compiler-bootstrap_full-labsjdk-latest-linux-amd64": s.many_cores,
-    "daily-compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": s.many_cores
-  } + $.as_dailies(gate_jobs),
+    "compiler-ctw_zgc-labsjdk-latest-linux-amd64": {},
+
+    "compiler-ctw_economy-labsjdk-latest-darwin-aarch64": {},
+    "compiler-ctw_economy-labsjdk-latest-darwin-amd64": {},
+    "compiler-ctw_economy-labsjdk-latest-linux-aarch64": {},
+    "compiler-ctw_economy-labsjdk-latest-windows-amd64": {},
+
+    "compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": {},
+
+    "compiler-bootstrap_full-labsjdk-latest-linux-amd64": {},
+    "compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": {},
+
+    "compiler-benchmarktest_zgc-labsjdk-latest-linux-amd64": {},
+    "compiler-truffle_xcomp_zgc-labsjdk-latest-linux-amd64": {},
+  }
+  + $.as_dailies(gate_jobs)
+  + $.as_dailies(tier1_jobs)
+  + $.as_dailies(tier2_jobs)
+  + $.as_dailies(tier3_jobs),
 
   # This map defines the builders that run weekly. Each key in this map
   # must be the name of a build created by `make_build` (or be the prefix
@@ -282,33 +322,33 @@
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local weeklies = {
-    "weekly-compiler-ctw_phaseplan_fuzzing-labsjdk-latest-linux-amd64": {
+    "compiler-ctw_phaseplan_fuzzing-labsjdk-latest-linux-amd64": {
       notify_groups: [],
       notify_emails: ["gergo.barany@oracle.com"],
       logs+: ["*/graal_dumps/*/*_failure.log"],
     },
 
-    "weekly-compiler-test_vec16-labsjdk-latest-linux-amd64": {},
-    "weekly-compiler-test_avx0-labsjdk-latest-linux-amd64": {},
-    "weekly-compiler-test_avx1-labsjdk-latest-linux-amd64": {},
+    "compiler-test_vec16-labsjdk-latest-linux-amd64": {},
+    "compiler-test_avx0-labsjdk-latest-linux-amd64": {},
+    "compiler-test_avx1-labsjdk-latest-linux-amd64": {},
 
-    "weekly-compiler-test_jtt_phaseplan_fuzzing-labsjdk-latest-linux-amd64": {
+    "compiler-test_jtt_phaseplan_fuzzing-labsjdk-latest-linux-amd64": {
       notify_groups: [],
       notify_emails: ["gergo.barany@oracle.com"],
     },
 
-    "weekly-compiler-benchmarktest-labsjdk-latestDebug-linux-amd64": t("6:00:00"),
-    "weekly-compiler-benchmarktest-labsjdk-latestDebug-darwin-aarch64": t("6:00:00"),
+    "compiler-benchmarktest-labsjdk-latestDebug-linux-amd64": t("6:00:00"),
+    "compiler-benchmarktest-labsjdk-latestDebug-darwin-aarch64": t("6:00:00"),
 
-    "weekly-compiler-coverage*": {},
+    "compiler-coverage*": {},
 
-    "weekly-compiler-test_serialgc-labsjdk-latest-linux-amd64": {},
-    "weekly-compiler-test_serialgc-labsjdk-latest-linux-aarch64": {},
-    "weekly-compiler-test_serialgc-labsjdk-latest-darwin-amd64": {},
-    "weekly-compiler-test_serialgc-labsjdk-latest-darwin-aarch64": {},
+    "compiler-test_serialgc-labsjdk-latest-linux-amd64": {},
+    "compiler-test_serialgc-labsjdk-latest-linux-aarch64": {},
+    "compiler-test_serialgc-labsjdk-latest-darwin-amd64": {},
+    "compiler-test_serialgc-labsjdk-latest-darwin-aarch64": {},
 
-    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-amd64": {},
-    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-aarch64": {},
+    "compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-amd64": {},
+    "compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-aarch64": {},
   },
 
   # This map defines overrides and field extensions for monthly builds.
@@ -329,38 +369,46 @@
              include_common_os_arch=true,
              jdk_name="labsjdk",
              gates_manifest=gates,
+             tier1_manifest=tier1s,
+             tier2_manifest=tier2s,
+             tier3_manifest=tier3s,
              dailies_manifest=dailies,
              weeklies_manifest=weeklies,
              monthlies_manifest=monthlies):: {
-    local base_name = "%s-%s-%s-%s-%s" % [suite, task, jdk_name, if std.startsWith(jdk, "Latest") then "l" + jdk[1:] else jdk, os_arch],
-    local gate_name = "gate-" + base_name,
-    local daily_name = "daily-" + base_name,
-    local weekly_name = "weekly-" + base_name,
-    local monthly_name = "monthly-" + base_name,
+    local build_name = "%s-%s-%s-%s-%s" % [suite, task, jdk_name, if std.startsWith(jdk, "Latest") then "l" + jdk[1:] else jdk, os_arch],
 
-    local is_gate = $.manifest_match(gates_manifest, gate_name),
-    local is_daily = $.manifest_match(dailies_manifest, daily_name),
-    local is_monthly = $.manifest_match(monthlies_manifest, monthly_name),
-    local is_weekly = !is_gate && !is_daily && !is_monthly, # Default to weekly
+    local is_gate = $.manifest_match(gates_manifest, build_name),
+    local is_tier1 = $.manifest_match(tier1_manifest, build_name),
+    local is_tier2 = $.manifest_match(tier2_manifest, build_name),
+    local is_tier3 = $.manifest_match(tier3_manifest, build_name),
+    local is_daily = $.manifest_match(dailies_manifest, build_name),
+    local is_monthly = $.manifest_match(monthlies_manifest, build_name),
+    local is_weekly = !is_gate && !is_tier1 && !is_tier2 && !is_tier3 && !is_daily && !is_monthly, # Default to weekly
     local is_windows = utils.contains(os_arch, "windows"),
     local extra = if is_gate then
-        $.get(gates_manifest, gate_name, {})
+        $.get(gates_manifest, build_name, {})
+      else if is_tier1 then
+        $.get(tier1_manifest, build_name, {})
+      else if is_tier2 then
+        $.get(tier2_manifest, build_name, {})
+      else if is_tier3 then
+        $.get(tier3_manifest, build_name, {})
       else if is_daily then
-        $.get(dailies_manifest, daily_name, {})
+        $.get(dailies_manifest, build_name, {})
       else if is_weekly then
-        $.get(weeklies_manifest, weekly_name, {})
+        $.get(weeklies_manifest, build_name, {})
       else if is_monthly then
-        $.get(monthlies_manifest, monthly_name, {}),
+        $.get(monthlies_manifest, build_name, {}),
 
     build: {
-      name: if is_gate   then gate_name
-       else if is_daily  then daily_name
-       else if is_weekly then weekly_name
-       else                   monthly_name
+      name: build_name
     } +
       (s + extra_tasks)[task] +
       c["%s%s" % [jdk_name, jdk]] +
       (if include_common_os_arch then c[std.strReplace(os_arch, "-", "_")] else {}) +
+      (if is_tier1 then s.tier1 else {}) +
+      (if is_tier2 then s.tier2 else {}) +
+      (if is_tier3 then s.tier3 else {}) +
       (if is_daily then s.daily else {}) +
       (if is_weekly then s.weekly else {}) +
       (if is_monthly then s.monthly else {}) +
@@ -410,6 +458,8 @@
   local all_platforms_builds = [self.make_build(jdk, os_arch, task).build + galahad.exclude
     for task in [
       "test",
+      "unittest_compiler",
+      "unittest_truffle",
       "truffle_xcomp",
       "ctw",
       "ctw_economy",
@@ -455,6 +505,8 @@
       ]
       for task in [
         "test_zgc",
+        "unittest_compiler_zgc",
+        "unittest_truffle_zgc",
         "truffle_xcomp_zgc",
         "ctw_zgc",
         "benchmarktest_zgc",

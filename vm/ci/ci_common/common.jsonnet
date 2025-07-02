@@ -79,16 +79,12 @@ local devkits = graal_common.devkits;
     },
   },
 
-  vm_linux_amd64_common: graal_common.deps.svm {
-    capabilities+: ['manycores', 'ram16gb', 'fast'],
-  },
+  vm_linux_amd64: graal_common.linux_amd64 + self.common_vm_linux + graal_common.deps.svm,
 
-  vm_linux_amd64: graal_common.linux_amd64 + self.common_vm_linux + self.vm_linux_amd64_common,
-
-  vm_linux_amd64_ol9: graal_common.linux_amd64_ol9 + self.common_vm_linux + self.vm_linux_amd64_common,
+  vm_linux_amd64_ol9: graal_common.linux_amd64_ol9 + self.common_vm_linux + graal_common.deps.svm,
   vm_ol9_amd64: self.vm_linux_amd64_ol9,
 
-  vm_linux_amd64_ubuntu: graal_common.linux_amd64_ubuntu + self.common_vm + self.vm_linux_amd64_common,
+  vm_linux_amd64_ubuntu: graal_common.linux_amd64_ubuntu + self.common_vm + graal_common.deps.svm,
   vm_ununtu_amd64: self.vm_linux_amd64_ubuntu,
 
   vm_linux_aarch64: self.common_vm_linux + graal_common.linux_aarch64,
