@@ -5898,6 +5898,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         SSEOp.UCOMIS.emit(this, OperandSize.PD, dst, src);
     }
 
+    public final void ucomisd(Register dst, AMD64Address src) {
+        SSEOp.UCOMIS.emit(this, OperandSize.PD, dst, src);
+    }
+
     public final void ucomiss(Register dst, Register src) {
         SSEOp.UCOMIS.emit(this, OperandSize.PS, dst, src);
     }
