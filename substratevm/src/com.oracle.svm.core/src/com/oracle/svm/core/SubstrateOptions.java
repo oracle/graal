@@ -513,6 +513,9 @@ public class SubstrateOptions {
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
 
+    @Option(help = "Provide debuginfo for runtime-compiled code.")//
+    public static final HostedOptionKey<Boolean> RuntimeDebugInfo = new HostedOptionKey<>(false);
+
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)", stability = OptionStability.STABLE)//
     @BundleMember(role = BundleMember.Role.Input)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> CLibraryPath = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
@@ -1097,6 +1100,16 @@ public class SubstrateOptions {
 
     public static boolean useDebugInfoGeneration() {
         return useLIRBackend() && GenerateDebugInfo.getValue() > 0;
+    }
+
+    @Option(help = "Number of threads used to generate debug info.") //
+    public static final HostedOptionKey<Integer> DebugInfoGenerationThreadCount = new HostedOptionKey<>(0, SubstrateOptions::validateDebugInfoGenerationThreadCount);
+
+    private static void validateDebugInfoGenerationThreadCount(HostedOptionKey<Integer> optionKey) {
+        int value = optionKey.getValue();
+        if (value < 0) {
+            throw UserError.invalidOptionValue(optionKey, value, "The value must be bigger than 0");
+        }
     }
 
     @Option(help = "Directory under which to create source file cache for Application or GraalVM classes")//

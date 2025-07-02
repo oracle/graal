@@ -476,8 +476,9 @@ public final class CompilationResultFrameTree {
         @SuppressWarnings("try")
         public CallNode build(CompilationResult compilationResult) {
             try (DebugContext.Scope s = debug.scope("FrameTree.Builder", compilationResult)) {
-                debug.log(DebugContext.VERBOSE_LEVEL, "Building FrameTree for %s", compilationResult);
-
+                if (debug.isLogEnabled()) {
+                    debug.log(DebugContext.VERBOSE_LEVEL, "Building FrameTree for %s", compilationResult);
+                }
                 List<Infopoint> infopoints = compilationResult.getInfopoints();
                 List<SourceMapping> sourceMappings = compilationResult.getSourceMappings();
                 List<SourcePositionSupplier> sourcePosData = new ArrayList<>(infopoints.size() + sourceMappings.size());
@@ -488,7 +489,9 @@ public final class CompilationResultFrameTree {
                         sourcePosData.add(wrapper);
                         infopointForRoot = wrapper;
                     } else {
-                        debug.log(DebugContext.DETAILED_LEVEL, " Discard Infopoint %s", infopoint);
+                        if (debug.isLogEnabled(DebugContext.DETAILED_LEVEL)) {
+                            debug.log(" Discard Infopoint %s", infopoint);
+                        }
                     }
                 }
                 if (useSourceMappings) {
@@ -611,7 +614,9 @@ public final class CompilationResultFrameTree {
                 SourcePositionSupplier rightPos = sourcePosData.get(indexRight);
 
                 if (overlappingSourcePosition(leftPos, rightPos)) {
-                    debug.log(DebugContext.DETAILED_LEVEL, "Handle Overlapping SourcePositions: %s | %s", leftPos, rightPos);
+                    if (debug.isLogEnabled(DebugContext.DETAILED_LEVEL)) {
+                        debug.log("Handle Overlapping SourcePositions: %s | %s", leftPos, rightPos);
+                    }
 
                     /* Handle infopoint overlapping */
                     if (leftPos instanceof InfopointSourceWrapper && rightPos instanceof InfopointSourceWrapper) {
