@@ -739,7 +739,8 @@ public abstract class StrengthenGraphs {
                 }
             }
 
-            if (allowOptimizeReturnParameter) {
+            if (allowOptimizeReturnParameter && (isClosedTypeWorld || callTarget.invokeKind().isDirect() || targetMethod.canBeStaticallyBound())) {
+                /* Can only optimize returned parameter when all possible callees are visible. */
                 optimizeReturnedParameter(callees, arguments, node, tool);
             }
 
