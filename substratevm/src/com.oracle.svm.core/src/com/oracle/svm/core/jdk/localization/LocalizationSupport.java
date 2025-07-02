@@ -294,7 +294,7 @@ public class LocalizationSupport {
             /* Those cases will throw a NullPointerException before any lookup */
             return true;
         }
-        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+        if (MetadataTracer.enabled()) {
             MetadataTracer.singleton().traceResourceBundle(baseName);
         }
         if (registeredBundles.containsKey(baseName)) {
