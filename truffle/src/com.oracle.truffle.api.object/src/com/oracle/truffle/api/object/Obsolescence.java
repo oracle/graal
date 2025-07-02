@@ -220,15 +220,6 @@ abstract class Obsolescence {
     }
 
     protected static boolean isLocationAssignableFrom(LayoutImpl layout, Location destination, Location source) {
-        if (destination.isFinal()) {
-            // allowed Final<X>Location => Final<X>Location
-            // allowed FinalIntLocation => Final{Int,Double}Location
-            // allowed: Final{Int,Double,TypedObject}Location => FinalObjectLocation
-            if (!source.isFinal()) {
-                return false;
-            }
-        }
-
         if (destination instanceof IntLocation) {
             return (source instanceof IntLocation);
         } else if (destination instanceof DoubleLocation) {

@@ -205,8 +205,11 @@ public abstract sealed class Location permits LocationImpl {
     /**
      * Returns {@code true} if this is a final location, i.e. readonly once set.
      *
+     * @see #isAssumedFinal()
      * @since 0.8 or earlier
+     * @deprecated Use {@link #isAssumedFinal()} instead or replace by {@code false}.
      */
+    @Deprecated(since = "26.0")
     public boolean isFinal() {
         return false;
     }

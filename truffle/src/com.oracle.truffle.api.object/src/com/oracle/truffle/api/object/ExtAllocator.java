@@ -379,7 +379,7 @@ abstract class ExtAllocator extends BaseAllocator {
         }
 
         // Object-typed locations should be able to store all values and therefore not reach here.
-        assert !oldLocation.isFinal() && !(oldLocation instanceof AbstractObjectLocation) : oldLocation;
+        assert !(oldLocation instanceof AbstractObjectLocation) : oldLocation;
         final boolean decorateFinal = false;
         Location newLocation = null;
         // if shape is shared, transition to an untyped location directly

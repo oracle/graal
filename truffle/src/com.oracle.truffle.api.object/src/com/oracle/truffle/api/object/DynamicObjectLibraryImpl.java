@@ -1318,8 +1318,6 @@ abstract class DynamicObjectLibraryImpl {
                                 DynamicObjectSupport.grow(object, oldShape, newShape);
                                 location.setSafe(object, value, guardCondition, true);
                                 DynamicObjectSupport.setShapeWithStoreFence(object, newShape);
-                            } else if (location.isFinal()) {
-                                continue;
                             } else {
                                 location.setSafe(object, value, guardCondition, false);
                             }
@@ -1358,8 +1356,6 @@ abstract class DynamicObjectLibraryImpl {
                                 DynamicObjectSupport.grow(object, oldShape, newShape);
                                 location.setIntSafe(object, value, guardCondition, true);
                                 DynamicObjectSupport.setShapeWithStoreFence(object, newShape);
-                            } else if (location.isFinal()) {
-                                continue;
                             } else {
                                 location.setIntSafe(object, value, guardCondition, false);
                             }
@@ -1370,8 +1366,6 @@ abstract class DynamicObjectLibraryImpl {
                                 DynamicObjectSupport.grow(object, oldShape, newShape);
                                 location.setLongSafe(object, value, guardCondition, true);
                                 DynamicObjectSupport.setShapeWithStoreFence(object, newShape);
-                            } else if (location.isFinal()) {
-                                continue;
                             } else {
                                 location.setLongSafe(object, value, guardCondition, false);
                             }
@@ -1382,8 +1376,6 @@ abstract class DynamicObjectLibraryImpl {
                                 DynamicObjectSupport.grow(object, oldShape, newShape);
                                 location.setDoubleSafe(object, value, guardCondition, true);
                                 DynamicObjectSupport.setShapeWithStoreFence(object, newShape);
-                            } else if (location.isFinal()) {
-                                continue;
                             } else {
                                 location.setDoubleSafe(object, value, guardCondition, false);
                             }
@@ -1394,8 +1386,6 @@ abstract class DynamicObjectLibraryImpl {
                                 DynamicObjectSupport.grow(object, oldShape, newShape);
                                 location.setSafe(object, value, guardCondition, true);
                                 DynamicObjectSupport.setShapeWithStoreFence(object, newShape);
-                            } else if (location.isFinal()) {
-                                continue;
                             } else {
                                 location.setSafe(object, value, guardCondition, false);
                             }
@@ -1434,8 +1424,6 @@ abstract class DynamicObjectLibraryImpl {
                                 DynamicObjectSupport.grow(object, oldShape, newShape);
                                 location.setLongSafe(object, value, guardCondition, true);
                                 DynamicObjectSupport.setShapeWithStoreFence(object, newShape);
-                            } else if (location.isFinal()) {
-                                continue;
                             } else {
                                 location.setLongSafe(object, value, guardCondition, false);
                             }
@@ -1447,8 +1435,6 @@ abstract class DynamicObjectLibraryImpl {
                                 DynamicObjectSupport.grow(object, oldShape, newShape);
                                 location.setSafe(object, value, guardCondition, true);
                                 DynamicObjectSupport.setShapeWithStoreFence(object, newShape);
-                            } else if (location.isFinal()) {
-                                continue;
                             } else {
                                 location.setSafe(object, value, guardCondition, false);
                             }
@@ -1487,8 +1473,6 @@ abstract class DynamicObjectLibraryImpl {
                                 DynamicObjectSupport.grow(object, oldShape, newShape);
                                 location.setDoubleSafe(object, value, guardCondition, true);
                                 DynamicObjectSupport.setShapeWithStoreFence(object, newShape);
-                            } else if (location.isFinal()) {
-                                continue;
                             } else {
                                 location.setDoubleSafe(object, value, guardCondition, false);
                             }
@@ -1500,8 +1484,6 @@ abstract class DynamicObjectLibraryImpl {
                                 DynamicObjectSupport.grow(object, oldShape, newShape);
                                 location.setSafe(object, value, guardCondition, true);
                                 DynamicObjectSupport.setShapeWithStoreFence(object, newShape);
-                            } else if (location.isFinal()) {
-                                continue;
                             } else {
                                 location.setSafe(object, value, guardCondition, false);
                             }

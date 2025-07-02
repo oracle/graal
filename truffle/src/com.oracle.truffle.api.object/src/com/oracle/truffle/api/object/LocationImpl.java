@@ -180,21 +180,13 @@ abstract non-sealed class LocationImpl extends Location {
     }
 
     @Override
-    public boolean isFinal() {
-        return false;
-    }
-
-    @Override
     public boolean isConstant() {
         return false;
     }
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (isFinal() ? 1231 : 1237);
-        return result;
+        return 1;
     }
 
     @Override
@@ -213,9 +205,8 @@ abstract non-sealed class LocationImpl extends Location {
 
     @Override
     public String toString() {
-        String finalString = isFinal() ? "f" : "";
         String typeString = Objects.requireNonNullElse(getType(), Object.class).getSimpleName();
-        return finalString + typeString + getWhereString();
+        return typeString + getWhereString();
     }
 
     protected String getWhereString() {
