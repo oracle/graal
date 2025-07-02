@@ -57,6 +57,7 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.ReferenceMap;
+import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
@@ -198,7 +199,7 @@ public class LLVMObjectFileReader {
             return null;
         }
 
-        DebugInfo newInfo = new DebugInfo(debugInfo.getBytecodePosition(), debugInfo.getVirtualObjectMapping());
+        DebugInfo newInfo = new DebugInfo(debugInfo.getBytecodePosition(), debugInfo.getVirtualObjectMapping().toArray(new VirtualObject[0]));
         newInfo.setCalleeSaveInfo(debugInfo.getCalleeSaveInfo());
         newInfo.setReferenceMap(referenceMap);
         return newInfo;

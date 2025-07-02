@@ -399,7 +399,7 @@ public final class NativeImageHeapWriter {
 
             HostedInstanceClass instanceClazz = (HostedInstanceClass) clazz;
             long idHashOffset;
-            Stream<HostedField> instanceFields = Arrays.stream(clazz.getInstanceFields(true)).filter(HostedField::isRead);
+            Stream<HostedField> instanceFields = clazz.getInstanceFields(true).stream().filter(HostedField::isRead);
 
             if (dynamicHubLayout.isDynamicHub(clazz)) {
                 /*

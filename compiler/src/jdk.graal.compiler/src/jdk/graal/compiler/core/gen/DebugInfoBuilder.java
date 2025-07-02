@@ -26,6 +26,7 @@ package jdk.graal.compiler.core.gen;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Queue;
 
 import org.graalvm.collections.EconomicMap;
@@ -202,24 +203,22 @@ public class DebugInfoBuilder {
         if (values != null) {
             assert values.length == slotKinds.length : Assertions.errorMessage(values, slotKinds);
             if (!type.isArray()) {
-                ResolvedJavaField[] fields = type.getInstanceFields(true);
+                List<? extends ResolvedJavaField> fields = type.getInstanceFields(true);
                 int fieldIndex = 0;
                 for (int valueIndex = 0; valueIndex < values.length; valueIndex++, fieldIndex++) {
-                    ResolvedJavaField field = fields[fieldIndex];
+                    ResolvedJavaField field = fields.get(fieldIndex);
                     JavaKind valKind = slotKinds[valueIndex].getStackKind();
                     JavaKind fieldKind = storageKind(field.getType());
                     if ((valKind == JavaKind.Double || valKind == JavaKind.Long) && fieldKind == JavaKind.Int) {
-                        assert fieldIndex + 1 < fields.length : String.format("Not enough fields for fieldIndex = %d valueIndex = %d %s %s", fieldIndex, valueIndex, Arrays.toString(fields),
-                                        Arrays.toString(values));
-                        assert storageKind(fields[fieldIndex + 1].getType()) == JavaKind.Int : String.format("fieldIndex = %d valueIndex = %d %s %s %s", fieldIndex, valueIndex,
-                                        storageKind(fields[fieldIndex + 1].getType()), Arrays.toString(fields),
-                                        Arrays.toString(values));
+                        assert fieldIndex + 1 < fields.size() : String.format("Not enough fields for fieldIndex = %d valueIndex = %d %s %s", fieldIndex, valueIndex, fields, Arrays.toString(values));
+                        assert storageKind(fields.get(fieldIndex + 1).getType()) == JavaKind.Int : String.format("fieldIndex = %d valueIndex = %d %s %s %s", fieldIndex, valueIndex,
+                                        storageKind(fields.get(fieldIndex + 1).getType()), fields, values);
                         fieldIndex++;
                     } else {
                         assert valKind == fieldKind.getStackKind() : field + ": " + valKind + " != " + fieldKind;
                     }
                 }
-                assert fields.length == fieldIndex : type + ": fields=" + Arrays.toString(fields) + ", field values=" + Arrays.toString(values);
+                assert fields.size() == fieldIndex : type + ": fields=" + fields + ", field values=" + values;
             } else {
                 JavaKind componentKind = storageKind(type.getComponentType()).getStackKind();
                 if (componentKind == JavaKind.Object) {

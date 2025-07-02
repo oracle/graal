@@ -41,7 +41,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public final class UpcallStubsHolder {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static ConstantPool getConstantPool(MetaAccessProvider metaAccess) {
-        return metaAccess.lookupJavaType(UpcallStubsHolder.class).getDeclaredConstructors()[0].getConstantPool();
+        return metaAccess.lookupJavaType(UpcallStubsHolder.class).getDeclaredConstructors().getFirst().getConstantPool();
     }
 
     /**

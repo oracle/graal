@@ -100,6 +100,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.List;
+
 /**
  * HotSpot AArch64 specific backend.
  */
@@ -439,7 +441,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         Label verifiedStub = new Label();
         HotSpotProviders providers = getProviders();
         if (installedCodeOwner != null && !isStatic(installedCodeOwner.getModifiers())) {
-            JavaType[] parameterTypes = {providers.getMetaAccess().lookupJavaType(Object.class)};
+            List<JavaType> parameterTypes = List.of(providers.getMetaAccess().lookupJavaType(Object.class));
             CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCallee, null, parameterTypes, this);
             Register receiver = asRegister(cc.getArgument(0));
             int size = config.useCompressedClassPointers ? 32 : 64;

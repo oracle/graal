@@ -136,7 +136,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         if (returnType.isObject()) {
             returnType = wordKind; // handle
         }
-        return ResolvedSignature.fromKinds(args.toArray(JavaKind[]::new), returnType, originalMetaAccess);
+        return ResolvedSignature.fromKinds(args, returnType, originalMetaAccess);
     }
 
     @Override

@@ -365,13 +365,13 @@ public final class FrameStateBuilder implements SideEffectsState {
      * @param pushedValues if non-null, values to {@link #push(JavaKind, ValueNode)} to the stack
      *            before creating the {@link FrameState}
      */
-    public FrameState create(int bci, BytecodeParser parent, boolean duringCall, JavaKind[] pushedSlotKinds, ValueNode[] pushedValues) {
+    public FrameState create(int bci, BytecodeParser parent, boolean duringCall, List<JavaKind> pushedSlotKinds, ValueNode[] pushedValues) {
         if (outerFrameState == null && parent != null) {
             assert !parent.parsingIntrinsic() : "must already have the next non-intrinsic ancestor";
             outerFrameState = parent.getFrameStateBuilder().create(parent.bci(), parent.getNonIntrinsicAncestor(), true, null, null);
         }
         if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && parent != null) {
-            return outerFrameState.duplicateModified(graph, outerFrameState.bci, FrameState.StackState.Rethrow, JavaKind.Void, new JavaKind[]{JavaKind.Object}, new ValueNode[]{stack[0]},
+            return outerFrameState.duplicateModified(graph, outerFrameState.bci, FrameState.StackState.Rethrow, JavaKind.Void, List.of(JavaKind.Object), new ValueNode[]{stack[0]},
                             null);
         }
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
@@ -400,7 +400,7 @@ public final class FrameStateBuilder implements SideEffectsState {
      *            state; may be {@code null} if no values are to be pushed. See
      *            {@link #create(int, BytecodeParser, boolean, JavaKind[], ValueNode[])}.
      */
-    private void verifyStackEffect(int bci, JavaKind[] pushedSlotKinds) {
+    private void verifyStackEffect(int bci, List<JavaKind> pushedSlotKinds) {
         if (parser != null && (!parser.parsingIntrinsic() && parser.graphBuilderConfig.insertFullInfopoints())) {
             /*
              * We might be building the state for an infopoint, be less strict than for state

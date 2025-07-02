@@ -82,10 +82,10 @@ public class CEntryPointJavaCallStubMethod extends CCallStubMethod {
         CEntryPointOptions options = getOriginal().getAnnotation(CEntryPointOptions.class);
         if (options != null && options.callerEpilogue() != null && options.callerEpilogue() != CEntryPointOptions.NoCallerEpilogue.class) {
             AnalysisType epilogue = kit.getMetaAccess().lookupJavaType(options.callerEpilogue());
-            AnalysisMethod[] epilogueMethods = epilogue.getDeclaredMethods(false);
-            UserError.guarantee(epilogueMethods.length == 1 && epilogueMethods[0].isStatic() && epilogueMethods[0].getSignature().getParameterCount(false) == 0,
+            List<AnalysisMethod> epilogueMethods = epilogue.getDeclaredMethods(false);
+            UserError.guarantee(epilogueMethods.size() == 1 && epilogueMethods.getFirst().isStatic() && epilogueMethods.getFirst().getSignature().getParameterCount(false) == 0,
                             "Caller epilogue class must declare exactly one static method without parameters: %s -> %s", getOriginal(), epilogue);
-            kit.createInvokeWithExceptionAndUnwind(epilogueMethods[0], CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci());
+            kit.createInvokeWithExceptionAndUnwind(epilogueMethods.getFirst(), CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci());
         }
     }
 

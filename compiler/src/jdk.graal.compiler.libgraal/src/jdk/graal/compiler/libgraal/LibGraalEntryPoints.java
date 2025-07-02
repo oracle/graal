@@ -30,6 +30,7 @@ import static jdk.graal.compiler.serviceprovider.GraalServices.isThreadAllocated
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
@@ -239,7 +240,7 @@ final class LibGraalEntryPoints {
             JVMCIBackend backend = runtime.getHostJVMCIBackend();
             ConstantReflectionProvider constantReflection = backend.getConstantReflection();
             HotSpotResolvedJavaType type = runtime.unhand(HotSpotResolvedJavaType.class, typeHandle);
-            ResolvedJavaField[] staticFields = type.getStaticFields();
+            List<? extends ResolvedJavaField> staticFields = type.getStaticFields();
             JavaConstant receiver = null;
             long hash = 13;
 

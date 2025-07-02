@@ -104,9 +104,10 @@ public class LambdaParser {
     }
 
     public static Stream<? extends ResolvedJavaMethod> allExecutablesDeclaredInClass(ResolvedJavaType t) {
-        return Stream.concat(Stream.concat(
-                        Arrays.stream(t.getDeclaredMethods(false)),
-                        Arrays.stream(t.getDeclaredConstructors(false))),
+        return Stream.concat(
+                        Stream.concat(
+                                        t.getDeclaredMethods(false).stream(),
+                                        t.getDeclaredConstructors(false).stream()),
                         t.getClassInitializer() == null ? Stream.empty() : Stream.of(t.getClassInitializer()));
     }
 
@@ -132,9 +133,8 @@ public class LambdaParser {
             return null;
         }
 
-        ResolvedJavaField[] fields = constantType.getInstanceFields(true);
         ResolvedJavaField targetField = null;
-        for (ResolvedJavaField field : fields) {
+        for (ResolvedJavaField field : constantType.getInstanceFields(true)) {
             if (field.getName().equals("member")) {
                 targetField = field;
                 break;

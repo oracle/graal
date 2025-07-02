@@ -29,6 +29,7 @@ import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.Compila
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import jdk.graal.compiler.core.common.LibGraalSupport;
@@ -545,7 +546,7 @@ public class EncodedSnippets {
             if (resolvedFieldType == null) {
                 throw new NoClassDefFoundError("Can't resolve " + signature.getName() + " with " + accessingClass.getName());
             }
-            ResolvedJavaField[] fields = isStatic ? resolvedType.getStaticFields() : resolvedType.getInstanceFields(true);
+            List<? extends ResolvedJavaField> fields = isStatic ? resolvedType.getStaticFields() : resolvedType.getInstanceFields(true);
             for (ResolvedJavaField field : fields) {
                 if (field.getName().equals(name)) {
                     if (field.getType().equals(resolvedFieldType)) {

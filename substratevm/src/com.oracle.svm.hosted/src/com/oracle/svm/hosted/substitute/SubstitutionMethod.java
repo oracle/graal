@@ -30,6 +30,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Type;
+import java.util.List;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
@@ -77,11 +78,11 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
              * So do the resolution early, because users of the local variable table only have
              * access to the original.
              */
-            Local[] origLocals = annotated.getLocalVariableTable().getLocals();
-            Local[] newLocals = new Local[origLocals.length];
+            List<Local> origLocals = annotated.getLocalVariableTable().getLocals();
+            Local[] newLocals = new Local[origLocals.size()];
             ResolvedJavaType accessingClass = annotated.getDeclaringClass();
             for (int i = 0; i < newLocals.length; i++) {
-                Local origLocal = origLocals[i];
+                Local origLocal = origLocals.get(i);
                 newLocals[i] = new Local(origLocal.getName(), origLocal.getType().resolve(accessingClass), origLocal.getStartBCI(), origLocal.getEndBCI(), origLocal.getSlot());
             }
             newLocalVariableTable = new LocalVariableTable(newLocals);
@@ -198,7 +199,7 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
     }
 
     @Override
-    public ExceptionHandler[] getExceptionHandlers() {
+    public List<ExceptionHandler> getExceptionHandlers() {
         return annotated.getExceptionHandlers();
     }
 
@@ -228,12 +229,12 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
     }
 
     @Override
-    public Parameter[] getParameters() {
+    public List<Parameter> getParameters() {
         return original.getParameters();
     }
 
     @Override
-    public Type[] getGenericParameterTypes() {
+    public List<Type> getGenericParameterTypes() {
         return original.getGenericParameterTypes();
     }
 

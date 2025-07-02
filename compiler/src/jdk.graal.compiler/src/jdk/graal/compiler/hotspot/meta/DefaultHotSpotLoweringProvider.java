@@ -847,7 +847,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                     receiver = nonNullReceiver;
                 }
             }
-            JavaType[] signature = callTarget.targetMethod().getSignature().toParameterTypes(callTarget.isStatic() ? null : callTarget.targetMethod().getDeclaringClass());
+            List<JavaType> signature = callTarget.targetMethod().getSignature().toParameterTypes(callTarget.isStatic() ? null : callTarget.targetMethod().getDeclaringClass());
 
             LoweredCallTargetNode loweredCallTarget = null;
             OptionValues options = graph.getOptions();

@@ -133,12 +133,6 @@ public abstract class CustomSubstitutionType implements ResolvedJavaType, Origin
         return original.isAssignableFrom(other);
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        return original.getHostClass();
-    }
-
     @Override
     public boolean isJavaLangObject() {
         return original.isJavaLangObject();
@@ -155,7 +149,7 @@ public abstract class CustomSubstitutionType implements ResolvedJavaType, Origin
     }
 
     @Override
-    public ResolvedJavaType[] getInterfaces() {
+    public List<? extends ResolvedJavaType> getInterfaces() {
         return original.getInterfaces();
     }
 
@@ -205,12 +199,12 @@ public abstract class CustomSubstitutionType implements ResolvedJavaType, Origin
     }
 
     @Override
-    public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
+    public List<? extends ResolvedJavaField> getInstanceFields(boolean includeSuperclasses) {
         return original.getInstanceFields(includeSuperclasses);
     }
 
     @Override
-    public ResolvedJavaField[] getStaticFields() {
+    public List<? extends ResolvedJavaField> getStaticFields() {
         return original.getStaticFields();
     }
 
@@ -240,28 +234,28 @@ public abstract class CustomSubstitutionType implements ResolvedJavaType, Origin
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredConstructors() {
+    public List<? extends ResolvedJavaMethod> getDeclaredConstructors() {
         return getDeclaredConstructors(true);
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
+    public List<? extends ResolvedJavaMethod> getDeclaredConstructors(boolean forceLink) {
         VMError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
         return original.getDeclaredConstructors(forceLink);
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods() {
+    public List<? extends ResolvedJavaMethod> getDeclaredMethods() {
         return getDeclaredMethods(true);
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
+    public List<? extends ResolvedJavaMethod> getDeclaredMethods(boolean forceLink) {
         return original.getDeclaredMethods(forceLink);
     }
 
     @Override
-    public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
+    public List<? extends ResolvedJavaMethod> getAllMethods(boolean forceLink) {
         return original.getAllMethods(forceLink);
     }
 

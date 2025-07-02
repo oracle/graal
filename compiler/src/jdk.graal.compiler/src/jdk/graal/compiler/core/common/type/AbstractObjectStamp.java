@@ -25,6 +25,7 @@
 package jdk.graal.compiler.core.common.type;
 
 import java.util.AbstractList;
+import java.util.List;
 import java.util.Objects;
 import java.util.RandomAccess;
 
@@ -339,12 +340,8 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
         if (result.isJavaLangObject() && a.isInterface() && b.isInterface()) {
             // Both types are incompatible interfaces => search for first possible common
             // ancestor match among super interfaces.
-            ResolvedJavaType[] interfacesA = a.getInterfaces();
-            ResolvedJavaType[] interfacesB = b.getInterfaces();
-            for (int i = 0; i < interfacesA.length; ++i) {
-                ResolvedJavaType interface1 = interfacesA[i];
-                for (int j = 0; j < interfacesB.length; ++j) {
-                    ResolvedJavaType interface2 = interfacesB[j];
+            for (ResolvedJavaType interface1 : a.getInterfaces()) {
+                for (ResolvedJavaType interface2 : b.getInterfaces()) {
                     ResolvedJavaType leastCommon = meetTypes(interface1, interface2);
                     if (leastCommon.isInterface()) {
                         return leastCommon;

@@ -37,6 +37,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.options.OptionValues;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 import static java.lang.reflect.Modifier.isStatic;
@@ -50,8 +51,8 @@ public abstract class IntegerLowerThanCommonArithmeticTestBase extends GraalComp
         ResolvedJavaMethod m = graph.method();
         Object receiver = isStatic(m.getModifiers()) ? null : this;
         Object[] args = argsWithReceiver(receiver, argsToBind);
-        JavaType[] parameterTypes = m.toParameterTypes();
-        assert parameterTypes.length == args.length;
+        List<JavaType> parameterTypes = m.toParameterTypes();
+        assert parameterTypes.size() == args.length;
         for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
             Object arg = args[param.index()];
             if (arg == NO_BIND) {
@@ -63,7 +64,7 @@ public abstract class IntegerLowerThanCommonArithmeticTestBase extends GraalComp
                     param.replaceAtUsages(replacement, n -> n != replacement);
                 }
             } else {
-                JavaConstant c = getSnippetReflection().forBoxed(parameterTypes[param.index()].getJavaKind(), arg);
+                JavaConstant c = getSnippetReflection().forBoxed(parameterTypes.get(param.index()).getJavaKind(), arg);
                 ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
                 param.replaceAtUsages(replacement);
             }

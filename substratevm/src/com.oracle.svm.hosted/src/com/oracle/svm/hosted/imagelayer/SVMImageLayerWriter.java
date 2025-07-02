@@ -442,7 +442,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setId(type.getId());
         builder.setDescriptor(imageLayerSnapshotUtil.getTypeDescriptor(type));
 
-        initInts(builder::initFields, Arrays.stream(type.getInstanceFields(true)).mapToInt(f -> ((AnalysisField) f).getId()));
+        initInts(builder::initFields, type.getInstanceFields(true).stream().mapToInt(f -> ((AnalysisField) f).getId()));
         builder.setClassJavaName(type.toJavaName());
         builder.setClassName(type.getName());
         builder.setModifiers(type.getModifiers());
@@ -468,10 +468,10 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         if (type.getSuperclass() != null) {
             builder.setSuperClassTypeId(type.getSuperclass().getId());
         }
-        initInts(builder::initInterfaces, Arrays.stream(type.getInterfaces()).mapToInt(AnalysisType::getId));
-        initInts(builder::initInstanceFieldIds, Arrays.stream(type.getInstanceFields(false)).mapToInt(f -> ((AnalysisField) f).getId()));
-        initInts(builder::initInstanceFieldIdsWithSuper, Arrays.stream(type.getInstanceFields(true)).mapToInt(f -> ((AnalysisField) f).getId()));
-        initInts(builder::initStaticFieldIds, Arrays.stream(type.getStaticFields()).mapToInt(f -> ((AnalysisField) f).getId()));
+        initInts(builder::initInterfaces, type.getInterfaces().stream().mapToInt(AnalysisType::getId));
+        initInts(builder::initInstanceFieldIds, type.getInstanceFields(false).stream().mapToInt(f -> ((AnalysisField) f).getId()));
+        initInts(builder::initInstanceFieldIdsWithSuper, type.getInstanceFields(true).stream().mapToInt(f -> ((AnalysisField) f).getId()));
+        initInts(builder::initStaticFieldIds, type.getStaticFields().stream().mapToInt(f -> ((AnalysisField) f).getId()));
         persistAnnotations(type, builder::initAnnotationList);
 
         builder.setIsInstantiated(type.isInstantiated());

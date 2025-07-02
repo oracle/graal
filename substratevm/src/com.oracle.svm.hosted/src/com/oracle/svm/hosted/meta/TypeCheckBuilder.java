@@ -327,7 +327,7 @@ public final class TypeCheckBuilder {
             if (type.getSuperclass() != null) {
                 parents.add(type.getSuperclass());
             }
-            if (type.isInterface() && type.getInterfaces().length == 0) {
+            if (type.isInterface() && type.getInterfaces().isEmpty()) {
                 parents.add(objectType);
             }
             for (HostedInterface interf : type.getInterfaces()) {

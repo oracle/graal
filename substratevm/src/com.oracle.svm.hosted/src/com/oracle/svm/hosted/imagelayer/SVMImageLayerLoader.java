@@ -1530,7 +1530,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private static AnalysisField getFieldFromIndex(ImageHeapInstance instance, int i) {
-        return (AnalysisField) instance.getType().getInstanceFields(true)[i];
+        return (AnalysisField) instance.getType().getInstanceFields(true).get(i);
     }
 
     private void addBaseLayerObject(int id, long objectOffset, Supplier<ImageHeapConstant> imageHeapConstantSupplier) {

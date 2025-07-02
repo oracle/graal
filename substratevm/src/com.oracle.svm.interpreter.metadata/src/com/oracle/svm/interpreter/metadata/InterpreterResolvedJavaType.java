@@ -46,7 +46,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * closed world e.g. instantiable, instantiated, effectively final ...
  */
 public abstract class InterpreterResolvedJavaType implements ResolvedJavaType {
-    public static final ResolvedJavaMethod[] NO_METHODS = new ResolvedJavaMethod[0];
 
     private final String name;
     private final Class<?> clazz;
@@ -222,12 +221,12 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType {
     }
 
     @Override
-    public final ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
+    public final List<? extends ResolvedJavaField> getInstanceFields(boolean includeSuperclasses) {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public final ResolvedJavaField[] getStaticFields() {
+    public final List<? extends ResolvedJavaField> getStaticFields() {
         throw VMError.intentionallyUnimplemented();
     }
 
@@ -257,13 +256,13 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType {
     }
 
     @Override
-    public final ResolvedJavaMethod[] getDeclaredConstructors() {
+    public final List<? extends ResolvedJavaMethod> getDeclaredConstructors() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods() {
-        return NO_METHODS;
+    public List<? extends ResolvedJavaMethod> getDeclaredMethods() {
+        return List.of();
     }
 
     @Override

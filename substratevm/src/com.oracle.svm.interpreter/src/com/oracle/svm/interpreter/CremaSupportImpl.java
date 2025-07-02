@@ -56,8 +56,8 @@ public class CremaSupportImpl implements CremaSupport {
         /* query type from universe, maybe already exists (due to method creation) */
         InterpreterResolvedJavaType interpreterType = btiUniverse.getOrCreateType(analysisType);
 
-        ResolvedJavaMethod[] declaredMethods = interpreterType.getDeclaredMethods();
-        assert declaredMethods == null || declaredMethods == InterpreterResolvedJavaType.NO_METHODS : "should only be set once";
+        List<? extends ResolvedJavaMethod> declaredMethods = interpreterType.getDeclaredMethods();
+        assert declaredMethods == null : "should only be set once";
 
         if (analysisType.isPrimitive()) {
             return interpreterType;

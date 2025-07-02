@@ -39,6 +39,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.function.BiConsumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -720,7 +721,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 sig[i] = node.arguments().get(i).stamp(NodeView.DEFAULT).javaType(gen.getMetaAccess());
             }
 
-            CallingConvention convention = gen.getRegisterConfig().getCallingConvention(SubstrateCallingConventionKind.Java.toType(true), null, sig, gen);
+            CallingConvention convention = gen.getRegisterConfig().getCallingConvention(SubstrateCallingConventionKind.Java.toType(true), null, List.of(sig), gen);
             append(new AArch64BreakpointOp(visitInvokeArguments(convention, node.arguments())));
         }
 

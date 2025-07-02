@@ -28,6 +28,8 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.meta.JavaKind;
 
+import java.util.List;
+
 /**
  * The closed world analysis "removes" interfaces in the sense that all implementers are known. So
  * interface method calls are reduced to virtual method calls. Constants (static final fields) are
@@ -88,7 +90,7 @@ public class HostedInterface extends HostedType {
     }
 
     @Override
-    public HostedField[] getInstanceFields(boolean includeSuperclasses) {
-        return HostedField.EMPTY_ARRAY;
+    public List<HostedField> getInstanceFields(boolean includeSuperclasses) {
+        return List.of();
     }
 }

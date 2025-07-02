@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.meta;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
+import java.util.List;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 
@@ -167,8 +168,8 @@ public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMet
     }
 
     @Override
-    public ExceptionHandler[] getExceptionHandlers() {
-        return new ExceptionHandler[0];
+    public List<ExceptionHandler> getExceptionHandlers() {
+        return List.of();
     }
 
     @Override
@@ -197,7 +198,7 @@ public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMet
     }
 
     @Override
-    public Type[] getGenericParameterTypes() {
+    public List<Type> getGenericParameterTypes() {
         throw unimplemented();
     }
 

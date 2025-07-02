@@ -345,9 +345,9 @@ public final class CompilationResultFrameTree {
             LocalVariableTable lvt = method.getLocalVariableTable();
             Local[] nonEmptySortedLocals = null;
             if (lvt != null) {
-                Local[] locals = lvt.getLocals();
-                if (locals != null && locals.length > 0) {
-                    nonEmptySortedLocals = Arrays.copyOf(locals, locals.length);
+                List<Local> locals = lvt.getLocals();
+                if (locals.size() > 0) {
+                    nonEmptySortedLocals = locals.toArray(new Local[locals.size()]);
                     Arrays.sort(nonEmptySortedLocals, (Local l1, Local l2) -> l1.getSlot() - l2.getSlot());
                 }
             }

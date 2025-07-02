@@ -325,10 +325,10 @@ public class PermissionsFeature implements Feature {
         // We deny SynchronousQueue as it creates ForkJoinWorkerThread.
         deniedMethods.addAll(findConstructors(bb, SynchronousQueue.class, (m) -> "<init>".equals(m.getName())));
         // Reflective calls
-        deniedMethods.addAll(findMethods(bb, Method.class, (m) -> m.getName().equals("invoke") && m.isPublic() && m.getParameters().length == 2));
-        deniedMethods.addAll(findMethods(bb, Constructor.class, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().length == 1));
+        deniedMethods.addAll(findMethods(bb, Method.class, (m) -> m.getName().equals("invoke") && m.isPublic() && m.getParameters().size() == 2));
+        deniedMethods.addAll(findMethods(bb, Constructor.class, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().size() == 1));
         deniedMethods.addAll(findMethods(bb, MethodHandle.class, (m) -> m.getName().startsWith("invoke") && m.isPublic()));
-        deniedMethods.addAll(findMethods(bb, Class.class, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().length == 0));
+        deniedMethods.addAll(findMethods(bb, Class.class, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().size() == 0));
         // ProcessIsolate entry method
         deniedMethods.addAll(findMethods(bb, ProcessIsolate.class, (m) -> m.getName().equals("spawnProcessIsolate")));
         if (inlinedUnsafeCall != null) {
@@ -742,7 +742,7 @@ public class PermissionsFeature implements Feature {
         return findImpl(bb, owner.getWrapped().getDeclaredConstructors(false), filter);
     }
 
-    private static Set<AnalysisMethodNode> findImpl(BigBang bb, ResolvedJavaMethod[] methods, Predicate<ResolvedJavaMethod> filter) {
+    private static Set<AnalysisMethodNode> findImpl(BigBang bb, List<? extends ResolvedJavaMethod> methods, Predicate<ResolvedJavaMethod> filter) {
         Set<AnalysisMethodNode> result = new HashSet<>();
         for (ResolvedJavaMethod m : methods) {
             if (filter.test(m)) {
@@ -924,21 +924,21 @@ public class PermissionsFeature implements Feature {
         SafeReflectionRecognizer(BigBang bb) {
             inspectedMethods = new HashSet<>();
             AnalysisType method = bb.getMetaAccess().lookupJavaType(Method.class);
-            Set<AnalysisMethodNode> methods = findMethods(bb, method, (m) -> m.getName().equals("invoke") && m.isPublic() && m.getParameters().length == 2);
+            Set<AnalysisMethodNode> methods = findMethods(bb, method, (m) -> m.getName().equals("invoke") && m.isPublic() && m.getParameters().size() == 2);
             if (methods.size() != 1) {
                 throw new IllegalStateException("Failed to lookup Method.invoke(Object,Object...).");
             }
             inspectedMethods.addAll(methods);
 
             AnalysisType constructor = bb.getMetaAccess().lookupJavaType(Constructor.class);
-            methods = findMethods(bb, constructor, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().length == 1);
+            methods = findMethods(bb, constructor, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().size() == 1);
             if (methods.size() != 1) {
                 throw new IllegalStateException("Failed to lookup Constructor.newInstance(Object...).");
             }
             inspectedMethods.addAll(methods);
 
             AnalysisType clazz = bb.getMetaAccess().lookupJavaType(Class.class);
-            methods = findMethods(bb, clazz, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().length == 0);
+            methods = findMethods(bb, clazz, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().size() == 0);
             if (methods.size() != 1) {
                 throw new IllegalStateException("Failed to lookup Class.newInstance().");
             }
@@ -1034,7 +1034,7 @@ public class PermissionsFeature implements Feature {
         private final AnalysisMethodNode localeServiceProviderInit;
 
         SafeLocaleServiceProvider(BigBang bb) {
-            Set<AnalysisMethodNode> constructors = findConstructors(bb, LocaleServiceProvider.class, (m) -> m.getParameters().length == 0);
+            Set<AnalysisMethodNode> constructors = findConstructors(bb, LocaleServiceProvider.class, (m) -> m.getParameters().size() == 0);
             if (constructors.size() != 1) {
                 throw new IllegalStateException("Failed to lookup LocaleServiceProvider.<init>().");
             }
@@ -1099,14 +1099,14 @@ public class PermissionsFeature implements Feature {
                 if (!"of".equals(m.getName())) {
                     return false;
                 }
-                ResolvedJavaMethod.Parameter[] parameters = m.getParameters();
-                if (parameters.length != 2) {
+                List<ResolvedJavaMethod.Parameter> parameters = m.getParameters();
+                if (parameters.size() != 2) {
                     return false;
                 }
-                if (!bigBang.getMetaAccess().lookupJavaType(URI.class).getWrapped().equals(parameters[0].getType())) {
+                if (!bigBang.getMetaAccess().lookupJavaType(URI.class).getWrapped().equals(parameters.getFirst().getType())) {
                     return false;
                 }
-                return bigBang.getMetaAccess().lookupJavaType(URLStreamHandler.class).getWrapped().equals(parameters[1].getType());
+                return bigBang.getMetaAccess().lookupJavaType(URLStreamHandler.class).getWrapped().equals(parameters.get(1).getType());
             });
             if (methods.size() != 1) {
                 throw new IllegalStateException("Failed to lookup URL.of(URI, URLStreamHandler).");

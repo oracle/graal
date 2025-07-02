@@ -747,7 +747,7 @@ public class JNIAccessFeature implements Feature {
 
     private static boolean anyFieldMatches(ResolvedJavaType sub, String name) {
         try {
-            return Stream.concat(Stream.of(sub.getInstanceFields(false)), Stream.of(sub.getStaticFields()))
+            return Stream.concat(sub.getInstanceFields(false).stream(), sub.getStaticFields().stream())
                             .anyMatch(f -> f.getName().equals(name));
 
         } catch (LinkageError ex) {

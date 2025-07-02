@@ -43,6 +43,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import java.util.List;
+
 public abstract class HostedType extends HostedElement implements SharedType, WrappedJavaType, OriginalClassProvider {
 
     public static final int INVALID_TYPECHECK_ID = -1;
@@ -56,11 +58,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     private final JavaKind storageKind;
 
     private final HostedClass superClass;
-    private final HostedInterface[] interfaces;
+    private final List<HostedInterface> interfaces;
 
     protected HostedArrayClass arrayType;
     protected HostedType[] subTypes;
-    protected HostedField[] staticFields;
+    protected List<HostedField> staticFields;
 
     boolean loadedFromPriorLayer;
     protected int typeID;
@@ -148,7 +150,7 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         this.kind = kind;
         this.storageKind = storageKind;
         this.superClass = superClass;
-        this.interfaces = interfaces;
+        this.interfaces = List.of(interfaces);
         this.typeID = INVALID_TYPECHECK_ID;
     }
 
@@ -380,10 +382,10 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
-    public abstract HostedField[] getInstanceFields(boolean includeSuperclasses);
+    public abstract List<HostedField> getInstanceFields(boolean includeSuperclasses);
 
     @Override
-    public ResolvedJavaField[] getStaticFields() {
+    public List<HostedField> getStaticFields() {
         assert staticFields != null;
         return staticFields;
     }
@@ -394,7 +396,7 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
-    public final HostedInterface[] getInterfaces() {
+    public final List<HostedInterface> getInterfaces() {
         return interfaces;
     }
 
@@ -493,23 +495,23 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredConstructors() {
+    public List<HostedMethod> getDeclaredConstructors() {
         return getDeclaredConstructors(true);
     }
 
     @Override
-    public HostedMethod[] getDeclaredConstructors(boolean forceLink) {
+    public List<HostedMethod> getDeclaredConstructors(boolean forceLink) {
         VMError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
         return universe.lookup(wrapped.getDeclaredConstructors(forceLink));
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods() {
+    public List<HostedMethod> getDeclaredMethods() {
         return getDeclaredMethods(true);
     }
 
     @Override
-    public HostedMethod[] getDeclaredMethods(boolean forceLink) {
+    public List<HostedMethod> getDeclaredMethods(boolean forceLink) {
         VMError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
         return universe.lookup(wrapped.getDeclaredMethods(forceLink));
     }
@@ -546,12 +548,6 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     @Override
     public boolean isCloneableWithAllocation() {
         return wrapped.isCloneableWithAllocation();
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        return universe.lookup(wrapped.getHostClass());
     }
 
     @Override

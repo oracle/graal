@@ -159,10 +159,10 @@ public final class BuildTimeInterpreterUniverse {
             superclass = (InterpreterResolvedObjectType) universe.getOrCreateType(originalSuperclass);
         }
 
-        ResolvedJavaType[] originalInterfaces = resolvedJavaType.getInterfaces();
-        InterpreterResolvedObjectType[] interfaces = new InterpreterResolvedObjectType[originalInterfaces.length];
+        List<? extends ResolvedJavaType> originalInterfaces = resolvedJavaType.getInterfaces();
+        InterpreterResolvedObjectType[] interfaces = new InterpreterResolvedObjectType[originalInterfaces.size()];
         for (int i = 0; i < interfaces.length; i++) {
-            interfaces[i] = (InterpreterResolvedObjectType) universe.getOrCreateType(originalInterfaces[i]);
+            interfaces[i] = (InterpreterResolvedObjectType) universe.getOrCreateType(originalInterfaces.get(i));
         }
 
         return InterpreterResolvedObjectType.createAtBuildTime(resolvedJavaType, name, modifiers, componentType, superclass, interfaces, null, clazz, sourceFileName);
@@ -243,13 +243,13 @@ public final class BuildTimeInterpreterUniverse {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static LocalVariableTable processLocalVariableTable(LocalVariableTable hostLocalVariableTable) {
-        Local[] hostLocals = hostLocalVariableTable.getLocals();
-        if (hostLocals.length == 0) {
+        List<Local> hostLocals = hostLocalVariableTable.getLocals();
+        if (hostLocals.isEmpty()) {
             return InterpreterResolvedJavaMethod.EMPTY_LOCAL_VARIABLE_TABLE;
         }
-        Local[] locals = new Local[hostLocals.length];
+        Local[] locals = new Local[hostLocals.size()];
         for (int i = 0; i < locals.length; i++) {
-            Local host = hostLocals[i];
+            Local host = hostLocals.get(i);
             JavaType hostType = host.getType();
             JavaType interpreterType = null;
             if (hostType == null) {
@@ -408,7 +408,7 @@ public final class BuildTimeInterpreterUniverse {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static final class LocalVariableTableWrapper {
         final LocalVariableTable localVariableTable;
-        final Local[] locals;
+        final List<Local> locals;
         final int hash;
 
         private LocalVariableTableWrapper(LocalVariableTable localVariableTable) {
@@ -430,7 +430,7 @@ public final class BuildTimeInterpreterUniverse {
                 if (localVariableTable == thatWrapper.localVariableTable) {
                     return true;
                 }
-                return Arrays.equals(locals, thatWrapper.locals);
+                return locals.equals(thatWrapper.locals);
             } else {
                 return false;
             }
@@ -857,7 +857,7 @@ public final class BuildTimeInterpreterUniverse {
     }
 
     private static List<ResolvedJavaType> dependencies(ResolvedJavaType type) {
-        List<ResolvedJavaType> result = new ArrayList<>(Arrays.asList(type.getInterfaces()));
+        List<ResolvedJavaType> result = new ArrayList<>(type.getInterfaces());
         if (type.getSuperclass() != null) {
             result.add(type.getSuperclass());
         }

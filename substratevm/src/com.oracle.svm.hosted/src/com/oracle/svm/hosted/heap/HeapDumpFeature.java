@@ -29,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.List;
 
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import org.graalvm.collections.EconomicMap;
@@ -193,7 +194,7 @@ public class HeapDumpFeature implements InternalFeature {
         }
     }
 
-    private static ArrayList<SharedField> collectFields(ResolvedJavaField[] input) {
+    private static ArrayList<SharedField> collectFields(List<? extends ResolvedJavaField> input) {
         /* Collect all fields that have a location. */
         ArrayList<SharedField> result = new ArrayList<>();
         for (ResolvedJavaField f : input) {

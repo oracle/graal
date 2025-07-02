@@ -121,7 +121,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public static final AnalysisMethod[] EMPTY_ARRAY = new AnalysisMethod[0];
 
-    public record Signature(String name, AnalysisType[] parameterTypes) {
+    public record Signature(String name, List<AnalysisType> parameterTypes) {
     }
 
     public final ResolvedJavaMethod wrapped;
@@ -134,7 +134,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private final boolean isInBaseLayer;
     private final boolean analyzedInPriorLayer;
     private final boolean hasNeverInlineDirective;
-    private final ExceptionHandler[] exceptionHandlers;
+    private final List<ExceptionHandler> exceptionHandlers;
     private final LocalVariableTable localVariableTable;
     private final String name;
     private final String qualifiedName;
@@ -242,22 +242,23 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         }
         analyzedInPriorLayer = isInBaseLayer && universe.hostVM().analyzedInPriorLayer(this);
 
-        ExceptionHandler[] original = wrapped.getExceptionHandlers();
-        exceptionHandlers = new ExceptionHandler[original.length];
-        for (int i = 0; i < original.length; i++) {
-            ExceptionHandler h = original[i];
+        List<ExceptionHandler> original = wrapped.getExceptionHandlers();
+        ExceptionHandler[] exceptionHandlersRaw = new ExceptionHandler[original.size()];
+        for (int i = 0; i < original.size(); i++) {
+            ExceptionHandler h = original.get(i);
             JavaType catchType = getCatchType(universe, wrapped, h);
-            exceptionHandlers[i] = new ExceptionHandler(h.getStartBCI(), h.getEndBCI(), h.getHandlerBCI(), h.catchTypeCPI(), catchType);
+            exceptionHandlersRaw[i] = new ExceptionHandler(h.getStartBCI(), h.getEndBCI(), h.getHandlerBCI(), h.catchTypeCPI(), catchType);
         }
+        exceptionHandlers = List.of(exceptionHandlersRaw);
 
         LocalVariableTable analysisLocalVariableTable = null;
         if (wrapped.getLocalVariableTable() != null) {
             try {
-                Local[] origLocals = wrapped.getLocalVariableTable().getLocals();
-                Local[] newLocals = new Local[origLocals.length];
+                List<Local> origLocals = wrapped.getLocalVariableTable().getLocals();
+                Local[] newLocals = new Local[origLocals.size()];
                 ResolvedJavaType accessingClass = declaringClass.getWrapped();
                 for (int i = 0; i < newLocals.length; ++i) {
-                    Local origLocal = origLocals[i];
+                    Local origLocal = origLocals.get(i);
                     ResolvedJavaType origLocalType = origLocal.getType() instanceof ResolvedJavaType ? (ResolvedJavaType) origLocal.getType() : origLocal.getType().resolve(accessingClass);
                     AnalysisType type = universe.lookup(origLocalType);
                     newLocals[i] = new Local(origLocal.getName(), type, origLocal.getStartBCI(), origLocal.getEndBCI(), origLocal.getSlot());
@@ -743,7 +744,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
-    public JavaType[] toParameterTypes() {
+    public List<JavaType> toParameterTypes() {
         throw JVMCIError.shouldNotReachHere("ResolvedJavaMethod.toParameterTypes returns the wrong result for constructors. Use toParameterList instead.");
     }
 
@@ -793,7 +794,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
-    public Parameter[] getParameters() {
+    public List<Parameter> getParameters() {
         return wrapped.getParameters();
     }
 
@@ -883,7 +884,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
-    public ExceptionHandler[] getExceptionHandlers() {
+    public List<ExceptionHandler> getExceptionHandlers() {
         return exceptionHandlers;
     }
 
@@ -908,7 +909,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
-    public Type[] getGenericParameterTypes() {
+    public List<Type> getGenericParameterTypes() {
         return wrapped.getGenericParameterTypes();
     }
 

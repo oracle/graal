@@ -239,13 +239,13 @@ final class BuildTimeConstantPool {
         return btcp;
     }
 
-    private ExceptionHandler[] processExceptionHandlers(ExceptionHandler[] hostExceptionHandlers) {
-        if (hostExceptionHandlers.length == 0) {
+    private ExceptionHandler[] processExceptionHandlers(List<ExceptionHandler> hostExceptionHandlers) {
+        if (hostExceptionHandlers.isEmpty()) {
             return EMPTY_EXCEPTION_HANDLERS;
         }
-        ExceptionHandler[] handlers = new ExceptionHandler[hostExceptionHandlers.length];
+        ExceptionHandler[] handlers = new ExceptionHandler[hostExceptionHandlers.size()];
         for (int i = 0; i < handlers.length; i++) {
-            ExceptionHandler host = hostExceptionHandlers[i];
+            ExceptionHandler host = hostExceptionHandlers.get(i);
             JavaType resolvedCatchType = null;
             JavaType interpreterCatchType = null;
             int catchTypeCPI = 0;

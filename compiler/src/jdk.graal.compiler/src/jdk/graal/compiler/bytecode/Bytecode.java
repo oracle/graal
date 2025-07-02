@@ -30,6 +30,8 @@ import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.List;
+
 /**
  * An interface for accessing the bytecode properties of a {@link ResolvedJavaMethod} that allows
  * for different properties than those returned by {@link ResolvedJavaMethod}. Since the bytecode
@@ -60,7 +62,7 @@ public interface Bytecode {
 
     StackTraceElement asStackTraceElement(int bci);
 
-    ExceptionHandler[] getExceptionHandlers();
+    List<ExceptionHandler> getExceptionHandlers();
 
     /**
      * Gets the {@link BytecodeProvider} from which this object was acquired.

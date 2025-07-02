@@ -438,8 +438,8 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
 
     private LLVMTypeRef[] getLLVMFunctionArgTypes(ResolvedJavaMethod method, boolean forMainFunction) {
         ResolvedJavaType receiver = method.hasReceiver() ? method.getDeclaringClass() : null;
-        JavaType[] javaParameterTypes = method.getSignature().toParameterTypes(receiver);
-        return Arrays.stream(javaParameterTypes).map(type -> getLLVMStackType(getTypeKind(type.resolve(null), forMainFunction))).toArray(LLVMTypeRef[]::new);
+        List<JavaType> javaParameterTypes = method.getSignature().toParameterTypes(receiver);
+        return javaParameterTypes.stream().map(type -> getLLVMStackType(getTypeKind(type.resolve(null), forMainFunction))).toArray(LLVMTypeRef[]::new);
     }
 
     /**

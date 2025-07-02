@@ -251,12 +251,12 @@ public class SubstrateGraphKit extends GraphKit {
         return createIndirectCall(targetAddress, args, signature.toParameterTypes(null), returnStamp, returnKind, callKind);
     }
 
-    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> args, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
+    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> args, List<JavaType> parameterTypes, Stamp returnStamp, JavaKind returnKind,
                     SubstrateCallingConventionKind callKind) {
         return createIndirectCall(targetAddress, args, parameterTypes, returnStamp, returnKind, callKind.toType(true));
     }
 
-    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> args, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
+    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> args, List<JavaType> parameterTypes, Stamp returnStamp, JavaKind returnKind,
                     CallingConvention.Type convention) {
         frameState.clearStack();
 

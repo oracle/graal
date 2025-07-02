@@ -32,6 +32,7 @@ import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.util.Collections;
+import java.util.List;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -59,6 +60,7 @@ import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
 /**
@@ -128,7 +130,7 @@ public abstract class HotSpotHostBackend extends HotSpotBackend implements LIRGe
         CallingConvention cc = getCallingConvention(getCodeCache(), HotSpotCallingConventionType.JavaCallee, graph.method(), this);
         if (graph.getEntryBCI() != JVMCICompiler.INVOCATION_ENTRY_BCI) {
             // for OSR, only a pointer is passed to the method.
-            JavaType[] parameterTypes = new JavaType[]{getMetaAccess().lookupJavaType(long.class)};
+            List<JavaType> parameterTypes = List.of(getMetaAccess().lookupJavaType(long.class));
             CallingConvention tmp = getCodeCache().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.JavaCallee, getMetaAccess().lookupJavaType(void.class), parameterTypes, this);
             cc = new CallingConvention(cc.getStackSize(), cc.getReturn(), tmp.getArgument(0));
         }
