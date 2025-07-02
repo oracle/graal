@@ -186,7 +186,7 @@ abstract non-sealed class LocationImpl extends Location {
 
     @Override
     public int hashCode() {
-        return 1;
+        return getClass().hashCode();
     }
 
     @Override
