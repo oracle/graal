@@ -74,10 +74,13 @@ public abstract class PlatformTimeUtils {
     public interface SecondsNanos extends PointerBase {
         @RawField
         void setNanos(long value);
+
         @RawField
         long getNanos();
+
         @RawField
         void setSeconds(long value);
+
         @RawField
         long getSeconds();
     }

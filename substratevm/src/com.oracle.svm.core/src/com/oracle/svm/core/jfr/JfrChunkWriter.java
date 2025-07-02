@@ -47,6 +47,7 @@ public interface JfrChunkWriter extends JfrUnlockedChunkWriter {
     void markChunkFinal();
 
     void closeFile();
+
     void closeFileForEmergencyDump();
 
     void setMetadata(byte[] bytes);

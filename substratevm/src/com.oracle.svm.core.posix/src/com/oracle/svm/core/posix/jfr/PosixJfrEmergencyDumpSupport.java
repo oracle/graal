@@ -267,7 +267,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
                 long bytesWritten = 0;
                 while (bytesRead < chunkFileSize) {
                     // Start at beginning
-                    getFileSupport().seek(chunkFd, 0); // seems unneeded. idk why???
+                    getFileSupport().seek(chunkFd, 0);
                     // Read from chunk file to copy block
                     long readResult = getFileSupport().read(chunkFd, copyBlock, WordFactory.unsigned(blockSize));
                     if (readResult < 0) { // -1 if read failed
@@ -341,7 +341,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
             }
         }
 
-        // Verify if you can open it and receive a valid file descriptor
+        // Verify it can be opened and receive a valid file descriptor
         RawFileDescriptor chunkFd = getFileSupport().open(fullyQualified(fn), FileAccessMode.READ_WRITE);
         if (!getFileSupport().isValid(chunkFd)) {
             return false;
@@ -357,8 +357,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
     }
 
     /**
-     * Given a chunk file name, it returns the fully qualified filename. See
-     * RepositoryIterator::fully_qualified
+     * Given a chunk file name, it returns the fully qualified filename.
      */
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L263-L273")
     private CCharPointer fullyQualified(CCharPointer fn) {

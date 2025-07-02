@@ -34,7 +34,8 @@ import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
 /**
- * The JFR emergency dump mechanism uses platform-specific implementations (see {@link JfrEmergencyDumpSupport}).
+ * The JFR emergency dump mechanism uses platform-specific implementations (see
+ * {@link JfrEmergencyDumpSupport}).
  */
 @AutomaticallyRegisteredFeature
 public class JfrEmergencyDumpFeature implements InternalFeature {

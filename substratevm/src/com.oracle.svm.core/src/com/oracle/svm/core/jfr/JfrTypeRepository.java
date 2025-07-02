@@ -53,11 +53,22 @@ import com.oracle.svm.core.memory.NullableNativeMemory;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 /**
- * Repository that collects and writes used classes, packages, modules, and classloaders.
+ * Repository that collects and writes used classes, packages, modules, and classloaders. There are
+ * three kinds of tables used by this class: epochTypeData, flushed*, and typeInfo. The flushed*
+ * tables record which classes have already been flushed to disk. The epochTypeData tables hold
+ * classes that have yet to be flushed as well as classes that are already flushed (they are written
+ * by threads emitting events). The typeInfo table is derived at flushpoints by using the
+ * epochTypeData and flushed* tables to determine the set of classes that have yet to be flushed.
+ *
+ * Unlike other JFR repositories, there are no epoch data buffers that require lock protection.
+ * Similar to other constant repositories, writes/reads to the current epochData are allowed to race
+ * at flushpoints. There is no risk of separating events from constant data due to the write order
+ * (constants before events during emission, and events before constants during flush). The
+ * epochData tables are only cleared at rotation safepoints.
  */
 public class JfrTypeRepository implements JfrRepository {
     private static final String BOOTSTRAP_NAME = "bootstrap";
-    // The following tables are only used by the flushing/rotating thread
+    // The following tables are only used by the flushing/rotating thread.
     private final JfrClassInfoTable flushedClasses;
     private final JfrPackageInfoTable flushedPackages;
     private final JfrModuleInfoTable flushedModules;
@@ -65,9 +76,9 @@ public class JfrTypeRepository implements JfrRepository {
     private final TypeInfo typeInfo;
 
     /*
-     * epochTypeData tables are written to from threads emitting events and read from the
-     * flushing/rotating thread Their purpose is to lazily collect tagged JFR classes, which may
-     * later be serialized during flush/rotation.
+     * epochTypeData tables are written by threads emitting events and read from the
+     * flushing/rotating thread. Their purpose is to lazily collect tagged JFR classes, which are
+     * later serialized during flush/rotation.
      */
     private final JfrClassInfoTable epochTypeData0;
     private final JfrClassInfoTable epochTypeData1;
@@ -140,11 +151,7 @@ public class JfrTypeRepository implements JfrRepository {
      * referenced classes.
      *
      * This method does not need to be marked uninterruptible since the epoch cannot change while
-     * the chunkwriter lock is held. Unlike other JFR repositories, locking is not needed to protect
-     * a data buffer. Similar to other constant repositories, writes/reads to the current epochData
-     * are allowed to race at flushpoints. There is no risk of separating events from constant data
-     * due to the write order (constants before events during emission, and events before constants
-     * during flush). The epochData tables are only cleared at rotation safepoints.
+     * the chunkwriter lock is held.
      */
     private void collectTypeInfo(boolean flushpoint) {
         JfrClassInfoTable classInfoTable = getEpochData(!flushpoint);
@@ -255,8 +262,10 @@ public class JfrTypeRepository implements JfrRepository {
         return SubstrateJVM.getSymbolRepository().getSymbolId(symbol, !flushpoint, replaceDotWithSlash);
     }
 
-    // Copy to a new buffer so each table has its own copy of the data. This simplifies cleanup and
-    // mitigates double frees.
+    /*
+     * Copy to a new buffer so each table has its own copy of the data. This simplifies cleanup and
+     * mitigates double frees.
+     */
     @Uninterruptible(reason = "Needed for JfrSymbolRepository.getSymbolId().")
     private static long getSymbolId(JfrChunkWriter writer, PointerBase source, UnsignedWord length, int hash, boolean flushpoint) {
         Pointer destination = NullableNativeMemory.malloc(length, NmtCategory.JFR);
@@ -571,8 +580,10 @@ public class JfrTypeRepository implements JfrRepository {
 
         assert buffer.add(dot).belowOrEqual(bufferEnd);
 
-        // Since we're serializing now, we must do replacements here, instead of the symbol
-        // repository.
+        /*
+         * Since we're serializing now, we must do replacements here, instead of the symbol
+         * repository.
+         */
         Pointer packageNameEnd = UninterruptibleUtils.String.toModifiedUTF8(str, dot, buffer, bufferEnd, false, dotWithSlash);
         packageInfoRaw.setModifiedUTF8Name(buffer);
 
@@ -702,7 +713,7 @@ public class JfrTypeRepository implements JfrRepository {
         protected boolean isEqual(UninterruptibleEntry v0, UninterruptibleEntry v1) {
             JfrTypeInfo a = (JfrTypeInfo) v0;
             JfrTypeInfo b = (JfrTypeInfo) v1;
-            return a.getName() == b.getName();
+            return a.getName() != null ? a.getName().equals(b.getName()) : b.getName() == null;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 
 public class JfrGCWhenSerializer implements JfrSerializer {
     private JfrGCWhen[] values;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrGCWhenSerializer() {
         values = JfrGCWhen.values();

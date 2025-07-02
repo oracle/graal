@@ -95,10 +95,9 @@ public class JfrSymbolRepository implements JfrRepository {
         return getSymbolId(buffer, WordFactory.unsigned(length), hash, previousEpoch);
     }
 
-
     @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
     public long getSymbolId(PointerBase buffer, UnsignedWord length, int hash, boolean previousEpoch) {
-        com.oracle.svm.core.util.VMError.guarantee(buffer.isNonNull());
+        assert buffer.isNonNull();
         JfrSymbol symbol = StackValue.get(JfrSymbol.class);
         symbol.setModifiedUTF8(buffer); // symbol allocated in native memory
         symbol.setLength(length);
@@ -181,10 +180,13 @@ public class JfrSymbolRepository implements JfrRepository {
 
         @RawField
         void setLength(UnsignedWord value);
+
         @RawField
         UnsignedWord getLength();
+
         @RawField
         void setModifiedUTF8(PointerBase value);
+
         @RawField
         PointerBase getModifiedUTF8();
     }

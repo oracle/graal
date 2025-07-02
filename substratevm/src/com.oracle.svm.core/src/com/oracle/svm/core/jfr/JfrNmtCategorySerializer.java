@@ -33,6 +33,7 @@ import com.oracle.svm.core.nmt.NmtCategory;
 
 public class JfrNmtCategorySerializer implements JfrSerializer {
     private NmtCategory[] nmtCategories;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrNmtCategorySerializer() {
         nmtCategories = NmtCategory.values();

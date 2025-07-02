@@ -154,7 +154,7 @@ public class JfrFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return  Arrays.asList(ThreadListenerSupportFeature.class, JfrEmergencyDumpFeature.class);
+        return Arrays.asList(ThreadListenerSupportFeature.class, JfrEmergencyDumpFeature.class);
     }
 
     @Override

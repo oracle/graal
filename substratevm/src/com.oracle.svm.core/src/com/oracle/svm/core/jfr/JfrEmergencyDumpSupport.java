@@ -30,6 +30,7 @@ import com.oracle.svm.core.os.RawFileOperationSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import jdk.graal.compiler.api.replacements.Fold;
+
 public interface JfrEmergencyDumpSupport {
     @Fold
     static boolean isPresent() {
@@ -42,10 +43,16 @@ public interface JfrEmergencyDumpSupport {
     }
 
     void initialize();
+
     void setRepositoryLocation(String dirText);
+
     void setDumpPath(String dumpPathText);
+
     String getDumpPath();
+
     RawFileOperationSupport.RawFileDescriptor chunkPath();
+
     void onVmError();
+
     void teardown();
 }
