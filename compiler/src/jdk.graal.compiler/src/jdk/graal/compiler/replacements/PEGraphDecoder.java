@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1279,9 +1279,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
          * ParameterNodes.
          */
         int firstArgumentNodeId = inlineScope.maxFixedNodeOrderId + 1;
-        for (int i = 0; i < arguments.length; i++) {
-            inlineLoopScope.createdNodes[firstArgumentNodeId + i] = arguments[i];
-        }
+        inlineLoopScope.setNodes(firstArgumentNodeId, arguments);
 
         // Copy inlined methods from inlinee to caller
         recordGraphElements(graphToInline);

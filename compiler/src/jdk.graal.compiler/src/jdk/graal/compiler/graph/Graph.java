@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -83,6 +83,12 @@ public class Graph implements EventCounter {
      */
     public final boolean verifyGraphs;
     public final boolean verifyGraphEdges;
+
+    /**
+     * Cached actual value of {@link GraalOptions#TrackNodeInsertion} to avoid expensive map lookup
+     * every time a node is registered.
+     */
+    public final boolean trackNodeInsertion;
 
     /**
      * The set of nodes in the graph, ordered by {@linkplain #register(Node) registration} time.
@@ -329,6 +335,8 @@ public class Graph implements EventCounter {
 
         verifyGraphs = Options.VerifyGraalGraphs.getValue(options);
         verifyGraphEdges = Options.VerifyGraalGraphEdges.getValue(options);
+
+        trackNodeInsertion = TrackNodeInsertion.getValue(options);
     }
 
     int extractOriginalNodeId(Node node) {
@@ -1329,7 +1337,7 @@ public class Graph implements EventCounter {
         if (currentNodeSourcePosition != null && trackNodeSourcePosition()) {
             node.setNodeSourcePosition(currentNodeSourcePosition);
         }
-        if (TrackNodeInsertion.getValue(getOptions()) && node.getInsertionPosition() == null) {
+        if (trackNodeInsertion && node.getInsertionPosition() == null) {
             node.setInsertionPosition(new NodeInsertionStackTrace());
         }
 
