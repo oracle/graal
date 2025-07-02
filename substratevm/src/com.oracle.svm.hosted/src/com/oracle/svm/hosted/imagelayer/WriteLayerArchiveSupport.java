@@ -31,6 +31,8 @@ import java.util.jar.JarOutputStream;
 
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
@@ -41,6 +43,11 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
 
     public WriteLayerArchiveSupport(String layerName, NativeImageClassLoaderSupport classLoaderSupport, Path tempDir, ArchiveSupport archiveSupport) {
         super(layerName, classLoaderSupport.getLayerFile(), tempDir.resolve(LAYER_TEMP_DIR_PREFIX + "write"), archiveSupport);
+        if (!layerName.startsWith(SHARED_LIB_NAME_PREFIX)) {
+            throw UserError.abort("Shared layer library image name given with '" +
+                            SubstrateOptionsParser.commandArgument(SubstrateOptions.Name, layerName) +
+                            "' needs to start with '" + SHARED_LIB_NAME_PREFIX + "'");
+        }
         builderArguments.addAll(classLoaderSupport.getHostedOptionParser().getArguments());
     }
 

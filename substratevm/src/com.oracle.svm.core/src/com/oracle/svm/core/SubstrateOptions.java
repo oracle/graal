@@ -633,7 +633,6 @@ public class SubstrateOptions {
     @Option(help = "Enable detection and runtime container configuration support.")//
     public static final HostedOptionKey<Boolean> UseContainerSupport = new HostedOptionKey<>(true);
 
-    @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
 
@@ -876,8 +875,6 @@ public class SubstrateOptions {
     /*
      * Isolate tear down options.
      */
-
-    @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @Option(help = "The number of seconds before and between which tearing down an isolate gives a warning message. 0 implies no warning.")//
     public static final RuntimeOptionKey<Long> TearDownWarningSeconds = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
 
@@ -914,7 +911,7 @@ public class SubstrateOptions {
     @Option(help = "Perform trivial method inlining in the AOT compiled native image")//
     public static final HostedOptionKey<Boolean> AOTTrivialInline = new HostedOptionKey<>(true);
 
-    @LayerVerifiedOption(kind = Kind.Removed, severity = Severity.Error, positional = false)//
+    @LayerVerifiedOption(kind = Kind.Removed, severity = Severity.Warn, positional = false)//
     @Option(help = "file:doc-files/NeverInlineHelp.txt", type = OptionType.Debug)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> NeverInline = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
@@ -1074,8 +1071,13 @@ public class SubstrateOptions {
     @Option(help = "Determines if debugging-specific helper methods are embedded into the image. Those methods can be called directly from the debugger to obtain or print additional information.", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> IncludeDebugHelperMethods = new HostedOptionKey<>(false);
 
+    private static final String ENABLE_DEBUGINFO_OPTION = "-g";
+    // Only raise error if -g is used in current layer build but missing in the previous layer build
+    @LayerVerifiedOption(apiOption = ENABLE_DEBUGINFO_OPTION, kind = Kind.Added, severity = Severity.Error, message = "If you want to use " + ENABLE_DEBUGINFO_OPTION +
+                    " in this layer, use a base layer that also got built with " + ENABLE_DEBUGINFO_OPTION + ".")//
+    // ... but use stricter check for raw (non-API) use of GenerateDebugInfo
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
-    @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
+    @APIOption(name = ENABLE_DEBUGINFO_OPTION, fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
     public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
         @Override
@@ -1226,7 +1228,6 @@ public class SubstrateOptions {
         @Option(help = "The largest page size of machines that can run the image. The default of 0 automatically selects a typically suitable value.")//
         protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
 
-        @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
         @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
         public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);
 
@@ -1259,7 +1260,6 @@ public class SubstrateOptions {
     @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(true);
 
-    @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @Option(help = "Enables signal handling", stability = OptionStability.EXPERIMENTAL, type = Expert)//
     public static final RuntimeOptionKey<Boolean> EnableSignalHandling = new RuntimeOptionKey<>(null, Immutable) {
         @Override
