@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.espresso.classfile.descriptors.NameSymbols;
-import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Symbols;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
@@ -49,9 +48,8 @@ public final class SymbolsSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SymbolsSupport() {
-        ParserSymbols.ensureInitialized();
         int initialSymbolTableCapacity = 4 * 1024;
-        Symbols symbols = Symbols.fromExisting(ParserSymbols.SYMBOLS.freeze(), initialSymbolTableCapacity, 0);
+        Symbols symbols = Symbols.fromExisting(SVMSymbols.SYMBOLS.freeze(), initialSymbolTableCapacity, 0);
         // let this resize when first used at runtime
         utf8 = new Utf8Symbols(symbols);
         names = new NameSymbols(symbols);

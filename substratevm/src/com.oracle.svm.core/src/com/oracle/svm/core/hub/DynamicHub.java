@@ -486,7 +486,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         } else {
             // instance class
             assert !"java.lang.Class".equals(name);
-            // @Hybrid is ignored
+            /*
+             * @Hybrid types are not supported. The absence of the annotation is assumed to be
+             * checked by callers. See AbstractRuntimeClassRegistry.checkNotHybrid.
+             */
             if (Modifier.isAbstract(modifiers)) {
                 layoutEncoding = LayoutEncoding.forAbstract();
             } else {

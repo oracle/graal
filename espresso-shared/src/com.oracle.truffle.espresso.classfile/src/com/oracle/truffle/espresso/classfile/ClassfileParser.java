@@ -1126,7 +1126,10 @@ public final class ClassfileParser {
         return attributeCount == 0 ? Attribute.EMPTY_ARRAY : new Attribute[attributeCount];
     }
 
-    private static int parseAnnotation(ClassfileStream subStream) {
+    /**
+     * Parse one annotation in an annotation attribute and return the annotation type index.
+     */
+    public static int parseAnnotation(ClassfileStream subStream) {
         int typeIndex = subStream.readU2();
         int numElementValuePairs = subStream.readU2();
         for (int k = 0; k < numElementValuePairs; k++) {

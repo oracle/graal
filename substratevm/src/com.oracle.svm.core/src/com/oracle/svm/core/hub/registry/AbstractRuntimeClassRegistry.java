@@ -47,6 +47,7 @@ import com.oracle.svm.core.hub.CremaSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.core.hub.registry.SVMSymbols.SVMTypes;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ClassfileParser;
@@ -56,6 +57,7 @@ import com.oracle.svm.espresso.classfile.ParserException;
 import com.oracle.svm.espresso.classfile.ParserField;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.ParserMethod;
+import com.oracle.svm.espresso.classfile.attributes.Attribute;
 import com.oracle.svm.espresso.classfile.attributes.InnerClassesAttribute;
 import com.oracle.svm.espresso.classfile.attributes.NestHostAttribute;
 import com.oracle.svm.espresso.classfile.attributes.PermittedSubclassesAttribute;
@@ -408,6 +410,8 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         // GR-62339
         Module module = getClassLoader().getUnnamedModule();
 
+        checkNotHybrid(parsed);
+
         DynamicHub hub = DynamicHub.allocate(externalName, superHub, interfacesEncoding, null,
                         sourceFile, modifiers, flags, getClassLoader(), nestHost, simpleBinaryName, module, enclosingClass, classSignature,
                         typeID, numClassTypes, typeIDDepth, numInterfacesTypes, openTypeWorldTypeCheckSlots, dispatchTableLength, afterFieldsOffset, isValueBased);
@@ -415,6 +419,23 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         CremaSupport.singleton().fillDynamicHubInfo(hub, dispatchTable, transitiveSuperInterfaces, interfaceIndices);
 
         return DynamicHub.toClass(hub);
+    }
+
+    private static void checkNotHybrid(ParserKlass parsed) {
+        Attribute attribute = parsed.getAttribute(ParserNames.RuntimeVisibleAnnotations);
+        if (attribute == null) {
+            return;
+        }
+        ClassfileStream stream = new ClassfileStream(attribute.getData(), null);
+        int count = stream.readU2();
+        for (int j = 0; j < count; j++) {
+            int typeIndex = ClassfileParser.parseAnnotation(stream);
+            Symbol<?> annotType = parsed.getConstantPool().utf8At(typeIndex, "annotation type");
+            if (SVMTypes.com_oracle_svm_core_hub_Hybrid.equals(annotType)) {
+                throw new ClassFormatError("Cannot load @Hybrid classes at runtime");
+            }
+        }
+
     }
 
     private static boolean declaresDefaultMethods(ParserKlass parsed) {
