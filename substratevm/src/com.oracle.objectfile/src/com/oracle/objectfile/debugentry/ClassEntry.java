@@ -37,7 +37,7 @@ import com.oracle.objectfile.debugentry.range.Range;
 /**
  * Track debug info associated with a Java class.
  */
-public class ClassEntry extends StructureTypeEntry {
+public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry, InterfaceClassEntry {
     /**
      * Details of this class's superclass.
      */
@@ -242,7 +242,7 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     public String getLoaderId() {
-        return (loader != null ? loader.loaderId() : "");
+        return loader.loaderId();
     }
 
     /**

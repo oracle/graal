@@ -26,7 +26,7 @@
 
 package com.oracle.objectfile.debugentry;
 
-public abstract class TypeEntry {
+public abstract sealed class TypeEntry permits StructureTypeEntry, PrimitiveTypeEntry, PointerToTypeEntry {
     /**
      * The name of this type.
      */
@@ -98,7 +98,6 @@ public abstract class TypeEntry {
             case ForeignStructTypeEntry fs -> "ForeignStruct";
             case PointerToTypeEntry fs -> "PointerTo";
             case ClassEntry c -> "Instance";
-            default -> "";
         };
         return String.format("%sType(%s size=%d @%s)", kind, getTypeName(), getSize(), Long.toHexString(classOffset));
     }

@@ -117,7 +117,7 @@ class TestRuntimeDeopt(unittest.TestCase):
             self.assertNotIn('<unknown type in <in-memory@', backtrace)
         else:
             self.assertIn('com.oracle.truffle.runtime.OptimizedCallTarget::profiledPERoot', backtrace)
-            self.assertIn('(this=<optimized out>, originalArguments=com.oracle.svm.core.option.RuntimeOptionKey = {...})', backtrace)
+            self.assertIn('(this=<optimized out>, originalArguments=)', backtrace)
             self.assertNotIn('this=<unknown type in <in-memory@', backtrace)
 
 

@@ -141,8 +141,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writePointerToTypes(context, buffer, pos);
 
         /*
-         * Write TUs (only AOT debug info) and CUs for all instance classes, which includes
-         * interfaces and enums.
+         * Write CUs for all instance classes, which includes interfaces and enums. Additionally,
+         * for AOT debug info this also writes TUs.
          */
         pos = writeInstanceClasses(context, buffer, pos);
 

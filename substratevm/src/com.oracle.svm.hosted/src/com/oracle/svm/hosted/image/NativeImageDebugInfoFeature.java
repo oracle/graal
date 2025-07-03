@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -49,6 +50,7 @@ import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.io.AssemblyBuffer;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UniqueShortNameProvider;
@@ -62,6 +64,7 @@ import com.oracle.svm.core.debug.GdbJitInterface;
 import com.oracle.svm.core.debug.SubstrateDebugTypeEntrySupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -84,7 +87,21 @@ import jdk.vm.ci.code.Architecture;
 class NativeImageDebugInfoFeature implements InternalFeature {
 
     public NativeLibraries nativeLibs;
+
+    /*
+     * A set of classes used for run-time debug info generation that may not be instantiated at
+     * run-time, but still reachable through the SubstrateDebugTypeEntrySupport singleton.
+     */
     public static final Set<Class<?>> foreignTypeEntryClasses = Set.of(PrimitiveTypeEntry.class, PointerToTypeEntry.class, ForeignStructTypeEntry.class);
+
+    /*
+     * A set of fields accessed during run-time debug info generation that are not seen as written
+     * during analysis, but still reachable through the SubstrateDebugTypeEntrySupport singleton.
+     */
+    public static final Set<Field> foreignTypeEntryFields = Set.of(
+                    ReflectionUtil.lookupField(TypeEntry.class, "typeName"),
+                    ReflectionUtil.lookupField(TypeEntry.class, "typeSignature"),
+                    ReflectionUtil.lookupField(ForeignStructTypeEntry.class, "typedefName"));
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -142,8 +159,25 @@ class NativeImageDebugInfoFeature implements InternalFeature {
 
         var accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         nativeLibs = accessImpl.getNativeLibraries();
+        /*
+         * Make sure classes and fields for foreign type entries stored in the
+         * SubstrateDebugTypeEntrySupport are available during run-time debug info generation.
+         */
         for (Class<?> foreignTypeEntryClass : foreignTypeEntryClasses) {
             accessImpl.registerAsInHeap(foreignTypeEntryClass);
+        }
+        for (Field foreignTypeEntryField : foreignTypeEntryFields) {
+            access.registerFieldValueTransformer(foreignTypeEntryField, new FieldValueTransformerWithAvailability() {
+                @Override
+                public Object transform(Object receiver, Object originalValue) {
+                    return originalValue;
+                }
+
+                @Override
+                public boolean isAvailable() {
+                    return BuildPhaseProvider.isAnalysisFinished();
+                }
+            });
         }
 
         /*

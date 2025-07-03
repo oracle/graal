@@ -915,9 +915,9 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
     public int writeAbbrevs(DebugContext context, byte[] buffer, int p) {
         int pos = p;
         /*
-         * Write all abbrevs for AOT and run-time debug info Abbrevs use the least space of all
+         * Write all abbrevs for AOT and run-time debug info. Abbrevs use the least space of all
          * debug info sections, so there is no real benefit in reducing the amount of abbrevs for
-         * run-time debug info
+         * run-time debug info.
          */
 
         // Top level DIEs
@@ -939,12 +939,12 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeArrayLayoutAbbrev(context, buffer, pos);
         pos = writeInterfaceLayoutAbbrev(context, buffer, pos);
         /*
-         * if we address rebasing is required then we need to use compressed layout types supplied
-         * with a suitable data_location attribute and compressed pointer types to ensure that gdb
+         * If address rebasing is required then we need to use compressed layout types supplied with
+         * a suitable data_location attribute and compressed pointer types to ensure that gdb
          * converts offsets embedded in static or instance fields to raw pointers. Transformed
          * addresses are typed using pointers to the underlying layout.
          *
-         * if address rebasing is not required then a data_location attribute on the layout type
+         * If address rebasing is not required then a data_location attribute on the layout type
          * will ensure that address tag bits are removed.
          *
          * The compressed layout is also used for representing the decode step for dynamic hubs.
@@ -1625,10 +1625,8 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeParameterDeclarationAbbrev(context, AbbrevCode.METHOD_PARAMETER_DECLARATION_1, buffer, pos);
         pos = writeParameterDeclarationAbbrev(context, AbbrevCode.METHOD_PARAMETER_DECLARATION_2, buffer, pos);
         pos = writeParameterDeclarationAbbrev(context, AbbrevCode.METHOD_PARAMETER_DECLARATION_3, buffer, pos);
-        if (!dwarfSections.isRuntimeCompilation() || true) {
-            pos = writeSkeletonParameterDeclarationAbbrev(context, AbbrevCode.METHOD_PARAMETER_DECLARATION_4, buffer, pos);
-            pos = writeSkeletonParameterDeclarationAbbrev(context, AbbrevCode.METHOD_PARAMETER_DECLARATION_5, buffer, pos);
-        }
+        pos = writeSkeletonParameterDeclarationAbbrev(context, AbbrevCode.METHOD_PARAMETER_DECLARATION_4, buffer, pos);
+        pos = writeSkeletonParameterDeclarationAbbrev(context, AbbrevCode.METHOD_PARAMETER_DECLARATION_5, buffer, pos);
         return pos;
     }
 

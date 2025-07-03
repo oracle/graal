@@ -280,8 +280,8 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
                 }, baseType.getJavaClass());
 
                 /*
-                 * The links to other meta objects must be set after adding to the methods to avoid
-                 * infinite recursion.
+                 * With run-time debug info support enabled, ensure LocalVariableTables are
+                 * available in SubstrateMethods if possible.
                  */
                 LocalVariableTable localVariableTable;
                 if (SubstrateOptions.RuntimeDebugInfo.getValue()) {
@@ -294,6 +294,10 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
                 } else {
                     localVariableTable = null;
                 }
+                /*
+                 * The links to other meta objects must be set after adding to the methods to avoid
+                 * infinite recursion.
+                 */
                 sMethod.setLinks(createSignature(aMethod.getSignature()), createType(aMethod.getDeclaringClass()), localVariableTable);
             }
         }

@@ -206,8 +206,10 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
     public InstalledCodeObserverHandle install() {
         NonmovableArray<Byte> debugInfoData = writeDebugInfoData();
         Handle handle = GdbJitAccessor.createHandle(debugInfoData);
-        try (DebugContext.Scope s = debug.scope("RuntimeCompilation")) {
-            debug.log(toString(handle));
+        if (debug.isLogEnabled()) {
+            try (DebugContext.Scope s = debug.scope("RuntimeCompilation")) {
+                debug.log(toString(handle));
+            }
         }
         return handle;
     }

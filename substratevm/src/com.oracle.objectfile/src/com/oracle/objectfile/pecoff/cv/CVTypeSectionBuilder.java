@@ -133,8 +133,6 @@ class CVTypeSectionBuilder {
                     // typeEntry is either ArrayTypeEntry, ClassEntry, or ForeignStructTypeEntry
                     // TODO continue treat foreign types as interfaces/classes but fix this later
                     typeRecord = buildStructureTypeEntry(structureTypeEntry);
-                default -> {
-                }
             }
         }
         assert typeRecord != null;

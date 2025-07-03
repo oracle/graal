@@ -438,9 +438,11 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     private void processMethods(HostedType type, ClassEntry classEntry) {
         for (HostedMethod method : type.getAllDeclaredMethods()) {
             MethodEntry methodEntry = lookupMethodEntry(method);
-            debug.log("typename %s adding %s method %s %s(%s)%n",
-                            classEntry.getTypeName(), methodEntry.getModifiersString(), methodEntry.getValueType().getTypeName(), methodEntry.getMethodName(),
-                            formatParams(methodEntry.getThisParam(), methodEntry.getParams()));
+
+            if (debug.isLogEnabled()) {
+                debug.log("typename %s adding %s method %s %s(%s)%n", classEntry.getTypeName(), methodEntry.getModifiersString(), methodEntry.getValueType().getTypeName(), methodEntry.getMethodName(),
+                                formatParams(methodEntry.getThisParam(), methodEntry.getParams()));
+            }
         }
     }
 
@@ -525,7 +527,9 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         for (HostedType interfaceType : type.getInterfaces()) {
             TypeEntry entry = lookupTypeEntry(interfaceType);
             if (entry instanceof InterfaceClassEntry interfaceClassEntry) {
-                debug.log("typename %s adding interface %s%n", classEntry.getTypeName(), interfaceType.toJavaName());
+                if (debug.isLogEnabled()) {
+                    debug.log("typename %s adding interface %s%n", classEntry.getTypeName(), interfaceType.toJavaName());
+                }
                 interfaceClassEntry.addImplementor(classEntry);
             }
         }
@@ -639,13 +643,15 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         int size = getTypeSize(hostedType);
         long classOffset = getClassOffset(hostedType);
         LoaderEntry loaderEntry = lookupLoaderEntry(hostedType);
-        String loaderName = loaderEntry == null ? "" : loaderEntry.loaderId();
+        String loaderName = loaderEntry.loaderId();
         long typeSignature = getTypeSignature(typeName + loaderName);
         long compressedTypeSignature = useHeapBase ? getTypeSignature(INDIRECT_PREFIX + typeName + loaderName) : typeSignature;
 
         if (hostedType.isPrimitive()) {
             JavaKind kind = hostedType.getStorageKind();
-            debug.log("typename %s (%d bits)%n", typeName, kind == JavaKind.Void ? 0 : kind.getBitCount());
+            if (debug.isLogEnabled()) {
+                debug.log("typename %s (%d bits)%n", typeName, kind == JavaKind.Void ? 0 : kind.getBitCount());
+            }
             return new PrimitiveTypeEntry(typeName, size, classOffset, typeSignature, kind);
         } else {
             /*
@@ -655,8 +661,10 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
             long layoutTypeSignature = getTypeSignature(LAYOUT_PREFIX + typeName + loaderName);
             if (hostedType.isArray()) {
                 TypeEntry elementTypeEntry = lookupTypeEntry(hostedType.getComponentType());
-                debug.log("typename %s element type %s base size %d length offset %d%n", typeName, elementTypeEntry.getTypeName(),
-                                getObjectLayout().getArrayBaseOffset(hostedType.getComponentType().getStorageKind()), getObjectLayout().getArrayLengthOffset());
+                if (debug.isLogEnabled()) {
+                    debug.log("typename %s element type %s base size %d length offset %d%n", typeName, elementTypeEntry.getTypeName(),
+                                    getObjectLayout().getArrayBaseOffset(hostedType.getComponentType().getStorageKind()), getObjectLayout().getArrayLengthOffset());
+                }
                 return new ArrayTypeEntry(typeName, size, classOffset, typeSignature, compressedTypeSignature,
                                 layoutTypeSignature, elementTypeEntry, loaderEntry);
             } else {

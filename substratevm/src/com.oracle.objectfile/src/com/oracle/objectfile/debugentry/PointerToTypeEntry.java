@@ -25,7 +25,7 @@
 
 package com.oracle.objectfile.debugentry;
 
-public class PointerToTypeEntry extends TypeEntry {
+public final class PointerToTypeEntry extends TypeEntry {
     private TypeEntry pointerTo;
 
     public PointerToTypeEntry(String typeName, int size, long classOffset, long typeSignature, TypeEntry pointerTo) {

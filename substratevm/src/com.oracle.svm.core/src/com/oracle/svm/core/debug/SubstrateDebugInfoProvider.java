@@ -35,12 +35,10 @@ import org.graalvm.nativeimage.ProcessProperties;
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
-import com.oracle.objectfile.debugentry.ForeignStructTypeEntry;
 import com.oracle.objectfile.debugentry.LoaderEntry;
 import com.oracle.objectfile.debugentry.PointerToTypeEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -57,7 +55,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Implements the {@link com.oracle.objectfile.debuginfo.DebugInfoProvider DebugInfoProvider}
- * interface based on the {@code SharedDebugInfoProvider} to handle runt-time compiled methods.
+ * interface based on the {@code SharedDebugInfoProvider} to handle run-time compiled methods.
  *
  * <p>
  * For each run-time compilation, one {@code SubstrateDebugInfoProvider} is created and the debug
@@ -224,7 +222,7 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
         LoaderEntry loaderEntry = lookupLoaderEntry(type);
         int size = getTypeSize(type);
         long classOffset = -1;
-        String loaderName = loaderEntry == null ? "" : loaderEntry.loaderId();
+        String loaderName = loaderEntry.loaderId();
         long typeSignature = getTypeSignature(typeName + loaderName);
         long compressedTypeSignature = useHeapBase ? getTypeSignature(INDIRECT_PREFIX + typeName + loaderName) : typeSignature;
 
@@ -245,9 +243,6 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
                 // try to get an already generated version of this type
                 TypeEntry typeEntry = SubstrateDebugTypeEntrySupport.singleton().getTypeEntry(typeSignature);
 
-                // avoid optimizing ForeignStructTypeEntry
-                blackHole(new ForeignStructTypeEntry("dummy", -1, -1, -1, -1, "struct dummy", null));
-
                 if (typeEntry != null) {
                     // this must be a foreign type (struct, pointer, or primitive)
                     if (typeEntry instanceof PointerToTypeEntry pointerToTypeEntry && pointerToTypeEntry.getPointerTo() == null) {
@@ -261,10 +256,6 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
                 }
             }
         }
-    }
-
-    @NeverInline("Prevent instance getting optimized away")
-    void blackHole(@SuppressWarnings("unused") Object o) {
     }
 
     /**

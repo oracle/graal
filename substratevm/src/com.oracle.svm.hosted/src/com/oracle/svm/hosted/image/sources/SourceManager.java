@@ -71,7 +71,9 @@ public class SourceManager {
                 path = locateSource(fileName, packageName, clazz);
                 if (path == null) {
                     // as a last ditch effort derive path from the Java class name
-                    debugContext.log(DebugContext.INFO_LEVEL, "Failed to find source file for class %s%n", resolvedType.toJavaName());
+                    if (debugContext.isLogEnabled()) {
+                        debugContext.log(DebugContext.INFO_LEVEL, "Failed to find source file for class %s%n", resolvedType.toJavaName());
+                    }
                     if (!packageName.isEmpty()) {
                         path = Paths.get("", packageName.split("\\."));
                         path = path.resolve(fileName);

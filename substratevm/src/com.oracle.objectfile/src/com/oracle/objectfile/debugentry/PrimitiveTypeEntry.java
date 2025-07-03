@@ -28,7 +28,7 @@ package com.oracle.objectfile.debugentry;
 
 import jdk.vm.ci.meta.JavaKind;
 
-public class PrimitiveTypeEntry extends TypeEntry {
+public final class PrimitiveTypeEntry extends TypeEntry {
 
     private final int bitCount;
     private final boolean isNumericInteger;

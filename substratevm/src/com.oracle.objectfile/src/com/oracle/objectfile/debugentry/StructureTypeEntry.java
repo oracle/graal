@@ -34,7 +34,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
  * An intermediate type that provides behaviour for managing fields. This unifies code for handling
  * header structures and Java instance and array classes that both support data members.
  */
-public abstract class StructureTypeEntry extends TypeEntry {
+public abstract sealed class StructureTypeEntry extends TypeEntry permits ArrayTypeEntry, ClassEntry, ForeignStructTypeEntry, HeaderTypeEntry {
     /**
      * Details of fields located in this instance.
      */

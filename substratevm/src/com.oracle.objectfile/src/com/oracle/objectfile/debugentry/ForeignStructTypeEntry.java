@@ -25,7 +25,7 @@
 
 package com.oracle.objectfile.debugentry;
 
-public class ForeignStructTypeEntry extends StructureTypeEntry {
+public final class ForeignStructTypeEntry extends StructureTypeEntry {
 
     private final String typedefName;
     private final ForeignStructTypeEntry parent;

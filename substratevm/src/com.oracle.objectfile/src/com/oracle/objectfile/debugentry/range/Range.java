@@ -158,7 +158,7 @@ public abstract class Range implements Comparable<Range> {
     }
 
     /**
-     * Splits an initial range at the given stack decrement point. The lower split will stay as it
+     * Splits an initial range at the given stack decrement point. The lower split will stay as is
      * with its high offset reduced to the stack decrement point. The higher split starts at the
      * stack decrement point and has updated local value entries for the parameters in the then
      * extended stack.

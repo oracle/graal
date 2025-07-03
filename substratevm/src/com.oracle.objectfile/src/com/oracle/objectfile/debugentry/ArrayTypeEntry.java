@@ -26,7 +26,7 @@
 
 package com.oracle.objectfile.debugentry;
 
-public class ArrayTypeEntry extends StructureTypeEntry {
+public final class ArrayTypeEntry extends StructureTypeEntry {
     private final TypeEntry elementType;
     private final LoaderEntry loader;
 
@@ -43,6 +43,6 @@ public class ArrayTypeEntry extends StructureTypeEntry {
     }
 
     public String getLoaderId() {
-        return (loader != null ? loader.loaderId() : "");
+        return loader.loaderId();
     }
 }
