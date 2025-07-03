@@ -39,16 +39,56 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm;
+package org.graalvm.wasm.exception;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 
-public interface ExceptionProvider {
-    AbstractTruffleException createTypeError(String message);
+final class ExceptionProviders {
 
-    AbstractTruffleException formatTypeError(String format, Object... args);
+    static final ExceptionProvider WASM_JS_API_EXCEPTION_PROVIDER = new ExceptionProvider() {
+        @Override
+        public AbstractTruffleException createTypeError(Failure failure, String message) {
+            return new WasmJsApiException(WasmJsApiException.Kind.TypeError, message);
+        }
 
-    AbstractTruffleException createLinkError(String message);
+        @Override
+        public AbstractTruffleException formatTypeError(Failure failure, String format, Object... args) {
+            return WasmJsApiException.format(WasmJsApiException.Kind.TypeError, format, args);
+        }
 
-    AbstractTruffleException formatLinkError(String format, Object... args);
+        @Override
+        public AbstractTruffleException createLinkError(Failure failure, String message) {
+            return new WasmJsApiException(WasmJsApiException.Kind.LinkError, message);
+        }
+
+        @Override
+        public AbstractTruffleException formatLinkError(Failure failure, String format, Object... args) {
+            return WasmJsApiException.format(WasmJsApiException.Kind.LinkError, format, args);
+        }
+    };
+
+    static final ExceptionProvider POLYGLOT_EXCEPTION_PROVIDER = new ExceptionProvider() {
+        @Override
+        public AbstractTruffleException createTypeError(Failure failure, String message) {
+            return WasmException.create(failure, message);
+        }
+
+        @Override
+        public AbstractTruffleException formatTypeError(Failure failure, String format, Object... args) {
+            return WasmException.format(failure, format, args);
+        }
+
+        @Override
+        public AbstractTruffleException createLinkError(Failure failure, String message) {
+            return WasmException.create(failure, message);
+        }
+
+        @Override
+        public AbstractTruffleException formatLinkError(Failure failure, String format, Object... args) {
+            return WasmException.format(failure, format, args);
+        }
+    };
+
+    private ExceptionProviders() {
+    }
 }

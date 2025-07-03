@@ -39,60 +39,16 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm;
-
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.exception.WasmJsApiException;
+package org.graalvm.wasm.exception;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 
-public final class ExceptionProviders {
-    public static final ExceptionProvider WasmJsApiExceptionProvider = new ExceptionProvider() {
-        @Override
-        public AbstractTruffleException createTypeError(String message) {
-            return new WasmJsApiException(WasmJsApiException.Kind.TypeError, message);
-        }
+public interface ExceptionProvider {
+    AbstractTruffleException createTypeError(Failure failure, String message);
 
-        @Override
-        public AbstractTruffleException formatTypeError(String format, Object... args) {
-            return WasmJsApiException.format(WasmJsApiException.Kind.TypeError, format, args);
-        }
+    AbstractTruffleException formatTypeError(Failure failure, String format, Object... args);
 
-        @Override
-        public AbstractTruffleException createLinkError(String message) {
-            return new WasmJsApiException(WasmJsApiException.Kind.LinkError, message);
-        }
+    AbstractTruffleException createLinkError(Failure failure, String message);
 
-        @Override
-        public AbstractTruffleException formatLinkError(String format, Object... args) {
-            return WasmJsApiException.format(WasmJsApiException.Kind.LinkError, format, args);
-        }
-    };
-
-    public static final ExceptionProvider PolyglotExceptionProvider = new ExceptionProvider() {
-        @Override
-        public AbstractTruffleException createTypeError(String message) {
-            return WasmException.create(Failure.TYPE_MISMATCH, message);
-        }
-
-        @Override
-        public AbstractTruffleException formatTypeError(String format, Object... args) {
-            return WasmException.format(Failure.TYPE_MISMATCH, format, args);
-        }
-
-        @Override
-        public AbstractTruffleException createLinkError(String message) {
-            return WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE, message);
-        }
-
-        @Override
-        public AbstractTruffleException formatLinkError(String format, Object... args) {
-            return WasmException.format(Failure.INCOMPATIBLE_OPTIONS, format, args);
-        }
-    };
-
-    private ExceptionProviders() {
-
-    }
+    AbstractTruffleException formatLinkError(Failure failure, String format, Object... args);
 }
