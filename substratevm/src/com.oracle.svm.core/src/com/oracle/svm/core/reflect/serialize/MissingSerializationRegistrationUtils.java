@@ -24,37 +24,32 @@
  */
 package com.oracle.svm.core.reflect.serialize;
 
-import static com.oracle.svm.core.MissingRegistrationUtils.ERROR_EMPHASIS_INDENT;
-
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
+import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.MissingRegistrationUtils;
 
-public final class MissingSerializationRegistrationUtils {
+public final class MissingSerializationRegistrationUtils extends MissingRegistrationUtils {
 
-    public static void missingSerializationRegistration(Class<?> cl, String... msg) {
-        MissingSerializationRegistrationError exception = new MissingSerializationRegistrationError(errorMessage(msg), cl);
+    public static void reportSerialization(Class<?> cl) {
+        reportSerialization(cl, typeDescriptor(cl));
+    }
+
+    public static void reportSerialization(Class<?> cl, String serializedType) {
+        ConfigurationType type = getConfigurationType(cl);
+        type.setSerializable();
+
+        MissingSerializationRegistrationError exception = new MissingSerializationRegistrationError(serializationMessage(elementToJSON(type), serializedType), cl);
         StackTraceElement responsibleClass = getResponsibleClass(exception);
         MissingRegistrationUtils.report(exception, responsibleClass);
     }
 
-    private static String errorMessage(String... type) {
-        var typeStr = Arrays.stream(type).collect(Collectors.joining(System.lineSeparator(), ERROR_EMPHASIS_INDENT, ""));
-        return """
-                        The program tried to serialize or deserialize
-
-                        %s
-
-                        without it being registered for serialization. Add this class to the serialization metadata to solve this problem.
-                        See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#serialization for help
-                        """.replaceAll("\n", System.lineSeparator())
-                        .formatted(typeStr);
+    private static String serializationMessage(String json, String typeDescriptor) {
+        return registrationMessage("serialize or deserialize", typeDescriptor, json, "", "reflection", "reflection");
     }
 
     /*

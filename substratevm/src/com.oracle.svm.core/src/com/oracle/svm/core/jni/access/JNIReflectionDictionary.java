@@ -199,7 +199,7 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
 
     private static JNIAccessibleClass checkClass(JNIAccessibleClass clazz, String name) {
         if (throwMissingRegistrationErrors() && clazz == null) {
-            MissingJNIRegistrationUtils.forClass(name);
+            MissingJNIRegistrationUtils.reportClassAccess(name);
         } else if (clazz != null && clazz.isNegative()) {
             return null;
         }
@@ -326,7 +326,7 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
              * A malformed signature never throws a missing registration error since it can't
              * possibly match an existing method.
              */
-            MissingJNIRegistrationUtils.forMethod(clazz, name.toString(), signature.toString());
+            MissingJNIRegistrationUtils.reportMethodAccess(clazz, name.toString(), signature.toString());
         } else if (method != null && method.isNegative()) {
             return null;
         }
@@ -411,7 +411,7 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
 
     private static JNIAccessibleField checkField(JNIAccessibleField field, Class<?> clazz, CharSequence name) {
         if (throwMissingRegistrationErrors() && field == null) {
-            MissingJNIRegistrationUtils.forField(clazz, name.toString());
+            MissingJNIRegistrationUtils.reportFieldAccess(clazz, name.toString());
         } else if (field != null && field.isNegative()) {
             return null;
         }

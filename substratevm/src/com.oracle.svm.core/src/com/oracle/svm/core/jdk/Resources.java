@@ -463,9 +463,10 @@ public final class Resources implements MultiLayeredImageSingleton {
                                     CompressedGlobTrie.match(globsTrie, canonicalGlob)) {
                         return null;
                     }
+                    return missingMetadata(module, canonicalGlob, throwOnMissing);
                 }
 
-                return missingMetadata(resourceName, throwOnMissing);
+                return missingMetadata(module, resourceName, throwOnMissing);
             } else {
                 return null;
             }
@@ -474,7 +475,7 @@ public final class Resources implements MultiLayeredImageSingleton {
             MetadataTracer.singleton().traceResource(resourceName, moduleName);
         }
         if (!entry.getConditions().satisfied()) {
-            return missingMetadata(resourceName, throwOnMissing);
+            return missingMetadata(module, resourceName, throwOnMissing);
         }
 
         ResourceStorageEntryBase unconditionalEntry = entry.getValue();
@@ -512,9 +513,9 @@ public final class Resources implements MultiLayeredImageSingleton {
         return null;
     }
 
-    private static ResourceStorageEntryBase missingMetadata(String resourceName, boolean throwOnMissing) {
+    private static ResourceStorageEntryBase missingMetadata(Module module, String resourceName, boolean throwOnMissing) {
         if (throwOnMissing) {
-            MissingResourceRegistrationUtils.missingResource(resourceName);
+            MissingResourceRegistrationUtils.reportResourceAccess(module, resourceName);
         }
         return MISSING_METADATA_MARKER;
     }
@@ -572,7 +573,7 @@ public final class Resources implements MultiLayeredImageSingleton {
         }
 
         if (!isInMetadata) {
-            MissingResourceRegistrationUtils.missingResource(resourceName);
+            MissingResourceRegistrationUtils.reportResourceAccess(module, resourceName);
         }
         if (entry == null || entry == MISSING_METADATA_MARKER) {
             return null;
@@ -614,7 +615,7 @@ public final class Resources implements MultiLayeredImageSingleton {
         }
 
         if (missingMetadata) {
-            MissingResourceRegistrationUtils.missingResource(resourceName);
+            MissingResourceRegistrationUtils.reportResourceAccess(module, resourceName);
         }
 
         if (resourcesURLs.isEmpty()) {

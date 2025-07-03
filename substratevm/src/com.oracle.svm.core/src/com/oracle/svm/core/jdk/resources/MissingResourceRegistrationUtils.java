@@ -24,45 +24,59 @@
  */
 package com.oracle.svm.core.jdk.resources;
 
-import static com.oracle.svm.core.MissingRegistrationUtils.ERROR_EMPHASIS_INDENT;
-
+import java.io.IOException;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
 
+import com.oracle.svm.configure.ConditionalElement;
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.core.MissingRegistrationUtils;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.loader.BuiltinClassLoader;
 import jdk.internal.loader.Loader;
 
-public final class MissingResourceRegistrationUtils {
+public final class MissingResourceRegistrationUtils extends MissingRegistrationUtils {
 
-    public static void missingResource(String resourcePath) {
+    public static void reportResourceAccess(Module module, String resourcePath) {
+        String moduleMessage = module == null ? "" : " from module " + quote(module.getName());
+        String moduleOrNull = module == null ? null : module.getName();
+        ConditionalElement<ResourceConfiguration.ResourceEntry> entry = new ConditionalElement<>(
+                        UnresolvedConfigurationCondition.alwaysTrue(),
+                        new ResourceConfiguration.ResourceEntry(resourcePath, moduleOrNull));
+        StringWriter json = new StringWriter();
+        try {
+            ResourceConfiguration.conditionalGlobElementJson(entry, getJSONWriter(json), true);
+        } catch (IOException e) {
+            throw VMError.shouldNotReachHere("In memory JSON printing should not fail");
+        }
         MissingResourceRegistrationError exception = new MissingResourceRegistrationError(
-                        errorMessage("resource at path", resourcePath),
+                        resourceError("resource" + moduleMessage + " at path " + quote(resourcePath), json.toString(), "resources"),
                         resourcePath);
         report(exception);
     }
 
-    public static void missingResourceBundle(String baseName) {
+    public static void reportResourceBundleAccess(String baseName) {
+        var bundleConfig = new ResourceConfiguration.BundleConfiguration(UnresolvedConfigurationCondition.alwaysTrue(), baseName);
+        StringWriter json = new StringWriter();
+        try {
+            ResourceConfiguration.printResourceBundle(bundleConfig, getJSONWriter(json), true);
+        } catch (IOException e) {
+            throw VMError.shouldNotReachHere("In memory JSON printing should not fail");
+        }
         MissingResourceRegistrationError exception = new MissingResourceRegistrationError(
-                        errorMessage("resource bundle with name", baseName),
+                        resourceError("resource bundle with name " + quote(baseName), json.toString(), "resource-bundles"),
                         baseName);
         report(exception);
     }
 
-    private static String errorMessage(String type, String resourcePath) {
-        /* Can't use multi-line strings as they pull in format and bloat "Hello, World!" */
-        return "The program tried to access the " + type +
-                        System.lineSeparator() +
-                        System.lineSeparator() +
-                        ERROR_EMPHASIS_INDENT + resourcePath +
-                        System.lineSeparator() +
-                        System.lineSeparator() +
-                        "without it being registered as reachable. Add it to the resource metadata to solve this problem. " +
-                        "See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#resources-and-resource-bundles for help";
+    private static String resourceError(String resourceDescriptor, String resourceJSON, String anchor) {
+        return registrationMessage("access", resourceDescriptor, resourceJSON, "", "resources", anchor);
     }
 
     private static void report(MissingResourceRegistrationError exception) {

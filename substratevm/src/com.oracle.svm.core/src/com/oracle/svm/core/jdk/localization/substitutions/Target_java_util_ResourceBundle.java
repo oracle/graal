@@ -115,7 +115,7 @@ final class Target_java_util_ResourceBundle {
         // get resource bundles for a named module only if loader is the module's class loader
         if (callerModule.isNamed() && loader == getLoader(callerModule)) {
             if (!ImageSingletons.lookup(LocalizationSupport.class).isRegisteredBundleLookup(baseName, locale, control)) {
-                MissingResourceRegistrationUtils.missingResourceBundle(baseName);
+                MissingResourceRegistrationUtils.reportResourceBundleAccess(baseName);
             }
             return MissingRegistrationUtils.runIgnoringMissingRegistrations(new Supplier<ResourceBundle>() {
                 @Override
@@ -134,7 +134,7 @@ final class Target_java_util_ResourceBundle {
                         : BootLoader.getUnnamedModule();
 
         if (!ImageSingletons.lookup(LocalizationSupport.class).isRegisteredBundleLookup(baseName, locale, control)) {
-            MissingResourceRegistrationUtils.missingResourceBundle(baseName);
+            MissingResourceRegistrationUtils.reportResourceBundleAccess(baseName);
         }
         return MissingRegistrationUtils.runIgnoringMissingRegistrations(new Supplier<ResourceBundle>() {
             @Override
