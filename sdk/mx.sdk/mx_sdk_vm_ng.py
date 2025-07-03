@@ -462,12 +462,12 @@ class NativeImageBuildTask(mx.BuildTask):
             # we want "25.0.0-dev" and not "dev" (the default used in NativeImage#prepareImageBuildArgs)
             '-Dorg.graalvm.version={}'.format(_suite.release_version()),
         ] + mx_sdk_vm_impl.svm_experimental_options(experimental_build_args)
-        build_args += mx_sdk_vm_impl._extra_image_builder_args(canonical_name)
         if os.environ.get('JVMCI_VERSION_CHECK'):
             # Propagate this env var when running native image from mx
             build_args += ['-EJVMCI_VERSION_CHECK']
+        extra_build_args = mx_sdk_vm_impl._extra_image_builder_args(canonical_name)
 
-        return build_args + self.subject.get_build_args()
+        return build_args + self.subject.get_build_args() + extra_build_args
 
     def needsBuild(self, newestInput) -> Tuple[bool, str]:
         ts = TimeStampFile(self.subject.output_file())
