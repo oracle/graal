@@ -38,25 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.truffle.benchmark.bytecode_dsl.manual;
+package org.graalvm.truffle.benchmark.bytecode_dsl.manual.nodes;
 
-public class Opcodes {
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 
-    static final short OP_CONST = 1;
-    static final short OP_LD_ARG = 2;
-    static final short OP_ST_LOC = 3;
-    static final short OP_LD_LOC = 4;
-    static final short OP_ADD = 5;
-    static final short OP_MULT = 6;
-    static final short OP_DIV = 7;
-    static final short OP_MOD = 8;
-    static final short OP_LESS = 9;
-    static final short OP_EQ = 10;
-    static final short OP_ARRAY_LEN = 11;
-    static final short OP_ARRAY_INDEX = 12;
-    static final short OP_JUMP = 13;
-    static final short OP_JUMP_FALSE = 14;
-    static final short OP_RETURN = 15;
-    static final short OP_UNREACHABLE = 16;
+@SuppressWarnings("truffle-inlining")
+public abstract class ArrayIndexNode extends Node {
+    public abstract int execute(Object o, Object i);
 
+    @Specialization
+    public static int doIntArray(int[] arr, int i) {
+        return arr[i];
+    }
+
+    public static ArrayIndexNode create() {
+        return ArrayIndexNodeGen.create();
+    }
 }

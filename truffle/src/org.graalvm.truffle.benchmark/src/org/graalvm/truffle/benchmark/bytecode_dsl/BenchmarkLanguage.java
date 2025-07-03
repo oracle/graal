@@ -40,14 +40,11 @@
  */
 package org.graalvm.truffle.benchmark.bytecode_dsl;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Function;
+import java.lang.reflect.Method;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.BaseBytecodeRootNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.Builder;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
@@ -59,45 +56,28 @@ import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 
 /**
  * Basic language used for benchmarks.
- * <p>
- * Before execution, languages should use {@link #registerName} to map a benchmark name to a parsing
- * function. Then, {@link Context#eval eval} a {@link Source} with the same benchmark name to parse
- * a given benchmark.
  */
 @Registration(id = "bm", name = "bm")
 @ProvidedTags({RootTag.class, RootBodyTag.class})
 public class BenchmarkLanguage extends TruffleLanguage<Object> {
-
-    private static final Map<String, Function<BenchmarkLanguage, CallTarget>> NAMES = new HashMap<>();
 
     @Override
     protected Object createContext(Env env) {
         return new Object();
     }
 
-    public static void registerName(String name, Class<? extends BytecodeDSLBenchmarkRootNode> cls, BytecodeParser<BytecodeDSLBenchmarkRootNodeBuilder> parser) {
-        registerName(name, l -> {
-            BytecodeRootNodes<BytecodeDSLBenchmarkRootNode> nodes = createNodes(cls, l, parser);
-            return nodes.getNode(nodes.count() - 1).getCallTarget();
-        });
-    }
-
-    private static BytecodeRootNodes<BytecodeDSLBenchmarkRootNode> createNodes(Class<? extends BytecodeDSLBenchmarkRootNode> interpreterClass,
+    public static BytecodeRootNodes<BytecodeDSLBenchmarkRootNode> createBytecodeDSLNodes(Class<? extends BytecodeDSLBenchmarkRootNode> interpreterClass,
                     BenchmarkLanguage language, BytecodeParser<BytecodeDSLBenchmarkRootNodeBuilder> builder) {
         return BytecodeDSLBenchmarkRootNodeBuilder.invokeCreate(interpreterClass, language, BytecodeConfig.DEFAULT, builder);
     }
 
-    public static void registerName(String name, Function<BenchmarkLanguage, CallTarget> parser) {
-        NAMES.put(name, parser);
-    }
-
-    @Override
-    protected CallTarget parse(ParsingRequest request) throws Exception {
-        String name = request.getSource().getCharacters().toString();
-        if (!NAMES.containsKey(name)) {
-            throw new AssertionError("source not registered: " + name);
+    public static BaseBytecodeRootNode createBytecodeNodes(Class<? extends BaseBytecodeRootNode> interpreterClass,
+                    BenchmarkLanguage language, Builder builder) {
+        try {
+            Method method = interpreterClass.getMethod("create", BenchmarkLanguage.class, Builder.class);
+            return (BaseBytecodeRootNode) method.invoke(null, language, builder);
+        } catch (ReflectiveOperationException ex) {
+            throw new IllegalArgumentException(String.format("Bad interpreter class %s: could not reflectively invoke create method.", interpreterClass.getName()), ex);
         }
-
-        return NAMES.get(name).apply(this);
     }
 }

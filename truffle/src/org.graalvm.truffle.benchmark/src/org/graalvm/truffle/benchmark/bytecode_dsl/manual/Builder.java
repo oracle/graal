@@ -49,8 +49,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.truffle.benchmark.bytecode_dsl.manual.nodes.AddNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.nodes.ArrayIndexNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.nodes.ArrayLengthNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.nodes.DivNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.nodes.EqNode;
 import org.graalvm.truffle.benchmark.bytecode_dsl.manual.nodes.LtNode;
 import org.graalvm.truffle.benchmark.bytecode_dsl.manual.nodes.ModNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.nodes.MultNode;
 
 import com.oracle.truffle.api.bytecode.BytecodeDSLAccess;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -130,6 +135,12 @@ public class Builder {
         updateSp(1);
     }
 
+    public void loadArg(int index) {
+        writeShort(Opcodes.OP_LD_ARG);
+        writeInt(index);
+        updateSp(1);
+    }
+
     public void storeLocal(int local) {
         writeShort(Opcodes.OP_ST_LOC);
         writeInt(local);
@@ -148,6 +159,18 @@ public class Builder {
         updateSp(-1);
     }
 
+    public void emitMult() {
+        writeShort(Opcodes.OP_MULT);
+        writeInt(addNode(MultNode.create()));
+        updateSp(-1);
+    }
+
+    public void emitDiv() {
+        writeShort(Opcodes.OP_DIV);
+        writeInt(addNode(DivNode.create()));
+        updateSp(-1);
+    }
+
     public void emitMod() {
         writeShort(Opcodes.OP_MOD);
         writeInt(addNode(ModNode.create()));
@@ -157,6 +180,23 @@ public class Builder {
     public void emitLessThan() {
         writeShort(Opcodes.OP_LESS);
         writeInt(addNode(LtNode.create()));
+        updateSp(-1);
+    }
+
+    public void emitEq() {
+        writeShort(Opcodes.OP_EQ);
+        writeInt(addNode(EqNode.create()));
+        updateSp(-1);
+    }
+
+    public void emitArrayLength() {
+        writeShort(Opcodes.OP_ARRAY_LEN);
+        writeInt(addNode(ArrayLengthNode.create()));
+    }
+
+    public void emitArrayIndex() {
+        writeShort(Opcodes.OP_ARRAY_INDEX);
+        writeInt(addNode(ArrayIndexNode.create()));
         updateSp(-1);
     }
 
@@ -206,6 +246,10 @@ public class Builder {
     public void emitReturn() {
         writeShort(Opcodes.OP_RETURN);
         updateSp(-1);
+    }
+
+    public void emitUnreachable() {
+        writeShort(Opcodes.OP_UNREACHABLE);
     }
 
     public byte[] getBytecode() {

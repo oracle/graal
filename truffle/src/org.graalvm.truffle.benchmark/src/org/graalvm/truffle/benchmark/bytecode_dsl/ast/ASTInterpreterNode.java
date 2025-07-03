@@ -40,6 +40,9 @@
  */
 package org.graalvm.truffle.benchmark.bytecode_dsl.ast;
 
+import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNodeFactory.ConstNodeGen;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -86,6 +89,36 @@ public abstract class ASTInterpreterNode extends Node {
         @Specialization
         public int addInts(int lhs, int rhs) {
             return lhs + rhs;
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        public Object fallback(Object lhs, Object rhs) {
+            throw new AssertionError();
+        }
+    }
+
+    @NodeChild(type = ASTInterpreterNode.class)
+    @NodeChild(type = ASTInterpreterNode.class)
+    public abstract static class MultNode extends ASTInterpreterNode {
+        @Specialization
+        public int multInts(int lhs, int rhs) {
+            return lhs * rhs;
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        public Object fallback(Object lhs, Object rhs) {
+            throw new AssertionError();
+        }
+    }
+
+    @NodeChild(type = ASTInterpreterNode.class)
+    @NodeChild(type = ASTInterpreterNode.class)
+    public abstract static class DivNode extends ASTInterpreterNode {
+        @Specialization
+        public int divInts(int lhs, int rhs) {
+            return lhs / rhs;
         }
 
         @Fallback
@@ -239,6 +272,52 @@ public abstract class ASTInterpreterNode extends Node {
         }
     }
 
+    public static class SwitchNode extends ASTInterpreterNode {
+        @Child ASTInterpreterNode valueNode;
+        @Children final ASTInterpreterNode[] caseValues;
+        @Children final ASTInterpreterNode[] caseNodes;
+
+        public static final SwitchNode create(ASTInterpreterNode valueNode, Object... cases) {
+            if (cases.length % 2 != 0) {
+                throw new AssertionError("cases should be value-node pairs");
+            }
+            ASTInterpreterNode[] caseValues = new ASTInterpreterNode[cases.length / 2];
+            ASTInterpreterNode[] caseNodes = new ASTInterpreterNode[cases.length / 2];
+            for (int i = 0; i < caseValues.length; i++) {
+                if (!(cases[i * 2] instanceof Integer num)) {
+                    throw new AssertionError("invalid case value at index " + (i * 2) + ": " + cases[i * 2]);
+                }
+                if (!(cases[i * 2 + 1] instanceof ASTInterpreterNode node)) {
+                    throw new AssertionError("invalid case node at index " + (i * 2 + 1) + ": " + cases[i * 2 + 1]);
+                }
+                caseValues[i] = ConstNodeGen.create(num);
+                caseNodes[i] = node;
+            }
+            return new SwitchNode(valueNode, caseValues, caseNodes);
+        }
+
+        SwitchNode(ASTInterpreterNode value, ASTInterpreterNode[] caseValues, ASTInterpreterNode[] caseNodes) {
+            if (caseValues.length != caseNodes.length) {
+                throw new AssertionError("case size mismatch: " + caseValues.length + " versus " + caseNodes.length);
+            }
+            this.valueNode = value;
+            this.caseValues = caseValues;
+            this.caseNodes = caseNodes;
+        }
+
+        @Override
+        @ExplodeLoop
+        public Object execute(VirtualFrame frame) {
+            Object value = this.valueNode.execute(frame);
+            for (int i = 0; i < caseValues.length; i++) {
+                if (value == caseValues[i].execute(frame)) {
+                    return caseNodes[i].execute(frame);
+                }
+            }
+            return CompilerDirectives.shouldNotReachHere("unhandled value " + value);
+        }
+    }
+
     public abstract static class ConstNode extends ASTInterpreterNode {
 
         private final int value;
@@ -250,6 +329,31 @@ public abstract class ASTInterpreterNode extends Node {
         @Specialization
         public int doIt() {
             return value;
+        }
+    }
+
+    @SuppressWarnings("truffle-inlining")
+    public abstract static class LoadArgumentNode extends ASTInterpreterNode {
+        @Specialization
+        public static Object perform(VirtualFrame frame) {
+            return frame.getArguments()[0];
+        }
+    }
+
+    @NodeChild(type = ASTInterpreterNode.class)
+    public abstract static class ArrayLengthNode extends ASTInterpreterNode {
+        @Specialization
+        public static int doArray(int[] array) {
+            return array.length;
+        }
+    }
+
+    @NodeChild(value = "array", type = ASTInterpreterNode.class)
+    @NodeChild(value = "i", type = ASTInterpreterNode.class)
+    public abstract static class ArrayIndexNode extends ASTInterpreterNode {
+        @Specialization
+        public static int doArray(int[] array, int i) {
+            return array[i];
         }
     }
 }
