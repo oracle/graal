@@ -409,8 +409,8 @@ public abstract class SwitchNode extends ControlSplitNode implements Simplifiabl
      * Optimizes a switch statement by deduplicating the successor nodes of its case statements.
      *
      * <p>
-     * This transformation is applied to patterns where the same code is executed after each case,
-     * such as the following example:
+     * This transformation is only applied to patterns where the same code is executed after each
+     * case, such as the following example:
      *
      * <pre>
      * public static int switchReducePattern(int a) {
@@ -456,12 +456,12 @@ public abstract class SwitchNode extends ControlSplitNode implements Simplifiabl
      * </pre>
      */
     private void tryPullThroughSwitch(SimplifierTool tool) {
-        outer: do {
+        do {
             NodeBitMap nbm = this.graph().createNodeBitMap();
             for (Node successor : successors()) {
                 if (successor instanceof BeginNode begin && begin.next() instanceof FixedWithNextNode fwn) {
                     if (successor.hasUsages()) {
-                        break outer;
+                        return;
                     }
                     if (fwn instanceof AbstractBeginNode || fwn instanceof ControlFlowAnchored || fwn instanceof MemoryAnchorNode || fwn instanceof SwitchCaseProbabilityNode) {
                         /*
@@ -472,24 +472,24 @@ public abstract class SwitchNode extends ControlSplitNode implements Simplifiabl
                          * are anchored in their control-flow position, and should not be moved
                          * upwards.
                          */
-                        break outer;
+                        return;
                     }
 
                     // check if all case successors are structurally and data wise the same node
                     for (Node otherSuccessor : nbm) {
                         if (otherSuccessor.getClass() != fwn.getClass()) {
-                            break outer;
+                            return;
                         }
                         if (!fwn.getNodeClass().equalInputs(fwn, otherSuccessor)) {
-                            break outer;
+                            return;
                         }
                         if (!fwn.valueEquals(otherSuccessor)) {
-                            break outer;
+                            return;
                         }
                     }
                     nbm.mark(fwn);
                 } else {
-                    break outer;
+                    return;
                 }
             }
             GraalError.guarantee(nbm.count() == getSuccessorCount(), "Must find successorCount nodes");
