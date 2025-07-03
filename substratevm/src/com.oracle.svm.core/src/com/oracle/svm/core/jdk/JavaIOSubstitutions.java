@@ -70,6 +70,9 @@ final class Target_java_io_ObjectStreamClass {
         }
 
         if (Serializable.class.isAssignableFrom(cl) && !cl.isArray()) {
+            if (MetadataTracer.enabled()) {
+                MetadataTracer.singleton().traceSerializationType(cl.getName());
+            }
             if (!DynamicHub.fromClass(cl).isRegisteredForSerialization()) {
                 boolean isLambda = cl.getTypeName().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING);
                 boolean isProxy = Proxy.isProxyClass(cl);
@@ -87,9 +90,6 @@ final class Target_java_io_ObjectStreamClass {
                 } else {
                     MissingSerializationRegistrationUtils.missingSerializationRegistration(cl, "type " + cl.getTypeName());
                 }
-            }
-            if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
-                MetadataTracer.singleton().traceSerializationType(cl.getName());
             }
         }
 

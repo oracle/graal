@@ -74,7 +74,7 @@ public final class ResourceURLConnection extends URLConnection {
         String resourceName = urlPath.substring(1);
 
         Module module = hostNameOrNull != null ? ModuleLayer.boot().findModule(hostNameOrNull).orElse(null) : null;
-        Object entry = Resources.getAtRuntime(module, resourceName, true);
+        Object entry = Resources.getAtRuntime(module, resourceName, false);
         if (entry != null) {
             ResourceStorageEntry resourceStorageEntry = (ResourceStorageEntry) entry;
             List<byte[]> bytes = resourceStorageEntry.getData();
