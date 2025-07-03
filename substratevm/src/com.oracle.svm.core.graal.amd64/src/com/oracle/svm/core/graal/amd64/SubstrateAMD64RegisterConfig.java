@@ -244,7 +244,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
     @Override
     public PlatformKind getCalleeSaveRegisterStorageKind(Architecture arch, Register calleeSaveRegister) {
-        if (Platform.includedIn(Platform.WINDOWS.class) && AMD64.XMM.equals(calleeSaveRegister.getRegisterCategory())) {
+        if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) && AMD64.XMM.equals(calleeSaveRegister.getRegisterCategory())) {
             VMError.guarantee(calleeSaveRegister.encoding() >= xmm6.encoding() && calleeSaveRegister.encoding() <= xmm15.encoding(), "unexpected callee saved register");
             return V128_QWORD;
         }
