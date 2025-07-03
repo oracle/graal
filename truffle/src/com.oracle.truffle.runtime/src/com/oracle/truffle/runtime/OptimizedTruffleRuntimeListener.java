@@ -294,8 +294,25 @@ public interface OptimizedTruffleRuntimeListener {
      *
      * @param target the call target whose compiled code was just deoptimized
      * @param frame
+     * @param reason optional reason why the deoptimization happened.
      */
-    default void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
+    default void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame, String reason) {
+    }
+
+    /**
+     * Notifies this object when {@code target} has its execution profile reset.
+     *
+     * @param target the call target whose profile was just reset.
+     */
+    default void onProfileReset(OptimizedCallTarget target) {
+    }
+
+    /**
+     * Notifies this object when compilations of {@code target} are enabled.
+     *
+     * @param target the call target whose compilations are enabled.
+     */
+    default void onCompilationReenabled(OptimizedCallTarget target) {
     }
 
     /**
