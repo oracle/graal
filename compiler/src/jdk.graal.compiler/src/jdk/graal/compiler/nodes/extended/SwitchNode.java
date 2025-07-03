@@ -475,7 +475,7 @@ public abstract class SwitchNode extends ControlSplitNode implements Simplifiabl
                     if (fwn instanceof AbstractBeginNode || fwn instanceof ControlFlowAnchored || fwn instanceof MemoryAnchorNode || fwn instanceof SwitchCaseProbabilityNode) {
                         /*
                          * Cannot do this optimization for begin nodes, because it could move guards
-                         * above the if that need to stay below a branch.
+                         * above the control split that need to stay below a branch.
                          *
                          * Cannot do this optimization for ControlFlowAnchored nodes, because these
                          * are anchored in their control-flow position, and should not be moved
@@ -491,10 +491,7 @@ public abstract class SwitchNode extends ControlSplitNode implements Simplifiabl
                         if (referenceSuccessor.getClass() != fwn.getClass()) {
                             return;
                         }
-                        if (!fwn.getNodeClass().equalInputs(fwn, referenceSuccessor)) {
-                            return;
-                        }
-                        if (!fwn.valueEquals(referenceSuccessor)) {
+                        if (!fwn.dataFlowEquals(referenceSuccessor)) {
                             return;
                         }
                     }
