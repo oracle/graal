@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,44 +26,26 @@
 
 package com.oracle.objectfile.debugentry;
 
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Stream;
+import java.util.concurrent.ConcurrentSkipListSet;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInterfaceTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
+public final class InterfaceClassEntry extends ClassEntry {
+    private final ConcurrentSkipListSet<ClassEntry> implementors;
 
-import jdk.graal.compiler.debug.DebugContext;
-
-public class InterfaceClassEntry extends ClassEntry {
-    private final List<ClassEntry> implementors;
-
-    public InterfaceClassEntry(String className, FileEntry fileEntry, int size) {
-        super(className, fileEntry, size);
-        implementors = new ArrayList<>();
+    public InterfaceClassEntry(String typeName, int size, long classOffset, long typeSignature,
+                    long compressedTypeSignature, long layoutTypeSignature,
+                    ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader) {
+        super(typeName, size, classOffset, typeSignature, compressedTypeSignature, layoutTypeSignature, superClass, fileEntry, loader);
+        this.implementors = new ConcurrentSkipListSet<>(Comparator.comparingLong(ClassEntry::getTypeSignature));
     }
 
-    @Override
-    public DebugTypeKind typeKind() {
-        return DebugTypeKind.INTERFACE;
-    }
-
-    @Override
-    public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
-        assert debugTypeInfo instanceof DebugInterfaceTypeInfo;
-        super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
-    }
-
-    public void addImplementor(ClassEntry classEntry, DebugContext debugContext) {
+    public void addImplementor(ClassEntry classEntry) {
         implementors.add(classEntry);
-        if (debugContext.isLogEnabled()) {
-            debugContext.log("typename %s add implementor %s%n", typeName, classEntry.getTypeName());
-        }
     }
 
-    public Stream<ClassEntry> implementors() {
-        return implementors.stream();
+    public List<ClassEntry> getImplementors() {
+        return List.copyOf(implementors);
     }
 
     @Override
@@ -75,7 +57,7 @@ public class InterfaceClassEntry extends ClassEntry {
          * size of the wrapper class that handles address translation for values embedded in object
          * fields.
          */
-        int maxSize = super.size;
+        int maxSize = super.getSize();
         for (ClassEntry implementor : implementors) {
             int nextSize = implementor.getSize();
 

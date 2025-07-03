@@ -31,7 +31,7 @@ package com.oracle.objectfile.elf.dwarf.constants;
  */
 public enum DwarfExpressionOpcode {
     DW_OP_addr((byte) 0x03),
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused")//
     DW_OP_deref((byte) 0x06),
     DW_OP_dup((byte) 0x12),
     DW_OP_and((byte) 0x1a),
