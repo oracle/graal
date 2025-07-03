@@ -42,6 +42,9 @@ package org.graalvm.wasm;
 
 import java.util.List;
 
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -174,7 +177,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
                     mainInstance = instance;
                 }
             } else {
-                throw ExceptionProviders.PolyglotExceptionProvider.createTypeError("Arguments must be modules");
+                throw WasmException.provider().createTypeError(Failure.TYPE_MISMATCH, "Arguments must be modules");
             }
         }
         store.linker().tryLink(mainInstance);

@@ -51,6 +51,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.debugging.data.DebugFunction;
 import org.graalvm.wasm.debugging.parser.DebugTranslator;
+import org.graalvm.wasm.exception.ExceptionProvider;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.globals.WasmGlobal;
@@ -303,7 +304,7 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
                 otherModules.add(module);
             } else {
                 if (importObjectOrNull != null) {
-                    throw ExceptionProviders.PolyglotExceptionProvider.createTypeError("Can only provide a single import object. Other arguments must be modules.");
+                    throw WasmException.provider().createTypeError(Failure.TYPE_MISMATCH, "Can only provide a single import object. Other arguments must be modules.");
                 }
                 importObjectOrNull = argument;
             }
@@ -311,11 +312,11 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         final WasmStore store = new WasmStore(context, context.language());
         final WasmInstance instance = store.readInstance(this);
         Object importObject = Objects.requireNonNullElse(importObjectOrNull, WasmConstant.NULL);
-        var imports = resolveModuleImports(importObject, ExceptionProviders.PolyglotExceptionProvider, false);
+        var imports = resolveModuleImports(importObject, WasmException.provider(), false);
         if (otherModules != null) {
             for (WasmModule module : otherModules) {
                 store.readInstance(module);
-                imports = imports.andThen(module.resolveModuleImports(importObject, ExceptionProviders.PolyglotExceptionProvider, false));
+                imports = imports.andThen(module.resolveModuleImports(importObject, WasmException.provider(), false));
             }
         }
         store.linker().tryLink(instance, imports);
@@ -337,7 +338,7 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         if (!importedSymbols().isEmpty()) {
             if (!importObjectExists(importObject)) {
                 if (importsOnlyInImportObject) {
-                    throw exceptionProvider.createTypeError("Module requires imports, but import object is undefined.");
+                    throw exceptionProvider.createTypeError(Failure.TYPE_MISMATCH, "Module requires imports, but import object is undefined.");
                 } else {
                     // imports could be provided by another source, such as a module.
                     return ImportValueSupplier.none();
@@ -390,12 +391,12 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
                 if (!importsOnlyInImportObject) {
                     return null;
                 }
-                throw exceptionProvider.formatTypeError("Import object does not contain module \"%s\".", descriptor.moduleName());
+                throw exceptionProvider.formatTypeError(Failure.TYPE_MISMATCH, "Import object does not contain module \"%s\".", descriptor.moduleName());
             }
             final Object importedModuleObject = importObjectInterop.readMember(importObject, descriptor.moduleName());
             final InteropLibrary moduleObjectInterop = InteropLibrary.getUncached(importedModuleObject);
             if (!moduleObjectInterop.isMemberReadable(importedModuleObject, descriptor.memberName())) {
-                throw exceptionProvider.formatLinkError("Import module object \"%s\" does not contain \"%s\".", descriptor.moduleName(), descriptor.memberName());
+                throw exceptionProvider.formatLinkError(Failure.UNKNOWN_IMPORT, "Import module object \"%s\" does not contain \"%s\".", descriptor.moduleName(), descriptor.memberName());
             }
             return moduleObjectInterop.readMember(importedModuleObject, descriptor.memberName());
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
@@ -405,28 +406,28 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
 
     private static Object requireCallable(Object member, ImportDescriptor importDescriptor, ExceptionProvider exceptionProvider) {
         if (!(member instanceof WasmFunctionInstance || InteropLibrary.getUncached().isExecutable(member))) {
-            throw exceptionProvider.createLinkError("Member " + member + " " + importDescriptor + " is not callable.");
+            throw exceptionProvider.createLinkError(Failure.INCOMPATIBLE_IMPORT_TYPE, "Member " + member + " " + importDescriptor + " is not callable.");
         }
         return member;
     }
 
     private static WasmMemory requireWasmMemory(Object member, ImportDescriptor importDescriptor, ExceptionProvider exceptionProvider) {
         if (!(member instanceof WasmMemory memory)) {
-            throw exceptionProvider.createLinkError("Member " + member + " " + importDescriptor + " is not a valid memory.");
+            throw exceptionProvider.createLinkError(Failure.INCOMPATIBLE_IMPORT_TYPE, "Member " + member + " " + importDescriptor + " is not a valid memory.");
         }
         return memory;
     }
 
     private static WasmTable requireWasmTable(Object member, ImportDescriptor importDescriptor, ExceptionProvider exceptionProvider) {
         if (!(member instanceof WasmTable table)) {
-            throw exceptionProvider.createLinkError("Member " + member + " " + importDescriptor + " is not a valid table.");
+            throw exceptionProvider.createLinkError(Failure.INCOMPATIBLE_IMPORT_TYPE, "Member " + member + " " + importDescriptor + " is not a valid table.");
         }
         return table;
     }
 
     private static WasmGlobal requireWasmGlobal(Object member, ImportDescriptor importDescriptor, ExceptionProvider exceptionProvider) {
         if (!(member instanceof WasmGlobal global)) {
-            throw exceptionProvider.createLinkError("Member " + member + " " + importDescriptor + " is not a valid global.");
+            throw exceptionProvider.createLinkError(Failure.INCOMPATIBLE_IMPORT_TYPE, "Member " + member + " " + importDescriptor + " is not a valid global.");
         }
         return global;
     }

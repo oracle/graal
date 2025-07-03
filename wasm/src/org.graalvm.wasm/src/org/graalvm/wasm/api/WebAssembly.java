@@ -52,7 +52,6 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.EmbedderDataHolder;
-import org.graalvm.wasm.ExceptionProviders;
 import org.graalvm.wasm.ImportDescriptor;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
@@ -139,7 +138,7 @@ public class WebAssembly extends Dictionary {
     public WasmInstance moduleInstantiate(WasmModule module, Object importObject) {
         CompilerAsserts.neverPartOfCompilation();
         final WasmStore store = new WasmStore(currentContext, currentContext.language());
-        return module.createInstance(store, importObject, ExceptionProviders.WasmJsApiExceptionProvider, true);
+        return module.createInstance(store, importObject, WasmJsApiException.provider(), true);
     }
 
     private static String makeModuleName(byte[] data) {
