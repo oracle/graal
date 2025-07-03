@@ -42,8 +42,13 @@ package org.graalvm.truffle.benchmark.bytecode_dsl.manual;
 
 import org.graalvm.truffle.benchmark.bytecode_dsl.BenchmarkLanguage;
 import org.graalvm.truffle.benchmark.bytecode_dsl.manual.nodes.AddNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.nodes.ArrayIndexNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.nodes.ArrayLengthNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.nodes.DivNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.nodes.EqNode;
 import org.graalvm.truffle.benchmark.bytecode_dsl.manual.nodes.LtNode;
 import org.graalvm.truffle.benchmark.bytecode_dsl.manual.nodes.ModNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.nodes.MultNode;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -99,6 +104,13 @@ public class BytecodeInterpreterAllOpts extends BaseBytecodeRootNode {
                     bci += 6;
                     continue loop;
                 }
+                // ( -- o)
+                case Opcodes.OP_LD_ARG: {
+                    FRAMES.setObject(frame, sp, frame.getArguments()[BYTES.getIntUnaligned(localBc, bci + 2)]);
+                    sp += 1;
+                    bci += 6;
+                    continue loop;
+                }
                 // (i -- )
                 case Opcodes.OP_ST_LOC: {
                     FRAMES.copy(frame, sp - 1, BYTES.getIntUnaligned(localBc, bci + 2));
@@ -125,6 +137,26 @@ public class BytecodeInterpreterAllOpts extends BaseBytecodeRootNode {
                     continue loop;
                 }
                 // (i1 i2 -- i3)
+                case Opcodes.OP_MULT: {
+                    int lhs = FRAMES.expectInt(frame, sp - 2);
+                    int rhs = FRAMES.expectInt(frame, sp - 1);
+                    FRAMES.setInt(frame, sp - 2, ACCESS.uncheckedCast(ACCESS.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), MultNode.class).execute(lhs, rhs));
+                    FRAMES.clear(frame, sp - 1);
+                    sp -= 1;
+                    bci += 6;
+                    continue loop;
+                }
+                // (i1 i2 -- i3)
+                case Opcodes.OP_DIV: {
+                    int lhs = FRAMES.expectInt(frame, sp - 2);
+                    int rhs = FRAMES.expectInt(frame, sp - 1);
+                    FRAMES.setInt(frame, sp - 2, ACCESS.uncheckedCast(ACCESS.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), DivNode.class).execute(lhs, rhs));
+                    FRAMES.clear(frame, sp - 1);
+                    sp -= 1;
+                    bci += 6;
+                    continue loop;
+                }
+                // (i1 i2 -- i3)
                 case Opcodes.OP_MOD: {
                     int lhs = FRAMES.expectInt(frame, sp - 2);
                     int rhs = FRAMES.expectInt(frame, sp - 1);
@@ -139,6 +171,33 @@ public class BytecodeInterpreterAllOpts extends BaseBytecodeRootNode {
                     int lhs = FRAMES.expectInt(frame, sp - 2);
                     int rhs = FRAMES.expectInt(frame, sp - 1);
                     FRAMES.setBoolean(frame, sp - 2, ACCESS.uncheckedCast(ACCESS.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), LtNode.class).execute(lhs, rhs));
+                    FRAMES.clear(frame, sp - 1);
+                    sp -= 1;
+                    bci += 6;
+                    continue loop;
+                }
+                // (i1 i2 -- b)
+                case Opcodes.OP_EQ: {
+                    int lhs = FRAMES.expectInt(frame, sp - 2);
+                    int rhs = FRAMES.expectInt(frame, sp - 1);
+                    FRAMES.setBoolean(frame, sp - 2, ACCESS.uncheckedCast(ACCESS.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), EqNode.class).execute(lhs, rhs));
+                    FRAMES.clear(frame, sp - 1);
+                    sp -= 1;
+                    bci += 6;
+                    continue loop;
+                }
+                // (o -- i)
+                case Opcodes.OP_ARRAY_LEN: {
+                    Object o = FRAMES.expectObject(frame, sp - 1);
+                    FRAMES.setInt(frame, sp - 1, ACCESS.uncheckedCast(ACCESS.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), ArrayLengthNode.class).execute(o));
+                    bci += 6;
+                    continue loop;
+                }
+                // (o i -- i)
+                case Opcodes.OP_ARRAY_INDEX: {
+                    Object o = FRAMES.expectObject(frame, sp - 2);
+                    int i = FRAMES.expectInt(frame, sp - 1);
+                    FRAMES.setInt(frame, sp - 2, ACCESS.uncheckedCast(ACCESS.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), ArrayIndexNode.class).execute(o, i));
                     FRAMES.clear(frame, sp - 1);
                     sp -= 1;
                     bci += 6;
@@ -175,6 +234,8 @@ public class BytecodeInterpreterAllOpts extends BaseBytecodeRootNode {
                 case Opcodes.OP_RETURN: {
                     return FRAMES.expectInt(frame, sp - 1);
                 }
+                // ( -- )
+                case Opcodes.OP_UNREACHABLE:
                 default:
                     CompilerDirectives.shouldNotReachHere();
             }

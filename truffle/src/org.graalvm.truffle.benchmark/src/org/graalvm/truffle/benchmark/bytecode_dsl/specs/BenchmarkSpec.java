@@ -38,25 +38,47 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.truffle.benchmark.bytecode_dsl.manual;
+package org.graalvm.truffle.benchmark.bytecode_dsl.specs;
 
-public class Opcodes {
+import org.graalvm.truffle.benchmark.bytecode_dsl.BenchmarkLanguage;
+import org.graalvm.truffle.benchmark.bytecode_dsl.BytecodeDSLBenchmarkRootNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.BytecodeDSLBenchmarkRootNodeBuilder;
+import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterRootNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.BaseBytecodeRootNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.Builder;
 
-    static final short OP_CONST = 1;
-    static final short OP_LD_ARG = 2;
-    static final short OP_ST_LOC = 3;
-    static final short OP_LD_LOC = 4;
-    static final short OP_ADD = 5;
-    static final short OP_MULT = 6;
-    static final short OP_DIV = 7;
-    static final short OP_MOD = 8;
-    static final short OP_LESS = 9;
-    static final short OP_EQ = 10;
-    static final short OP_ARRAY_LEN = 11;
-    static final short OP_ARRAY_INDEX = 12;
-    static final short OP_JUMP = 13;
-    static final short OP_JUMP_FALSE = 14;
-    static final short OP_RETURN = 15;
-    static final short OP_UNREACHABLE = 16;
+import com.oracle.truffle.api.CallTarget;
 
+/**
+ * Represents a benchmark that can be run with multiple different interpreters.
+ */
+public interface BenchmarkSpec {
+    /**
+     * The result that the benchmark should produce. Only checked when -DCheckResults is set.
+     */
+    Object expectedResult();
+
+    /**
+     * The arguments to supply to the benchmark during warmup.
+     */
+    default Object[] arguments() {
+        return new Object[0];
+    }
+
+    /**
+     * Builds the benchmark for execution with the {@link BytecodeDSLBenchmarkRootNode Bytecode DSL
+     * interpreter}.
+     */
+    void parseBytecodeDSL(BytecodeDSLBenchmarkRootNodeBuilder b);
+
+    /**
+     * Builds the benchmark for execution with the {@link BaseBytecodeRootNode manual bytecode
+     * interpreter}.
+     */
+    void parseBytecode(Builder b);
+
+    /**
+     * Builds the benchmark for execution with the {@link ASTInterpreterRootNode AST interpreter}.
+     */
+    CallTarget parseAST(BenchmarkLanguage lang);
 }

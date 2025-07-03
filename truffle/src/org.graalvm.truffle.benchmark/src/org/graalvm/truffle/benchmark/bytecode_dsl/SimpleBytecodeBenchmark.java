@@ -40,337 +40,72 @@
  */
 package org.graalvm.truffle.benchmark.bytecode_dsl;
 
+import static org.graalvm.truffle.benchmark.bytecode_dsl.BenchmarkLanguage.createBytecodeDSLNodes;
+import static org.graalvm.truffle.benchmark.bytecode_dsl.BenchmarkLanguage.createBytecodeNodes;
+
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.truffle.benchmark.TruffleBenchmark;
-import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNodeFactory.AddNodeGen;
-import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNodeFactory.ConstNodeGen;
-import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNodeFactory.LessNodeGen;
-import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNodeFactory.LoadLocalNodeGen;
-import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNodeFactory.ModNodeGen;
-import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNodeFactory.ReturnNodeGen;
-import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNodeFactory.StoreLocalNodeGen;
-import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterRootNode;
-import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNode.BlockNode;
-import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNode.IfNode;
-import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNode.WhileNode;
 import org.graalvm.truffle.benchmark.bytecode_dsl.manual.Builder;
 import org.graalvm.truffle.benchmark.bytecode_dsl.manual.BytecodeInterpreterAllOpts;
 import org.graalvm.truffle.benchmark.bytecode_dsl.manual.BytecodeInterpreterNoOpts;
-
+import org.graalvm.truffle.benchmark.bytecode_dsl.specs.BenchmarkSpec;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
+import org.openjdk.jmh.infra.BenchmarkParams;
 
-import com.oracle.truffle.api.bytecode.BytecodeLocal;
-import com.oracle.truffle.api.bytecode.BytecodeParser;
+import com.oracle.truffle.api.CallTarget;
 
 @State(Scope.Benchmark)
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 5, time = 1)
-public class SimpleBytecodeBenchmark extends TruffleBenchmark {
+public class SimpleBytecodeBenchmark extends AbstractBytecodeBenchmark {
 
-    private static final int TOTAL_ITERATIONS;
-    static {
-        String iters = System.getenv("TOTAL_ITERATIONS");
-        TOTAL_ITERATIONS = (iters == null) ? 5000 : Integer.parseInt(iters);
-    }
-    private static final boolean PRINT_RESULTS = System.getProperty("PrintResults") != null;
-
-    private static final String NAME_BYTECODE_DSL_NO_OPTS = "simple:bytecode-dsl-no-opts";
-    private static final String NAME_BYTECODE_DSL_ALL_OPTS = "simple:bytecode-dsl-all-opts";
-    private static final String NAME_BYTECODE_DSL_UNCACHED = "simple:bytecode-dsl-uncached";
-    private static final String NAME_MANUAL_NO_OPTS = "simple:manual-no-opts";
-    private static final String NAME_MANUAL_ALL_OPTS = "simple:manual-all-opts";
-    private static final String NAME_AST = "simple:ast";
-
-    private static final Source SOURCE_BYTECODE_DSL_NO_OPTS = Source.create("bm", NAME_BYTECODE_DSL_NO_OPTS);
-    private static final Source SOURCE_BYTECODE_DSL_ALL_OPTS = Source.create("bm", NAME_BYTECODE_DSL_ALL_OPTS);
-    private static final Source SOURCE_BYTECODE_DSL_UNCACHED = Source.create("bm", NAME_BYTECODE_DSL_UNCACHED);
-    private static final Source SOURCE_MANUAL_NO_OPTS = Source.create("bm", NAME_MANUAL_NO_OPTS);
-    private static final Source SOURCE_MANUAL_ALL_OPTS = Source.create("bm", NAME_MANUAL_ALL_OPTS);
-    private static final Source SOURCE_AST = Source.create("bm", NAME_AST);
-
-    /**
-     * The benchmark programs implement:
-     *
-     * <pre>
-     * int i = 0;
-     * int sum = 0;
-     * while (i < 5000) {
-     *     int j = 0;
-     *     while (j < i) {
-     *         int temp;
-     *         if (i % 3 < 1) {
-     *             temp = 1;
-     *         } else {
-     *             temp = i % 3;
-     *         }
-     *         j = j + temp;
-     *     }
-     *     sum = sum + j;
-     *     i = i + 1;
-     * }
-     * return sum;
-     * </pre>
-     *
-     * The result should be 12498333.
-     */
-
-    private static void createSimpleLoopManualBytecode(Builder b) {
-        int i = b.createLocal();
-        int sum = b.createLocal();
-        int j = b.createLocal();
-        int temp = b.createLocal();
-
-        // i = 0
-        b.loadConstant(0);
-        b.storeLocal(i);
-
-        // sum = 0
-        b.loadConstant(0);
-        b.storeLocal(sum);
-
-        // while (i < TOTAL_ITERATIONS) {
-        int outerWhileStart = b.currentBci();
-        b.loadLocal(i);
-        b.loadConstant(TOTAL_ITERATIONS);
-        b.emitLessThan();
-        int branchOuterWhileEnd = b.emitJumpFalse();
-
-        // j = 0
-        b.loadConstant(0);
-        b.storeLocal(j);
-
-        // while (j < i) {
-        int innerWhileStart = b.currentBci();
-        b.loadLocal(j);
-        b.loadLocal(i);
-        b.emitLessThan();
-        int branchInnerWhileEnd = b.emitJumpFalse();
-
-        // if (i % 3 < 1) {
-        b.loadLocal(i);
-        b.loadConstant(3);
-        b.emitMod();
-        b.loadConstant(1);
-        b.emitLessThan();
-        int branchElse = b.emitJumpFalse();
-
-        // temp = 1
-        b.loadConstant(1);
-        b.storeLocal(temp);
-        int branchEnd = b.emitJump();
-
-        // temp = i % 3
-        b.patchJumpFalse(branchElse, b.currentBci());
-        b.loadLocal(i);
-        b.loadConstant(3);
-        b.emitMod();
-        b.storeLocal(temp);
-
-        // j = j + temp
-        b.patchJump(branchEnd, b.currentBci());
-        b.loadLocal(j);
-        b.loadLocal(temp);
-        b.emitAdd();
-        b.storeLocal(j);
-        b.emitJump(innerWhileStart);
-
-        // sum = sum + j
-        b.patchJumpFalse(branchInnerWhileEnd, b.currentBci());
-        b.loadLocal(sum);
-        b.loadLocal(j);
-        b.emitAdd();
-        b.storeLocal(sum);
-
-        // i = i + 1
-        b.loadLocal(i);
-        b.loadConstant(1);
-        b.emitAdd();
-        b.storeLocal(i);
-        b.emitJump(outerWhileStart);
-
-        // return sum
-        b.patchJumpFalse(branchOuterWhileEnd, b.currentBci());
-        b.loadLocal(sum);
-        b.emitReturn();
-    }
-
-    public static BytecodeParser<BytecodeDSLBenchmarkRootNodeBuilder> createBytecodeDSLParser(boolean forceUncached) {
-        return b -> {
-            b.beginRoot();
-
-            BytecodeLocal iLoc = b.createLocal();
-            BytecodeLocal sumLoc = b.createLocal();
-            BytecodeLocal jLoc = b.createLocal();
-            BytecodeLocal tempLoc = b.createLocal();
-
-            // int i = 0;
-            b.beginStoreLocal(iLoc);
-            b.emitLoadConstant(0);
-            b.endStoreLocal();
-
-            // int sum = 0;
-            b.beginStoreLocal(sumLoc);
-            b.emitLoadConstant(0);
-            b.endStoreLocal();
-
-            // while (i < TOTAL_ITERATIONS) {
-            b.beginWhile();
-            b.beginLess();
-            b.emitLoadLocal(iLoc);
-            b.emitLoadConstant(5000);
-            b.endLess();
-            b.beginBlock();
-
-            // int j = 0;
-            b.beginStoreLocal(jLoc);
-            b.emitLoadConstant(0);
-            b.endStoreLocal();
-
-            // while (j < i) {
-            b.beginWhile();
-            b.beginLess();
-            b.emitLoadLocal(jLoc);
-            b.emitLoadLocal(iLoc);
-            b.endLess();
-            b.beginBlock();
-
-            // int temp;
-            // if (i % 3 < 1) {
-            b.beginIfThenElse();
-
-            b.beginLess();
-            b.beginMod();
-            b.emitLoadLocal(iLoc);
-            b.emitLoadConstant(3);
-            b.endMod();
-            b.emitLoadConstant(1);
-            b.endLess();
-
-            // temp = 1;
-            b.beginStoreLocal(tempLoc);
-            b.emitLoadConstant(1);
-            b.endStoreLocal();
-
-            // } else {
-            // temp = i % 3;
-            b.beginStoreLocal(tempLoc);
-            b.beginMod();
-            b.emitLoadLocal(iLoc);
-            b.emitLoadConstant(3);
-            b.endMod();
-            b.endStoreLocal();
-
-            // }
-            b.endIfThenElse();
-
-            // j = j + temp;
-            b.beginStoreLocal(jLoc);
-            b.beginAdd();
-            b.emitLoadLocal(jLoc);
-            b.emitLoadLocal(tempLoc);
-            b.endAdd();
-            b.endStoreLocal();
-
-            // }
-            b.endBlock();
-            b.endWhile();
-
-            // sum = sum + j;
-            b.beginStoreLocal(sumLoc);
-            b.beginAdd();
-            b.emitLoadLocal(sumLoc);
-            b.emitLoadLocal(jLoc);
-            b.endAdd();
-            b.endStoreLocal();
-
-            // i = i + 1;
-            b.beginStoreLocal(iLoc);
-            b.beginAdd();
-            b.emitLoadLocal(iLoc);
-            b.emitLoadConstant(1);
-            b.endAdd();
-            b.endStoreLocal();
-
-            // }
-            b.endBlock();
-            b.endWhile();
-
-            // return sum;
-            b.beginReturn();
-            b.emitLoadLocal(sumLoc);
-            b.endReturn();
-
-            BytecodeDSLBenchmarkRootNode root = b.endRoot();
-            if (forceUncached) {
-                root.getBytecodeNode().setUncachedThreshold(Integer.MIN_VALUE);
-            }
-        };
-    }
-
-    static {
-        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_NO_OPTS, BytecodeDSLBenchmarkRootNodeNoOpts.class, createBytecodeDSLParser(false));
-        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_ALL_OPTS, BytecodeDSLBenchmarkRootNodeAllOpts.class, createBytecodeDSLParser(false));
-        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_UNCACHED, BytecodeDSLBenchmarkRootNodeUncached.class, createBytecodeDSLParser(true));
-        BenchmarkLanguage.registerName(NAME_MANUAL_NO_OPTS, lang -> {
-            var builder = Builder.newBuilder();
-            createSimpleLoopManualBytecode(builder);
-            return BytecodeInterpreterNoOpts.create(lang, builder).getCallTarget();
-        });
-        BenchmarkLanguage.registerName(NAME_MANUAL_ALL_OPTS, lang -> {
-            var builder = Builder.newBuilder();
-            createSimpleLoopManualBytecode(builder);
-            return BytecodeInterpreterAllOpts.create(lang, builder).getCallTarget();
-        });
-        BenchmarkLanguage.registerName(NAME_AST, lang -> {
-            int iLoc = 0;
-            int sumLoc = 1;
-            int jLoc = 2;
-            int tempLoc = 3;
-            return new ASTInterpreterRootNode(lang, 4, BlockNode.create(
-                            // i = 0
-                            StoreLocalNodeGen.create(iLoc, ConstNodeGen.create(0)),
-                            // sum = 0
-                            StoreLocalNodeGen.create(sumLoc, ConstNodeGen.create(0)),
-                            // while (i < 5000) {
-                            WhileNode.create(LessNodeGen.create(LoadLocalNodeGen.create(iLoc), ConstNodeGen.create(TOTAL_ITERATIONS)), BlockNode.create(
-                                            // j = 0
-                                            StoreLocalNodeGen.create(jLoc, ConstNodeGen.create(0)),
-                                            // while (j < i) {
-                                            WhileNode.create(LessNodeGen.create(LoadLocalNodeGen.create(jLoc), LoadLocalNodeGen.create(iLoc)), BlockNode.create(
-                                                            // if (i % 3 < 1) {
-                                                            IfNode.create(LessNodeGen.create(ModNodeGen.create(LoadLocalNodeGen.create(iLoc), ConstNodeGen.create(3)), ConstNodeGen.create(1)),
-                                                                            // temp = 1
-                                                                            StoreLocalNodeGen.create(tempLoc, ConstNodeGen.create(1)),
-                                                                            // } else {
-                                                                            // temp = i % 3
-                                                                            StoreLocalNodeGen.create(tempLoc, ModNodeGen.create(LoadLocalNodeGen.create(iLoc), ConstNodeGen.create(3)))),
-                                                            // }
-                                                            // j = j + temp
-                                                            StoreLocalNodeGen.create(jLoc, AddNodeGen.create(LoadLocalNodeGen.create(jLoc), LoadLocalNodeGen.create(tempLoc))))),
-                                            // }
-                                            // sum = sum + j
-                                            StoreLocalNodeGen.create(sumLoc, AddNodeGen.create(LoadLocalNodeGen.create(sumLoc), LoadLocalNodeGen.create(jLoc))),
-                                            // i = i + 1
-                                            StoreLocalNodeGen.create(iLoc, AddNodeGen.create(LoadLocalNodeGen.create(iLoc), ConstNodeGen.create(1))))),
-                            // return sum
-                            ReturnNodeGen.create(LoadLocalNodeGen.create(sumLoc)))).getCallTarget();
-        });
-    }
-
+    @Param({"NestedLoopBenchmark", "CalculatorBenchmark"}) private String benchmarkSpecClass;
+    private BenchmarkSpec benchmarkSpec;
     private Context context;
+    // The call target under test (populated during setup with the correct call target)
+    private CallTarget callTarget;
+    // For expected result checking, when enabled.
+    private Object result;
+
+    @Override
+    protected String getBenchmarkSpecClassName() {
+        return benchmarkSpecClass;
+    }
 
     @Setup(Level.Trial)
-    public void setup() {
+    public void setup(BenchmarkParams params) {
         context = Context.newBuilder("bm").allowExperimentalOptions(true).build();
+
+        benchmarkSpec = getBenchmarkSpec();
+        String benchMethod = getBenchmarkMethod(params);
+        callTarget = switch (benchMethod) {
+            case "bytecodeDSLNoOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeNoOpts.class, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
+            case "bytecodeDSLAllOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeAllOpts.class, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
+            case "bytecodeDSLUncached" -> {
+                var node = createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeUncached.class, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast();
+                node.getBytecodeNode().setUncachedThreshold(Integer.MIN_VALUE);
+                yield node.getCallTarget();
+            }
+            case "manualNoOpts" -> {
+                var builder = Builder.newBuilder();
+                benchmarkSpec.parseBytecode(builder);
+                yield createBytecodeNodes(BytecodeInterpreterNoOpts.class, null, builder).getCallTarget();
+            }
+            case "manualAllOpts" -> {
+                var builder = Builder.newBuilder();
+                benchmarkSpec.parseBytecode(builder);
+                yield createBytecodeNodes(BytecodeInterpreterAllOpts.class, null, builder).getCallTarget();
+            }
+            case "ast" -> benchmarkSpec.parseAST(null);
+            default -> throw new AssertionError("Unexpected benchmark method " + benchMethod);
+        };
     }
 
     @Setup(Level.Iteration)
@@ -379,46 +114,43 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
     }
 
     @TearDown(Level.Iteration)
-    public void leaveContext() {
+    public void leaveContext(BenchmarkParams params) {
+        checkExpectedResult(result, getBenchmarkMethod(params));
         context.leave();
     }
 
-    private void doEval(Source source) {
-        Value v = context.eval(source);
-        if (PRINT_RESULTS) {
-            // Checkstyle: stop
-            System.err.println(source.getCharacters() + " = " + v);
-            // Checkstyle: resume
-        }
+    private void benchmark(CallTarget ct) {
+        result = ct.call(benchmarkSpec.arguments());
     }
 
     @Benchmark
     public void bytecodeDSLNoOpts() {
-        doEval(SOURCE_BYTECODE_DSL_NO_OPTS);
+        benchmark(callTarget);
     }
 
     @Benchmark
     public void bytecodeDSLAllOpts() {
-        doEval(SOURCE_BYTECODE_DSL_ALL_OPTS);
+        benchmark(callTarget);
     }
 
     @Benchmark
     public void bytecodeDSLUncached() {
-        doEval(SOURCE_BYTECODE_DSL_UNCACHED);
+        benchmark(callTarget);
     }
 
     @Benchmark
     public void manualNoOpts() {
-        doEval(SOURCE_MANUAL_NO_OPTS);
+        benchmark(callTarget);
     }
 
     @Benchmark
     public void manualAllOpts() {
-        doEval(SOURCE_MANUAL_ALL_OPTS);
+        benchmark(callTarget);
     }
 
     @Benchmark
     public void ast() {
-        doEval(SOURCE_AST);
+        benchmark(callTarget);
     }
+
 }

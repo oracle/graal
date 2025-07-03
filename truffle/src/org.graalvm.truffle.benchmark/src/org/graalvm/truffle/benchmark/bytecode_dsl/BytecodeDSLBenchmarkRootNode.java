@@ -40,7 +40,9 @@
  */
 package org.graalvm.truffle.benchmark.bytecode_dsl;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
@@ -70,6 +72,50 @@ public abstract class BytecodeDSLBenchmarkRootNode extends RootNode implements B
     }
 
     @Operation
+    @ConstantOperand(type = int.class)
+    static final class AddConst {
+        @Specialization
+        static int doInt(int c, int operand) {
+            return c + operand;
+        }
+    }
+
+    @Operation
+    static final class Mult {
+        @Specialization
+        static int doInt(int left, int right) {
+            return left * right;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = int.class)
+    static final class MultConst {
+        @Specialization
+        static int doInt(int c, int operand) {
+            return c * operand;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = int.class, specifyAtEnd = true)
+    static final class DivConst {
+        @Specialization
+        static int doInt(int operand, int c) {
+            return operand / c;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = int.class)
+    static final class EqConst {
+        @Specialization
+        static boolean doInt(int c, int operand) {
+            return c == operand;
+        }
+    }
+
+    @Operation
     static final class Mod {
         @Specialization
         static int doInts(int left, int right) {
@@ -82,6 +128,30 @@ public abstract class BytecodeDSLBenchmarkRootNode extends RootNode implements B
         @Specialization
         static boolean doInts(int left, int right) {
             return left < right;
+        }
+    }
+
+    @Operation
+    static final class ArrayLength {
+        @Specialization
+        static int doArray(int[] array) {
+            return array.length;
+        }
+    }
+
+    @Operation
+    static final class ArrayIndex {
+        @Specialization
+        static int doArray(int[] array, int i) {
+            return array[i];
+        }
+    }
+
+    @Operation
+    static final class Unreachable {
+        @Specialization
+        static void assertUnreachable() {
+            CompilerDirectives.shouldNotReachHere();
         }
     }
 

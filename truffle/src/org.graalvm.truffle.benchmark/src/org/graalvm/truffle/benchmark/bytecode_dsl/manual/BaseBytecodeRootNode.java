@@ -40,10 +40,13 @@
  */
 package org.graalvm.truffle.benchmark.bytecode_dsl.manual;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
@@ -55,7 +58,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 /**
  * Base class for all manually-written bytecode interpreters.
  */
-abstract class BaseBytecodeRootNode extends RootNode implements BytecodeOSRNode {
+public abstract class BaseBytecodeRootNode extends RootNode implements BytecodeOSRNode {
 
     protected final int numLocals;
     @CompilationFinal(dimensions = 1) protected final byte[] bc;
@@ -129,5 +132,18 @@ abstract class BaseBytecodeRootNode extends RootNode implements BytecodeOSRNode 
 
     public void setOSRMetadata(Object osrMetadata) {
         this.osrMetadata = osrMetadata;
+    }
+
+    @Override
+    public Object[] storeParentFrameInArguments(VirtualFrame parentFrame) {
+        Object[] parentArgs = parentFrame.getArguments();
+        Object[] result = Arrays.copyOf(parentArgs, parentArgs.length + 1);
+        result[result.length - 1] = parentFrame;
+        return result;
+    }
+
+    @Override
+    public Frame restoreParentFrameFromArguments(Object[] arguments) {
+        return (Frame) arguments[arguments.length - 1];
     }
 }
