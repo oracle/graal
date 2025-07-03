@@ -510,22 +510,6 @@ public abstract class SwitchNode extends ControlSplitNode implements Simplifiabl
             }
             GraphUtil.unlinkFixedNode(firstSuccessorNext);
             graph().addBeforeFixed(this, firstSuccessorNext);
-
-            for (Node usage : firstSuccessorNext.usages().snapshot()) {
-                if (usage.isAlive()) {
-                    NodeClass<?> usageNodeClass = usage.getNodeClass();
-                    if (usageNodeClass.valueNumberable() && !usageNodeClass.isLeafNode()) {
-                        Node newNode = graph().findDuplicate(usage);
-                        if (newNode != null) {
-                            usage.replaceAtUsagesAndDelete(newNode);
-                        }
-                    }
-                    if (usage.isAlive()) {
-                        tool.addToWorkList(usage);
-                    }
-                }
-            }
-
         } while (true); // TERMINATION ARGUMENT: processing fixed nodes until duplication is no
         // longer possible.
     }
