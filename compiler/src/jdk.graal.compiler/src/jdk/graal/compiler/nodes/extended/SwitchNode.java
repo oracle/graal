@@ -503,13 +503,14 @@ public abstract class SwitchNode extends ControlSplitNode implements Simplifiabl
             List<Node> successorList = successors().snapshot();
             FixedWithNextNode firstSuccessorNext = (FixedWithNextNode) ((FixedWithNextNode) successorList.getFirst()).next();
 
+            GraphUtil.unlinkFixedNode(firstSuccessorNext);
+            graph().addBeforeFixed(this, firstSuccessorNext);
+
             for (int i = 1; i < successorList.size(); i++) {
                 FixedNode otherSuccessorNext = ((FixedWithNextNode) successorList.get(i)).next();
                 otherSuccessorNext.replaceAtUsages(firstSuccessorNext);
                 graph().removeFixed((FixedWithNextNode) otherSuccessorNext);
             }
-            GraphUtil.unlinkFixedNode(firstSuccessorNext);
-            graph().addBeforeFixed(this, firstSuccessorNext);
         } while (true); // TERMINATION ARGUMENT: processing fixed nodes until duplication is no
         // longer possible.
     }
