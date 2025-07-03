@@ -38,30 +38,27 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.truffle.benchmark.bytecode;
+package org.graalvm.truffle.benchmark.bytecode_dsl;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.truffle.benchmark.TruffleBenchmark;
-import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNode.BenchmarkLanguageRootNode;
-import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNode.BlockNode;
-import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNode.IfNode;
-import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNode.WhileNode;
-import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.AddNodeGen;
-import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.ConstNodeGen;
-import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.LessNodeGen;
-import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.LoadLocalNodeGen;
-import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.ModNodeGen;
-import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.ReturnNodeGen;
-import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.StoreLocalNodeGen;
-import org.graalvm.truffle.benchmark.bytecode.manual.ManualBytecodeInterpreters;
-import org.graalvm.truffle.benchmark.bytecode.manual.ManualBytecodeInterpreters.ManualBytecodeInterpreter;
-import org.graalvm.truffle.benchmark.bytecode.manual.ManualBytecodeInterpreters.ManualBytecodeInterpreterWithoutBE;
-import org.graalvm.truffle.benchmark.bytecode.manual.ManualBytecodeInterpreters.ManualCheckedBytecodeInterpreter;
-import org.graalvm.truffle.benchmark.bytecode.manual.ManualNodedBytecodeInterpreters;
-import org.graalvm.truffle.benchmark.bytecode.manual.ManualNodedBytecodeInterpreters.ManualNodedBytecodeInterpreter;
-import org.graalvm.truffle.benchmark.bytecode.manual.ManualNodedBytecodeInterpreters.ManualNodedBytecodeInterpreterWithoutBE;
+import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNodeFactory.AddNodeGen;
+import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNodeFactory.ConstNodeGen;
+import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNodeFactory.LessNodeGen;
+import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNodeFactory.LoadLocalNodeGen;
+import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNodeFactory.ModNodeGen;
+import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNodeFactory.ReturnNodeGen;
+import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNodeFactory.StoreLocalNodeGen;
+import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterRootNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNode.BlockNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNode.IfNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNode.WhileNode;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.Builder;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.BytecodeInterpreterAllOpts;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.BytecodeInterpreterNoOpts;
+
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
@@ -84,31 +81,20 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
         String iters = System.getenv("TOTAL_ITERATIONS");
         TOTAL_ITERATIONS = (iters == null) ? 5000 : Integer.parseInt(iters);
     }
+    private static final boolean PRINT_RESULTS = System.getProperty("PrintResults") != null;
 
-    private static final String NAME_BYTECODE_DSL = "simple:bytecode-dsl-base";
-    private static final String NAME_BYTECODE_DSL_CHECKED = "simple:bytecode-dsl-checked";
+    private static final String NAME_BYTECODE_DSL_NO_OPTS = "simple:bytecode-dsl-no-opts";
+    private static final String NAME_BYTECODE_DSL_ALL_OPTS = "simple:bytecode-dsl-all-opts";
     private static final String NAME_BYTECODE_DSL_UNCACHED = "simple:bytecode-dsl-uncached";
-    private static final String NAME_BYTECODE_DSL_BE = "simple:bytecode-dsl-be";
-    private static final String NAME_BYTECODE_DSL_ALL = "simple:bytecode-dsl-all";
-    private static final String NAME_MANUAL = "simple:manual";
-    private static final String NAME_MANUAL_CHECKED = "simple:manual-checked";
-    private static final String NAME_MANUAL_NO_BE = "simple:manual-no-be";
-    private static final String NAME_MANUAL_NODED = "simple:manual-noded";
-    private static final String NAME_MANUAL_NODED_CHECKED = "simple:manual-noded-checked";
-    private static final String NAME_MANUAL_NODED_NO_BE = "simple:manual-noded-no-be";
+    private static final String NAME_MANUAL_NO_OPTS = "simple:manual-no-opts";
+    private static final String NAME_MANUAL_ALL_OPTS = "simple:manual-all-opts";
     private static final String NAME_AST = "simple:ast";
 
-    private static final Source SOURCE_BYTECODE_DSL = Source.create("bm", NAME_BYTECODE_DSL);
-    private static final Source SOURCE_BYTECODE_DSL_CHECKED = Source.create("bm", NAME_BYTECODE_DSL_CHECKED);
+    private static final Source SOURCE_BYTECODE_DSL_NO_OPTS = Source.create("bm", NAME_BYTECODE_DSL_NO_OPTS);
+    private static final Source SOURCE_BYTECODE_DSL_ALL_OPTS = Source.create("bm", NAME_BYTECODE_DSL_ALL_OPTS);
     private static final Source SOURCE_BYTECODE_DSL_UNCACHED = Source.create("bm", NAME_BYTECODE_DSL_UNCACHED);
-    private static final Source SOURCE_BYTECODE_DSL_BE = Source.create("bm", NAME_BYTECODE_DSL_BE);
-    private static final Source SOURCE_BYTECODE_DSL_ALL = Source.create("bm", NAME_BYTECODE_DSL_ALL);
-    private static final Source SOURCE_MANUAL = Source.create("bm", NAME_MANUAL);
-    private static final Source SOURCE_MANUAL_CHECKED = Source.create("bm", NAME_MANUAL_CHECKED);
-    private static final Source SOURCE_MANUAL_NO_BE = Source.create("bm", NAME_MANUAL_NO_BE);
-    private static final Source SOURCE_MANUAL_NODED = Source.create("bm", NAME_MANUAL_NODED);
-    private static final Source SOURCE_MANUAL_NODED_CHECKED = Source.create("bm", NAME_MANUAL_NODED_CHECKED);
-    private static final Source SOURCE_MANUAL_NODED_NO_BE = Source.create("bm", NAME_MANUAL_NODED_NO_BE);
+    private static final Source SOURCE_MANUAL_NO_OPTS = Source.create("bm", NAME_MANUAL_NO_OPTS);
+    private static final Source SOURCE_MANUAL_ALL_OPTS = Source.create("bm", NAME_MANUAL_ALL_OPTS);
     private static final Source SOURCE_AST = Source.create("bm", NAME_AST);
 
     /**
@@ -137,7 +123,7 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
      * The result should be 12498333.
      */
 
-    private static void createSimpleLoopManualBytecode(ManualBytecodeInterpreters.Builder b) {
+    private static void createSimpleLoopManualBytecode(Builder b) {
         int i = b.createLocal();
         int sum = b.createLocal();
         int j = b.createLocal();
@@ -217,7 +203,7 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
         b.emitReturn();
     }
 
-    public static BytecodeParser<BytecodeBenchmarkRootNodeBuilder> createBytecodeDSLParser(boolean forceUncached) {
+    public static BytecodeParser<BytecodeDSLBenchmarkRootNodeBuilder> createBytecodeDSLParser(boolean forceUncached) {
         return b -> {
             b.beginRoot();
 
@@ -323,7 +309,7 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
             b.emitLoadLocal(sumLoc);
             b.endReturn();
 
-            BytecodeBenchmarkRootNode root = b.endRoot();
+            BytecodeDSLBenchmarkRootNode root = b.endRoot();
             if (forceUncached) {
                 root.getBytecodeNode().setUncachedThreshold(Integer.MIN_VALUE);
             }
@@ -331,47 +317,25 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
     }
 
     static {
-        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL, BytecodeBenchmarkRootNodeBase.class, createBytecodeDSLParser(false));
-        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_CHECKED, BytecodeBenchmarkRootNodeChecked.class, createBytecodeDSLParser(false));
-        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_UNCACHED, BytecodeBenchmarkRootNodeWithUncached.class, createBytecodeDSLParser(true));
-        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_BE, BytecodeBenchmarkRootNodeBoxingEliminated.class, createBytecodeDSLParser(false));
-        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_ALL, BytecodeBenchmarkRootNodeAll.class, createBytecodeDSLParser(false));
-        BenchmarkLanguage.registerName(NAME_MANUAL, lang -> {
-            var builder = ManualBytecodeInterpreters.newBuilder();
+        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_NO_OPTS, BytecodeDSLBenchmarkRootNodeNoOpts.class, createBytecodeDSLParser(false));
+        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_ALL_OPTS, BytecodeDSLBenchmarkRootNodeAllOpts.class, createBytecodeDSLParser(false));
+        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_UNCACHED, BytecodeDSLBenchmarkRootNodeUncached.class, createBytecodeDSLParser(true));
+        BenchmarkLanguage.registerName(NAME_MANUAL_NO_OPTS, lang -> {
+            var builder = Builder.newBuilder();
             createSimpleLoopManualBytecode(builder);
-            return ManualBytecodeInterpreter.create(lang, builder).getCallTarget();
+            return BytecodeInterpreterNoOpts.create(lang, builder).getCallTarget();
         });
-        BenchmarkLanguage.registerName(NAME_MANUAL_CHECKED, lang -> {
-            var builder = ManualBytecodeInterpreters.newBuilder();
+        BenchmarkLanguage.registerName(NAME_MANUAL_ALL_OPTS, lang -> {
+            var builder = Builder.newBuilder();
             createSimpleLoopManualBytecode(builder);
-            return ManualCheckedBytecodeInterpreter.create(lang, builder).getCallTarget();
-        });
-        BenchmarkLanguage.registerName(NAME_MANUAL_NO_BE, lang -> {
-            var builder = ManualBytecodeInterpreters.newBuilder();
-            createSimpleLoopManualBytecode(builder);
-            return ManualBytecodeInterpreterWithoutBE.create(lang, builder).getCallTarget();
-        });
-        BenchmarkLanguage.registerName(NAME_MANUAL_NODED, lang -> {
-            var builder = ManualNodedBytecodeInterpreters.newBuilder();
-            createSimpleLoopManualBytecode(builder);
-            return ManualNodedBytecodeInterpreter.create(lang, builder).getCallTarget();
-        });
-        BenchmarkLanguage.registerName(NAME_MANUAL_NODED_CHECKED, lang -> {
-            var builder = ManualNodedBytecodeInterpreters.newBuilder();
-            createSimpleLoopManualBytecode(builder);
-            return ManualNodedBytecodeInterpreter.create(lang, builder).getCallTarget();
-        });
-        BenchmarkLanguage.registerName(NAME_MANUAL_NODED_NO_BE, lang -> {
-            var builder = ManualNodedBytecodeInterpreters.newBuilder();
-            createSimpleLoopManualBytecode(builder);
-            return ManualNodedBytecodeInterpreterWithoutBE.create(lang, builder).getCallTarget();
+            return BytecodeInterpreterAllOpts.create(lang, builder).getCallTarget();
         });
         BenchmarkLanguage.registerName(NAME_AST, lang -> {
             int iLoc = 0;
             int sumLoc = 1;
             int jLoc = 2;
             int tempLoc = 3;
-            return new BenchmarkLanguageRootNode(lang, 4, BlockNode.create(
+            return new ASTInterpreterRootNode(lang, 4, BlockNode.create(
                             // i = 0
                             StoreLocalNodeGen.create(iLoc, ConstNodeGen.create(0)),
                             // sum = 0
@@ -419,8 +383,6 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
         context.leave();
     }
 
-    private static final boolean PRINT_RESULTS = System.getProperty("PrintResults") != null;
-
     private void doEval(Source source) {
         Value v = context.eval(source);
         if (PRINT_RESULTS) {
@@ -431,58 +393,28 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
     }
 
     @Benchmark
-    public void bytecodeDSL() {
-        doEval(SOURCE_BYTECODE_DSL);
+    public void bytecodeDSLNoOpts() {
+        doEval(SOURCE_BYTECODE_DSL_NO_OPTS);
     }
 
     @Benchmark
-    public void bytecodeDSLChecked() {
-        doEval(SOURCE_BYTECODE_DSL_CHECKED);
+    public void bytecodeDSLAllOpts() {
+        doEval(SOURCE_BYTECODE_DSL_ALL_OPTS);
     }
 
     @Benchmark
-    public void bytecodeDSLWithUncached() {
+    public void bytecodeDSLUncached() {
         doEval(SOURCE_BYTECODE_DSL_UNCACHED);
     }
 
     @Benchmark
-    public void bytecodeDSLBE() {
-        doEval(SOURCE_BYTECODE_DSL_BE);
+    public void manualNoOpts() {
+        doEval(SOURCE_MANUAL_NO_OPTS);
     }
 
     @Benchmark
-    public void bytecodeDSLAll() {
-        doEval(SOURCE_BYTECODE_DSL_ALL);
-    }
-
-    @Benchmark
-    public void manual() {
-        doEval(SOURCE_MANUAL);
-    }
-
-    @Benchmark
-    public void manualChecked() {
-        doEval(SOURCE_MANUAL_CHECKED);
-    }
-
-    @Benchmark
-    public void manualNoBE() {
-        doEval(SOURCE_MANUAL_NO_BE);
-    }
-
-    @Benchmark
-    public void manualNoded() {
-        doEval(SOURCE_MANUAL_NODED);
-    }
-
-    @Benchmark
-    public void manualNodedChecked() {
-        doEval(SOURCE_MANUAL_NODED_CHECKED);
-    }
-
-    @Benchmark
-    public void manualNodedNoBE() {
-        doEval(SOURCE_MANUAL_NODED_NO_BE);
+    public void manualAllOpts() {
+        doEval(SOURCE_MANUAL_ALL_OPTS);
     }
 
     @Benchmark

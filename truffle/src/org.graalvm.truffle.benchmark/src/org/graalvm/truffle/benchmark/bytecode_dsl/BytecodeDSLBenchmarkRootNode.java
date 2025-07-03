@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.truffle.benchmark.bytecode;
+package org.graalvm.truffle.benchmark.bytecode_dsl;
 
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -50,18 +50,14 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableTagInstrumentation = true, enableYield = true)),
-                @Variant(suffix = "Checked", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableTagInstrumentation = true, enableYield = true, allowUnsafe = false)),
-                @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true)),
-                @Variant(suffix = "BoxingEliminated", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableTagInstrumentation = true, enableYield = true, boxingEliminationTypes = {
-                                int.class,
-                                boolean.class})),
-                @Variant(suffix = "All", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true, boxingEliminationTypes = {
+                @Variant(suffix = "NoOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableTagInstrumentation = true, enableYield = true)),
+                @Variant(suffix = "Uncached", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true)),
+                @Variant(suffix = "AllOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true, boxingEliminationTypes = {
                                 int.class, boolean.class}))
 })
-public abstract class BytecodeBenchmarkRootNode extends RootNode implements BytecodeRootNode {
+public abstract class BytecodeDSLBenchmarkRootNode extends RootNode implements BytecodeRootNode {
 
-    protected BytecodeBenchmarkRootNode(BenchmarkLanguage language, FrameDescriptor frameDescriptor) {
+    protected BytecodeDSLBenchmarkRootNode(BenchmarkLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
