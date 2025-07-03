@@ -41,7 +41,6 @@ import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -71,12 +70,10 @@ import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.ObjectEqualsNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
-import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
-import jdk.graal.compiler.nodes.memory.MemoryAnchorNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -1160,51 +1157,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     private void pullNodesThroughIf(SimplifierTool tool) {
         assert trueSuccessor().hasNoUsages() : Assertions.errorMessageContext("this", this, "trueSucc", trueSuccessor(), "trueSuccUsages", trueSuccessor().usages());
         assert falseSuccessor().hasNoUsages() : Assertions.errorMessageContext("this", this, "falseSucc", falseSuccessor(), "falseSuccUsages", falseSuccessor().usages());
-        // pull similar nodes upwards through the if, thereby deduplicating them
-        do {
-            CompilationAlarm.checkProgress(graph());
-            AbstractBeginNode trueSucc = trueSuccessor();
-            AbstractBeginNode falseSucc = falseSuccessor();
-            if (trueSucc instanceof BeginNode && falseSucc instanceof BeginNode && trueSucc.next() instanceof FixedWithNextNode && falseSucc.next() instanceof FixedWithNextNode) {
-                FixedWithNextNode trueNext = (FixedWithNextNode) trueSucc.next();
-                FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
-                NodeClass<?> nodeClass = trueNext.getNodeClass();
-                if (trueNext.getClass() == falseNext.getClass()) {
-                    if (trueNext instanceof AbstractBeginNode || trueNext instanceof ControlFlowAnchored || trueNext instanceof MemoryAnchorNode) {
-                        /*
-                         * Cannot do this optimization for begin nodes, because it could move guards
-                         * above the if that need to stay below a branch.
-                         *
-                         * Cannot do this optimization for ControlFlowAnchored nodes, because these
-                         * are anchored in their control-flow position, and should not be moved
-                         * upwards.
-                         */
-                    } else if (nodeClass.equalInputs(trueNext, falseNext) && trueNext.valueEquals(falseNext)) {
-                        falseNext.replaceAtUsages(trueNext);
-                        graph().removeFixed(falseNext);
-                        GraphUtil.unlinkFixedNode(trueNext);
-                        graph().addBeforeFixed(this, trueNext);
-                        for (Node usage : trueNext.usages().snapshot()) {
-                            if (usage.isAlive()) {
-                                NodeClass<?> usageNodeClass = usage.getNodeClass();
-                                if (usageNodeClass.valueNumberable() && !usageNodeClass.isLeafNode()) {
-                                    Node newNode = graph().findDuplicate(usage);
-                                    if (newNode != null) {
-                                        usage.replaceAtUsagesAndDelete(newNode);
-                                    }
-                                }
-                                if (usage.isAlive()) {
-                                    tool.addToWorkList(usage);
-                                }
-                            }
-                        }
-                        continue;
-                    }
-                }
-            }
-            break;
-        } while (true); // TERMINATION ARGUMENT: processing fixed nodes until duplication is no
-                        // longer possible.
+        GraphUtil.tryDeDuplicateSplitSuccessors(this);
     }
 
     /**

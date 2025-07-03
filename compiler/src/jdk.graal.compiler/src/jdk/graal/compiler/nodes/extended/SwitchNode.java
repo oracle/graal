@@ -34,7 +34,6 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import java.util.Arrays;
-import java.util.List;
 
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -48,17 +47,12 @@ import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
-import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ControlSplitNode;
-import jdk.graal.compiler.nodes.FixedNode;
-import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ProfileData;
 import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
 import jdk.graal.compiler.nodes.ProfileData.SwitchProbabilityData;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
-import jdk.graal.compiler.nodes.memory.MemoryAnchorNode;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
@@ -406,112 +400,7 @@ public abstract class SwitchNode extends ControlSplitNode implements Simplifiabl
         tryPullThroughSwitch(tool);
     }
 
-    /**
-     * Optimizes a switch statement by deduplicating the successor nodes of its case statements.
-     *
-     * <p>
-     * This transformation is only applied to patterns where the same code is executed after each
-     * case, such as the following example:
-     *
-     * <pre>
-     * public static int switchReducePattern(int a) {
-     *     int result = 0;
-     *     switch (a) {
-     *         case 1:
-     *             result = sideEffect;
-     *             // some other code 1
-     *             break;
-     *         case 2:
-     *             result = sideEffect;
-     *             // some other code 2
-     *             break;
-     *         case 3:
-     *             result = sideEffect;
-     *             // some other code 3
-     *             break;
-     *         default:
-     *             result = sideEffect;
-     *             // some other code 4
-     *             break;
-     *     }
-     *     return result;
-     * }
-     * </pre>
-     *
-     * <p>
-     * The optimized code will have the common successor code extracted before the switch statement,
-     * resulting in:
-     *
-     * <pre>
-     * public static int switchReducePattern(int a) {
-     *     int result = 0;
-     *     result = sideEffect; // deduplicated before switch
-     *     switch (a) {
-     *         case 1:
-     *             // some other code 1
-     *             break;
-     *         case 2:
-     *             // some other code 2
-     *             break;
-     *         case 3:
-     *             // some other code 3
-     *             break;
-     *         default:
-     *             // some other code 4
-     *             break;
-     *     }
-     *     return result;
-     * }
-     * </pre>
-     */
     private void tryPullThroughSwitch(SimplifierTool tool) {
-        do {
-            Node referenceSuccessor = null;
-            for (Node successor : successors()) {
-                if (successor instanceof BeginNode begin && begin.next() instanceof FixedWithNextNode fwn) {
-                    if (successor.hasUsages()) {
-                        return;
-                    }
-                    if (fwn instanceof AbstractBeginNode || fwn instanceof ControlFlowAnchored || fwn instanceof MemoryAnchorNode || fwn instanceof SwitchCaseProbabilityNode) {
-                        /*
-                         * Cannot do this optimization for begin nodes, because it could move guards
-                         * above the control split that need to stay below a branch.
-                         *
-                         * Cannot do this optimization for ControlFlowAnchored nodes, because these
-                         * are anchored in their control-flow position, and should not be moved
-                         * upwards.
-                         */
-                        return;
-                    }
-                    if (referenceSuccessor == null) {
-                        referenceSuccessor = fwn;
-                    } else {
-                        // ensure we are alike the reference successor - check if all case
-                        // successors are structurally and data wise the same node
-                        if (referenceSuccessor.getClass() != fwn.getClass()) {
-                            return;
-                        }
-                        if (!fwn.dataFlowEquals(referenceSuccessor)) {
-                            return;
-                        }
-                    }
-                } else {
-                    return;
-                }
-            }
-
-            List<Node> successorList = successors().snapshot();
-            FixedWithNextNode firstSuccessorNext = (FixedWithNextNode) ((FixedWithNextNode) successorList.getFirst()).next();
-
-            GraphUtil.unlinkFixedNode(firstSuccessorNext);
-            graph().addBeforeFixed(this, firstSuccessorNext);
-
-            for (int i = 1; i < successorList.size(); i++) {
-                FixedNode otherSuccessorNext = ((FixedWithNextNode) successorList.get(i)).next();
-                otherSuccessorNext.replaceAtUsages(firstSuccessorNext);
-                graph().removeFixed((FixedWithNextNode) otherSuccessorNext);
-            }
-        } while (true); // TERMINATION ARGUMENT: processing fixed nodes until duplication is no
-        // longer possible.
+        GraphUtil.tryDeDuplicateSplitSuccessors(this);
     }
 }

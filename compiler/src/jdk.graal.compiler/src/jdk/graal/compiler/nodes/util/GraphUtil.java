@@ -57,6 +57,7 @@ import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractEndNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
+import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ControlSinkNode;
 import jdk.graal.compiler.nodes.ControlSplitNode;
@@ -80,10 +81,13 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.ValueProxyNode;
 import jdk.graal.compiler.nodes.WithExceptionNode;
+import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
 import jdk.graal.compiler.nodes.extended.MultiGuardNode;
+import jdk.graal.compiler.nodes.extended.SwitchCaseProbabilityNode;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.java.MonitorIdNode;
+import jdk.graal.compiler.nodes.memory.MemoryAnchorNode;
 import jdk.graal.compiler.nodes.memory.MemoryPhiNode;
 import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
@@ -1464,4 +1468,116 @@ public class GraphUtil {
         return true;
     }
 
+    /**
+     * Optimizes control split nodes by deduplicating the successor nodes of its control flow graph
+     * successor statements.
+     *
+     * An example would be case statements of a Switch. The illustrative example below is for a
+     * switch control split node.
+     *
+     * <p>
+     * This transformation is only applied to patterns where the same code is executed after each
+     * case, such as the following example:
+     *
+     * <pre>
+     * public static int switchReducePattern(int a) {
+     *     int result = 0;
+     *     switch (a) {
+     *         case 1:
+     *             result = sideEffect;
+     *             // some other code 1
+     *             break;
+     *         case 2:
+     *             result = sideEffect;
+     *             // some other code 2
+     *             break;
+     *         case 3:
+     *             result = sideEffect;
+     *             // some other code 3
+     *             break;
+     *         default:
+     *             result = sideEffect;
+     *             // some other code 4
+     *             break;
+     *     }
+     *     return result;
+     * }
+     * </pre>
+     *
+     * <p>
+     * The optimized code will have the common successor code extracted before the switch statement,
+     * resulting in:
+     *
+     * <pre>
+     * public static int switchReducePattern(int a) {
+     *     int result = 0;
+     *     result = sideEffect; // deduplicated before switch
+     *     switch (a) {
+     *         case 1:
+     *             // some other code 1
+     *             break;
+     *         case 2:
+     *             // some other code 2
+     *             break;
+     *         case 3:
+     *             // some other code 3
+     *             break;
+     *         default:
+     *             // some other code 4
+     *             break;
+     *     }
+     *     return result;
+     * }
+     * </pre>
+     */
+    public static void tryDeDuplicateSplitSuccessors(ControlSplitNode split) {
+        do {
+            Node referenceSuccessor = null;
+            for (Node successor : split.successors()) {
+                if (successor instanceof BeginNode begin && begin.next() instanceof FixedWithNextNode fwn) {
+                    if (successor.hasUsages()) {
+                        return;
+                    }
+                    if (fwn instanceof AbstractBeginNode || fwn instanceof ControlFlowAnchored || fwn instanceof MemoryAnchorNode || fwn instanceof SwitchCaseProbabilityNode) {
+                        /*
+                         * Cannot do this optimization for begin nodes, because it could move guards
+                         * above the control split that need to stay below a branch.
+                         *
+                         * Cannot do this optimization for ControlFlowAnchored nodes, because these
+                         * are anchored in their control-flow position, and should not be moved
+                         * upwards.
+                         */
+                        return;
+                    }
+                    if (referenceSuccessor == null) {
+                        referenceSuccessor = fwn;
+                    } else {
+                        // ensure we are alike the reference successor - check if all case
+                        // successors are structurally and data wise the same node
+                        if (referenceSuccessor.getClass() != fwn.getClass()) {
+                            return;
+                        }
+                        if (!fwn.dataFlowEquals(referenceSuccessor)) {
+                            return;
+                        }
+                    }
+                } else {
+                    return;
+                }
+            }
+
+            List<Node> successorList = split.successors().snapshot();
+            FixedWithNextNode firstSuccessorNext = (FixedWithNextNode) ((FixedWithNextNode) successorList.getFirst()).next();
+
+            GraphUtil.unlinkFixedNode(firstSuccessorNext);
+            split.graph().addBeforeFixed(split, firstSuccessorNext);
+
+            for (int i = 1; i < successorList.size(); i++) {
+                FixedNode otherSuccessorNext = ((FixedWithNextNode) successorList.get(i)).next();
+                otherSuccessorNext.replaceAtUsages(firstSuccessorNext);
+                split.graph().removeFixed((FixedWithNextNode) otherSuccessorNext);
+            }
+        } while (true); // TERMINATION ARGUMENT: processing fixed nodes until duplication is no
+        // longer possible.
+    }
 }
