@@ -47,6 +47,7 @@ import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.util.json.JsonPrettyWriter;
@@ -204,7 +205,7 @@ public class MissingRegistrationUtils {
         if (Proxy.isProxyClass(clazz)) {
             return "proxy class inheriting " + interfacesString(clazz.getInterfaces());
         } else if (LambdaUtils.isLambdaClass(clazz)) {
-            String declaringClass = LambdaUtils.capturingClass(clazz.getTypeName());
+            String declaringClass = StringUtil.split(clazz.getTypeName(), LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)[0];
             return "lambda-proxy class declared in " + quote(declaringClass) + " inheriting " + interfacesString(clazz.getInterfaces());
         } else {
             return quote(clazz.getTypeName());
