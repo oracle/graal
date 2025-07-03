@@ -38,10 +38,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.truffle.benchmark.bytecode;
+package org.graalvm.truffle.benchmark.bytecode_dsl;
 
 import org.graalvm.truffle.benchmark.TruffleBenchmark;
-import org.graalvm.truffle.benchmark.bytecode.manual.AccessToken;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.AccessToken;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;

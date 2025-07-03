@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,23 +38,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.truffle.benchmark.bytecode.manual;
+package org.graalvm.truffle.benchmark.bytecode_dsl.ast;
 
-import com.oracle.truffle.api.bytecode.BytecodeBuilder;
-import com.oracle.truffle.api.bytecode.BytecodeParser;
-import com.oracle.truffle.api.bytecode.BytecodeRootNode;
-import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import org.graalvm.truffle.benchmark.bytecode_dsl.BenchmarkLanguage;
+import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNode.ReturnException;
+
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 
-/**
- * Helper class to expose the internal token required to access BytecodeDSLAccess instances.
- */
-public abstract class AccessToken<T extends RootNode & BytecodeRootNode> extends BytecodeRootNodes<T> {
+public class ASTInterpreterRootNode extends RootNode {
 
-    protected AccessToken(BytecodeParser<? extends BytecodeBuilder> parse) {
-        super(PUBLIC_TOKEN, parse);
+    @Child ASTInterpreterNode body;
+
+    public ASTInterpreterRootNode(BenchmarkLanguage lang, int locals, ASTInterpreterNode body) {
+        super(lang, createFrame(locals));
+        this.body = body;
     }
 
-    public static final Object PUBLIC_TOKEN = TOKEN;
+    private static FrameDescriptor createFrame(int locals) {
+        FrameDescriptor.Builder b = FrameDescriptor.newBuilder(locals);
+        b.addSlots(locals, FrameSlotKind.Illegal);
+        return b.build();
+    }
+
+    @Override
+    @ExplodeLoop
+    public Object execute(VirtualFrame frame) {
+        try {
+            body.execute(frame);
+        } catch (ReturnException ex) {
+            return ex.getValue();
+        }
+
+        throw new AssertionError();
+    }
 
 }
