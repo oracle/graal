@@ -402,7 +402,7 @@ public abstract class SwitchNode extends ControlSplitNode implements Simplifiabl
 
     @Override
     public void simplify(SimplifierTool tool) {
-        tryPushThroughSwitch(tool);
+        tryPullThroughSwitch(tool);
     }
 
     /**
@@ -455,7 +455,7 @@ public abstract class SwitchNode extends ControlSplitNode implements Simplifiabl
      * }
      * </pre>
      */
-    private void tryPushThroughSwitch(SimplifierTool tool) {
+    private void tryPullThroughSwitch(SimplifierTool tool) {
         outer: do {
             NodeBitMap nbm = this.graph().createNodeBitMap();
             for (Node successor : successors()) {

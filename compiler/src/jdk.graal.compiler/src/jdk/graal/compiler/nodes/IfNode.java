@@ -260,7 +260,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
         if (tool.allUsagesAvailable() && trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages()) {
 
-            pushNodesThroughIf(tool);
+            pullNodesThroughIf(tool);
 
             if (checkForUnsignedCompare(tool) || removeOrMaterializeIf(tool)) {
                 return;
@@ -1157,10 +1157,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return false;
     }
 
-    private void pushNodesThroughIf(SimplifierTool tool) {
+    private void pullNodesThroughIf(SimplifierTool tool) {
         assert trueSuccessor().hasNoUsages() : Assertions.errorMessageContext("this", this, "trueSucc", trueSuccessor(), "trueSuccUsages", trueSuccessor().usages());
         assert falseSuccessor().hasNoUsages() : Assertions.errorMessageContext("this", this, "falseSucc", falseSuccessor(), "falseSuccUsages", falseSuccessor().usages());
-        // push similar nodes upwards through the if, thereby deduplicating them
+        // pull similar nodes upwards through the if, thereby deduplicating them
         do {
             CompilationAlarm.checkProgress(graph());
             AbstractBeginNode trueSucc = trueSuccessor();

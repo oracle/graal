@@ -30,7 +30,7 @@ import org.junit.Test;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.extended.SwitchNode;
 
-public class PushThroughSwitchTest extends GraalCompilerTest {
+public class PullThroughSwitchTest extends GraalCompilerTest {
 
     static int sideEffect;
     static int sideEffect1;
