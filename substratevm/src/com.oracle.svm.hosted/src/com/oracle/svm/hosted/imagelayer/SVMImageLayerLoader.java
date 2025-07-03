@@ -1469,7 +1469,8 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                 case NOT_MATERIALIZED ->
                     unsupportedReferencedConstant("Reading the value of a base layer constant which was not materialized in the base image", parentConstant, finalPosition);
                 case METHOD_OFFSET ->
-                    unsupportedReferencedConstant("Reading the value of a code offset constant in a base image, which is not supported", parentConstant, finalPosition);
+                    unsupportedReferencedConstant("Reading the value of a code offset constant in a base image, which is not supported. Offsets should be accessed via PersistedHostedMethod",
+                                    parentConstant, finalPosition);
                 case PRIMITIVE_VALUE -> {
                     PrimitiveValue.Reader pv = constantData.getPrimitiveValue();
                     yield JavaConstant.forPrimitive((char) pv.getTypeChar(), pv.getRawValue());

@@ -106,6 +106,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
      * buffer.
      */
     private int codeAddressOffset = INVALID_CODE_ADDRESS_OFFSET;
+    /** Note that {@link #compiledInPriorLayer} does not imply {@link #compiled}. */
     private boolean compiled;
     private boolean compiledInPriorLayer;
 
@@ -254,6 +255,10 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         this.compiled = true;
     }
 
+    /**
+     * Whether the method has been compiled in the current build or layer, but {@code false} if it
+     * was only {@linkplain #isCompiledInPriorLayer() compiled in a prior layer}.
+     */
     public boolean isCompiled() {
         return compiled;
     }
@@ -262,6 +267,10 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         this.compiledInPriorLayer = true;
     }
 
+    /**
+     * Whether the method has been compiled in a prior layer, but if so, that does not imply
+     * {@link #isCompiled}.
+     */
     public boolean isCompiledInPriorLayer() {
         return compiledInPriorLayer;
     }

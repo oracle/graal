@@ -956,6 +956,10 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         if (constant instanceof PatchedWordConstant patchedWordConstant) {
             WordBase word = patchedWordConstant.getWord();
             if (word instanceof MethodOffset) {
+                /*
+                 * Such constants are not supposed to be used in another layer. Any method code
+                 * offsets should be accessed via PersistedHostedMethod.
+                 */
                 builder.setMethodOffset(Void.VOID);
                 return true;
             } else if (word instanceof MethodPointer methodPointer) {

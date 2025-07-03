@@ -74,6 +74,7 @@ import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.os.AbstractImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
@@ -84,10 +85,11 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.imagelayer.ImageLayerSectionFeature;
+import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
 
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.PauseNode;
-import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import jdk.graal.compiler.word.Word;
 
 /**
@@ -133,7 +135,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
         static final Word SUCCESSFUL = Word.unsigned(2);
     }
 
-    private static final CGlobalData<Word> IMAGE_HEAP_PATCHING_STATE = CGlobalDataFactory.createWord();
+    private static final CGlobalData<Word> IMAGE_HEAP_PATCHING_STATE = CGlobalDataFactory.createWord(ImageHeapPatchingState.UNINITIALIZED);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord getLayeredImageHeapAddressSpaceSize() {
@@ -228,6 +230,11 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
         return result;
     }
 
+    /**
+     * Apply patches to the image heap as specified by each layer. See {@link ImageLayerSection} and
+     * {@link ImageLayerSectionFeature} for the layout of the section that contains the patches and
+     * {@link LayeredDispatchTableFeature} where code patches are gathered.
+     */
     @Uninterruptible(reason = "Thread state not yet set up.")
     public static void patchLayeredImageHeap() {
         Word heapPatchStateAddr = IMAGE_HEAP_PATCHING_STATE.get();
@@ -235,10 +242,10 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
         if (!firstIsolate) {
             // spin-wait for first isolate
-            Word state = heapPatchStateAddr.readWordVolatile(0, LocationIdentity.ANY_LOCATION);
+            Word state = heapPatchStateAddr.readWordVolatile(0, NamedLocationIdentity.OFF_HEAP_LOCATION);
             while (state.equal(ImageHeapPatchingState.IN_PROGRESS)) {
                 PauseNode.pause();
-                state = heapPatchStateAddr.readWordVolatile(0, LocationIdentity.ANY_LOCATION);
+                state = heapPatchStateAddr.readWordVolatile(0, NamedLocationIdentity.OFF_HEAP_LOCATION);
             }
 
             /* Patching has already been successfully completed, nothing needs to be done. */
@@ -254,19 +261,24 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             Pointer data = layerSection.add(ImageLayerSection.getEntryOffset(VARIABLY_SIZED_DATA));
             int offset = 0;
 
-            // Skip singletons table
-            long singletonTableEntryCount = data.readLong(offset);
-            UnsignedWord singletonTableAlignedSize = roundUp(unsigned(singletonTableEntryCount * referenceSize), unsigned(Long.BYTES));
-            offset += Long.BYTES + (int) singletonTableAlignedSize.rawValue();
+            offset = skipSingletonsTable(data, offset, referenceSize);
 
+            /* Patch code offsets to become relative to the code base. */
             Pointer layerHeapRelocs = layerSection.readWord(ImageLayerSection.getEntryOffset(HEAP_RELOCATABLE_BEGIN));
             Pointer layerCode = layerSection.readWord(ImageLayerSection.getEntryOffset(CODE_START));
+            /*
+             * Note that the code base can be above the layer's code section, in which case the
+             * subtraction underflows and the additions of code address computations overflow,
+             * giving the correct result.
+             */
             Word layerCodeOffsetToBase = (Word) layerCode.subtract(codeBase);
             offset = applyLayerCodePointerPatches(data, offset, layerHeapRelocs, layerCodeOffsetToBase);
 
+            /* Patch absolute addresses to become relative to the code base. */
             Word negativeCodeBase = Word.<Word> zero().subtract(codeBase);
             offset = applyLayerCodePointerPatches(data, offset, layerHeapRelocs, negativeCodeBase);
 
+            /* Patch references in the image heap. */
             applyLayerImageHeapRefPatches(data.add(offset), initialLayerImageHeap);
 
             layerSection = layerSection.readWord(ImageLayerSection.getEntryOffset(NEXT_SECTION));
@@ -276,13 +288,22 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
+    private static int skipSingletonsTable(Pointer data, int offset, int referenceSize) {
+        long singletonTableEntryCount = data.readLong(offset);
+        UnsignedWord singletonTableAlignedSize = roundUp(unsigned(singletonTableEntryCount * referenceSize), unsigned(Long.BYTES));
+        return offset + Long.BYTES + UnsignedUtils.safeToInt(singletonTableAlignedSize);
+    }
+
+    @Uninterruptible(reason = "Thread state not yet set up.")
     private static int applyLayerCodePointerPatches(Pointer data, int startOffset, Pointer layerHeapRelocs, Word addend) {
         int wordSize = ConfigurationValues.getTarget().wordSize;
 
         int offset = startOffset;
-        int bitmapWordCount = (int) data.readLong(offset);
+        long bitmapWordCountAsLong = data.readLong(offset);
+        int bitmapWordCount = UninterruptibleUtils.NumUtil.safeToInt(bitmapWordCountAsLong);
         offset += Long.BYTES;
         if (addend.equal(0)) {
+            /* Nothing to do. */
             offset += bitmapWordCount * Long.BYTES;
             return offset;
         }
@@ -292,7 +313,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             offset += Long.BYTES;
             int j = 0; // index of a 1-bit
             while (bits != 0) {
-                int ntz = CountTrailingZerosNode.countLongTrailingZeros(bits);
+                int ntz = UninterruptibleUtils.Long.countTrailingZeros(bits);
                 j += ntz;
 
                 int at = (i * 64 + j) * wordSize;
@@ -301,11 +322,8 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                 layerHeapRelocs.writeWord(at, w);
 
                 /*
-                 * Note that we must not shift by ntz+1 here because it can be 64, and according to
-                 * the Java Language Specification, 15.19. Shift Operators: If the promoted type of
-                 * the left-hand operand is long, then only the six lowest-order bits of the
-                 * right-hand operand are used as the shift distance. [..] The shift distance
-                 * actually used is therefore always in the range 0 to 63, inclusive.
+                 * Note that we must not shift by ntz+1 here because it can be 64, which would be a
+                 * no-op according to the Java Language Specification, 15.19. Shift Operators.
                  */
                 bits = (bits >>> ntz) >>> 1;
                 j++;
@@ -317,7 +335,8 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
     @Uninterruptible(reason = "Thread state not yet set up.")
     private static void applyLayerImageHeapRefPatches(Pointer patches, Pointer layerImageHeap) {
         int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
-        int count = (int) patches.readLong(0);
+        long countAsLong = patches.readLong(0);
+        int count = UninterruptibleUtils.NumUtil.safeToInt(countAsLong);
         int offset = Long.BYTES;
         int endOffset = offset + count * Integer.BYTES;
         while (offset < endOffset) {

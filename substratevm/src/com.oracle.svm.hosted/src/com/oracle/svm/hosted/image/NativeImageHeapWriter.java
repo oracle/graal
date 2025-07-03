@@ -258,22 +258,20 @@ public final class NativeImageHeapWriter {
 
     /**
      * @see NativeImageHeap#isRelocatableValue
-     * @see NativeImage#markCodeRelocationSite
+     * @see NativeImage#markSiteOfRelocationToCode
      */
     private void writeConstant(RelocatableBuffer buffer, int index, JavaKind kind, Object constantValue, ObjectInfo info) {
         Object value = constantValue;
         if (value instanceof MethodOffset methodOffset) {
             HostedMetaAccess metaAccess = heap.hMetaAccess;
             ResolvedJavaMethod method = methodOffset.getMethod();
-            if (!(method instanceof HostedMethod)) {
-                method = metaAccess.getUniverse().lookup(method);
-            }
-            if (imageLayer && NativeImage.isInjectedNotCompiled((HostedMethod) method)) {
+            HostedMethod hMethod = (method instanceof HostedMethod hm) ? hm : metaAccess.getUniverse().lookup(method);
+            if (imageLayer && NativeImage.isInjectedNotCompiled(hMethod)) {
                 // Will be patched in a future layer (even if it ends up not being compiled at all)
                 addWordConstantRelocation(buffer, index, methodOffset);
                 return;
             }
-            HostedMethod target = NativeImage.getMethodRefTargetMethod(metaAccess, method);
+            HostedMethod target = NativeImage.getMethodRefTargetMethod(metaAccess, hMethod);
             value = target.getCodeAddressOffset();
         } else if (value instanceof RelocatedPointer relocatedPointer) {
             addWordConstantRelocation(buffer, index, relocatedPointer);

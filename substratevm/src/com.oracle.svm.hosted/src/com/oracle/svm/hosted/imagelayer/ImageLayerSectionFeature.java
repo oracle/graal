@@ -69,7 +69,7 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
- * Creates a section with image information specific to the current layer.
+ * Creates a {@linkplain ImageLayerSection section} with information specific to the current layer.
  *
  * Presently the layout of this section is as follows:
  *
@@ -88,8 +88,8 @@ import jdk.vm.ci.meta.JavaConstant;
  *  |  72           | next layer section (0 if final layer) |________________________________
  *  |  80           | cross-layer singleton table size      | variably-sized data starts here
  *  |  88..         | cross-layer singleton table entries   |
- *  |  ..           | bitmap of code offsets to patch       |
- *  |  ..           | bitmap of code addresses to patch     |
+ *  |  ..           | bitmap of code offsets to patch       |  \  for how these are gathered, see
+ *  |  ..           | bitmap of code addresses to patch     |  /  {@link LayeredDispatchTableFeature}
  *  |  ..           | image heap reference patches          |
  *  ---------------------------------------------------------
  * </pre>

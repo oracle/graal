@@ -96,8 +96,9 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Tracks metadata {@link MultiLayeredImageSingleton} and {@link ApplicationLayerOnlyImageSingleton}
- * singletons so that they can be properly referenced as needed.
+ * Tracks metadata about {@link MultiLayeredImageSingleton} and
+ * {@link ApplicationLayerOnlyImageSingleton} singletons so that they can be properly referenced as
+ * needed.
  */
 @AutomaticallyRegisteredFeature
 public class LoadImageSingletonFeature implements InternalFeature, FeatureSingleton, UnsavedSingleton {

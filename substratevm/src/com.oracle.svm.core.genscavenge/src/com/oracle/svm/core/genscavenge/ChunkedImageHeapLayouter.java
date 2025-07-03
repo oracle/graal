@@ -118,6 +118,9 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
     }
 
     private ChunkedImageHeapPartition choosePartition(ImageHeapObject info, boolean immutable, boolean hasRelocatables, boolean patched) {
+        if (patched && hasRelocatables) {
+            throw VMError.shouldNotReachHere("Object cannot contain both relocatables and patched constants: " + info.getObject());
+        }
         if (patched) {
             return getWritablePatched();
         } else if (immutable) {
