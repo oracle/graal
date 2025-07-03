@@ -29,6 +29,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.stream.Stream;
 
+import com.oracle.svm.util.StringUtil;
+
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.util.json.JsonPrintable;
 
@@ -54,7 +56,7 @@ public interface ConfigurationTypeDescriptor extends Comparable<ConfigurationTyp
         if (Proxy.isProxyClass(clazz)) {
             return ProxyConfigurationTypeDescriptor.fromInterfaceReflectionNames(interfacesStream.toList());
         } else if (LambdaUtils.isLambdaClass(clazz)) {
-            String declaringClass = LambdaUtils.capturingClass(clazz.getTypeName());
+            String declaringClass = StringUtil.split(clazz.getTypeName(), LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)[0];
             return LambdaConfigurationTypeDescriptor.fromReflectionNames(declaringClass, interfacesStream.toList());
         } else {
             return NamedConfigurationTypeDescriptor.fromReflectionName(clazz.getTypeName());
