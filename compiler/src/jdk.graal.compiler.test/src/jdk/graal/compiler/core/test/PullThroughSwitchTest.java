@@ -27,8 +27,12 @@ package jdk.graal.compiler.core.test;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.extended.SwitchNode;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 
 public class PullThroughSwitchTest extends GraalCompilerTest {
 
@@ -91,12 +95,113 @@ public class PullThroughSwitchTest extends GraalCompilerTest {
         highTierSwitches = -1;
     }
 
+    public static int switchReduceOnlyOneNodePattern(int a) {
+        int result = 0;
+        int result1 = 0;
+        switch (a) {
+            case 1:
+                result = sideEffect;
+                result1 = sideEffect1;
+                break;
+            case 2:
+                result = sideEffect;
+                result1 = sideEffect2;
+                break;
+            case 3:
+                result = sideEffect;
+                result1 = sideEffect3;
+                break;
+            default:
+                result = sideEffect;
+                result1 = sideEffect1;
+                break;
+
+        }
+        return result + result1;
+    }
+
+    @Test
+    public void test03() {
+        highTierSwitches = 1;
+        // we only deduplicated exactly 1 node
+        fixedNodesBeforeSwitch = 1;
+        test("switchReduceOnlyOneNodePattern", 12);
+        highTierSwitches = -1;
+        fixedNodesBeforeSwitch = -1;
+    }
+
+    public static int switchReduce3NodesPattern(int a) {
+        int result = 0;
+        int result1 = 0;
+        int result2 = 0;
+        int result3 = 0;
+        switch (a) {
+            case 1:
+                result = sideEffect;
+                result1 = sideEffect1;
+                result2 = sideEffect2;
+                result3 = sideEffect3;
+                GraalDirectives.sideEffect(1);
+                break;
+            case 2:
+                result = sideEffect;
+                result1 = sideEffect1;
+                result2 = sideEffect2;
+                result3 = sideEffect3;
+                GraalDirectives.sideEffect(2);
+                break;
+            case 3:
+                result = sideEffect;
+                result1 = sideEffect1;
+                result2 = sideEffect2;
+                result3 = sideEffect3;
+                GraalDirectives.sideEffect(3);
+                break;
+            default:
+                result = sideEffect;
+                result1 = sideEffect1;
+                result2 = sideEffect2;
+                result3 = sideEffect3;
+                GraalDirectives.sideEffect(4);
+                break;
+
+        }
+        return result + result1 + result2 + result3;
+    }
+
+    @Test
+    public void test04() {
+        highTierSwitches = 1;
+        // we only deduplicated exactly 1 node
+        fixedNodesBeforeSwitch = 4;
+        test("switchReduce3NodesPattern", 12);
+        highTierSwitches = -1;
+        fixedNodesBeforeSwitch = -1;
+    }
+
     // default value is -1
     private int highTierSwitches = -1;
+
+    // nodes before the switch until start, excluding start, only checked if >=0
+    private int fixedNodesBeforeSwitch = -1;
 
     @Override
     protected void checkHighTierGraph(StructuredGraph graph) {
         Assert.assertEquals("Must have that many switches left", graph.getNodes().filter(SwitchNode.class).count(), highTierSwitches);
+        if (fixedNodesBeforeSwitch >= 0) {
+            checkBeforeNodes: {
+                SwitchNode sw = graph.getNodes().filter(SwitchNode.class).first();
+                int fixedNodes = 0;
+                for (FixedNode f : GraphUtil.predecessorIterable((FixedNode) sw.predecessor())) {
+                    if (f == graph.start()) {
+                        Assert.assertEquals("Must have exactly that many fixed nodes left before switch", fixedNodesBeforeSwitch, fixedNodes);
+                        break checkBeforeNodes;
+                    }
+                    fixedNodes++;
+                }
+                throw GraalError.shouldNotReachHere("Must find start node, no other basic block before");
+            }
+        }
     }
 
 }
