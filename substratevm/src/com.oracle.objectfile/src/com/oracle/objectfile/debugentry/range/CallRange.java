@@ -43,7 +43,7 @@ public class CallRange extends Range {
      * The direct callees whose ranges are wholly contained in this range. Empty if this is a leaf
      * range.
      */
-    private final Set<Range> callees = new TreeSet<>(Comparator.comparing(Range::getLoOffset));
+    private Set<Range> callees = Set.of();
 
     protected CallRange(PrimaryRange primary, MethodEntry methodEntry, Map<LocalEntry, LocalValueEntry> localInfoList, int lo, int hi, int line, CallRange caller, int depth) {
         super(primary, methodEntry, localInfoList, lo, hi, line, caller, depth);
@@ -62,6 +62,10 @@ public class CallRange extends Range {
     protected void addCallee(Range callee) {
         assert this.contains(callee);
         assert callee.getCaller() == this;
+
+        if (callees.isEmpty()) {
+            callees = new TreeSet<>(Comparator.comparing(Range::getLoOffset));
+        }
         callees.add(callee);
     }
 

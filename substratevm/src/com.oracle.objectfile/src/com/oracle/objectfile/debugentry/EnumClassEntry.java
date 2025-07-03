@@ -26,7 +26,7 @@
 
 package com.oracle.objectfile.debugentry;
 
-public class EnumClassEntry extends ClassEntry {
+public final class EnumClassEntry extends ClassEntry {
 
     // The typedef name if this is a representation of a c enum type
     private final String typedefName;

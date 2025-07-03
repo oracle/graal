@@ -30,7 +30,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-public class InterfaceClassEntry extends ClassEntry {
+public final class InterfaceClassEntry extends ClassEntry {
     private final ConcurrentSkipListSet<ClassEntry> implementors;
 
     public InterfaceClassEntry(String typeName, int size, long classOffset, long typeSignature,

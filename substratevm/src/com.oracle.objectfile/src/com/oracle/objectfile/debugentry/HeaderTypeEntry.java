@@ -26,7 +26,7 @@
 
 package com.oracle.objectfile.debugentry;
 
-public class HeaderTypeEntry extends StructureTypeEntry {
+public final class HeaderTypeEntry extends StructureTypeEntry {
 
     private FieldEntry hubField;
 

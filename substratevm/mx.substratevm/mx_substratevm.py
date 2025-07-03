@@ -1045,6 +1045,20 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
         mx.run([os.environ.get('GDB_BIN', 'gdb'), '--nx', '-q', '-iex', 'set pagination off', '-ex', 'python "ISOLATES=True"', '-x', testhello_py, hello_binary])
 
 
+def gdb_base_command(logfile, autoload_path):
+    return [
+        os.environ.get('GDB_BIN', 'gdb'),
+        '--nx',
+        '-q',  # do not print the introductory and copyright messages
+        '-iex', 'set pagination off',  # messages from enabling logging could already cause pagination, so this must be done first
+        '-iex', 'set logging redirect on',
+        '-iex', 'set logging overwrite off',
+        '-iex', f"set logging file {logfile}",
+        '-iex', 'set logging enabled on',
+        '-iex', f"set auto-load safe-path {autoload_path}",
+    ]
+
+
 def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
 
     # ====== check gdb version ======
@@ -1092,15 +1106,6 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
         # We need the static initializer of the ClassLoaderTest to run at image build time
         '--initialize-at-build-time=com.oracle.svm.test.missing.classes',
         'com.oracle.svm.test.debug.helper.ClassLoaderTest'
-    ]
-
-    gdb_args = [
-        os.environ.get('GDB_BIN', 'gdb'),
-        '--nx',
-        '-q',  # do not print the introductory and copyright messages
-        '-iex', 'set pagination off',  # messages from enabling logging could already cause pagination, so this must be done first
-        '-iex', 'set logging redirect on',
-        '-iex', 'set logging overwrite off',
     ]
 
     def run_debug_test(image_name: str, testfile: str, source_path: str, with_isolates: bool = True,
@@ -1155,10 +1160,7 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
         if mx.get_os() == 'linux':
             logfile = join(path, pathlib.Path(testfile).stem + ('' if with_isolates else '_no_isolates') + '.log')
             os.environ.update({'gdb_logfile': logfile})
-            gdb_command = gdb_args + [
-                '-iex', f"set logging file {logfile}",
-                '-iex', 'set logging enabled on',
-                '-iex', f"set auto-load safe-path {join(build_dir, 'gdb-debughelpers.py')}",
+            gdb_command = gdb_base_command(logfile, join(build_dir, 'gdb-debughelpers.py')) + [
                 '-x', testfile, join(build_dir, image_name)
             ]
             # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
@@ -1200,15 +1202,6 @@ def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=No
     test_runtime_deopt_py = join(test_python_source_dir, 'test_runtime_deopt.py')
     testdeopt_js = join(suite.dir, 'mx.substratevm', 'testdeopt.js')
 
-    gdb_args = [
-        os.environ.get('GDB_BIN', 'gdb'),
-        '--nx',
-        '-q',  # do not print the introductory and copyright messages
-        '-iex', "set pagination off",  # messages from enabling logging could already cause pagination, so this must be done first
-        '-iex', "set logging redirect on",
-        '-iex', "set logging overwrite off",
-    ]
-
     # clean / create output directory
     if exists(output_path):
         mx.rmtree(output_path)
@@ -1237,10 +1230,7 @@ def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=No
 
     logfile = join(output_path, 'test_runtime_compilation.log')
     os.environ.update({'gdb_logfile': logfile})
-    gdb_command = gdb_args + [
-        '-iex', f"set logging file {logfile}",
-        '-iex', "set logging enabled on",
-        '-iex', f"set auto-load safe-path {join(output_path, 'gdb-debughelpers.py')}",
+    gdb_command = gdb_base_command(logfile, join(output_path, 'gdb-debughelpers.py')) + [
         '-x', test_runtime_compilation_py, runtime_compile_binary
     ]
     # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
@@ -1259,10 +1249,7 @@ def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=No
         js_launcher = get_js_launcher(jslib)
         logfile = join(output_path, 'test_runtime_deopt_' + ('eager' if eager else 'lazy') + '.log')
         os.environ.update({'gdb_logfile': logfile})
-        gdb_command = gdb_args + [
-            '-iex', f"set logging file {logfile}",
-            '-iex', "set logging enabled on",
-            '-iex', f"set auto-load safe-path {join(output_path, 'gdb-debughelpers.py')}",
+        gdb_command = gdb_base_command(logfile, join(output_path, 'gdb-debughelpers.py')) + [
             '-x', test_runtime_deopt_py, '--args', js_launcher, testdeopt_js
         ]
         # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test

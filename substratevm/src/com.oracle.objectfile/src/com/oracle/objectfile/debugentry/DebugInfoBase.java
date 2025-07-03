@@ -252,9 +252,6 @@ public abstract class DebugInfoBase {
 
         stringTable = new StringTable();
         lineStringTable = new StringTable();
-        /* Ensure we have a null string at the start of the string table. */
-        uniqueDebugString("");
-        uniqueDebugLineString("");
         /* Create the cachePath string entry which serves as base directory for source files */
         cachePath = uniqueDebugString(debugInfoProvider.cachePath());
         uniqueDebugLineString(debugInfoProvider.cachePath());
@@ -281,8 +278,6 @@ public abstract class DebugInfoBase {
                         case "java.lang.Class" -> classClass = classEntry;
                         case FOREIGN_METHOD_LIST_TYPE -> foreignMethodListClassEntry = classEntry;
                     }
-                }
-                default -> {
                 }
             }
         });

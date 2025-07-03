@@ -40,6 +40,8 @@ public class StringTable implements Iterable<StringEntry> {
 
     public StringTable() {
         this.table = new ConcurrentHashMap<>();
+        /* Ensure we have a null string at the start of the string table. */
+        this.table.put("", new StringEntry(""));
     }
 
     /**

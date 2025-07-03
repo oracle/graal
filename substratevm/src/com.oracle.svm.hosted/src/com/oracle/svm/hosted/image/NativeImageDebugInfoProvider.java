@@ -639,7 +639,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         int size = getTypeSize(hostedType);
         long classOffset = getClassOffset(hostedType);
         LoaderEntry loaderEntry = lookupLoaderEntry(hostedType);
-        String loaderName = loaderEntry == null ? "" : loaderEntry.loaderId();
+        String loaderName = loaderEntry.loaderId();
         long typeSignature = getTypeSignature(typeName + loaderName);
         long compressedTypeSignature = useHeapBase ? getTypeSignature(INDIRECT_PREFIX + typeName + loaderName) : typeSignature;
 

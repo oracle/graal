@@ -26,7 +26,7 @@
 
 package com.oracle.objectfile.debugentry;
 
-public abstract class TypeEntry {
+public abstract sealed class TypeEntry permits StructureTypeEntry, PrimitiveTypeEntry, PointerToTypeEntry {
     /**
      * The name of this type.
      */

@@ -240,7 +240,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     /**
      * A class entry that holds all compilations for function pointers.
      */
-    private final ClassEntry foreignMethodListClassEntry = new ClassEntry(FOREIGN_METHOD_LIST_TYPE, -1, -1, -1, -1, -1, null, null, null);
+    private final ClassEntry foreignMethodListClassEntry = new ClassEntry(FOREIGN_METHOD_LIST_TYPE, -1, -1, -1, -1, -1, null, null, NULL_LOADER_ENTRY);
 
     /**
      * The header type entry which is used as a super class of {@link Object} in the debug info. It
@@ -269,6 +269,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     public static final String FOREIGN_METHOD_LIST_TYPE = "Foreign$Method$List";
 
     static final Path EMPTY_PATH = Paths.get("");
+
+    static final LoaderEntry NULL_LOADER_ENTRY = new LoaderEntry("");
 
     public SharedDebugInfoProvider(DebugContext debug, RuntimeConfiguration runtimeConfiguration, MetaAccessProvider metaAccess) {
         this.runtimeConfiguration = runtimeConfiguration;
@@ -1017,7 +1019,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         if (type.isArray()) {
             targetType = (SharedType) type.getElementalType();
         }
-        return targetType.getHub().isLoaded() ? lookupLoaderEntry(UniqueShortNameProvider.singleton().uniqueShortLoaderName(targetType.getHub().getClassLoader())) : null;
+        return targetType.getHub().isLoaded() ? lookupLoaderEntry(UniqueShortNameProvider.singleton().uniqueShortLoaderName(targetType.getHub().getClassLoader())) : NULL_LOADER_ENTRY;
     }
 
     /**
@@ -1029,7 +1031,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      */
     protected LoaderEntry lookupLoaderEntry(String loaderName) {
         if (loaderName == null || loaderName.isEmpty()) {
-            return null;
+            return NULL_LOADER_ENTRY;
         }
         return loaderIndex.computeIfAbsent(loaderName, LoaderEntry::new);
     }
