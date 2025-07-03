@@ -34,6 +34,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import java.util.Arrays;
+import java.util.List;
 
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -41,7 +42,6 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeBitMap;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeSuccessorList;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
@@ -50,6 +50,7 @@ import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ControlSplitNode;
+import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ProfileData;
@@ -418,15 +419,19 @@ public abstract class SwitchNode extends ControlSplitNode implements Simplifiabl
      *     switch (a) {
      *         case 1:
      *             result = sideEffect;
+     *             // some other code 1
      *             break;
      *         case 2:
      *             result = sideEffect;
+     *             // some other code 2
      *             break;
      *         case 3:
      *             result = sideEffect;
+     *             // some other code 3
      *             break;
      *         default:
      *             result = sideEffect;
+     *             // some other code 4
      *             break;
      *     }
      *     return result;
@@ -443,12 +448,16 @@ public abstract class SwitchNode extends ControlSplitNode implements Simplifiabl
      *     result = sideEffect; // deduplicated before switch
      *     switch (a) {
      *         case 1:
+     *             // some other code 1
      *             break;
      *         case 2:
+     *             // some other code 2
      *             break;
      *         case 3:
+     *             // some other code 3
      *             break;
      *         default:
+     *             // some other code 4
      *             break;
      *     }
      *     return result;
@@ -457,7 +466,7 @@ public abstract class SwitchNode extends ControlSplitNode implements Simplifiabl
      */
     private void tryPullThroughSwitch(SimplifierTool tool) {
         do {
-            NodeBitMap nbm = this.graph().createNodeBitMap();
+            Node referenceSuccessor = null;
             for (Node successor : successors()) {
                 if (successor instanceof BeginNode begin && begin.next() instanceof FixedWithNextNode fwn) {
                     if (successor.hasUsages()) {
@@ -474,35 +483,38 @@ public abstract class SwitchNode extends ControlSplitNode implements Simplifiabl
                          */
                         return;
                     }
-
-                    // check if all case successors are structurally and data wise the same node
-                    for (Node otherSuccessor : nbm) {
-                        if (otherSuccessor.getClass() != fwn.getClass()) {
+                    if (referenceSuccessor == null) {
+                        referenceSuccessor = fwn;
+                    } else {
+                        // ensure we are alike the reference successor - check if all case
+                        // successors are structurally and data wise the same node
+                        if (referenceSuccessor.getClass() != fwn.getClass()) {
                             return;
                         }
-                        if (!fwn.getNodeClass().equalInputs(fwn, otherSuccessor)) {
+                        if (!fwn.getNodeClass().equalInputs(fwn, referenceSuccessor)) {
                             return;
                         }
-                        if (!fwn.valueEquals(otherSuccessor)) {
+                        if (!fwn.valueEquals(referenceSuccessor)) {
                             return;
                         }
                     }
-                    nbm.mark(fwn);
                 } else {
                     return;
                 }
             }
-            GraalError.guarantee(nbm.count() == getSuccessorCount(), "Must find successorCount nodes");
-            FixedWithNextNode first = (FixedWithNextNode) nbm.first();
-            nbm.clear(first);
-            for (Node other : nbm) {
-                other.replaceAtUsages(first);
-                graph().removeFixed((FixedWithNextNode) other);
-            }
-            GraphUtil.unlinkFixedNode(first);
-            graph().addBeforeFixed(this, first);
 
-            for (Node usage : first.usages().snapshot()) {
+            List<Node> successorList = successors().snapshot();
+            FixedWithNextNode firstSuccessorNext = (FixedWithNextNode) ((FixedWithNextNode) successorList.getFirst()).next();
+
+            for (int i = 1; i < successorList.size(); i++) {
+                FixedNode otherSuccessorNext = ((FixedWithNextNode) successorList.get(i)).next();
+                otherSuccessorNext.replaceAtUsages(firstSuccessorNext);
+                graph().removeFixed((FixedWithNextNode) otherSuccessorNext);
+            }
+            GraphUtil.unlinkFixedNode(firstSuccessorNext);
+            graph().addBeforeFixed(this, firstSuccessorNext);
+
+            for (Node usage : firstSuccessorNext.usages().snapshot()) {
                 if (usage.isAlive()) {
                     NodeClass<?> usageNodeClass = usage.getNodeClass();
                     if (usageNodeClass.valueNumberable() && !usageNodeClass.isLeafNode()) {
