@@ -373,6 +373,9 @@ SUNWprivate_1.1 {
                 JVM_IsStaticallyLinked;
                 JVM_CreateThreadSnapshot;
 
+                # JDK 26
+                JVM_ReferenceGet;
+
                 # miscellaneous functions
                 jio_fprintf;
                 jio_printf;

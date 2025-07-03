@@ -1663,6 +1663,11 @@ JNIEXPORT jboolean JNICALL JVM_PhantomReferenceRefersTo(JNIEnv *env, jobject ref
   return (*getEnv())->JVM_PhantomReferenceRefersTo(env, ref, o);
 }
 
+JNIEXPORT jobject JNICALL JVM_ReferenceGet(JNIEnv *env, jobject ref) {
+    UNIMPLEMENTED(JVM_ReferenceGet);
+    return NULL;
+}
+
 JNIEXPORT jboolean JNICALL JVM_ReferenceRefersTo(JNIEnv *env, jobject ref, jobject o) {
   IMPLEMENTED(JVM_ReferenceRefersTo);
   return (*getEnv())->JVM_ReferenceRefersTo(env, ref, o);

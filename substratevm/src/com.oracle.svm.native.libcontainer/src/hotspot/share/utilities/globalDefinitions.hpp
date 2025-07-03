@@ -28,6 +28,9 @@
 
 #include "utilities/compilerWarnings.hpp"
 #include "utilities/debug.hpp"
+#ifndef NATIVE_IMAGE
+#include "utilities/forbiddenFunctions.hpp"
+#endif // !NATIVE_IMAGE
 #include "utilities/macros.hpp"
 
 #ifndef NATIVE_IMAGE
@@ -191,35 +194,6 @@ inline uintptr_t p2u(const volatile void* p) {
 #define BOOL_TO_STR(_b_) ((_b_) ? "true" : "false")
 
 //----------------------------------------------------------------------------------------------------
-// Forbid the use of various C library functions.
-// Some of these have os:: replacements that should normally be used instead.
-// Others are considered security concerns, with preferred alternatives.
-
-FORBID_C_FUNCTION(void exit(int), "use os::exit");
-FORBID_C_FUNCTION(void _exit(int), "use os::exit");
-FORBID_C_FUNCTION(char* strerror(int), "use os::strerror");
-FORBID_C_FUNCTION(char* strtok(char*, const char*), "use strtok_r");
-FORBID_C_FUNCTION(int sprintf(char*, const char*, ...), "use os::snprintf");
-FORBID_C_FUNCTION(int vsprintf(char*, const char*, va_list), "use os::vsnprintf");
-FORBID_C_FUNCTION(int vsnprintf(char*, size_t, const char*, va_list), "use os::vsnprintf");
-
-// All of the following functions return raw C-heap pointers (sometimes as an option, e.g. realpath or getwd)
-// or, in case of free(), take raw C-heap pointers. Don't use them unless you are really sure you must.
-FORBID_C_FUNCTION(void* malloc(size_t size), "use os::malloc");
-FORBID_C_FUNCTION(void* calloc(size_t nmemb, size_t size), "use os::malloc and zero out manually");
-FORBID_C_FUNCTION(void free(void *ptr), "use os::free");
-FORBID_C_FUNCTION(void* realloc(void *ptr, size_t size), "use os::realloc");
-FORBID_C_FUNCTION(char* strdup(const char *s), "use os::strdup");
-FORBID_C_FUNCTION(char* strndup(const char *s, size_t n), "don't use");
-FORBID_C_FUNCTION(int posix_memalign(void **memptr, size_t alignment, size_t size), "don't use");
-FORBID_C_FUNCTION(void* aligned_alloc(size_t alignment, size_t size), "don't use");
-FORBID_C_FUNCTION(char* realpath(const char* path, char* resolved_path), "use os::realpath");
-FORBID_C_FUNCTION(char* get_current_dir_name(void), "use os::get_current_directory()");
-FORBID_C_FUNCTION(char* getwd(char *buf), "use os::get_current_directory()");
-FORBID_C_FUNCTION(wchar_t* wcsdup(const wchar_t *s), "don't use");
-FORBID_C_FUNCTION(void* reallocf(void *ptr, size_t size), "don't use");
-
-//----------------------------------------------------------------------------------------------------
 // Constants
 
 const int LogBytesPerShort   = 1;
@@ -321,6 +295,9 @@ namespace svm_container {
 const jlong min_jlong = CONST64(0x8000000000000000);
 const jlong max_jlong = CONST64(0x7fffffffffffffff);
 
+// for timer info max values which include all bits, 0xffffffffffffffff
+const jlong all_bits_jlong = ~jlong(0);
+
 #ifndef NATIVE_IMAGE
 //-------------------------------------------
 // Constant for jdouble
@@ -334,7 +311,6 @@ const size_t K                  = 1024;
 const size_t M                  = K*K;
 const size_t G                  = M*K;
 #ifndef NATIVE_IMAGE
-const size_t HWperKB            = K / sizeof(HeapWord);
 
 // Constants for converting from a base unit to milli-base units.  For
 // example from seconds to milliseconds and microseconds
@@ -1207,7 +1183,7 @@ inline bool is_even(intx x) { return !is_odd(x); }
 
 // abs methods which cannot overflow and so are well-defined across
 // the entire domain of integer types.
-static inline unsigned int uabs(unsigned int n) {
+static inline unsigned int g_uabs(unsigned int n) {
   union {
     unsigned int result;
     int value;
@@ -1216,7 +1192,7 @@ static inline unsigned int uabs(unsigned int n) {
   if (value < 0) result = 0-result;
   return result;
 }
-static inline julong uabs(julong n) {
+static inline julong g_uabs(julong n) {
   union {
     julong result;
     jlong value;
@@ -1225,8 +1201,8 @@ static inline julong uabs(julong n) {
   if (value < 0) result = 0-result;
   return result;
 }
-static inline julong uabs(jlong n) { return uabs((julong)n); }
-static inline unsigned int uabs(int n) { return uabs((unsigned int)n); }
+static inline julong g_uabs(jlong n) { return g_uabs((julong)n); }
+static inline unsigned int g_uabs(int n) { return g_uabs((unsigned int)n); }
 
 // "to" should be greater than "from."
 inline size_t byte_size(void* from, void* to) {
