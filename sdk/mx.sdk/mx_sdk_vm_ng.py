@@ -868,6 +868,60 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         register_distribution(mx_pomdistribution.POMDistribution(_suite, "TOOLS_FOR_STANDALONE", [], tools_dists, None, maven=False))
 
 
+        # register toolchains shipped by BOOTSTRAP_GRAALVM, if any
+        if _external_bootstrap_graalvm:
+            toolchain_dir = join(_external_bootstrap_graalvm, "lib", "toolchains")
+            if exists(toolchain_dir):
+                for e in listdir(toolchain_dir):
+                    if not (e == "musl" or e.startswith("musl-")):
+                        # currently only variants of musl are detected
+                        continue
+
+                    binpath = join(toolchain_dir, e, "bin")
+                    ninja_layout = {
+                        "toolchain.ninja" : {
+                            "source_type": "string",
+                            "value": f'''
+include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
+CC={binpath}/clang
+CXX={binpath}/clang++
+AR={binpath}/ar
+'''
+                        },
+                    }
+                    ninja_dependencies = ['mx:GCC_NINJA_TOOLCHAIN']
+                    ninja_native_toolchain = {
+                        'kind': 'ninja',
+                        'compiler': 'llvm',
+                        'target': {
+                            'os': mx.get_os(),
+                            'arch': mx.get_arch(),
+                            'libc': 'musl',
+                            'variant': e.split('-', 1)[1] if '-' in e else None
+                        }
+                    }
+                    ninja_name = 'BOOTSTRAP_' + e.upper().replace('-', '_') + '_NINJA_TOOLCHAIN'
+                    register_distribution(mx.LayoutDirDistribution(_suite, ninja_name, ninja_dependencies, ninja_layout, path=None, theLicense=None, platformDependent=True, native_toolchain=ninja_native_toolchain, native=True, maven=False))
+
+                    cmake_layout = {
+                        "toolchain.cmake" : {
+                            "source_type": "string",
+                            "value": f'''
+set(CMAKE_C_COMPILER {binpath}/clang)
+set(CMAKE_CXX_COMPILER {binpath}/clang++)
+set(CMAKE_AR {binpath}/ar)
+'''
+                        },
+                    }
+                    cmake_dependencies = []
+                    cmake_native_toolchain = dict(**ninja_native_toolchain)
+                    cmake_native_toolchain['kind'] = 'cmake'
+                    cmake_name = 'BOOTSTRAP_' + e.upper().replace('-', '_') + '_CMAKE_TOOLCHAIN'
+                    register_distribution(mx.LayoutDirDistribution(_suite, cmake_name, cmake_dependencies, cmake_layout, path=None, theLicense=None, platformDependent=True, native_toolchain=cmake_native_toolchain, native=True, maven=False))
+
+                    mx.logv(f'Registered toolchain for {e} from bootstrap GraalVM {_external_bootstrap_graalvm}')
+
+
 class DynamicPOMDistribution(mx_pomdistribution.POMDistribution):
     def __init__(self, suite, name, deps, excl, platformDependent, theLicense, **kw_args):
         dist_deps = _pop_list(kw_args, 'distDependencies', suite, name)
