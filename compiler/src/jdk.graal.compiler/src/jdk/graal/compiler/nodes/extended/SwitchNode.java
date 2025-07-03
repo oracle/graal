@@ -401,6 +401,6 @@ public abstract class SwitchNode extends ControlSplitNode implements Simplifiabl
     }
 
     private void tryPullThroughSwitch(SimplifierTool tool) {
-        GraphUtil.tryDeDuplicateSplitSuccessors(this);
+        GraphUtil.tryDeDuplicateSplitSuccessors(this, tool);
     }
 }

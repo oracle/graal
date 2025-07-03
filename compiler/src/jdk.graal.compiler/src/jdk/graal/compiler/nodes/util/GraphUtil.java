@@ -50,6 +50,7 @@ import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.LinkedStack;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeBitMap;
+import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.graph.NodeStack;
 import jdk.graal.compiler.graph.Position;
@@ -1530,7 +1531,7 @@ public class GraphUtil {
      * }
      * </pre>
      */
-    public static void tryDeDuplicateSplitSuccessors(ControlSplitNode split) {
+    public static void tryDeDuplicateSplitSuccessors(ControlSplitNode split, SimplifierTool tool) {
         do {
             Node referenceSuccessor = null;
             for (Node successor : split.successors()) {
@@ -1577,6 +1578,23 @@ public class GraphUtil {
                 otherSuccessorNext.replaceAtUsages(firstSuccessorNext);
                 split.graph().removeFixed((FixedWithNextNode) otherSuccessorNext);
             }
+            for (Node usage : firstSuccessorNext.usages().snapshot()) {
+                if (usage.isAlive()) {
+                    NodeClass<?> usageNodeClass = usage.getNodeClass();
+                    if (usageNodeClass.valueNumberable() && !usageNodeClass.isLeafNode()) {
+                        Node newNode = split.graph().findDuplicate(usage);
+                        if (newNode != null) {
+                            usage.replaceAtUsagesAndDelete(newNode);
+                        }
+                    }
+                    if (usage.isAlive()) {
+                        tool.addToWorkList(usage);
+                    }
+                }
+            }
+
+            split.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, split.graph(), "After deduplicating %s successors of %s", firstSuccessorNext, split);
+
         } while (true); // TERMINATION ARGUMENT: processing fixed nodes until duplication is no
         // longer possible.
     }

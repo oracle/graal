@@ -1157,7 +1157,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     private void pullNodesThroughIf(SimplifierTool tool) {
         assert trueSuccessor().hasNoUsages() : Assertions.errorMessageContext("this", this, "trueSucc", trueSuccessor(), "trueSuccUsages", trueSuccessor().usages());
         assert falseSuccessor().hasNoUsages() : Assertions.errorMessageContext("this", this, "falseSucc", falseSuccessor(), "falseSuccUsages", falseSuccessor().usages());
-        GraphUtil.tryDeDuplicateSplitSuccessors(this);
+        GraphUtil.tryDeDuplicateSplitSuccessors(this, tool);
     }
 
     /**
