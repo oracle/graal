@@ -1578,6 +1578,15 @@ public class GraphUtil {
                 otherSuccessorNext.replaceAtUsages(firstSuccessorNext);
                 split.graph().removeFixed((FixedWithNextNode) otherSuccessorNext);
             }
+
+            /*
+             * Immediately cleanup usages - this is required as certain simplify implementations in
+             * the compiler expect "known" graph shapes. De-duplication is an intrusive operation
+             * that can destroy these invariants (temporarily). Thus, we immediately cleanup
+             * floating usages to be deduplicated as well to have a correct graph shape again.
+             *
+             * Mostly relevant for commit allocation nodes and other partial escaped graph shapes.
+             */
             for (Node usage : firstSuccessorNext.usages().snapshot()) {
                 if (usage.isAlive()) {
                     NodeClass<?> usageNodeClass = usage.getNodeClass();
@@ -1592,9 +1601,6 @@ public class GraphUtil {
                     }
                 }
             }
-
-            split.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, split.graph(), "After deduplicating %s successors of %s", firstSuccessorNext, split);
-
         } while (true); // TERMINATION ARGUMENT: processing fixed nodes until duplication is no
         // longer possible.
     }
