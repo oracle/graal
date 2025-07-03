@@ -1474,11 +1474,11 @@ public class GraphUtil {
      * successor statements.
      *
      * An example would be case statements of a Switch. The illustrative example below is for a
-     * switch control split node.
+     * switch control split node. However, we perform the same transformation also for if nodes.
      *
      * <p>
-     * This transformation is only applied to patterns where the same code is executed after each
-     * case, such as the following example:
+     * This transformation is only applied to patterns where the same code prefix is executed after
+     * each case, such as the following example:
      *
      * <pre>
      * public static int switchReducePattern(int a) {
