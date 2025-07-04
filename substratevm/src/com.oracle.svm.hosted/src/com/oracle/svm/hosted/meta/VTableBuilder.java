@@ -215,8 +215,8 @@ public final class VTableBuilder {
         int index = startingIndex;
         for (HostedMethod typeMethod : table) {
             assert typeMethod.getDeclaringClass().equals(type) : typeMethod;
-            assert typeMethod.vtableIndex == HostedMethod.MISSING_VTABLE_IDX : typeMethod.vtableIndex;
-            typeMethod.vtableIndex = index;
+            assert typeMethod.computedVTableIndex == HostedMethod.MISSING_VTABLE_IDX : typeMethod.computedVTableIndex;
+            typeMethod.computedVTableIndex = index;
             index++;
         }
 
@@ -502,7 +502,7 @@ public final class VTableBuilder {
                      * assignments into account.
                      */
                     int slot = findSlot(method, vtablesMap, usedSlotsMap, vtablesSlots);
-                    method.vtableIndex = slot;
+                    method.computedVTableIndex = slot;
 
                     /* Assign the vtable slot for the type and all subtypes. */
                     assignImplementations(method.getDeclaringClass(), method, slot, vtablesMap);
@@ -529,7 +529,7 @@ public final class VTableBuilder {
                     assert vtable.get(slot) == null;
                     vtable.set(slot, resolvedMethod);
                 }
-                resolvedMethod.vtableIndex = slot;
+                resolvedMethod.computedVTableIndex = slot;
             }
         }
 

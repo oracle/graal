@@ -95,13 +95,13 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     private final ConstantPool constantPool;
     private final ExceptionHandler[] handlers;
     /**
-     * Contains the index of the method within the appropriate table.
+     * Contains the index of the method computed by {@link VTableBuilder}.
      *
      * Within the closed type world, there exists a single table which describes all methods.
      * However, within the open type world, each type and interface has a unique table, so this
      * index is relative to the start of the appropriate table.
      */
-    int vtableIndex = MISSING_VTABLE_IDX;
+    int computedVTableIndex = MISSING_VTABLE_IDX;
 
     /**
      * When using the open type world we must differentiate between this method's vtable index and
@@ -404,12 +404,12 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
              * In the closed type word we do not have a different indirectCallTarget, so the
              * vtableIndex is always the original vtable index.
              */
-            indirectCallVTableIndex = vtableIndex;
+            indirectCallVTableIndex = computedVTableIndex;
         } else {
             /*
              * In the open type word we must use the vtable index from the indirect call target.
              */
-            indirectCallVTableIndex = indirectCallTarget.vtableIndex;
+            indirectCallVTableIndex = indirectCallTarget.computedVTableIndex;
         }
     }
 
@@ -676,7 +676,6 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         return (HostedMethod) multiMethodMap.computeIfAbsent(key, (k) -> {
             HostedMethod newMultiMethod = create0(wrapped, holder, signature, constantPool, handlers, k, multiMethodMap, localVariableTable);
             newMultiMethod.implementations = implementations;
-            newMultiMethod.vtableIndex = vtableIndex;
             return newMultiMethod;
         });
     }
