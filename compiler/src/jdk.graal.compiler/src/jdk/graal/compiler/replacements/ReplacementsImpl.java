@@ -33,6 +33,8 @@ import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.Compila
 import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
 import java.util.BitSet;
+import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -111,6 +113,12 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
     public final TargetDescription target;
     protected GraphBuilderConfiguration.Plugins graphBuilderPlugins;
     private final DebugHandlersFactory debugHandlersFactory;
+    private final Map<SnippetTemplate.CacheKey, SnippetTemplate> templatesCache;
+
+    @Override
+    public Map<SnippetTemplate.CacheKey, SnippetTemplate> getTemplatesCache() {
+        return templatesCache;
+    }
 
     /**
      * The preprocessed replacement graphs. This is keyed by a pair of a method and options because
@@ -242,6 +250,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
         this.snippetTemplateCache = EconomicMap.create(Equivalence.DEFAULT);
         this.defaultBytecodeProvider = bytecodeProvider;
         this.debugHandlersFactory = debugHandlersFactory;
+        this.templatesCache = Collections.synchronizedMap(new SnippetTemplate.LRUCache<>());
     }
 
     private static final TimerKey SnippetPreparationTime = DebugContext.timer("SnippetPreparationTime");

@@ -285,12 +285,11 @@ public class ObjectCopier {
 
         HashMapBuiltin() {
             super(HashMap.class, IdentityHashMap.class, LinkedHashMap.class, SnippetTemplate.LRUCache.class);
-            int size = SnippetTemplate.Options.MaxTemplatesPerSnippet.getDefaultValue();
             factories = Map.of(
                             HashMap.class, HashMap::new,
                             IdentityHashMap.class, IdentityHashMap::new,
                             LinkedHashMap.class, LinkedHashMap::new,
-                            SnippetTemplate.LRUCache.class, () -> new SnippetTemplate.LRUCache<>(size, size));
+                            SnippetTemplate.LRUCache.class, SnippetTemplate.LRUCache::new);
         }
 
         @Override
