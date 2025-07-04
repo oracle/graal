@@ -55,7 +55,6 @@ import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.ReferenceHandler;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
@@ -1549,6 +1548,7 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Avoid linker relocations for code and instead emit address computations.", type = OptionType.Expert) //
+    @LayerVerifiedOption(severity = Severity.Error, kind = Kind.Changed, positional = false) //
     public static final HostedOptionKey<Boolean> RelativeCodePointers = new HostedOptionKey<>(false, SubstrateOptions::validateRelativeCodePointers);
 
     @Fold
@@ -1561,13 +1561,6 @@ public class SubstrateOptions {
             String enabledOption = SubstrateOptionsParser.commandArgument(optionKey, "+");
 
             UserError.guarantee(Platform.includedIn(PLATFORM_JNI.class) || Platform.includedIn(NATIVE_ONLY.class), "%s is supported only with hardware target platforms.", enabledOption);
-
-            /*
-             * GR-59707: Dispatch tables must potentially be patched at runtime still. Method
-             * offsets for dispatch need to be passed on between layer builds rather than using
-             * symbol names.
-             */
-            UserError.guarantee(!ImageLayerBuildingSupport.buildingImageLayer(), "%s is currently not supported with layered images.", enabledOption);
 
             // The concept of a code base would need to be introduced in the LLVM backend first.
             UserError.guarantee(!useLLVMBackend(), "%s is currently not supported with the LLVM backend.", enabledOption);
