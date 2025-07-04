@@ -31,6 +31,7 @@ import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.dump.HeapDumping;
 import com.oracle.svm.core.jdk.JDKUtils;
+import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.VMError;
@@ -64,6 +65,9 @@ public class OutOfMemoryUtil {
     private static void reportOutOfMemoryError0(OutOfMemoryError error) {
         if (VMInspectionOptions.hasHeapDumpSupport() && SubstrateOptions.HeapDumpOnOutOfMemoryError.getValue()) {
             HeapDumping.singleton().dumpHeapOnOutOfMemoryError();
+        }
+        if (VMInspectionOptions.hasJfrSupport()) {
+            SubstrateJVM.get().vmErrorRotation();
         }
 
         if (SubstrateGCOptions.ExitOnOutOfMemoryError.getValue()) {
