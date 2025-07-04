@@ -78,7 +78,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+4/src/hotspot/share/utilities/compilerWarnings_gcc.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+4/src/hotspot/share/utilities/compilerWarnings.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+4/src/hotspot/share/utilities/globalDefinitions_gcc.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+4/src/hotspot/share/utilities/globalDefinitions.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+5/src/hotspot/share/utilities/globalDefinitions.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+4/src/hotspot/share/utilities/macros.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+4/src/hotspot/share/utilities/ostream.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+4/src/hotspot/share/utilities/ostream.hpp")
