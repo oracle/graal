@@ -2404,6 +2404,7 @@ suite = {
                 "com.oracle.graal.pointsto.util",
                 "com.oracle.graal.pointsto.meta",
                 "com.oracle.graal.pointsto.flow",
+                "com.oracle.graal.pointsto.ide",
                 "com.oracle.graal.pointsto.flow.builder",
                 "com.oracle.graal.pointsto.nodes",
                 "com.oracle.graal.pointsto.phases",

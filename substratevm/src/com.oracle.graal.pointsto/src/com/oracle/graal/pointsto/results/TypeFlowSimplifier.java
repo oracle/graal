@@ -27,15 +27,19 @@ package com.oracle.graal.pointsto.results;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.FilterTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
+import com.oracle.graal.pointsto.flow.NullCheckTypeFlow;
 import com.oracle.graal.pointsto.flow.PrimitiveFilterTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
+import com.oracle.graal.pointsto.ide.AnalysisIDEReporting;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
@@ -82,6 +86,7 @@ import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.vm.ci.meta.Constant;
@@ -211,9 +216,24 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
         updateStampUsingPiNode(node, newStampOrConstant, node, tool);
     }
 
+    private void reportUnreachable(IfNode node, AbstractBeginNode unreachableBranch) {
+        var unreachableBranchFlow = getNodeFlow(unreachableBranch);
+        var isNullCheck = unreachableBranchFlow instanceof NullCheckTypeFlow nullCheck && !nullCheck.isBlockingNull();
+        var isTypeCheck = unreachableBranchFlow instanceof FilterTypeFlow filterTypeFlow && !filterTypeFlow.isAssignable();
+        AnalysisIDEReporting.reportUnreachableBranch(node, unreachableBranch, isNullCheck, isTypeCheck);
+    }
+
     private void handleIf(IfNode node, SimplifierTool tool) {
         boolean trueUnreachable = isUnreachable(node.trueSuccessor());
         boolean falseUnreachable = isUnreachable(node.falseSuccessor());
+
+        if (trueUnreachable) {
+            reportUnreachable(node, node.trueSuccessor());
+        }
+
+        if (falseUnreachable) {
+            reportUnreachable(node, node.falseSuccessor());
+        }
 
         if (trueUnreachable && falseUnreachable) {
             super.makeUnreachable(node, tool, () -> super.location(node) + ": both successors of IfNode are unreachable");
@@ -244,6 +264,12 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
             node.setCondition(LogicConstantNode.tautology(graph), true);
             tool.addToWorkList(node);
         }
+    }
+
+    @Override
+    protected void makeUnreachable(FixedNode node, CoreProviders providers, Supplier<String> message) {
+        AnalysisIDEReporting.reportUnreachableNode(node);
+        super.makeUnreachable(node, providers, message);
     }
 
     private boolean isUnreachable(Node branch) {
@@ -429,12 +455,16 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
         }
         Object newStampOrConstant = strengthenStampFromTypeFlow(node, nodeFlow, anchorPointAfterInvoke, tool);
         updateStampUsingPiNode(node, newStampOrConstant, anchorPointAfterInvoke, tool);
+
+        AnalysisIDEReporting.reportPossibleReturnTypes(invoke, callees);
     }
 
     /**
      * The invoke always has a null receiver, so it can be removed.
      */
     private void invokeWithNullReceiver(Invoke invoke) {
+        var fixedNode = invoke.asFixedNode();
+        AnalysisIDEReporting.reportUnreachableNode(fixedNode);
         FixedNode replacement = strengthenGraphs.createInvokeWithNullReceiverReplacement(graph);
         ((FixedWithNextNode) invoke.predecessor()).setNext(replacement);
         GraphUtil.killCFG(invoke.asFixedNode());
@@ -445,6 +475,7 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
      * allows later inlining of the callee.
      */
     private void devirtualizeInvoke(AnalysisMethod singleCallee, Invoke invoke) {
+        AnalysisIDEReporting.reportDevirtualizedInvoke(methodFlow.getMethod(), invoke, singleCallee);
         if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(graph.getOptions())) {
             ImageBuildStatistics.counters().incDevirtualizedInvokeCounter();
         }

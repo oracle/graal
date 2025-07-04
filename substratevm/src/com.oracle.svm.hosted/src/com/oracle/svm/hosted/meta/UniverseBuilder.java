@@ -54,6 +54,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
+import com.oracle.graal.pointsto.ide.AnalysisIDEReporting;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -436,6 +437,8 @@ public class UniverseBuilder {
          * it yet.
          */
         HostedType type = lookupType(aField.getType());
+
+        AnalysisIDEReporting.maybeReportConstantField(aField);
 
         HostedField hField = new HostedField(aField, holder, type);
         assert !hUniverse.fields.containsKey(aField);
