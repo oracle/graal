@@ -104,11 +104,8 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     int computedVTableIndex = MISSING_VTABLE_IDX;
 
     /**
-     * When using the open type world we must differentiate between this method's vtable index and
-     * the vtable index used for virtual calls. This is because sometimes JVMCI will expose to
-     * analysis special methods HotSpot introduces into vtables, such as miranda and overpass
-     * methods. In the open type world we only include declared methods in vtables and hence must
-     * adjust indirect call targets accordingly.
+     * When using the open type world we must differentiate between the vtable index computed by
+     * {@link VTableBuilder} for this method and the vtable index used for virtual calls.
      *
      * Note normally {@code indirectCallTarget == this}. Only for special HotSpot methods such as
      * miranda and overpass methods will the indirectCallTarget be a different method. The logic for
