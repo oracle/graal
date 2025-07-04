@@ -25,8 +25,16 @@
 package com.oracle.svm.core.heap;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(className = "sun.nio.Cleaner")
-public final class Target_sun_nio_Cleaner {
+@TargetClass(className = "java.nio.BufferCleaner")
+public final class Target_java_nio_BufferCleaner {
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    static Target_java_nio_BufferCleaner_CleaningThread cleaningThread;
+}
+
+@TargetClass(className = "java.nio.BufferCleaner$CleaningThread")
+final class Target_java_nio_BufferCleaner_CleaningThread {
 }
