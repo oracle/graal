@@ -782,7 +782,7 @@ public class SubstrateOptions {
     @Option(help = "Deprecated, option no longer has any effect.", type = OptionType.User, deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
     public static final HostedOptionKey<Boolean> BuildOutputPrefix = new HostedOptionKey<>(false);
 
-    @Option(help = "Color build output (enabled by default if colors are supported by terminal)", type = OptionType.User, deprecated = true, deprecationMessage = "Please use '--color' instead.")//
+    @Option(help = "Color build output (enabled by default if colors are supported by terminal)", type = OptionType.User, deprecated = true, deprecationMessage = "Please use '--color' instead")//
     public static final HostedOptionKey<Boolean> BuildOutputColorful = new HostedOptionKey<>(false);
 
     @Option(help = "Show links in build output (defaults to the value of BuildOutputColorful)", type = OptionType.User)//
@@ -1516,7 +1516,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> ReduceImplicitExceptionStackTraceInformation = new HostedOptionKey<>(false);
 
     @Option(help = "Allow all instantiated types to be allocated via Unsafe.allocateInstance().", type = OptionType.Expert, //
-                    deprecated = true, deprecationMessage = "ThrowMissingRegistrationErrors is the preferred way of configuring this on a per-type level.") //
+                    deprecated = true, deprecationMessage = "ThrowMissingRegistrationErrors is the preferred way of configuring this on a per-type level") //
     public static final HostedOptionKey<Boolean> AllowUnsafeAllocationOfAllInstantiatedTypes = new HostedOptionKey<>(null);
 
     @Option(help = "Enable fallback to mremap for initializing the image heap.")//

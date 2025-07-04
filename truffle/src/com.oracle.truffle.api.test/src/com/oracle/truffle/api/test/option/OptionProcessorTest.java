@@ -444,17 +444,17 @@ public class OptionProcessorTest {
         static final OptionKey<OptionMap<String>> Error9 = OptionKey.mapOf(String.class);
 
         @ExpectError("Deprecation message can be specified only for deprecated options.") //
-        @Option(help = "A", category = OptionCategory.USER, deprecationMessage = "Deprecated with no replacement.") //
+        @Option(help = "A", category = OptionCategory.USER, deprecationMessage = "Deprecated with no replacement") //
         static final OptionKey<String> Error10 = new OptionKey<>("defaultValue");
 
         @ExpectError("Option deprecation message must start with upper case letter.") //
-        @Option(help = "A", category = OptionCategory.USER, deprecated = true, deprecationMessage = "deprecated with no replacement.") //
+        @Option(help = "A", category = OptionCategory.USER, deprecated = true, deprecationMessage = "deprecated with no replacement") //
         static final OptionKey<String> Error11 = new OptionKey<>("defaultValue");
 
         @Option(help = "A", name = "", deprecated = true, category = OptionCategory.USER) //
         static final OptionKey<String> EmptyNameAllowed = new OptionKey<>("defaultValue");
 
-        @Option(help = "A", category = OptionCategory.USER, deprecated = true, deprecationMessage = "Deprecated with no replacement.") //
+        @Option(help = "A", category = OptionCategory.USER, deprecated = true, deprecationMessage = "Deprecated with no replacement") //
         static final OptionKey<String> ValidDeprecationMessage = new OptionKey<>("defaultValue");
 
     }
