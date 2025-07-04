@@ -60,10 +60,10 @@ public final class VTableBuilder {
         VTableBuilder builder = new VTableBuilder(hUniverse, hMetaAccess);
         if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
             builder.buildClosedTypeWorldVTables();
-            hUniverse.methods.forEach((k, v) -> v.finalizeVTableIndex(true));
+            hUniverse.methods.forEach((k, v) -> v.finalizeIndirectCallVTableIndex());
         } else {
             builder.buildOpenTypeWorldDispatchTables();
-            hUniverse.methods.forEach((k, v) -> v.finalizeVTableIndex(false));
+            hUniverse.methods.forEach((k, v) -> v.finalizeIndirectCallVTableIndex());
             assert builder.verifyOpenTypeWorldDispatchTables();
         }
     }

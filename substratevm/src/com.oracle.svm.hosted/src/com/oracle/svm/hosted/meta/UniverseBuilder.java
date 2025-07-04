@@ -182,8 +182,15 @@ public class UniverseBuilder {
                 HostedMethod previous = hUniverse.methods.put(aMethod, origHMethod);
                 assert previous == null : "Overwriting analysis key";
             }
+
+            // see SharedMethod#getIndirectCallTarget for more information
             if (!SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 OpenTypeWorldFeature.computeIndirectCallTargets(hUniverse, hUniverse.methods);
+            } else {
+                hUniverse.methods.forEach((aMethod, hMethod) -> {
+                    assert aMethod.isOriginalMethod();
+                    hMethod.setIndirectCallTarget(hMethod);
+                });
             }
 
             HostedConfiguration.initializeDynamicHubLayout(hMetaAccess);

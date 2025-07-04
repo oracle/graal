@@ -99,10 +99,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
     public static void computeIndirectCallTargets(HostedUniverse hUniverse, Map<AnalysisMethod, HostedMethod> methods) {
         Map<HostedType, HostedType[]> allInterfacesMap = new HashMap<>();
         methods.forEach((aMethod, hMethod) -> {
-            if (!aMethod.isOriginalMethod()) {
-                // We don't need to set this; only original methods will be call targets
-                return;
-            }
+            assert aMethod.isOriginalMethod();
 
             var aAlias = calculateIndirectCallTarget(allInterfacesMap, hMethod);
             HostedMethod hAlias;

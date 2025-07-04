@@ -395,19 +395,8 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         return indirectCallTarget;
     }
 
-    void finalizeVTableIndex(boolean closedTypeWorld) {
-        if (closedTypeWorld) {
-            /*
-             * In the closed type word we do not have a different indirectCallTarget, so the
-             * vtableIndex is always the original vtable index.
-             */
-            indirectCallVTableIndex = computedVTableIndex;
-        } else {
-            /*
-             * In the open type word we must use the vtable index from the indirect call target.
-             */
-            indirectCallVTableIndex = indirectCallTarget.computedVTableIndex;
-        }
+    void finalizeIndirectCallVTableIndex() {
+        indirectCallVTableIndex = indirectCallTarget.computedVTableIndex;
     }
 
     @Override
@@ -673,6 +662,9 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         return (HostedMethod) multiMethodMap.computeIfAbsent(key, (k) -> {
             HostedMethod newMultiMethod = create0(wrapped, holder, signature, constantPool, handlers, k, multiMethodMap, localVariableTable);
             newMultiMethod.implementations = implementations;
+            newMultiMethod.computedVTableIndex = computedVTableIndex;
+            newMultiMethod.indirectCallTarget = indirectCallTarget;
+            newMultiMethod.indirectCallVTableIndex = indirectCallVTableIndex;
             return newMultiMethod;
         });
     }
