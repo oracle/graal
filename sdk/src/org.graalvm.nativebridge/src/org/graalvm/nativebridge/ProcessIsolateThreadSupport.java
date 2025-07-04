@@ -121,6 +121,8 @@ final class ProcessIsolateThreadSupport {
     private static final int INITIAL_REQUEST_CACHE_SIZE = 1 << 10;
     private static final int MAX_REQUEST_CACHE_SIZE = 1 << 20;
 
+    private static final int MAX_INTERRUPTED_ATTACH_RETRIES = 10;
+
     private final DispatchSupport dispatchSupport;
     private final ServerSocketChannel local;
     private UnixDomainSocketAddress peer;
@@ -316,15 +318,29 @@ final class ProcessIsolateThreadSupport {
      * and {@code Context.interrupt()} interrupt threads.
      */
     private SocketChannel connectPeer() throws IOException {
-        while (true) {
-            SocketChannel c = SocketChannel.open(StandardProtocolFamily.UNIX);
-            try {
-                c.connect(peer);
-                return c;
-            } catch (ClosedByInterruptException closed) {
-                // Retry on interrupt to avoid leaking cancellation semantics into
-                // IsolateDeathHandler.
-                // Closing or interrupting contexts may interrupt this thread.
+        int interruptCount = 0;
+        try {
+            while (true) {
+                SocketChannel c = SocketChannel.open(StandardProtocolFamily.UNIX);
+                try {
+                    c.connect(peer);
+                    return c;
+                } catch (ClosedByInterruptException closed) {
+                    if (interruptCount++ < MAX_INTERRUPTED_ATTACH_RETRIES) {
+                        // Clear the thread interrupt status before retry
+                        Thread.interrupted();
+                        // Retry on interrupt to avoid leaking cancellation semantics into
+                        // IsolateDeathHandler. Closing or interrupting contexts may interrupt this
+                        // thread.
+                    } else {
+                        // Fail with IsolateDeathException on repeated interrupts to avoid livelock.
+                        throw closed;
+                    }
+                }
+            }
+        } finally {
+            if (interruptCount > 0 && !Thread.currentThread().isInterrupted()) {
+                Thread.currentThread().interrupt();
             }
         }
     }
