@@ -226,6 +226,21 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
+    void registerClassMetadata(ConfigurationCondition condition, Class<?> clazz) {
+        registerAllDeclaredFieldsQuery(condition, true, clazz);
+        registerAllFieldsQuery(condition, true, clazz);
+        registerAllDeclaredMethodsQuery(condition, true, clazz);
+        registerAllMethodsQuery(condition, true, clazz);
+        registerAllDeclaredConstructorsQuery(condition, true, clazz);
+        registerAllConstructorsQuery(condition, true, clazz);
+        registerAllDeclaredClassesQuery(condition, clazz);
+        registerAllClassesQuery(condition, clazz);
+        registerAllRecordComponentsQuery(condition, clazz);
+        registerAllPermittedSubclassesQuery(condition, clazz);
+        registerAllNestMembersQuery(condition, clazz);
+        registerAllSignersQuery(condition, clazz);
+    }
+
     /**
      * Runtime conditions can only be used with type, so they are not valid here.
      */
@@ -1161,10 +1176,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public int getEnabledReflectionQueries(Class<?> clazz) {
         int enabledQueries = enabledQueriesFlags.getOrDefault(clazz, 0);
         /*
-         * Primitives, arrays and object are registered by default since they provide reflective
-         * access to either no members or only Object methods.
+         * Primitives and arrays are registered by default since they provide reflective access to
+         * no members.
          */
-        if (clazz == Object.class || clazz.isPrimitive() || clazz.isArray()) {
+        if (clazz.isPrimitive() || clazz.isArray()) {
             enabledQueries |= ALL_DECLARED_CLASSES_FLAG | ALL_CLASSES_FLAG | ALL_DECLARED_CONSTRUCTORS_FLAG | ALL_CONSTRUCTORS_FLAG | ALL_DECLARED_METHODS_FLAG | ALL_METHODS_FLAG |
                             ALL_DECLARED_FIELDS_FLAG | ALL_FIELDS_FLAG;
         }
