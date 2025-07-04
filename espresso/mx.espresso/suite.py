@@ -248,18 +248,27 @@ suite = {
                 "windows": {
                     "<others>": {
                         "cflags": ["-g", "-O3", "-Wall"],
+                        "multitarget": {
+                            "libc": ["default"],
+                        },
                     },
                 },
                 "linux-musl": {
                     "<others>": {
                         "cflags": ["-Wall", "-Werror", "-Wno-error=cpp"],
-                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
+                        "multitarget": {
+                            "libc": ["musl", "default"],
+                            "compiler": ["sulong-bitcode", "host", "*"]
+                        },
                     },
                 },
                 "<others>": {
                     "<others>": {
                         "cflags": ["-Wall", "-Werror"],
-                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
+                        "multitarget": {
+                            "libc": ["glibc", "musl", "default"],
+                            "compiler": ["sulong-bitcode", "host", "*"]
+                        },
                     },
                 },
             },
@@ -312,7 +321,9 @@ suite = {
                             "-Wl,-current_version,1.0.0",
                             "-Wl,-compatibility_version,1.0.0"
                         ],
-                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
+                        "multitarget": {
+                            "compiler": ["sulong-bitcode", "host", "*"]
+                        },
                     },
                 },
                 "linux": {
@@ -322,7 +333,10 @@ suite = {
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
                         ],
-                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
+                        "multitarget": {
+                            "libc": ["glibc", "musl", "default"],
+                            "compiler": ["sulong-bitcode", "host", "*"]
+                        },
                     },
                 },
                 "linux-musl": {
@@ -332,12 +346,18 @@ suite = {
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
                         ],
-                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
+                        "multitarget": {
+                            "libc": ["musl", "default"],
+                            "compiler": ["sulong-bitcode", "host", "*"]
+                        },
                     },
                 },
                 "windows": {
                     "<others>": {
                         "cflags": ["-g", "-O3", "-Wall"],
+                        "multitarget": {
+                            "libc": ["default"],
+                        },
                     },
                 }
             },
@@ -558,7 +578,7 @@ suite = {
                     "dependency:espresso:ESPRESSO_STANDALONE_COMMON/*",
                 ],
                 "<jdk_lib_dir>/truffle/": [
-                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
+                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>",
                 ],
                 "lib/jvm.cfg": {
                     "source_type": "string",
@@ -621,7 +641,7 @@ suite = {
                 ],
                 "languages/java/lib/": [
                     # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
-                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
+                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>",
                 ],
                 "languages/java/": [
                     {
@@ -706,7 +726,7 @@ suite = {
             "layout": {
                 "META-INF/resources/java/espresso-libs/<os>/<arch>/lib/": [
                     # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
-                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
+                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>",
                 ],
                 "META-INF/resources/java/espresso-libs/<os>/<arch>/": "dependency:espresso:ESPRESSO_SUPPORT/*",
             },
@@ -751,7 +771,7 @@ suite = {
             "platforms": "local",
             "layout": {
                 "lib/": [
-                    "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
+                    "dependency:espresso:com.oracle.truffle.espresso.native/*/<multitarget_libc_selection>/<lib:nespresso>",
                     "dependency:espresso:ESPRESSO_POLYGLOT/*",
                     "dependency:espresso:HOTSWAP/*",
                     "dependency:espresso:CONTINUATIONS/*",
@@ -778,7 +798,7 @@ suite = {
                 "./": "dependency:espresso:ESPRESSO_SUPPORT/*",
                 "lib/": [
                     # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
-                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
+                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>",
                 ]
             },
             "maven": False,
@@ -790,7 +810,7 @@ suite = {
             "platformDependent": True,
             "layout": {
                 "truffle/": [
-                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
+                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>",
                 ],
             },
             "maven": False,

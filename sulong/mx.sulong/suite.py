@@ -2259,6 +2259,66 @@ suite = {
       "license": "BSD-new",
     },
 
+    "SULONG_NINJA_TOOLCHAIN": {
+      "native" : True,
+      "platformDependent" : True,
+      "native_toolchain": {
+        "kind": "ninja",
+        "compiler": "sulong-bitcode",
+        # empty, so it defaults everything to host properties
+        "target": {},
+      },
+
+      "os_arch": {
+        "windows": {
+          "<others>": {
+            "layout": {
+              "toolchain.ninja" : {
+                "source_type": "string",
+                "value": '''
+include <ninja-toolchain:MSVC_NINJA_TOOLCHAIN>
+CL=<path:SULONG_BOOTSTRAP_TOOLCHAIN>\\bin\\<cmd:clang-cl>
+LINK=<path:SULONG_BOOTSTRAP_TOOLCHAIN>\\bin\\<cmd:lld-link>
+LIB=<path:SULONG_BOOTSTRAP_TOOLCHAIN>\\bin\\<cmd:llvm-lib>
+ML=<path:SULONG_BOOTSTRAP_TOOLCHAIN>\\bin\\<cmd:llvm-ml>
+CFLAGS=
+CXXFLAGS=
+LDFLAGS=
+'''
+              },
+            },
+            "dependencies": [
+              "SULONG_BOOTSTRAP_TOOLCHAIN",
+              "mx:MSVC_NINJA_TOOLCHAIN",
+            ],
+          },
+        },
+        "<others>": {
+          "<others>": {
+            "layout": {
+              "toolchain.ninja" : {
+                "source_type": "string",
+                "value": '''
+include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
+CC=<path:SULONG_BOOTSTRAP_TOOLCHAIN>/bin/gcc
+CXX=<path:SULONG_BOOTSTRAP_TOOLCHAIN>/bin/g++
+AR=<path:SULONG_BOOTSTRAP_TOOLCHAIN>/bin/ar
+CFLAGS=
+CXXFLAGS=
+LDFLAGS=
+'''
+              },
+            },
+            "dependencies": [
+              "SULONG_BOOTSTRAP_TOOLCHAIN",
+              "mx:GCC_NINJA_TOOLCHAIN",
+            ],
+          },
+        },
+      },
+      "maven" : False,
+    },
+
     "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME": {
       "description" : "Bootstrap toolchain without an llvm.home. Use for bootstrapping libraries that should be contained in llvm.home.",
       "native": True,
