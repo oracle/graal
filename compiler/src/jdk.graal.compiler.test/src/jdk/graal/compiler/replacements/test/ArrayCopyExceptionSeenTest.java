@@ -98,4 +98,9 @@ public class ArrayCopyExceptionSeenTest extends GraalCompilerTest {
         code.executeVarargs(new Object[3], -1, new Object[3], 0, 1);
         Assert.assertEquals("No more deopts expected after recompile with explicit exception edge.", 1, method.getProfilingInfo().getDeoptimizationCount(DeoptimizationReason.BoundsCheckException));
     }
+
+    @Override
+    protected boolean installAsDefault() {
+        return true;
+    }
 }

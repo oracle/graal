@@ -1142,4 +1142,9 @@ public class RangeCheckPredicatesTest extends GraalCompilerTest {
     public void testGuardAboveExitTest() {
         verifyRangeCheckInLoop("rangeCheckPredicatesGuardAboveExitTest");
     }
+
+    @Override
+    protected boolean installAsDefault() {
+        return true;
+    }
 }
