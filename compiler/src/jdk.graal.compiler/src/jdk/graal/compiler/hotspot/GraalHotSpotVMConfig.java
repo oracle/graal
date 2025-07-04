@@ -135,16 +135,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean printInlining = getFlag("PrintInlining", Boolean.class);
     public final boolean inline = getFlag("Inline", Boolean.class);
 
-    // There are 3 available locking modes:
-    // LM_MONITOR uses only heavy monitors for locking;
-    // LM_LEGACY uses stack-locking, with monitors as 2nd tier;
-    // LM_LIGHTWEIGHT uses thread-local space for storing locked objects. This avoids the overload
-    // of the mark word.
-    public final int lockingMode = getFlag("LockingMode", Integer.class);
-
-    public final int lockingModeStack = getConstant("LockingMode::LM_LEGACY", Integer.class);
-    public final int lockingModeLightweight = getConstant("LockingMode::LM_LIGHTWEIGHT", Integer.class);
-
     public final boolean foldStableValues = getFlag("FoldStableValues", Boolean.class);
     public final int maxVectorSize = getFlag("MaxVectorSize", Integer.class);
 
