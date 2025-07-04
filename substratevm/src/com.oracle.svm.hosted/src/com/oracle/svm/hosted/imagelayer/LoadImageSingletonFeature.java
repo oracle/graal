@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.imagelayer;
 import static com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature.CROSS_LAYER_SINGLETON_TABLE_SYMBOL;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -116,6 +117,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
      * We need to cache this for the invocation plugin.
      */
     private SVMImageLayerLoader loader;
+    private final boolean buildingApplicationLayer = ImageLayerBuildingSupport.buildingApplicationLayer();
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -224,7 +226,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
         if (ImageLayerBuildingSupport.buildingInitialLayer()) {
             ImageSingletons.add(LoadImageSingletonFactory.class, new CrossLayerSingletonMappingInfo());
 
-        } else if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
+        } else if (buildingApplicationLayer) {
 
             ArrayList<Object> applicationLayerEmbeddedRoots = new ArrayList<>();
             ArrayList<Object> multiLayerEmbeddedRoots = new ArrayList<>();
@@ -371,11 +373,18 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
         String addReason = "Read via the layered image singleton support";
 
         /*
-         * We must add to the heap and record the id of all multilayered image singletons so that if
-         * needed a table can be created of all layer references later.
+         * Record the id of all multilayered image singleton entries which may be referenced.
+         * 
+         * In shared layers, we must add and record the id of all multilayered image singletons in
+         * case they are referred to in a later layer.
+         * 
+         * However, in the application layer we only need to add and record all multilayered image
+         * singletons currently referred to.
          */
         LayeredImageSingletonSupport layeredImageSingletonSupport = LayeredImageSingletonSupport.singleton();
-        for (var keyClass : layeredImageSingletonSupport.getMultiLayeredImageSingletonKeys()) {
+        Collection<Class<?>> candidatesClasses = buildingApplicationLayer ? getCrossLayerSingletonMappingInfo().getCurrentKeyToSlotInfoMap().keySet()
+                        : layeredImageSingletonSupport.getMultiLayeredImageSingletonKeys();
+        for (var keyClass : candidatesClasses) {
             var singleton = layeredImageSingletonSupport.lookup(keyClass, true, true);
             ImageHeapConstant singletonConstant = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(singleton);
             heap.addConstant(singletonConstant, false, addReason);
@@ -384,7 +393,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
             getCrossLayerSingletonMappingInfo().recordConstantID(keyClass, id);
         }
 
-        if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
+        if (buildingApplicationLayer) {
             Map<JavaConstant, Integer> mappingInfo = new HashMap<>();
             for (var slotInfo : getCrossLayerSingletonMappingInfo().getCurrentKeyToSlotInfoMap().values()) {
 
@@ -476,6 +485,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
      * Cache for created LoadImageSingletonDataImpl objects within the current layer.
      */
     private final Map<Class<?>, LoadImageSingletonDataImpl> layerKeyToSingletonDataMap = new ConcurrentHashMap<>();
+    private final boolean buildingApplicationLayer = ImageLayerBuildingSupport.buildingApplicationLayer();
 
     boolean sealedSingletonLookup = false;
     CGlobalData<Pointer> singletonTableStart;
@@ -516,7 +526,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
 
     private LoadImageSingletonData getImageSingletonInfo(Class<?> keyClass, SlotRecordKind kind) {
         assert !sealedSingletonLookup;
-        assert !ImageLayerBuildingSupport.buildingApplicationLayer() : "Singletons can always be directly folded in the application layer";
+        assert !buildingApplicationLayer : "Singletons can always be directly folded in the application layer";
 
         /*
          * First check to see if something is already cached.
@@ -554,7 +564,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
 
     @Override
     protected LoadImageSingletonData getApplicationLayerOnlyImageSingletonInfo(Class<?> keyClass) {
-        assert !ImageLayerBuildingSupport.buildingApplicationLayer() : "In the application layer one can directly load the constant";
+        assert !buildingApplicationLayer : "In the application layer one can directly load the constant";
         return getImageSingletonInfo(keyClass, SlotRecordKind.APPLICATION_LAYER_SINGLETON);
     }
 
