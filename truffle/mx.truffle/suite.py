@@ -1969,18 +1969,8 @@ suite = {
           "windows-amd64",
           "windows-aarch64",
       ],
-      "os": {
-        "linux": {
-          "layout": {
-            # only glibc.
-            "META-INF/resources/nfi-native/libnfi/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native/linux-*/glibc/*"
-          },
-        },
-        "<others>": {
-          "layout": {
-            "META-INF/resources/nfi-native/libnfi/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native/*/*/*",
-          },
-        },
+      "layout": {
+        "META-INF/resources/nfi-native/libnfi/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native/*/<multitarget_libc_selection>/*",
       },
       "description" : "Contains the native library needed by the libffi NFI backend.",
       "maven": False,
@@ -2326,18 +2316,8 @@ suite = {
       "native" : True,
       "platformDependent" : True,
       "description" : "Truffle NFI support distribution for the GraalVM",
-      "os": {
-        "linux": {
-          "layout": {
-            # only glibc.
-            "./" : "dependency:com.oracle.truffle.nfi.native/linux-*/glibc/*"
-          },
-        },
-        "<others>": {
-          "layout": {
-            "./" : "dependency:com.oracle.truffle.nfi.native/*/*/*",
-          },
-        },
+      "layout": {
+        "./" : "dependency:com.oracle.truffle.nfi.native/*/<multitarget_libc_selection>/*",
       },
       "maven" : False,
       "graalCompilerSourceEdition": "ignore",
