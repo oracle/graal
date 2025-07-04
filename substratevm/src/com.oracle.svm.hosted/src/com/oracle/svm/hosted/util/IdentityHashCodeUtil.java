@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -117,13 +117,7 @@ public class IdentityHashCodeUtil {
          * See HotSpotHashCodeSnippets for explanation.
          */
         long lockBits = markWord & config.markWordLockMaskInPlace;
-        boolean containsHashCode;
-        if (config.lockingMode == config.lockingModeLightweight) {
-            containsHashCode = lockBits != config.monitorValue;
-        } else {
-            containsHashCode = lockBits == config.unlockedValue;
-        }
-        if (containsHashCode) {
+        if (lockBits != config.monitorValue) {
             int hashcode = (int) ((markWord & hashCodeMask) >>> config.markWordHashCodeShift);
             if (hashcode == config.uninitializedIdentityHashCodeValue) {
                 return UNINITIALIZED;

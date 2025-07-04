@@ -131,4 +131,9 @@ public class DeoptimizeReasonAccountingTest extends GraalCompilerTest {
             }
         }
     }
+
+    @Override
+    protected boolean installAsDefault() {
+        return true;
+    }
 }

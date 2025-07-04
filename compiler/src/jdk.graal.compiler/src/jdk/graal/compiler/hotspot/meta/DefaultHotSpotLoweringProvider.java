@@ -35,7 +35,6 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.CO
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HUB_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HUB_WRITE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useLightweightLocking;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.Arrays;
@@ -330,7 +329,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         assert target == providers.getCodeCache().getTarget() : Assertions.errorMessage(target, providers.getCodeCache().getTarget());
         instanceofSnippets = new InstanceOfSnippets.Templates(options, runtime, providers);
         allocationSnippets = allocationSnippetTemplates;
-        monitorSnippets = new MonitorSnippets.Templates(options, runtime, providers, config);
+        monitorSnippets = new MonitorSnippets.Templates(options, runtime, providers);
         g1WriteBarrierSnippets = new HotSpotG1WriteBarrierSnippets.Templates(options, runtime, providers, config);
         serialWriteBarrierSnippets = new HotSpotSerialWriteBarrierSnippets.Templates(options, runtime, providers);
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(options, providers);
@@ -397,14 +396,11 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     @Override
     protected FixedWithNextNode maybeEmitLockingCheck(List<MonitorIdNode> locks, FixedWithNextNode insertionPoint, FrameState stateBefore) {
         if (!locks.isEmpty()) {
-            if (useLightweightLocking(getVMConfig())) {
-                StructuredGraph graph = insertionPoint.graph();
-                CheckFastPathMonitorEnterNode check = graph.add(new CheckFastPathMonitorEnterNode(locks));
-                graph.addAfterFixed(insertionPoint, check);
-                check.setStateBefore(stateBefore.duplicate());
-                return check;
-            }
-            // The stack lock and heavyweight monitors cases don't need any checks.
+            StructuredGraph graph = insertionPoint.graph();
+            CheckFastPathMonitorEnterNode check = graph.add(new CheckFastPathMonitorEnterNode(locks));
+            graph.addAfterFixed(insertionPoint, check);
+            check.setStateBefore(stateBefore.duplicate());
+            return check;
         }
         return insertionPoint;
     }
@@ -530,7 +526,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             }
         } else if (n instanceof CheckFastPathMonitorEnterNode) {
             if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
-                monitorSnippets.lower((CheckFastPathMonitorEnterNode) n, registers, runtime.getVMConfig(), tool);
+                monitorSnippets.lower((CheckFastPathMonitorEnterNode) n, registers, tool);
             }
         } else if (n instanceof MonitorExitNode) {
             if (graph.getGuardsStage().areFrameStatesAtDeopts()) {

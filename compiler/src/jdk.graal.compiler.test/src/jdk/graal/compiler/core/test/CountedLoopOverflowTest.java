@@ -129,6 +129,11 @@ public class CountedLoopOverflowTest extends GraalCompilerTest {
         }
     }
 
+    @Override
+    protected boolean installAsDefault() {
+        return true;
+    }
+
     @Test
     public void testDownOverflowUnsigned() {
         try {

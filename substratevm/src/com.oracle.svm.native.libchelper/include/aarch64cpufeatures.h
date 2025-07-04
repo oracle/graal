@@ -48,4 +48,5 @@ typedef struct {
   uint8_t fSVEBITPERM;
   uint8_t fFPHP;
   uint8_t fASIMDHP;
+  uint8_t fSB;
 } CPUFeatures;

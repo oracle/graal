@@ -902,12 +902,16 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected Result executeActual(OptionValues options, ResolvedJavaMethod method, Object receiver, Object... args) {
+        return executeActual(options, method, false, receiver, args);
+    }
+
+    protected Result executeActual(OptionValues options, ResolvedJavaMethod method, boolean installAsDefault, Object receiver, Object... args) {
         before(method);
         Object[] executeArgs = argsWithReceiver(receiver, args);
 
         checkArgs(method, executeArgs);
 
-        InstalledCode compiledMethod = getCode(method, options);
+        InstalledCode compiledMethod = getCode(method, null, false, installAsDefault, options);
         try {
             return new Result(compiledMethod.executeVarargs(executeArgs), null);
         } catch (Throwable e) {
@@ -1053,7 +1057,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         for (DeoptimizationReason reason : shouldNotDeopt) {
             deoptCounts.put(reason, profile.getDeoptimizationCount(reason));
         }
-        Result actual = executeActual(options, method, receiver, args);
+        Result actual = executeActual(options, method, !shouldNotDeopt.isEmpty(), receiver, args);
         profile = method.getProfilingInfo(); // profile can change after execution
         for (DeoptimizationReason reason : shouldNotDeopt) {
             Assert.assertEquals("wrong number of deopt counts for " + reason, (int) deoptCounts.get(reason), profile.getDeoptimizationCount(reason));
@@ -1162,7 +1166,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 try (DebugContext.Scope _ = debug.scope("CodeInstall", getCodeCache(), installedCodeOwner, compResult);
                                 DebugContext.Activation _ = debug.activate()) {
                     try {
-                        if (installAsDefault) {
+                        if (installAsDefault || installAsDefault()) {
                             installedCode = addDefaultMethod(debug, installedCodeOwner, compResult);
                         } else {
                             installedCode = addMethod(debug, installedCodeOwner, compResult);
@@ -1193,6 +1197,14 @@ public abstract class GraalCompilerTest extends GraalTest {
             return installedCode;
         }
         throw GraalError.shouldNotReachHere("Bailout limit reached"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    /**
+     * Allows subclasses to override and install compiled code as the default. Note that since
+     * JDK26+5, deoptimization counts are only updated for default compiled code.
+     */
+    protected boolean installAsDefault() {
+        return false;
     }
 
     private static boolean optionsMapDeepEquals(UnmodifiableEconomicMap<OptionKey<?>, Object> map1, UnmodifiableEconomicMap<OptionKey<?>, Object> map2) {

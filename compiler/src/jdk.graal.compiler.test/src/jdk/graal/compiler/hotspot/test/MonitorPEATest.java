@@ -28,22 +28,14 @@ import static jdk.graal.compiler.api.directives.GraalDirectives.controlFlowAncho
 import static jdk.graal.compiler.api.directives.GraalDirectives.deoptimize;
 import static jdk.graal.compiler.api.directives.GraalDirectives.injectBranchProbability;
 
-import org.junit.Assume;
-import org.junit.Before;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 
 /**
  * Tests that PEA preserves the monitorenter order. This is essential for lightweight locking.
  */
 public final class MonitorPEATest extends HotSpotGraalCompilerTest {
-
-    @Before
-    public void checkUseLightweightLocking() {
-        Assume.assumeTrue(HotSpotReplacementsUtil.useLightweightLocking(runtime().getVMConfig()));
-    }
 
     static int staticInt = 0;
     static Object staticObj;
