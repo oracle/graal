@@ -562,4 +562,16 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     public Class<?> getJavaClass() {
         return OriginalClassProvider.getJavaClass(this);
     }
+
+    @Override
+    public AssumptionResult<ResolvedJavaMethod> findUniqueConcreteMethod(ResolvedJavaMethod m) {
+        if (m.canBeStaticallyBound() || universe.hostVM().isClosedTypeWorld()) {
+            return SharedType.super.findUniqueConcreteMethod(m);
+        }
+        /*
+         * With an open type world analysis we cannot make assumptions for methods that cannot be
+         * trivially statically bound.
+         */
+        return null;
+    }
 }
