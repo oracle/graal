@@ -226,15 +226,6 @@ public final class ReferenceInternals {
                         // for nio.Bits waiters, which are the only important ones.
                         processPendingLock.notifyAll();
                     }
-                } else if (Target_sun_nio_Cleaner.class.isInstance(ref)) {
-                    Target_sun_nio_Cleaner cleaner = Target_sun_nio_Cleaner.class.cast(ref);
-                    // Cleaner catches all exceptions, cannot be overridden due to private c'tor
-                    cleaner.clean();
-                    synchronized (processPendingLock) {
-                        // Notify any waiters that progress has been made. This improves latency
-                        // for nio.Bits waiters, which are the only important ones.
-                        processPendingLock.notifyAll();
-                    }
                 } else {
                     @SuppressWarnings("unchecked")
                     Target_java_lang_ref_ReferenceQueue<? super Object> queue = SubstrateUtil.cast(ref.queue, Target_java_lang_ref_ReferenceQueue.class);
