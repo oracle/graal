@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import static com.oracle.svm.core.util.EnvVariableUtils.EnvironmentVariable;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -76,6 +78,14 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
         }
     }
 
+    private void writeEnvVariablesFile() {
+        try {
+            Files.write(getEnvVariablesFilePath(), parseEnvVariables().stream().map(EnvironmentVariable::toString).toList());
+        } catch (IOException e) {
+            throw UserError.abort("Unable to write environment variables to file " + getEnvVariablesFilePath());
+        }
+    }
+
     public void write() {
         try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(layerFile), archiveSupport.createManifest())) {
             // disable compression for significant (un)archiving speedup at the cost of file size
@@ -83,6 +93,9 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
             // write builder arguments file and add to jar
             writeBuilderArgumentsFile();
             archiveSupport.addFileToJar(layerDir, getBuilderArgumentsFilePath(), layerFile, jarOutStream);
+            // write environment variables file and add to jar
+            writeEnvVariablesFile();
+            archiveSupport.addFileToJar(layerDir, getEnvVariablesFilePath(), layerFile, jarOutStream);
             // copy the layer snapshot file and its graphs file to the jar
             archiveSupport.addFileToJar(layerDir, getSnapshotPath(), layerFile, jarOutStream);
             archiveSupport.addFileToJar(layerDir, getSnapshotGraphsPath(), layerFile, jarOutStream);
