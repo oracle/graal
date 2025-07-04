@@ -1253,6 +1253,28 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return foundLanguage;
     }
 
+    boolean storeCache(Path targetPath, long cancelledWord) {
+        if (!TruffleOptions.AOT) {
+            throw new UnsupportedOperationException("Storing the engine cache is only supported on native-image hosts.");
+        }
+
+        synchronized (this.lock) {
+            if (closingThread != null || closed) {
+                throw new IllegalStateException("The engine is already closed and cannot be cancelled or persisted.");
+            }
+            if (!storeEngine) {
+                throw new IllegalStateException(
+                                "In order to store the cache the option 'engine.CacheStoreEnabled' must be set to 'true'.");
+            }
+            List<PolyglotContextImpl> localContexts = collectAliveContexts();
+            if (!localContexts.isEmpty()) {
+                throw new IllegalStateException("There are still alive contexts that need to be closed or cancelled before the engine can be persisted.");
+            }
+
+            return RUNTIME.onStoreCache(this.runtimeData, targetPath, cancelledWord);
+        }
+    }
+
     void ensureClosed(boolean force, boolean initiatedByContext) {
         synchronized (this.lock) {
             Thread currentThread = Thread.currentThread();
@@ -1529,12 +1551,15 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
     }
 
+    record FinalizationResult(DispatchOutputStream out, DispatchOutputStream err, InputStream in) {
+    }
+
     /**
      * Invoked when the context is closing to prepare an engine to be stored.
      */
-    void finalizeStore() {
+    FinalizationResult finalizeStore() {
         assert Thread.holdsLock(this.lock);
-
+        FinalizationResult result = new FinalizationResult(out, err, in);
         this.out = null;
         this.err = null;
         this.in = null;
@@ -1548,6 +1573,13 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         if (hostLanguageService != null) {
             hostLanguageService.release();
         }
+        return result;
+    }
+
+    void restoreStore(FinalizationResult result) {
+        this.out = result.out;
+        this.err = result.err;
+        this.in = result.in;
     }
 
     @TruffleBoundary

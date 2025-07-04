@@ -50,6 +50,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 import com.oracle.truffle.api.Truffle;
@@ -70,6 +71,7 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
             }
         }
     };
+
     final WeakReference<OptimizedCallTarget> targetRef;
     private final BackgroundCompileQueue.Priority priority;
     private final long id;
@@ -77,6 +79,7 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
     private final EngineData engineData;
     private volatile Future<?> future;
     private volatile boolean cancelled;
+    volatile BooleanSupplier cancelledPredicate;
     private volatile boolean started;
     // Traversing queue related
     private int lastCount;
@@ -105,10 +108,12 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
             lastCount = Integer.MIN_VALUE;
             engineData = null;
             isOSR = false;
+            cancelledPredicate = null;
         } else {
             lastCount = target.getCallAndLoopCount();
             engineData = target.engine;
             isOSR = target.isOSR();
+            cancelledPredicate = target.engine.cancelledPredicate;
         }
     }
 
@@ -170,7 +175,8 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
 
     @Override
     public boolean isCancelled() {
-        return cancelled;
+        BooleanSupplier cancelPredicate = cancelledPredicate;
+        return cancelled || (cancelPredicate != null && cancelPredicate.getAsBoolean());
     }
 
     @Override

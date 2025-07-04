@@ -852,6 +852,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void onEngineCollected(Object engineReceiver);
 
+        public abstract boolean storeCache(Object engineReceiver, Path targetFile, long cancelledWord);
+
     }
 
     public abstract static class AbstractExceptionDispatch extends AbstractDispatchClass {
