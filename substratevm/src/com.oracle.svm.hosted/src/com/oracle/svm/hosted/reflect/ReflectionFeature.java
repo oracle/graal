@@ -534,7 +534,6 @@ final class ComputeInterfaceTypeID implements FieldValueTransformerWithAvailabil
         if (indirectCallTarget.getDeclaringClass().isInterface()) {
             return indirectCallTarget.getDeclaringClass().getTypeID();
         }
-        VMError.guarantee(method.equals(indirectCallTarget));
         return SubstrateMethodAccessor.INTERFACE_TYPEID_CLASS_TABLE;
     }
 }

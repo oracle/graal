@@ -828,7 +828,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                 type.getClassInitializer();
             } else {
                 ResolvedSignature<AnalysisType> signature = ResolvedSignature.fromArray(parameterTypes, returnType);
-                tryFindMethod(type, name, signature);
+                tryLoadMethod(type, name, signature);
             }
         }
 
@@ -847,7 +847,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
      * We also need this because reflection cannot find all declared methods within class; one
      * example it will not find is bridge methods inserted for covariant overrides.
      */
-    private void tryFindMethod(AnalysisType type, String name, ResolvedSignature<AnalysisType> signature) {
+    private void tryLoadMethod(AnalysisType type, String name, ResolvedSignature<AnalysisType> signature) {
         ResolvedJavaType wrapped = type.getWrapped();
         assert !(wrapped instanceof BaseLayerType) : type;
         for (ResolvedJavaMethod method : wrapped.getAllMethods(false)) {

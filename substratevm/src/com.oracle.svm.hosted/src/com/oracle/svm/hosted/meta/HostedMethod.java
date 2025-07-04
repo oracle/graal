@@ -107,7 +107,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
      * When using the open type world we must differentiate between this method's vtable index and
      * the vtable index used for virtual calls. This is because sometimes JVMCI will expose to
      * analysis special methods HotSpot introduces into vtables, such as miranda and overpass
-     * methods. In the open type word we only include declared methods in vtables and hence must
+     * methods. In the open type world we only include declared methods in vtables and hence must
      * adjust indirect call targets accordingly.
      *
      * Note normally {@code indirectCallTarget == this}. Only for special HotSpot methods such as
@@ -117,8 +117,8 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
      *
      * For additional information, see {@link SharedMethod#getIndirectCallTarget}.
      */
-    int indirectCallVTableIndex = MISSING_VTABLE_IDX;
-    HostedMethod indirectCallTarget = null;
+    private int indirectCallVTableIndex = MISSING_VTABLE_IDX;
+    private HostedMethod indirectCallTarget = null;
 
     /**
      * The address offset of the compiled code relative to the code of the first method in the
@@ -383,9 +383,9 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
             /*
              * When there is an indirectCallTarget installed which is not the original method, we
              * currently expect the target method to either have an interface as its declaring class
-             * or for the declaring class to be unchanged. If we change this in the future, then we
-             * will need to adjust the JNI (JNIAccessFeature) and reflection (ReflectionFeature)
-             * code as well.
+             * or for the declaring class to be unchanged. If the declaring class is different, then
+             * we must ensure that the layout of the vtable matches for all relevant indexes between
+             * the original and alias methods' declaring classes.
              */
             VMError.guarantee(alias.getDeclaringClass().isInterface() || alias.getDeclaringClass().equals(getDeclaringClass()), "Invalid indirect call target for %s: %s", this, alias);
         }
@@ -398,7 +398,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         return indirectCallTarget;
     }
 
-    public void finalizeVTableIndex(boolean closedTypeWorld) {
+    void finalizeVTableIndex(boolean closedTypeWorld) {
         if (closedTypeWorld) {
             /*
              * In the closed type word we do not have a different indirectCallTarget, so the

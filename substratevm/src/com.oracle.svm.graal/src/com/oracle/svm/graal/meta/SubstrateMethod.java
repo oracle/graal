@@ -201,7 +201,6 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     public void setSubstrateDataAfterCompilation(SubstrateMethod indirectCallTarget, int vTableIndex) {
         this.indirectCallTarget = indirectCallTarget;
         this.vTableIndex = vTableIndex;
-
     }
 
     public void setSubstrateDataAfterHeapLayout(int imageCodeOffset, int imageCodeDeoptOffset) {
