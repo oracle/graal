@@ -16,10 +16,9 @@ To replicate the steps in this guide, [create a Compute instance and connect to 
 
 ## Install Oracle GraalVM
 
-For convenience, Oracle GraalVM RPMs are available in the Oracle YUM repository.
-RPMs for Oracle GraalVM for JDK 17, JDK 21, and JDK 24 are available with the package names `graalvm-17-native-image`, `graalvm-21-native-image`, and `graalvm-24-native-image`, respectively.
-These Oracle GraalVM distributions include a JDK and the Native Image tool.
-Each Oracle GraalVM RPM is self-contained and all required dependencies will be automatically resolved during installation.
+For convenience, the RPM package for Oracle GraalVM for JDK 24 is available in the Oracle YUM repository with the package name `graalvm-24-native-image`.
+This distribution includes a JDK and Native Image.
+It is self-contained and all the required dependencies will be automatically resolved during the installation.
 
 That means that OCI customers can use Oracle GraalVM in their compute instances, just like any other Java Development Kit, by installing it with `yum`, `dnf`, or `microdnf` default package managers, depending on the Oracle Linux version.
 
