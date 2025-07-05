@@ -75,6 +75,7 @@ class JfrGCEventSupport {
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.GarbageCollection);
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putLong(data, duration);
+            JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, gcEpoch.rawValue());
             JfrNativeEventWriter.putLong(data, gcName.getId());
             JfrNativeEventWriter.putLong(data, cause.getId());
