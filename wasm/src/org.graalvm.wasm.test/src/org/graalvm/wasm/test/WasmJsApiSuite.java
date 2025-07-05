@@ -47,6 +47,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
@@ -2381,7 +2382,7 @@ public class WasmJsApiSuite {
                                     }),
                     });
                     WasmInstance instance1 = moduleInstantiate(wasm, sourceBytesMod1, importObj1);
-                    var mod1Sum = instance1.readMember("sum");
+                    var mod1Sum = WebAssembly.instanceExport(instance1, "sum");
                     Dictionary importObj2 = Dictionary.create(new Object[]{
                                     "mod1", Dictionary.create(new Object[]{
                                                     "sum", mod1Sum,
@@ -2527,10 +2528,10 @@ public class WasmJsApiSuite {
         try (Context context = contextBuilder.build()) {
             Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
             Source source = sourceBuilder.build();
-            context.eval(source);
-            Value main = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+            Value mainInstance = context.eval(source).newInstance();
+            Value main = mainInstance.getMember("exports").getMember("main");
             main.execute();
-            Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
+            Value run = mainInstance.getMember("references").getMember("testutil").getMember("exports").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
             run.execute(new GuestCode(testCase));
         }
     }
@@ -2916,6 +2917,6 @@ public class WasmJsApiSuite {
 
     public static WasmInstance moduleInstantiate(WebAssembly wasm, byte[] source, Object importObject) {
         final WasmModule module = wasm.moduleDecode(source);
-        return wasm.moduleInstantiate(module, importObject);
+        return wasm.moduleInstantiate(module, Objects.requireNonNullElse(importObject, WasmConstant.NULL));
     }
 }

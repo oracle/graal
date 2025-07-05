@@ -125,4 +125,7 @@ public class WasmOptions {
 
     @Option(help = "Support instrumentation for functions that do not have their source available. For testing purpose only.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> DebugTestMode = new OptionKey<>(false);
+
+    @Option(help = "Makes Context#eval return a wasm instance (runtime representation) instead of a wasm module (symbolic representation).", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> EvalReturnsInstance = new OptionKey<>(false);
 }

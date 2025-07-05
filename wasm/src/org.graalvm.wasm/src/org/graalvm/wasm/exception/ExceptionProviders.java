@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,63 +38,57 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
 package org.graalvm.wasm.exception;
 
-import java.util.Locale;
-
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 
-/**
- * Thrown for various error condition when using the Wasm-JS API.
- */
-public class WasmJsApiException extends AbstractTruffleException {
+final class ExceptionProviders {
 
-    public enum Kind {
-        TypeError,
-        RangeError,
-        LinkError
-    }
+    static final ExceptionProvider WASM_JS_API_EXCEPTION_PROVIDER = new ExceptionProvider() {
+        @Override
+        public AbstractTruffleException createTypeError(Failure failure, String message) {
+            return new WasmJsApiException(WasmJsApiException.Kind.TypeError, message);
+        }
 
-    private static final long serialVersionUID = 8195809219857028793L;
+        @Override
+        public AbstractTruffleException formatTypeError(Failure failure, String format, Object... args) {
+            return WasmJsApiException.format(WasmJsApiException.Kind.TypeError, format, args);
+        }
 
-    private final Kind kind;
+        @Override
+        public AbstractTruffleException createLinkError(Failure failure, String message) {
+            return new WasmJsApiException(WasmJsApiException.Kind.LinkError, message);
+        }
 
-    @TruffleBoundary
-    public WasmJsApiException(Kind kind, String message) {
-        super(message);
-        CompilerAsserts.neverPartOfCompilation();
-        this.kind = kind;
-    }
+        @Override
+        public AbstractTruffleException formatLinkError(Failure failure, String format, Object... args) {
+            return WasmJsApiException.format(WasmJsApiException.Kind.LinkError, format, args);
+        }
+    };
 
-    @TruffleBoundary
-    public WasmJsApiException(Kind kind, String message, Throwable cause) {
-        super(message, cause, UNLIMITED_STACK_TRACE, null);
-        CompilerAsserts.neverPartOfCompilation();
-        this.kind = kind;
-    }
+    static final ExceptionProvider POLYGLOT_EXCEPTION_PROVIDER = new ExceptionProvider() {
+        @Override
+        public AbstractTruffleException createTypeError(Failure failure, String message) {
+            return WasmException.create(failure, message);
+        }
 
-    public Kind kind() {
-        return kind;
-    }
+        @Override
+        public AbstractTruffleException formatTypeError(Failure failure, String format, Object... args) {
+            return WasmException.format(failure, format, args);
+        }
 
-    @TruffleBoundary
-    public static WasmJsApiException format(WasmJsApiException.Kind kind, String s) {
-        return new WasmJsApiException(kind, s);
-    }
+        @Override
+        public AbstractTruffleException createLinkError(Failure failure, String message) {
+            return WasmException.create(failure, message);
+        }
 
-    @TruffleBoundary
-    public static WasmJsApiException format(WasmJsApiException.Kind kind, String s, Object arg) {
-        return new WasmJsApiException(kind, String.format(Locale.ROOT, s, arg));
-    }
+        @Override
+        public AbstractTruffleException formatLinkError(Failure failure, String format, Object... args) {
+            return WasmException.format(failure, format, args);
+        }
+    };
 
-    @TruffleBoundary
-    public static WasmJsApiException format(WasmJsApiException.Kind kind, String s, Object... args) {
-        return new WasmJsApiException(kind, String.format(Locale.ROOT, s, args));
-    }
-
-    public static ExceptionProvider provider() {
-        return ExceptionProviders.WASM_JS_API_EXCEPTION_PROVIDER;
+    private ExceptionProviders() {
     }
 }
