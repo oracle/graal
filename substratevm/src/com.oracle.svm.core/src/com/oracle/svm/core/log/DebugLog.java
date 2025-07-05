@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,44 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.svm.core.log;
 
-import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.BacktraceDecoder;
-import com.oracle.svm.core.jdk.JDKUtils;
-import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.Uninterruptible;
 
-public class RealLog extends AbstractLog {
-    private static final VMMutex BACKTRACE_PRINTER_MUTEX = new VMMutex("RealLog.backTracePrinterMutex");
-
-    private final BacktracePrinter backtracePrinter = new BacktracePrinter();
-
-    protected RealLog() {
-    }
-
+/**
+ * Similar to {@link Log} but can be used from {@link Uninterruptible} code. Unlike {@link Log},
+ * there is no output redirection mechanism, so this always logs to {@code stderr}. Therefore, this
+ * class should only be used for debugging.
+ * <p>
+ * Note that this functionality is not necessarily available on all platforms.
+ */
+public class DebugLog extends AbstractLog {
     @Override
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isEnabled() {
         return true;
     }
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log string(String value) {
         string0(value);
         return this;
@@ -67,7 +59,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log string(String str, int fill, int align) {
         string0(str, fill, align);
         return this;
@@ -75,7 +67,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log string(String value, int maxLen) {
         string0(value, maxLen);
         return this;
@@ -83,7 +75,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log string(char[] value) {
         string0(value);
         return this;
@@ -91,7 +83,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log string(byte[] value) {
         string0(value);
         return this;
@@ -99,7 +91,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log string(byte[] value, int offset, int length) {
         string0(value, offset, length);
         return this;
@@ -107,7 +99,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log string(CCharPointer value) {
         string0(value);
         return this;
@@ -115,7 +107,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log string(CCharPointer value, int length) {
         string0(value, length);
         return this;
@@ -123,7 +115,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log character(char value) {
         character0(value);
         return this;
@@ -131,7 +123,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log newline() {
         newline0();
         return this;
@@ -139,7 +131,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log number(long value, int radix, boolean signed) {
         number0(value, radix, signed);
         return this;
@@ -147,7 +139,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log signed(WordBase value) {
         signed0(value);
         return this;
@@ -155,7 +147,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log signed(int value) {
         signed0(value);
         return this;
@@ -163,7 +155,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log signed(long value) {
         signed0(value);
         return this;
@@ -171,7 +163,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log signed(long value, int fill, int align) {
         signed0(value, fill, align);
         return this;
@@ -179,7 +171,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log unsigned(WordBase value) {
         unsigned0(value);
         return this;
@@ -187,7 +179,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log unsigned(WordBase value, int fill, int align) {
         unsigned0(value, fill, align);
         return this;
@@ -195,7 +187,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log unsigned(int value) {
         unsigned0(value);
         return this;
@@ -203,7 +195,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log unsigned(long value) {
         unsigned0(value);
         return this;
@@ -211,7 +203,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log unsigned(long value, int fill, int align) {
         unsigned0(value, fill, align);
         return this;
@@ -219,7 +211,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log rational(long numerator, long denominator, long decimals) {
         rational0(numerator, denominator, decimals);
         return this;
@@ -227,7 +219,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log rational(UnsignedWord numerator, long denominator, long decimals) {
         rational0(numerator, denominator, decimals);
         return this;
@@ -235,7 +227,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log hex(WordBase value) {
         hex0(value);
         return this;
@@ -243,7 +235,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log hex(int value) {
         hex0(value);
         return this;
@@ -251,7 +243,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log hex(long value) {
         hex0(value);
         return this;
@@ -259,7 +251,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log zhex(WordBase value) {
         zhex0(value);
         return this;
@@ -267,7 +259,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log zhex(long value) {
         zhex0(value);
         return this;
@@ -275,7 +267,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log zhex(int value) {
         zhex0(value);
         return this;
@@ -283,7 +275,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log zhex(short value) {
         zhex0(value);
         return this;
@@ -291,7 +283,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log zhex(byte value) {
         zhex0(value);
         return this;
@@ -299,7 +291,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log hexdump(PointerBase from, int wordSize, int numWords) {
         hexdump0(from, wordSize, numWords);
         return this;
@@ -307,15 +299,15 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log hexdump(PointerBase from, int wordSize, int numWords, int bytesPerLine) {
-        hexdump0(from, wordSize, numWords, bytesPerLine);
+        hexdump0(from, wordSize, numWords);
         return this;
     }
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log redent(boolean addOrRemove) {
         redent0(addOrRemove);
         return this;
@@ -323,28 +315,28 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log indent(boolean addOrRemove) {
         indent0(addOrRemove);
         return this;
     }
 
     @Override
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public Log resetIndentation() {
         resetIndentation0();
         return this;
     }
 
     @Override
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getIndentation() {
         return getIndentation0();
     }
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log bool(boolean value) {
         bool0(value);
         return this;
@@ -352,7 +344,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log object(Object value) {
         object0(value);
         return this;
@@ -360,7 +352,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log spaces(int value) {
         spaces0(value);
         return this;
@@ -368,7 +360,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log exception(Throwable t) {
         exception0(t);
         return this;
@@ -376,7 +368,7 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log exception(Throwable t, int maxFrames) {
         exception0(t, maxFrames);
         return this;
@@ -384,57 +376,28 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public Log flush() {
-        ImageSingletons.lookup(LogHandler.class).flush();
+        ImageSingletons.lookup(StdErrWriter.class).flush();
         return this;
     }
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     protected Log rawBytes(CCharPointer bytes, UnsignedWord length) {
-        ImageSingletons.lookup(LogHandler.class).log(bytes, length);
+        ImageSingletons.lookup(StdErrWriter.class).log(bytes, length);
         return this;
     }
 
     @Override
-    @NeverInline("Logging is always slow-path code")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected int printBacktrace(Throwable t, int maxFrames) {
-        if (VMOperation.isInProgress()) {
-            if (BACKTRACE_PRINTER_MUTEX.hasOwner()) {
-                /*
-                 * The FrameInfoCursor is locked. We cannot safely print the stack trace. Do nothing
-                 * and accept that we will not get a stack track.
-                 */
-                return 0;
-            }
-        }
-
-        BACKTRACE_PRINTER_MUTEX.lock();
-        try {
-            Object backtrace = JDKUtils.getBacktrace(t);
-            if (backtrace == null) {
-                return 0;
-            }
-            return backtracePrinter.printBacktrace((long[]) backtrace, maxFrames);
-        } finally {
-            BACKTRACE_PRINTER_MUTEX.unlock();
-        }
-    }
-
-    private final class BacktracePrinter extends BacktraceDecoder {
-        int printBacktrace(long[] backtrace, int maxFramesProcessed) {
-            return visitBacktrace(backtrace, maxFramesProcessed, SubstrateOptions.maxJavaStackTraceDepth());
-        }
-
-        @Override
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
-        protected void processSourceReference(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber) {
-            String sourceClassName = sourceClass != null ? sourceClass.getName() : "";
-            String sourceFileName = sourceClass != null ? DynamicHub.fromClass(sourceClass).getSourceFileName() : null;
-            printJavaFrame0(sourceClassName, sourceMethodName, sourceFileName, sourceLineNumber);
-        }
+        /*
+         * If we ever want to support that, we would need a way to query the necessary information
+         * uninterruptibly. This would need a larger refactoring of CodeInfoDecoder and
+         * BacktraceDecoder.
+         */
+        return 0;
     }
 }

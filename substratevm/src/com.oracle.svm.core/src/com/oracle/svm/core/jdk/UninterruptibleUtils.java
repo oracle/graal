@@ -36,6 +36,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
@@ -514,6 +515,16 @@ public class UninterruptibleUtils {
     }
 
     public static class Integer {
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int highestOneBit(int i) {
+            return i & (java.lang.Integer.MIN_VALUE >>> numberOfLeadingZeros(i));
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int numberOfLeadingZeros(int i) {
+            return CountLeadingZerosNode.countIntLeadingZeros(i);
+        }
+
         /** Uninterruptible version of {@link java.lang.Integer#compare(int, int)}. */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int compare(int x, int y) {

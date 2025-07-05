@@ -74,6 +74,8 @@ import com.oracle.svm.core.jdk.SystemInOutErrSupport;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jdk.buildtimeinit.FileSystemProviderBuildTimeInitSupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.log.Loggers;
+import com.oracle.svm.core.log.NoopLog;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -91,7 +93,6 @@ import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.snippets.WebImageNonSnippetLowerings;
 import com.oracle.svm.hosted.webimage.wasm.WasmLogHandler;
 import com.oracle.svm.util.ReflectionUtil;
-import com.oracle.svm.webimage.WebImageJSLog;
 import com.oracle.svm.webimage.WebImageSystemPropertiesSupport;
 import com.oracle.svm.webimage.api.Nothing;
 import com.oracle.svm.webimage.fs.FileSystemInitializer;
@@ -281,7 +282,7 @@ public class WebImageFeature implements InternalFeature {
         ImageSingletons.add(PlatformNativeLibrarySupport.class, new WebImageNativeLibrarySupport());
 
         switch (WebImageOptions.getBackend()) {
-            case JS, WASMGC -> Log.setLog(new WebImageJSLog());
+            case JS, WASMGC -> Loggers.setRealLog(new NoopLog());
             case WASM -> Log.finalizeDefaultLogHandler(new WasmLogHandler());
         }
 
