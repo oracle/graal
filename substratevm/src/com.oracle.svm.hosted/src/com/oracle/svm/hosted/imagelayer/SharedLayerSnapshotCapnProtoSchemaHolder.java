@@ -2444,6 +2444,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           case 4 : return Which.METHOD_POINTER;
           case 5 : return Which.C_ENTRY_POINT_LITERAL_CODE_POINTER;
           case 6 : return Which.C_GLOBAL_DATA_BASE_POINTER;
+          case 7 : return Which.METHOD_OFFSET;
           default: return Which._NOT_IN_SCHEMA;
         }
       }
@@ -2542,6 +2543,18 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setShortField(2, (short)ConstantReference.Which.C_GLOBAL_DATA_BASE_POINTER.ordinal());
       }
 
+      public final boolean isMethodOffset() {
+        return which() == ConstantReference.Which.METHOD_OFFSET;
+      }
+      public final com.oracle.svm.shaded.org.capnproto.Void getMethodOffset() {
+        assert which() == ConstantReference.Which.METHOD_OFFSET:
+                    "Must check which() before get()ing a union member.";
+        return com.oracle.svm.shaded.org.capnproto.Void.VOID;
+      }
+      public final void setMethodOffset(com.oracle.svm.shaded.org.capnproto.Void value) {
+        _setShortField(2, (short)ConstantReference.Which.METHOD_OFFSET.ordinal());
+      }
+
     }
 
     public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -2558,6 +2571,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           case 4 : return Which.METHOD_POINTER;
           case 5 : return Which.C_ENTRY_POINT_LITERAL_CODE_POINTER;
           case 6 : return Which.C_GLOBAL_DATA_BASE_POINTER;
+          case 7 : return Which.METHOD_OFFSET;
           default: return Which._NOT_IN_SCHEMA;
         }
       }
@@ -2626,6 +2640,15 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return com.oracle.svm.shaded.org.capnproto.Void.VOID;
       }
 
+      public final boolean isMethodOffset() {
+        return which() == ConstantReference.Which.METHOD_OFFSET;
+      }
+      public final com.oracle.svm.shaded.org.capnproto.Void getMethodOffset() {
+        assert which() == ConstantReference.Which.METHOD_OFFSET:
+                    "Must check which() before get()ing a union member.";
+        return com.oracle.svm.shaded.org.capnproto.Void.VOID;
+      }
+
     }
 
     public enum Which {
@@ -2636,6 +2659,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       METHOD_POINTER,
       C_ENTRY_POINT_LITERAL_CODE_POINTER,
       C_GLOBAL_DATA_BASE_POINTER,
+      METHOD_OFFSET,
       _NOT_IN_SCHEMA,
     }
     public static class ObjectConstant {
