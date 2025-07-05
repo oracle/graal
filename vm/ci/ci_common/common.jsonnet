@@ -224,6 +224,7 @@ local devkits = graal_common.devkits;
         '--suite', 'regex',
         '--suite', 'graal-js',
         '--suite', 'espresso',
+        '--suite', 'espresso-shared',
         '--suite', 'substratevm',
       ];
       local ce_windows_suites = legacy_suites + [
