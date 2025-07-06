@@ -98,4 +98,7 @@ public final class CountTrailingZerosNode extends UnaryNode implements Arithmeti
     public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {
         builder.setResult(this, gen.emitCountTrailingZeros(builder.operand(getValue())));
     }
+
+    @NodeIntrinsic
+    public static native int countLongTrailingZeros(long value);
 }
