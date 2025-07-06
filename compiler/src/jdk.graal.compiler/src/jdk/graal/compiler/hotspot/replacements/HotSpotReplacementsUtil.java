@@ -363,11 +363,6 @@ public class HotSpotReplacementsUtil {
         return runtime().getHostJVMCIBackend().getCodeCache().getTarget().wordSize;
     }
 
-    @Fold
-    public static int pageSize(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.vmPageSize;
-    }
-
     public static final LocationIdentity PROTOTYPE_MARK_WORD_LOCATION = NamedLocationIdentity.mutable("PrototypeMarkWord");
 
     public static final LocationIdentity KLASS_ACCESS_FLAGS_LOCATION = NamedLocationIdentity.immutable("Klass::_access_flags");
@@ -548,11 +543,6 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int monitorValue(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.monitorValue;
-    }
-
-    @Fold
-    public static int unusedMark(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.unusedMark;
     }
 
     @Fold
@@ -753,11 +743,6 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int lockMetadataOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.basicLockMetadataOffset;
-    }
-
-    @Fold
-    static int heldMonitorCountOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.threadHeldMonitorCountOffset;
     }
 
     @Fold

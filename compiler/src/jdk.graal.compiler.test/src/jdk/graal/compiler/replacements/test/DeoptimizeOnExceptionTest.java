@@ -220,9 +220,4 @@ public class DeoptimizeOnExceptionTest extends GraalCompilerTest implements Cust
 
         return GraalDirectives.inCompiledCode();
     }
-
-    @Override
-    protected boolean installAsDefault() {
-        return true;
-    }
 }

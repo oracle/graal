@@ -29,11 +29,11 @@ import static jdk.graal.compiler.core.common.GraalOptions.InlineEverything;
 import java.util.EnumSet;
 import java.util.function.IntBinaryOperator;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
-import org.junit.Test;
-
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -65,19 +65,19 @@ public class LambdaEagerTest extends GraalCompilerTest {
     @Test
     public void testEagerResolveNonCapturing01() {
         Result expected = new Result(3, null);
-        testAgainstExpected(getResolvedJavaMethod("nonCapturing"), expected, UNRESOLVED_UNREACHED, 1, 2);
+        testAgainstExpected(getInitialOptions(), getResolvedJavaMethod("nonCapturing"), expected, UNRESOLVED_UNREACHED, 1, 2);
     }
 
     @Test
     public void testEagerResolveNonCapturing02() {
         Result expected = new Result(3, null);
-        testAgainstExpected(getResolvedJavaMethod("nonCapturing2"), expected, UNRESOLVED_UNREACHED, 1, 2);
+        testAgainstExpected(getInitialOptions(), getResolvedJavaMethod("nonCapturing2"), expected, UNRESOLVED_UNREACHED, 1, 2);
     }
 
     @Test
     public void testEagerResolveCapturing() {
         Result expected = new Result(0, null);
-        testAgainstExpected(getResolvedJavaMethod("capturing"), expected, UNRESOLVED_UNREACHED, 1, 2, 3);
+        testAgainstExpected(getInitialOptions(), getResolvedJavaMethod("capturing"), expected, UNRESOLVED_UNREACHED, 1, 2, 3);
     }
 
     @Override

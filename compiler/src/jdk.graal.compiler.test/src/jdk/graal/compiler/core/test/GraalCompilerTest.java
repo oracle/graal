@@ -917,6 +917,10 @@ public abstract class GraalCompilerTest extends GraalTest {
         } catch (Throwable e) {
             return new Result(null, e);
         } finally {
+            // Prevent a subsequent `executeExpected' call from entering the compiled method
+            if (installAsDefault) {
+                compiledMethod.invalidate();
+            }
             after();
         }
     }
@@ -1010,9 +1014,13 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected Result test(OptionValues options, ResolvedJavaMethod method, Object receiver, Object... args) {
+        return test(options, method, false, receiver, args);
+    }
+
+    protected final Result test(OptionValues options, ResolvedJavaMethod method, boolean installAsDefault, Object receiver, Object... args) {
         Result expect = executeExpected(method, receiver, args);
         if (getCodeCache() != null) {
-            testAgainstExpected(options, method, expect, receiver, args);
+            testAgainstExpected(options, method, installAsDefault, expect, Set.of(), receiver, args);
         }
         return expect;
     }
@@ -1035,29 +1043,36 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected final void testAgainstExpected(ResolvedJavaMethod method, Result expect, Object receiver, Object... args) {
-        testAgainstExpected(getInitialOptions(), method, expect, Collections.<DeoptimizationReason> emptySet(), receiver, args);
-    }
-
-    protected void testAgainstExpected(ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
-        testAgainstExpected(getInitialOptions(), method, expect, shouldNotDeopt, receiver, args);
+        testAgainstExpected(getInitialOptions(), method, false, expect, Set.of(), receiver, args);
     }
 
     protected final void testAgainstExpected(OptionValues options, ResolvedJavaMethod method, Result expect, Object receiver, Object... args) {
-        testAgainstExpected(options, method, expect, Collections.<DeoptimizationReason> emptySet(), receiver, args);
+        testAgainstExpected(options, method, false, expect, Set.of(), receiver, args);
     }
 
     protected void testAgainstExpected(OptionValues options, ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
-        Result actual = executeActualCheckDeopt(options, method, shouldNotDeopt, receiver, args);
+        testAgainstExpected(options, method, true, expect, shouldNotDeopt, receiver, args);
+    }
+
+    private void testAgainstExpected(OptionValues options, ResolvedJavaMethod method, boolean installAsDefault, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver,
+                    Object... args) {
+        Result actual = executeActualCheckDeopt(options, method, installAsDefault, shouldNotDeopt, receiver, args);
         assertEquals(expect, actual);
     }
 
-    protected Result executeActualCheckDeopt(OptionValues options, ResolvedJavaMethod method, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
+    protected final Result executeActualCheckDeopt(OptionValues options, ResolvedJavaMethod method, Set<DeoptimizationReason> shouldNotDeopt, Object receiver,
+                    Object... args) {
+        return executeActualCheckDeopt(options, method, !shouldNotDeopt.isEmpty(), shouldNotDeopt, receiver, args);
+    }
+
+    protected final Result executeActualCheckDeopt(OptionValues options, ResolvedJavaMethod method, boolean installAsDefault, Set<DeoptimizationReason> shouldNotDeopt, Object receiver,
+                    Object... args) {
         Map<DeoptimizationReason, Integer> deoptCounts = new EnumMap<>(DeoptimizationReason.class);
         ProfilingInfo profile = method.getProfilingInfo();
         for (DeoptimizationReason reason : shouldNotDeopt) {
             deoptCounts.put(reason, profile.getDeoptimizationCount(reason));
         }
-        Result actual = executeActual(options, method, !shouldNotDeopt.isEmpty(), receiver, args);
+        Result actual = executeActual(options, method, installAsDefault, receiver, args);
         profile = method.getProfilingInfo(); // profile can change after execution
         for (DeoptimizationReason reason : shouldNotDeopt) {
             Assert.assertEquals("wrong number of deopt counts for " + reason, (int) deoptCounts.get(reason), profile.getDeoptimizationCount(reason));
@@ -1166,7 +1181,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 try (DebugContext.Scope _ = debug.scope("CodeInstall", getCodeCache(), installedCodeOwner, compResult);
                                 DebugContext.Activation _ = debug.activate()) {
                     try {
-                        if (installAsDefault || installAsDefault()) {
+                        if (installAsDefault) {
                             installedCode = addDefaultMethod(debug, installedCodeOwner, compResult);
                         } else {
                             installedCode = addMethod(debug, installedCodeOwner, compResult);
@@ -1190,21 +1205,12 @@ public abstract class GraalCompilerTest extends GraalTest {
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
-
-            if (useCache) {
+            if (useCache && !installAsDefault) {
                 cache.get().put(installedCodeOwner, Pair.create(options, installedCode));
             }
             return installedCode;
         }
         throw GraalError.shouldNotReachHere("Bailout limit reached"); // ExcludeFromJacocoGeneratedReport
-    }
-
-    /**
-     * Allows subclasses to override and install compiled code as the default. Note that since
-     * JDK26+5, deoptimization counts are only updated for default compiled code.
-     */
-    protected boolean installAsDefault() {
-        return false;
     }
 
     private static boolean optionsMapDeepEquals(UnmodifiableEconomicMap<OptionKey<?>, Object> map1, UnmodifiableEconomicMap<OptionKey<?>, Object> map2) {
