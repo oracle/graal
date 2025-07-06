@@ -59,7 +59,7 @@
     "labsjdk-ce-latest-llvm": {"name": "labsjdk",   "version": "ce-26+5-jvmci-b01-sulong", "platformspecific": true },
     "labsjdk-ee-latest":      {"name": "labsjdk",   "version": "ee-26+5-jvmci-b01", "platformspecific": true },
     "labsjdk-ee-latestDebug": {"name": "labsjdk",   "version": "ee-26+5-jvmci-b01-debug", "platformspecific": true },
-    "labsjdk-ee-latest-llvm": {"name": "labsjdk",   "version": "ee-26+5-jvmci-b01-sulong", "platformspecific": true },
+    "labsjdk-ee-latest-llvm": {"name": "labsjdk",   "version": "ee-26+5-jvmci-b01-sulong", "platformspecific": true }
   },
 
   "eclipse": {
