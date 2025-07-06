@@ -36,8 +36,9 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.UnmodifiableEconomicSet;
+import org.graalvm.collections.EconomicSet;
 
+import java.io.File;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
@@ -245,14 +246,14 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
      * the value specified by the option, otherwise returns null.
      */
     private static String getSourceEntry(AnalysisType callerClass) {
-        UnmodifiableEconomicSet<String> sourceEntries = DynamicAccessDetectionFeature.instance().getSourceEntries();
+        EconomicSet<String> sourceEntries = DynamicAccessDetectionFeature.instance().getSourceEntries();
         try {
             CodeSource entryPathSource = callerClass.getJavaClass().getProtectionDomain().getCodeSource();
             if (entryPathSource != null) {
                 URL entryPathURL = entryPathSource.getLocation();
                 if (entryPathURL != null) {
                     String classPathEntry = entryPathURL.toURI().getPath();
-                    if (classPathEntry.endsWith("/")) {
+                    if (classPathEntry.endsWith(File.separator)) {
                         classPathEntry = classPathEntry.substring(0, classPathEntry.length() - 1);
                     }
                     if (sourceEntries.contains(classPathEntry)) {
