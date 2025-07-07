@@ -382,7 +382,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 return hub;
             } else {
                 if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                    MissingReflectionRegistrationUtils.forUnsafeAllocation(hub.getTypeName());
+                    MissingReflectionRegistrationUtils.reportUnsafeAllocation(DynamicHub.toClass(hub));
                 }
                 throw new IllegalArgumentException("Type " + DynamicHub.toClass(hub).getTypeName() + " is instantiated reflectively but was never registered." +
                                 " Register the type by adding \"unsafeAllocated\" for the type in " + ConfigurationFile.REFLECTION.getFileName() + ".");
@@ -417,7 +417,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         } else if (elementType == DynamicHub.fromClass(void.class)) {
             throw new IllegalArgumentException("Cannot allocate void array.");
         } else if (elementType.getArrayHub() == null || !elementType.getArrayHub().isInstantiated()) {
-            throw MissingReflectionRegistrationUtils.errorForArray(DynamicHub.toClass(elementType), 1);
+            throw MissingReflectionRegistrationUtils.reportArrayInstantiation(DynamicHub.toClass(elementType), 1);
         } else {
             VMError.shouldNotReachHereUnexpectedInput(elementType); // ExcludeFromJacocoGeneratedReport
         }

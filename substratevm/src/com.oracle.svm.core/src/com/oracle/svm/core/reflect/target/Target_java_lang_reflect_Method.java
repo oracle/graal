@@ -135,7 +135,7 @@ public final class Target_java_lang_reflect_Method {
     public Target_jdk_internal_reflect_MethodAccessor acquireMethodAccessor() {
         RuntimeConditionSet conditions = SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).conditions;
         if (methodAccessorFromMetadata == null || !conditions.satisfied()) {
-            throw MissingReflectionRegistrationUtils.errorForQueriedOnlyExecutable(SubstrateUtil.cast(this, Executable.class));
+            throw MissingReflectionRegistrationUtils.reportInvokedExecutable(SubstrateUtil.cast(this, Executable.class));
         }
         return methodAccessorFromMetadata;
     }

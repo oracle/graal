@@ -418,7 +418,7 @@ final class Target_java_lang_reflect_Array {
         for (int i = 0; i < dimensions.length; i++) {
             arrayHub = arrayHub.getArrayHub();
             if (arrayHub == null) {
-                throw MissingReflectionRegistrationUtils.errorForArray(componentType, dimensions.length);
+                throw MissingReflectionRegistrationUtils.reportArrayInstantiation(componentType, dimensions.length);
             }
         }
 
