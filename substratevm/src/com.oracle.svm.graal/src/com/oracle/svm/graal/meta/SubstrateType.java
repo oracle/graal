@@ -133,6 +133,11 @@ public class SubstrateType implements SharedType {
     }
 
     @Override
+    public int getInterfaceID() {
+        return hub.getInterfaceID();
+    }
+
+    @Override
     public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
         return this;
     }

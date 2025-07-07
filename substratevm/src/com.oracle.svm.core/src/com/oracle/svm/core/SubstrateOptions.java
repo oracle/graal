@@ -86,6 +86,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
@@ -1318,6 +1319,15 @@ public class SubstrateOptions {
         @Option(help = "The number of seconds that the isolate teardown can take before a fatal error is thrown. Disabled if less or equal to 0.")//
         public static final RuntimeOptionKey<Long> TearDownFailureSeconds = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
 
+        /** Use {@link SubstrateOptions#useInterfaceHashing()} instead. */
+        @Option(help = "Enables hashing-based interface type checks and interface method dispatch. This option is only available when ClosedTypeWorldHubLayout is disabled.", type = OptionType.Debug) //
+        public static final HostedOptionKey<Boolean> UseInterfaceHashing = new HostedOptionKey<>(null, key -> {
+            if (key.hasBeenSet() && key.getValue()) {
+                UserError.guarantee(!useClosedTypeWorldHubLayout(), "Support for interface hashing is only available with an open world hub layout. " +
+                                "Enable the open world hub layout with %s",
+                                SubstrateOptionsParser.commandArgument(ClosedTypeWorldHubLayout, "-"));
+            }
+        });
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
@@ -1556,6 +1566,19 @@ public class SubstrateOptions {
     @Option(help = "Use the closed type world dynamic hub representation. This is only allowed when the option ClosedTypeWorld is also set to true.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> ClosedTypeWorldHubLayout = new HostedOptionKey<>(true);
 
+    @Option(help = "Defines a threshold for interfaceIDs which can be covered by hashing if UseInterfaceHashing is enabled. Must be <= 65535 (ushort max). Larger interfaceIDs are handled by the slow path.", type = OptionType.Debug) //
+    public static final HostedOptionKey<Integer> InterfaceHashingMaxId = new HostedOptionKey<>(0xffff, key -> {
+        if (key.hasBeenSet()) {
+            UserError.guarantee(useInterfaceHashing(), "Interface hashing needs to be enabled for the InterfaceHashingMaxId to be used. " +
+                            "Enable interface hashing with %s",
+                            SubstrateOptionsParser.commandArgument(ConcealedOptions.UseInterfaceHashing, "+"));
+        }
+        int value = key.getValue();
+        if (!NumUtil.isUShort(value)) {
+            UserError.invalidOptionValue(key, value, "The specified value must be <= 65535 (ushort max)");
+        }
+    });
+
     @Fold
     public static boolean useClosedTypeWorldHubLayout() {
         return ClosedTypeWorldHubLayout.getValue();
@@ -1564,6 +1587,20 @@ public class SubstrateOptions {
     @Fold
     public static boolean useClosedTypeWorld() {
         return ClosedTypeWorld.getValue();
+    }
+
+    @Fold
+    public static boolean useInterfaceHashing() {
+        if (ConcealedOptions.UseInterfaceHashing.getValue() != null) {
+            return ConcealedOptions.UseInterfaceHashing.getValue();
+        }
+        // TODO Include G1 after [GR-69090] is merged
+        return !useClosedTypeWorldHubLayout() && !useG1GC();
+    }
+
+    @Fold
+    public static int interfaceHashingMaxId() {
+        return InterfaceHashingMaxId.getValue();
     }
 
     @Option(help = "Throws an exception on potential type conflict during heap persisting if enabled", type = OptionType.Debug) //

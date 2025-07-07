@@ -204,8 +204,10 @@ public class HostedConfiguration {
                             vtableField,
                             hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeIDDepth")),
                             hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "numClassTypes")),
-                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "numInterfaceTypes")),
-                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "openTypeWorldTypeCheckSlots")));
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "numIterableInterfaceTypes")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "openTypeWorldTypeCheckSlots")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "openTypeWorldInterfaceHashParam")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "openTypeWorldInterfaceHashTable")));
         } else {
             closedTypeWorldTypeCheckSlotsOffset = -1;
             closedTypeWorldTypeCheckSlotSize = -1;

@@ -100,6 +100,7 @@ import com.oracle.svm.core.BuildPhaseProvider.CompileQueueFinished;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.TrackDynamicAccessEnabled;
 import com.oracle.svm.core.Uninterruptible;
@@ -280,7 +281,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private short numClassTypes;
 
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
-    private short numInterfaceTypes;
+    private short numIterableInterfaceTypes;
 
     /**
      * Array containing this type's type check id information. During a type check, these slots are
@@ -288,6 +289,35 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      */
     @UnknownObjectField(availability = AfterHostedUniverse.class)//
     private int[] openTypeWorldTypeCheckSlots;
+
+    /**
+     * Unique id number for this type if it is an interface, {@link #NO_INTERFACE_ID} otherwise.
+     * Used for hashing during interface type checks and interface calls. Must not be 0 to be
+     * distinct from empty hash table entries.
+     */
+    @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
+    private int interfaceID;
+
+    /**
+     * InterfaceID for non-interface types.
+     */
+    public static final int NO_INTERFACE_ID = -1;
+
+    /**
+     * HashTable used for interface hashing under open type world if
+     * {@link SubstrateOptions#useInterfaceHashing()} is enabled. See TypeCheckBuilder for a general
+     * documentation.
+     */
+    @UnknownObjectField(availability = AfterHostedUniverse.class)//
+    private int[] openTypeWorldInterfaceHashTable;
+
+    /**
+     * Hashing parameter used for interface hashing under open type world if
+     * {@link SubstrateOptions#useInterfaceHashing()} is enabled. See TypeCheckBuilder for a general
+     * documentation.
+     */
+    @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
+    private int openTypeWorldInterfaceHashParam;
 
     // endregion open-world only fields
 
@@ -446,11 +476,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @NeverInline("Fields of DynamicHub are immutable. Immutable reads could float above ANY_LOCATION writes.")
     public static DynamicHub allocate(String name, DynamicHub superHub, Object interfacesEncoding, DynamicHub componentHub, String sourceFileName,
                     int modifiers, int classFileAccessFlags, short flags, ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName, Module module,
-                    Object declaringClass, String signature, int typeID,
+                    Object declaringClass, String signature, int typeID, int interfaceID,
                     short numClassTypes,
                     short typeIDDepth,
-                    short numInterfacesTypes,
-                    int[] openTypeWorldTypeCheckSlots, int vTableEntries,
+                    short numIterableInterfaceTypes,
+                    int[] openTypeWorldTypeCheckSlots,
+                    int[] openTypeWorldInterfaceHashTable,
+                    int openTypeWorldInterfaceHashParam,
+                    int vTableEntries,
                     int afterFieldsOffset, boolean valueBased) {
         VMError.guarantee(RuntimeClassLoading.isSupported());
 
@@ -573,8 +606,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         writeShort(hub, dynamicHubOffsets.getTypeIDDepthOffset(), typeIDDepth);
         writeShort(hub, dynamicHubOffsets.getNumClassTypesOffset(), numClassTypes);
 
-        writeShort(hub, dynamicHubOffsets.getNumInterfaceTypesOffset(), numInterfacesTypes);
+        writeShort(hub, dynamicHubOffsets.getNumIterableInterfaceTypesOffset(), numIterableInterfaceTypes);
         writeObject(hub, dynamicHubOffsets.getOpenTypeWorldTypeCheckSlotsOffset(), openTypeWorldTypeCheckSlots);
+
+        writeObject(hub, dynamicHubOffsets.getInterfaceIDOffset(), interfaceID);
+        writeObject(hub, dynamicHubOffsets.getOpenTypeWorldInterfaceHashTableOffset(), openTypeWorldInterfaceHashTable);
+        writeInt(hub, dynamicHubOffsets.getOpenTypeWorldInterfaceHashParamOffset(), openTypeWorldInterfaceHashParam);
 
         VMError.guarantee(monitorOffset == (char) monitorOffset);
         VMError.guarantee(identityHashOffset == (char) identityHashOffset);
@@ -682,15 +719,20 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setOpenTypeWorldData(MethodRef[] vtable, int typeID, int typeCheckDepth, int numClassTypes, int numInterfaceTypes, int[] typeCheckSlots) {
+    public void setOpenTypeWorldData(MethodRef[] vtable, int typeID, int interfaceID, int typeCheckDepth, int numClassTypes, int numIterableInterfaceTypes, int[] typeCheckSlots,
+                    int[] openTypeWorldInterfaceHashTable,
+                    int openTypeWorldInterfaceHashParam) {
         assert this.vtable == null : "Initialization must be called only once";
 
         this.typeID = typeID;
+        this.interfaceID = interfaceID;
         this.typeIDDepth = NumUtil.safeToShortAE(typeCheckDepth);
         this.numClassTypes = NumUtil.safeToShortAE(numClassTypes);
-        this.numInterfaceTypes = NumUtil.safeToShortAE(numInterfaceTypes);
+        this.numIterableInterfaceTypes = NumUtil.safeToShortAE(numIterableInterfaceTypes);
         this.openTypeWorldTypeCheckSlots = typeCheckSlots;
         this.vtable = vtable;
+        this.openTypeWorldInterfaceHashTable = openTypeWorldInterfaceHashTable;
+        this.openTypeWorldInterfaceHashParam = openTypeWorldInterfaceHashParam;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -896,12 +938,32 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return numClassTypes;
     }
 
-    public int getNumInterfaceTypes() {
-        return numInterfaceTypes;
+    /**
+     * The number of interfaces that are stored in {@link #openTypeWorldTypeCheckSlots} and need to
+     * be iterated for type checks or itable loading. Depending on
+     * {@link SubstrateOptions#useInterfaceHashing()} interfaces a likely encoded in
+     * {@link #openTypeWorldInterfaceHashTable}. Their number is excluded from the number of
+     * iterable interfaces.
+     */
+    public int getNumIterableInterfaceTypes() {
+        return numIterableInterfaceTypes;
     }
 
     public int[] getOpenTypeWorldTypeCheckSlots() {
         return openTypeWorldTypeCheckSlots;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public int getInterfaceID() {
+        return interfaceID;
+    }
+
+    public int[] getOpenTypeWorldInterfaceHashTable() {
+        return openTypeWorldInterfaceHashTable;
+    }
+
+    public int getOpenTypeWorldInterfaceHashParam() {
+        return openTypeWorldInterfaceHashParam;
     }
 
     public int getMonitorOffset() {

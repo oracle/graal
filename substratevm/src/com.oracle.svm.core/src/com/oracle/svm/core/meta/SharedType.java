@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.meta;
 
+import java.util.List;
+
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.hub.DynamicHub;
@@ -33,8 +35,6 @@ import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-
-import java.util.List;
 
 /**
  * The type interface which is both used in the hosted and substrate worlds.
@@ -50,6 +50,12 @@ public interface SharedType extends ResolvedJavaType {
     JavaKind getStorageKind();
 
     int getTypeID();
+
+    /**
+     * Unique ID given to interfaces, which can be orthogonal to the typeID.
+     * {@link DynamicHub#NO_INTERFACE_ID} for non-interface types. Must not be 0.
+     */
+    int getInterfaceID();
 
     /**
      * Returns true if this type is part of the word type hierarchy, i.e, implements

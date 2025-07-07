@@ -6709,10 +6709,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setIntField(3, value);
       }
 
-      public final int getNumInterfaceTypes() {
+      public final int getNumIterableInterfaceTypes() {
         return _getIntField(4);
       }
-      public final void setNumInterfaceTypes(int value) {
+      public final void setNumIterableInterfaceTypes(int value) {
         _setIntField(4, value);
       }
 
@@ -6752,6 +6752,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.DispatchSlotInfo.Builder> initDispatchTableSlotValues(int size) {
         return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.DispatchSlotInfo.listFactory, 2, size);
       }
+      public final int getInterfaceId() {
+        return _getIntField(5);
+      }
+      public final void setInterfaceId(int value) {
+        _setIntField(5, value);
+      }
+
     }
 
     public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -6775,7 +6782,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getIntField(3);
       }
 
-      public final int getNumInterfaceTypes() {
+      public final int getNumIterableInterfaceTypes() {
         return _getIntField(4);
       }
 
@@ -6798,6 +6805,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
       public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.DispatchSlotInfo.Reader> getDispatchTableSlotValues() {
         return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.DispatchSlotInfo.listFactory, 2, null, 0);
+      }
+
+      public final int getInterfaceId() {
+        return _getIntField(5);
       }
 
     }
