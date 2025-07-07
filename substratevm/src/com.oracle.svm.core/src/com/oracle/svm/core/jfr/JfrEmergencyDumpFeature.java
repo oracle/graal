@@ -39,11 +39,6 @@ import org.graalvm.nativeimage.ImageSingletons;
  */
 @AutomaticallyRegisteredFeature
 public class JfrEmergencyDumpFeature implements InternalFeature {
-    @Fold
-    static boolean isPresent() {
-        return ImageSingletons.contains(JfrEmergencyDumpSupport.class);
-    }
-
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return VMInspectionOptions.hasJfrSupport();
