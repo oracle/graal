@@ -29,7 +29,6 @@ import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 
-
 /**
  * The JFR emergency dump mechanism uses platform-specific implementations (see
  * {@link JfrEmergencyDumpSupport}).
