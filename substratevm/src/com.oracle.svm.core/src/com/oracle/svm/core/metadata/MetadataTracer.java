@@ -63,17 +63,17 @@ import jdk.graal.compiler.options.OptionStability;
 /**
  * Implements reachability metadata tracing during native image execution. Enabling
  * {@link Options#MetadataTracingSupport} at build time will generate code to trace all accesses of
- * reachability metadata, and then the run-time option {@link Options#RecordMetadata} enables
+ * reachability metadata, and then the run-time option {@link Options#TraceMetadata} enables
  * tracing.
  */
 public final class MetadataTracer {
 
     public static class Options {
         @Option(help = "Generate an image that supports reachability metadata access tracing. " +
-                        "When tracing is supported, use the -XX:RecordMetadata option to enable tracing at run time.")//
+                        "When tracing is supported, use the -XX:TraceMetadata option to enable tracing at run time.")//
         public static final HostedOptionKey<Boolean> MetadataTracingSupport = new HostedOptionKey<>(false);
 
-        static final String RECORD_METADATA_HELP = """
+        static final String TRACE_METADATA_HELP = """
                         Enables metadata tracing at run time. This option is only supported if -H:+MetadataTracingSupport is set when building the image.
                         The value of this option is a comma-separated list of arguments specified as key-value pairs. The following arguments are supported:
 
@@ -81,15 +81,15 @@ public final class MetadataTracer {
                         - merge=<boolean> (optional): Specifies whether to merge or overwrite metadata with existing files at the output path (default: true).
 
                         Example usage:
-                            -H:RecordMetadata=path=trace_output_directory
-                            -H:RecordMetadata=path=trace_output_directory,merge=false
+                            -H:TraceMetadata=path=trace_output_directory
+                            -H:TraceMetadata=path=trace_output_directory,merge=false
                         """;
 
-        @Option(help = RECORD_METADATA_HELP, stability = OptionStability.EXPERIMENTAL)//
-        public static final RuntimeOptionKey<String> RecordMetadata = new RuntimeOptionKey<>(null);
+        @Option(help = TRACE_METADATA_HELP, stability = OptionStability.EXPERIMENTAL)//
+        public static final RuntimeOptionKey<String> TraceMetadata = new RuntimeOptionKey<>(null);
     }
 
-    private RecordOptions options;
+    private TraceOptions options;
 
     /**
      * The configuration set to trace with. Do not read this field directly when tracing; instead
@@ -120,7 +120,7 @@ public final class MetadataTracer {
     }
 
     /**
-     * Returns whether tracing is enabled at run time (using {@code -XX:RecordMetadata}).
+     * Returns whether tracing is enabled at run time (using {@code -XX:TraceMetadata}).
      */
     private boolean enabledAtRunTime() {
         VMError.guarantee(Options.MetadataTracingSupport.getValue());
@@ -214,10 +214,10 @@ public final class MetadataTracer {
         }
     }
 
-    private static void initialize(String recordMetadataValue) {
+    private static void initialize(String traceMetadataValue) {
         assert Options.MetadataTracingSupport.getValue();
 
-        RecordOptions parsedOptions = RecordOptions.parse(recordMetadataValue);
+        TraceOptions parsedOptions = TraceOptions.parse(traceMetadataValue);
         try {
             Files.createDirectories(parsedOptions.path());
         } catch (IOException ex) {
@@ -229,7 +229,7 @@ public final class MetadataTracer {
         singleton.config = initializeConfigurationSet(parsedOptions);
     }
 
-    private static ConfigurationSet initializeConfigurationSet(RecordOptions options) {
+    private static ConfigurationSet initializeConfigurationSet(TraceOptions options) {
         if (options.merge() && Files.exists(options.path())) {
             ConfigurationFileCollection mergeConfigs = new ConfigurationFileCollection();
             mergeConfigs.addDirectory(options.path());
@@ -268,8 +268,8 @@ public final class MetadataTracer {
                 return;
             }
             VMError.guarantee(Options.MetadataTracingSupport.getValue());
-            if (Options.RecordMetadata.hasBeenSet()) {
-                initialize(Options.RecordMetadata.getValue());
+            if (Options.TraceMetadata.hasBeenSet()) {
+                initialize(Options.TraceMetadata.getValue());
             }
         };
     }
@@ -280,7 +280,7 @@ public final class MetadataTracer {
                 return;
             }
             VMError.guarantee(Options.MetadataTracingSupport.getValue());
-            if (Options.RecordMetadata.hasBeenSet()) {
+            if (Options.TraceMetadata.hasBeenSet()) {
                 shutdown();
             }
         };
@@ -295,29 +295,29 @@ public final class MetadataTracer {
                 return;
             }
             VMError.guarantee(!Options.MetadataTracingSupport.getValue());
-            if (Options.RecordMetadata.hasBeenSet()) {
+            if (Options.TraceMetadata.hasBeenSet()) {
                 throw new IllegalArgumentException(
-                                "The option " + Options.RecordMetadata.getName() + " can only be used if metadata tracing is enabled at build time (using " +
+                                "The option " + Options.TraceMetadata.getName() + " can only be used if metadata tracing is enabled at build time (using " +
                                                 hostedOptionCommandArgument + ").");
             }
         };
     }
 }
 
-record RecordOptions(Path path, boolean merge) {
+record TraceOptions(Path path, boolean merge) {
 
     private static final int ARGUMENT_PARTS = 2;
 
-    static RecordOptions parse(String recordMetadataValue) {
-        if (recordMetadataValue.isEmpty()) {
-            throw printHelp("Option " + MetadataTracer.Options.RecordMetadata.getName() + " cannot be empty.");
-        } else if (recordMetadataValue.equals("help")) {
-            throw printHelp("Option " + MetadataTracer.Options.RecordMetadata.getName() + " value is 'help'. Printing a description and aborting.");
+    static TraceOptions parse(String traceMetadataValue) {
+        if (traceMetadataValue.isEmpty()) {
+            throw printHelp("Option " + MetadataTracer.Options.TraceMetadata.getName() + " cannot be empty.");
+        } else if (traceMetadataValue.equals("help")) {
+            throw printHelp("Option " + MetadataTracer.Options.TraceMetadata.getName() + " value is 'help'. Printing a description and aborting.");
         }
 
         Map<String, String> parsedArguments = new HashMap<>();
         Set<String> allArguments = new LinkedHashSet<>(List.of("path", "merge"));
-        for (String argument : recordMetadataValue.split(",")) {
+        for (String argument : traceMetadataValue.split(",")) {
             String[] parts = SubstrateUtil.split(argument, "=", ARGUMENT_PARTS);
             if (parts.length != ARGUMENT_PARTS) {
                 throw badArgumentError(argument, "Argument should be a key-value pair separated by '='");
@@ -333,7 +333,7 @@ record RecordOptions(Path path, boolean merge) {
 
         String path = requiredArgument(parsedArguments, "path", IDENTITY_PARSER);
         boolean merge = optionalArgument(parsedArguments, "merge", true, BOOLEAN_PARSER);
-        return new RecordOptions(Paths.get(path), merge);
+        return new TraceOptions(Paths.get(path), merge);
     }
 
     private static IllegalArgumentException printHelp(String errorMessage) {
@@ -343,15 +343,15 @@ record RecordOptions(Path path, boolean merge) {
                         %s description:
 
                         %s
-                        """.formatted(errorMessage, MetadataTracer.Options.RecordMetadata.getName(), MetadataTracer.Options.RECORD_METADATA_HELP));
+                        """.formatted(errorMessage, MetadataTracer.Options.TraceMetadata.getName(), MetadataTracer.Options.TRACE_METADATA_HELP));
     }
 
     private static IllegalArgumentException parseError(String message) {
-        return new IllegalArgumentException(message + ". For more information (including usage examples), pass 'help' as an argument to " + MetadataTracer.Options.RecordMetadata.getName() + ".");
+        return new IllegalArgumentException(message + ". For more information (including usage examples), pass 'help' as an argument to " + MetadataTracer.Options.TraceMetadata.getName() + ".");
     }
 
     private static IllegalArgumentException badArgumentError(String argument, String message) {
-        throw parseError("Bad argument provided for " + MetadataTracer.Options.RecordMetadata.getName() + ": '" + argument + "'. " + message);
+        throw parseError("Bad argument provided for " + MetadataTracer.Options.TraceMetadata.getName() + ": '" + argument + "'. " + message);
     }
 
     private static IllegalArgumentException badArgumentValueError(String argumentKey, String argumentValue, String message) {
@@ -373,7 +373,7 @@ record RecordOptions(Path path, boolean merge) {
         if (arguments.containsKey(key)) {
             return parser.parse(key, arguments.get(key));
         }
-        throw parseError(MetadataTracer.Options.RecordMetadata.getName() + " missing required argument '" + key + "'");
+        throw parseError(MetadataTracer.Options.TraceMetadata.getName() + " missing required argument '" + key + "'");
     }
 
     private static <T> T optionalArgument(Map<String, String> options, String key, T defaultValue, ArgumentParser<T> parser) {
