@@ -544,7 +544,7 @@ final class ComputeInterfaceTypeID implements FieldValueTransformerWithAvailabil
         HostedMethod method = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
         HostedMethod indirectCallTarget = method.getIndirectCallTarget();
         if (indirectCallTarget.getDeclaringClass().isInterface()) {
-            return indirectCallTarget.getDeclaringClass().getTypeID();
+            return indirectCallTarget.getDeclaringClass().getInterfaceID();
         }
         return SubstrateMethodAccessor.INTERFACE_TYPEID_CLASS_TABLE;
     }

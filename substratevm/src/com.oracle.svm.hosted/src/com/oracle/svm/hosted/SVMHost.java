@@ -976,8 +976,11 @@ public class SVMHost extends HostVM {
 
         sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "layoutEncoding"));
         sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "numClassTypes"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "numInterfaceTypes"));
+        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "numIterableInterfaceTypes"));
         sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldTypeCheckSlots"));
+        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldInterfaceHashParam"));
+        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldInterfaceHashTable"));
+        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "interfaceID"));
         sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "typeIDDepth"));
         sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "typeID"));
         sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "monitorOffset"));

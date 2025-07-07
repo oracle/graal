@@ -49,6 +49,7 @@ import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 public final class DynamicHubSupport implements MultiLayeredImageSingleton, UnsavedSingleton {
 
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class) private int maxTypeId;
+    @UnknownPrimitiveField(availability = AfterHostedUniverse.class) private int maxInterfaceId;
     @UnknownObjectField(availability = AfterHostedUniverse.class) private byte[] referenceMapEncoding;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -79,13 +80,19 @@ public final class DynamicHubSupport implements MultiLayeredImageSingleton, Unsa
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setMaxTypeId(int maxTypeId) {
+    public void setMaxTypeIds(int maxTypeId, int maxInterfaceId) {
         this.maxTypeId = maxTypeId;
+        this.maxInterfaceId = maxInterfaceId;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public int getMaxTypeId() {
         return maxTypeId;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public int getMaxInterfaceId() {
+        return maxInterfaceId;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

@@ -401,8 +401,9 @@ struct DynamicHubInfo {
     installed @1 :Bool;
     typecheckId @2 :Int32;
     numClassTypes @3 :Int32;
-    numInterfaceTypes @4 :Int32;
+    numIterableInterfaceTypes @4 :Int32;
     typecheckSlotValues @5 :List(Int32);
     locallyDeclaredSlotsHostedMethodIndexes @6 :List(HostedMethodIndex);
     dispatchTableSlotValues @7 :List(DispatchSlotInfo);
+    interfaceId @8 :Int32;
 }

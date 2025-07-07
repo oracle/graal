@@ -611,7 +611,7 @@ public class JNIAccessFeature implements Feature {
                 interfaceTypeID = JNIAccessibleMethod.INTERFACE_TYPEID_UNNEEDED;
             } else {
                 HostedType indirectCallTargetClass = hTarget.getIndirectCallTarget().getDeclaringClass();
-                interfaceTypeID = indirectCallTargetClass.isInterface() ? indirectCallTargetClass.getTypeID() : JNIAccessibleMethod.INTERFACE_TYPEID_CLASS_TABLE;
+                interfaceTypeID = indirectCallTargetClass.isInterface() ? indirectCallTargetClass.getInterfaceID() : JNIAccessibleMethod.INTERFACE_TYPEID_CLASS_TABLE;
             }
         }
         CodePointer nonvirtualTarget = new MethodPointer(hTarget);
