@@ -71,7 +71,6 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.home.Version;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -168,13 +167,6 @@ import jdk.vm.ci.services.Services;
 public abstract class OptimizedTruffleRuntime implements TruffleRuntime, TruffleCompilerRuntime {
 
     private static final int JAVA_SPECIFICATION_VERSION = Runtime.version().feature();
-    /**
-     * When modifying the version values defined below, ensure that the corresponding version fields
-     * in {@code TruffleBaseFeature} are also updated accordingly to maintain consistency.
-     */
-    public static final int MIN_JDK_VERSION = 25;
-    public static final int MAX_JDK_VERSION = 29;
-    public static final Version NEXT_VERSION_UPDATE = Version.create(29, 1);
 
     /**
      * Used only to reset state for native image compilation.
