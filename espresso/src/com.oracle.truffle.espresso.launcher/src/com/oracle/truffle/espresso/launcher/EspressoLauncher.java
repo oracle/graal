@@ -60,6 +60,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         new EspressoLauncher().launch(args);
     }
 
+    private final boolean launcherDebug = System.getenv("_JAVA_LAUNCHER_DEBUG") != null;
     private final ArrayList<String> mainClassArgs = new ArrayList<>();
     private String mainClassName = null;
     private LaunchMode launchMode = LaunchMode.LM_CLASS;
@@ -184,6 +185,14 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         int javaAgentIndex = 0;
 
         List<String> expandedArguments = expandAtFiles(arguments);
+
+        if (launcherDebug) {
+            println("Command line args:");
+            println("argv[0] = " + getProgramName());
+            for (int i = 0; i < expandedArguments.size(); i++) {
+                println(String.format("argv[%d] = %s", i + 1, expandedArguments.get(i)));
+            }
+        }
 
         Arguments args = new Arguments(expandedArguments);
         while (args.next()) {
