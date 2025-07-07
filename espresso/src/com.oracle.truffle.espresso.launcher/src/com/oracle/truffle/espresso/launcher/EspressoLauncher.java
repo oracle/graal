@@ -519,6 +519,8 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             case "TieredStopAtLevel" -> {
                 if ("0".equals(value)) {
                     espressoOptions.put("engine.Compilation", "false");
+                } else if ("1".equals(value)) {
+                    espressoOptions.put("engine.Mode", "latency");
                 } else {
                     unrecognized.add(fullArg);
                 }
