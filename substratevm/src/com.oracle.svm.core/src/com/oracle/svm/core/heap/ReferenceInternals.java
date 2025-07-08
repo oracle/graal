@@ -217,22 +217,11 @@ public final class ReferenceInternals {
                 pendingList = ref.discovered;
                 ref.discovered = null;
 
-                if (Target_jdk_internal_ref_Cleaner.class.isInstance(ref)) {
-                    Target_jdk_internal_ref_Cleaner cleaner = Target_jdk_internal_ref_Cleaner.class.cast(ref);
-                    // Cleaner catches all exceptions, cannot be overridden due to private c'tor
-                    cleaner.clean();
-                    synchronized (processPendingLock) {
-                        // Notify any waiters that progress has been made. This improves latency
-                        // for nio.Bits waiters, which are the only important ones.
-                        processPendingLock.notifyAll();
-                    }
-                } else {
-                    @SuppressWarnings("unchecked")
-                    Target_java_lang_ref_ReferenceQueue<? super Object> queue = SubstrateUtil.cast(ref.queue, Target_java_lang_ref_ReferenceQueue.class);
-                    if (queue != Target_java_lang_ref_ReferenceQueue.NULL_QUEUE) {
-                        // Enqueues, avoiding the potentially overridden Reference.enqueue().
-                        queue.enqueue(ref);
-                    }
+                @SuppressWarnings("unchecked")
+                Target_java_lang_ref_ReferenceQueue<? super Object> queue = SubstrateUtil.cast(ref.queue, Target_java_lang_ref_ReferenceQueue.class);
+                if (queue != Target_java_lang_ref_ReferenceQueue.NULL_QUEUE) {
+                    // Enqueues, avoiding the potentially overridden Reference.enqueue().
+                    queue.enqueue(ref);
                 }
             }
 

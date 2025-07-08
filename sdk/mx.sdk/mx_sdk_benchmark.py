@@ -3277,6 +3277,13 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             del benchmarks["gauss-mix"]
             del benchmarks["page-rank"]
             del benchmarks["movie-lens"]
+            if mx.get_jdk().javaCompliance >= '26':
+                # JDK-8361426 removes jdk.internal.ref.Cleaner and causes the following to fail
+                del benchmarks["als"]
+                del benchmarks["db-shootout"]
+                del benchmarks["dec-tree"]
+                del benchmarks["log-regression"]
+                del benchmarks["naive-bayes"]
 
         return benchmarks
 
