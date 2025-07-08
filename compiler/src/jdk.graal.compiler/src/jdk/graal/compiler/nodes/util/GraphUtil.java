@@ -1075,11 +1075,15 @@ public class GraphUtil {
     }
 
     public static boolean tryKillUnused(Node node) {
-        if (node.isAlive() && isFloatingNode(node) && node.hasNoUsages() && !(node instanceof GuardNode)) {
+        if (shouldKillUnused(node)) {
             killWithUnusedFloatingInputs(node);
             return true;
         }
         return false;
+    }
+
+    public static boolean shouldKillUnused(Node node) {
+        return node.isAlive() && isFloatingNode(node) && node.hasNoUsages() && !(node instanceof GuardNode);
     }
 
     /**

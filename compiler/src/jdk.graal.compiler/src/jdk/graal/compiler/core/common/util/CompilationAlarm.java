@@ -259,6 +259,7 @@ public final class CompilationAlarm implements AutoCloseable {
                 ResolvedJavaMethod method = graph.method();
                 PhaseTreeNode newRoot = new PhaseTreeIntermediateRoot(String.format("IntermediateRoot -> %s", method == null ? graph : method.format("%H.%n(%p)")), graph);
                 newRoot.parent = currentNode;
+                newRoot.startTimeNS = System.nanoTime();
                 currentNode.addChild(newRoot);
                 currentNode = newRoot;
             }

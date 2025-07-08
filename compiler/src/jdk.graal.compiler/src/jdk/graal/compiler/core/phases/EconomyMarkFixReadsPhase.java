@@ -24,28 +24,33 @@
  */
 package jdk.graal.compiler.core.phases;
 
-import jdk.graal.compiler.phases.common.CanonicalizerPhase;
-import jdk.graal.compiler.phases.common.DeoptimizationGroupingPhase;
-import jdk.graal.compiler.phases.common.FrameStateAssignmentPhase;
-import jdk.graal.compiler.phases.common.GuardLoweringPhase;
-import jdk.graal.compiler.phases.common.LoopSafepointInsertionPhase;
-import jdk.graal.compiler.phases.common.MidTierLoweringPhase;
-import jdk.graal.compiler.phases.common.RemoveValueProxyPhase;
-import jdk.graal.compiler.phases.common.WriteBarrierAdditionPhase;
-import jdk.graal.compiler.phases.tiers.MidTierContext;
+import java.util.Optional;
 
-public class EconomyMidTier extends BaseTier<MidTierContext> {
+import jdk.graal.compiler.nodes.GraphState;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.Phase;
 
-    @SuppressWarnings("this-escape")
-    public EconomyMidTier() {
-        CanonicalizerPhase canonicalizer = CanonicalizerPhase.createSingleShot();
-        appendPhase(new RemoveValueProxyPhase(canonicalizer));
-        appendPhase(new LoopSafepointInsertionPhase());
-        appendPhase(new GuardLoweringPhase());
-        appendPhase(new MidTierLoweringPhase(canonicalizer));
-        appendPhase(new FrameStateAssignmentPhase());
-        appendPhase(new DeoptimizationGroupingPhase());
-        appendPhase(canonicalizer);
-        appendPhase(new WriteBarrierAdditionPhase());
+public class EconomyMarkFixReadsPhase extends Phase {
+
+    @Override
+    public Optional<BasePhase.NotApplicable> notApplicableTo(GraphState graphState) {
+        return ALWAYS_APPLICABLE;
     }
+
+    @Override
+    protected void run(StructuredGraph graph) {
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        /*
+         * In economy we never allow floating reads for the sake of compile speed, thus we mark the
+         * graph as already having fix reads.
+         */
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(GraphState.StageFlag.FIXED_READS);
+    }
+
+    public static final EconomyMarkFixReadsPhase SINGLETON = new EconomyMarkFixReadsPhase();
 }
