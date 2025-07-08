@@ -27,13 +27,20 @@ package jdk.graal.compiler.core.test;
 import org.junit.Assume;
 import org.junit.Test;
 
-import jdk.graal.compiler.core.phases.EconomyHighTier;
-import jdk.graal.compiler.core.phases.EconomyMidTier;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.DeoptimizationGroupingPhase;
 import jdk.graal.compiler.phases.common.FloatingReadPhase;
+import jdk.graal.compiler.phases.common.FrameStateAssignmentPhase;
+import jdk.graal.compiler.phases.common.GuardLoweringPhase;
+import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
+import jdk.graal.compiler.phases.common.LoopSafepointInsertionPhase;
+import jdk.graal.compiler.phases.common.MidTierLoweringPhase;
 import jdk.graal.compiler.phases.common.OptimizeOffsetAddressPhase;
+import jdk.graal.compiler.phases.common.RemoveValueProxyPhase;
+import jdk.graal.compiler.phases.common.WriteBarrierAdditionPhase;
 import jdk.graal.compiler.phases.tiers.Suites;
 
 /**
@@ -55,9 +62,22 @@ public class OptimizeOffsetAddressTest extends GraalCompilerTest {
 
         StructuredGraph graph = parseEager("snippet0", StructuredGraph.AllowAssumptions.YES);
 
-        new EconomyHighTier().apply(graph, getDefaultHighTierContext());
+        // resembling an economy phase plan with floating reads
+
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.createSingleShot();
+        canonicalizer.apply(graph, getDefaultHighTierContext());
+        new HighTierLoweringPhase(canonicalizer, true).apply(graph, getDefaultHighTierContext());
+
         new FloatingReadPhase(createCanonicalizerPhase()).apply(graph, getDefaultMidTierContext());
-        new EconomyMidTier().apply(graph, getDefaultMidTierContext());
+
+        new RemoveValueProxyPhase(canonicalizer).apply(graph, getDefaultMidTierContext());
+        new LoopSafepointInsertionPhase().apply(graph, getDefaultMidTierContext());
+        new GuardLoweringPhase().apply(graph, getDefaultMidTierContext());
+        new MidTierLoweringPhase(canonicalizer).apply(graph, getDefaultMidTierContext());
+        new FrameStateAssignmentPhase().apply(graph, getDefaultMidTierContext());
+        new DeoptimizationGroupingPhase().apply(graph, getDefaultMidTierContext());
+        canonicalizer.apply(graph, getDefaultMidTierContext());
+        new WriteBarrierAdditionPhase().apply(graph, getDefaultMidTierContext());
 
         assertTrue(graph.getNodes().filter(AddNode.class).count() == 4);
         new OptimizeOffsetAddressPhase(createCanonicalizerPhase()).apply(graph, getDefaultLowTierContext());

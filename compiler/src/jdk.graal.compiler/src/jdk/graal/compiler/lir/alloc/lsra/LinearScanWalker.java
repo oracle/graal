@@ -211,6 +211,10 @@ class LinearScanWalker extends IntervalWalker {
     void freeCollectInactiveAny(Interval current) {
         Interval interval = inactiveLists.get(RegisterBinding.Any);
         while (!interval.isEndMarker()) {
+            if (interval.currentFrom() > current.to()) {
+                // these two can never intersect
+                return;
+            }
             setUsePos(interval, interval.currentIntersectsAt(current), true);
             interval = interval.next;
         }
