@@ -164,8 +164,8 @@ public class WebImageDelegateFeature implements InternalFeature {
     }
 
     @Override
-    public void registerGraalPhases(Providers providers, Suites suites, boolean hosted) {
-        delegate.registerGraalPhases(providers, suites, hosted);
+    public void registerGraalPhases(Providers providers, Suites suites, boolean hosted, boolean fallback) {
+        delegate.registerGraalPhases(providers, suites, hosted, fallback);
     }
 
     @Override

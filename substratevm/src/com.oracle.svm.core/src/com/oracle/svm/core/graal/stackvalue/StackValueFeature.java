@@ -49,7 +49,7 @@ import jdk.graal.compiler.phases.util.Providers;
 @AutomaticallyRegisteredFeature
 public class StackValueFeature implements InternalFeature {
     @Override
-    public void registerGraalPhases(Providers providers, Suites suites, boolean hosted) {
+    public void registerGraalPhases(Providers providers, Suites suites, boolean hosted, boolean fallback) {
         ListIterator<BasePhase<? super MidTierContext>> midTierPos = suites.getMidTier().findPhase(FrameStateAssignmentPhase.class);
         midTierPos.previous();
         midTierPos.add(new StackValueRecursionDepthPhase());
