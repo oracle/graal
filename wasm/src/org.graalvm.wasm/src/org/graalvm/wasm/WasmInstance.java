@@ -42,11 +42,7 @@ package org.graalvm.wasm;
 
 import java.util.List;
 
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -123,7 +119,6 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
 
     private static final String EXPORTS_MEMBER = "exports";
     private static final String REFERENCES_MEMBER = "references";
-    private static final String LINK_REFERENCES_MEMBER = "linkReferences";
 
     @ExportMessage
     boolean hasMembers() {
@@ -153,41 +148,8 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    boolean isMemberInvocable(String member) {
-        return LINK_REFERENCES_MEMBER.equals(member);
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    Object invokeMember(String member, Object... arguments) throws UnknownIdentifierException, ArityException {
-        if (!isMemberInvocable(member)) {
-            throw UnknownIdentifierException.create(member);
-        }
-        assert LINK_REFERENCES_MEMBER.equals(member);
-        if (arguments.length < 1) {
-            throw ArityException.create(1, -1, arguments.length);
-        }
-        ensureLinked();
-        final WasmStore store = store();
-        WasmInstance mainInstance = null;
-        for (int i = 0; i < arguments.length; i++) {
-            if (arguments[i] instanceof WasmModule module) {
-                WasmInstance instance = store.readInstance(module);
-                if (i == 0) {
-                    mainInstance = instance;
-                }
-            } else {
-                throw WasmException.provider().createTypeError(Failure.TYPE_MISMATCH, "Arguments must be modules");
-            }
-        }
-        store.linker().tryLink(mainInstance);
-        return mainInstance;
-    }
-
-    @ExportMessage
-    @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return new WasmNamesObject(new String[]{EXPORTS_MEMBER, REFERENCES_MEMBER, LINK_REFERENCES_MEMBER});
+        return new WasmNamesObject(new String[]{EXPORTS_MEMBER, REFERENCES_MEMBER});
     }
 
     @Override
