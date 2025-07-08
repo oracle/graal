@@ -463,7 +463,6 @@ public final class Resources implements MultiLayeredImageSingleton {
                                     CompressedGlobTrie.match(globsTrie, canonicalGlob)) {
                         return null;
                     }
-                    return missingMetadata(module, canonicalGlob, throwOnMissing);
                 }
 
                 return missingMetadata(module, resourceName, throwOnMissing);
