@@ -50,10 +50,12 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
+import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -173,6 +175,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
                         .toList();
 
         final RuntimeReflectionSupport reflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+        final RuntimeResourceSupport<ConfigurationCondition> resources = RuntimeResourceSupport.singleton();
         final RuntimeProxyCreationSupport proxy = ImageSingletons.lookup(RuntimeProxyCreationSupport.class);
         final RuntimeSerializationSupport<ConfigurationCondition> serialization = RuntimeSerializationSupport.singleton();
         final ConfigurationCondition always = ConfigurationCondition.alwaysTrue();
@@ -223,6 +226,11 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
             // if we register as unsafe allocated earlier there are build-time
             // initialization errors
             reflection.register(always, !(c.isArray() || c.isInterface() || c.isPrimitive() || Modifier.isAbstract(c.getModifiers())), c);
+
+            /* Register resource bundles */
+            if (BundleContentSubstitutedLocalizationSupport.isBundleSupported(c)) {
+                resources.addResourceBundles(always, c.getTypeName());
+            }
         });
 
         /*
