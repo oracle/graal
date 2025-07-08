@@ -40,17 +40,39 @@
  */
 package org.graalvm.wasm;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.predefined.BuiltinModule;
 
 import com.oracle.truffle.api.Option;
 
 @Option.Group(WasmLanguage.ID)
 public class WasmOptions {
     @Option(help = "A comma-separated list of builtin modules to use.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[<linkingName>:]<builtinModuleName>,[<linkingName>:]<builtinModuleName>,...")//
-    public static final OptionKey<String> Builtins = new OptionKey<>("");
+    public static final OptionKey<Map<String, BuiltinModule>> Builtins = new OptionKey<>(Map.of(), new OptionType<>("Builtins", optionValue -> {
+        if (optionValue.isEmpty()) {
+            return Map.of();
+        }
+        final String[] moduleSpecs = optionValue.split(",");
+        final Map<String, BuiltinModule> builtinModules = new HashMap<>(moduleSpecs.length);
+        for (String moduleSpec : moduleSpecs) {
+            final String[] parts = moduleSpec.split(":");
+            if (parts.length > 2) {
+                throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Module specification '" + moduleSpec + "' is not valid.");
+            }
+            final String linkingName = parts[0];
+            final String predefinedModuleName = parts.length == 2 ? parts[1] : parts[0];
+            builtinModules.put(linkingName, BuiltinModule.requireBuiltinModule(predefinedModuleName));
+        }
+        return Map.copyOf(builtinModules);
+    }));
 
     @Option(help = "The minimal binary size for which to use async parsing. If threads are not supported, async parsing will not be used.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[0, inf)", //
                     deprecated = true, deprecationMessage = "Option no longer has any effect and can be safely omitted.")//
