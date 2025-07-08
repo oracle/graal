@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,8 +45,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
@@ -128,8 +128,8 @@ public class CharacterClass extends QuantifiableTerm {
     }
 
     @Override
-    public boolean isUnrollingCandidate() {
-        return hasQuantifier() && getQuantifier().isWithinThreshold(TRegexOptions.TRegexQuantifierUnrollThresholdSingleCC);
+    public boolean isUnrollingCandidate(RegexOptions options) {
+        return hasQuantifier() && getQuantifier().isWithinThreshold(options.quantifierUnrollLimitSingleCC);
     }
 
     public void addLookBehindEntry(RegexAST ast, LookBehindAssertion lookBehindEntry) {

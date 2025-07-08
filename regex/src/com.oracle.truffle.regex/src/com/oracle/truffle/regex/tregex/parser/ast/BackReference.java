@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.parser.ast;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -142,7 +143,7 @@ public class BackReference extends QuantifiableTerm {
     }
 
     @Override
-    public boolean isUnrollingCandidate() {
+    public boolean isUnrollingCandidate(RegexOptions options) {
         return hasQuantifier() && getQuantifier().isUnrollTrivial();
     }
 

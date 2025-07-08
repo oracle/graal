@@ -821,8 +821,8 @@ public final class RegexASTBuilder {
 
     private void setQuantifier(QuantifiableTerm term, Token.Quantifier quantifier) {
         term.setQuantifier(quantifier);
-        if (!term.isUnrollingCandidate()) {
-            properties.setLargeCountedRepetitions();
+        if (!term.isUnrollingCandidate(options)) {
+            properties.setLargeBoundedQuantifiers();
         }
         properties.setQuantifiers();
     }

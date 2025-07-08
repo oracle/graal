@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import java.util.Map;
+
 import org.junit.Test;
 
 import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
@@ -47,9 +49,11 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class RubyUTF8Tests extends RegexTestBase {
 
+    private static final Map<String, String> ENGINE_OPTIONS = Map.of("regexDummyLang.Flavor", "Ruby");
+
     @Override
-    String getEngineOptions() {
-        return "Flavor=Ruby";
+    Map<String, String> getEngineOptions() {
+        return ENGINE_OPTIONS;
     }
 
     @Override
@@ -87,7 +91,7 @@ public class RubyUTF8Tests extends RegexTestBase {
         test("(?<=\\A)", "", "\r", 0, true, 0, 0);
         test("(?<=\\b)", "", "\r", 0, false);
         test("(?<=\\B)", "", "\r", 0, true, 0, 0);
-        expectSyntaxError("(?<=+?)", "", "", getTRegexEncoding(), "error", 0, ErrorCode.InvalidQuantifier);
+        expectSyntaxError("(?<=+?)", "", "error", 0, ErrorCode.InvalidQuantifier);
         test("(?<=)", "", "empty", 0, true, 0, 0);
         test("()?", "", "", 0, true, 0, 0, 0, 0);
         test("(a*)?", "", "", 0, true, 0, 0, 0, 0);
@@ -298,7 +302,7 @@ public class RubyUTF8Tests extends RegexTestBase {
         test("(?=ab)a", "", "ab", 0, true, 0, 1);
         test("(?=()|^)|x", "", "empty", 0, true, 0, 0, 0, 0);
         test("a(?<=ba)", "", "ba", 0, true, 1, 2);
-        expectSyntaxError("(?<=(?<=a)[])", "i", "", getTRegexEncoding(), "empty", 0, ErrorCode.InvalidCharacterClass);
+        expectSyntaxError("(?<=(?<=a)[])", "i", "empty", 0, ErrorCode.InvalidCharacterClass);
         test("\\d\\W", "i", "4\u017f", 0, true, 0, 3);
         test("[\u08bc-\ucf3a]", "i", "\u03b0", 0, true, 0, 2);
         test("[\u0450-\u6c50]\u7e57\u55ad()\u64e7\\d|", "i", "\u03b0\u7e57\u55ad\u64e79", 0, true, 0, 12, 8, 8);

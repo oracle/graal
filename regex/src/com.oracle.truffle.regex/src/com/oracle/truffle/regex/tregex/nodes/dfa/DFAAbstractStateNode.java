@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,31 +41,15 @@
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 
-public abstract class DFAAbstractStateNode implements JsonConvertible {
+public abstract class DFAAbstractStateNode extends DFAAbstractNode implements JsonConvertible {
 
-    private final short id;
     @CompilationFinal(dimensions = 1) protected final short[] successors;
 
     DFAAbstractStateNode(short id, short[] successors) {
-        this.id = id;
+        super(id);
         this.successors = successors;
-    }
-
-    /**
-     * Creates a copy of this state node, where all attributes are copied shallowly, except for the
-     * {@link #successors} array, which is deep-copied, and the node ID, which is replaced by the
-     * parameter copyID. Used by {@link DFANodeSplit}.
-     *
-     * @param copyID new ID for the copy.
-     * @return an "almost shallow" copy of this node.
-     */
-    public abstract DFAAbstractStateNode createNodeSplitCopy(short copyID);
-
-    public final short getId() {
-        return id;
     }
 
     public final short[] getSuccessors() {

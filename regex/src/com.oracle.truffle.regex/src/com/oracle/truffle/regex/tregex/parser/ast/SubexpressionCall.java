@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,7 @@
 package com.oracle.truffle.regex.tregex.parser.ast;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -83,8 +83,8 @@ public class SubexpressionCall extends QuantifiableTerm {
     }
 
     @Override
-    public boolean isUnrollingCandidate() {
-        return hasQuantifier() && getQuantifier().isWithinThreshold(TRegexOptions.TRegexQuantifierUnrollThresholdGroup);
+    public boolean isUnrollingCandidate(RegexOptions options) {
+        return hasQuantifier() && getQuantifier().isWithinThreshold(options.quantifierUnrollLimitGroup);
     }
 
     @Override
