@@ -65,6 +65,7 @@ import org.graalvm.wasm.memory.NativeWasmMemory;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
@@ -277,12 +278,20 @@ public class WasmPolyglotTestSuite {
                         )
                     """;
 
+    private static Source simpleTestModuleSource;
+    private static Source simpleImportModuleSource;
+
+    @BeforeClass
+    public static void setup() throws IOException, InterruptedException {
+        final ByteSequence simpleTestModuleData = ByteSequence.create(compileWat("simpleTestModule", simpleTestModule));
+        simpleTestModuleSource = Source.newBuilder(WasmLanguage.ID, simpleTestModuleData, "main").build();
+
+        final ByteSequence simpleImportModuleData = ByteSequence.create(compileWat("simpleImportModule", simpleImportModule));
+        simpleImportModuleSource = Source.newBuilder(WasmLanguage.ID, simpleImportModuleData, "test").build();
+    }
+
     @Test
-    public void instantiateModuleWithImportObject() throws IOException, InterruptedException {
-        final ByteSequence simpleImportModuleData = ByteSequence.create(compileWat("test", simpleImportModule));
-
-        final Source simpleImportModuleSource = Source.newBuilder(WasmLanguage.ID, simpleImportModuleData, "test").build();
-
+    public void instantiateModuleWithImportObject() {
         try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
             final Proxy executable = (ProxyExecutable) args -> 42;
             final Proxy function = ProxyObject.fromMap(Map.of("main", executable));
@@ -299,11 +308,7 @@ public class WasmPolyglotTestSuite {
     }
 
     @Test
-    public void instantiateModuleWithMissingImportObject() throws IOException, InterruptedException {
-        final ByteSequence simpleImportModuleData = ByteSequence.create(compileWat("test", simpleImportModule));
-
-        final Source simpleImportModuleSource = Source.newBuilder(WasmLanguage.ID, simpleImportModuleData, "test").build();
-
+    public void instantiateModuleWithMissingImportObject() {
         try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
             final Value importModule = context.eval(simpleImportModuleSource);
 
@@ -317,11 +322,7 @@ public class WasmPolyglotTestSuite {
     }
 
     @Test
-    public void instantiateModuleWithMissingFunction() throws IOException, InterruptedException {
-        final ByteSequence simpleImportModuleData = ByteSequence.create(compileWat("test", simpleImportModule));
-
-        final Source simpleImportModuleSource = Source.newBuilder(WasmLanguage.ID, simpleImportModuleData, "test").build();
-
+    public void instantiateModuleWithMissingFunction() {
         try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
             final Proxy importObject = ProxyObject.fromMap(Map.of("main", ProxyObject.fromMap(Collections.emptyMap())));
 
@@ -338,11 +339,7 @@ public class WasmPolyglotTestSuite {
     }
 
     @Test
-    public void instantiateModuleWithNonExecutableFunction() throws IOException, InterruptedException {
-        final ByteSequence simpleImportModuleData = ByteSequence.create(compileWat("test", simpleImportModule));
-
-        final Source simpleImportModuleSource = Source.newBuilder(WasmLanguage.ID, simpleImportModuleData, "test").build();
-
+    public void instantiateModuleWithNonExecutableFunction() {
         try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
             final Proxy importObject = ProxyObject.fromMap(Map.of("main", ProxyObject.fromMap(Map.of("main", 5))));
 
@@ -359,11 +356,7 @@ public class WasmPolyglotTestSuite {
     }
 
     @Test
-    public void instantiateModuleWithTwoImportObjects() throws IOException, InterruptedException {
-        final ByteSequence simpleImportModuleData = ByteSequence.create(compileWat("test", simpleImportModule));
-
-        final Source simpleImportModuleSource = Source.newBuilder(WasmLanguage.ID, simpleImportModuleData, "test").build();
-
+    public void instantiateModuleWithTwoImportObjects() {
         try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
             final Proxy importObject = ProxyObject.fromMap(Map.of("main", ProxyObject.fromMap(Map.of("main", 5))));
             final Proxy importObject2 = ProxyObject.fromMap(Map.of("main2", ProxyObject.fromMap(Map.of("main2", 6))));
@@ -381,38 +374,14 @@ public class WasmPolyglotTestSuite {
     }
 
     @Test
-    public void instantiateInSameStore() throws IOException, InterruptedException {
-        final ByteSequence simpleTestModuleData = ByteSequence.create(compileWat("main", simpleTestModule));
-        final ByteSequence simpleImportModuleData = ByteSequence.create(compileWat("test", simpleImportModule));
-
-        final Source simpleTestModuleSource = Source.newBuilder(WasmLanguage.ID, simpleTestModuleData, "main").build();
-        final Source simpleImportModuleSource = Source.newBuilder(WasmLanguage.ID, simpleImportModuleData, "test").build();
-
-        try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
-            final Value testModule = context.eval(simpleTestModuleSource);
-            final Value importModule = context.eval(simpleImportModuleSource);
-
-            final Value importInstance = importModule.newInstance(testModule);
-            final Value result = importInstance.getMember("exports").getMember("test").execute();
-
-            Assert.assertEquals(13, result.asInt());
-        }
-    }
-
-    @Test
-    public void lateInstantiateInSameStore() throws IOException, InterruptedException {
-        final ByteSequence simpleTestModuleData = ByteSequence.create(compileWat("main", simpleTestModule));
-        final ByteSequence simpleImportModuleData = ByteSequence.create(compileWat("test", simpleImportModule));
-
-        final Source simpleTestModuleSource = Source.newBuilder(WasmLanguage.ID, simpleTestModuleData, "main").build();
-        final Source simpleImportModuleSource = Source.newBuilder(WasmLanguage.ID, simpleImportModuleData, "test").build();
-
+    public void instantiateModuleWithExportsFromAnotherModule() {
         try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
             final Value testModule = context.eval(simpleTestModuleSource);
             final Value importModule = context.eval(simpleImportModuleSource);
 
             final Value testInstance = testModule.newInstance();
-            final Value importInstance = testInstance.invokeMember("linkReferences", importModule);
+            final Value importInstance = importModule.newInstance(ProxyObject.fromMap(Map.of(
+                            "main", testInstance.getMember("exports"))));
 
             final Value result = importInstance.getMember("exports").getMember("test").execute();
 
@@ -421,13 +390,7 @@ public class WasmPolyglotTestSuite {
     }
 
     @Test
-    public void consistentGetReferences() throws IOException, InterruptedException {
-        final ByteSequence simpleTestModuleData = ByteSequence.create(compileWat("main", simpleTestModule));
-        final ByteSequence simpleImportModuleData = ByteSequence.create(compileWat("test", simpleImportModule));
-
-        final Source simpleTestModuleSource = Source.newBuilder(WasmLanguage.ID, simpleTestModuleData, "main").build();
-        final Source simpleImportModuleSource = Source.newBuilder(WasmLanguage.ID, simpleImportModuleData, "test").build();
-
+    public void consistentGetReferences() {
         try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
             final Value testModule = context.eval(simpleTestModuleSource);
 
@@ -447,19 +410,21 @@ public class WasmPolyglotTestSuite {
             final Value importModule = context.eval(simpleImportModuleSource);
 
             final Value testInstance = testModule.newInstance();
-            testInstance.invokeMember("linkReferences", importModule);
+            final Value importInstance = importModule.newInstance(ProxyObject.fromMap(Map.of(
+                            "main", testInstance.getMember("exports"))));
+
+            final Value result = importInstance.getMember("exports").invokeMember("test");
+            Assert.assertEquals(13, result.asInt());
 
             final Value ref5 = testInstance.getMember("references");
-
             final Value instance3 = testInstance.getMember("references").getMember("main");
-            final Value instance4 = testInstance.getMember("references").getMember("test");
-
             final Value ref6 = instance3.getMember("references");
-            final Value ref7 = instance4.getMember("references");
-
             Assert.assertEquals(ref5, ref6);
-            Assert.assertEquals(ref5, ref7);
-            Assert.assertEquals(ref6, ref7);
+
+            final Value ref7 = importInstance.getMember("references");
+            final Value instance4 = importInstance.getMember("references").getMember("test");
+            final Value ref8 = instance4.getMember("references");
+            Assert.assertEquals(ref7, ref8);
         }
     }
 
@@ -490,18 +455,19 @@ public class WasmPolyglotTestSuite {
             final Value mainModule = context.eval(mainModuleSource);
             final Value otherModule = context.eval(importModuleSource);
 
-            final Value mainInstance = mainModule.newInstance(otherModule);
+            final Value mainInstance = mainModule.newInstance();
             final Value mainExports = mainInstance.getMember("exports");
 
             Assert.assertEquals(13, mainExports.invokeMember("main").asInt());
 
-            final Value otherInstance = mainInstance.getMember("references").getMember("import-mod");
-            Assert.assertEquals(42, otherInstance.getMember("exports").invokeMember("f").asInt());
+            final Value otherInstance = otherModule.newInstance();
+            final Value otherExports = otherInstance.getMember("exports");
+            Assert.assertEquals(42, otherExports.invokeMember("f").asInt());
         }
     }
 
     @Test
-    public void newInstanceWASI2() throws IOException, InterruptedException {
+    public void newInstanceWASIWithSupportModule() throws IOException, InterruptedException {
         try (Context context = Context.newBuilder(WasmLanguage.ID).option("wasm.Builtins", "wasi_snapshot_preview1").build()) {
             Value mainModule = context.eval(Source.newBuilder("wasm", ByteSequence.create(compileWat("main", """
                             (module
@@ -542,9 +508,53 @@ public class WasmPolyglotTestSuite {
                 Assert.assertFalse(printfCalled.getAndSet(true));
                 return null;
             };
-            var importObject = ProxyObject.fromMap(Map.of(
-                            "hostEnv", ProxyObject.fromMap(Map.of("printf", printf))));
-            Value mainModuleInstance = mainModule.newInstance(importObject, envModule);
+            var hostEnvObject = ProxyObject.fromMap(Map.of("printf", printf));
+            Value envInstance = envModule.newInstance(ProxyObject.fromMap(Map.of(
+                            "hostEnv", hostEnvObject)));
+            Value envExports = envInstance.getMember("exports");
+            Value mainInstance = mainModule.newInstance(ProxyObject.fromMap(Map.of(
+                            "hostEnv", hostEnvObject,
+                            "env", envExports)));
+            Value mainExports = mainInstance.getMember("exports");
+            mainExports.getMember("_start").execute();
+            Assert.assertTrue("printf called", printfCalled.get());
+        }
+    }
+
+    @Test
+    public void indirectImportOfHostFunction() throws IOException, InterruptedException {
+        try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
+            Value mainModule = context.eval(Source.newBuilder("wasm", ByteSequence.create(compileWat("main", """
+                            (module
+                                ;; Import printf function from support module
+                                (import "env" "printf"
+                                (func $printf (param i32)))
+
+                                (func (export "_start")
+                                    ;; Call printf with a dummy i32 pointer, say address 16
+                                    (call $printf (i32.const 16))
+                                )
+                            )
+                            """)), "main").build());
+            Value envModule = context.eval(Source.newBuilder("wasm", ByteSequence.create(compileWat("env", """
+                            (module
+                                (func $printf (export "printf") (import "hostEnv" "printf") (param i32))
+                            )
+                            """)), "env").build());
+
+            AtomicBoolean printfCalled = new AtomicBoolean();
+            ProxyExecutable printf = (args) -> {
+                Assert.assertEquals(16, args[0].asInt());
+                Assert.assertFalse(printfCalled.getAndSet(true));
+                return null;
+            };
+            var hostEnvObject = ProxyObject.fromMap(Map.of("printf", printf));
+            Value envModuleInstance = envModule.newInstance(ProxyObject.fromMap(Map.of(
+                            "hostEnv", hostEnvObject)));
+            Value envExports = envModuleInstance.getMember("exports");
+            Value mainModuleInstance = mainModule.newInstance(ProxyObject.fromMap(Map.of(
+                            "hostEnv", hostEnvObject,
+                            "env", envExports)));
             mainModuleInstance.getMember("exports").getMember("_start").execute();
             Assert.assertTrue("printf called", printfCalled.get());
         }
