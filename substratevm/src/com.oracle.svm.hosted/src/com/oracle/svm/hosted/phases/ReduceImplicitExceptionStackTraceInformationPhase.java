@@ -62,8 +62,8 @@ import jdk.graal.compiler.phases.util.Providers;
 @AutomaticallyRegisteredFeature
 class ReduceImplicitExceptionStackTraceInformationFeature implements InternalFeature {
     @Override
-    public void registerGraalPhases(Providers providers, Suites suites, boolean hosted) {
-        if (hosted && SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.getValue()) {
+    public void registerGraalPhases(Providers providers, Suites suites, boolean hosted, boolean fallback) {
+        if (hosted && !fallback && SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.getValue()) {
             /*
              * Add as late as possible, before the final canonicalization. A canonicalization is
              * necessary because this phase can make other nodes unreachable, and the canonicalizer
