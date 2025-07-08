@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,16 +26,20 @@
 
 package com.oracle.svm.test.jfr;
 
-import com.oracle.svm.core.jfr.JfrEvent;
-import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordedEvent;
-import org.junit.Test;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.junit.Assert.assertTrue;
+import org.junit.Test;
+
+import com.oracle.svm.core.jfr.JfrEvent;
+
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedEvent;
 
 public class TestGarbageCollectionEvents extends JfrRecordingTest {
     @Test
@@ -49,15 +53,14 @@ public class TestGarbageCollectionEvents extends JfrRecordingTest {
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
-        assertTrue(events.size() > 0);
+        assertFalse(events.isEmpty());
         int foundSystemGc = 0;
         Set<Integer> ids = new HashSet<>();
         for (RecordedEvent event : events) {
-            assertTrue(!ids.contains(event.getInt("gcId")));
-            ids.add(event.getInt("gcId"));
-            assertTrue(event.getThread("eventThread").getJavaName() != null);
-            assertTrue(!event.getDuration().isZero());
-            assertTrue(event.getString("name") != null);
+            assertTrue(ids.add(event.getInt("gcId")));
+            assertNotNull(event.getThread("eventThread").getJavaName());
+            assertFalse(event.getDuration().isZero());
+            assertNotNull(event.getString("name"));
             assertTrue(event.getLong("longestPause") > 0);
             assertTrue(event.getLong("sumOfPauses") > 0);
             if (event.getString("cause").equals("java.lang.System.gc()")) {
