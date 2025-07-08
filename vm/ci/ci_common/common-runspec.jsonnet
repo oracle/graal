@@ -233,9 +233,9 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
 
   local deploy_vm_espresso_task_dict = {
     #
-    # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
+    # Deploy the GraalVM Espresso standalones
     #
-    "vm-espresso": mx_env + deploy_graalvm_espresso + espresso_java_home(21) + default_os_arch_jdk_mixin + platform_spec(no_jobs) + (
+    "vm-espresso": mx_env + deploy_graalvm_espresso + espresso_java_home('Latest') + default_os_arch_jdk_mixin + platform_spec(no_jobs) + (
     if vm.deploy_espress_standalone then platform_spec({
       "linux:amd64:jdk-latest": post_merge,
       "linux:aarch64:jdk-latest": post_merge,
