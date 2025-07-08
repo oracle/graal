@@ -223,6 +223,9 @@ public final class Arguments {
                     } else if (optionString.startsWith("-Xshare:")) {
                         String value = optionString.substring("-Xshare:".length());
                         builder.option("java.CDS", value);
+                    } else if (optionString.startsWith("--sun-misc-unsafe-memory-access=")) {
+                        String value = optionString.substring("--sun-misc-unsafe-memory-access=".length());
+                        builder.option("java.SunMiscUnsafeMemoryAccess", value);
                     } else if (optionString.startsWith("-XX:")) {
                         handler.handleXXArg(optionString);
                     } else if (optionString.startsWith("--help:")) {

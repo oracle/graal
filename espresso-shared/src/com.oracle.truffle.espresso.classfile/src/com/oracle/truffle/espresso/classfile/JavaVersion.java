@@ -199,6 +199,10 @@ public final class JavaVersion implements Comparable<JavaVersion> {
         return version <= 23;
     }
 
+    public boolean java23OrLater() {
+        return version >= 23;
+    }
+
     public boolean java24OrEarlier() {
         return version <= 24;
     }

@@ -89,6 +89,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.EspressoOptions.MemoryAccessOption;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.cds.CDSSupport;
 import com.oracle.truffle.espresso.classfile.ClasspathEntry;
@@ -2543,6 +2544,13 @@ public final class VM extends NativeEnv {
             addmodCount = map.setNumberedProperty("jdk.module.addmods.", options.get(EspressoOptions.AddModules), "AddModules");
             map.setNumberedProperty("jdk.module.enable.native.access.", options.get(EspressoOptions.EnableNativeAccess), "EnableNativeAccess");
             map.setPropertyIfExists("jdk.module.illegal.native.access", options.get(EspressoOptions.IllegalNativeAccess), "IllegalNativeAccess");
+        }
+
+        if (getJavaVersion().java23OrLater()) {
+            MemoryAccessOption memoryAccessOption = options.get(EspressoOptions.SunMiscUnsafeMemoryAccess);
+            if (memoryAccessOption != MemoryAccessOption.defaultValue) {
+                map.set("sun.misc.unsafe.memory.access", memoryAccessOption.name(), "SunMiscUnsafeMemoryAccess");
+            }
         }
 
         // Applications expect different formats e.g. 1.8 vs. 11
