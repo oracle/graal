@@ -577,6 +577,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setModifiers(method.getModifiers());
         builder.setIsConstructor(method.isConstructor());
         builder.setIsSynthetic(method.isSynthetic());
+        builder.setIsDeclared(method.isDeclared());
         byte[] code = method.getCode();
         if (code != null) {
             builder.setBytecode(code);

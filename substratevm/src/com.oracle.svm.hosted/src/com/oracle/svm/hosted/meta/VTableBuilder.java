@@ -60,8 +60,10 @@ public final class VTableBuilder {
         VTableBuilder builder = new VTableBuilder(hUniverse, hMetaAccess);
         if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
             builder.buildClosedTypeWorldVTables();
+            hUniverse.methods.forEach((k, v) -> v.finalizeIndirectCallVTableIndex());
         } else {
             builder.buildOpenTypeWorldDispatchTables();
+            hUniverse.methods.forEach((k, v) -> v.finalizeIndirectCallVTableIndex());
             assert builder.verifyOpenTypeWorldDispatchTables();
         }
     }
@@ -213,8 +215,8 @@ public final class VTableBuilder {
         int index = startingIndex;
         for (HostedMethod typeMethod : table) {
             assert typeMethod.getDeclaringClass().equals(type) : typeMethod;
-            assert typeMethod.vtableIndex == -1 : typeMethod.vtableIndex;
-            typeMethod.vtableIndex = index;
+            assert typeMethod.computedVTableIndex == HostedMethod.MISSING_VTABLE_IDX : typeMethod.computedVTableIndex;
+            typeMethod.computedVTableIndex = index;
             index++;
         }
 
@@ -271,15 +273,6 @@ public final class VTableBuilder {
                     if (resolvedMethod != null) {
                         targetMethod = resolvedMethod;
                         validTarget[i] = true;
-                    }
-
-                    if (SubstrateUtil.assertionsEnabled()) {
-                        var indirectCallTarget = hUniverse.lookup(method.getWrapped().getIndirectCallTarget());
-                        if (!indirectCallTarget.equals(method)) {
-                            var resolvedIndirectCallTarget = (HostedMethod) type.resolveConcreteMethod(indirectCallTarget, type);
-                            boolean condition = (resolvedMethod == null && resolvedIndirectCallTarget == null) || (resolvedMethod != null && resolvedMethod.equals(resolvedIndirectCallTarget));
-                            assert condition : Assertions.errorMessage("Mismatch in method and normal call", method, indirectCallTarget);
-                        }
                     }
                 }
 
@@ -509,7 +502,7 @@ public final class VTableBuilder {
                      * assignments into account.
                      */
                     int slot = findSlot(method, vtablesMap, usedSlotsMap, vtablesSlots);
-                    method.vtableIndex = slot;
+                    method.computedVTableIndex = slot;
 
                     /* Assign the vtable slot for the type and all subtypes. */
                     assignImplementations(method.getDeclaringClass(), method, slot, vtablesMap);
@@ -536,7 +529,7 @@ public final class VTableBuilder {
                     assert vtable.get(slot) == null;
                     vtable.set(slot, resolvedMethod);
                 }
-                resolvedMethod.vtableIndex = slot;
+                resolvedMethod.computedVTableIndex = slot;
             }
         }
 

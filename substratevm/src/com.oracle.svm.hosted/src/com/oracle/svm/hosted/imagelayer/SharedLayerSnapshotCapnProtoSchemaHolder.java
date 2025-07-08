@@ -1194,6 +1194,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setBooleanField(169, value);
       }
 
+      public final boolean getIsDeclared() {
+        return _getBooleanField(170);
+      }
+      public final void setIsDeclared(boolean value) {
+        _setBooleanField(170, value);
+      }
+
       public final boolean hasAnalysisGraphLocation() {
         return !_pointerFieldIsNull(8);
       }
@@ -1210,10 +1217,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 8, size);
       }
       public final boolean getAnalysisGraphIsIntrinsic() {
-        return _getBooleanField(170);
+        return _getBooleanField(171);
       }
       public final void setAnalysisGraphIsIntrinsic(boolean value) {
-        _setBooleanField(170, value);
+        _setBooleanField(171, value);
       }
 
       public final boolean hasStrengthenedGraphLocation() {
@@ -1242,7 +1249,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return new PersistedAnalysisMethod.WrappedMethod.Builder(segment, data, pointers, dataSize, pointerCount);
       }
       public final WrappedMethod.Builder initWrappedMethod() {
-        _setBooleanField(171,false);
+        _setBooleanField(172,false);
         _setShortField(11,(short)0);
         _setIntField(7,0);
         _setIntField(8,0);
@@ -1375,6 +1382,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getBooleanField(169);
       }
 
+      public final boolean getIsDeclared() {
+        return _getBooleanField(170);
+      }
+
       public boolean hasAnalysisGraphLocation() {
         return !_pointerFieldIsNull(8);
       }
@@ -1383,7 +1394,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
 
       public final boolean getAnalysisGraphIsIntrinsic() {
-        return _getBooleanField(170);
+        return _getBooleanField(171);
       }
 
       public boolean hasStrengthenedGraphLocation() {
@@ -1462,7 +1473,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         }
         public final FactoryMethod.Builder initFactoryMethod() {
           _setShortField(11, (short)PersistedAnalysisMethod.WrappedMethod.Which.FACTORY_METHOD.ordinal());
-          _setBooleanField(171,false);
+          _setBooleanField(172,false);
           _setIntField(7,0);
           _setIntField(8,0);
   return new PersistedAnalysisMethod.WrappedMethod.FactoryMethod.Builder(segment, data, pointers, dataSize, pointerCount);
@@ -1489,7 +1500,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         }
         public final CEntryPointCallStub.Builder initCEntryPointCallStub() {
           _setShortField(11, (short)PersistedAnalysisMethod.WrappedMethod.Which.C_ENTRY_POINT_CALL_STUB.ordinal());
-          _setBooleanField(171,false);
+          _setBooleanField(172,false);
           _setIntField(7,0);
   return new PersistedAnalysisMethod.WrappedMethod.CEntryPointCallStub.Builder(segment, data, pointers, dataSize, pointerCount);
         }
@@ -1630,10 +1641,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           }
 
           public final boolean getThrowAllocatedObject() {
-            return _getBooleanField(171);
+            return _getBooleanField(172);
           }
           public final void setThrowAllocatedObject(boolean value) {
-            _setBooleanField(171, value);
+            _setBooleanField(172, value);
           }
 
           public final int getInstantiatedTypeId() {
@@ -1655,7 +1666,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           }
 
           public final boolean getThrowAllocatedObject() {
-            return _getBooleanField(171);
+            return _getBooleanField(172);
           }
 
           public final int getInstantiatedTypeId() {
@@ -1784,10 +1795,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           }
 
           public final boolean getNotPublished() {
-            return _getBooleanField(171);
+            return _getBooleanField(172);
           }
           public final void setNotPublished(boolean value) {
-            _setBooleanField(171, value);
+            _setBooleanField(172, value);
           }
 
         }
@@ -1802,7 +1813,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           }
 
           public final boolean getNotPublished() {
-            return _getBooleanField(171);
+            return _getBooleanField(172);
           }
 
         }

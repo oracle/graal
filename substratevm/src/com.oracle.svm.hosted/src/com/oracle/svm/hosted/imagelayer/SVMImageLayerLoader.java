@@ -43,6 +43,7 @@ import java.nio.channels.FileChannel;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -58,6 +59,7 @@ import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.ImageLayerLoader;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -767,47 +769,111 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
         AnalysisType returnType = getAnalysisTypeForBaseLayerId(methodData.getReturnTypeId());
 
+        /*
+         * First try to retrieve host method via reflection.
+         *
+         * Because we are using reflection to access the hosted universe, for substitution methods
+         * we must use the Class<?> values of the substitution class (i.e. class with
+         * the @TargetClass) and not the target of the substitution itself.
+         */
         String name = methodData.getName().toString();
-        if (methodData.hasClassName()) {
-            String className = methodData.getClassName().toString();
-
-            Executable method = null;
-            Class<?> clazz = lookupBaseLayerTypeInHostVM(className);
-            if (clazz != null) {
-                Class<?>[] argumentClasses = CapnProtoAdapters.toArray(methodData.getArgumentClassNames(), this::lookupBaseLayerTypeInHostVM, Class[]::new);
-                method = lookupMethodByReflection(name, clazz, argumentClasses);
+        boolean maybeReachableViaReflection = methodData.getIsConstructor() || methodData.getIsDeclared();
+        if (maybeReachableViaReflection) {
+            Class<?> clazz = null;
+            if (methodData.hasClassName()) {
+                String className = methodData.getClassName().toString();
+                clazz = lookupBaseLayerTypeInHostVM(className);
             }
-
-            if (method != null) {
-                metaAccess.lookupJavaMethod(method);
-                if (methods.containsKey(mid)) {
-                    return;
+            if (clazz == null && !(type.getWrapped() instanceof BaseLayerType)) {
+                /*
+                 * BaseLayerTypes will always return java.lang.Object, which is not correct for
+                 * reflective lookup.
+                 */
+                clazz = type.getJavaClass();
+            }
+            if (clazz != null) {
+                Class<?>[] argumentClasses;
+                if (methodData.hasArgumentClassNames()) {
+                    argumentClasses = CapnProtoAdapters.toArray(methodData.getArgumentClassNames(), this::lookupBaseLayerTypeInHostVM, Class[]::new);
+                } else {
+                    argumentClasses = Arrays.stream(parameterTypes).map(AnalysisType::getJavaClass).toArray(Class[]::new);
+                }
+                if (Arrays.stream(argumentClasses).noneMatch(Objects::isNull)) {
+                    var result = lookupMethodByReflection(name, clazz, argumentClasses);
+                    if (result != null) {
+                        metaAccess.lookupJavaMethod(result);
+                        /*
+                         * Note even if we found a method via reflection, it is not guaranteed it is
+                         * the matching method. This is because, in a given class, reflection will
+                         * not find all methods; one example it will not find is bridge methods
+                         * inserted for covariant overrides.
+                         */
+                        if (methods.containsKey(mid)) {
+                            return;
+                        }
+                    }
+                } else {
+                    LogUtils.warning("Arguments reflectively loading %s. %s could not be found: %s", methodData.getClassName().toString(), methodData.getName().toString(),
+                                    Arrays.toString(parameterTypes));
                 }
             }
         }
 
-        Class<?>[] argumentClasses = Arrays.stream(parameterTypes).map(AnalysisType::getJavaClass).toArray(Class[]::new);
-        Executable method = lookupMethodByReflection(name, type.getJavaClass(), argumentClasses);
-
-        if (method != null) {
-            metaAccess.lookupJavaMethod(method);
-            if (methods.containsKey(mid)) {
-                return;
+        /*
+         * Either the method cannot be looked up via reflection or looking up the method via
+         * reflection failed. Now try to find the matching method.
+         */
+        if (!(type.getWrapped() instanceof BaseLayerType)) {
+            if (name.equals(CLASS_INIT_NAME)) {
+                type.getClassInitializer();
+            } else {
+                ResolvedSignature<AnalysisType> signature = ResolvedSignature.fromArray(parameterTypes, returnType);
+                tryLoadMethod(type, name, signature);
             }
-        }
-
-        ResolvedSignature<AnalysisType> signature = ResolvedSignature.fromArray(parameterTypes, returnType);
-
-        if (name.equals(CONSTRUCTOR_NAME)) {
-            type.findConstructor(signature);
-        } else if (name.equals(CLASS_INIT_NAME)) {
-            type.getClassInitializer();
-        } else {
-            type.findMethod(name, signature);
         }
 
         if (!methods.containsKey(mid)) {
             createBaseLayerMethod(methodData, mid, name, parameterTypes, returnType);
+        }
+    }
+
+    /**
+     * Iterate through all methods to try to find and load one with a matching signature.
+     *
+     * We need this because sometimes JVMCI will expose to analysis special methods HotSpot
+     * introduces into vtables, such as miranda and overpass methods, which cannot be accessed via
+     * reflection.
+     *
+     * We also need this because reflection cannot find all declared methods within class; one
+     * example it will not find is bridge methods inserted for covariant overrides.
+     */
+    private void tryLoadMethod(AnalysisType type, String name, ResolvedSignature<AnalysisType> signature) {
+        ResolvedJavaType wrapped = type.getWrapped();
+        assert !(wrapped instanceof BaseLayerType) : type;
+        for (ResolvedJavaMethod method : wrapped.getAllMethods(false)) {
+            /*
+             * Filter to limit the number of universe lookups needed.
+             */
+            if (method.getName().equals(name)) {
+                try {
+                    ResolvedSignature<?> m = universe.lookup(method.getSignature(), method.getDeclaringClass());
+                    if (m.equals(signature)) {
+                        universe.lookup(method);
+                        return;
+                    }
+                } catch (UnsupportedFeatureException t) {
+                    /*
+                     * Methods which are deleted or not available on this platform will throw an
+                     * error during lookup - ignore and continue execution
+                     *
+                     * Note it is not simple to create a check to determine whether calling
+                     * universe#lookup will trigger an error by creating an analysis object for a
+                     * type not supported on this platform, as creating a method requires, in
+                     * addition to the types of its return type and parameters, all of the super
+                     * types of its return and parameters to be created as well.
+                     */
+                }
+            }
         }
     }
 
