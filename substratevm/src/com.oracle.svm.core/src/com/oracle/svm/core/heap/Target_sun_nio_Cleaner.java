@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(className = "sun.nio.Cleaner")
