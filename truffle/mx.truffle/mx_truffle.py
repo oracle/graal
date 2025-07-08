@@ -1471,7 +1471,7 @@ class _PolyglotIsolateResourceBuildTask(mx.JavaBuildTask):
 
 def register_polyglot_isolate_distributions(language_suite, register_project, register_distribution, language_id,
                                             subDir, language_pom_distribution, maven_group_id, language_license,
-                                            isolate_build_options=None, platforms=None):
+                                            isolate_build_options=None, platforms=None, additional_image_path_artifacts=None):
     """
     Creates and registers the polyglot isolate resource distribution and isolate resource meta-POM distribution.
     The created polyglot isolate resource distribution is named `<ID>_ISOLATE_RESOURCES`, inheriting the Maven group ID
@@ -1491,6 +1491,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
     :param str | list | language_license: Language licence(s).
     :param list isolate_build_options: additional options passed to a native image to build the isolate library.
     :param list platforms: supported platforms, defaults to ['linux-amd64', 'linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64']
+    :param list additional_image_path_artifacts: additional artifacts to include in the polyglot isolate library image path
     """
     assert language_suite
     assert register_project
@@ -1515,6 +1516,10 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
     language_pom_distribution = _qualname(language_pom_distribution)
     if isolate_build_options is None:
         isolate_build_options = []
+    if additional_image_path_artifacts:
+        additional_image_path_artifacts = [_qualname(d) for d in additional_image_path_artifacts]
+    else:
+        additional_image_path_artifacts = []
     language_id_upper_case = language_id.upper()
     if platforms is None:
         platforms = [
@@ -1545,7 +1550,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
 
         if build_for_current_platform:
             # 2. Register a project building the isolate library
-            isolate_deps = [language_pom_distribution, 'truffle-enterprise:TRUFFLE_ENTERPRISE']
+            isolate_deps = [language_pom_distribution, 'truffle-enterprise:TRUFFLE_ENTERPRISE'] + additional_image_path_artifacts
             build_library = PolyglotIsolateProject(language_suite, language_id, isolate_deps, isolate_build_options)
             register_project(build_library)
 

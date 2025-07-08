@@ -8,6 +8,8 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-63588 A new entry (`Invalidated`) was added to the `opt deopt` truffle compilation logs. It is `true` or `false` depending on whether the compilation was also invalidated.
 * GR-66817 Make `--polyglot` the default for language launchers, so there is no need to specify it anymore to use other languages in standalones. As a result, `AbstractLanguageLauncher#getDefaultLanguages()` and `Launcher#canPolyglot()` have been deprecated.
 * GR-65404 Remove `PolyglotLauncher` as it is no longer used.
+* GR-63009: The WebAssembly (Wasm) language is now available as a polyglot isolate.
+* GR-63009: JavaScript polyglot isolate now includes support for the WebAssembly (Wasm) language.
 
 ## Version 25.0.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.
