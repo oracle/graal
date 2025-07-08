@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,9 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
@@ -65,10 +67,10 @@ import com.oracle.truffle.regex.util.EmptyArrays;
 
 public class JavaUtilPatternTests extends RegexTestBase {
 
-    public static final String ENGINE_OPTIONS = "Flavor=JavaUtilPattern,MatchingMode=search,JavaJDKVersion=" + Runtime.version().feature();
+    private static final Map<String, String> ENGINE_OPTIONS = Map.of("regexDummyLang.Flavor", "JavaUtilPattern", "regexDummyLang.JavaJDKVersion", String.valueOf(Runtime.version().feature()));
 
     @Override
-    String getEngineOptions() {
+    Map<String, String> getEngineOptions() {
         return ENGINE_OPTIONS;
     }
 
@@ -1144,7 +1146,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
                 String flags = new JavaFlags(regexes[i].getRight()).toString();
                 try {
                     compiledJava[i] = Pattern.compile(regexes[i].getLeft(), regexes[i].getRight().intValue());
-                    compiledTRegex[i] = compileRegex(ctx, regexes[i].getLeft(), flags, "", getTRegexEncoding());
+                    compiledTRegex[i] = compileRegex(ctx, regexes[i].getLeft(), flags, Collections.emptyMap(), getTRegexEncoding());
                 } catch (PatternSyntaxException e) {
                     nErrors++;
                     expectSyntaxError(regexes[i].getLeft(), flags, e);
@@ -1157,7 +1159,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
                 String s = Character.toString(j);
                 for (int i = 0; i < regexes.length; i++) {
                     if (compiledJava[i] != null) {
-                        test(compiledTRegex[i], compiledJava[i], regexes[i].getLeft(), regexes[i].getRight(), s, 0);
+                        test(compiledTRegex[i], compiledJava[i], regexes[i].getLeft(), regexes[i].getRight(), OPT_MATCHING_MODE_FULLMATCH, s, 0, false);
                     }
                 }
             }
@@ -1268,6 +1270,22 @@ public class JavaUtilPatternTests extends RegexTestBase {
     }
 
     @Test
+    public void fullMatch() {
+        testFullMatch("b", 0, "bb");
+        testFullMatch("[a-z]", 0, "bb");
+    }
+
+    @Test
+    public void testForceLinearExecution() {
+        test("(a*)b\\1", "", "_aabaaa_", 0, true, 1, 6, 1, 3);
+        expectUnsupported("(a*)b\\1", "", OPT_FORCE_LINEAR_EXECUTION);
+        test(".*a{1,200000}.*", "", "_aabaaa_", 0, true, 0, 8);
+        expectUnsupported(".*a{1,200000}.*", "", OPT_FORCE_LINEAR_EXECUTION);
+        test(".*b(?!a_)", "", "_aabaaa_", 0, true, 0, 4);
+        expectUnsupported(".*b(?!a_)", "", OPT_FORCE_LINEAR_EXECUTION);
+    }
+
+    @Test
     public void generatedTests() {
         /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
 
@@ -1296,7 +1314,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("\\d\\W", "iv", "4\u017f", 0, true, 0, 2);
         test("[\u08bc-\ucf3a]", "iv", "\u03b0", 0, false);
         test("a(?:|()\\1){1,2}", "", "a", 0, true, 0, 1, -1, -1);
-        expectSyntaxError("|(?<\\d\\1)\ub7e4", "", "", getTRegexEncoding(), "error", 0, ErrorCode.InvalidNamedGroup);
+        expectSyntaxError("|(?<\\d\\1)\ub7e4", "", "error", 0, ErrorCode.InvalidNamedGroup);
         test("[a-z][a-z\u2028\u2029].|ab(?<=[a-z]w.)", "", "aac", 0, true, 0, 3);
         test("(animation|animation-name)", "", "animation", 0, true, 0, 9, 0, 9);
         test("(a|){7,7}b", "", "aaab", 0, true, 0, 4, 3, 3);
@@ -1373,20 +1391,29 @@ public class JavaUtilPatternTests extends RegexTestBase {
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }
 
+    @Override
+    void test(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+        test(pattern, flags, OPT_MATCHING_MODE_SEARCH, input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
+    }
+
     void test(String pattern, int flags, String input) {
         test(pattern, flags, input, 0);
     }
 
     void test(String pattern, int javaFlags, String input, int fromIndex) {
-        test(null, null, pattern, javaFlags, input, fromIndex);
+        test(null, null, pattern, javaFlags, OPT_MATCHING_MODE_SEARCH, input, fromIndex, false);
     }
 
-    void test(Value compiledRegex, Pattern compiledJavaRegex, String pattern, int javaFlags, String input, int fromIndex) {
+    void testFullMatch(String pattern, int javaFlags, String input) {
+        test(null, null, pattern, javaFlags, OPT_MATCHING_MODE_FULLMATCH, input, 0, true);
+    }
+
+    void test(Value compiledRegex, Pattern compiledJavaRegex, String pattern, int javaFlags, Map<String, String> options, String input, int fromIndex, boolean fullMatch) {
         String flags = new JavaFlags(javaFlags).toString();
         try {
             Pattern javaPattern = compiledJavaRegex == null ? Pattern.compile(pattern, javaFlags) : compiledJavaRegex;
             Matcher m = javaPattern.matcher(input);
-            boolean isMatch = m.find(fromIndex);
+            boolean isMatch = fullMatch ? m.matches() : m.find(fromIndex);
             final int[] groupBoundaries;
             if (isMatch) {
                 groupBoundaries = new int[(m.groupCount() + 1) << 1];
@@ -1398,9 +1425,9 @@ public class JavaUtilPatternTests extends RegexTestBase {
                 groupBoundaries = EmptyArrays.INT;
             }
             if (compiledRegex == null) {
-                test(pattern, flags, input, fromIndex, isMatch, groupBoundaries);
+                test(pattern, flags, options, input, fromIndex, isMatch, groupBoundaries);
             } else {
-                test(compiledRegex, pattern, flags, "", getTRegexEncoding(), input, fromIndex, isMatch, groupBoundaries);
+                test(compiledRegex, pattern, flags, options, getTRegexEncoding(), input, fromIndex, isMatch, groupBoundaries);
             }
         } catch (PatternSyntaxException javaPatternException) {
             expectSyntaxError(pattern, flags, javaPatternException);
@@ -1409,7 +1436,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
 
     private void expectSyntaxError(String pattern, String flags, PatternSyntaxException javaPatternException) {
         try {
-            compileRegex(pattern, flags, "", getTRegexEncoding());
+            compileRegex(pattern, flags, Collections.emptyMap(), getTRegexEncoding());
         } catch (PolyglotException tRegexException) {
             Assert.assertTrue(tRegexException.getMessage().contains(javaPatternException.getDescription()));
             return;

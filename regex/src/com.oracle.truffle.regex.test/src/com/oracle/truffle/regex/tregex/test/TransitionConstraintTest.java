@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,62 +38,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.nodesplitter;
+package com.oracle.truffle.regex.tregex.test;
 
-import java.util.ArrayList;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.truffle.regex.tregex.automaton.StateIndex;
+import com.oracle.truffle.regex.tregex.automaton.TransitionConstraint;
 
-/**
- * An abstract graph wrapper used by {@link DFANodeSplit}.
- */
-final class Graph implements StateIndex<GraphNode> {
-
-    private GraphNode start;
-    private final ArrayList<GraphNode> nodes;
-
-    Graph(int initialCapacity) {
-        this.nodes = new ArrayList<>(initialCapacity);
-    }
-
-    public GraphNode getStart() {
-        return start;
-    }
-
-    public void setStart(GraphNode start) {
-        this.start = start;
-    }
-
-    public ArrayList<GraphNode> getNodes() {
-        return nodes;
-    }
-
-    public GraphNode getNode(int id) {
-        return nodes.get(id);
-    }
-
-    public void addGraphNode(GraphNode graphNode) {
-        assert graphNode.getId() == nodes.size();
-        nodes.add(graphNode);
-        assert graphNode == nodes.get(graphNode.getId());
-    }
-
-    public int size() {
-        return nodes.size();
-    }
-
-    @Override
-    public int getNumberOfStates() {
-        return size();
-    }
-
-    @Override
-    public int getId(GraphNode state) {
-        return state.getId();
-    }
-
-    @Override
-    public GraphNode getState(int id) {
-        return getNode(id);
+public class TransitionConstraintTest {
+    @Test
+    public void transitionConstraintDocTest() {
+        long a = TransitionConstraint.create(0, 0, TransitionConstraint.anyLtMax);
+        long b = TransitionConstraint.create(1, 0, TransitionConstraint.anyLtMax);
+        long c = TransitionConstraint.create(2, 0, TransitionConstraint.anyLtMax);
+        long d = TransitionConstraint.create(3, 0, TransitionConstraint.anyLtMax);
+        long[] lhs = new long[]{a, b, TransitionConstraint.not(c)};
+        long[] rhs = new long[]{TransitionConstraint.not(c), d};
+        TransitionConstraint.MergeResult result = TransitionConstraint.intersectAndSubtract(lhs, rhs);
+        Assert.assertEquals(1, result.lhs().length);
+        Assert.assertArrayEquals(new long[]{a, b, TransitionConstraint.not(c), TransitionConstraint.not(d)}, result.lhs()[0]);
+        Assert.assertArrayEquals(new long[]{a, b, TransitionConstraint.not(c), d}, result.middle());
+        Assert.assertEquals(2, result.rhs().length);
+        Assert.assertArrayEquals(new long[]{TransitionConstraint.not(a), TransitionConstraint.not(c), d}, result.rhs()[0]);
+        Assert.assertArrayEquals(new long[]{TransitionConstraint.not(b), TransitionConstraint.not(c), d}, result.rhs()[1]);
     }
 }

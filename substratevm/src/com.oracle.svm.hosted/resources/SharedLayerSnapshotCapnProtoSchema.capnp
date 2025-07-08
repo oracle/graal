@@ -96,36 +96,37 @@ struct PersistedAnalysisMethod {
   annotationList @20 :List(Annotation);
   isVarArgs @21 :Bool;
   isBridge @22 :Bool;
-  analysisGraphLocation @23 :Text;
-  analysisGraphIsIntrinsic @24 :Bool;
-  strengthenedGraphLocation @25 :Text;
-  hostedMethodIndex @26 :HostedMethodIndex;
+  isDeclared @23 :Bool;
+  analysisGraphLocation @24 :Text;
+  analysisGraphIsIntrinsic @25 :Bool;
+  strengthenedGraphLocation @26 :Text;
+  hostedMethodIndex @27 :HostedMethodIndex;
   wrappedMethod :union {
-    none @27 :Void; # default
+    none @28 :Void; # default
     factoryMethod :group {
-      targetConstructorId @28 :MethodId;
-      throwAllocatedObject @29 :Bool;
-      instantiatedTypeId @30 :TypeId;
+      targetConstructorId @29 :MethodId;
+      throwAllocatedObject @30 :Bool;
+      instantiatedTypeId @31 :TypeId;
     }
     outlinedSB :group {
-      methodTypeReturn @31 :Text;
-      methodTypeParameters @32 :List(Text);
+      methodTypeReturn @32 :Text;
+      methodTypeParameters @33 :List(Text);
     }
     cEntryPointCallStub :group {
-      originalMethodId @33 :MethodId;
-      notPublished @34 :Bool;
+      originalMethodId @34 :MethodId;
+      notPublished @35 :Bool;
     }
     wrappedMember :group {
       union {
-        reflectionExpandSignature @35 :Void;
-        javaCallVariantWrapper @36 :Void;
+        reflectionExpandSignature @36 :Void;
+        javaCallVariantWrapper @37 :Void;
       }
-      name @37 :Text;
-      declaringClassName @38 :Text;
-      argumentTypeNames @39 :List(Text);
+      name @38 :Text;
+      declaringClassName @39 :Text;
+      argumentTypeNames @40 :List(Text);
     }
     polymorphicSignature :group {
-      callers @40 :List(MethodId);
+      callers @41 :List(MethodId);
     }
   }
 }

@@ -32,6 +32,7 @@ import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
@@ -57,6 +58,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.OpenTypeWorldFeature;
 import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
@@ -93,13 +95,27 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     private final ConstantPool constantPool;
     private final ExceptionHandler[] handlers;
     /**
-     * Contains the index of the method within the appropriate table.
+     * Contains the index of the method computed by {@link VTableBuilder}.
      *
      * Within the closed type world, there exists a single table which describes all methods.
      * However, within the open type world, each type and interface has a unique table, so this
      * index is relative to the start of the appropriate table.
      */
-    int vtableIndex = MISSING_VTABLE_IDX;
+    int computedVTableIndex = MISSING_VTABLE_IDX;
+
+    /**
+     * When using the open type world we must differentiate between the vtable index computed by
+     * {@link VTableBuilder} for this method and the vtable index used for virtual calls.
+     *
+     * Note normally {@code indirectCallTarget == this}. Only for special HotSpot methods such as
+     * miranda and overpass methods will the indirectCallTarget be a different method. The logic for
+     * setting the indirectCallTarget can be found in
+     * {@link OpenTypeWorldFeature#calculateIndirectCallTarget}.
+     *
+     * For additional information, see {@link SharedMethod#getIndirectCallTarget}.
+     */
+    private int indirectCallVTableIndex = MISSING_VTABLE_IDX;
+    private HostedMethod indirectCallTarget = null;
 
     /**
      * The address offset of the compiled code relative to the code of the first method in the
@@ -358,13 +374,38 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     public boolean hasVTableIndex() {
-        return vtableIndex != MISSING_VTABLE_IDX;
+        return indirectCallVTableIndex != MISSING_VTABLE_IDX;
     }
 
     @Override
     public int getVTableIndex() {
-        assert vtableIndex != MISSING_VTABLE_IDX : "Missing vtable index for method " + this.format("%H.%n(%p)");
-        return vtableIndex;
+        assert hasVTableIndex() : "Missing vtable index for method " + this.format("%H.%n(%p)");
+        return indirectCallVTableIndex;
+    }
+
+    public void setIndirectCallTarget(HostedMethod alias) {
+        assert indirectCallTarget == null : indirectCallTarget;
+        if (!alias.equals(this)) {
+            /*
+             * When there is an indirectCallTarget installed which is not the original method, we
+             * currently expect the target method to either have an interface as its declaring class
+             * or for the declaring class to be unchanged. If the declaring class is different, then
+             * we must ensure that the layout of the vtable matches for all relevant indexes between
+             * the original and alias methods' declaring classes.
+             */
+            VMError.guarantee(alias.getDeclaringClass().isInterface() || alias.getDeclaringClass().equals(getDeclaringClass()), "Invalid indirect call target for %s: %s", this, alias);
+        }
+        indirectCallTarget = alias;
+    }
+
+    @Override
+    public HostedMethod getIndirectCallTarget() {
+        Objects.requireNonNull(indirectCallTarget);
+        return indirectCallTarget;
+    }
+
+    void finalizeIndirectCallVTableIndex() {
+        indirectCallVTableIndex = indirectCallTarget.computedVTableIndex;
     }
 
     @Override
@@ -630,7 +671,9 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         return (HostedMethod) multiMethodMap.computeIfAbsent(key, (k) -> {
             HostedMethod newMultiMethod = create0(wrapped, holder, signature, constantPool, handlers, k, multiMethodMap, localVariableTable);
             newMultiMethod.implementations = implementations;
-            newMultiMethod.vtableIndex = vtableIndex;
+            newMultiMethod.computedVTableIndex = computedVTableIndex;
+            newMultiMethod.indirectCallTarget = indirectCallTarget;
+            newMultiMethod.indirectCallVTableIndex = indirectCallVTableIndex;
             return newMultiMethod;
         });
     }

@@ -327,6 +327,9 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                 setZeroWidthQuantifierIndex(group);
             }
             if (!group.isExpandedQuantifier()) {
+                if ((flags & RegexASTNode.FLAG_HAS_QUANTIFIERS) != 0) {
+                    ast.getProperties().setNestedBoundedQuantifier();
+                }
                 flags |= RegexASTNode.FLAG_HAS_QUANTIFIERS;
                 setQuantifierIndex(group);
                 if (group.getQuantifier().getMin() == 0 || group.isOptionalQuantifier()) {

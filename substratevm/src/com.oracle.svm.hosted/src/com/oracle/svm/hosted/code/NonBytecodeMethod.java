@@ -151,7 +151,7 @@ public abstract class NonBytecodeMethod implements GraphProvider, ResolvedJavaMe
 
     @Override
     public boolean isDeclared() {
-        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+        return false;
     }
 
     @Override

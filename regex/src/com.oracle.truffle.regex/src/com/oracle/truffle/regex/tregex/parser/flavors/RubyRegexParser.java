@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.IntPredicate;
 
-import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -64,6 +63,7 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
@@ -1666,13 +1666,13 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 advance();
                 String code = getUpTo(2, RegexLexer::isHexDigit);
                 int byteValue = Integer.parseInt(code, 16);
-                if (byteValue > 0x7F) {
+                if (byteValue > 0x7F && inSource.getEncoding().getMaxValue() > 0xff) {
                     // This is a non-ASCII byte escape. The escaped character might be part of a
-                    // multibyte sequece. These sequences are encoding specific and supporting
+                    // multibyte sequence. These sequences are encoding specific and supporting
                     // them would mean having to include decoders for all of Ruby's encodings.
                     // Fortunately, TruffleRuby decodes these for us and replaces them with
                     // verbatim characters or other forms of escape. Therefore, this can be
-                    // trigerred by either:
+                    // triggered by either:
                     // *) TruffleRuby's ClassicRegexp#preprocess was not called on the input
                     // *) TruffleRuby's ClassicRegexp#preprocess emitted a non-ASCII \\x escape
                     bailOut("unsupported multibyte escape");
