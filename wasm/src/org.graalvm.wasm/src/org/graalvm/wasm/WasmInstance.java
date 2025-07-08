@@ -190,10 +190,6 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         return new WasmNamesObject(new String[]{EXPORTS_MEMBER, REFERENCES_MEMBER, LINK_REFERENCES_MEMBER});
     }
 
-    public boolean isBuiltin() {
-        return module().isBuiltin();
-    }
-
     @Override
     public String toString() {
         return "wasm-module-instance(" + name() + ")";
