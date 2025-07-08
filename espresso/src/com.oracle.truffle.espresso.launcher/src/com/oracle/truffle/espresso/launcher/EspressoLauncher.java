@@ -329,11 +329,13 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                         espressoOptions.put(AGENT_PATH + split[0], split[1]);
                     } else if (arg.startsWith("-Xmn") || arg.startsWith("-Xms") || arg.startsWith("-Xmx") || arg.startsWith("-Xss") || arg.startsWith("-XX:MaxHeapSize=")) {
                         unrecognized.add("--vm." + arg.substring(1));
+                    } else if (arg.startsWith("--sun-misc-unsafe-memory-access")) {
+                        String value = args.getValue(arg, "sun.misc.Unsafe memory access");
+                        espressoOptions.put("java.SunMiscUnsafeMemoryAccess", value);
                     } else if (arg.startsWith("-XX:")) {
                         handleXXArg(arg, unrecognized);
-                    } else
-                    // -Dsystem.property=value
-                    if (arg.startsWith("-D")) {
+                    } else if (arg.startsWith("-D")) {
+                        // -Dsystem.property=value
                         String key = arg.substring("-D".length());
                         int splitAt = key.indexOf("=");
                         String value = "";

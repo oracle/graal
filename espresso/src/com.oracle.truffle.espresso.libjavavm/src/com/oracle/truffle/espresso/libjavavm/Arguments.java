@@ -222,6 +222,9 @@ public final class Arguments {
                         builder.option("engine.Mode", "latency");
                     } else if ("-Xshare:auto".equals(optionString) || "-Xshare:off".equals(optionString)) {
                         // ignore
+                    } else if (optionString.startsWith("--sun-misc-unsafe-memory-access=")) {
+                        String value = optionString.substring("--sun-misc-unsafe-memory-access=".length());
+                        builder.option("java.SunMiscUnsafeMemoryAccess", value);
                     } else if (optionString.startsWith("-XX:")) {
                         handler.handleXXArg(optionString);
                     } else if (optionString.startsWith("--help:")) {
