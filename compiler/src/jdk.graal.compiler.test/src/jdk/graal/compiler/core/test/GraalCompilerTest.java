@@ -1009,7 +1009,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected Result test(OptionValues options, ResolvedJavaMethod method, Object receiver, Object... args) {
         Result expect = executeExpected(method, receiver, args);
         if (getCodeCache() != null) {
-            testAgainstExpected(options, method, expect, receiver, args);
+            testAgainstExpected(options, method, expect, CollectionsUtil.setOf(), receiver, args);
         }
         return expect;
     }
@@ -1035,10 +1035,6 @@ public abstract class GraalCompilerTest extends GraalTest {
         testAgainstExpected(getInitialOptions(), method, expect, CollectionsUtil.setOf(), receiver, args);
     }
 
-    protected void testAgainstExpected(ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
-        testAgainstExpected(getInitialOptions(), method, expect, shouldNotDeopt, receiver, args);
-    }
-
     protected final void testAgainstExpected(OptionValues options, ResolvedJavaMethod method, Result expect, Object receiver, Object... args) {
         testAgainstExpected(options, method, expect, CollectionsUtil.setOf(), receiver, args);
     }
@@ -1048,7 +1044,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         assertEquals(expect, actual);
     }
 
-    protected Result executeActualCheckDeopt(OptionValues options, ResolvedJavaMethod method, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
+    protected final Result executeActualCheckDeopt(OptionValues options, ResolvedJavaMethod method, Set<DeoptimizationReason> shouldNotDeopt, Object receiver,
+                    Object... args) {
         Map<DeoptimizationReason, Integer> deoptCounts = new EnumMap<>(DeoptimizationReason.class);
         ProfilingInfo profile = method.getProfilingInfo();
         for (DeoptimizationReason reason : shouldNotDeopt) {
@@ -1187,7 +1184,6 @@ public abstract class GraalCompilerTest extends GraalTest {
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
-
             if (useCache) {
                 cache.get().put(installedCodeOwner, Pair.create(options, installedCode));
             }
@@ -1369,7 +1365,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected InstalledCode addMethod(DebugContext debug, final ResolvedJavaMethod method, final CompilationResult compilationResult) {
-        return backend.addInstalledCode(debug, method, null, compilationResult);
+        return backend.createInstalledCode(debug, method, null, compilationResult, null, false, true, null);
     }
 
     protected InstalledCode addDefaultMethod(DebugContext debug, final ResolvedJavaMethod method, final CompilationResult compilationResult) {
