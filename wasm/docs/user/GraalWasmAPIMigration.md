@@ -5,20 +5,20 @@ This document outlines the main differences and serves as a migration guide.
 
 ## Overview of the Differences between the Old and New API
 
-| Difference                         | **New API (since 25.0)**                                                                      | **Old API (before 25.0)**                                                  |
-|------------------------------------|-----------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
-| **Key Differences**                | Explicit module instantiation. Exports are accessed via the `exports` member of the instance  | Implicit module instantiation. Exports are direct members of the instance  |
-| **Result of `context.eval(src)`**  | Returns a compiled _module_ object (not yet instantiated) [^3]                                | Returns an already instantiated module _instance_ [^3]                     |
-| **Module Instantiation**           | Explicitly instantiated by calling `newInstance()` on the _module_ returned by `context.eval` | Implicitly instantiated by `context.eval()`                                |
-| **Repeated Instantiation**         | Same module can be instantiated multiple times per context                                    | Modules can be instantiated only once per context (cached by name)         |
-| **Import Linking**                 | Linking is explicit and eager, performed by `module.newInstance()`                            | Linking is implicit and lazy, occurs on first export access                |
-| **Start Function Invocation**      | Runs during `module.newInstance()`                                                            | Runs on first export access if not yet linked                              |
-| **Accessing Exports**              | Via `instance.getMember("exports").getMember("exportName")`                                   | Via `instance.getMember("exportName")`                                     |
-| **Invoking a Function[^1]**        | `instance.getMember("exports").invokeMember("functionName", ...args);`, or:                   | `instance.invokeMember("functionName", ...args)`, or:                      |
-| **Invoking a Function[^2]**        | `Value fn = instance.getMember("exports").getMember("functionName"); fn.execute(...args)`     | `Value fn = instance.getMember("functionName"); fn.execute(...args)`       |
-| **Module Instance Members**        | Includes `"exports"`, `"references"`, and `"linkReferences"`                                  | The exports of the module _instance_                                       |
-| **Getting Other Module Instances** | Via `instance.getMember("references").getMember("sourceName")`                                | Via context bindings `context.getBindings("wasm").getMember("sourceName")` |
-| **Importing Host Functions**       | Supported via optional import object passed to `module.newInstance(importObject)`             | Not supported                                                              |
+| Difference                         | **New API (since 25.0)**                                                                      | **Old API (before 25.0)**                                                 |
+|------------------------------------|-----------------------------------------------------------------------------------------------|---------------------------------------------------------------------------|
+| **Key Differences**                | Explicit module instantiation. Exports are accessed via the `exports` member of the instance  | Implicit module instantiation. Exports are direct members of the instance |
+| **Result of `context.eval(src)`**  | Returns a compiled _module_ object (not yet instantiated) [^3]                                | Returns an already instantiated module _instance_ [^3]                    |
+| **Module Instantiation**           | Explicitly instantiated by calling `newInstance()` on the _module_ returned by `context.eval` | Implicitly instantiated by `context.eval()`                               |
+| **Repeated Instantiation**         | Same module can be instantiated multiple times per context                                    | Modules can be instantiated only once per context (cached by name)        |
+| **Import Linking**                 | Linking is explicit and eager, performed by `module.newInstance()`                            | Linking is implicit and lazy, occurs on first export access               |
+| **Start Function Invocation**      | Runs during `module.newInstance()`                                                            | Runs on first export access if not yet linked                             |
+| **Accessing Exports**              | Via `instance.getMember("exports").getMember("exportName")`                                   | Via `instance.getMember("exportName")`                                    |
+| **Invoking a Function[^1]**        | `instance.getMember("exports").invokeMember("functionName", ...args);`, or:                   | `instance.invokeMember("functionName", ...args)`, or:                     |
+| **Invoking a Function[^2]**        | `Value fn = instance.getMember("exports").getMember("functionName"); fn.execute(...args)`     | `Value fn = instance.getMember("functionName"); fn.execute(...args)`      |
+| **Module Instance Members**        | The `"exports"` object member                                                                 | The exports of the module _instance_                                      |
+| **Importing Host Functions**       | Supported via optional import object passed to `module.newInstance(importObject)`             | Not supported                                                             |
+| **Cyclic Import Dependencies**     | Not allowed                                                                                   | Allowed                                                                   |
 
 [^1] Recommended approach for invoking a function once or only a few times: Simply use `exports.invokeMember("functionName", ...args)` (combines lookup and function call).
 [^2] Recommended approach for invoking a function repeatedly: First, use `Value function = exports.getMember("functionName");` to look up the function, then call it using `function.execute(...args)`.

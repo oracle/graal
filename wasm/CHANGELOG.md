@@ -23,8 +23,6 @@ This changelog summarizes major changes to the WebAssembly engine implemented in
   ```
   This aligns with the JS WebAssembly API and allows other members to be introduced on the module instance without potential name clashes.
   More information about these API changes and examples can be found in the [GraalWasm Polyglot API Migration Guide](docs/user/GraalWasmAPIMigration.md) and the [Readme](docs/user/README.md).
-* Added `instance.references` member to expose the set of module instances that have been instantiated and linked together, including built-in modules (such as `wasi_snapshot_preview1`).
-* Added `instance.linkReferences(module[, modules...])` as a means to link new modules to an existing set of instances. Returns the instance of the first module argument.
 * Implemented support for editing primitive values during debugging. Fixed several debugger-related issues.
 
 ## Version 24.2.0
