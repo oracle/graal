@@ -270,6 +270,10 @@ public final class ProcessIsolate extends AbstractIsolate<ProcessIsolateThread> 
         return success;
     }
 
+    boolean isHost() {
+        return threadSupport.isInitiator();
+    }
+
     static Collection<? extends ProcessIsolate> getAllProcessIsolates() {
         return isolates.values();
     }
