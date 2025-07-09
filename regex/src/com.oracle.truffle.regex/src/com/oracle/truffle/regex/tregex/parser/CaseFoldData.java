@@ -65,7 +65,8 @@ public class CaseFoldData {
         Ascii,
         ECMAScriptNonUnicode,
         ECMAScriptUnicode,
-        JavaUnicode,
+        JavaUnicode15,
+        JavaUnicode16,
         OracleDBSimple,
         PythonUnicode;
 
@@ -93,12 +94,13 @@ public class CaseFoldData {
                 return UNICODE_16_0_0_EQ_SIMPLE;
             case Ascii:
                 return ASCII;
-            case JavaUnicode:
-                // Currently supported JDK versions for the Java flavor are 21, 22 and 23, where 21
-                // uses Unicode version 15.0.0 and the other versions use Unicode 15.1.0. There are
-                // no differences in the case folding table between those two Unicode versions, so
-                // we can use the same table on all supported JDK versions for now.
+            case JavaUnicode15:
+                // JDK version 21 uses Unicode version 15.0.0, and JDK versions 22-24 use Unicode
+                // 15.1.0. There are no differences in the case folding table between those two
+                // Unicode versions, so we can use the same table for both.
                 return UNICODE_15_0_0_JAVA;
+            case JavaUnicode16:
+                return UNICODE_16_0_0_JAVA;
             case PythonUnicode:
                 return UNICODE_15_1_0_PY;
             default:
@@ -1161,6 +1163,13 @@ public class CaseFoldData {
     });
     private static final CaseFoldEquivalenceTable UNICODE_15_0_0_JAVA = new CaseFoldEquivalenceTable(UNICODE_15_1_0_PY, new CodePointSet[]{
     }, new int[]{
+    });
+    private static final CaseFoldEquivalenceTable UNICODE_16_0_0_JAVA = new CaseFoldEquivalenceTable(UNICODE_16_0_0_EQ_SIMPLE, new CodePointSet[]{
+                    rangeSet(0x000049, 0x000049, 0x000069, 0x000069, 0x000130, 0x000131),
+    }, new int[]{
+                    0x000049, 0x000049, DIRECT_MAPPING, 0,
+                    0x000069, 0x000069, DIRECT_MAPPING, 0,
+                    0x000130, 0x000131, DIRECT_MAPPING, 0,
     });
     private static final CaseFoldTable UNICODE_15_1_0_CF_FULL = new CaseFoldTable(null, new int[]{
                     0x000041, 0x00005a, INTEGER_OFFSET, 32,

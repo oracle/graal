@@ -288,9 +288,7 @@ public final class JavaRegexLexer extends RegexLexer {
 
     @Override
     protected void caseFoldUnfold(CodePointSetAccumulator charClass) {
-        CaseFoldData.CaseFoldUnfoldAlgorithm caseFolding = (getLocalFlags().isUnicodeCase() || getLocalFlags().isUnicodeCharacterClass())
-                        ? CaseFoldData.CaseFoldUnfoldAlgorithm.JavaUnicode
-                        : CaseFoldData.CaseFoldUnfoldAlgorithm.Ascii;
+        CaseFoldData.CaseFoldUnfoldAlgorithm caseFolding = JavaFlavor.getCaseFoldingAlgorithm(source.getOptions(), getLocalFlags().isUnicodeCase() || getLocalFlags().isUnicodeCharacterClass());
         CaseFoldData.applyCaseFoldUnfold(charClass, compilationBuffer.getCodePointSetAccumulator1(), caseFolding);
     }
 
