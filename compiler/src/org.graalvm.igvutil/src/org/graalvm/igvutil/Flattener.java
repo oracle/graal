@@ -28,7 +28,6 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.Map;
 
 import jdk.graal.compiler.graphio.parsing.BinaryReader;
@@ -39,6 +38,7 @@ import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
 import jdk.graal.compiler.graphio.parsing.model.Group;
 import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames;
+import jdk.graal.compiler.util.EconomicHashMap;
 
 /**
  * Groups {@linkplain InputGraph InputGraphs} passed to {@link #visit} by a property specified by
@@ -48,7 +48,7 @@ import jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames;
  */
 public final class Flattener {
     private final GraphDocument newDoc = new GraphDocument();
-    private final Map<String, Group> groups = new HashMap<>();
+    private final Map<String, Group> groups = new EconomicHashMap<>();
 
     private final String flattenKey;
 

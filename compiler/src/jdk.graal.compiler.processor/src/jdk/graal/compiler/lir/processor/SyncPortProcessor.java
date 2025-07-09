@@ -44,6 +44,9 @@ import java.net.URISyntaxException;
 import java.net.URLConnection;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -113,7 +116,7 @@ public class SyncPortProcessor extends AbstractProcessor {
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(SYNC_PORT_CLASS_NAME, SYNC_PORTS_CLASS_NAME);
+        return Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(SYNC_PORT_CLASS_NAME, SYNC_PORTS_CLASS_NAME)));
     }
 
     private void compareDigest(MessageDigest md, AnnotationMirror annotationMirror, Element element, Proxy proxy) throws IOException, URISyntaxException {

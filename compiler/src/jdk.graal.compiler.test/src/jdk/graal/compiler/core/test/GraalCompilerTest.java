@@ -153,6 +153,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.test.GraalTest;
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -1020,7 +1021,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected final Result test(OptionValues options, ResolvedJavaMethod method, boolean installAsDefault, Object receiver, Object... args) {
         Result expect = executeExpected(method, receiver, args);
         if (getCodeCache() != null) {
-            testAgainstExpected(options, method, installAsDefault, expect, Set.of(), receiver, args);
+            testAgainstExpected(options, method, installAsDefault, expect, CollectionsUtil.setOf(), receiver, args);
         }
         return expect;
     }
@@ -1043,11 +1044,11 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected final void testAgainstExpected(ResolvedJavaMethod method, Result expect, Object receiver, Object... args) {
-        testAgainstExpected(getInitialOptions(), method, false, expect, Set.of(), receiver, args);
+        testAgainstExpected(getInitialOptions(), method, false, expect, CollectionsUtil.setOf(), receiver, args);
     }
 
     protected final void testAgainstExpected(OptionValues options, ResolvedJavaMethod method, Result expect, Object receiver, Object... args) {
-        testAgainstExpected(options, method, false, expect, Set.of(), receiver, args);
+        testAgainstExpected(options, method, false, expect, CollectionsUtil.setOf(), receiver, args);
     }
 
     protected void testAgainstExpected(OptionValues options, ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {

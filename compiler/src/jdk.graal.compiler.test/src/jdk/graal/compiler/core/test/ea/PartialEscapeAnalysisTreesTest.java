@@ -24,16 +24,17 @@
  */
 package jdk.graal.compiler.core.test.ea;
 
-import java.util.HashSet;
+import java.util.Set;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.debug.BlackholeNode;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
-import org.junit.Assert;
-import org.junit.Test;
-
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -55,7 +56,7 @@ public class PartialEscapeAnalysisTreesTest extends EATestBase {
             this.right = right;
         }
 
-        public void visit(HashSet<TreeNode> instances) {
+        public void visit(Set<TreeNode> instances) {
             instances.add(this);
             if (left != null) {
                 left.visit(instances);
@@ -66,7 +67,7 @@ public class PartialEscapeAnalysisTreesTest extends EATestBase {
         }
 
         int countInstances() {
-            HashSet<TreeNode> instances = new HashSet<>();
+            Set<TreeNode> instances = new EconomicHashSet<>();
             visit(instances);
             return instances.size();
         }

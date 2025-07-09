@@ -30,7 +30,7 @@ import static jdk.graal.compiler.processor.AbstractProcessor.getSimpleName;
 
 import java.util.ArrayList;
 import java.util.Formatter;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -143,7 +143,7 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
         }
 
         TypeMirror[] constructorSignature = constructorSignature(intrinsicMethod);
-        Map<ExecutableElement, String> nonMatches = new HashMap<>();
+        Map<ExecutableElement, String> nonMatches = new LinkedHashMap<>();
         if (isFactory) {
             List<ExecutableElement> candidates = findIntrinsifyFactoryMethods(factories, constructorSignature, nonMatches);
             if (checkTooManyElements(annotation, intrinsicMethod, messager, nodeClass, "factories", candidates, msg)) {

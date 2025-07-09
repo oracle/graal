@@ -33,12 +33,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 import jdk.graal.compiler.debug.DebugOptions;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.internal.module.Modules;
 
 public class ModuleSupport {
@@ -99,7 +99,7 @@ public class ModuleSupport {
         List<String> classNames = new ArrayList<>();
         FileSystem fs = FileSystems.newFileSystem(URI.create("jrt:/"), Collections.emptyMap());
         Module graalModule = DebugOptions.class.getModule();
-        Set<String> graalModuleSet = new HashSet<>();
+        Set<String> graalModuleSet = new EconomicHashSet<>();
         graalModuleSet.add(graalModule.getName());
         for (Module module : graalModule.getLayer().modules()) {
             if (requires(module, graalModule)) {

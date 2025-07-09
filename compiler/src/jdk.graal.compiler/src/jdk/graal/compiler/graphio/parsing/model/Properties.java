@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -494,7 +493,7 @@ public abstract class Properties implements Iterable<Property<Object>> {
     }
 
     public Map<String, Object> toMap(Set<String> excludes, String... excludePrefixes) {
-        return toMap(new HashMap<>(), excludes, excludePrefixes);
+        return toMap(new LinkedHashMap<>(), excludes, excludePrefixes);
     }
 
     public boolean isEmpty() {

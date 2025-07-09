@@ -25,10 +25,11 @@
 package jdk.graal.compiler.core.common.util;
 
 import java.util.Formatter;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+
+import jdk.graal.compiler.util.EconomicHashMap;
 
 /**
  * An ordered list of compiler phases.
@@ -80,7 +81,7 @@ public interface PhasePlan<T> {
         private static final String CHILD = "\u251c\u2500\u2500 "; // "|-- "
         private static final String LAST_CHILD = "\u2514\u2500\u2500 "; // "`-- "
 
-        final Map<String, String> abbreviations = new HashMap<>();
+        final Map<String, String> abbreviations = new EconomicHashMap<>();
 
         /**
          * Prints {@code plan} to a string and returns it.
@@ -135,7 +136,7 @@ public interface PhasePlan<T> {
                 int simpleClassNameStart = firstCapitalAfterPeriod(className);
                 String simpleClassName = className.substring(simpleClassNameStart);
                 String packageName = simpleClassNameStart != 0 ? className.substring(0, simpleClassNameStart - 1) : "";
-                if (abbreviations.values().contains(simpleClassName)) {
+                if (abbreviations.containsValue(simpleClassName)) {
                     abbreviation = simpleClassName + " [" + packageName + "]";
                 } else {
                     abbreviation = simpleClassName;

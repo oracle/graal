@@ -55,6 +55,7 @@ import jdk.graal.compiler.nodes.calc.IntegerTestNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.NarrowableArithmeticNode;
 import jdk.graal.compiler.nodes.calc.ShiftNode;
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.graal.compiler.vector.nodes.simd.LogicValueStamp;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
@@ -1347,7 +1348,7 @@ public final class VectorAMD64 extends VectorArchitecture {
 
         @SuppressWarnings("unchecked")
         private AMD64VectorInstructionsMap(VectorOpEntry<T>... entries) {
-            table = Map.ofEntries(entries);
+            table = CollectionsUtil.mapOfEntries(entries);
         }
 
         static class VectorOpEntry<T> implements Map.Entry<Object, T[]> {

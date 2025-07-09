@@ -24,18 +24,19 @@
  */
 package jdk.graal.compiler.lir.jtt;
 
-import java.util.HashMap;
+import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodes.ValueNode;
-
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.Value;
 
 public abstract class LIRTestSpecification {
     private Value result;
-    private final HashMap<String, Value> output = new HashMap<>();
+    private final Map<String, Value> output = new EconomicHashMap<>();
 
     /**
      * Contains a mapping from LIR values to the LIRTestNode input graph nodes the values originated

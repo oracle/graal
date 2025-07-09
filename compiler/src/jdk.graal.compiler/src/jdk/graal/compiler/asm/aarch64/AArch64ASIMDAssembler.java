@@ -35,12 +35,12 @@ import static jdk.vm.ci.aarch64.AArch64.SIMD;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
@@ -188,7 +188,7 @@ public abstract class AArch64ASIMDAssembler {
          * shared/functions/vector/AdvSIMDExpandIMM function (J1-8208).
          */
         private static ASIMDImmediateTable.ImmediateEncodings[] buildImmediateTable() {
-            Map<Long, ASIMDImmediateTable.ImmediateEncodings> immediateMap = new HashMap<>();
+            Map<Long, ASIMDImmediateTable.ImmediateEncodings> immediateMap = new EconomicHashMap<>();
 
             /*
              * Generating all possible immediates and linking them to the proper cmode/op values.

@@ -27,15 +27,14 @@ package jdk.graal.compiler.hotspot;
 import static jdk.graal.compiler.serviceprovider.GraalServices.getSavedProperty;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Formatter;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
@@ -92,8 +91,8 @@ public class GraalHotSpotVMConfigAccess {
         return access.getStore();
     }
 
-    public static final Set<String> KNOWN_ARCHITECTURES = new HashSet<>(Arrays.asList("amd64", "aarch64", "riscv64"));
-    public static final Set<String> KNOWN_OS_NAMES = new HashSet<>(Arrays.asList("windows", "linux", "darwin"));
+    public static final Set<String> KNOWN_ARCHITECTURES = CollectionsUtil.setOf("amd64", "aarch64", "riscv64");
+    public static final Set<String> KNOWN_OS_NAMES = CollectionsUtil.setOf("windows", "linux", "darwin");
 
     /**
      * Name for current OS. Will be a value in {@link #KNOWN_OS_NAMES}.

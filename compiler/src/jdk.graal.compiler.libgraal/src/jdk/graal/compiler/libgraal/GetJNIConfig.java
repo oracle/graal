@@ -34,20 +34,20 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.util.SignatureUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.SignatureUtil;
 
 /**
  * Registers the JNI configuration for libgraal by parsing the output of the
@@ -198,7 +198,7 @@ final class GetJNIConfig implements AutoCloseable {
     @SuppressWarnings("try")
     public static void register(ClassLoader loader, Path libgraalJavaHome) {
         try (GetJNIConfig source = new GetJNIConfig(loader, libgraalJavaHome)) {
-            Map<String, Class<?>> classes = new HashMap<>();
+            Map<String, Class<?>> classes = new EconomicHashMap<>();
             for (String line : source.lines) {
                 source.lineNo++;
                 String[] tokens = line.split(" ");

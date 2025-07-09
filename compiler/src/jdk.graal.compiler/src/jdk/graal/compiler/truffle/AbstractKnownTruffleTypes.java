@@ -27,14 +27,14 @@ package jdk.graal.compiler.truffle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.graal.compiler.debug.GraalError;
-
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.util.CollectionsUtil;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -172,10 +172,10 @@ public abstract class AbstractKnownTruffleTypes {
             ResolvedJavaField field = staticFields[i];
             entries[instanceFields.length + i] = Map.entry(field.getName(), field);
         }
-        Map<String, ResolvedJavaField> fields = Map.ofEntries(entries);
+        Map<String, ResolvedJavaField> fields = CollectionsUtil.mapOfEntries(entries);
         GraalError.guarantee(fields.size() == entries.length, "duplicate field name");
 
-        Map<String, List<ResolvedJavaMethod>> methods = new HashMap<>();
+        Map<String, List<ResolvedJavaMethod>> methods = new EconomicHashMap<>();
         for (ResolvedJavaMethod method : declaringClass.getDeclaredMethods(false)) {
             methods.computeIfAbsent(method.getName(), (v) -> new ArrayList<>(2)).add(method);
         }

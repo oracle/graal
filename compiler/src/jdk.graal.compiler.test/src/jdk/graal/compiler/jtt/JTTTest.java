@@ -58,6 +58,7 @@ import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.runtime.RuntimeProvider;
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -132,7 +133,7 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     protected void runTest(OptionValues options, String name, Object... args) {
-        runTest(options, Set.of(), name, args);
+        runTest(options, CollectionsUtil.setOf(), name, args);
     }
 
     protected void runTest(Set<DeoptimizationReason> shouldNotDeopt, String name, Object... args) {

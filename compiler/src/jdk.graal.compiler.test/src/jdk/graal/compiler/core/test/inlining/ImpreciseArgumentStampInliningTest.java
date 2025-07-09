@@ -28,8 +28,6 @@ import static java.util.Objects.requireNonNull;
 
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -51,6 +49,9 @@ import jdk.graal.compiler.nodes.StructuredGraph.Builder;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.debug.BlackholeNode;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.util.CollectionsUtil;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -82,7 +83,7 @@ public class ImpreciseArgumentStampInliningTest extends GraalCompilerTest {
     @Test
     public void testAddsPiForUnresolvedArgument() {
         // Leave UnresolveableClass unresolved
-        StructuredGraph graph = getGraph("snippet", Set.of(InlineMethodHolder.class.getName()));
+        StructuredGraph graph = getGraph("snippet", CollectionsUtil.setOf(InlineMethodHolder.class.getName()));
         // Check that "inlineMe" was inlined successfully.
         Assert.assertEquals(1, graph.getNodes().filter(BlackholeNode.class).count());
         ValueNode inlinedCallArgument = graph.getNodes().filter(BlackholeNode.class).first().getValue();
@@ -97,7 +98,7 @@ public class ImpreciseArgumentStampInliningTest extends GraalCompilerTest {
     @Test
     public void testNoPiForResolvedArgument() {
         // Resolve and initialize both classes
-        StructuredGraph graph = getGraph("snippet", Set.of(InlineMethodHolder.class.getName(), UnresolveableClass.class.getName()));
+        StructuredGraph graph = getGraph("snippet", CollectionsUtil.setOf(InlineMethodHolder.class.getName(), UnresolveableClass.class.getName()));
         // Check that "inlineMe" was inlined successfully.
         Assert.assertEquals(1, graph.getNodes().filter(BlackholeNode.class).count());
         ValueNode inlinedCallArgument = graph.getNodes().filter(BlackholeNode.class).first().getValue();
@@ -113,7 +114,7 @@ public class ImpreciseArgumentStampInliningTest extends GraalCompilerTest {
      * is added to {@link #resolveableClasses}, returning {@code null} for all others.
      */
     private static class ManualClassLoader extends URLClassLoader {
-        public Set<String> resolveableClasses = new HashSet<>();
+        public Set<String> resolveableClasses = new EconomicHashSet<>();
 
         ManualClassLoader(URL[] urls, ClassLoader parent) {
             super(urls, parent);
@@ -164,7 +165,7 @@ public class ImpreciseArgumentStampInliningTest extends GraalCompilerTest {
                 /*
                  * Force inline "inlineMe", and disable inlining for other methods.
                  */
-                Map<Invoke, Double> hints = new HashMap<>();
+                Map<Invoke, Double> hints = new EconomicHashMap<>();
                 for (Invoke invoke : graph.getInvokes()) {
                     if (invoke.getTargetMethod().getName().equals("inlineMe")) {
                         hints.put(invoke, 1000d);
