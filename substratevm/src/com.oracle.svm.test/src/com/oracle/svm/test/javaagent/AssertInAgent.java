@@ -26,25 +26,42 @@
 
 package com.oracle.svm.test.javaagent;
 
-public class AgentPremainHelper {
-    public static void load(Class<?> agentClass) {
-        String firstAgent = System.getProperty("first.load.agent", null);
-        if (firstAgent != null) {
-            System.setProperty("second.load.agent", agentClass.getName());
-        } else {
-            System.setProperty("first.load.agent", agentClass.getName());
+/**
+ * Assertions used inside agent when not using JUNIT.
+ */
+public class AssertInAgent {
+    public static void assertNotNull(Object o) {
+        if (o == null) {
+            throw new RuntimeException("Object input is null, but expected to be non-null");
         }
     }
 
-    public static void parseOptions(String agentArgs) {
-        if (agentArgs != null && !agentArgs.isBlank()) {
-            String[] argPairs = agentArgs.split(",");
-            for (String argPair : argPairs) {
-                String[] pair = argPair.split("=");
-                if (pair.length == 2) {
-                    System.setProperty(pair[0], pair[1]);
+    public static void assertEquals(boolean expected, boolean actual) {
+        if (expected != actual) {
+            throw new RuntimeException(String.format("Expected(%s) is not equal to actual(%s)", expected, actual));
+        }
+    }
+
+    public static void assertEquals(long expected, long actual) {
+        if (expected != actual) {
+            throw new RuntimeException(String.format("Expected(%s) is not equal to actual(%s)", expected, actual));
+        }
+    }
+
+    public static void assertEquals(Object expected, Object actual) {
+        if (expected != actual) {
+            if (expected != null) {
+                assertNotNull(actual);
+                if (!expected.equals(actual)) {
+                    throw new RuntimeException(String.format("Expected(%s) is not equal to actual(%s)", expected, actual));
                 }
+            } else {
+                throw new RuntimeException(String.format("Expected(null) is not equal to actual(%s)", actual));
             }
         }
+    }
+
+    public static void assertTrue(boolean actual) {
+        assertEquals(true, actual);
     }
 }
