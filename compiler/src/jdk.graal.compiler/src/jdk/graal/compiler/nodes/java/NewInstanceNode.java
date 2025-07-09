@@ -61,7 +61,10 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
 
     protected NewInstanceNode(NodeClass<? extends NewInstanceNode> c, ResolvedJavaType type, boolean fillContents, FrameState stateBefore) {
         super(c, StampFactory.objectNonNull(TypeReference.createExactTrusted(type)), fillContents, stateBefore);
-        GraalError.guarantee(!type.isArray() && !type.isInterface() && !type.isPrimitive() && !type.isAbstract(), "Cannot instantiate type %s", type);
+        GraalError.guarantee(!type.isArray(), "Cannot instantiate array %s", type);
+        GraalError.guarantee(!type.isInterface(), "Cannot instantiate interface %s", type);
+        GraalError.guarantee(!type.isPrimitive(), "Cannot instantiate primitive %s", type);
+        GraalError.guarantee(!type.isAbstract(), "Cannot instantiate abstract class %s", type);
         this.instanceClass = type;
     }
 
