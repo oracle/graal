@@ -52,7 +52,7 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.ClassLoaderSupport.ConditionWithOrigin;
@@ -384,7 +384,7 @@ public final class Resources implements MultiLayeredImageSingleton {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerIncludePattern(ConfigurationCondition condition, String module, String pattern) {
+    public void registerIncludePattern(AccessCondition condition, String module, String pattern) {
         assert MissingRegistrationUtils.throwMissingRegistrationErrors();
         synchronized (requestedPatterns) {
             updateTimeStamp();
