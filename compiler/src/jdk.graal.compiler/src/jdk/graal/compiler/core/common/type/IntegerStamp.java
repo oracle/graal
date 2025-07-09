@@ -2023,7 +2023,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                             IntegerStamp stamp = (IntegerStamp) input;
                             assert inputBits == stamp.getBits() : "Input bits" + inputBits + " stamp bits " +
                                             stamp.getBits() + " result bits " + resultBits;
-                            assert inputBits <= resultBits : inputBits + ">=" + resultBits;
+                            assert inputBits <= resultBits : inputBits + ">" + resultBits;
 
                             if (inputBits == resultBits) {
                                 return input;
@@ -2091,7 +2091,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                             }
                             IntegerStamp stamp = (IntegerStamp) input;
                             assert inputBits == stamp.getBits() : Assertions.errorMessageContext("inputBits", inputBits, "stamp", stamp);
-                            assert inputBits <= resultBits : inputBits + ">=" + resultBits;
+                            assert inputBits <= resultBits : inputBits + ">" + resultBits;
 
                             long defaultMask = CodeUtil.mask(resultBits);
                             long mustBeSet = CodeUtil.signExtend(stamp.mustBeSet(), inputBits) & defaultMask;
