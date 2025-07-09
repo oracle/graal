@@ -41,7 +41,8 @@ import mx_benchmark
 import mx_sdk_benchmark
 from mx_benchmark import BenchmarkSuite, DataPoints, Rule, Vm, SingleBenchmarkExecutionContext
 from mx._impl.mx_codeowners import _load_toml_from_fd
-from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS, Layer, StageName, parse_prefixed_args
+from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS, parse_prefixed_args
+from mx_util import StageName, Layer
 
 _suite = mx.suite("substratevm")
 
