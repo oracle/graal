@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -51,7 +50,6 @@ import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.SubstitutionNode;
-import com.oracle.truffle.espresso.substitutions.regex.Target_java_util_regex_Matcher.RegexAction;
 
 @EspressoSubstitutions
 public final class Target_java_util_regex_Pattern {
@@ -64,24 +62,22 @@ public final class Target_java_util_regex_Pattern {
     }
 
     static boolean isUnsupportedPattern(StaticObject parentPattern, Meta meta) {
-        if (meta.java_util_regex_Pattern_HIDDEN_unsupported == null) {
-            return true;
-        }
-        Object unsupported = meta.java_util_regex_Pattern_HIDDEN_unsupported.getHiddenObject(parentPattern);
-        return (!(unsupported instanceof Boolean)) || (boolean) unsupported;
+        return TRegexStatus.isUnsupported(meta, parentPattern);
     }
 
-    @Substitution(hasReceiver = true, methodName = "<init>")
+    @Substitution(hasReceiver = true, methodName = "<init>", languageFilter = UseTRegexFilter.class)
     abstract static class Init extends SubstitutionNode {
 
         abstract void execute(@JavaType(Pattern.class) StaticObject self, @JavaType(String.class) StaticObject p, int f);
 
-        @Specialization(guards = "context.regexSubstitutionsEnabled()")
+        @Specialization
         void doDefault(StaticObject self, StaticObject p, int f,
                         @Bind("getContext()") EspressoContext context,
                         @CachedLibrary(limit = "3") InteropLibrary regexInterop,
-                        @Shared("original") @Cached("create(getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode original,
+                        @Cached("create(getMeta().tRegexSupport.java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode original,
                         @Cached InlinedBranchProfile parseErrorProfile, @Cached InlinedBranchProfile argErrorProfile) {
+            assert getLanguage().useTRegex();
+
             Meta meta = context.getMeta();
             if (StaticObject.isNull(p)) {
                 argErrorProfile.enter(this);
@@ -92,7 +88,7 @@ public final class Target_java_util_regex_Pattern {
                 throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, unknownFlagMessage(f));
             }
             String pattern = meta.toHostString(p);
-            Source src = getSource(RegexAction.Validate, pattern, f, meta.getJavaVersion());
+            Source src = getSource(TRegexStatus.Validate, pattern, f, meta.getJavaVersion());
             try {
                 context.getEnv().parseInternal(src).call();
             } catch (Exception e) {
@@ -102,8 +98,9 @@ public final class Target_java_util_regex_Pattern {
                         // this can either RegexSyntaxException or UnsupportedRegexException (no
                         // good way to distinguish)
                         LOGGER.log(Level.FINE, e, () -> "Unsupported Pattern: " + pattern);
-                        meta.java_util_regex_Pattern_HIDDEN_unsupported.setHiddenObject(self, true);
+                        TRegexStatus.setUnsupported(meta, self);
                         original.call(self, p, f);
+                        TRegexStatus.setGuestCompiled(meta, self);
                         return;
                     } else {
                         throw e;
@@ -114,50 +111,36 @@ public final class Target_java_util_regex_Pattern {
                 }
             }
 
-            meta.java_util_regex_Pattern_HIDDEN_tregexSearch.setHiddenObject(self, null);
-            meta.java_util_regex_Pattern_HIDDEN_tregexMatch.setHiddenObject(self, null);
-            meta.java_util_regex_Pattern_HIDDEN_tregexFullmatch.setHiddenObject(self, null);
-            meta.java_util_regex_Pattern_HIDDEN_unsupported.setHiddenObject(self, false);
+            meta.tRegexSupport.java_util_regex_Pattern_HIDDEN_tregexSearch.setHiddenObject(self, null);
+            meta.tRegexSupport.java_util_regex_Pattern_HIDDEN_tregexMatch.setHiddenObject(self, null);
+            meta.tRegexSupport.java_util_regex_Pattern_HIDDEN_tregexFullmatch.setHiddenObject(self, null);
 
-            // indicates that the group count is invalid
-            meta.java_util_regex_Pattern_capturingGroupCount.setInt(self, -1);
-            meta.java_util_regex_Pattern_pattern.setObject(self, p);
-            meta.java_util_regex_Pattern_flags.setInt(self, f);
-            meta.java_util_regex_Pattern_flags0.setInt(self, f);
-            meta.java_util_regex_Pattern_compiled.setBoolean(self, true);
-        }
+            meta.tRegexSupport.java_util_regex_Pattern_capturingGroupCount.setInt(self, 0);
+            meta.tRegexSupport.java_util_regex_Pattern_pattern.setObject(self, p);
+            meta.tRegexSupport.java_util_regex_Pattern_flags.setInt(self, f);
+            meta.tRegexSupport.java_util_regex_Pattern_flags0.setInt(self, f);
+            meta.tRegexSupport.java_util_regex_Pattern_compiled.setBoolean(self, true);
 
-        @Specialization(guards = "!context.regexSubstitutionsEnabled()")
-        static void doDisabled(StaticObject self, StaticObject p, int f,
-                        @Bind("getContext()") @SuppressWarnings("unused") EspressoContext context,
-                        @Shared("original") @Cached("create(getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode original) {
-            original.call(self, p, f);
+            TRegexStatus.init(meta, self);
         }
     }
 
-    @Substitution(hasReceiver = true, methodName = "namedGroups")
+    @Substitution(hasReceiver = true, methodName = "namedGroups", languageFilter = UseTRegexFilter.class)
     abstract static class NamedGroups extends SubstitutionNode {
 
         abstract @JavaType(Map.class) StaticObject execute(@JavaType(Pattern.class) StaticObject self);
 
-        @Specialization(guards = "context.regexSubstitutionsEnabled()")
+        @Specialization
         @JavaType(Map.class)
         static StaticObject doDefault(StaticObject self,
                         @Bind("getContext()") EspressoContext context,
-                        @Shared("original") @Cached("create(getMeta().java_util_regex_Pattern_namedGroups.getCallTargetNoSubstitution())") DirectCallNode original,
-                        @Cached("create(context.getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode initOriginal) {
-            if (StaticObject.isNull(context.getMeta().java_util_regex_Pattern_namedGroups_field.getObject(self))) {
-                StaticObject pattern = context.getMeta().java_util_regex_Pattern_pattern.getObject(self);
-                Object flags = context.getMeta().java_util_regex_Pattern_flags.getValue(self);
-                initOriginal.call(self, pattern, flags);
+                        @Cached("create(getMeta().tRegexSupport.java_util_regex_Pattern_namedGroups.getCallTargetNoSubstitution())") DirectCallNode original,
+                        @Cached("create(context.getMeta().tRegexSupport.java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode initOriginal) {
+            assert context.getLanguage().useTRegex();
+            Meta meta = context.getMeta();
+            if (!TRegexStatus.isGroupDataValid(meta, self)) {
+                Target_java_util_regex_Matcher.compileFallBackIfRequired(self, meta);
             }
-            return (StaticObject) original.call(self);
-        }
-
-        @Specialization(guards = "!context.regexSubstitutionsEnabled()")
-        static StaticObject doDisabled(StaticObject self,
-                        @Bind("getContext()") @SuppressWarnings("unused") EspressoContext context,
-                        @Shared("original") @Cached("create(getMeta().java_util_regex_Pattern_namedGroups.getCallTargetNoSubstitution())") DirectCallNode original) {
             return (StaticObject) original.call(self);
         }
     }

@@ -240,21 +240,22 @@ final class LinkedKlassFieldLayout {
                                         new HiddenField(Names.HIDDEN_MODULE_ENTRY)
                         }),
                         entry(Types.java_util_regex_Pattern, new HiddenField[]{
-                                        new HiddenField(Names.HIDDEN_TREGEX_MATCH),
-                                        new HiddenField(Names.HIDDEN_TREGEX_FULLMATCH),
-                                        new HiddenField(Names.HIDDEN_TREGEX_SEARCH),
-                                        new HiddenField(Names.HIDDEN_TREGEX_UNSUPPORTED)
+                                        new HiddenField(Names.HIDDEN_TREGEX_MATCH, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_FULLMATCH, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_SEARCH, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_STATUS, Types._int, EspressoLanguage::useTRegex, ACC_VOLATILE)
                         }),
                         entry(Types.java_util_regex_Matcher, new HiddenField[]{
-                                        new HiddenField(Names.HIDDEN_TREGEX_TSTRING),
-                                        new HiddenField(Names.HIDDEN_TREGEX_OLD_LAST_BACKUP),
-                                        new HiddenField(Names.HIDDEN_TREGEX_MOD_COUNT_BACKUP),
-                                        new HiddenField(Names.HIDDEN_TREGEX_TRANSPARENT_BOUNDS_BACKUP),
-                                        new HiddenField(Names.HIDDEN_TREGEX_ANCHORING_BOUNDS_BACKUP),
-                                        new HiddenField(Names.HIDDEN_TREGEX_FROM_BACKUP),
-                                        new HiddenField(Names.HIDDEN_TREGEX_TO_BACKUP),
-                                        new HiddenField(Names.HIDDEN_TREGEX_SEARCH_FROM_BACKUP),
-                                        new HiddenField(Names.HIDDEN_TREGEX_MATCHING_MODE_BACKUP)
+                                        new HiddenField(Names.HIDDEN_TREGEX_TSTRING, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_SYNC, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_OLD_LAST_BACKUP, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_MOD_COUNT_BACKUP, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_TRANSPARENT_BOUNDS_BACKUP, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_ANCHORING_BOUNDS_BACKUP, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_FROM_BACKUP, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_TO_BACKUP, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_SEARCH_FROM_BACKUP, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_MATCHING_MODE_BACKUP, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS)
                         }),
                         entry(Types.com_oracle_truffle_espresso_polyglot_TypeLiteral, new HiddenField[]{
                                         new HiddenField(Names.HIDDEN_INTERNAL_TYPE)}),
