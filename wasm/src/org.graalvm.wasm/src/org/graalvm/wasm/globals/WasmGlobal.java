@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,11 +41,22 @@
 
 package org.graalvm.wasm.globals;
 
-import com.oracle.truffle.api.interop.TruffleObject;
 import org.graalvm.wasm.EmbedderDataHolder;
+import org.graalvm.wasm.WasmNamesObject;
 import org.graalvm.wasm.api.ValueType;
 import org.graalvm.wasm.constants.GlobalModifier;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+
+@SuppressWarnings("static-method")
+@ExportLibrary(InteropLibrary.class)
 public abstract class WasmGlobal extends EmbedderDataHolder implements TruffleObject {
 
     private final ValueType valueType;
@@ -56,15 +67,15 @@ public abstract class WasmGlobal extends EmbedderDataHolder implements TruffleOb
         this.mutable = mutable;
     }
 
-    public ValueType getValueType() {
+    public final ValueType getValueType() {
         return valueType;
     }
 
-    public boolean isMutable() {
+    public final boolean isMutable() {
         return mutable;
     }
 
-    public byte getMutability() {
+    public final byte getMutability() {
         return mutable ? GlobalModifier.MUTABLE : GlobalModifier.CONSTANT;
     }
 
@@ -79,4 +90,71 @@ public abstract class WasmGlobal extends EmbedderDataHolder implements TruffleOb
     public abstract void storeLong(long value);
 
     public abstract void storeObject(Object value);
+
+    private static final String VALUE_MEMBER = "value";
+
+    @ExportMessage
+    final boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final boolean isMemberReadable(String member) {
+        return VALUE_MEMBER.equals(member);
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final Object readMember(String member) throws UnknownIdentifierException {
+        if (!isMemberReadable(member)) {
+            throw UnknownIdentifierException.create(member);
+        }
+        assert VALUE_MEMBER.equals(member) : member;
+        return switch (getValueType()) {
+            case i32 -> loadAsInt();
+            case i64 -> loadAsLong();
+            case f32 -> Float.intBitsToFloat(loadAsInt());
+            case f64 -> Double.longBitsToDouble(loadAsLong());
+            case v128, anyfunc, externref -> loadAsObject();
+        };
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final boolean isMemberModifiable(String member) {
+        return VALUE_MEMBER.equals(member) && isMutable();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+        return false;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final void writeMember(String member, Object value,
+                    @CachedLibrary(limit = "4") InteropLibrary valueLibrary) throws UnknownIdentifierException, UnsupportedMessageException {
+        if (!isMemberReadable(member)) {
+            throw UnknownIdentifierException.create(member);
+        }
+        if (!mutable) {
+            // Constant variables cannot be modified after linking.
+            throw UnsupportedMessageException.create();
+        }
+        switch (getValueType()) {
+            case i32 -> storeInt(valueLibrary.asInt(value));
+            case i64 -> storeLong(valueLibrary.asLong(value));
+            case f32 -> storeInt(Float.floatToRawIntBits(valueLibrary.asFloat(value)));
+            case f64 -> storeLong(Double.doubleToRawLongBits(valueLibrary.asDouble(value)));
+            default -> throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return new WasmNamesObject(new String[]{VALUE_MEMBER});
+    }
 }
