@@ -28,8 +28,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
-import java.util.HashMap;
+import java.util.Map;
 
+import jdk.graal.compiler.util.EconomicHashMap;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -138,7 +139,7 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
         private static int loaderInstance = 0;
 
         private final String replaceTo;
-        private HashMap<String, Class<?>> cache = new HashMap<>();
+        private Map<String, Class<?>> cache = new EconomicHashMap<>();
 
         private final DebugContext debug;
 

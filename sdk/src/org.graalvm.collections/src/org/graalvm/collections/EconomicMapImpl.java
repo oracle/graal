@@ -41,6 +41,7 @@
 package org.graalvm.collections;
 
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.function.BiFunction;
 
 /**
@@ -689,6 +690,9 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
 
         @Override
         public void remove() {
+            if (current == 0 || current > totalEntries) {
+                throw new IllegalStateException();
+            }
             if (hasHashArray()) {
                 EconomicMapImpl.this.findAndRemoveHash(getKey(current - 1));
             }
@@ -707,6 +711,9 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
                     public V next() {
                         Object result;
                         while (true) {
+                            if (current >= totalEntries) {
+                                throw new NoSuchElementException();
+                            }
                             result = getValue(current);
                             if (result == null && getKey(current) == null) {
                                 // values can be null, double-check if key is also null
@@ -858,6 +865,9 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
             @SuppressWarnings("unchecked")
             @Override
             public K next() {
+                if (current >= totalEntries) {
+                    throw new NoSuchElementException();
+                }
                 Object result;
                 while ((result = getKey(current++)) == null) {
                     // skip null entries

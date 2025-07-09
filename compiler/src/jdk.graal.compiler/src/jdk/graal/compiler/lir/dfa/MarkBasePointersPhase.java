@@ -24,8 +24,8 @@
  */
 package jdk.graal.compiler.lir.dfa;
 
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -38,9 +38,9 @@ import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.framemap.FrameMap;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
-import jdk.graal.compiler.lir.util.ValueSet;
 import jdk.graal.compiler.lir.util.IndexedValueMap;
-
+import jdk.graal.compiler.lir.util.ValueSet;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
@@ -62,14 +62,14 @@ public final class MarkBasePointersPhase extends AllocationPhase {
             private final Map<Integer, Set<Value>> baseDerivedRefs;
 
             BasePointersSet() {
-                baseDerivedRefs = new HashMap<>();
+                baseDerivedRefs = new EconomicHashMap<>();
             }
 
             private BasePointersSet(BasePointersSet other) {
                 // Deep copy.
-                baseDerivedRefs = new HashMap<>(other.baseDerivedRefs.size());
+                baseDerivedRefs = new EconomicHashMap<>(other.baseDerivedRefs.size());
                 for (Map.Entry<Integer, Set<Value>> entry : other.baseDerivedRefs.entrySet()) {
-                    Set<Value> s = new HashSet<>(entry.getValue());
+                    Set<Value> s = new LinkedHashSet<>(entry.getValue());
                     baseDerivedRefs.put(entry.getKey(), s);
                 }
             }
@@ -99,7 +99,7 @@ public final class MarkBasePointersPhase extends AllocationPhase {
                 Set<Value> derivedRefs = baseDerivedRefs.get(base.index);
                 assert verifyDerivedRefs(v, base.index);
                 if (derivedRefs == null) {
-                    HashSet<Value> s = new HashSet<>();
+                    HashSet<Value> s = new LinkedHashSet<>();
                     s.add(v);
                     baseDerivedRefs.put(base.index, s);
                 } else {
@@ -115,7 +115,7 @@ public final class MarkBasePointersPhase extends AllocationPhase {
                     Set<Value> derivedRefs = baseDerivedRefs.get(k);
                     if (derivedRefs == null) {
                         // Deep copy.
-                        Set<Value> s = new HashSet<>(derivedRefsOther);
+                        Set<Value> s = new LinkedHashSet<>(derivedRefsOther);
                         baseDerivedRefs.put(k, s);
                     } else {
                         derivedRefs.addAll(derivedRefsOther);

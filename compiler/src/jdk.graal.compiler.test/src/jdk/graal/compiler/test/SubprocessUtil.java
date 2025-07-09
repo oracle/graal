@@ -489,7 +489,7 @@ public final class SubprocessUtil {
         return process(command, env, workingDir, timeout);
     }
 
-    private static final Set<String> EXECUTABLES_USING_ARGFILES = Set.of("java", "java.exe", "javac", "javac.exe");
+    private static final Set<String> EXECUTABLES_USING_ARGFILES = CollectionsUtil.setOf("java", "java.exe", "javac", "javac.exe");
 
     /**
      * Directory in which argfiles will be {@linkplain #createArgfile created}.

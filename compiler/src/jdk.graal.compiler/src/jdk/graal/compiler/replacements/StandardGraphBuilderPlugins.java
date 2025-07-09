@@ -229,6 +229,7 @@ import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactOverflowN
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactSplitNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.CodeUtil;
@@ -1375,7 +1376,7 @@ public class StandardGraphBuilderPlugins {
             this.kind = kind;
         }
 
-        static final Map<JavaKind, Class<?>> boxClassToCacheClass = new EnumMap<>(Map.of(
+        static final Map<JavaKind, Class<?>> boxClassToCacheClass = new EnumMap<>(CollectionsUtil.mapOf(
                         JavaKind.Boolean, Boolean.class,
                         JavaKind.Char, getCacheClass(JavaKind.Char),
                         JavaKind.Byte, getCacheClass(JavaKind.Byte),

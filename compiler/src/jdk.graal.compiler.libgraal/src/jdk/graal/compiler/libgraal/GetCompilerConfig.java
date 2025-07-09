@@ -35,14 +35,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.CompilerConfig;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.graal.compiler.util.ObjectCopier;
-import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 /**
  * Gets the map created in a JVM subprocess by running {@link CompilerConfig}.
@@ -100,10 +102,10 @@ public class GetCompilerConfig {
      */
     public static Result from(Path javaHome) {
         Path javaExe = GetJNIConfig.getJavaExe(javaHome);
-        Map<String, Set<String>> opens = Map.of(
+        Map<String, Set<String>> opens = CollectionsUtil.mapOf(
                         // Needed to reflect fields like
                         // java.util.ImmutableCollections.EMPTY
-                        "java.base", Set.of("java.util"));
+                        "java.base", CollectionsUtil.setOf("java.util"));
 
         // Only modules in the boot layer can be the target of --add-exports
         String addExports = "--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler";

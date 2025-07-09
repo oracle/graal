@@ -26,8 +26,6 @@ package jdk.graal.compiler.replacements.test;
 
 import static jdk.graal.compiler.nodes.GraphState.StageFlag.SAFEPOINTS_INSERTION;
 
-import java.util.HashMap;
-
 import org.junit.Test;
 
 import jdk.graal.compiler.nodes.IfNode;
@@ -41,6 +39,7 @@ import jdk.graal.compiler.replacements.nodes.BitScanReverseNode;
 import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import jdk.graal.compiler.replacements.nodes.ReverseBytesNode;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -339,8 +338,8 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         test("isInstance2", false, null);
         test("isInstance2", true, "string");
         test("isInstance2", false, "string");
-        test("isInstance2", true, new HashMap<>());
-        test("isInstance2", false, new HashMap<>());
+        test("isInstance2", true, new EconomicHashSet<>());
+        test("isInstance2", false, new EconomicHashSet<>());
     }
 
     public static boolean constantIsAssignableFromConstantPrimary() {

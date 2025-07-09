@@ -40,6 +40,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.phases.common.AbstractInliningPhase;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.code.site.Site;
@@ -125,7 +126,7 @@ public class InstanceOfTest extends TypeCheckTest {
 
     @Test
     public void test5() {
-        Map<?, ?> map = new HashMap<>();
+        Map<?, ?> map = new EconomicHashMap<>();
         test("isMap", profile(), map);
         test("isMap", profile(HashMap.class), map);
         test("isMap", profile(TreeMap.class, HashMap.class), map);
@@ -138,7 +139,7 @@ public class InstanceOfTest extends TypeCheckTest {
 
     @Test
     public void test6() {
-        Map<?, ?> map = new HashMap<>();
+        Map<?, ?> map = new EconomicHashMap<>();
         test("isMapInt", profile(), map);
         test("isMapInt", profile(HashMap.class), map);
         test("isMapInt", profile(TreeMap.class, HashMap.class), map);

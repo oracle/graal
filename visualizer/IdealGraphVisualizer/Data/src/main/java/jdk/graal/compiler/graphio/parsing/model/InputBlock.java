@@ -26,7 +26,6 @@ package jdk.graal.compiler.graphio.parsing.model;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -61,7 +60,7 @@ public final class InputBlock {
             return false;
         }
 
-        final HashSet<String> s = new HashSet<>();
+        final Set<String> s = new LinkedHashSet<>();
         for (InputBlock succ : successors) {
             s.add(succ.name);
         }
