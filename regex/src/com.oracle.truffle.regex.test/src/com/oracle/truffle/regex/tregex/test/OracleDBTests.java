@@ -1665,6 +1665,7 @@ public class OracleDBTests extends RegexTestBase {
                         "axaxeageagageaxeaxeaxageaxagageaxeaxagageagaxaxeagaxeaxagagaxeagageaxeaxeagageaxeaxagaxaxaxageageagageagaxaxaxageaxageaxeageaxaxaxaxaxagaxagageaxeageageageaxeaxeaxageaxaxeaxeagaxagageaxeageaxeaxaxeaxageaxaxeagaxageageaz",
                         0, false);
         test("(a{1100,1100})\\1", "i", "a".repeat(2400), 0, true, 0, 2200, 0, 1100);
+        test("[a]\\S{213,213}bcdz", "", "a".repeat(215) + ("bcxd" + "a".repeat(213)).repeat(3), 0, false);
 
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }

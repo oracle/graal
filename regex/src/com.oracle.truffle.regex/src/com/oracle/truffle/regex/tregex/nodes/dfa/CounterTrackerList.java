@@ -297,7 +297,7 @@ public class CounterTrackerList extends CounterTracker {
      */
     private void removeMaxValue(int sId, long[] fixedData, int[] buffer, int start, int size) {
         if (start >= MAX_UNUSED_BUFFER_SPACE) {
-            System.arraycopy(buffer, start, buffer, 0, size - 1);
+            System.arraycopy(buffer, start + 1, buffer, 0, size - 1);
             setStart(sId, fixedData, 0);
         } else {
             setStart(sId, fixedData, start + 1);
