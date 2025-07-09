@@ -45,7 +45,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
@@ -53,7 +52,6 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmConstant;
-import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -68,7 +66,7 @@ import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
-import org.graalvm.wasm.predefined.testutil.TestutilModule;
+import org.graalvm.wasm.test.WasmTestUtils;
 import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.junit.Assert;
 import org.junit.Test;
@@ -76,7 +74,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -97,8 +94,8 @@ public class MultiInstantiationSuite {
 
             Value main = mainInstance.getMember("exports").getMember("main");
             main.execute();
-            Value run = mainInstance.getMember("references").getMember("testutil").getMember("exports").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
-            run.execute(new GuestCode(c -> {
+
+            WasmTestUtils.runInWasmContext(context, c -> {
                 WebAssembly wasm = new WebAssembly(c);
                 WasmModule module = wasm.moduleDecode(testSource);
                 WasmInstance instance1 = wasm.moduleInstantiate(module, Objects.requireNonNullElse(importFun.apply(wasm), WasmConstant.NULL));
@@ -110,20 +107,7 @@ public class MultiInstantiationSuite {
                 // link module
                 v2.getMember("main");
                 check.accept(wasm, instance2);
-            }));
-        }
-    }
-
-    private static final class GuestCode implements Consumer<WasmContext>, TruffleObject {
-        private final Consumer<WasmContext> testCase;
-
-        private GuestCode(Consumer<WasmContext> testCase) {
-            this.testCase = testCase;
-        }
-
-        @Override
-        public void accept(WasmContext context) {
-            testCase.accept(context);
+            });
         }
     }
 
@@ -526,8 +510,7 @@ public class MultiInstantiationSuite {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
         try (Context context = contextBuilder.build()) {
-            Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember("exports").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
-            run.execute(new GuestCode(c -> {
+            WasmTestUtils.runInWasmContext(context, c -> {
                 WebAssembly wasm = new WebAssembly(c);
                 WasmModule module = wasm.moduleDecode(sourceCode);
 
@@ -556,7 +539,7 @@ public class MultiInstantiationSuite {
                 Value main2 = v2.getMember("main");
                 Value result2 = main2.execute();
                 Assert.assertEquals("Return value of main", List.of(42L, 6, 8, 2.72), List.copyOf(result2.as(List.class)));
-            }));
+            });
         }
     }
 }
