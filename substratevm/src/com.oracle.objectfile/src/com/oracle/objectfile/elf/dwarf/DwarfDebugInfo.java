@@ -408,7 +408,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
         DwarfClassProperties classProperties;
         classProperties = lookupClassProperties(classEntry);
         assert classProperties.getTypeEntry() == classEntry;
-        assert classProperties.codeRangesIndex >= 0;
+        assert classProperties.codeRangesIndex >= 0 : "classProperties.codeRangesIndex=" + classProperties.codeRangesIndex;
         return classProperties.codeRangesIndex;
     }
 
