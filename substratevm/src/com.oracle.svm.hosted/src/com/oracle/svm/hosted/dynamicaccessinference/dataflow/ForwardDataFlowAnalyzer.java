@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.dataflow;
+package com.oracle.svm.hosted.dynamicaccessinference.dataflow;
 
 import java.util.ArrayList;
 import java.util.BitSet;

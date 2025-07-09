@@ -30,8 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.hosted.dataflow.AbstractFrame;
-import com.oracle.svm.hosted.dataflow.DataFlowAnalysisException;
+import com.oracle.svm.hosted.dynamicaccessinference.dataflow.AbstractFrame;
+import com.oracle.svm.hosted.dynamicaccessinference.dataflow.DataFlowAnalysisException;
 
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.vm.ci.code.BytecodePosition;

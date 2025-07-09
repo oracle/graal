@@ -45,8 +45,8 @@ import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.dataflow.AbstractFrame;
-import com.oracle.svm.hosted.dataflow.AbstractInterpreter;
+import com.oracle.svm.hosted.dynamicaccessinference.dataflow.AbstractFrame;
+import com.oracle.svm.hosted.dynamicaccessinference.dataflow.AbstractInterpreter;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.TypeResult;
 
