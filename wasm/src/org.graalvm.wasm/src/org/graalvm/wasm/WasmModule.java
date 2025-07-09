@@ -294,33 +294,16 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     @TruffleBoundary
     Object instantiate(Object... arguments) {
         final WasmContext context = WasmContext.get(null);
-        Object importObjectOrNull = null;
-        List<WasmModule> otherModules = null;
-        for (Object argument : arguments) {
-            if (argument instanceof WasmModule module) {
-                if (otherModules == null) {
-                    otherModules = new ArrayList<>();
-                }
-                otherModules.add(module);
-            } else {
-                if (importObjectOrNull != null) {
-                    throw WasmException.provider().createTypeError(Failure.TYPE_MISMATCH, "Can only provide a single import object. Other arguments must be modules.");
-                }
-                importObjectOrNull = argument;
-            }
+        final Object importObject;
+        if (arguments.length == 0) {
+            importObject = WasmConstant.NULL;
+        } else if (arguments.length == 1) {
+            importObject = arguments[0];
+        } else {
+            throw WasmException.provider().createTypeError(Failure.TYPE_MISMATCH, "Can only provide a single import object.");
         }
         final WasmStore store = new WasmStore(context, context.language());
-        final WasmInstance instance = store.readInstance(this);
-        Object importObject = Objects.requireNonNullElse(importObjectOrNull, WasmConstant.NULL);
-        var imports = resolveModuleImports(importObject, WasmException.provider(), false);
-        if (otherModules != null) {
-            for (WasmModule module : otherModules) {
-                store.readInstance(module);
-                imports = imports.andThen(module.resolveModuleImports(importObject, WasmException.provider(), false));
-            }
-        }
-        store.linker().tryLink(instance, imports);
-        return instance;
+        return createInstance(store, importObject, WasmException.provider(), false);
     }
 
     public WasmInstance createInstance(WasmStore store, Object importObject, ExceptionProvider exceptionProvider, boolean importsOnlyInImportObject) {
