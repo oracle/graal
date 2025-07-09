@@ -167,7 +167,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
         } else if (con == null && resolve == false) {
             return null;
         } else {
-            throw unimplemented();
+            throw unimplemented((con == null) ? "con == null" : con.getClass().getName());
         }
     }
 
