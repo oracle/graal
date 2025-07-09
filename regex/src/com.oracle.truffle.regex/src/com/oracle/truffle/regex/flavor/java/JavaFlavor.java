@@ -42,6 +42,7 @@ package com.oracle.truffle.regex.flavor.java;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
@@ -85,12 +86,16 @@ public final class JavaFlavor extends RegexFlavor {
 
     @Override
     public EqualsIgnoreCasePredicate getEqualsIgnoreCasePredicate(RegexAST ast) {
-        return (a, b, altMode) -> getCaseFoldingAlgorithm(altMode).getEqualsPredicate().test(a, b);
+        return (a, b, altMode) -> getCaseFoldingAlgorithm(ast.getOptions(), altMode).getEqualsPredicate().test(a, b);
     }
 
-    public static CaseFoldData.CaseFoldUnfoldAlgorithm getCaseFoldingAlgorithm(boolean isUnicodeCase) {
+    public static CaseFoldData.CaseFoldUnfoldAlgorithm getCaseFoldingAlgorithm(RegexOptions options, boolean isUnicodeCase) {
         if (isUnicodeCase) {
-            return CaseFoldData.CaseFoldUnfoldAlgorithm.JavaUnicode;
+            if (options.getJavaJDKVersion() <= 24) {
+                return CaseFoldData.CaseFoldUnfoldAlgorithm.JavaUnicode15;
+            } else {
+                return CaseFoldData.CaseFoldUnfoldAlgorithm.JavaUnicode16;
+            }
         } else {
             return CaseFoldData.CaseFoldUnfoldAlgorithm.Ascii;
         }

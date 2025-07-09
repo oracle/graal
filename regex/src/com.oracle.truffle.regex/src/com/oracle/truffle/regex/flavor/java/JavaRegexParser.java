@@ -207,7 +207,8 @@ public final class JavaRegexParser implements RegexParser {
                     break;
                 case classSet:
                     astBuilder.addClassSet((Token.ClassSet) token,
-                                    getFlags().isCaseInsensitive() ? JavaFlavor.getCaseFoldingAlgorithm(getFlags().isUnicodeCase() || getFlags().isUnicodeCharacterClass()) : null);
+                                    getFlags().isCaseInsensitive() ? JavaFlavor.getCaseFoldingAlgorithm(lexer.source.getOptions(), getFlags().isUnicodeCase() || getFlags().isUnicodeCharacterClass())
+                                                    : null);
                     break;
                 case literalString:
                     literalString((Token.LiteralString) token);
