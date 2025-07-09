@@ -118,7 +118,6 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
     }
 
     private static final String EXPORTS_MEMBER = "exports";
-    private static final String REFERENCES_MEMBER = "references";
 
     @ExportMessage
     boolean hasMembers() {
@@ -128,7 +127,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     boolean isMemberReadable(String member) {
-        return EXPORTS_MEMBER.equals(member) || REFERENCES_MEMBER.equals(member);
+        return EXPORTS_MEMBER.equals(member);
     }
 
     @ExportMessage
@@ -138,18 +137,14 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
             throw UnknownIdentifierException.create(member);
         }
         ensureLinked();
-        if (EXPORTS_MEMBER.equals(member)) {
-            return new WasmInstanceExports(this);
-        } else {
-            assert REFERENCES_MEMBER.equals(member);
-            return store();
-        }
+        assert EXPORTS_MEMBER.equals(member) : member;
+        return new WasmInstanceExports(this);
     }
 
     @ExportMessage
     @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return new WasmNamesObject(new String[]{EXPORTS_MEMBER, REFERENCES_MEMBER});
+        return new WasmNamesObject(new String[]{EXPORTS_MEMBER});
     }
 
     @Override
