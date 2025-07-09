@@ -53,11 +53,7 @@ import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 
 /**
  * Holds shared (a.k.a. global) state that belongs to a module instantiation & linking context.
@@ -69,8 +65,6 @@ import com.oracle.truffle.api.library.ExportMessage;
  * {@link WasmContext}'s primary {@link WasmStore}, while modules instantiated through the
  * {@code module_instantiate} JS API each get their own private {@link WasmStore}.
  */
-@ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("static-method")
 public final class WasmStore implements TruffleObject {
     private final WasmContext context;
     private final WasmLanguage language;
@@ -222,39 +216,5 @@ public final class WasmStore implements TruffleObject {
 
     public WasmContextOptions getContextOptions() {
         return this.contextOptions;
-    }
-
-    @ExportMessage
-    boolean hasMembers() {
-        return true;
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    boolean isMemberReadable(String member) {
-        return moduleInstances.containsKey(member);
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    Object readMember(String member) throws UnknownIdentifierException {
-        WasmInstance result = moduleInstances.get(member);
-        if (result == null) {
-            throw UnknownIdentifierException.create(member);
-        }
-        return result;
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        final String[] keys = moduleInstances.keySet().toArray(new String[moduleInstances.size()]);
-        return new WasmNamesObject(keys);
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return "wasm-references" + moduleInstances.keySet();
     }
 }

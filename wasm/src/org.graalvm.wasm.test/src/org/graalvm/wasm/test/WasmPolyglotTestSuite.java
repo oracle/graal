@@ -390,45 +390,6 @@ public class WasmPolyglotTestSuite {
     }
 
     @Test
-    public void consistentGetReferences() {
-        try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
-            final Value testModule = context.eval(simpleTestModuleSource);
-
-            final Value instance1 = testModule.newInstance();
-            final Value instance2 = testModule.newInstance();
-
-            final Value ref1 = instance1.getMember("references");
-            final Value ref2 = instance1.getMember("references");
-
-            Assert.assertEquals(ref1, ref2);
-
-            final Value ref3 = instance1.getMember("references");
-            final Value ref4 = instance2.getMember("references");
-
-            Assert.assertNotEquals(ref3, ref4);
-
-            final Value importModule = context.eval(simpleImportModuleSource);
-
-            final Value testInstance = testModule.newInstance();
-            final Value importInstance = importModule.newInstance(ProxyObject.fromMap(Map.of(
-                            "main", testInstance.getMember("exports"))));
-
-            final Value result = importInstance.getMember("exports").invokeMember("test");
-            Assert.assertEquals(13, result.asInt());
-
-            final Value ref5 = testInstance.getMember("references");
-            final Value instance3 = testInstance.getMember("references").getMember("main");
-            final Value ref6 = instance3.getMember("references");
-            Assert.assertEquals(ref5, ref6);
-
-            final Value ref7 = importInstance.getMember("references");
-            final Value instance4 = importInstance.getMember("references").getMember("test");
-            final Value ref8 = instance4.getMember("references");
-            Assert.assertEquals(ref7, ref8);
-        }
-    }
-
-    @Test
     public void newInstanceWASI() throws IOException, InterruptedException {
         final ByteSequence mainModuleBytes = ByteSequence.create(compileWat("main", """
                         (module
