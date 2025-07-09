@@ -144,9 +144,9 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
         int pos = p;
         int lengthPos = pos;
         Range range = compiledEntry.getPrimary();
-        long lo = range.getLo();
-        long hi = range.getHi();
-        pos = writeFDEHeader((int) lo, (int) hi, buffer, pos);
+        int lo = range.getLo();
+        int hi = range.getHi();
+        pos = writeFDEHeader(lo, hi, buffer, pos);
         pos = writeFDEs(compiledEntry.getFrameSize(), compiledEntry.getFrameSizeInfos(), buffer, pos);
         pos = writePaddingNops(buffer, pos);
         patchLength(lengthPos, buffer, pos);
