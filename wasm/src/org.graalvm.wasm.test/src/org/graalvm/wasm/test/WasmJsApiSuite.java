@@ -83,7 +83,6 @@ import org.graalvm.wasm.globals.DefaultWasmGlobal;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
-import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -96,7 +95,6 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -2531,21 +2529,7 @@ public class WasmJsApiSuite {
             Value mainInstance = context.eval(source).newInstance();
             Value main = mainInstance.getMember("exports").getMember("main");
             main.execute();
-            Value run = mainInstance.getMember("references").getMember("testutil").getMember("exports").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
-            run.execute(new GuestCode(testCase));
-        }
-    }
-
-    private static final class GuestCode implements Consumer<WasmContext>, TruffleObject {
-        private final Consumer<WasmContext> testCase;
-
-        private GuestCode(Consumer<WasmContext> testCase) {
-            this.testCase = testCase;
-        }
-
-        @Override
-        public void accept(WasmContext context) {
-            testCase.accept(context);
+            WasmTestUtils.runInWasmContext(context, testCase);
         }
     }
 
