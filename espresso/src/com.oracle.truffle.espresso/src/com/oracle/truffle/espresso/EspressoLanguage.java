@@ -146,6 +146,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     @CompilationFinal private boolean internalJvmciEnabled;
     @CompilationFinal private boolean useEspressoLibs;
     @CompilationFinal private boolean continuum;
+    @CompilationFinal private boolean useTRegex;
     // endregion Options
 
     // region Allocation
@@ -246,6 +247,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         internalJvmciEnabled = env.getOptions().get(EspressoOptions.EnableJVMCI);
         continuum = env.getOptions().get(EspressoOptions.Continuum);
 
+        useTRegex = env.getOptions().get(EspressoOptions.UseTRegex);
+        if (useTRegex && !env.getInternalLanguages().containsKey("regex")) {
+            throw EspressoError.fatal("UseTRegex is set to true but the 'regex' language is not available.");
+        }
+
         EspressoOptions.GuestFieldOffsetStrategyEnum strategy = env.getOptions().get(EspressoOptions.GuestFieldOffsetStrategy);
         guestFieldOffsetStrategy = switch (strategy) {
             case safety -> new SafetyGuestFieldOffsetStrategy();
@@ -343,6 +349,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.WhiteBoxAPI) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnableJVMCI) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.Continuum) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseTRegex) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.GuestFieldOffsetStrategy) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseEspressoLibs);
     }
@@ -582,6 +589,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         return internalJvmciEnabled;
     }
 
+    public boolean useTRegex() {
+        return useTRegex;
+    }
+
     public boolean useEspressoLibs() {
         return useEspressoLibs;
     }
@@ -618,6 +629,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                 if (ref == null) {
                     if (!getGuestFieldOffsetStrategy().isAllowed(version)) {
                         throw EspressoError.fatal("This guest field offset strategy (" + getGuestFieldOffsetStrategy().name() + ") is not allowed with this Java version (" + version + ")");
+                    }
+                    if (useTRegex && !version.java21OrLater()) {
+                        throw EspressoError.fatal("UseTRegex is not available for context running Java version < 21.");
                     }
                     this.javaVersion = ref = version;
                 }
