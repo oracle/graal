@@ -45,7 +45,6 @@ class Native {
     private final ArgumentsHandler handler;
 
     private String argPrefix;
-    private boolean legacyGraalOptionDeprecationWarned = false;
 
     void init(boolean fromXXHandling) {
         argPrefix = fromXXHandling ? "-" : "--vm.";
@@ -56,14 +55,7 @@ class Native {
             setGraalStyleRuntimeOption(arg.substring("Djdk.graal.".length()));
         } else if (arg.startsWith("Dgraal.")) {
             String baseName = arg.substring("Dgraal.".length());
-            if (!legacyGraalOptionDeprecationWarned) {
-                warn("""
-                                WARNING: The 'graal.' property prefix for the Graal option %s
-                                WARNING: (and all other Graal options) is deprecated and will be ignored
-                                WARNING: in a future release. Please use 'jdk.graal.%s' instead.""".formatted(baseName, baseName));
-                legacyGraalOptionDeprecationWarned = true;
-            }
-            setGraalStyleRuntimeOption(baseName);
+            throw abort("The 'graal.' prefix for " + baseName + " is unsupported - use 'jdk.graal." + baseName + "' instead.");
         } else if (arg.startsWith("D")) {
             setSystemProperty(arg.substring("D".length()));
         } else if (arg.startsWith("XX:")) {

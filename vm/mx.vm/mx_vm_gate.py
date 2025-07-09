@@ -186,28 +186,24 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
             table = f'  Count    Stub{nl}  ' + f'{nl}  '.join((f'{count:<8d} {stub}') for stub, count in stub_compilations.items())
             mx.abort(f'Following stubs were compiled more than once according to compiler log:{nl}{table}')
 
-    # Test that legacy `-D.graal` options work.
-    show_config_args = ('-Djdk.graal.ShowConfiguration=verbose', '-Dgraal.ShowConfiguration=verbose')
+    args = check_stub_sharing + ['-Djdk.graal.ShowConfiguration=verbose'] + _get_CountUppercase_vmargs()
 
-    for show_config_arg in show_config_args:
-        args = check_stub_sharing + [show_config_arg] + _get_CountUppercase_vmargs()
-
-        # Verify execution via raw java launcher in `mx graalvm-home`.
-        for jre_name, jre, jre_args in jres:
-            try:
-                cmd = [join(jre, 'bin', 'java')] + jre_args + extra_vm_arguments + args
-                mx.log(f'{jre_name}: {" ".join(cmd)}')
-                mx.run(cmd)
-            finally:
-                _check_compiler_log(compiler_log_file, expect, extra_check=extra_check)
-
-        # Verify execution via `mx vm`.
-        import mx_compiler
+    # Verify execution via raw java launcher in `mx graalvm-home`.
+    for jre_name, jre, jre_args in jres:
         try:
-            mx.log(f'mx.run_vm: args={extra_vm_arguments + args}')
-            mx_compiler.run_vm(extra_vm_arguments + args)
+            cmd = [join(jre, 'bin', 'java')] + jre_args + extra_vm_arguments + args
+            mx.log(f'{jre_name}: {" ".join(cmd)}')
+            mx.run(cmd)
         finally:
-            _check_compiler_log(compiler_log_file, expect)
+            _check_compiler_log(compiler_log_file, expect, extra_check=extra_check)
+
+    # Verify execution via `mx vm`.
+    import mx_compiler
+    try:
+        mx.log(f'mx.run_vm: args={extra_vm_arguments + args}')
+        mx_compiler.run_vm(extra_vm_arguments + args)
+    finally:
+        _check_compiler_log(compiler_log_file, expect)
 
 def _test_libgraal_fatal_error_handling(extra_vm_arguments):
     """

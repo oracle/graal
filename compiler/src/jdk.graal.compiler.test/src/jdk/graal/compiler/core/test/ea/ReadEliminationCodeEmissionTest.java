@@ -117,7 +117,7 @@ public class ReadEliminationCodeEmissionTest extends SubprocessTest {
                             "-XX:+PreserveFramePointer",
                             "-Xbatch",
                             "-XX:LogFile=" + logName,
-                            "-Dgraal.Dump=:5"};
+                            "-Djdk.graal.Dump=:5"};
         }
         try {
             subprocess = launchSubprocess(run, vmArgs);

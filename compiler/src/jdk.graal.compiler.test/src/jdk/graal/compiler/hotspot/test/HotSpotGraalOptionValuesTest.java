@@ -81,16 +81,16 @@ public class HotSpotGraalOptionValuesTest extends HotSpotGraalCompilerTest {
     }
 
     @Test
-    public void testDeprecation() throws IOException, InterruptedException {
+    public void testLegacyOptionError() throws IOException, InterruptedException {
         List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
         vmArgs.removeIf(a -> a.startsWith("-Djdk.graal."));
         vmArgs.add("-Dgraal.ShowConfiguration=info");
-        vmArgs.add("-Dgraal.PrintCompilation=true");
         vmArgs.add("-XX:+EagerJVMCI");
         vmArgs.add("--version");
         SubprocessUtil.Subprocess proc = SubprocessUtil.java(vmArgs);
 
-        String expect = "WARNING: The 'graal.' property prefix for the Graal option";
+        Assert.assertNotEquals(proc.preserveArgfile().toString(), 0, proc.exitCode);
+        String expect = "Error parsing Graal options: The 'graal.' prefix for ShowConfiguration is unsupported - use 'jdk.graal.ShowConfiguration' instead.";
         long matches = proc.output.stream().filter(line -> line.contains(expect)).count();
         if (matches != 1) {
             Assert.fail(String.format("Did not find exactly 1 match for '%s' in output of command [matches: %d]:%n%s",
