@@ -46,11 +46,16 @@ public final class JVMCIUtils {
     public static ObjectKlass findInstanceType(Symbol<Type> symbol, ObjectKlass accessingKlass, boolean resolve, Meta meta) {
         assert !TypeSymbols.isArray(symbol);
         StaticObject loader = accessingKlass.getDefiningClassLoader();
+        ObjectKlass klass;
         if (resolve) {
-            return (ObjectKlass) meta.loadKlassOrFail(symbol, loader, accessingKlass.protectionDomain());
+            klass = (ObjectKlass) meta.loadKlassOrFail(symbol, loader, accessingKlass.protectionDomain());
         } else {
-            return (ObjectKlass) meta.getRegistries().findLoadedClass(symbol, loader);
+            klass = (ObjectKlass) meta.getRegistries().findLoadedClass(symbol, loader);
         }
+        if (klass != null && !Klass.checkAccess(klass, accessingKlass)) {
+            return null;
+        }
+        return klass;
     }
 
     @TruffleBoundary
@@ -78,6 +83,9 @@ public final class JVMCIUtils {
     public static Klass findObjectType(int classIndex, RuntimeConstantPool pool, boolean resolve, Meta meta) {
         ResolvedConstant resolvedConstant = pool.peekResolvedOrNull(classIndex, meta);
         if (resolvedConstant != null) {
+            if (!resolve && !resolvedConstant.isSuccess()) {
+                return null;
+            }
             return (Klass) resolvedConstant.value();
         }
         Symbol<Name> name = pool.className(classIndex);
