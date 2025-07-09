@@ -52,13 +52,14 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
 @ExportLibrary(InteropLibrary.class)
-public class WasmNamesObject implements TruffleObject {
+public final class WasmNamesObject implements TruffleObject {
     private final String[] names;
 
-    WasmNamesObject(String[] names) {
+    public WasmNamesObject(String[] names) {
         this.names = names;
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
     boolean hasArrayElements() {
         return true;

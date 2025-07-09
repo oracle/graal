@@ -45,9 +45,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.wasm.api.Sequence;
-import org.graalvm.wasm.constants.GlobalModifier;
+import org.graalvm.wasm.api.ValueType;
+import org.graalvm.wasm.globals.ExportedWasmGlobal;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -60,7 +60,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
-public class WasmInstanceExports implements TruffleObject {
+public final class WasmInstanceExports implements TruffleObject {
     private final WasmInstance instance;
 
     public WasmInstanceExports(WasmInstance instance) {
@@ -97,29 +97,6 @@ public class WasmInstanceExports implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    public void writeMember(String member, Object value) throws UnknownIdentifierException, UnsupportedMessageException {
-        // This method works only for mutable globals.
-        final SymbolTable symbolTable = instance.symbolTable();
-        final Integer index = symbolTable.exportedGlobals().get(member);
-        if (index == null) {
-            throw UnknownIdentifierException.create(member);
-        }
-        final int address = instance.globalAddress(index);
-        if (!(value instanceof Number)) {
-            throw UnsupportedMessageException.create();
-        }
-        final boolean mutable = symbolTable.globalMutability(index) == GlobalModifier.MUTABLE;
-        assert instance.module().isParsed() : instance;
-        if (!mutable) {
-            // Constant variables cannot be modified after linking.
-            throw UnsupportedMessageException.create();
-        }
-        long longValue = ((Number) value).longValue();
-        instance.store().globals().storeLong(address, longValue);
-    }
-
-    @ExportMessage
-    @TruffleBoundary
     boolean isMemberReadable(String member) {
         final SymbolTable symbolTable = instance.symbolTable();
         return symbolTable.exportedFunctions().containsKey(member) ||
@@ -128,39 +105,15 @@ public class WasmInstanceExports implements TruffleObject {
                         symbolTable.exportedGlobals().containsKey(member);
     }
 
-    @ExportMessage
-    @TruffleBoundary
-    boolean isMemberModifiable(String member) {
-        final SymbolTable symbolTable = instance.symbolTable();
-        final Integer index = symbolTable.exportedGlobals().get(member);
-        if (index == null) {
-            return false;
-        }
-        return symbolTable.globalMutability(index) == GlobalModifier.MUTABLE;
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
-        return false;
-    }
-
     private Object readGlobal(SymbolTable symbolTable, int globalIndex) {
         final int address = instance.globalAddress(globalIndex);
-        final GlobalRegistry globals = instance.store().globals();
-        final byte type = symbolTable.globalValueType(globalIndex);
-        return switch (type) {
-            case WasmType.I32_TYPE -> globals.loadAsInt(address);
-            case WasmType.I64_TYPE -> globals.loadAsLong(address);
-            case WasmType.F32_TYPE -> Float.intBitsToFloat(globals.loadAsInt(address));
-            case WasmType.F64_TYPE -> Double.longBitsToDouble(globals.loadAsLong(address));
-            case WasmType.V128_TYPE -> globals.loadAsVector128(address);
-            case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> globals.loadAsReference(address);
-            default -> {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("Unknown type: " + type);
-            }
-        };
+        if (address < 0) {
+            return instance.store().globals().externalGlobal(address);
+        } else {
+            final ValueType valueType = ValueType.fromByteValue(symbolTable.globalValueType(globalIndex));
+            final boolean mutable = symbolTable.isGlobalMutable(globalIndex);
+            return new ExportedWasmGlobal(valueType, mutable, instance.store().globals(), address);
+        }
     }
 
     @ExportMessage

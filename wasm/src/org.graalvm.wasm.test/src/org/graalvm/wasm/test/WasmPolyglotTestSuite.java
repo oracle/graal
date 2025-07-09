@@ -390,6 +390,79 @@ public class WasmPolyglotTestSuite {
     }
 
     @Test
+    public void instantiateModuleWithGlobalImport() throws IOException, InterruptedException {
+        final ByteSequence supplierBytes = ByteSequence.create(compileWat("supplier", """
+                        (module
+                          (global (export "g") i32 (i32.const 42))
+                        )
+                        """));
+        final ByteSequence consumerBytes = ByteSequence.create(compileWat("consumer", """
+                        (module
+                          (import "supplier" "g" (global $g i32))
+                          (export "gg" (global $g))
+                          (func (export "main") (result i32)
+                            (global.get $g)
+                          )
+                        )
+                        """));
+
+        try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
+            final Value supplierModule = context.eval(Source.newBuilder(WasmLanguage.ID, supplierBytes, "supplier").build());
+            final Value consumerModule = context.eval(Source.newBuilder(WasmLanguage.ID, consumerBytes, "consumer").build());
+
+            final Value supplierInstance = supplierModule.newInstance();
+            final Value consumerInstance = consumerModule.newInstance(ProxyObject.fromMap(Map.of(
+                            "supplier", supplierInstance.getMember("exports"))));
+
+            final Value consumerExports = consumerInstance.getMember("exports");
+            final Value result = consumerExports.invokeMember("main");
+            final Value global = consumerExports.getMember("gg");
+
+            Assert.assertEquals(42, result.asInt());
+            Assert.assertEquals(42, global.getMember("value").asInt());
+
+            Assert.assertThrows(UnsupportedOperationException.class, () -> global.putMember("value", 43));
+        }
+    }
+
+    @Test
+    public void mutableGlobals() throws IOException, InterruptedException {
+        final ByteSequence globalsBytes = ByteSequence.create(compileWat("mutable-globals", """
+                        (module
+                          (global (export "global-i32") (mut i32) (i32.const 42))
+                          (global (export "global-i64") (mut i64) (i64.const 0x1_ffff_ffff))
+                          (global (export "global-f32") (mut f32) (f32.const 3.14))
+                          (global (export "global-f64") (mut f64) (f64.const 3.14))
+                        )
+                        """));
+
+        try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
+            final Source source = Source.newBuilder(WasmLanguage.ID, globalsBytes, "mutable-globals").build();
+            final Value globals = context.eval(source).newInstance().getMember("exports");
+
+            final Value globalI32 = globals.getMember("global-i32");
+            Assert.assertEquals(42, globalI32.getMember("value").asInt());
+            globalI32.putMember("value", 43);
+            Assert.assertEquals(43, globalI32.getMember("value").asInt());
+
+            final Value globalI64 = globals.getMember("global-i64");
+            Assert.assertEquals(0x1_ffff_ffffL, globalI64.getMember("value").asLong());
+            globalI64.putMember("value", -1L);
+            Assert.assertEquals(-1L, globalI64.getMember("value").asLong());
+
+            final Value globalF32 = globals.getMember("global-f32");
+            Assert.assertEquals(3.14f, globalF32.getMember("value").asFloat(), 0.0f);
+            globalF32.putMember("value", 13.37f);
+            Assert.assertEquals(13.37f, globalF32.getMember("value").asFloat(), 0.0f);
+
+            final Value globalF64 = globals.getMember("global-f64");
+            Assert.assertEquals(3.14, globalF64.getMember("value").asDouble(), 0.0);
+            globalF64.putMember("value", 13.37);
+            Assert.assertEquals(13.37, globalF64.getMember("value").asDouble(), 0.0);
+        }
+    }
+
+    @Test
     public void newInstanceWASI() throws IOException, InterruptedException {
         final ByteSequence mainModuleBytes = ByteSequence.create(compileWat("main", """
                         (module
