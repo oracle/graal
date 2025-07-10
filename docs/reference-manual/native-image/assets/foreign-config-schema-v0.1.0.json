@@ -6,6 +6,10 @@
       "default": [],
       "items": {
         "properties": {
+          "condition": {
+            "$ref": "config-condition-schema-v1.0.0.json",
+            "title": "Condition under which the downcall stub should be registered"
+          },
           "returnType": {
             "type": "string",
             "title": "A memory layout definition (allows canonical layouts; see 'java.lang.foreign.Linker')"
@@ -56,6 +60,10 @@
       "default": [],
       "items": {
         "properties": {
+          "condition": {
+            "$ref": "config-condition-schema-v1.0.0.json",
+            "title": "Condition under which the upcall stub should be registered"
+          },
           "returnType": {
             "type": "string",
             "title": "A memory layout definition (allows canonical layouts; see 'java.lang.foreign.Linker')"
@@ -88,6 +96,10 @@
       "default": [],
       "items": {
         "properties": {
+          "condition": {
+            "$ref": "config-condition-schema-v1.0.0.json",
+            "title": "Condition under which the direct upcall stub should be registered"
+          },
           "class": {
             "type": "string",
             "title": "Full-qualified class name (e.g. 'org.package.OuterClass$InnerClass')"

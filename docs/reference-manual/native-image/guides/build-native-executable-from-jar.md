@@ -27,7 +27,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
     - Create a new Java project named "App", for example in your favorite IDE or from your terminal, with the following structure:
         ```shell
         | src
-        |   --com/
+        |   --com
         |      -- example
         |          -- App.java
         ```

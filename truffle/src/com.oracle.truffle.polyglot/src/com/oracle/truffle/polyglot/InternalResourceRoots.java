@@ -339,6 +339,9 @@ final class InternalResourceRoots {
                 yield userCacheDir;
             }
             case WINDOWS -> new ResolvedCacheFolder(userHome.resolve(Path.of("AppData", "Local")), "user home", userHome);
+            case UNSUPPORTED -> throw new IllegalStateException(String.format("Truffle is running on an unsupported platform. " +
+                            "On unsupported platforms, you must explicitly set the default cache directory using the system property " +
+                            "'-D%s=<path_to_cache_folder>'.", PROPERTY_USER_RESOURCE_CACHE));
         };
         return container.resolve("org.graalvm.polyglot");
     }

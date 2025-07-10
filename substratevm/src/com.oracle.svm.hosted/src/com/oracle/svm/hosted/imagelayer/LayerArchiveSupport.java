@@ -53,6 +53,7 @@ public class LayerArchiveSupport {
     private static final String SNAPSHOT_GRAPHS_FILE_NAME = "layer-snapshot-graphs.big";
     private static final String LAYER_INFO_MESSAGE_PREFIX = "Native Image Layers";
     protected static final String LAYER_TEMP_DIR_PREFIX = "layerRoot_";
+    protected static final String SHARED_LIB_NAME_PREFIX = "lib";
 
     public static final String LAYER_FILE_EXTENSION = ".nil";
 
@@ -103,7 +104,11 @@ public class LayerArchiveSupport {
     }
 
     public Path getSharedLibraryPath() {
-        return layerDir.resolve(layerProperties.layerName() + ".so");
+        return layerDir;
+    }
+
+    public String getSharedLibraryBaseName() {
+        return layerProperties.layerName().substring(SHARED_LIB_NAME_PREFIX.length());
     }
 
     private static final Path layerPropertiesFileName = Path.of("META-INF/nilayer.properties");

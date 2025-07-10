@@ -100,6 +100,12 @@ final class PolyglotSourceDispatch extends AbstractSourceDispatch {
     }
 
     @Override
+    public URI getOriginalURI(Object impl) {
+        com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
+        return EngineAccessor.SOURCE.getOriginalURI(source);
+    }
+
+    @Override
     public Reader getReader(Object impl) {
         com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
         return source.getReader();

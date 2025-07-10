@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Formatter;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -138,6 +137,7 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
@@ -1279,9 +1279,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
          * ParameterNodes.
          */
         int firstArgumentNodeId = inlineScope.maxFixedNodeOrderId + 1;
-        for (int i = 0; i < arguments.length; i++) {
-            inlineLoopScope.createdNodes[firstArgumentNodeId + i] = arguments[i];
-        }
+        inlineLoopScope.setNodes(firstArgumentNodeId, arguments);
 
         // Copy inlined methods from inlinee to caller
         recordGraphElements(graphToInline);
@@ -1479,7 +1477,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     }
 
     private static RuntimeException tooDeepInlining(PEMethodScope methodScope) {
-        HashMap<ResolvedJavaMethod, Integer> methodCounts = new HashMap<>();
+        Map<ResolvedJavaMethod, Integer> methodCounts = new EconomicHashMap<>();
         for (PEMethodScope cur = methodScope; cur != null; cur = cur.caller) {
             Integer oldCount = methodCounts.get(cur.method);
             methodCounts.put(cur.method, oldCount == null ? 1 : oldCount + 1);

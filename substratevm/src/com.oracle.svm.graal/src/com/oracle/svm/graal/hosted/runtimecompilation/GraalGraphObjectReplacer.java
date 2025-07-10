@@ -476,8 +476,19 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
                             ? providers.getConstantReflection().readFieldValue(hField, null)
                             : null;
             constantValue = SubstrateGraalUtils.hostedToRuntime(constantValue, providers.getConstantReflection());
-            sField.setSubstrateData(hField.getLocation(), hField.isAccessed(), hField.isWritten() || !hField.isValueAvailable(), constantValue);
+            sField.setSubstrateDataAfterCompilation(hField.getLocation(), hField.isAccessed(), hField.isWritten() || !hField.isValueAvailable(), constantValue);
         }
+
+        methods.forEach((aMethod, sMethod) -> {
+            HostedMethod hMethod = hUniverse.lookup(aMethod);
+            SubstrateMethod indirectCallTarget = sMethod;
+            if (!hMethod.getIndirectCallTarget().equals(hMethod)) {
+                indirectCallTarget = methods.get(hMethod.getIndirectCallTarget().getWrapped());
+            }
+            int vTableIndex = (hMethod.hasVTableIndex() ? hMethod.getVTableIndex() : HostedMethod.MISSING_VTABLE_IDX);
+            sMethod.setSubstrateDataAfterCompilation(indirectCallTarget, vTableIndex);
+        });
+
     }
 
     public void updateSubstrateDataAfterHeapLayout(HostedUniverse hUniverse) {
@@ -485,14 +496,13 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             AnalysisMethod aMethod = entry.getKey();
             SubstrateMethod sMethod = entry.getValue();
             HostedMethod hMethod = hUniverse.lookup(aMethod);
-            int vTableIndex = (hMethod.hasVTableIndex() ? hMethod.getVTableIndex() : -1);
 
             /*
              * We access the offset of methods in the image code section here. Therefore, this code
              * can only run after the heap and code cache layout was done.
              */
             int imageCodeOffset = hMethod.isCodeAddressOffsetValid() ? hMethod.getCodeAddressOffset() : 0;
-            sMethod.setSubstrateData(vTableIndex, imageCodeOffset, hMethod.getImageCodeDeoptOffset());
+            sMethod.setSubstrateDataAfterHeapLayout(imageCodeOffset, hMethod.getImageCodeDeoptOffset());
         }
     }
 

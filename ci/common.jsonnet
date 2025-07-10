@@ -58,6 +58,9 @@ local common_json = import "../common.json";
   } + {
     'oraclejdk24': jdk_base + common_json.jdks["oraclejdk24"] + { jdk_version:: 24 },
   } + {
+    [name]: jdk_base + common_json.jdks[name] + { jdk_version:: 25 }
+    for name in ["oraclejdk25"] + variants("labsjdk-ce-25") + variants("labsjdk-ee-25")
+  } + {
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self), jdk_name:: "jdk-latest"}
     for name in ["oraclejdk-latest"] + variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
   } + {
@@ -274,9 +277,10 @@ local common_json = import "../common.json";
 
     graalpy:: self.gradle + self.cmake + {
       packages+: if (self.os == "linux") then {
-        libffi: '>=3.2.1',
-        bzip2: '>=1.0.6',
-        maven: ">=3.3.9",
+        libffi: '==3.2.1',
+        bzip2: '==1.0.6',
+        zlib: '==1.2.11',
+        maven: "==3.6.3",
       } else {},
     },
 

@@ -25,9 +25,9 @@
 package jdk.graal.compiler.nodes.graphbuilderconf;
 
 import static java.lang.String.format;
-import static jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.LateClassPlugins.CLOSED_LATE_CLASS_PLUGIN;
 import static jdk.graal.compiler.core.common.NativeImageSupport.inBuildtimeCode;
 import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
+import static jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.LateClassPlugins.CLOSED_LATE_CLASS_PLUGIN;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -35,14 +35,12 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Predicate;
 
-import jdk.vm.ci.meta.JavaType;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
@@ -66,6 +64,8 @@ import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.serviceprovider.IsolateUtil;
+import jdk.graal.compiler.util.EconomicHashSet;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -982,7 +982,7 @@ public class InvocationPlugins {
      * The intrinsic methods (in {@link Options#DisableIntrinsics} format) that have been printed by
      * {@link #maybePrintIntrinsics}.
      */
-    private static Set<String> PrintedIntrinsics = new HashSet<>();
+    private static Set<String> PrintedIntrinsics = new EconomicHashSet<>();
 
     /**
      * Determines if {@code plugin} is disabled by {@link Options#DisableIntrinsics}.
@@ -1019,7 +1019,7 @@ public class InvocationPlugins {
             if (PRINTING_ISOLATE.get() == isolateID || PRINTING_ISOLATE.compareAndSet(0, isolateID)) {
                 synchronized (PRINTING_ISOLATE) {
                     if (inRuntimeCode() && PrintedIntrinsics == null) {
-                        PrintedIntrinsics = new HashSet<>();
+                        PrintedIntrinsics = new EconomicHashSet<>();
                     }
                     UnmodifiableMapCursor<String, List<InvocationPlugin>> entries = getInvocationPlugins(false, true).getEntries();
                     Set<String> unique = new TreeSet<>();

@@ -66,6 +66,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Formatter;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -74,6 +75,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -87,6 +89,8 @@ import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -188,11 +192,11 @@ public final class SubprocessTestUtils {
     }
 
     private static Subprocess execute(Method testMethod, boolean failOnNonZeroExitCode, List<String> prefixVMOptions,
-                    List<String> postfixVmOptions, Duration timeout, Consumer<ProcessHandle> onStart) throws IOException, InterruptedException {
+                    List<String> postfixVmOptions, boolean removeOptimizedRuntimeOptions, Duration timeout, Consumer<ProcessHandle> onStart) throws IOException, InterruptedException {
         String enclosingElement = testMethod.getDeclaringClass().getName();
         String testName = testMethod.getName();
         Subprocess subprocess = javaHelper(
-                        configure(getVmArgs(), prefixVMOptions, postfixVmOptions),
+                        configure(getVmArgs(), prefixVMOptions, postfixVmOptions, removeOptimizedRuntimeOptions),
                         null, null,
                         List.of("com.oracle.mxtool.junit.MxJUnitWrapper", String.format("%s#%s", enclosingElement, testName)),
                         timeout, onStart);
@@ -202,8 +206,9 @@ public final class SubprocessTestUtils {
         return subprocess;
     }
 
-    private static List<String> configure(List<String> vmArgs, List<String> prefixVMOptions, List<String> postfixVmOptions) {
+    private static List<String> configure(List<String> vmArgs, List<String> prefixVMOptions, List<String> postfixVmOptions, boolean removeOptimizedRuntimeOptions) {
         List<String> newVmArgs = new ArrayList<>();
+        Predicate<String> optimizedRuntimeFilter = removeOptimizedRuntimeOptions ? new OptimizedRuntimeOptionsFilter() : (s) -> true;
         newVmArgs.addAll(vmArgs.stream().filter(vmArg -> {
             for (String toRemove : getForbiddenVmOptions()) {
                 if (vmArg.startsWith(toRemove)) {
@@ -221,14 +226,14 @@ public final class SubprocessTestUtils {
                 }
             }
             return true;
-        }).collect(Collectors.toList()));
+        }).filter(optimizedRuntimeFilter).toList());
         for (String additionalVmOption : prefixVMOptions) {
-            if (!additionalVmOption.startsWith(TO_REMOVE_PREFIX)) {
+            if (!additionalVmOption.startsWith(TO_REMOVE_PREFIX) && optimizedRuntimeFilter.test(additionalVmOption)) {
                 newVmArgs.add(1, additionalVmOption);
             }
         }
         for (String additionalVmOption : postfixVmOptions) {
-            if (!additionalVmOption.startsWith(TO_REMOVE_PREFIX)) {
+            if (!additionalVmOption.startsWith(TO_REMOVE_PREFIX) && optimizedRuntimeFilter.test(additionalVmOption)) {
                 newVmArgs.add(additionalVmOption);
             }
         }
@@ -466,6 +471,7 @@ public final class SubprocessTestUtils {
         private Duration timeout;
         private Consumer<Subprocess> onExit;
         private Consumer<ProcessHandle> onStart;
+        private boolean removeOptimizedRuntimeOptions;
 
         private Builder(Class<?> testClass, Runnable run) {
             this.testClass = testClass;
@@ -493,6 +499,17 @@ public final class SubprocessTestUtils {
          */
         public Builder postfixVmOption(String... options) {
             postfixVmArgs.addAll(List.of(options));
+            return this;
+        }
+
+        /**
+         * Removes all {@code OptimizedRuntimeOptions} from the command line.
+         * <p>
+         * This method is useful in tests that require fallback to the default Truffle runtime,
+         * which does not support optimized runtime options.
+         */
+        public Builder removeOptimizedRuntimeOptions(boolean value) {
+            removeOptimizedRuntimeOptions = value;
             return this;
         }
 
@@ -535,7 +552,7 @@ public final class SubprocessTestUtils {
             if (isSubprocess()) {
                 runnable.run();
             } else {
-                Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs, timeout, onStart);
+                Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs, removeOptimizedRuntimeOptions, timeout, onStart);
                 if (onExit != null) {
                     try {
                         onExit.accept(process);
@@ -1173,6 +1190,36 @@ public final class SubprocessTestUtils {
 
                 ch = in.read();
             }
+        }
+    }
+
+    private static final class OptimizedRuntimeOptionsFilter implements Predicate<String> {
+
+        private final Set<String> toRemove;
+
+        OptimizedRuntimeOptionsFilter() {
+            Set<String> optionNames;
+            try {
+                Class<?> options = Class.forName("com.oracle.truffle.runtime.OptimizedRuntimeOptions");
+                OptionDescriptors descriptors = (OptionDescriptors) ReflectionUtils.invokeStatic(options, "getDescriptors");
+                optionNames = new HashSet<>();
+                for (OptionDescriptor descriptor : descriptors) {
+                    optionNames.add(String.format("-Dpolyglot.%s", descriptor.getName()));
+                }
+            } catch (ClassNotFoundException e) {
+                optionNames = Set.of();
+            }
+            toRemove = optionNames;
+        }
+
+        @Override
+        public boolean test(String s) {
+            int index = s.lastIndexOf("=");
+            if (index > 0) {
+                String key = s.substring(0, index);
+                return !toRemove.contains(key);
+            }
+            return true;
         }
     }
 }

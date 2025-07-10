@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,11 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.nodesplitter;
+package com.oracle.truffle.regex.tregex.test;
 
-import com.oracle.truffle.api.nodes.SlowPathException;
+import org.junit.Ignore;
+import org.junit.Test;
 
-public final class DFANodeSplitBailoutException extends SlowPathException {
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
-    private static final long serialVersionUID = 29374928364982L;
+import java.util.Map;
+
+public class RubyBytesTests extends RegexTestBase {
+
+    private static final Map<String, String> ENGINE_OPTIONS = Map.of("regexDummyLang.Flavor", "Ruby");
+
+    @Override
+    Map<String, String> getEngineOptions() {
+        return ENGINE_OPTIONS;
+    }
+
+    @Override
+    Encodings.Encoding getTRegexEncoding() {
+        return Encodings.BYTES;
+    }
+
+    @Ignore
+    @Test
+    public void nonAscii() {
+        test("[\\x80-\\xff\\r\\n]", "", "\u0080", 0, true, 0, 1);
+    }
 }

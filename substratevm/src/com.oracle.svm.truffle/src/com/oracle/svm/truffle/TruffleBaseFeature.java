@@ -1569,10 +1569,8 @@ final class Target_com_oracle_truffle_polyglot_LanguageCache {
 final class Target_com_oracle_truffle_polyglot_PolyglotEngineImpl {
     @Substitute
     static void logFallback(String message) {
-        try (Log log = Log.log()) {
-            log.string(message.getBytes(StandardCharsets.UTF_8));
-            log.flush();
-        }
+        Log.log().string(message.getBytes(StandardCharsets.UTF_8));
+        Log.log().flush();
     }
 }
 

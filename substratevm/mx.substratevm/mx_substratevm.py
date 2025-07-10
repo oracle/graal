@@ -341,7 +341,11 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
     yield native_image_func
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
-_native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.services.ServiceLoaderTest$TestFeature,com.oracle.svm.test.services.SecurityServiceTest$TestFeature,com.oracle.svm.test.ReflectionRegistrationTest$TestFeature'
+_native_unittest_features = '--features=' + ','.join(('com.oracle.svm.test.ImageInfoTest$TestFeature',
+                                                      'com.oracle.svm.test.services.ServiceLoaderTest$TestFeature',
+                                                      'com.oracle.svm.test.services.SecurityServiceTest$TestFeature',
+                                                      'com.oracle.svm.test.ReflectionRegistrationTest$TestFeature',
+                                                      'com.oracle.svm.test.foreign.ForeignTests$TestFeature'))
 
 IMAGE_ASSERTION_FLAGS = svm_experimental_options(['-H:+VerifyGraalGraphs', '-H:+VerifyPhases'])
 

@@ -179,5 +179,10 @@ final class SourceAccessor extends Accessor {
                 }
             }
         }
+
+        @Override
+        public URI getOriginalURI(Source source) {
+            return source.getOriginalURI();
+        }
     }
 }

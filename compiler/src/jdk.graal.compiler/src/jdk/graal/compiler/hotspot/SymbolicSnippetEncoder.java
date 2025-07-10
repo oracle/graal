@@ -33,7 +33,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -108,6 +107,7 @@ import jdk.graal.compiler.replacements.SnippetCounter;
 import jdk.graal.compiler.replacements.SnippetIntegerHistogram;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.classfile.ClassfileBytecode;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.Architecture;
@@ -211,7 +211,7 @@ public class SymbolicSnippetEncoder {
     /**
      * The invocation plugins which were delayed during graph preparation.
      */
-    private final Set<ResolvedJavaMethod> delayedInvocationPluginMethods = new HashSet<>();
+    private final Set<ResolvedJavaMethod> delayedInvocationPluginMethods = new EconomicHashSet<>();
 
     void addDelayedInvocationPluginMethod(ResolvedJavaMethod method) {
         delayedInvocationPluginMethods.add(method);
@@ -583,7 +583,7 @@ public class SymbolicSnippetEncoder {
             this.constantReflection = constantReflection;
         }
 
-        HashSet<JavaConstant> safeConstants = new HashSet<>();
+        Set<JavaConstant> safeConstants = new EconomicHashSet<>();
 
         @Override
         public Boolean constantEquals(Constant x, Constant y) {

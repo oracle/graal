@@ -150,7 +150,7 @@ mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_f
 mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_file='ce')
 # Other GraalVMs
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'xz', 'js', 'jsl', 'jss', 'rgx', 'bnative-image', 'snative-image-agent', 'snative-image-diagnostics-agent', 'tflsm'], _suite, dist_name='ce-js', env_file='ce-js')
-mx_sdk_vm.register_vm_config('ce', ce_components + ['gwal', 'gwa', 'icu4j', 'xz', 'js', 'jsl', 'jss', 'libpoly', 'njs', 'njsl', 'rgx', 'sjsvm', 'spolyglot', 'swasmvm'], _suite, dist_name='ce', env_file='ce-nodejs')
+mx_sdk_vm.register_vm_config('ce', ce_components + ['gwal', 'gwa', 'icu4j', 'xz', 'js', 'jsl', 'jss', 'njs', 'njsl', 'rgx', 'sjsvm', 'swasmvm'], _suite, dist_name='ce', env_file='ce-nodejs')
 mx_sdk_vm.register_vm_config('ce', ce_components_minimal + ['antlr4', 'llrn', 'llp', 'llrc', 'llrl', 'llrlf'], _suite, env_file='ce-llvm')
 mx_sdk_vm.register_vm_config('ce-python', ce_python_components, _suite)
 mx_sdk_vm.register_vm_config('ce-fastr', ce_fastr_components, _suite)

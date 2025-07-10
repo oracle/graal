@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,7 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 
 final class JavaUnicodeProperties {
 
-    private static final int N_UNICODE_VERSIONS = 2;
+    private static final int N_UNICODE_VERSIONS = 3;
     private static final JavaUnicodeProperties[] CACHE = new JavaUnicodeProperties[N_UNICODE_VERSIONS];
 
     // 0x000A, LINE FEED (LF), <LF>
@@ -253,6 +253,8 @@ final class JavaUnicodeProperties {
             return 0;
         } else if (propertyDataVersion == UnicodePropertyDataVersion.UNICODE_15_1_0) {
             return 1;
+        } else if (propertyDataVersion == UnicodePropertyDataVersion.UNICODE_16_0_0) {
+            return 2;
         } else {
             throw CompilerDirectives.shouldNotReachHere();
         }
@@ -262,7 +264,10 @@ final class JavaUnicodeProperties {
         if (jdkVersion == 21) {
             return UnicodePropertyDataVersion.UNICODE_15_0_0;
         }
-        return UnicodePropertyDataVersion.UNICODE_15_1_0;
+        if (jdkVersion <= 23) {
+            return UnicodePropertyDataVersion.UNICODE_15_1_0;
+        }
+        return UnicodePropertyDataVersion.UNICODE_16_0_0;
     }
 
     private CodePointSet unionOfProperties(String... properties) {

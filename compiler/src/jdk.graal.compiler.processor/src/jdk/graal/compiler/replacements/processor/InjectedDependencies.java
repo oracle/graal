@@ -26,6 +26,7 @@ package jdk.graal.compiler.replacements.processor;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.DeclaredType;
@@ -155,7 +156,7 @@ public class InjectedDependencies implements Iterable<InjectedDependencies.Depen
     public InjectedDependencies(boolean useVariables, ExecutableElement intrinsicMethod) {
         this.useVariables = useVariables;
         this.intrinsicMethod = intrinsicMethod;
-        deps = new HashMap<>();
+        deps = new LinkedHashMap<>();
     }
 
     public String use(AbstractProcessor processor, WellKnownDependency wellKnown) {

@@ -715,7 +715,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                 if (graph.hasLoops() && graph.isLastCFGValid()) {
                     // CFGLoops are computed differently after FSA, see CFGLoop#getLoopExits(). The
                     // cached cfg needs to have its loop information invalidated.
-                    graph.getLastCFG().invalidateLoopInformation();
+                    graph.getLastCFG().resetLoopInformation();
                 }
             }
             debug.dump(DebugContext.BASIC_LEVEL, graph, "after removal of framestates");

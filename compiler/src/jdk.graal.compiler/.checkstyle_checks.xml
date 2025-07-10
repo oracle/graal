@@ -142,6 +142,24 @@
       <property name="message" value="Don't use old synchronized collection classes"/>
     </module>
     <module name="RegexpSinglelineJava">
+      <property name="format" value="(new|extends) (HashMap|HashSet|IdentityHashMap|Hashtable)[^\w]"/>
+      <property name="message" value="Collections with unstable iteration order are prohibited. Use EconomicHashMap (EconomicHashSet), EconomicMap (EconomicSet), or LinkedHashMap (LinkedHashSet) instead."/>
+      <property name="ignoreComments" value="true"/>
+      <property name="id" value="new-unstable-collection"/>
+    </module>
+    <module name="RegexpSinglelineJava">
+      <property name="format" value="[^\w]Hash(Map|Set)\.newHash(Map|Set)[^\w]"/>
+      <property name="message" value="Collections with unstable iteration order are prohibited. Use EconomicHashMap (EconomicHashSet), EconomicMap (EconomicSet), or LinkedHashMap (LinkedHashSet) instead."/>
+      <property name="ignoreComments" value="true"/>
+      <property name="id" value="unstable-collection-factory"/>
+    </module>
+    <module name="RegexpSinglelineJava">
+      <property name="format" value="[^\w](Map|Set)\.(of|copyOf|ofEntries)[^\w]"/>
+      <property name="message" value="Immutable collections with unstable iteration order are prohibited. Use a CollectionsUtil factory or LinkedHashMap (LinkedHashSet) instead."/>
+      <property name="ignoreComments" value="true"/>
+      <property name="id" value="immutable-unstable-collection"/>
+    </module>
+    <module name="RegexpSinglelineJava">
       <property name="format" value="instanceof MoveOp"/>
       <property name="message" value="Do not use `op instanceof MoveOp`. Use `MoveOp.isMoveOp(op)` instead!"/>
     </module>
@@ -176,6 +194,42 @@
       <property name="checkFormat" value=".*"/>
       <property name="influenceFormat" value="0"/>
       <property name="idFormat" value="endless-loop"/>
+    </module>
+    <module name="SuppressWithNearbyCommentFilter">
+      <property name="commentFormat" value="STABLE ITERATION ORDER: \w.*"/>
+      <property name="checkFormat" value=".*"/>
+      <property name="influenceFormat" value="1"/>
+      <property name="idFormat" value="new-unstable-collection"/>
+    </module>
+    <module name="SuppressWithNearbyCommentFilter">
+      <property name="commentFormat" value="STABLE ITERATION ORDER: \w.*"/>
+      <property name="checkFormat" value=".*"/>
+      <property name="influenceFormat" value="1"/>
+      <property name="idFormat" value="unstable-collection-factory"/>
+    </module>
+    <module name="SuppressWithNearbyCommentFilter">
+      <property name="commentFormat" value="STABLE ITERATION ORDER: \w.*"/>
+      <property name="checkFormat" value=".*"/>
+      <property name="influenceFormat" value="1"/>
+      <property name="idFormat" value="immutable-unstable-collection"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: stop stable iteration order check"/>
+      <property name="onCommentFormat" value="Checkstyle: resume stable iteration order check"/>
+      <property name="idFormat" value="new-unstable-collection"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Allow collections with unstable iteration order."/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: stop stable iteration order check"/>
+      <property name="onCommentFormat" value="Checkstyle: resume stable iteration order check"/>
+      <property name="idFormat" value="unstable-collection-factory"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Allow collections with unstable iteration order."/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: stop stable iteration order check"/>
+      <property name="onCommentFormat" value="Checkstyle: resume stable iteration order check"/>
+      <property name="idFormat" value="immutable-unstable-collection"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Allow collections with unstable iteration order."/>
     </module>
     <module name="SuppressionCommentFilter">
       <property name="offCommentFormat" value="Checkstyle: stop constant name check"/>

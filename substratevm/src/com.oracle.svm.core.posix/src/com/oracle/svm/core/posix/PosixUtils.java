@@ -252,6 +252,11 @@ public class PosixUtils {
         return Unistd.fsync(fd) == 0;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean flushUninterruptibly(int fd) {
+        return Unistd.NoTransitions.fsync(fd) == 0;
+    }
+
     public static PointerBase dlopen(String file, int mode) {
         try (CCharPointerHolder pathPin = CTypeConversion.toCString(file)) {
             CCharPointer pathPtr = pathPin.get();

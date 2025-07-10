@@ -126,9 +126,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public final ResolvedJavaMethod wrapped;
 
-    private AnalysisMethod indirectCallTarget = null;
-    public boolean invalidIndirectCallTarget = false;
-
     private final int id;
     /** Marks a method loaded from a base layer. */
     private final boolean isInBaseLayer;
@@ -345,69 +342,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     public AnalysisUniverse getUniverse() {
         /* Access the universe via the declaring class to avoid storing it here. */
         return declaringClass.getUniverse();
-    }
-
-    private static boolean matchingSignature(AnalysisMethod o1, AnalysisMethod o2) {
-        if (o1.equals(o2)) {
-            return true;
-        }
-
-        if (!o1.getName().equals(o2.getName())) {
-            return false;
-        }
-
-        return o1.getSignature().equals(o2.getSignature());
-    }
-
-    private AnalysisMethod setIndirectCallTarget(AnalysisMethod method, boolean foundMatch) {
-        indirectCallTarget = method;
-        invalidIndirectCallTarget = !foundMatch;
-        return indirectCallTarget;
-    }
-
-    /**
-     * For methods where its {@link #getDeclaringClass()} does not explicitly declare the method,
-     * find an alternative explicit declaration for the method which can be used as an indirect call
-     * target. This logic is currently used for deciding the target of virtual/interface calls when
-     * using the open type world.
-     */
-    public AnalysisMethod getIndirectCallTarget() {
-        if (indirectCallTarget != null) {
-            return indirectCallTarget;
-        }
-        if (isStatic() || isConstructor()) {
-            /*
-             * Static methods and constructors must always be explicitly declared.
-             */
-            return setIndirectCallTarget(this, true);
-        }
-
-        var dispatchTableMethods = declaringClass.getOrCalculateOpenTypeWorldDispatchTableMethods();
-
-        if (dispatchTableMethods.contains(this)) {
-            return setIndirectCallTarget(this, true);
-        }
-
-        for (AnalysisType interfaceType : declaringClass.getAllInterfaces()) {
-            if (interfaceType.equals(declaringClass)) {
-                // already checked
-                continue;
-            }
-            dispatchTableMethods = interfaceType.getOrCalculateOpenTypeWorldDispatchTableMethods();
-            for (AnalysisMethod candidate : dispatchTableMethods) {
-                if (matchingSignature(candidate, this)) {
-                    return setIndirectCallTarget(candidate, true);
-                }
-            }
-        }
-
-        /*
-         * For some methods (e.g., methods labeled as @PolymorphicSignature or @Delete), we
-         * currently do not find matches. However, these methods will not be indirect calls within
-         * our generated code, so it is not necessary to determine an accurate virtual/interface
-         * call target.
-         */
-        return setIndirectCallTarget(this, false);
     }
 
     /**

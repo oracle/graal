@@ -77,6 +77,7 @@ import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.OS;
@@ -93,12 +94,18 @@ import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.nodes.TLABObjectHeaderConstant;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
+import com.oracle.svm.core.image.ImageHeapLayouter.ImageHeapLayouterCallback;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
+import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.os.ImageHeapProvider;
+import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.DeadlockWatchdog;
@@ -114,6 +121,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.RelocatableBuffer.Info;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.ImageLayerSectionFeature;
 import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -436,7 +444,7 @@ public abstract class NativeImage extends AbstractImage {
 
             long roSectionSize = codeCache.getAlignedConstantsSize();
             long rwSectionSize = ConfigurationValues.getObjectLayout().alignUp(cGlobals.getSize());
-            heapLayout = heap.getLayouter().layout(heap, objectFile.getPageSize());
+            heapLayout = heap.getLayouter().layout(heap, objectFile.getPageSize(), ImageHeapLayouterCallback.NONE);
             // after this point, the layout is final and must not be changed anymore
             assert !hasDuplicatedObjects(heap.getObjects()) : "heap.getObjects() must not contain any duplicates";
 
@@ -448,8 +456,11 @@ public abstract class NativeImage extends AbstractImage {
 
             long imageHeapSize = getImageHeapSize();
 
-            if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                HostedImageLayerBuildingSupport.singleton().getWriter().setImageHeapSize(imageHeapSize);
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                ImageSingletons.lookup(ImageLayerSectionFeature.class).createSection(objectFile, heapLayout);
+                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                    HostedImageLayerBuildingSupport.singleton().getWriter().setImageHeapSize(imageHeapSize);
+                }
             }
 
             // Text section (code)
@@ -552,7 +563,11 @@ public abstract class NativeImage extends AbstractImage {
                 LayeredDispatchTableFeature.singleton().defineDispatchTableSlotSymbols(objectFile, textSection, codeCache, metaAccess);
             }
 
-            // Mark the sections with the relocations from the maps.
+            /*
+             * Mark locations that depend on the memory address of code (text), data, or the heap at
+             * runtime. These typically generate relocation entries which are processed by the
+             * dynamic linker. Additional such locations might be marked somewhere else.
+             */
             markRelocationSitesFromBuffer(textBuffer, textImpl);
             markRelocationSitesFromBuffer(roDataBuffer, roDataImpl);
             markRelocationSitesFromBuffer(rwDataBuffer, rwDataImpl);
@@ -562,32 +577,6 @@ public abstract class NativeImage extends AbstractImage {
             // could modify objects that will be part of the image heap.
             printHeapStatistics(heap.getLayouter().getPartitions());
         }
-
-        // [Footnote 1]
-        //
-        // Subject: Re: Do you know why text references can only be to constants?
-        // Date: Fri, 09 Jan 2015 12:51:15 -0800
-        // From: Christian Wimmer <christian.wimmer@oracle.com>
-        // To: Peter B. Kessler <Peter.B.Kessler@Oracle.COM>
-        //
-        // Code (i.e. the text section) needs to load the address of objects. So
-        // the read-only section contains a 8-byte slot with the address of the
-        // object that you actually want to load. A RIP-relative move instruction
-        // is used to load this 8-byte slot. The relocation for the move ensures
-        // the offset of the move is patched. And then a relocation from the
-        // read-only section to the actual native image heap ensures the 8-byte slot
-        // contains the actual address of the object to be loaded.
-        //
-        // Therefore, relocations in .text go only to things in .rodata; and
-        // relocations in .rodata go to .data in the current implementation
-        //
-        // It might be possible to have a RIP-relative load-effective-address (LEA)
-        // instruction to go directly from .text to .data, eliminating the memory
-        // access to load the address of an object. So I agree that allowing
-        // relocation from .text only to .rodata is an arbitrary restriction that
-        // could prevent future optimizations.
-        //
-        // -Christian
     }
 
     private boolean hasDuplicatedObjects(Collection<ObjectInfo> objects) {
@@ -605,16 +594,17 @@ public abstract class NativeImage extends AbstractImage {
 
             assert ConfigurationValues.getTarget().arch instanceof AArch64 || checkEmbeddedOffset(sectionImpl, offset, info);
 
-            if (info.getTargetObject() instanceof CFunctionPointer) {
-                markFunctionRelocationSite(sectionImpl, offset, info);
+            Object target = info.getTargetObject();
+            if (target instanceof CFunctionPointer || target instanceof MethodOffset) {
+                markSiteOfRelocationToCode(sectionImpl, offset, info);
             } else {
                 if (sectionImpl.getElement() == textSection) {
                     markDataRelocationSiteFromText(buffer, sectionImpl, offset, info);
-                } else if (info.getTargetObject() instanceof CGlobalDataBasePointer) {
+                } else if (target instanceof CGlobalDataBasePointer) {
                     assert info.getAddend() == 0 : "addressing from base not intended";
                     sectionImpl.markRelocationSite(offset, info.getRelocationKind(), rwDataSection.getName(), RWDATA_CGLOBALS_PARTITION_OFFSET);
                 } else {
-                    final JavaConstant targetConstant = (JavaConstant) info.getTargetObject();
+                    final JavaConstant targetConstant = (JavaConstant) target;
                     final ObjectInfo targetObjectInfo = heap.getConstantInfo(targetConstant);
                     markHeapReferenceRelocationSite(sectionImpl, offset, info, targetObjectInfo);
                 }
@@ -643,7 +633,7 @@ public abstract class NativeImage extends AbstractImage {
         }
     }
 
-    private static boolean checkMethodPointerRelocationKind(Info info) {
+    private static boolean checkCodeRelocationKind(Info info) {
         int wordSize = ConfigurationValues.getTarget().arch.getWordSize();
         int relocationSize = info.getRelocationSize();
         RelocationKind relocationKind = info.getRelocationKind();
@@ -651,33 +641,69 @@ public abstract class NativeImage extends AbstractImage {
         return (relocationSize == wordSize && RelocationKind.isDirect(relocationKind)) || (relocationSize == 4 && RelocationKind.isPCRelative(relocationKind));
     }
 
-    private void markFunctionRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
-        assert info.getTargetObject() instanceof CFunctionPointer : "Wrong type for FunctionPointer relocation: " + info.getTargetObject().toString();
+    /**
+     * Mark a location that needs to be patched by the dynamic linker at runtime to reflect the
+     * address where code has been loaded.
+     *
+     * {@linkplain DynamicHub Virtual dispatch tables} typically make up the vast majority of such
+     * locations. Frequent other locations to patch are in {@linkplain SubstrateAccessor reflection
+     * accessors}, {@linkplain JNIAccessibleMethod JNI accessors} and in
+     * {@link FunctionPointerHolder}.
+     *
+     * With {@link SubstrateOptions#RelativeCodePointers}, virtual dispatch tables contain offsets
+     * relative to a code base address and so do not need to be patched at runtime, which also
+     * avoids the cost of private copies of memory pages with the patched values.
+     *
+     * With code offsets and layered images, however, the code base refers only to the initial
+     * layer's code section, so we patch offsets to code from other layers to become relative to
+     * that code base ourselves at runtime. We do so in our own code without using the dynamic
+     * linker. See {@link LayeredDispatchTableFeature} which gathers these locations and
+     * {@link ImageLayerSectionFeature} which provides them for patching in the
+     * {@link ImageHeapProvider} at runtime.
+     *
+     * {@link NativeImageHeap#isRelocatableValue} and {@link NativeImageHeapWriter#writeConstant}
+     * determine (for the image heap) whether a code reference requires a linker relocation here.
+     */
+    private void markSiteOfRelocationToCode(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
+        Object targetObject = info.getTargetObject();
+        assert targetObject instanceof MethodPointer || targetObject instanceof MethodOffset : "Wrong type for code relocation: " + targetObject.toString();
 
         if (sectionImpl.getElement() == textSection) {
             validateNoDirectRelocationsInTextSection(info);
         }
 
-        MethodPointer methodPointer = (MethodPointer) info.getTargetObject();
-        ResolvedJavaMethod method = methodPointer.getMethod();
+        ResolvedJavaMethod method;
+        if (targetObject instanceof MethodOffset methodOffset) {
+            method = methodOffset.getMethod();
+        } else {
+            method = ((MethodPointer) targetObject).getMethod();
+        }
         HostedMethod hMethod = (method instanceof HostedMethod) ? (HostedMethod) method : heap.hUniverse.lookup(method);
         boolean injectedNotCompiled = isInjectedNotCompiled(hMethod);
-        HostedMethod target = getMethodPointerTargetMethod(metaAccess, hMethod);
+        HostedMethod target = getMethodRefTargetMethod(metaAccess, hMethod);
 
-        assert checkMethodPointerRelocationKind(info);
-        relocationProvider.markMethodPointerRelocation(sectionImpl, offset, info.getRelocationKind(), target, info.getAddend(), methodPointer, injectedNotCompiled);
+        assert checkCodeRelocationKind(info);
+        if (targetObject instanceof MethodOffset methodOffset) {
+            VMError.guarantee(injectedNotCompiled, "offset of a method compiled in this image does not require relocation entry");
+            relocationProvider.markMethodOffsetRelocation(sectionImpl, offset, info.getRelocationKind(), target, info.getAddend(), methodOffset, injectedNotCompiled);
+        } else {
+            relocationProvider.markMethodPointerRelocation(sectionImpl, offset, info.getRelocationKind(), target, info.getAddend(), (MethodPointer) targetObject, injectedNotCompiled);
+        }
     }
 
-    private static boolean isInjectedNotCompiled(HostedMethod target) {
+    /**
+     * Whether a method has not been compiled in the current image build, and with layered images,
+     * not in a prior layer, but might be compiled in a future layer.
+     */
+    static boolean isInjectedNotCompiled(HostedMethod target) {
         return !target.isCompiled() && !target.isCompiledInPriorLayer();
     }
 
-    static HostedMethod getMethodPointerTargetMethod(HostedMetaAccess metaAccess, ResolvedJavaMethod method) {
-        HostedMethod target = (method instanceof HostedMethod) ? (HostedMethod) method : metaAccess.getUniverse().lookup(method);
-        if (isInjectedNotCompiled(target)) {
-            target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
+    static HostedMethod getMethodRefTargetMethod(HostedMetaAccess metaAccess, HostedMethod method) {
+        if (isInjectedNotCompiled(method)) {
+            return metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
         }
-        return target;
+        return method;
     }
 
     private static boolean isAddendAligned(Architecture arch, long addend, RelocationKind kind) {

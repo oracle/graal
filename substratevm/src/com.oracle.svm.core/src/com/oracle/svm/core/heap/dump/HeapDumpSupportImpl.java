@@ -66,8 +66,8 @@ public class HeapDumpSupportImpl extends HeapDumping {
     private boolean outOfMemoryHeapDumpAttempted;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public HeapDumpSupportImpl(HeapDumpMetadata metadata) {
-        this.writer = new HeapDumpWriter(metadata);
+    public HeapDumpSupportImpl() {
+        this.writer = new HeapDumpWriter();
         this.heapDumpOperation = new HeapDumpOperation();
     }
 

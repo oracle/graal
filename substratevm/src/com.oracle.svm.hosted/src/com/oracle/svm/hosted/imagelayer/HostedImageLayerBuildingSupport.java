@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,14 +40,15 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LayerVerifiedOption;
 import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
 import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -200,6 +202,8 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
              * run time and build time.
              */
             SubstrateOptions.ApplicationLayerInitializedClasses.update(values, Module.class.getName());
+
+            setOptionIfHasNotBeenSet(values, SubstrateOptions.RelativeCodePointers, true);
         }
 
         if (isLayerUseOptionEnabled(hostedOptions)) {
@@ -210,6 +214,13 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             }
             enableConservativeUnsafeAccess(values);
             SubstrateOptions.ApplicationLayerInitializedClasses.update(values, Module.class.getName());
+            setOptionIfHasNotBeenSet(values, SubstrateOptions.RelativeCodePointers, true);
+        }
+    }
+
+    private static void setOptionIfHasNotBeenSet(EconomicMap<OptionKey<?>, Object> values, HostedOptionKey<Boolean> option, boolean boxedValue) {
+        if (!values.containsKey(option)) {
+            option.update(values, boxedValue);
         }
     }
 
@@ -312,9 +323,10 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return imageLayerBuildingSupport;
     }
 
-    record OptionLayerVerificationRequests(OptionDescriptor option, EconomicMap<LayerVerifiedOption.Kind, LayerVerifiedOption> requests) {
+    record OptionLayerVerificationRequests(OptionDescriptor option, List<LayerVerifiedOption> requests) {
         OptionLayerVerificationRequests(OptionDescriptor option) {
-            this(option, EconomicMap.create());
+            this(option, new ArrayList<>());
+            assert !(option.getOptionKey() instanceof RuntimeOptionKey) : "LayerVerifiedOption annotation on NI runtime-option";
         }
     }
 
@@ -326,7 +338,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         Map<String, OptionLayerVerificationRequests> result = new HashMap<>();
         for (OptionDescriptor optionDescriptor : hostedOptions.getValues()) {
             for (LayerVerifiedOption layerVerification : OptionUtils.getAnnotationsByType(optionDescriptor, LayerVerifiedOption.class)) {
-                result.computeIfAbsent(optionDescriptor.getName(), key -> new OptionLayerVerificationRequests(optionDescriptor)).requests.put(layerVerification.kind(), layerVerification);
+                result.computeIfAbsent(optionDescriptor.getName(), key -> new OptionLayerVerificationRequests(optionDescriptor)).requests.add(layerVerification);
             }
         }
         return result;
@@ -334,15 +346,9 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
 
     @SuppressFBWarnings(value = "NP", justification = "FB reports null pointer dereferencing because it doesn't see through UserError.guarantee.")
     public static void setupSharedLayerLibrary(NativeLibraries nativeLibs) {
-        Path sharedLibPath = HostedImageLayerBuildingSupport.singleton().getLoadLayerArchiveSupport().getSharedLibraryPath();
-        Path parent = sharedLibPath.getParent();
-        VMError.guarantee(parent != null, "Shared layer library path doesn't have a parent.");
-        nativeLibs.getLibraryPaths().add(parent.toString());
-        Path fileName = sharedLibPath.getFileName();
-        VMError.guarantee(fileName != null, "Cannot determine shared layer library file name.");
-        String fullLibName = fileName.toString();
-        VMError.guarantee(fullLibName.startsWith("lib") && fullLibName.endsWith(".so"), "Expecting that shared layer library file starts with lib and ends with .so. Found: %s", fullLibName);
-        String libName = fullLibName.substring("lib".length(), fullLibName.length() - ".so".length());
+        LoadLayerArchiveSupport archiveSupport = HostedImageLayerBuildingSupport.singleton().getLoadLayerArchiveSupport();
+        nativeLibs.getLibraryPaths().add(archiveSupport.getSharedLibraryPath().toString());
+        String libName = archiveSupport.getSharedLibraryBaseName();
         HostedDynamicLayerInfo.singleton().registerLibName(libName);
         nativeLibs.addDynamicNonJniLibrary(libName);
     }

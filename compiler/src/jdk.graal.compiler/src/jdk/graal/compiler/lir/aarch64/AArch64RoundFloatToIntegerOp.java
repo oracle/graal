@@ -45,7 +45,7 @@ import jdk.vm.ci.meta.AllocatableValue;
  * {@link Math#round} algorithm for details.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/15178aa298e43be3e27121343432f25884db4e5d/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L6652-L6700",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/c2d76f9844aadf77a0b213a9169a7c5c8c8f1ffb/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L6655-L6703",
           sha1 = "76d47473bf8d1408bf6e7bf6b8a3d93c19dab9c6")
 // @formatter:on
 @Opcode("AARCH64_ROUND_FLOAT_TO_INTEGER")

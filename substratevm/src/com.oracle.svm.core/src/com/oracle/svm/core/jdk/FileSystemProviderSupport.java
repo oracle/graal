@@ -36,7 +36,7 @@ import com.oracle.svm.core.util.VMError;
 
 /**
  * Legacy delegate for backwards compatibility. It should go away eventually (GR-65809).
- * 
+ *
  * @see com.oracle.svm.core.jdk.buildtimeinit.FileSystemProviderBuildTimeInitSupport
  */
 @SuppressWarnings("unused")

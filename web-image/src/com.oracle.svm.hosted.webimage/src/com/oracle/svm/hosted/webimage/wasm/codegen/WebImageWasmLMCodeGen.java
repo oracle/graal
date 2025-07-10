@@ -36,6 +36,7 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
+import com.oracle.svm.core.image.ImageHeapLayouter.ImageHeapLayouterCallback;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.NativeImageHeapWriter;
@@ -90,7 +91,7 @@ public class WebImageWasmLMCodeGen extends WebImageWasmCodeGen {
      */
     @Override
     protected void writeImageHeap() {
-        ImageHeapLayoutInfo layout = codeCache.nativeImageHeap.getLayouter().layout(codeCache.nativeImageHeap, WasmUtil.PAGE_SIZE);
+        ImageHeapLayoutInfo layout = codeCache.nativeImageHeap.getLayouter().layout(codeCache.nativeImageHeap, WasmUtil.PAGE_SIZE, ImageHeapLayouterCallback.NONE);
         setLayout(layout);
 
         afterHeapLayout();

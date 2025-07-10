@@ -29,8 +29,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,6 +44,8 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.AbstractEndNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 
 /**
  * Schedules a set of moves that are supposed to happen simultaneously as consecutive moves while
@@ -132,10 +132,10 @@ public class MoveResolver<S, T extends S> {
         // There are at most 2 * numTargets node, but it may be less
         int numNodes = 2 * numTargets;
         this.graph = new Graph(numTargets, numNodes);
-        this.targets = new HashSet<>(moveTargets.size());
-        this.idToTarget = new HashMap<>(numTargets);
-        this.idToSource = new HashMap<>(numNodes);
-        this.valueIds = new HashMap<>(numNodes);
+        this.targets = new EconomicHashSet<>(moveTargets.size());
+        this.idToTarget = new EconomicHashMap<>(numTargets);
+        this.idToSource = new EconomicHashMap<>(numNodes);
+        this.valueIds = new EconomicHashMap<>(numNodes);
 
         for (T target : moveTargets) {
             assert !targets.contains(target) : "Target can only be added once";
@@ -289,7 +289,7 @@ public class MoveResolver<S, T extends S> {
         /*
          * Maps each node in the graph to a color.
          */
-        Map<Integer, Color> colors = new HashMap<>();
+        Map<Integer, Color> colors = new EconomicHashMap<>();
         int[] nodes = graph.getNodes();
 
         for (int node : nodes) {

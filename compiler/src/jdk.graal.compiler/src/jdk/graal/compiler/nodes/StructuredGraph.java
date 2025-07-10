@@ -52,8 +52,10 @@ import jdk.graal.compiler.debug.JavaMethodContext;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeBitMap;
 import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
@@ -1079,8 +1081,21 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         reduceTrivialMerge(merge, false);
     }
 
-    @SuppressWarnings("static-method")
     public void reduceTrivialMerge(AbstractMergeNode merge, boolean forKillCFG) {
+        reduceTrivialMerge(merge, forKillCFG, null);
+    }
+
+    /**
+     * Removes merges with phis that have a single input value.
+     *
+     * @param unusedNodes A set to mark unused nodes in the graph that should be killed later by the
+     *            caller. The set should be used when calling this method for multiple merges. The
+     *            resulting set must be killed with
+     *            {@link GraphUtil#killAllWithUnusedFloatingInputs(NodeIterable, boolean)}. If this
+     *            set is null, the nodes are killed immediately.
+     */
+    @SuppressWarnings("static-method")
+    public void reduceTrivialMerge(AbstractMergeNode merge, boolean forKillCFG, NodeBitMap unusedNodes) {
         assert merge.forwardEndCount() == 1 : Assertions.errorMessageContext("merge", merge);
         assert !(merge instanceof LoopBeginNode) || ((LoopBeginNode) merge).loopEnds().isEmpty();
         for (PhiNode phi : merge.phis().snapshot()) {
@@ -1091,7 +1106,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             } else {
                 phi.safeDelete();
                 if (singleValue != null) {
-                    GraphUtil.tryKillUnused(singleValue);
+                    if (unusedNodes == null) {
+                        GraphUtil.tryKillUnused(singleValue);
+                    } else if (GraphUtil.shouldKillUnused(singleValue)) {
+                        unusedNodes.mark(singleValue);
+                    }
                 }
             }
         }
@@ -1106,7 +1125,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         merge.prepareDelete((FixedNode) singleEnd.predecessor());
         merge.safeDelete();
         if (stateAfter != null) {
-            GraphUtil.tryKillUnused(stateAfter);
+            if (unusedNodes == null) {
+                GraphUtil.tryKillUnused(stateAfter);
+            } else if (GraphUtil.shouldKillUnused(stateAfter)) {
+                unusedNodes.mark(stateAfter);
+            }
         }
         if (sux == null) {
             singleEnd.replaceAtPredecessor(null);

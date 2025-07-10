@@ -30,7 +30,6 @@ import static jdk.internal.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -59,6 +58,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.OptionsEncoder;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -93,7 +93,7 @@ public class LibGraalCompilationDriver {
      * Per-isolate values used to control if metrics should be printed and reset as part of the next
      * compilation in the isolate.
      */
-    private final Map<Long, AtomicBoolean> printMetrics = new HashMap<>();
+    private final Map<Long, AtomicBoolean> printMetrics = new EconomicHashMap<>();
 
     /**
      * If true, will invalidate all generated code after compilation to prevent filling up the code
@@ -243,7 +243,7 @@ public class LibGraalCompilationDriver {
             final int hash;
 
             OptionsBuffer(OptionValues options) {
-                Map<String, Object> map = new HashMap<>();
+                Map<String, Object> map = new EconomicHashMap<>();
                 UnmodifiableMapCursor<OptionKey<?>, Object> cursor = options.getMap().getEntries();
                 while (cursor.advance()) {
                     final OptionKey<?> key = cursor.getKey();
@@ -340,7 +340,7 @@ public class LibGraalCompilationDriver {
         public static class ProfilePathBuffer extends NativeBuffer {
             private final byte[] profilesPathBytes;
 
-            ProfilePathBuffer(String profilesPath) {
+            public ProfilePathBuffer(String profilesPath) {
                 /* Append the terminating 0. */
                 byte[] stringBytes = profilesPath.getBytes();
                 this.profilesPathBytes = Arrays.copyOf(stringBytes, stringBytes.length + 1);
@@ -740,7 +740,7 @@ public class LibGraalCompilationDriver {
     private Map<ResolvedJavaMethod, CompilationResult> compileAllSingleThreaded(
                     LibGraalParams libgraal, List<? extends Compilation> compilations, OptionValues options,
                     AtomicLong compileTime, AtomicLong memoryUsed, AtomicLong codeSize) {
-        Map<ResolvedJavaMethod, CompilationResult> results = new HashMap<>();
+        Map<ResolvedJavaMethod, CompilationResult> results = new EconomicHashMap<>();
 
         long intervalStart = System.currentTimeMillis();
         long lastCompletedTaskCount = 0;

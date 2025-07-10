@@ -262,6 +262,8 @@ public abstract class Accessor {
         public abstract void setPath(SourceBuilder builder, String path);
 
         public abstract Map<String, String> getSourceOptions(Source source);
+
+        public abstract URI getOriginalURI(Source source);
     }
 
     public abstract static class InteropSupport extends Support {
@@ -692,7 +694,9 @@ public abstract class Accessor {
 
         public abstract void preinitializeContext(Object polyglotEngine);
 
-        public abstract void finalizeStore(Object polyglotEngine);
+        public abstract Object finalizeStore(Object polyglotEngine);
+
+        public abstract void restoreStore(Object polyglotEngine, Object finalizationResult);
 
         public abstract Object getEngineLock(Object polyglotEngine);
 
@@ -1294,6 +1298,8 @@ public abstract class Accessor {
         public abstract void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> logSupplier, SandboxPolicy sandboxPolicy);
 
         public abstract boolean onEngineClosing(Object runtimeData);
+
+        public abstract boolean onStoreCache(Object runtimeData, Path targetPath, long cancelledWord);
 
         public abstract void onEngineClosed(Object runtimeData);
 

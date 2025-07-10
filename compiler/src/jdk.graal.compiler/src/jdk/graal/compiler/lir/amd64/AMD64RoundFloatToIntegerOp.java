@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.AllocatableValue;
  * {@link Math#round} algorithm for details.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/15178aa298e43be3e27121343432f25884db4e5d/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L9390-L9486",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/c2d76f9844aadf77a0b213a9169a7c5c8c8f1ffb/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L9377-L9473",
           sha1 = "9e13c7375bbb35809ad79ebd6a9cc19e66f57aa1")
 @SyncPort(from = "https://github.com/openjdk/jdk/blob/de29ef3bf3a029f99f340de9f093cd20544217fd/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L596-L767",
           sha1 = "3b5a811373c3fc9555f9fac0253b5a3a3d094223")

@@ -48,13 +48,13 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.ReferenceHandler;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
@@ -81,6 +81,7 @@ import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
@@ -390,10 +391,14 @@ public class SubstrateOptions {
         disable(GraalOptions.PartialUnroll, values);
 
         /*
-         * Do not align loop headers to further reduce code size.
+         * Do not align code to further reduce code size.
          */
+        ConcealedOptions.CodeAlignment.update(values, 1);
         GraalOptions.LoopHeaderAlignment.update(values, 0);
         GraalOptions.IsolatedLoopHeaderAlignment.update(values, 0);
+        if (ConfigurationValues.getTarget().arch instanceof AMD64) {
+            disable(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
+        }
 
         /*
          * Do not run PEA - it can fan out allocations too much.
@@ -628,7 +633,6 @@ public class SubstrateOptions {
     @Option(help = "Enable detection and runtime container configuration support.")//
     public static final HostedOptionKey<Boolean> UseContainerSupport = new HostedOptionKey<>(true);
 
-    @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
 
@@ -871,8 +875,6 @@ public class SubstrateOptions {
     /*
      * Isolate tear down options.
      */
-
-    @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @Option(help = "The number of seconds before and between which tearing down an isolate gives a warning message. 0 implies no warning.")//
     public static final RuntimeOptionKey<Long> TearDownWarningSeconds = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
 
@@ -909,7 +911,7 @@ public class SubstrateOptions {
     @Option(help = "Perform trivial method inlining in the AOT compiled native image")//
     public static final HostedOptionKey<Boolean> AOTTrivialInline = new HostedOptionKey<>(true);
 
-    @LayerVerifiedOption(kind = Kind.Removed, severity = Severity.Error, positional = false)//
+    @LayerVerifiedOption(kind = Kind.Removed, severity = Severity.Warn, positional = false)//
     @Option(help = "file:doc-files/NeverInlineHelp.txt", type = OptionType.Debug)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> NeverInline = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
@@ -1050,10 +1052,16 @@ public class SubstrateOptions {
             return value;
         }
 
-        if (ConfigurationValues.getTarget().arch instanceof AMD64 && optimizationLevel() != OptimizationLevel.SIZE) {
+        if (ConfigurationValues.getTarget().arch instanceof AMD64) {
             return 32;
         }
         return 16;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static int codeAlignment(OptionValues options) {
+        int value = ConcealedOptions.CodeAlignment.getValue(options);
+        return value > 0 ? value : codeAlignment();
     }
 
     @Option(help = "Determines if VM internal threads (e.g., a dedicated VM operation or reference handling thread) are allowed in this image.", type = OptionType.Expert) //
@@ -1063,8 +1071,13 @@ public class SubstrateOptions {
     @Option(help = "Determines if debugging-specific helper methods are embedded into the image. Those methods can be called directly from the debugger to obtain or print additional information.", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> IncludeDebugHelperMethods = new HostedOptionKey<>(false);
 
+    private static final String ENABLE_DEBUGINFO_OPTION = "-g";
+    // Only raise error if -g is used in current layer build but missing in the previous layer build
+    @LayerVerifiedOption(apiOption = ENABLE_DEBUGINFO_OPTION, kind = Kind.Added, severity = Severity.Error, message = "If you want to use " + ENABLE_DEBUGINFO_OPTION +
+                    " in this layer, use a base layer that also got built with " + ENABLE_DEBUGINFO_OPTION + ".")//
+    // ... but use stricter check for raw (non-API) use of GenerateDebugInfo
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
-    @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
+    @APIOption(name = ENABLE_DEBUGINFO_OPTION, fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
     public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
         @Override
@@ -1215,7 +1228,6 @@ public class SubstrateOptions {
         @Option(help = "The largest page size of machines that can run the image. The default of 0 automatically selects a typically suitable value.")//
         protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
 
-        @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
         @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
         public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);
 
@@ -1236,7 +1248,7 @@ public class SubstrateOptions {
         /** Use {@link SubstrateOptions#hasDumpRuntimeCompiledMethodsSupport()} instead. */
         @Option(help = "Dump the instructions of runtime compiled methods in temporary files.") //
         public static final RuntimeOptionKey<Boolean> DumpRuntimeCompiledMethods = new RuntimeOptionKey<>(false, key -> {
-            if (key.hasBeenSet() && Platform.includedIn(Platform.WINDOWS.class)) {
+            if (key.hasBeenSet() && Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
                 throw UserError.invalidOptionValue(key, key.getValue(), "Dumping runtime compiled code is not supported on Windows.");
             }
         });
@@ -1248,7 +1260,6 @@ public class SubstrateOptions {
     @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(true);
 
-    @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @Option(help = "Enables signal handling", stability = OptionStability.EXPERIMENTAL, type = Expert)//
     public static final RuntimeOptionKey<Boolean> EnableSignalHandling = new RuntimeOptionKey<>(null, Immutable) {
         @Override
@@ -1537,6 +1548,7 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Avoid linker relocations for code and instead emit address computations.", type = OptionType.Expert) //
+    @LayerVerifiedOption(severity = Severity.Error, kind = Kind.Changed, positional = false) //
     public static final HostedOptionKey<Boolean> RelativeCodePointers = new HostedOptionKey<>(false, SubstrateOptions::validateRelativeCodePointers);
 
     @Fold
@@ -1549,13 +1561,6 @@ public class SubstrateOptions {
             String enabledOption = SubstrateOptionsParser.commandArgument(optionKey, "+");
 
             UserError.guarantee(Platform.includedIn(PLATFORM_JNI.class) || Platform.includedIn(NATIVE_ONLY.class), "%s is supported only with hardware target platforms.", enabledOption);
-
-            /*
-             * GR-59707: Dispatch tables must potentially be patched at runtime still. Method
-             * offsets for dispatch need to be passed on between layer builds rather than using
-             * symbol names.
-             */
-            UserError.guarantee(!ImageLayerBuildingSupport.buildingImageLayer(), "%s is currently not supported with layered images.", enabledOption);
 
             // The concept of a code base would need to be introduced in the LLVM backend first.
             UserError.guarantee(!useLLVMBackend(), "%s is currently not supported with the LLVM backend.", enabledOption);
@@ -1570,7 +1575,7 @@ public class SubstrateOptions {
     }
 
     public static boolean hasDumpRuntimeCompiledMethodsSupport() {
-        return !Platform.includedIn(Platform.WINDOWS.class) && ConcealedOptions.DumpRuntimeCompiledMethods.getValue();
+        return !Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) && ConcealedOptions.DumpRuntimeCompiledMethods.getValue();
     }
 
     @Option(help = "file:doc-files/TrackDynamicAccessHelp.txt", stability = OptionStability.EXPERIMENTAL)//

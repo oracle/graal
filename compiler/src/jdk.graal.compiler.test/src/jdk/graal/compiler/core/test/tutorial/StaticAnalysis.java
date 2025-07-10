@@ -29,8 +29,6 @@ import static jdk.graal.compiler.core.test.GraalCompilerTest.getInitialOptions;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -64,6 +62,8 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.graph.StatelessPostOrderNodeIterator;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -160,8 +160,8 @@ public class StaticAnalysis {
 
         protected Results() {
             allInstantiatedTypes = new TypeFlow();
-            fields = new HashMap<>();
-            methods = new HashMap<>();
+            fields = new EconomicHashMap<>();
+            methods = new EconomicHashMap<>();
         }
 
         /**
@@ -301,8 +301,8 @@ public class StaticAnalysis {
         private final Set<TypeFlow> uses;
 
         protected TypeFlow() {
-            types = new HashSet<>();
-            uses = new HashSet<>();
+            types = new EconomicHashSet<>();
+            uses = new EconomicHashSet<>();
         }
 
         /**
@@ -367,7 +367,7 @@ public class StaticAnalysis {
             this.callTarget = callTarget;
             this.actualParameters = actualParameterFlows;
             this.actualReturn = actualReturnFlow;
-            this.callees = new HashSet<>();
+            this.callees = new EconomicHashSet<>();
         }
 
         private void linkCallee(ResolvedJavaMethod callee) {

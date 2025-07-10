@@ -24,10 +24,16 @@
  */
 package jdk.graal.compiler.vector.lir.amd64;
 
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.EVCVTTSD2USI;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.EVCVTTSD2USQ;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.EVCVTTSS2USI;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.EVCVTTSS2USQ;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VCVTTSD2SI;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VCVTTSD2SQ;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VCVTTSS2SI;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VCVTTSS2SQ;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp.EVCVTUSQ2SD;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp.EVCVTUSQ2SS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp.VCVTSD2SS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp.VCVTSI2SD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp.VCVTSI2SS;
@@ -339,17 +345,24 @@ public class AMD64VectorNodeMatchRules extends AMD64NodeMatchRules {
              */
             return null;
         } else {
+            boolean avx512 = simdEncoding == AMD64SIMDInstructionEncoding.EVEX;
             return switch (root.getFloatConvert()) {
                 case D2F -> emitConvertMemory(AMD64Kind.SINGLE, VCVTSD2SS, access);
                 case D2I -> emitConvertMemory(AMD64Kind.DWORD, VCVTTSD2SI, AVXSize.XMM, access);
+                case D2UI -> avx512 ? emitConvertMemory(AMD64Kind.DWORD, EVCVTTSD2USI, AVXSize.XMM, access) : null;
                 case D2L -> emitConvertMemory(AMD64Kind.QWORD, VCVTTSD2SQ, AVXSize.XMM, access);
+                case D2UL -> avx512 ? emitConvertMemory(AMD64Kind.QWORD, EVCVTTSD2USQ, AVXSize.XMM, access) : null;
                 case F2D -> emitConvertMemory(AMD64Kind.DOUBLE, VCVTSS2SD, access);
                 case F2I -> emitConvertMemory(AMD64Kind.DWORD, VCVTTSS2SI, AVXSize.XMM, access);
+                case F2UI -> avx512 ? emitConvertMemory(AMD64Kind.DWORD, EVCVTTSS2USI, AVXSize.XMM, access) : null;
                 case F2L -> emitConvertMemory(AMD64Kind.QWORD, VCVTTSS2SQ, AVXSize.XMM, access);
+                case F2UL -> avx512 ? emitConvertMemory(AMD64Kind.QWORD, EVCVTTSS2USQ, AVXSize.XMM, access) : null;
                 case I2D -> emitConvertMemory(AMD64Kind.DOUBLE, VCVTSI2SD, access);
                 case I2F -> emitConvertMemory(AMD64Kind.SINGLE, VCVTSI2SS, access);
                 case L2D -> emitConvertMemory(AMD64Kind.DOUBLE, VCVTSQ2SD, access);
+                case UL2D -> avx512 ? emitConvertMemory(AMD64Kind.DOUBLE, EVCVTUSQ2SD, access) : null;
                 case L2F -> emitConvertMemory(AMD64Kind.SINGLE, VCVTSQ2SS, access);
+                case UL2F -> avx512 ? emitConvertMemory(AMD64Kind.SINGLE, EVCVTUSQ2SS, access) : null;
                 default -> throw GraalError.shouldNotReachHereUnexpectedValue(root.getFloatConvert()); // ExcludeFromJacocoGeneratedReport
             };
         }

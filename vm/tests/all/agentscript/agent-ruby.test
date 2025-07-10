@@ -28,7 +28,7 @@ Ruby: Insight version 1.2 is launching
 Ruby: Hooks are ready!
 Ruby: observed loading of .*test.rb
 Ahoj
-> js --polyglot --insight=agent-ruby.rb --experimental-options agent-fib.js
+> js --jvm --polyglot --insight=agent-ruby.rb --experimental-options agent-fib.js
 Ruby: Insight version 1.2 is launching
 Ruby: Hooks are ready!
 Ruby: observed loading of agent-fib.js
@@ -37,4 +37,4 @@ minusOne 3
 minusOne 2
 minusOne 2
 Three is the result 3
-# >[0?] node --js.print --polyglot --insight=agent-ruby.rb --experimental-options agent-fib.js
+# >[0?] node --js.print --jvm --polyglot --insight=agent-ruby.rb --experimental-options agent-fib.js

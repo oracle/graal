@@ -22,9 +22,11 @@
  */
 package com.oracle.truffle.espresso.nodes.bytecodes;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
@@ -37,9 +39,11 @@ public abstract class NullCheck extends EspressoNode {
     abstract StaticObject execute(StaticObject receiver);
 
     @Specialization
-    StaticObject doNullCheck(StaticObject receiver, @Cached InlinedBranchProfile exceptionProfile) {
+    StaticObject doNullCheck(StaticObject receiver,
+                    @Bind Node node,
+                    @Cached InlinedBranchProfile exceptionProfile) {
         if (StaticObject.isNull(receiver)) {
-            exceptionProfile.enter(this);
+            exceptionProfile.enter(node);
             throw getMeta().throwNullPointerException();
         }
         return receiver;

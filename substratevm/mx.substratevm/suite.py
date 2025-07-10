@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "7.55.7",
+    "mxversion": "7.58.6",
     "name": "substratevm",
     "version" : "26.0.0",
     "release" : False,
@@ -1160,7 +1160,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "21+",
+            "javaCompliance" : "22+",
             "spotbugs": "false",
             "jacoco" : "exclude",
         },

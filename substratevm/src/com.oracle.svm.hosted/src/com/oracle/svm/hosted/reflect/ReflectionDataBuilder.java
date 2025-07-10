@@ -40,6 +40,7 @@ import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_SIGNERS_FL
 import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllTypeReachableConditionsAsTypeReached;
 
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
@@ -87,6 +88,7 @@ import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
+import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
@@ -222,6 +224,21 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 registerLinkageError(clazz, e, classLookupExceptions);
             }
         });
+    }
+
+    void registerClassMetadata(ConfigurationCondition condition, Class<?> clazz) {
+        registerAllDeclaredFieldsQuery(condition, true, clazz);
+        registerAllFieldsQuery(condition, true, clazz);
+        registerAllDeclaredMethodsQuery(condition, true, clazz);
+        registerAllMethodsQuery(condition, true, clazz);
+        registerAllDeclaredConstructorsQuery(condition, true, clazz);
+        registerAllConstructorsQuery(condition, true, clazz);
+        registerAllDeclaredClassesQuery(condition, clazz);
+        registerAllClassesQuery(condition, clazz);
+        registerAllRecordComponentsQuery(condition, clazz);
+        registerAllPermittedSubclassesQuery(condition, clazz);
+        registerAllNestMembersQuery(condition, clazz);
+        registerAllSignersQuery(condition, clazz);
     }
 
     /**
@@ -1159,10 +1176,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public int getEnabledReflectionQueries(Class<?> clazz) {
         int enabledQueries = enabledQueriesFlags.getOrDefault(clazz, 0);
         /*
-         * Primitives, arrays and object are registered by default since they provide reflective
-         * access to either no members or only Object methods.
+         * Primitives and arrays are registered by default since they provide reflective access to
+         * no members.
          */
-        if (clazz == Object.class || clazz.isPrimitive() || clazz.isArray()) {
+        if (clazz.isPrimitive() || clazz.isArray()) {
             enabledQueries |= ALL_DECLARED_CLASSES_FLAG | ALL_CLASSES_FLAG | ALL_DECLARED_CONSTRUCTORS_FLAG | ALL_CONSTRUCTORS_FLAG | ALL_DECLARED_METHODS_FLAG | ALL_METHODS_FLAG |
                             ALL_DECLARED_FIELDS_FLAG | ALL_FIELDS_FLAG;
         }
@@ -1243,6 +1260,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public void registerHeapReflectionExecutable(Executable reflectExecutable, ScanReason reason) {
+        if (reflectExecutable instanceof Constructor<?> reflectConstructor && ReflectionSubstitutionSupport.singleton().isCustomSerializationConstructor(reflectConstructor)) {
+            /*
+             * Constructors created by Constructor.newWithAccessor are indistinguishable from an
+             * equivalent constructor with a "correct" accessor, and as such could hide this
+             * constructor from reflection queries. We therefore exclude such constructors from the
+             * internal reflection metadata.
+             */
+            return;
+        }
         AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(reflectExecutable);
         if (heapMethods.put(analysisMethod, reflectExecutable) == null) {
             if (sealed) {

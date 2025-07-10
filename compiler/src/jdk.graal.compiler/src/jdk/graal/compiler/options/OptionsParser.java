@@ -27,7 +27,6 @@ package jdk.graal.compiler.options;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Formatter;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -41,6 +40,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 
 import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.util.EconomicHashSet;
 
 /**
  * This class contains methods for parsing Graal options and matching them against a set of
@@ -57,7 +57,7 @@ public class OptionsParser {
      */
     public record LibGraalOptionsInfo(EconomicMap<String, OptionDescriptor> descriptors, Set<String> enterpriseOptions) {
         public static LibGraalOptionsInfo create() {
-            return new LibGraalOptionsInfo(EconomicMap.create(), new HashSet<>());
+            return new LibGraalOptionsInfo(EconomicMap.create(), new EconomicHashSet<>());
         }
     }
 

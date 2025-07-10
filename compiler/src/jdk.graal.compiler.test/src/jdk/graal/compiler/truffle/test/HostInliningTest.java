@@ -82,6 +82,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.truffle.host.HostInliningPhase;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -232,7 +233,7 @@ public class HostInliningTest extends TruffleCompilerImplTest {
     }
 
     public static void assertInvokesFound(StructuredGraph graph, String[] notInlined, int[] counts) {
-        Map<String, Integer> found = new HashMap<>();
+        Map<String, Integer> found = new EconomicHashMap<>();
         List<Invoke> invokes = new ArrayList<>();
         invokes.addAll(graph.getNodes().filter(InvokeNode.class).snapshot());
         invokes.addAll(graph.getNodes().filter(InvokeWithExceptionNode.class).snapshot());
@@ -412,6 +413,7 @@ public class HostInliningTest extends TruffleCompilerImplTest {
     }
 
     static int notExplorable(int value) {
+        // Checkstyle: stop stable iteration order check
         new HashMap<>().put(value, value);
         new HashMap<>().put(value, value);
         new HashMap<>().put(value, value);
@@ -433,6 +435,7 @@ public class HostInliningTest extends TruffleCompilerImplTest {
         new HashMap<>().put(value, value);
         new HashMap<>().put(value, value);
         new HashMap<>().put(value, value);
+        // Checkstyle: resume stable iteration order check
         return value;
     }
 

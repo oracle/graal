@@ -546,7 +546,7 @@ public class ResourcesFeature implements InternalFeature {
                 if (!rp.moduleNameMatches(moduleName)) {
                     continue;
                 }
-                if (rp.pattern.matcher(resourceName).matches() || rp.pattern.matcher(relativePathWithTrailingSlash).matches()) {
+                if (rp.pattern.matcher(resourceName).matches()) {
                     return List.of(); // nothing should match excluded resource
                 }
             }

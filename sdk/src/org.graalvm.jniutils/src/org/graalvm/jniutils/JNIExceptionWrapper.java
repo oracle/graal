@@ -322,7 +322,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
                 return hotSpotStackTrace;
             }
         } else {
-            if (containsJNIHostCall(nativeStackTrace)) {
+            if (containsHostToIsolateTransition(nativeStackTrace, hotSpotStackTrace)) {
                 // Already merged
                 return nativeStackTrace;
             }
@@ -363,7 +363,8 @@ public final class JNIExceptionWrapper extends RuntimeException {
             } else {
                 useHotSpotStack = true;
             }
-            while (nativeStackIndex < nativeStackTrace.length && (startingnativeFrame || !isJNIHostCall(nativeStackTrace[nativeStackIndex]))) {
+            while (nativeStackIndex < nativeStackTrace.length &&
+                            (startingnativeFrame || !(isJNIAPICall(nativeStackTrace[nativeStackIndex]) && isJNIHostCall(nativeStackTrace[nativeStackIndex + 1])))) {
                 startingnativeFrame = false;
                 merged[targetIndex++] = nativeStackTrace[nativeStackIndex++];
             }
@@ -405,6 +406,28 @@ public final class JNIExceptionWrapper extends RuntimeException {
         for (StackTraceElement e : stackTrace) {
             if (isJNIHostCall(e)) {
                 return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Determines if {@code nativeStackTrace} is already merged, contains an to isolate entry point
+     * from {@code hotSpotStackTrace}.
+     */
+    private static boolean containsHostToIsolateTransition(StackTraceElement[] nativeStackTrace, StackTraceElement[] hotSpotStackTrace) {
+        StackTraceElement transition = null;
+        for (StackTraceElement element : hotSpotStackTrace) {
+            if (element.isNativeMethod()) {
+                transition = element;
+                break;
+            }
+        }
+        if (transition != null) {
+            for (StackTraceElement element : nativeStackTrace) {
+                if (transition.getClassName().equals(element.getClassName()) && transition.getMethodName().equals(element.getMethodName())) {
+                    return true;
+                }
             }
         }
         return false;
@@ -593,6 +616,14 @@ public final class JNIExceptionWrapper extends RuntimeException {
     }
 
     /**
+     * Determines if {@code frame} is for a method denoting a JNI API call using
+     * {@code CFunctionPointer}.
+     */
+    private static boolean isJNIAPICall(StackTraceElement frame) {
+        return frame.getClassName().startsWith(JNI_FUNCTION_POINTER_CLASS_PREFIX);
+    }
+
+    /**
      * Determines if {@code frame} is for a method denoting a call into HotSpot.
      */
     private static boolean isJNIHostCall(StackTraceElement frame) {
@@ -604,6 +635,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
      */
     private static final Set<String> JNI_TRANSITION_METHODS;
     private static final String JNI_TRANSITION_CLASS;
+    private static final String JNI_FUNCTION_POINTER_CLASS_PREFIX;
     static {
         Map<String, Method> entryPoints = new HashMap<>();
         Map<String, Method> others = new HashMap<>();
@@ -627,5 +659,6 @@ public final class JNIExceptionWrapper extends RuntimeException {
         }
         JNI_TRANSITION_CLASS = JNICalls.class.getName();
         JNI_TRANSITION_METHODS = Set.copyOf(entryPoints.keySet());
+        JNI_FUNCTION_POINTER_CLASS_PREFIX = JNI.class.getName() + '$';
     }
 }

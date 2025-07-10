@@ -50,6 +50,7 @@ import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.configure.ConfigurationFile;
@@ -271,6 +272,16 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     }
 
     @Override
+    public boolean isCustomSerializationConstructor(Constructor<?> reflectConstructor) {
+        if (ReflectionUtil.readField(Constructor.class, "constructorAccessor", reflectConstructor) instanceof SubstrateConstructorAccessor accessor) {
+            AnalysisMetaAccess analysisMetaAccess = analysisAccess.getMetaAccess();
+            AnalysisMethod analysisConstructor = analysisMetaAccess.lookupJavaMethod(reflectConstructor);
+            return !accessor.getFactoryMethod().equals(FactoryMethodSupport.singleton().lookup(analysisMetaAccess, analysisConstructor, analysisConstructor.getDeclaringClass(), false));
+        }
+        return false;
+    }
+
+    @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return List.of(ClassForNameSupportFeature.class, DynamicProxyFeature.class);
     }
@@ -284,6 +295,12 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         reflectionData = new ReflectionDataBuilder((SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class));
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
         ImageSingletons.add(ReflectionHostedSupport.class, reflectionData);
+
+        /*
+         * Querying Object members is allowed to enable these accesses on array classes, since those
+         * don't define any additional members.
+         */
+        reflectionData.registerClassMetadata(ConfigurationCondition.alwaysTrue(), Object.class);
     }
 
     @Override
@@ -518,9 +535,10 @@ final class ComputeInterfaceTypeID implements FieldValueTransformerWithAvailabil
             return SubstrateMethodAccessor.INTERFACE_TYPEID_UNNEEDED;
         }
 
-        HostedMethod member = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
-        if (member.getDeclaringClass().isInterface()) {
-            return member.getDeclaringClass().getTypeID();
+        HostedMethod method = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
+        HostedMethod indirectCallTarget = method.getIndirectCallTarget();
+        if (indirectCallTarget.getDeclaringClass().isInterface()) {
+            return indirectCallTarget.getDeclaringClass().getTypeID();
         }
         return SubstrateMethodAccessor.INTERFACE_TYPEID_CLASS_TABLE;
     }
