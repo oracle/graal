@@ -88,10 +88,10 @@ public class JmxTest {
     static final String SOCKET_FACTORY_PROPERTY = "com.sun.jndi.rmi.factory.socket";
     static final String TEST_PORT = "12345";
     static final String TRUE = "true";
-    static final String JMX_REMOTE_RESOURCES = "src/com.oracle.svm.test/src/com/oracle/svm/test/jmx/jmxremoteresources";
+    static final String JMX_REMOTE_RESOURCES = "substratevm/src/com.oracle.svm.test/src/com/oracle/svm/test/jmx/jmxremoteresources";
 
     @BeforeClass
-    public static void checkForJFR() throws IOException {
+    public static void setup() throws IOException {
         assumeTrue("skipping JMX tests", !ImageInfo.inImageCode() ||
                         (VMInspectionOptions.hasJmxClientSupport() && VMInspectionOptions.hasJmxServerSupport()));
 
