@@ -63,14 +63,14 @@ public final class MissingResourceRegistrationUtils extends MissingRegistrationU
     }
 
     public static void reportResourceBundleAccess(Module module, String baseName) {
-        var bundleConfig = new ResourceConfiguration.BundleConfiguration(UnresolvedConfigurationCondition.alwaysTrue(), baseName);
+        Objects.requireNonNull(module);
+        var bundleConfig = new ResourceConfiguration.BundleConfiguration(UnresolvedConfigurationCondition.alwaysTrue(), module.getName(), baseName);
         StringWriter json = new StringWriter();
         try {
             ResourceConfiguration.printResourceBundle(bundleConfig, getJSONWriter(json), true);
         } catch (IOException e) {
             throw VMError.shouldNotReachHere("In memory JSON printing should not fail");
         }
-        Objects.requireNonNull(module);
         String moduleMessage = module.isNamed() ? " from module " + quote(module.getName()) : "";
         MissingResourceRegistrationError exception = new MissingResourceRegistrationError(
                         resourceError("resource bundle" + moduleMessage + " with name " + quote(baseName), json.toString(), "resource-bundles"),
