@@ -25,7 +25,10 @@
 package com.oracle.svm.core.jdk.localization.substitutions;
 
 import java.util.Locale;
+import java.util.MissingResourceException;
+import java.util.Objects;
 import java.util.ResourceBundle;
+import java.util.ResourceBundle.Control;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
@@ -115,7 +118,7 @@ final class Target_java_util_ResourceBundle {
         // get resource bundles for a named module only if loader is the module's class loader
         if (callerModule.isNamed() && loader == getLoader(callerModule)) {
             if (!ImageSingletons.lookup(LocalizationSupport.class).isRegisteredBundleLookup(baseName, locale, control)) {
-                MissingResourceRegistrationUtils.reportResourceBundleAccess(baseName);
+                MissingResourceRegistrationUtils.reportResourceBundleAccess(callerModule, baseName);
             }
             return MissingRegistrationUtils.runIgnoringMissingRegistrations(new Supplier<ResourceBundle>() {
                 @Override
@@ -134,7 +137,7 @@ final class Target_java_util_ResourceBundle {
                         : BootLoader.getUnnamedModule();
 
         if (!ImageSingletons.lookup(LocalizationSupport.class).isRegisteredBundleLookup(baseName, locale, control)) {
-            MissingResourceRegistrationUtils.reportResourceBundleAccess(baseName);
+            MissingResourceRegistrationUtils.reportResourceBundleAccess(unnamedModule, baseName);
         }
         return MissingRegistrationUtils.runIgnoringMissingRegistrations(new Supplier<ResourceBundle>() {
             @Override
@@ -142,6 +145,22 @@ final class Target_java_util_ResourceBundle {
                 return getBundleImpl(callerModule, unnamedModule, baseName, locale, control);
             }
         });
+    }
+
+    @Substitute
+    private static ResourceBundle getBundleFromModule(Class<?> caller,
+                    Module module,
+                    String baseName,
+                    Locale locale,
+                    Control control) {
+        Objects.requireNonNull(module);
+        Module callerModule = getCallerModule(caller);
+        try {
+            return MissingRegistrationUtils.runIgnoringMissingRegistrations(() -> getBundleImpl(callerModule, module, baseName, locale, control));
+        } catch (MissingResourceException mre) {
+            MissingResourceRegistrationUtils.reportResourceBundleAccess(module, baseName);
+            throw mre;
+        }
     }
 
     @Alias
