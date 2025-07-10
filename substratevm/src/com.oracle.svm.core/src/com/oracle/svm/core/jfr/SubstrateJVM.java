@@ -26,6 +26,7 @@ package com.oracle.svm.core.jfr;
 
 import java.util.List;
 
+import com.oracle.svm.core.os.RawFileOperationSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -33,9 +34,11 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jfr.events.JfrAllocationEvents;
+import com.oracle.svm.core.jfr.events.DumpReasonEvent;
 import com.oracle.svm.core.jfr.logging.JfrLogging;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectProfiler;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
@@ -101,7 +104,6 @@ public class SubstrateJVM {
      * in).
      */
     private volatile boolean recording;
-    private String dumpPath;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateJVM(List<Configuration> configurations, boolean writeFile) {
@@ -334,6 +336,10 @@ public class SubstrateJVM {
     public void beginRecording() {
         if (recording) {
             return;
+        }
+
+        if (JfrEmergencyDumpSupport.isPresent()) {
+            JfrEmergencyDumpSupport.singleton().initialize();
         }
 
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
@@ -581,24 +587,31 @@ public class SubstrateJVM {
      * See {@link JVM#setRepositoryLocation}.
      */
     public void setRepositoryLocation(@SuppressWarnings("unused") String dirText) {
-        // Would only be used in case of an emergency dump, which is not supported at the moment.
+        if (JfrEmergencyDumpSupport.isPresent()) {
+            JfrEmergencyDumpSupport.singleton().setRepositoryLocation(dirText);
+        }
     }
 
     /**
      * See {@code JfrEmergencyDump::set_dump_path}.
      */
     public void setDumpPath(String dumpPathText) {
-        dumpPath = dumpPathText;
+        if (JfrEmergencyDumpSupport.isPresent()) {
+            JfrEmergencyDumpSupport.singleton().setDumpPath(dumpPathText);
+        }
     }
 
     /**
      * See {@code JVM#getDumpPath()}.
      */
     public String getDumpPath() {
-        if (dumpPath == null) {
-            dumpPath = Target_jdk_jfr_internal_util_Utils.getPathInProperty("user.home", null).toString();
+        if (JfrEmergencyDumpSupport.isPresent()) {
+            if (JfrEmergencyDumpSupport.singleton().getDumpPath() == null) {
+                JfrEmergencyDumpSupport.singleton().setDumpPath(Target_jdk_jfr_internal_util_Utils.getPathInProperty("user.home", null).toString());
+            }
+            return JfrEmergencyDumpSupport.singleton().getDumpPath();
         }
-        return dumpPath;
+        return null;
     }
 
     /**
@@ -737,6 +750,34 @@ public class SubstrateJVM {
         return DynamicHub.fromClass(eventClass).getJfrEventConfiguration();
     }
 
+    /** See JfrRecorderService::vm_error_rotation. */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used on OOME for emergency dumps")
+    public void vmErrorRotation() {
+        if (!recording || !JfrEmergencyDumpSupport.isPresent()) {
+            return;
+        }
+        // Hotspot emits GC root paths, but we don't support that yet. So cutoff = 0.
+        emitOldObjectSamples(0, false, false);
+        DumpReasonEvent.emit("Out of Memory", -1);
+        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
+        try {
+            boolean existingFile = chunkWriter.hasOpenFile();
+            if (!existingFile) {
+                // If no chunkfile is open, create one. This case is very unlikely.
+                Log.log().string("No existing chunk file. Creating one.").newline();
+                RawFileOperationSupport.RawFileDescriptor fd = JfrEmergencyDumpSupport.singleton().chunkPath();
+                chunkWriter.openFile(fd);
+            }
+            assert chunkWriter.hasOpenFile();
+            chunkWriter.markChunkFinal();
+            chunkWriter.closeFileForEmergencyDump();
+            JfrEmergencyDumpSupport.singleton().onVmError();
+        } finally {
+            chunkWriter.unlock();
+        }
+
+    }
+
     private static class JfrBeginRecordingOperation extends JavaVMOperation {
         JfrBeginRecordingOperation() {
             super(VMOperationInfos.get(JfrBeginRecordingOperation.class, "JFR begin recording", SystemEffect.SAFEPOINT));
@@ -770,7 +811,6 @@ public class SubstrateJVM {
             if (!SubstrateJVM.get().recording) {
                 return;
             }
-
             SubstrateJVM.get().recording = false;
             JfrExecutionSampler.singleton().update();
 
@@ -829,7 +869,9 @@ public class SubstrateJVM {
             methodRepo.teardown();
             typeRepo.teardown();
             oldObjectRepo.teardown();
-
+            if (JfrEmergencyDumpSupport.isPresent()) {
+                JfrEmergencyDumpSupport.singleton().teardown();
+            }
             initialized = false;
         }
     }
