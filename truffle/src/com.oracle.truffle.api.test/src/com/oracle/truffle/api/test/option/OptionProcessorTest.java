@@ -384,6 +384,49 @@ public class OptionProcessorTest {
 
     }
 
+    @Test
+    public void testNoClosingPunctuationInDeprecationMessage() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        Engine engine = createEngineBuilder().build();
+        
+        // Test languages
+        for (String languageId : engine.getLanguages().keySet()) {
+            OptionDescriptors descriptors = engine.getLanguages().get(languageId).getOptions();
+            checkDescriptorsForClosingPunctuation(descriptors);
+        }
+        
+        // Test instruments
+        for (String instrumentId : engine.getInstruments().keySet()) {
+            OptionDescriptors descriptors = engine.getInstruments().get(instrumentId).getOptions();
+            checkDescriptorsForClosingPunctuation(descriptors);
+        }
+        
+        // Test explicit test cases for bad deprecation messages
+        OptionDescriptors descriptors = engine.getLanguages().get("optiontestlang2").getOptions();
+        OptionDescriptor deprecatedWithPeriod = descriptors.get("optiontestlang2.DeprecatedWithPeriod");
+        if (deprecatedWithPeriod != null) {
+            String message = deprecatedWithPeriod.getDeprecationMessage();
+            assertFalse("Deprecation message should not end with period: " + message, 
+                    message != null && message.endsWith("."));
+        }
+    }
+
+    private void checkDescriptorsForClosingPunctuation(OptionDescriptors descriptors) {
+        for (OptionDescriptor descriptor : descriptors) {
+            if (descriptor.isDeprecated()) {
+                String message = descriptor.getDeprecationMessage();
+                if (message != null && !message.isEmpty()) {
+                    assertFalse("Deprecation message should not end with period: " + message, 
+                            message.endsWith("."));
+                    assertFalse("Deprecation message should not end with exclamation mark: " + message, 
+                            message.endsWith("!"));
+                    assertFalse("Deprecation message should not end with question mark: " + message, 
+                            message.endsWith("?"));
+                }
+            }
+        }
+    }
+
     private static OptionValues getOptionValues(Context c) {
         c.enter();
         try {
@@ -544,6 +587,38 @@ public class OptionProcessorTest {
         }
 
     }
+
+        @Registration(id = OptionTestLang2.ID, version = "1.0", name = OptionTestLang2.ID)
+        public static class OptionTestLang2 extends TruffleLanguage<Env> {
+
+            public static final String ID = "optiontestlang2";
+
+            @Option(help = "Option with bad deprecation message", category = OptionCategory.USER, deprecated = true, deprecationMessage = "This message incorrectly ends with a period.")
+            static final OptionKey<String> DeprecatedWithPeriod = new OptionKey<>("test");
+
+            @Option(help = "Option with bad deprecation message", category = OptionCategory.USER, deprecated = true, deprecationMessage = "This message incorrectly ends with an exclamation mark!")
+            static final OptionKey<String> DeprecatedWithExclamation = new OptionKey<>("test");
+
+            @Option(help = "Option with good deprecation message", category = OptionCategory.USER, deprecated = true, deprecationMessage = "This message correctly omits closing punctuation")
+            static final OptionKey<String> DeprecatedWithGoodMessage = new OptionKey<>("test");
+
+            @Override
+            protected OptionDescriptors getOptionDescriptors() {
+            return new OptionTestLang2OptionDescriptors();
+            }
+
+            @Override
+            protected Env createContext(Env env) {
+            return env;
+            }
+
+            private static final ContextReference<Env> REFERENCE = ContextReference.create(OptionTestLang2.class);
+
+            public static Env getCurrentContext() {
+            return REFERENCE.get(null);
+            }
+
+        }
 
     @TruffleInstrument.Registration(id = "optiontestinstr1", services = OptionValues.class)
     public static class OptionTestInstrument1 extends TruffleInstrument {
