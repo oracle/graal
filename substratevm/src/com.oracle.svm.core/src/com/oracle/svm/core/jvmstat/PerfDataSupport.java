@@ -26,11 +26,19 @@ package com.oracle.svm.core.jvmstat;
 
 import java.nio.ByteBuffer;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 
+import jdk.graal.compiler.api.replacements.Fold;
+
 public interface PerfDataSupport {
+    @Fold
+    static PerfDataSupport singleton() {
+        return ImageSingletons.lookup(PerfDataSupport.class);
+    }
+
     ByteBuffer attach(int lvmid);
 
     void detach(ByteBuffer bb);
