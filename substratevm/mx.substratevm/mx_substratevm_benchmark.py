@@ -989,9 +989,11 @@ class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
             gos_log_file_name = f"{timestamp}-gos-out.log"
             gos_cmd += ["--log-to", f"stdout,file:{gos_log_file_name}"]
-            gos_cmd += suite.runArgs(bmSuiteArgs)
+            if suite.execution_context.virtual_machine.graalhost_graalos:
+                gos_cmd += ["-p", f"deployment='nginx-tinyinit-graalhost'"]
             app_cmd_str = " ".join(app_cmd)
             gos_cmd += ["-p", f"command=\"{app_cmd_str}\""]
+            gos_cmd += suite.runArgs(bmSuiteArgs)
             mx.log(f"Produced 'gos-scenario' command: '{' '.join(gos_cmd)}'")
             return gos_cmd
 
