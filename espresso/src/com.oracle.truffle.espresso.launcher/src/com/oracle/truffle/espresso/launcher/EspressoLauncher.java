@@ -60,6 +60,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         new EspressoLauncher().launch(args);
     }
 
+    private final boolean launcherDebug = System.getenv("_JAVA_LAUNCHER_DEBUG") != null;
     private final ArrayList<String> mainClassArgs = new ArrayList<>();
     private String mainClassName = null;
     private LaunchMode launchMode = LaunchMode.LM_CLASS;
@@ -184,6 +185,14 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         int javaAgentIndex = 0;
 
         List<String> expandedArguments = expandAtFiles(arguments);
+
+        if (launcherDebug) {
+            println("Command line args:");
+            println("argv[0] = " + getProgramName());
+            for (int i = 0; i < expandedArguments.size(); i++) {
+                println(String.format("argv[%d] = %s", i + 1, expandedArguments.get(i)));
+            }
+        }
 
         Arguments args = new Arguments(expandedArguments);
         while (args.next()) {
@@ -401,19 +410,74 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
     }
 
     private List<String> expandAtFiles(List<String> arguments) {
+        // Expand @arg-file arguments until we reach application arguments
         List<String> expanded = null;
-        for (int i = 0; i < arguments.size(); i++) {
+        int i = 0;
+        for (; i < arguments.size(); i++) {
             String arg = arguments.get(i);
-            if (arg.startsWith("@")) {
+            if (arg.startsWith("@") && arg.length() > 1) {
                 if (expanded == null) {
                     expanded = new ArrayList<>(arguments.subList(0, i));
                 }
-                parseArgFile(arg.substring(1, arg.length()), expanded);
-            } else if (expanded != null) {
-                expanded.add(arg);
+                String argArg = arg.substring(1);
+                if (arg.charAt(1) == '@') {
+                    // escaped argument
+                    expanded.add(argArg);
+                } else {
+                    // Note, at the moment we don't detect the end of VM arguments
+                    // inside the arg file itself
+                    parseArgFile(argArg, expanded);
+                }
+            } else {
+                if (arg.startsWith("-")) {
+                    if (isWhiteSpaceOption(arg)) {
+                        // Skip the argument that follows this option
+                        if (expanded != null) {
+                            expanded.add(arg);
+                        }
+                        i++;
+                        arg = arguments.get(i);
+                    } else if ("--disable-@files".equals(arg) || arg.startsWith("--module=")) {
+                        break;
+                    }
+                } else {
+                    // We have reached the main class or the jar
+                    break;
+                }
+                if (expanded != null) {
+                    expanded.add(arg);
+                }
             }
         }
+        if (expanded != null && i < arguments.size()) {
+            expanded.addAll(arguments.subList(i, arguments.size()));
+        }
         return expanded == null ? arguments : expanded;
+    }
+
+    private static boolean isWhiteSpaceOption(String arg) {
+        return switch (arg) {
+            case "--module-path",
+                            "-p",
+                            "--upgrade-module-path",
+                            "--add-modules",
+                            "--enable-native-access",
+                            "--limit-modules",
+                            "--add-exports",
+                            "--add-opens",
+                            "--add-reads",
+                            "--patch-module",
+                            "--describe-module",
+                            "-d",
+                            "--source",
+                            "--module",
+                            "-m",
+                            "-classpath",
+                            "-cp",
+                            "--class-path" ->
+                true;
+            default -> false;
+        };
     }
 
     private void parseArgFile(String pathArg, List<String> expanded) {
@@ -464,6 +528,8 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             case "TieredStopAtLevel" -> {
                 if ("0".equals(value)) {
                     espressoOptions.put("engine.Compilation", "false");
+                } else if ("1".equals(value)) {
+                    espressoOptions.put("engine.Mode", "latency");
                 } else {
                     unrecognized.add(fullArg);
                 }
