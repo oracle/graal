@@ -48,8 +48,8 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/15178aa298e43be3e27121343432f25884db4e5d/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L7827-L7847",
-          sha1 = "4b7c56d39d91df3d900d50ca260ff8ad04815574")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/b1fa1ecc988fb07f191892a459625c2c8f2de3b5/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L7827-L7847",
+          sha1 = "1c7cd8d5f5630955c23eee37f61e7c493cb6b04e")
 @SyncPort(from = "https://github.com/openjdk/jdk/blob/c2d76f9844aadf77a0b213a9169a7c5c8c8f1ffb/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L4244-L4280",
           sha1 = "33649be9177daf5f0b4817d807458a5ff8c00365")
 // @formatter:on
