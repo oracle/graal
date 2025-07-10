@@ -29,6 +29,7 @@
   local use_musl_static = sg.use_musl_static,
   local use_musl_dynamic = sg.use_musl_dynamic,
   local add_quickbuild = sg.add_quickbuild,
+  local partial = sg.partial,
 
   local use_oraclejdk_latest = task_spec(run_spec.evaluate_late({
     "use_oraclejdk_latest": common.oraclejdkLatest + galahad.exclude
@@ -125,7 +126,7 @@
       "linux:amd64:jdk-latest": tier1 + t("30:00"),
     }),
     "basics": mxgate("build,helloworld,native_unittests,truffle_unittests,debuginfotest,hellomodule,java_agent,condconfig") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk-latest": tier2 + gdb("14.2") + t("55:00"),
+      "linux:amd64:jdk-latest": tier2 + partial(2) + gdb("14.2") + t("40:00"),
       "windows:amd64:jdk-latest": tier3 + t("1:30:00"),
     }) + variants({
       "optlevel:quickbuild": {
@@ -135,7 +136,7 @@
         "linux:amd64:jdk-latest": tier3 + gdb("14.2") + t("55:00"),
       },
       "java-compiler:ecj": {
-        "linux:amd64:jdk-latest": tier2 + gdb("14.2") + t("55:00"),
+        "linux:amd64:jdk-latest": tier2 + partial(2) + gdb("14.2") + t("40:00"),
       },
     }),
     "oraclejdk-helloworld": mxgate("build,helloworld,hellomodule") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
