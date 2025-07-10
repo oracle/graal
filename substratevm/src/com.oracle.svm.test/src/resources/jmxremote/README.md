@@ -7,7 +7,10 @@ Create the file `jmxremote.access`. In it add the line: `myrole readwrite`. This
 Next, create the file `jmxremote.password`. In it add the line: `myrole MYP@SSWORD`. This specifies a password for the previously created role. This password will automatically be hashed and updated in the file once the first connection is made. No further action is needed.
 
 ### SSL
-Make the client keystore and client key.
+The remote JMX unit test automatically generates the necessary files in a temporary directory. 
+However, these are the steps to generate them manually:
+
+Make the client keystore and client key. 
 ```
 keytool -genkeypair -keystore clientkeystore -alias clientkey -validity 99999 -storepass clientpass -keypass clientpass -keyalg rsa
 ```

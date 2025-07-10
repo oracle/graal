@@ -31,7 +31,11 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.lang.management.ClassLoadingMXBean;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
@@ -45,10 +49,13 @@ import java.lang.management.ThreadMXBean;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import javax.management.MBeanServer;
 import javax.management.MBeanServerConnection;
@@ -100,8 +107,13 @@ public class JmxTest {
         System.setProperty(SSL_PROPERTY, TRUE);
         System.setProperty(REGISTRY_SSL_PROPERTY, TRUE);
 
-        // Copy resources into tempDirectory
         Path tempDirectory = Files.createTempDirectory("jmxtest");
+
+        // Generate SSL keystore, client cert, and truststore
+        createClientKey(tempDirectory);
+        createClientCert(tempDirectory);
+        createServerTrustStore(tempDirectory);
+        // Copy resources into tempDirectory
         Path jmxRemoteAccess = tempDirectory.resolve("jmxremote.access");
         Path jmxRemotePassword = tempDirectory.resolve("jmxremote.password");
         Path clientkeystore = tempDirectory.resolve("clientkeystore");
@@ -109,8 +121,6 @@ public class JmxTest {
         // Note: full paths are used to ensure analysis includes the resources automatically
         Files.copy(JmxTest.class.getResourceAsStream("/resources/jmxremote/jmxremote.access"), jmxRemoteAccess);
         Files.copy(JmxTest.class.getResourceAsStream("/resources/jmxremote/jmxremote.password"), jmxRemotePassword);
-        Files.copy(JmxTest.class.getResourceAsStream("/resources/jmxremote/clientkeystore"), clientkeystore);
-        Files.copy(JmxTest.class.getResourceAsStream("/resources/jmxremote/servertruststore"), servertruststore);
 
         // The following are dummy password and access files required for testing authentication.
         System.setProperty(ACCESS_PROPERTY, jmxRemoteAccess.toString());
@@ -134,6 +144,69 @@ public class JmxTest {
             startupHook.execute(false);
         } catch (Exception e) {
             Assert.fail("Failed to start server Cause: " + e.getMessage());
+        }
+    }
+
+    private static void createClientKey(Path tempDirectory) throws IOException {
+        final List<String> commandParameters = new ArrayList<>(List.of("keytool", "-genkey"));
+        commandParameters.addAll(List.of("-keystore", "clientkeystore"));
+        commandParameters.addAll(List.of("-alias", "clientkey"));
+        commandParameters.addAll(List.of("-storepass", "clientpass"));
+        commandParameters.addAll(List.of("-keypass", "clientpass"));
+        commandParameters.addAll(List.of("-dname", "CN=test, OU=test, O=test, L=test, ST=test, C=test, EMAILADDRESS=test"));
+        commandParameters.addAll(List.of("-validity", "99999"));
+        commandParameters.addAll(List.of("-keyalg", "rsa"));
+
+        ProcessBuilder pb = new ProcessBuilder().command(commandParameters);
+        pb.directory(tempDirectory.toFile());
+        final Process process = pb.start();
+        waitForProcess(process, commandParameters);
+    }
+
+    private static void createClientCert(Path tempDirectory) throws IOException {
+        final List<String> commandParameters = new ArrayList<>(List.of("keytool", "-exportcert"));
+        commandParameters.addAll(List.of("-keystore", "clientkeystore"));
+        commandParameters.addAll(List.of("-alias", "clientkey"));
+        commandParameters.addAll(List.of("-storepass", "clientpass"));
+        commandParameters.addAll(List.of("-file", "client.cer"));
+
+        ProcessBuilder pb = new ProcessBuilder().command(commandParameters);
+        pb.directory(tempDirectory.toFile());
+        final Process process = pb.start();
+        waitForProcess(process, commandParameters);
+    }
+
+    private static void createServerTrustStore(Path tempDirectory) throws IOException {
+        final List<String> commandParameters = new ArrayList<>(List.of("keytool", "-importcert"));
+        commandParameters.addAll(List.of("-file", "client.cer"));
+        commandParameters.addAll(List.of("-keystore", "servertruststore"));
+        commandParameters.addAll(List.of("-storepass", "servertrustpass"));
+
+        ProcessBuilder pb = new ProcessBuilder().command(commandParameters);
+        pb.directory(tempDirectory.toFile());
+        final Process process = pb.start();
+        // Prompted about whether the cert should be trusted.
+        OutputStream os = process.getOutputStream();
+        PrintWriter writer = new PrintWriter(os);
+        writer.write("y\n");
+        writer.flush();
+        waitForProcess(process, commandParameters);
+    }
+
+    private static void waitForProcess(Process process, List<String> command) throws IOException {
+        try {
+            process.waitFor(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            throw new IOException("Keytool execution error");
+        }
+
+        if (process.exitValue() > 0) {
+            final String processError = (new BufferedReader(new InputStreamReader(process.getErrorStream()))).lines()
+                            .collect(Collectors.joining(" \\ "));
+            final String processOutput = (new BufferedReader(new InputStreamReader(process.getInputStream()))).lines()
+                            .collect(Collectors.joining(" \\ "));
+            throw new IOException(
+                            "Keytool execution error: " + processError + ", output: " + processOutput + ", command: " + command);
         }
     }
 
