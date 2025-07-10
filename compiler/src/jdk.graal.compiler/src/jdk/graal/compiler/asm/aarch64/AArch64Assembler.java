@@ -4082,7 +4082,9 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * C6.2.230 Speculation barrier.
      */
     public void sb() {
-        emitInt(SB.encoding | BarrierOp);
+        if (supports(CPUFeature.SB)) {
+            emitInt(SB.encoding | BarrierOp);
+        }
     }
 
     public void annotatePatchingImmediate(int pos, Instruction instruction, int operandSizeBits, int offsetBits, int shift) {
