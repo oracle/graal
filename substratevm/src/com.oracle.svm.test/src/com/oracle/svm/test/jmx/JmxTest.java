@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -108,11 +108,7 @@ public class JmxTest {
 
         /*
          * The following are dummy SSL keystore and truststore files required for testing connection
-         * using SSL. The clientkeystore was used to create a client certificate
-         * (jmxremoteresources/client.cer) which was then imported into the servertruststore. The
-         * client key was created with the following properties: -alias clientkey -validity 99999
-         * -storepass clientpass -keypass clientpass -keyalg rsa (The validity is from March 28
-         * 2023).
+         * using SSL. See jmxremoteresources/README.md for more information.
          */
         System.setProperty(KEYSTORE_PROPERTY, JMX_REMOTE_RESOURCES + "/clientkeystore");
         System.setProperty(KEYSTORE_PASSWORD_PROPERTY, "clientpass");
