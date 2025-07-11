@@ -144,13 +144,16 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     @Override
     @Uninterruptible(reason = "Still being initialized.")
     public int initialize(WordPointer heapBasePointer, IsolateArguments arguments) {
-        UnsignedWord maxAddressSpaceSize = ReferenceAccess.singleton().getMaxAddressSpaceSize();
         UnsignedWord reserved = Word.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize)));
         if (reserved.equal(0)) {
-            /* Reserve a 32 GB address space, except if a larger heap size was specified. */
+            /*
+             * Reserve a 32 GB address space, except if a larger heap size was specified, or if the
+             * maximum address space size is less than that.
+             */
             UnsignedWord maxHeapSize = Word.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MaxHeapSize)));
-            reserved = UnsignedUtils.clamp(maxHeapSize, Word.unsigned(MIN_RESERVED_ADDRESS_SPACE_SIZE), maxAddressSpaceSize);
+            reserved = UnsignedUtils.max(maxHeapSize, Word.unsigned(MIN_RESERVED_ADDRESS_SPACE_SIZE));
         }
+        reserved = UnsignedUtils.min(reserved, ReferenceAccess.singleton().getMaxAddressSpaceSize());
 
         UnsignedWord alignment = unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
         WordPointer beginOut = StackValue.get(WordPointer.class);
