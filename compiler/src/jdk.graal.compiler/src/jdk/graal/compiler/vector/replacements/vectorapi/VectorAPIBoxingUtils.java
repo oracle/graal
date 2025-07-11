@@ -50,6 +50,7 @@ import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.spi.ValueProxy;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
 import jdk.graal.compiler.vector.nodes.simd.LogicValueStamp;
@@ -171,7 +172,7 @@ public class VectorAPIBoxingUtils {
          * Unboxing an object involves placing fixed read nodes. Therefore the value must be fixed,
          * or it must be a pi with a fixed guard so we have a valid insertion position.
          */
-        if (!(value instanceof FixedWithNextNode || (value instanceof PiNode pi && pi.getGuard() != null && pi.getGuard() instanceof FixedWithNextNode))) {
+        if (!(value instanceof FixedWithNextNode || (value instanceof ValueProxy pi && pi.getGuard() != null && pi.getGuard() instanceof FixedWithNextNode))) {
             return null;
         }
         /* Now check if this is a Vector API object we can do a SIMD read from. */
@@ -222,7 +223,7 @@ public class VectorAPIBoxingUtils {
         if (value instanceof FixedWithNextNode fixed) {
             insertionPoint = fixed;
         } else {
-            insertionPoint = (FixedWithNextNode) ((PiNode) value).getGuard();
+            insertionPoint = (FixedWithNextNode) ((ValueProxy) value).getGuard();
         }
         StructuredGraph graph = value.graph();
         LoadFieldNode loadPayloadArray = graph.add(LoadFieldNode.create(value.graph().getAssumptions(), value, payloadField));
