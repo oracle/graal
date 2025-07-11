@@ -870,13 +870,7 @@ public class Vector128Ops {
     private static <E> int bitmask(ByteVector vecBytes, Shape<E> shape) {
         Vector<E> vec = shape.reinterpret(vecBytes);
         VectorMask<E> mask = vec.lt(shape.zero());
-        int bitmask = 0;
-        for (int i = 0; i < mask.length(); i++) {
-            if (mask.laneIsSet(i)) {
-                bitmask |= 1 << i;
-            }
-        }
-        return bitmask;
+        return (int) mask.toLong();
     }
 
     private static <E> ByteVector shiftop(ByteVector xBytes, int shift, Shape<E> shape, VectorOperators.Binary shiftOp) {
