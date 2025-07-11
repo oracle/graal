@@ -133,7 +133,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static boolean isBundleSupported(Class<?> bundleClass) {
+    public static boolean isBundleSupported(Class<?> bundleClass) {
         return ListResourceBundle.class.isAssignableFrom(bundleClass) || OpenListResourceBundle.class.isAssignableFrom(bundleClass);
     }
 

@@ -266,7 +266,11 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             } else {
                 Modules.addOpensToAllUnnamed(module, packageName);
             }
-            resourceBundles.add(ResourceBundle.getBundle(bundleName, locale, module));
+            try {
+                resourceBundles.add(ResourceBundle.getBundle(bundleName, locale, module));
+            } catch (InternalError e) {
+                // ignore, nothing we can do
+            }
         }
         return resourceBundles;
     }
