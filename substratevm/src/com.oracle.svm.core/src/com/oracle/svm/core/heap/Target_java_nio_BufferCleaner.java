@@ -24,17 +24,47 @@
  */
 package com.oracle.svm.core.heap;
 
+import java.lang.ref.ReferenceQueue;
+
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.thread.VMThreads;
 
 @TargetClass(className = "java.nio.BufferCleaner")
 public final class Target_java_nio_BufferCleaner {
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.nio.BufferCleaner$CleanerList")//
+    static Target_java_nio_BufferCleaner_CleanerList cleanerList;
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.None, isFinal = true) //
+    static ReferenceQueue<Object> queue;
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     static Target_java_nio_BufferCleaner_CleaningThread cleaningThread;
 }
 
-@TargetClass(className = "java.nio.BufferCleaner$CleaningThread")
+@TargetClass(className = "java.nio.BufferCleaner", innerClass = "CleaningThread")
 final class Target_java_nio_BufferCleaner_CleaningThread {
+    @SuppressWarnings("static-method")
+    @Substitute
+    public void run() {
+        while (true) {
+            try {
+                Target_sun_nio_Cleaner c = SubstrateUtil.cast(Target_java_nio_BufferCleaner.queue.remove(), Target_sun_nio_Cleaner.class);
+                c.clean();
+            } catch (InterruptedException e) {
+                if (VMThreads.isTearingDown()) {
+                    return;
+                }
+                // Ignore InterruptedException in cleaner thread.
+            }
+        }
+    }
+}
+
+@TargetClass(className = "java.nio.BufferCleaner", innerClass = "CleanerList")
+final class Target_java_nio_BufferCleaner_CleanerList {
 }

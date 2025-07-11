@@ -59,6 +59,7 @@ public final class DisallowedImageHeapObjects {
     public static final Class<?> CONTINUATION_CLASS = ReflectionUtil.lookupClass("jdk.internal.vm.Continuation");
     private static final Method CONTINUATION_IS_STARTED_METHOD = ReflectionUtil.lookupMethod(CONTINUATION_CLASS, "isStarted");
     private static final Class<?> CLEANER_CLEANABLE_CLASS = ReflectionUtil.lookupClass("jdk.internal.ref.CleanerImpl$CleanerCleanable");
+    public static final Class<?> NIO_CLEANER_CLASS = ReflectionUtil.lookupClass("sun.nio.Cleaner");
     public static final Class<?> MEMORY_SEGMENT_CLASS = ReflectionUtil.lookupClass("java.lang.foreign.MemorySegment");
     public static final Class<?> SCOPE_CLASS = ReflectionUtil.lookupClass("java.lang.foreign.MemorySegment$Scope");
 
@@ -85,7 +86,7 @@ public final class DisallowedImageHeapObjects {
             onBufferReachable(buffer, reporter);
         }
 
-        if (obj instanceof Cleaner.Cleanable) {
+        if (obj instanceof Cleaner.Cleanable || NIO_CLEANER_CLASS.isInstance(obj)) {
             onCleanableReachable(obj, reporter);
         }
 
@@ -181,11 +182,11 @@ public final class DisallowedImageHeapObjects {
     }
 
     public static void onCleanableReachable(Object cleanable, DisallowedObjectReporter reporter) {
-        VMError.guarantee(cleanable instanceof Cleaner.Cleanable);
+        VMError.guarantee(cleanable instanceof Cleaner.Cleanable || NIO_CLEANER_CLASS.isInstance(cleanable));
         /*
-         * Cleanable is used to release various resources such as native memory, file descriptors,
-         * or timers, which are not available at image runtime. By disallowing these objects, we
-         * detect when such resources are reachable.
+         * Cleanable and sun.nio.Cleaner are used to release various resources such as native
+         * memory, file descriptors, or timers, which are not available at image runtime. By
+         * disallowing these objects, we detect when such resources are reachable.
          *
          * If a Cleanable is a nulled (Phantom)Reference, its problematic resource is already
          * unreachable, so we tolerate it.
@@ -193,9 +194,13 @@ public final class DisallowedImageHeapObjects {
          * A CleanerCleanable serves only to keep a cleaner thread alive (without referencing the
          * Thread) and does nothing, so we also tolerate it. We should encounter at least one such
          * object for jdk.internal.ref.CleanerFactory.commonCleaner.
+         *
+         * Internal sun.nio.Cleaner objects (formerly in jdk.internal.ref, formerly in sun.misc)
+         * should be used only by DirectByteBuffer, which we already cover above, but other code
+         * could also use them. If they have been nulled, we tolerate them, too.
          */
         if (!(cleanable instanceof Reference<?> && ((Reference<?>) cleanable).refersTo(null)) && !CLEANER_CLEANABLE_CLASS.isInstance(cleanable)) {
-            throw reporter.raise("Detected an active instance of Cleanable or jdk.internal.ref.Cleaner in the image heap. This usually means that a resource " +
+            throw reporter.raise("Detected an active instance of Cleanable or sun.io.Cleaner in the image heap. This usually means that a resource " +
                             "such as a Timer, native memory, a file descriptor or another resource is reachable which is not available at image runtime.",
                             cleanable, "Prevent such objects being used during image generation, including by class initializers.");
         }

@@ -52,6 +52,8 @@ final class Target_java_nio_Bits {
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
     private static AtomicLong COUNT = new AtomicLong();
 
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    private static int RESERVE_GC_EPOCH;
     // Checkstyle: resume
 }
 
