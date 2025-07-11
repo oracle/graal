@@ -146,6 +146,9 @@ public final class MetadataTracer {
      *         (e.g., during shutdown).
      */
     public ConfigurationType traceReflectionType(String typeName) {
+        if (isInternal(typeName)) {
+            return null;
+        }
         return traceReflectionTypeImpl(new NamedConfigurationTypeDescriptor(typeName));
     }
 
@@ -153,7 +156,14 @@ public final class MetadataTracer {
      * Marks the given proxy type as reachable from reflection.
      */
     public void traceProxyType(List<String> interfaceNames) {
-        traceReflectionTypeImpl(new ProxyConfigurationTypeDescriptor(interfaceNames));
+        ProxyConfigurationTypeDescriptor descriptor = new ProxyConfigurationTypeDescriptor(interfaceNames);
+        for (String interfaceName : interfaceNames) {
+            if (isInternal(interfaceName)) {
+                debug("proxy type not registered for reflection (uses an internal interface)", descriptor);
+                return;
+            }
+        }
+        traceReflectionTypeImpl(descriptor);
     }
 
     private ConfigurationType traceReflectionTypeImpl(ConfigurationTypeDescriptor typeDescriptor) {
@@ -163,6 +173,10 @@ public final class MetadataTracer {
             return configurationSet.getReflectionConfiguration().getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), typeDescriptor);
         }
         return null;
+    }
+
+    private static boolean isInternal(String typeName) {
+        return typeName.startsWith("com.oracle.svm.core");
     }
 
     /**
