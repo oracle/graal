@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.code;
+package com.oracle.svm.core.heap;
 
-import com.oracle.svm.core.graal.meta.SharedCodeCacheProvider;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.annotate.TargetClass;
 
-import jdk.vm.ci.code.CompiledCode;
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.SpeculationLog;
-
-public class HostedCodeCacheProvider extends SharedCodeCacheProvider {
-    HostedCodeCacheProvider(TargetDescription target, RegisterConfig registerConfig) {
-        super(target, registerConfig);
-    }
-
-    @Override
-    public InstalledCode installCode(ResolvedJavaMethod method, CompiledCode compiledCode, InstalledCode installedCode, SpeculationLog log, boolean isDefault, boolean profileDeopt) {
-        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
-    }
+@TargetClass(className = "sun.nio.Cleaner")
+public final class Target_sun_nio_Cleaner {
 }

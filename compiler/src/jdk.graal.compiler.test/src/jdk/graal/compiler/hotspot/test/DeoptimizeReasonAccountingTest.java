@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -124,7 +124,7 @@ public class DeoptimizeReasonAccountingTest extends GraalCompilerTest {
             for (boolean osr : new boolean[]{false}) {
                 this.reason = r;
                 this.isOSR = osr;
-                test(getInitialOptions(), getResolvedJavaMethod("deoptimizeSnippet"), true, null, new Object[0]);
+                test("deoptimizeSnippet");
                 ProfilingInfo info = lastCompiledGraph.method().getProfilingInfo(!isOSR, isOSR);
                 int count = info.getDeoptimizationCount(reason);
                 Assert.assertEquals(String.format("reason:%s, osr:%s", r, osr), 1, count);

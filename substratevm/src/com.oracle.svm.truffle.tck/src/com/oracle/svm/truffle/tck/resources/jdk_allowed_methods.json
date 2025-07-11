@@ -339,16 +339,5 @@
         "justification": "In native-image resource bundles are statically configured."
       }
     ]
-  },
-  {
-    "name": "jdk.internal.ref.Cleaner",
-    "methods": [
-      {
-        "name": "clean",
-        "parameterTypes" : [
-        ],
-        "justification": "Internal JDK Cleaner which does System.exit if it fails during JVM boot."
-      }
-    ]
   }
 ]

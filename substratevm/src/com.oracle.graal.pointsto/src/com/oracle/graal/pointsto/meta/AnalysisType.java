@@ -1456,6 +1456,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private static final int ANNOTATION = 0x00002000;
 
     /* Method copied from java.lang.Class. */
+    @Override
     public boolean isAnnotation() {
         return (getModifiers() & ANNOTATION) != 0;
     }

@@ -636,11 +636,14 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         Object[] context = {new DebugDumpScope(getIdString(), true), codeCache, getMethod(), compResult};
         try (DebugContext.Scope s = debug.scope("CodeInstall", context, graph)) {
             HotSpotCompilationRequest request = getRequest();
+            // By default, we only profile deoptimizations for compiled methods installed as
+            // default.
             installedCode = (HotSpotInstalledCode) backend.createInstalledCode(debug,
                             request.getMethod(),
                             request,
                             compResult,
                             null,
+                            installAsDefault,
                             installAsDefault,
                             context);
         } catch (Throwable e) {
