@@ -22,35 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.hub;
+package com.oracle.svm.interpreter.metadata;
 
-import java.util.List;
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.espresso.classfile.descriptors.Symbol;
+import com.oracle.svm.espresso.classfile.descriptors.Type;
+import com.oracle.svm.espresso.shared.meta.TypeAccess;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.espresso.classfile.ParserKlass;
-
-import jdk.vm.ci.meta.ResolvedJavaType;
-
-public interface CremaSupport {
-    @Platforms(Platform.HOSTED_ONLY.class)
-    ResolvedJavaType createInterpreterType(DynamicHub hub, ResolvedJavaType analysisType);
-
-    int getAfterFieldsOffset(DynamicHub hub);
-
-    interface CremaDispatchTable {
-        int vtableLength();
-
-        int itableLength(Class<?> iface);
-    }
-
-    CremaDispatchTable getDispatchTable(ParserKlass parsed, Class<?> superClass, List<Class<?>> superInterfaces);
-
-    void fillDynamicHubInfo(DynamicHub hub, CremaDispatchTable table, List<Class<?>> transitiveSuperInterfaces, int[] interfaceIndices);
-
-    static CremaSupport singleton() {
-        return ImageSingletons.lookup(CremaSupport.class);
+public interface CremaTypeAccess extends WithModifiers, TypeAccess<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> {
+    static Symbol<Type> jvmciNameToType(String name) {
+        // hidden classes and SVM stable proxy name contain a `.`
+        String typeString = name.replace('.', '+');
+        Symbol<Type> type = SymbolsSupport.getTypes().getOrCreateValidType(typeString);
+        if (type == null) {
+            throw new IllegalArgumentException("Invalid type name: " + name);
+        }
+        return type;
     }
 }

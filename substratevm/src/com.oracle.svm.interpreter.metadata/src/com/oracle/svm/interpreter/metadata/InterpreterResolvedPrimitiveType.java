@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,28 +26,41 @@ package com.oracle.svm.interpreter.metadata;
 
 import java.lang.reflect.Modifier;
 
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.espresso.classfile.ConstantPool;
+import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.svm.espresso.classfile.descriptors.Name;
+import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
+import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols.ParserTypes;
+import com.oracle.svm.espresso.classfile.descriptors.Signature;
+import com.oracle.svm.espresso.classfile.descriptors.Symbol;
+import com.oracle.svm.espresso.classfile.descriptors.Type;
+
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class InterpreterResolvedPrimitiveType extends InterpreterResolvedJavaType {
-
     private final JavaKind kind;
 
-    private InterpreterResolvedPrimitiveType(JavaKind kind) {
-        super(String.valueOf(kind.getTypeChar()), kind.toJavaClass());
+    private InterpreterResolvedPrimitiveType(Symbol<Type> type, JavaKind kind) {
+        super(type, kind.toJavaClass());
         assert kind.isPrimitive();
         this.kind = kind;
     }
 
-    static final InterpreterResolvedPrimitiveType BOOLEAN = new InterpreterResolvedPrimitiveType(JavaKind.Boolean);
-    static final InterpreterResolvedPrimitiveType BYTE = new InterpreterResolvedPrimitiveType(JavaKind.Byte);
-    static final InterpreterResolvedPrimitiveType SHORT = new InterpreterResolvedPrimitiveType(JavaKind.Short);
-    static final InterpreterResolvedPrimitiveType CHAR = new InterpreterResolvedPrimitiveType(JavaKind.Char);
-    static final InterpreterResolvedPrimitiveType INT = new InterpreterResolvedPrimitiveType(JavaKind.Int);
-    static final InterpreterResolvedPrimitiveType FLOAT = new InterpreterResolvedPrimitiveType(JavaKind.Float);
-    static final InterpreterResolvedPrimitiveType LONG = new InterpreterResolvedPrimitiveType(JavaKind.Long);
-    static final InterpreterResolvedPrimitiveType DOUBLE = new InterpreterResolvedPrimitiveType(JavaKind.Double);
-    static final InterpreterResolvedPrimitiveType VOID = new InterpreterResolvedPrimitiveType(JavaKind.Void);
+    static {
+        ParserSymbols.ensureInitialized();
+    }
+
+    static final InterpreterResolvedPrimitiveType BOOLEAN = new InterpreterResolvedPrimitiveType(ParserTypes._boolean, JavaKind.Boolean);
+    static final InterpreterResolvedPrimitiveType BYTE = new InterpreterResolvedPrimitiveType(ParserTypes._byte, JavaKind.Byte);
+    static final InterpreterResolvedPrimitiveType SHORT = new InterpreterResolvedPrimitiveType(ParserTypes._short, JavaKind.Short);
+    static final InterpreterResolvedPrimitiveType CHAR = new InterpreterResolvedPrimitiveType(ParserTypes._char, JavaKind.Char);
+    static final InterpreterResolvedPrimitiveType INT = new InterpreterResolvedPrimitiveType(ParserTypes._int, JavaKind.Int);
+    static final InterpreterResolvedPrimitiveType FLOAT = new InterpreterResolvedPrimitiveType(ParserTypes._float, JavaKind.Float);
+    static final InterpreterResolvedPrimitiveType LONG = new InterpreterResolvedPrimitiveType(ParserTypes._long, JavaKind.Long);
+    static final InterpreterResolvedPrimitiveType DOUBLE = new InterpreterResolvedPrimitiveType(ParserTypes._double, JavaKind.Double);
+    static final InterpreterResolvedPrimitiveType VOID = new InterpreterResolvedPrimitiveType(ParserTypes._void, JavaKind.Void);
 
     public static InterpreterResolvedPrimitiveType fromKind(JavaKind kind) {
         // @formatter:off
@@ -102,5 +115,73 @@ public final class InterpreterResolvedPrimitiveType extends InterpreterResolvedJ
     @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
         return this.equals(other);
+    }
+
+    @Override
+    public InterpreterResolvedJavaMethod[] getDeclaredMethods(boolean link) {
+        return NO_METHODS;
+    }
+
+    @Override
+    public String getJavaName() {
+        return getJavaKind().getJavaName();
+    }
+
+    @Override
+    public InterpreterResolvedJavaType findLeastCommonAncestor(InterpreterResolvedJavaType other) {
+        if (this == other) {
+            return this;
+        }
+        return null;
+    }
+
+    @Override
+    public InterpreterResolvedJavaType getSuperClass() {
+        return null;
+    }
+
+    @Override
+    public InterpreterResolvedJavaType getHostType() {
+        return null;
+    }
+
+    @Override
+    public Symbol<Name> getSymbolicRuntimePackage() {
+        return SymbolsSupport.getNames().getOrCreate(ByteSequence.EMPTY);
+    }
+
+    @Override
+    public InterpreterResolvedJavaField lookupField(Symbol<Name> name, Symbol<Type> type) {
+        return null;
+    }
+
+    @Override
+    public InterpreterResolvedJavaMethod lookupMethod(Symbol<Name> name, Symbol<Signature> signature) {
+        return null;
+    }
+
+    @Override
+    public InterpreterResolvedJavaMethod lookupInstanceMethod(Symbol<Name> name, Symbol<Signature> signature) {
+        return null;
+    }
+
+    @Override
+    public InterpreterResolvedJavaMethod lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
+        return null;
+    }
+
+    @Override
+    public InterpreterResolvedJavaMethod lookupVTableEntry(int vtableIndex) {
+        return null;
+    }
+
+    @Override
+    public ConstantPool getConstantPool() {
+        return null;
+    }
+
+    @Override
+    public InterpreterResolvedJavaType resolveClassConstantInPool(int cpi) {
+        return null;
     }
 }

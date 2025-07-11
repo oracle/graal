@@ -24,15 +24,16 @@
  */
 package com.oracle.svm.hosted;
 
-import java.lang.reflect.Field;
+import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.fieldvaluetransformer.NewInstanceFieldValueTransformer;
 import com.oracle.svm.core.hub.ClassForNameSupport;
+import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 
@@ -41,6 +42,11 @@ public class ClassRegistryFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return ClassForNameSupport.respectClassLoader();
+    }
+
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return List.of(SymbolsFeature.class);
     }
 
     @Override
@@ -53,12 +59,6 @@ public class ClassRegistryFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
         access.registerSubtypeReachabilityHandler((unused, cls) -> onTypeReachable(cls), Object.class);
-        /*
-         * This works around issues when analysis concurrently scans the readWriteLock in
-         * SymbolsImpl and might add a Thread to the image heap. It could be generalized (GR-62530).
-         */
-        Field readWriteLockField = access.findField("com.oracle.svm.espresso.classfile.descriptors.SymbolsImpl", "readWriteLock");
-        access.registerFieldValueTransformer(readWriteLockField, new NewInstanceFieldValueTransformer());
     }
 
     private static void onTypeReachable(Class<?> cls) {
@@ -68,5 +68,10 @@ public class ClassRegistryFeature implements InternalFeature {
         if (RuntimeClassLoading.isSupported() || ClassForNameSupport.isCurrentLayerRegisteredClass(cls.getName())) {
             ClassRegistries.addAOTClass(ClassLoaderFeature.getRuntimeClassLoader(cls.getClassLoader()), cls);
         }
+    }
+
+    @Override
+    public void afterCompilation(AfterCompilationAccess access) {
+        ClassRegistries.setStartingTypeId(DynamicHubSupport.currentLayer().getMaxTypeId() + 1);
     }
 }

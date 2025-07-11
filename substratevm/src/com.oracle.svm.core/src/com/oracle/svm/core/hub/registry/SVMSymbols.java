@@ -22,35 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.hub;
+package com.oracle.svm.core.hub.registry;
 
-import java.util.List;
+import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
+import com.oracle.svm.espresso.classfile.descriptors.StaticSymbols;
+import com.oracle.svm.espresso.classfile.descriptors.Symbol;
+import com.oracle.svm.espresso.classfile.descriptors.Type;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+public final class SVMSymbols {
+    // Pre-allocate enough slots to avoid resizing the underlying map.
+    // But not too much, since these maps will be persisted in the image heap (Native Image).
+    public static final StaticSymbols SYMBOLS = new StaticSymbols(ParserSymbols.SYMBOLS, 1 << 8);
 
-import com.oracle.svm.espresso.classfile.ParserKlass;
-
-import jdk.vm.ci.meta.ResolvedJavaType;
-
-public interface CremaSupport {
-    @Platforms(Platform.HOSTED_ONLY.class)
-    ResolvedJavaType createInterpreterType(DynamicHub hub, ResolvedJavaType analysisType);
-
-    int getAfterFieldsOffset(DynamicHub hub);
-
-    interface CremaDispatchTable {
-        int vtableLength();
-
-        int itableLength(Class<?> iface);
+    private SVMSymbols() {
     }
 
-    CremaDispatchTable getDispatchTable(ParserKlass parsed, Class<?> superClass, List<Class<?>> superInterfaces);
+    static {
+        SVMTypes.ensureInitialized();
+    }
 
-    void fillDynamicHubInfo(DynamicHub hub, CremaDispatchTable table, List<Class<?>> transitiveSuperInterfaces, int[] interfaceIndices);
+    public static void ensureInitialized() {
+        /* nop */
+    }
 
-    static CremaSupport singleton() {
-        return ImageSingletons.lookup(CremaSupport.class);
+    public static final class SVMTypes {
+        public static final Symbol<Type> com_oracle_svm_core_hub_Hybrid = SYMBOLS.putType("Lcom/oracle/svm/core/hub/Hybrid;");
+
+        private SVMTypes() {
+        }
+
+        public static void ensureInitialized() {
+            /* nop */
+        }
     }
 }

@@ -149,18 +149,17 @@ public final class DynamicHubCompanion {
     static DynamicHubCompanion createHosted(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
                     Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature) {
 
-        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature, null);
+        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature);
     }
 
     static DynamicHubCompanion createAtRuntime(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
-                    ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature,
-                    ResolvedJavaType interpreterType) {
+                    ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature) {
         assert RuntimeClassLoading.isSupported();
-        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature, interpreterType);
+        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature);
     }
 
     private DynamicHubCompanion(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
-                    Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, ResolvedJavaType interpreterType) {
+                    Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature) {
         this.module = module;
         this.superHub = superHub;
         this.sourceFileName = sourceFileName;
@@ -171,6 +170,5 @@ public final class DynamicHubCompanion {
         this.signature = signature;
 
         this.classLoader = classLoader;
-        this.interpreterType = interpreterType;
     }
 }
