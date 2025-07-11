@@ -145,8 +145,8 @@ public final class MetadataTracer {
      * @return the corresponding {@link ConfigurationType} or {@code null} if tracing is not active
      *         (e.g., during shutdown).
      */
-    public ConfigurationType traceReflectionType(String className) {
-        return traceReflectionTypeImpl(new NamedConfigurationTypeDescriptor(className));
+    public ConfigurationType traceReflectionType(String typeName) {
+        return traceReflectionTypeImpl(new NamedConfigurationTypeDescriptor(typeName));
     }
 
     /**
@@ -171,9 +171,9 @@ public final class MetadataTracer {
      * @return the corresponding {@link ConfigurationType} or {@code null} if tracing is not active
      *         (e.g., during shutdown).
      */
-    public ConfigurationType traceJNIType(String className) {
+    public ConfigurationType traceJNIType(String typeName) {
         assert enabledAtRunTime();
-        ConfigurationType result = traceReflectionType(className);
+        ConfigurationType result = traceReflectionType(typeName);
         if (result != null) {
             result.setJniAccessible();
         }
@@ -206,9 +206,9 @@ public final class MetadataTracer {
     /**
      * Marks the given type as serializable.
      */
-    public void traceSerializationType(String className) {
+    public void traceSerializationType(String typeName) {
         assert enabledAtRunTime();
-        ConfigurationType result = traceReflectionType(className);
+        ConfigurationType result = traceReflectionType(typeName);
         if (result != null) {
             result.setSerializable();
         }

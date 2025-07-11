@@ -274,7 +274,7 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
 
     private static JNIAccessibleMethod getDeclaredMethod(Class<?> classObject, JNIAccessibleMethodDescriptor descriptor, String dumpLabel) {
         if (MetadataTracer.enabled()) {
-            ConfigurationType clazzType = MetadataTracer.singleton().traceJNIType(classObject.getName());
+            ConfigurationType clazzType = MetadataTracer.singleton().traceJNIType(classObject.getTypeName());
             if (clazzType != null) {
                 clazzType.addMethod(descriptor.getNameConvertToString(), descriptor.getSignatureConvertToString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
             }
@@ -335,7 +335,7 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
 
     private static JNIAccessibleField getDeclaredField(Class<?> classObject, CharSequence name, boolean isStatic, String dumpLabel) {
         if (MetadataTracer.enabled()) {
-            ConfigurationType clazzType = MetadataTracer.singleton().traceJNIType(classObject.getName());
+            ConfigurationType clazzType = MetadataTracer.singleton().traceJNIType(classObject.getTypeName());
             if (clazzType != null) {
                 clazzType.addField(name.toString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED, false);
             }
