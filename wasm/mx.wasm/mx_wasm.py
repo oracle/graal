@@ -220,7 +220,6 @@ benchmark_methods = [
     "_benchmarkSetupEach",
     "_benchmarkTeardownEach",
     "_benchmarkRun",
-    "_main"
 ]
 
 
@@ -469,7 +468,7 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
         include_flags = []
         if hasattr(self.project, "includeset"):
             include_flags = ["-I", os.path.join(_suite.dir, "includes", self.project.includeset)]
-        emcc_flags = ["-s", "EXIT_RUNTIME=1", "-s", "STANDALONE_WASM", "-s", "WASM_BIGINT"] + cc_flags
+        emcc_flags = ["-s", "STANDALONE_WASM", "-s", "WASM_BIGINT"] + cc_flags
         if self.project.isBenchmarkProject():
             emcc_flags = emcc_flags + ["-s", "EXPORTED_FUNCTIONS=" + str(self.benchmark_methods()).replace("'", "\"") + ""]
         subdir_program_names = defaultdict(lambda: [])
@@ -489,12 +488,23 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
             timestampedOutput = mx.TimeStampFile(output_wasm_path)
             mustRebuild = timestampedSource.isNewerThan(timestampedOutput) or not timestampedOutput.exists()
 
+            source_cc_flags = []
+            native_bench = True
+            if filename.endswith(".c"):
+                with open(source_path) as f:
+                    source_file = f.read()
+                    for flags in re.findall(r'//\s*CFLAGS\s*=\s*(.*)\n', source_file):
+                        source_cc_flags.extend(flags.split())
+                    native_bench_option = re.search(r'//\s*NATIVE_BENCH\s*=\s*(.*)\n', source_file)
+                    if native_bench_option:
+                        native_bench = native_bench_option.group(1).lower() == "true"
+
             # Step 1: build the .wasm binary.
             if mustRebuild:
                 if filename.endswith(".c"):
                     # This generates both a js file and a wasm file.
                     # See https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone
-                    build_cmd_line = [emcc_cmd] + emcc_flags + [source_path, "-o", output_js_path] + include_flags
+                    build_cmd_line = [emcc_cmd] + emcc_flags + source_cc_flags + [source_path, "-o", output_js_path] + include_flags
                     if mx.run(build_cmd_line, nonZeroIsFatal=False) != 0:
                         mx.abort("Could not build the wasm-only output of " + filename + " with emcc.")
                 elif filename.endswith(".wat"):
@@ -533,11 +543,11 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
 
             # Step 5: if this is a benchmark project, create native binaries too.
             if mustRebuild:
-                if filename.endswith(".c"):
+                if filename.endswith(".c") and native_bench:
                     mx_util.ensure_dir_exists(os.path.join(output_dir, subdir, NATIVE_BENCH_DIR))
                     output_path = os.path.join(output_dir, subdir, NATIVE_BENCH_DIR, mx.exe_suffix(basename))
                     link_flags = ["-lm"]
-                    gcc_cmd_line = [gcc_cmd] + cc_flags + [source_path, "-o", output_path] + include_flags + link_flags
+                    gcc_cmd_line = [gcc_cmd] + cc_flags + source_cc_flags + [source_path, "-o", output_path] + include_flags + link_flags
                     if mx.run(gcc_cmd_line, nonZeroIsFatal=False) != 0:
                         mx.abort("Could not build the native binary of " + filename + ".")
                     os.chmod(output_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
@@ -666,7 +676,7 @@ def emscripten_init(args):
         llvm_root = os.path.join(emsdk_path, "upstream", "bin")
         binaryen_root = os.path.join(emsdk_path, "upstream", "lib")
         emscripten_root = os.path.join(emsdk_path, "upstream", "emscripten")
-        node_js = os.path.join(emsdk_path, "node", "14.15.5_64bit", "bin", "node")
+        node_js = os.path.join(emsdk_path, "node", "22.16.0_64bit", "bin", "node")
 
     mx.log("Generating Emscripten configuration...")
     mx.log("Config file path:    " + str(config_path))
