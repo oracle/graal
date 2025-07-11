@@ -2815,7 +2815,7 @@ _baristaConfig = {
     # Should currently only contain round numbers due to the field incorrectly being indexed as integer in the DB (GR-57487)
     "latency_percentiles": [50.0, 75.0, 90.0, 99.0, 100.0],
     "rss_percentiles": [100, 99, 98, 97, 96, 95, 90, 75, 50, 25],
-    "disable_trackers": [mx_benchmark.RssTracker, mx_benchmark.PsrecordTracker, mx_benchmark.PsrecordMaxrssTracker, mx_benchmark.RssPercentilesTracker, mx_benchmark.RssPercentilesAndMaxTracker],
+    "supported_trackers": [mx_benchmark.EnergyConsumptionTracker],
 }
 
 class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
@@ -2828,9 +2828,8 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
     def __init__(self, custom_harness_command: mx_benchmark.CustomHarnessCommand = None):
         if custom_harness_command is None:
             custom_harness_command = BaristaBenchmarkSuite.BaristaCommand()
-        super().__init__(custom_harness_command)
+        super().__init__(custom_harness_command, supported_trackers=_baristaConfig["supported_trackers"])
         self._version = None
-        self._extra_run_options = []
 
     def readBaristaVersionFromPyproject(self):
         # tomllib was included in python standard library with version 3.11
@@ -2915,25 +2914,6 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
     def new_execution_context(self, vm: Vm, benchmarks: List[str], bmSuiteArgs: List[str]) -> SingleBenchmarkExecutionContext:
         return SingleBenchmarkExecutionContext(self, vm, benchmarks, bmSuiteArgs)
-
-    def register_tracker(self, name, tracker_type):
-        if tracker_type in _baristaConfig["disable_trackers"]:
-            mx.log(f"Ignoring the registration of '{name}' tracker as it was disabled for {self.__class__.__name__}.")
-            return
-        if name == "energy":
-            if self.version() < "0.4.1":
-                mx.abort(
-                    "The 'energy' tracker is not supported for barista benchmarks before Barista version '0.4.1'."
-                    " Please update your Barista repository in order to use the 'energy' tracker! Aborting!"
-                )
-            # Allow for the baseline measurement before looking up the app process
-            self._extra_run_options += ["--cmd-app-prefix-init-timelimit", f"{tracker_type(self).baseline_duration + 5}"]
-            # Ensure that the workload is independent from the performance of the VM
-            # We want to track the energy needed for a set amount of work
-            self._extra_run_options += ["--startup-iteration-count", "0"]
-            self._extra_run_options += ["--warmup-iteration-count", "0"]
-            self._extra_run_options += ["--throughput-iteration-count", "0"]
-        super().register_tracker(name, tracker_type)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         # Pass the VM options, BaristaCommand will form the final command.
@@ -3149,6 +3129,29 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
                 new_value = f"{new_value} {existing_option_match.group(1)}"
             cmd.append(f"{option_name}={new_value}")
 
+        def _energyTrackerExtraOptions(self, suite: BaristaBenchmarkSuite):
+            """Returns extra options necessary for correct benchmark results when using the 'energy' tracker."""
+            if not isinstance(suite._tracker, mx_benchmark.EnergyConsumptionTracker):
+                return []
+
+            required_barista_version = "0.4.5"
+            if mx.VersionSpec(suite.version()) < mx.VersionSpec(required_barista_version):
+                mx.abort(
+                    f"The 'energy' tracker is not supported for barista benchmarks before Barista version '{required_barista_version}'."
+                    " Please update your Barista repository in order to use the 'energy' tracker! Aborting!"
+                )
+
+            extra_options = []
+            # If baseline has to be measured, wait for the measurement duration before looking up the app process
+            if suite._tracker.baseline_power is None:
+                extra_options += ["--cmd-app-prefix-init-sleep", f"{suite._tracker.baseline_duration}"]
+            # Ensure that the workload is independent from the performance of the VM
+            # We want to track the energy needed for a set amount of work
+            extra_options += ["--startup-iteration-count", "0"]
+            extra_options += ["--warmup-iteration-count", "0"]
+            extra_options += ["--throughput-iteration-count", "0"]
+            return extra_options
+
         def produceHarnessCommand(self, cmd, suite):
             """Maps a JVM command into a command tailored for the Barista harness.
 
@@ -3173,7 +3176,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             jvm_vm_options = jvm_cmd[index_of_java_exe + 1:]
 
             # Verify that the run arguments don't already contain a "--mode" option
-            run_args = suite.runArgs(suite.execution_context.bmSuiteArgs) + suite._extra_run_options
+            run_args = suite.runArgs(suite.execution_context.bmSuiteArgs) + self._energyTrackerExtraOptions(suite)
             mode_pattern = r"^(?:-m|--mode)(=.*)?$"
             mode_match = self._regexFindInCommand(run_args, mode_pattern)
             if mode_match:
