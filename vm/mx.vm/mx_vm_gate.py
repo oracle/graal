@@ -599,8 +599,11 @@ def gate_python(tasks):
             python_suite.extensions.run_python_unittests(python_svm_image_path)
 
 
-def _svm_truffle_tck(native_image, language_id, language_distribution=None, fail_on_error=True, print_call_tree=False):
+def _svm_truffle_tck(native_image, language_id, language_distribution=None, fail_on_error=True, print_call_tree=False,
+                     additional_options=None):
     assert language_distribution, 'Language_distribution must be given'
+    if additional_options is None:
+        additional_options = []
     dists = [
         mx.distribution('substratevm:SVM_TRUFFLE_TCK'),
         language_distribution
@@ -631,7 +634,7 @@ def _svm_truffle_tck(native_image, language_id, language_distribution=None, fail
             f'-H:TruffleTCKPermissionsReportFile={report_file}',
             f'-H:Path={svmbuild}',
             '--add-exports=org.graalvm.truffle.runtime/com.oracle.truffle.runtime=ALL-UNNAMED'
-        ] + print_call_tree_options) + [
+        ] + print_call_tree_options + additional_options) + [
             'com.oracle.svm.truffle.tck.MockMain'
         ]
         if excludes:
@@ -679,7 +682,8 @@ def gate_truffle_native_tck_smoke_test(tasks):
             test_language_dist = [d for d in truffle_suite.dists if d.name == 'TRUFFLE_TCK_TESTS_LANGUAGE'][0]
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                result = _svm_truffle_tck(native_image, 'TCKSmokeTestLanguage', test_language_dist, False, True)
+                result = _svm_truffle_tck(native_image, 'TCKSmokeTestLanguage', test_language_dist, False, True,
+                                          ['-H:TruffleTCKCollectMode=All'])
                 privileged_calls = result[0]
                 reports_folder = result[1]
                 if not 'Failed: Language TCKSmokeTestLanguage performs following privileged calls' in privileged_calls:

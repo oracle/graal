@@ -129,6 +129,12 @@ public class PermissionsFeature implements Feature {
         Throw
     }
 
+    public enum CollectMode {
+        Single,
+        SinglePrivilegedMethodUsage,
+        All
+    }
+
     public static class Options {
         @Option(help = "Path to file where to store report of Truffle language privilege access.")//
         public static final HostedOptionKey<String> TruffleTCKPermissionsReportFile = new HostedOptionKey<>(null);
@@ -151,6 +157,15 @@ public class PermissionsFeature implements Feature {
                           "Warn": Log a warning message to stderr.
                           "Throw" (default): Throw an exception and abort the native-image build process.""", type = OptionType.Expert)//
         public static final HostedOptionKey<ActionKind> TruffleTCKUnusedAllowListEntriesAction = new HostedOptionKey<>(ActionKind.Throw);
+
+        @Option(help = """
+                        Specifies how privileged method violations are reported.
+                        Available options:
+                          - Single: Reports only one violation in total.
+                          - SinglePrivilegedMethodUsage: Reports one call path per privileged method used.
+                          - All: Reports all call paths for all violations.
+                        """, type = OptionType.Expert)//
+        public static final HostedOptionKey<CollectMode> TruffleTCKCollectMode = new HostedOptionKey<>(CollectMode.SinglePrivilegedMethodUsage);
     }
 
     /**
@@ -346,6 +361,7 @@ public class PermissionsFeature implements Feature {
         }
         FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
         DebugContext debugContext = accessImpl.getDebugContext();
+        CollectMode collectMode = Options.TruffleTCKCollectMode.getValue();
         try (DebugContext.Scope s = debugContext.scope(ClassUtil.getUnqualifiedName(getClass()))) {
             BigBang bb = accessImpl.getBigBang();
             Map<BaseMethodNode, Set<BaseMethodNode>> cg = callGraph(bb, deniedMethods, debugContext, (SVMHost) bb.getHostVM());
@@ -356,8 +372,11 @@ public class PermissionsFeature implements Feature {
                 if (cg.containsKey(deniedMethod)) {
                     collectViolations(report, deniedMethod,
                                     maxStackDepth, Options.TruffleTCKPermissionsMaxErrors.getValue(),
-                                    cg, contextFilters,
+                                    cg, contextFilters, collectMode,
                                     new LinkedList<>(), new HashSet<>(), 1, 0);
+                    if (!report.isEmpty() && collectMode == CollectMode.Single) {
+                        break;
+                    }
                 }
             }
             if (!report.isEmpty()) {
@@ -569,6 +588,7 @@ public class PermissionsFeature implements Feature {
      * @param callGraph call graph obtained from
      *            {@link PermissionsFeature#callGraph(BigBang, Set, DebugContext, SVMHost)}
      * @param contextFiltersParam filters removing known valid calls
+     * @param collectMode violation collect mode, see {@link Options#TruffleTCKCollectMode}
      * @param currentPath current path from a privileged method in a call graph
      * @param visited set of already visited methods, these methods are already part of an existing
      *            report or do not lead to language class
@@ -581,6 +601,7 @@ public class PermissionsFeature implements Feature {
                     int maxReports,
                     Map<BaseMethodNode, Set<BaseMethodNode>> callGraph,
                     Set<CallGraphFilter> contextFiltersParam,
+                    CollectMode collectMode,
                     List<BaseMethodNode> currentPath,
                     Set<BaseMethodNode> visited,
                     int depth,
@@ -599,7 +620,8 @@ public class PermissionsFeature implements Feature {
                 Set<BaseMethodNode> callers = callGraph.get(mNode);
                 if (depth > maxDepth) {
                     if (!callers.isEmpty()) {
-                        numReports = collectViolations(report, callers.iterator().next(), maxDepth, maxReports, callGraph, contextFiltersParam, currentPath, visited, depth + 1, numReports);
+                        numReports = collectViolations(report, callers.iterator().next(), maxDepth, maxReports, callGraph, contextFiltersParam, collectMode, currentPath, visited, depth + 1,
+                                        numReports);
                     }
                 } else if (!isSystemOrSafeClass(mNode)) {
                     List<BaseMethodNode> callPath = new ArrayList<>(currentPath);
@@ -608,7 +630,10 @@ public class PermissionsFeature implements Feature {
                 } else {
                     for (BaseMethodNode caller : callers) {
                         if (contextFiltersParam.stream().noneMatch((f) -> f.test(mNode, caller, currentPath))) {
-                            numReports = collectViolations(report, caller, maxDepth, maxReports, callGraph, contextFiltersParam, currentPath, visited, depth + 1, numReports);
+                            numReports = collectViolations(report, caller, maxDepth, maxReports, callGraph, contextFiltersParam, collectMode, currentPath, visited, depth + 1, numReports);
+                            if (numReports > initialNumReports && collectMode != CollectMode.All) {
+                                break;
+                            }
                         }
                     }
                 }
