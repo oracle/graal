@@ -80,8 +80,8 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
  * </pre>
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/x86/stubGenerator_x86_64_log.cpp#L365-L708",
-          sha1 = "2a5edbf704a1b047c67abb90fe14494ecdb2f790")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/b1fa1ecc988fb07f191892a459625c2c8f2de3b5/src/hotspot/cpu/x86/stubGenerator_x86_64_log.cpp#L365-L708",
+          sha1 = "92a94e093b88040102362865e059dfa56b6afd87")
 // @formatter:on
 public final class AMD64MathLog10Op extends AMD64MathIntrinsicUnaryOp {
 

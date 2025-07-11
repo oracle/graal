@@ -81,8 +81,8 @@ import jdk.vm.ci.amd64.AMD64;
  * </pre>
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/x86/stubGenerator_x86_64_log.cpp#L31-L363",
-          sha1 = "a85c6f8c90c3799f7986781909b044590cc7f421")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/b1fa1ecc988fb07f191892a459625c2c8f2de3b5/src/hotspot/cpu/x86/stubGenerator_x86_64_log.cpp#L31-L363",
+          sha1 = "de2a1859b816052b2f7ff96b565ee8ef1b8e81c7")
 // @formatter:on
 public final class AMD64MathLogOp extends AMD64MathIntrinsicUnaryOp {
 
