@@ -25,7 +25,6 @@
 package com.oracle.svm.core.thread;
 
 import java.lang.ref.WeakReference;
-import java.util.Arrays;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -39,7 +38,6 @@ import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.JfrThreadRepository;
 import com.oracle.svm.util.ReflectionUtil;
@@ -148,22 +146,6 @@ class ThreadGroupThreadsRecomputation implements FieldValueTransformer {
             /* No other thread group has a thread running at startup. */
             return null;
         }
-    }
-}
-
-final class ThreadGroupThreadsAccessor {
-    static Thread[] get(Target_java_lang_ThreadGroup that) {
-        return that.injectedThreads;
-    }
-
-    static void set(Target_java_lang_ThreadGroup that, Thread[] value) {
-        if (that.injectedThreads != null && Heap.getHeap().isInImageHeap(that.injectedThreads)) {
-            Arrays.fill(that.injectedThreads, null);
-        }
-        that.injectedThreads = value;
-    }
-
-    private ThreadGroupThreadsAccessor() {
     }
 }
 

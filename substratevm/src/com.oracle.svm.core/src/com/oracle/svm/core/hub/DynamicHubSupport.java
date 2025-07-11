@@ -41,6 +41,7 @@ import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
 import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
@@ -65,7 +66,13 @@ public final class DynamicHubSupport implements MultiLayeredImageSingleton, Unsa
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static InstanceReferenceMap getInstanceReferenceMap(DynamicHub hub) {
-        NonmovableArray<Byte> referenceMapEncoding = forLayer(hub.getLayerId()).getReferenceMapEncoding();
+        int layerId = hub.getLayerId();
+        if (RuntimeClassLoading.isSupported() && layerId == DynamicImageLayerInfo.CREMA_LAYER_ID) {
+            /* Assume that the reference map is in the base layer until GR-60080 is implemented. */
+            layerId = 0;
+        }
+
+        NonmovableArray<Byte> referenceMapEncoding = forLayer(layerId).getReferenceMapEncoding();
         return InstanceReferenceMapDecoder.getReferenceMap(referenceMapEncoding, hub.getReferenceMapIndex());
     }
 
