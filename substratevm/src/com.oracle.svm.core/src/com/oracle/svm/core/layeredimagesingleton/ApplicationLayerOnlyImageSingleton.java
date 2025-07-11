@@ -27,11 +27,18 @@ package com.oracle.svm.core.layeredimagesingleton;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.graal.nodes.LoadImageSingletonNode;
 import com.oracle.svm.core.option.HostedOptionValues;
 
 /**
  * Identifies a singleton for which all lookups refer to a single singleton which will be created in
  * the application layer. See {@link LayeredImageSingleton} for full explanation.
+ * <p>
+ * Referring to fields of an {@link ApplicationLayerOnlyImageSingleton} object from a code compiled
+ * in a shared layer, i.e., even before the value of the field can be known, is safe because an
+ * {@link ApplicationLayerOnlyImageSingleton} will never be constant-folded in a shared layer. It is
+ * instead implemented via {@link LoadImageSingletonNode} which is lowered to a singleton table
+ * read.
  */
 public interface ApplicationLayerOnlyImageSingleton extends LayeredImageSingleton {
 
