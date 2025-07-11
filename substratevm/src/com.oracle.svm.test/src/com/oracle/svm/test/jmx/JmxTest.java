@@ -88,6 +88,8 @@ public class JmxTest {
     static final String REGISTRY_SSL_PROPERTY = "com.sun.management.jmxremote.registry.ssl";
     static final String SOCKET_FACTORY_PROPERTY = "com.sun.jndi.rmi.factory.socket";
     static final String TEST_PORT = "12345";
+    static final String TEST_ROLE = "myTestRole";
+    static final String TEST_ROLE_PASSWORD = "MYTESTP@SSWORD";
     static final String TRUE = "true";
 
     @BeforeClass
@@ -114,8 +116,8 @@ public class JmxTest {
         Path clientkeystore = tempDirectory.resolve("clientkeystore");
         Path servertruststore = tempDirectory.resolve("servertruststore");
         // Note: full paths are used to ensure analysis includes the resources automatically
-        Files.copy(JmxTest.class.getResourceAsStream("/resources/jmxremote/jmxremote.access"), jmxRemoteAccess);
-        Files.copy(JmxTest.class.getResourceAsStream("/resources/jmxremote/jmxremote.password"), jmxRemotePassword);
+        Files.writeString(jmxRemoteAccess, TEST_ROLE + " readwrite");
+        Files.writeString(jmxRemotePassword, TEST_ROLE + " " + TEST_ROLE_PASSWORD);
 
         // The following are dummy password and access files required for testing authentication.
         System.setProperty(ACCESS_PROPERTY, jmxRemoteAccess.toString());
@@ -190,7 +192,7 @@ public class JmxTest {
         try {
             JMXServiceURL jmxUrl = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://" + "localhost" + ":" + TEST_PORT + "/jmxrmi");
             Map<String, Object> env = new HashMap<>();
-            String[] credentials = {"myrole", "MYP@SSWORD"}; // dummy password for testing
+            String[] credentials = {TEST_ROLE, TEST_ROLE_PASSWORD};
             env.put(JMXConnector.CREDENTIALS, credentials);
             // Include below if protecting registry with SSL
             env.put(SOCKET_FACTORY_PROPERTY, new SslRMIClientSocketFactory());
