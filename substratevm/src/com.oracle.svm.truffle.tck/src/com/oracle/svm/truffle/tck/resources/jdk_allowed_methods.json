@@ -39,6 +39,15 @@
     "allDeclaredMethods" : true
   },
   {
+    "name" : "java.nio.BufferCleaner$PhantomCleaner",
+    "methods" : [
+      { "name" : "clean" ,
+        "justification" : "Calls System.exit if a failure occurs during VM boot.",
+        "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
     "name" : "java.nio.DirectByteBuffer",
     "justification" : "DirectByteBuffer uses Unsafe to allocate and initialize off heap memory.",
     "allDeclaredMethods" : true,
