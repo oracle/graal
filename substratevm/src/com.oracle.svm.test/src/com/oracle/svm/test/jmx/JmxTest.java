@@ -31,11 +31,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.lang.management.ClassLoadingMXBean;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
@@ -49,13 +45,11 @@ import java.lang.management.ThreadMXBean;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import javax.management.MBeanServer;
 import javax.management.MBeanServerConnection;
@@ -73,6 +67,7 @@ import org.junit.Test;
 
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.jdk.management.ManagementAgentStartupHook;
+import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.test.AddExports;
 
 import jdk.management.jfr.FlightRecorderMXBean;
@@ -148,63 +143,44 @@ public class JmxTest {
     }
 
     private static void createClientKey(Path tempDirectory) throws IOException {
-        final List<String> commandParameters = new ArrayList<>(List.of("keytool", "-genkey"));
-        commandParameters.addAll(List.of("-keystore", "clientkeystore"));
-        commandParameters.addAll(List.of("-alias", "clientkey"));
-        commandParameters.addAll(List.of("-storepass", "clientpass"));
-        commandParameters.addAll(List.of("-keypass", "clientpass"));
-        commandParameters.addAll(List.of("-dname", "CN=test, OU=test, O=test, L=test, ST=test, C=test, EMAILADDRESS=test"));
-        commandParameters.addAll(List.of("-validity", "99999"));
-        commandParameters.addAll(List.of("-keyalg", "rsa"));
-
-        ProcessBuilder pb = new ProcessBuilder().command(commandParameters);
-        pb.directory(tempDirectory.toFile());
-        final Process process = pb.start();
-        waitForProcess(process, commandParameters);
+        runCommand(tempDirectory, List.of("keytool", "-genkey",
+                        "-keystore", "clientkeystore",
+                        "-alias", "clientkey",
+                        "-storepass", "clientpass",
+                        "-keypass", "clientpass",
+                        "-dname", "CN=test, OU=test, O=test, L=test, ST=test, C=test, EMAILADDRESS=test",
+                        "-validity", "99999",
+                        "-keyalg", "rsa"));
     }
 
     private static void createClientCert(Path tempDirectory) throws IOException {
-        final List<String> commandParameters = new ArrayList<>(List.of("keytool", "-exportcert"));
-        commandParameters.addAll(List.of("-keystore", "clientkeystore"));
-        commandParameters.addAll(List.of("-alias", "clientkey"));
-        commandParameters.addAll(List.of("-storepass", "clientpass"));
-        commandParameters.addAll(List.of("-file", "client.cer"));
-
-        ProcessBuilder pb = new ProcessBuilder().command(commandParameters);
-        pb.directory(tempDirectory.toFile());
-        final Process process = pb.start();
-        waitForProcess(process, commandParameters);
+        runCommand(tempDirectory, List.of("keytool", "-exportcert",
+                        "-keystore", "clientkeystore",
+                        "-alias", "clientkey",
+                        "-storepass", "clientpass",
+                        "-file", "client.cer"));
     }
 
     private static void createServerTrustStore(Path tempDirectory) throws IOException {
-        final List<String> commandParameters = new ArrayList<>(List.of("keytool", "-importcert"));
-        commandParameters.addAll(List.of("-file", "client.cer"));
-        commandParameters.addAll(List.of("-keystore", "servertruststore"));
-        commandParameters.addAll(List.of("-storepass", "servertrustpass"));
-
-        ProcessBuilder pb = new ProcessBuilder().command(commandParameters);
-        pb.directory(tempDirectory.toFile());
-        final Process process = pb.start();
-        // Prompted about whether the cert should be trusted.
-        OutputStream os = process.getOutputStream();
-        PrintWriter writer = new PrintWriter(os);
-        writer.write("y\n");
-        writer.flush();
-        waitForProcess(process, commandParameters);
+        runCommand(tempDirectory, List.of("keytool", "-importcert",
+                        "-noprompt",
+                        "-file", "client.cer",
+                        "-keystore", "servertruststore",
+                        "-storepass", "servertrustpass"));
     }
 
-    private static void waitForProcess(Process process, List<String> command) throws IOException {
+    private static void runCommand(Path tempDirectory, List<String> command) throws IOException {
+        ProcessBuilder pb = new ProcessBuilder().command(command);
+        pb.directory(tempDirectory.toFile());
+        final Process process = pb.start();
         try {
             process.waitFor(5, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             throw new IOException("Keytool execution error");
         }
-
         if (process.exitValue() > 0) {
-            final String processError = (new BufferedReader(new InputStreamReader(process.getErrorStream()))).lines()
-                            .collect(Collectors.joining(" \\ "));
-            final String processOutput = (new BufferedReader(new InputStreamReader(process.getInputStream()))).lines()
-                            .collect(Collectors.joining(" \\ "));
+            final String processError = String.join(" \\ ", FileUtils.readAllLines(process.getErrorStream()));
+            final String processOutput = String.join(" \\ ", FileUtils.readAllLines(process.getInputStream()));
             throw new IOException(
                             "Keytool execution error: " + processError + ", output: " + processOutput + ", command: " + command);
         }
