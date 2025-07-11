@@ -160,6 +160,7 @@ fld public final static java.lang.String PROPERTY_IMAGE_CODE_VALUE_RUNTIME = "ru
 fld public final static java.lang.String PROPERTY_IMAGE_KIND_KEY = "org.graalvm.nativeimage.kind"
 fld public final static java.lang.String PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE = "executable"
 fld public final static java.lang.String PROPERTY_IMAGE_KIND_VALUE_SHARED_LIBRARY = "shared"
+fld public final static java.lang.String PROPERTY_NATIVE_IMAGE_PREFIX = "org.graalvm.nativeimage."
 meth public static boolean inImageBuildtimeCode()
 meth public static boolean inImageCode()
 meth public static boolean inImageRuntimeCode()
