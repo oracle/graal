@@ -709,7 +709,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     private void checkClassFlag(int mask, String methodName) {
-        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+        if (MetadataTracer.enabled()) {
             traceClassFlagQuery(mask);
         }
         if (throwMissingRegistrationErrors() && !(isClassFlagSet(mask) && getConditions().satisfied())) {
@@ -1315,7 +1315,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         boolean throwMissingErrors = throwMissingRegistrationErrors();
         Class<?> clazz = DynamicHub.toClass(this);
 
-        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+        if (MetadataTracer.enabled()) {
             traceFieldLookup(fieldName, field, publicOnly);
         }
 
@@ -1397,7 +1397,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         boolean throwMissingErrors = throwMissingRegistrationErrors();
         Class<?> clazz = DynamicHub.toClass(this);
 
-        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+        if (MetadataTracer.enabled()) {
             traceMethodLookup(methodName, parameterTypes, method, publicOnly);
         }
 
@@ -1973,12 +1973,17 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (toClass(this) == void.class) {
             throw new UnsupportedOperationException(new IllegalArgumentException());
         }
+        if (MetadataTracer.enabled()) {
+            MetadataTracer.singleton().traceReflectionType(arrayTypeName());
+        }
         if (companion.arrayHub == null) {
-            MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]");
-        } else if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
-            MetadataTracer.singleton().traceReflectionType(companion.arrayHub.getTypeName());
+            MissingReflectionRegistrationUtils.reportClassAccess(arrayTypeName());
         }
         return companion.arrayHub;
+    }
+
+    private String arrayTypeName() {
+        return getTypeName() + "[]";
     }
 
     @KeepOriginal
