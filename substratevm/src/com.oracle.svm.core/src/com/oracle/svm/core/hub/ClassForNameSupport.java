@@ -414,7 +414,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
         }
         if (MetadataTracer.enabled()) {
             // NB: the early returns above ensure we do not trace calls with bad type args.
-            MetadataTracer.singleton().traceReflectionType(className);
+            MetadataTracer.singleton().traceReflectionType(ClassNameSupport.reflectionNameToTypeName(className));
         }
         return result == NEGATIVE_QUERY ? new ClassNotFoundException(className) : result;
     }
@@ -502,7 +502,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
     public static boolean canUnsafeInstantiateAsInstance(DynamicHub hub) {
         Class<?> clazz = DynamicHub.toClass(hub);
         if (MetadataTracer.enabled()) {
-            ConfigurationType type = MetadataTracer.singleton().traceReflectionType(clazz.getName());
+            ConfigurationType type = MetadataTracer.singleton().traceReflectionType(clazz.getTypeName());
             if (type != null) {
                 type.setUnsafeAllocated();
             }
