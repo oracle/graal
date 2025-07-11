@@ -103,7 +103,7 @@ public class VMThreadFeature implements InternalFeature, VMThreadLocalOffsetProv
      * <p>
      * When the {@link IsolateThread} is not passed in as a parameter, we use the
      * {@link LoadVMThreadLocalNode current thread}. We do not need read/write barriers since we
-     * access memory that we manage ourselfs.
+     * access memory that we manage ourselves.
      */
     @Override
     public void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
