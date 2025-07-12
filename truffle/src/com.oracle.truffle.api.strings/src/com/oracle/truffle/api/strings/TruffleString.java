@@ -5968,7 +5968,7 @@ public final class TruffleString extends AbstractTruffleString {
 
         @Fallback
         static boolean check(AbstractTruffleString a, AbstractTruffleString b, Encoding expectedEncoding,
-                        @Cached Node node,
+                        @Bind Node node,
                         @Cached InlinedConditionProfile managedProfileA,
                         @Cached InlinedConditionProfile nativeProfileA,
                         @Cached InlinedConditionProfile managedProfileB,
