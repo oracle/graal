@@ -51,6 +51,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class AnalysisField extends AnalysisElement implements WrappedJavaField, OriginalFieldProvider {
 
+    static final AnalysisField[] EMPTY_ARRAY = new AnalysisField[0];
+
     private static final AtomicReferenceFieldUpdater<AnalysisField, Object> isAccessedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisField.class, Object.class, "isAccessed");
 
