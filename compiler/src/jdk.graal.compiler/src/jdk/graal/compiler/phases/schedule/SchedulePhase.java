@@ -843,7 +843,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
              * Number of nodes in this micro block.
              */
             public int getNodeCount() {
-                assert getActualNodeCount() == nodeCount : getActualNodeCount() + " != " + nodeCount;
+                assert getActualNodeCount() == nodeCount;
                 return nodeCount;
             }
 
@@ -940,7 +940,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                 }
             }
 
-            if (graph.getGuardsStage().allowsFloatingGuards() && graph.getNodes(GuardNode.TYPE).isNotEmpty()) {
+            if (graph.getGuardsStage().allowsFloatingGuards() && graph.hasNode(GuardNode.TYPE)) {
                 // Now process guards.
                 if (GuardPriorities.getValue(graph.getOptions()) && withGuardOrder) {
                     EnumMap<GuardPriority, List<GuardNode>> guardsByPriority = new EnumMap<>(GuardPriority.class);
@@ -955,8 +955,6 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                 } else {
                     processNodes(visited, entries, stack, startBlock, graph.getNodes(GuardNode.TYPE));
                 }
-            } else {
-                assert graph.getNodes(GuardNode.TYPE).isEmpty();
             }
 
             // Now process inputs of fixed nodes.
