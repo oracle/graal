@@ -546,10 +546,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
     }
 
     /**
-     * Initializes a map from a field annotated by {@link Option} to a set that will be used to
-     * collect methods that accesses the option field.
-     *
-     * @param tool
+     * Initializes a map from fields annotated with {@link Option} whose usages should be checked to
+     * empty sets that will collect the methods accessing each field.
+     * <p>
+     * The sets are synchronized to support parallel processing of methods.
      */
     private static Map<ResolvedJavaField, Set<ResolvedJavaMethod>> initOptionFieldUsagesMap(InvariantsTool tool, MetaAccessProvider metaAccess, List<String> errors) {
         Map<ResolvedJavaField, Set<ResolvedJavaMethod>> optionFields = new EconomicHashMap<>();
@@ -559,7 +559,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                     Class<?> declaringClass = option.getDeclaringClass();
                     try {
                         Field javaField = declaringClass.getDeclaredField(option.getFieldName());
-                        optionFields.put(metaAccess.lookupJavaField(javaField), new EconomicHashSet<>());
+                        optionFields.put(metaAccess.lookupJavaField(javaField), Collections.synchronizedSet(new EconomicHashSet<>()));
                     } catch (NoSuchFieldException e) {
                         errors.add(e.toString());
                     }
