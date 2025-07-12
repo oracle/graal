@@ -605,8 +605,8 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             assert unprocessed.isMarked(n) : Assertions.errorMessage(n);
             assert nodeMap.get(n) == b : Assertions.errorMessage(n);
             assert stack.isEmpty() : "Node stack must be pre-allocated, but empty.";
-            assert !(n instanceof PhiNode);
-            assert !(n instanceof ProxyNode);
+            assert !(n instanceof PhiNode) : "Phi nodes will never be sorted into the list.";
+            assert !(n instanceof ProxyNode) : "Proxy nodes will never be sorted into the list.";
 
             unprocessed.clear(n);
 
@@ -633,8 +633,8 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             int pushCount = 0;
             for (Node input : n.inputs()) {
                 if (nodeMap.get(input) == b && unprocessed.isMarked(input)) {
-                    assert !(input instanceof PhiNode);
-                    assert !(input instanceof ProxyNode);
+                    assert !(input instanceof PhiNode) : "Phi nodes will always be already unmarked in the bitmap.";
+                    assert !(input instanceof ProxyNode) : "Proxy nodes will always be already unmarked in the bitmap.";
                     stack.push(input);
                     pushCount++;
                 }
@@ -843,16 +843,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
              * Number of nodes in this micro block.
              */
             public int getNodeCount() {
-                assert getActualNodeCount() == nodeCount;
                 return nodeCount;
-            }
-
-            private int getActualNodeCount() {
-                int count = 0;
-                for (NodeEntry e = head; e != null; e = e.next) {
-                    count++;
-                }
-                return count;
             }
 
             /**
