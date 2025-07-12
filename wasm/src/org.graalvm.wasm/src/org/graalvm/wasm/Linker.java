@@ -160,7 +160,7 @@ public class Linker {
 
     @CompilerDirectives.TruffleBoundary
     private void tryLinkOutsidePartialEvaluation(WasmInstance entryPointInstance) {
-        tryLinkOutsidePartialEvaluation(entryPointInstance, null);
+        tryLinkOutsidePartialEvaluation(entryPointInstance, ImportValueSupplier.none());
     }
 
     /**
@@ -188,9 +188,10 @@ public class Linker {
                 if (resolutionDag == null) {
                     resolutionDag = new ResolutionDag();
                 }
+                var importValues = imports.andThen(store.instantiateBuiltinInstances());
                 Map<String, WasmInstance> instances = store.moduleInstances();
                 ArrayList<Throwable> failures = new ArrayList<>();
-                final int maxStartFunctionIndex = runLinkActions(store, instances, imports, failures);
+                final int maxStartFunctionIndex = runLinkActions(store, instances, importValues, failures);
                 linkTopologically(store, failures, maxStartFunctionIndex);
                 assignTypeEquivalenceClasses(store);
                 resolutionDag = null;
@@ -476,8 +477,6 @@ public class Linker {
                     boolean shared, ImportValueSupplier imports) {
         final String importedModuleName = importDescriptor.moduleName();
         final String importedMemoryName = importDescriptor.memberName();
-        // Special import of main module memory into WASI built-in module.
-        final boolean importsMainMemory = instance.module().isBuiltin() && importedModuleName.equals("main") && importedMemoryName.equals("memory");
         final Runnable resolveAction = () -> {
             final WasmMemory importedMemory;
             final WasmMemory externalMemory = lookupImportObject(instance, importDescriptor, imports, WasmMemory.class);
@@ -486,7 +485,9 @@ public class Linker {
                 importedMemory = store.memories().memory(contextMemoryIndex);
                 assert memoryIndex == importDescriptor.targetIndex();
             } else {
-                final WasmInstance importedInstance = importsMainMemory ? store.lookupMainModule() : store.lookupModuleInstance(importedModuleName);
+                // WASIp1 memory import should have been resolved via ImportValueSupplier above.
+                assert !instance.module().isBuiltin() : importDescriptor;
+                final WasmInstance importedInstance = store.lookupModuleInstance(importedModuleName);
                 if (importedInstance == null) {
                     throw WasmException.create(Failure.UNKNOWN_IMPORT, String.format("The module '%s', referenced in the import of memory '%s' in module '%s', does not exist",
                                     importedModuleName, importedMemoryName, instance.name()));

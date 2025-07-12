@@ -144,7 +144,8 @@ public abstract class BytecodeParser {
                 }
                 final byte[] offsetBytecode;
                 long offsetAddress;
-                if ((flags & BytecodeBitEncoding.DATA_SEG_BYTECODE_OR_OFFSET_MASK) == BytecodeBitEncoding.DATA_SEG_BYTECODE) {
+                if ((flags & BytecodeBitEncoding.DATA_SEG_BYTECODE_OR_OFFSET_MASK) == BytecodeBitEncoding.DATA_SEG_BYTECODE &&
+                                ((flags & BytecodeBitEncoding.DATA_SEG_VALUE_MASK) != BytecodeBitEncoding.DATA_SEG_VALUE_UNDEFINED)) {
                     int offsetBytecodeLength = (int) value;
                     offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
                     effectiveOffset += offsetBytecodeLength;

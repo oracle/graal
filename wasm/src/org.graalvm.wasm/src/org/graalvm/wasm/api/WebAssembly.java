@@ -53,7 +53,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.EmbedderDataHolder;
 import org.graalvm.wasm.ImportDescriptor;
-import org.graalvm.wasm.ImportValueSupplier;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmCustomSection;
@@ -80,7 +79,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
@@ -139,102 +137,8 @@ public class WebAssembly extends Dictionary {
 
     public WasmInstance moduleInstantiate(WasmModule module, Object importObject) {
         CompilerAsserts.neverPartOfCompilation();
-        WasmStore instanceStore = new WasmStore(currentContext, currentContext.language());
-        WasmInstance instance = instantiateModule(module, instanceStore);
-        var imports = resolveModuleImports(module, importObject);
-        instance.store().linker().tryLink(instance, imports);
-        return instance;
-    }
-
-    private static WasmInstance instantiateModule(WasmModule module, WasmStore store) {
-        return store.readInstance(module);
-    }
-
-    private static ImportValueSupplier resolveModuleImports(WasmModule module, Object importObject) {
-        CompilerAsserts.neverPartOfCompilation();
-        List<Object> resolvedImports = new ArrayList<>(module.numImportedSymbols());
-
-        if (!module.importedSymbols().isEmpty()) {
-            requireImportObject(importObject);
-        }
-
-        for (ImportDescriptor descriptor : module.importedSymbols()) {
-            final int listIndex = resolvedImports.size();
-            assert listIndex == descriptor.importedSymbolIndex();
-
-            final Object member = getImportObjectMember(importObject, descriptor);
-
-            resolvedImports.add(switch (descriptor.identifier()) {
-                case ImportIdentifier.FUNCTION -> requireCallable(member, descriptor);
-                case ImportIdentifier.TABLE -> requireWasmTable(member, descriptor);
-                case ImportIdentifier.MEMORY -> requireWasmMemory(member, descriptor);
-                case ImportIdentifier.GLOBAL -> requireWasmGlobal(member, descriptor);
-                default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unknown import descriptor type: " + descriptor.identifier());
-            });
-        }
-
-        assert resolvedImports.size() == module.numImportedSymbols();
-        return (importDesc, instance) -> {
-            // Import values are only valid in the module where they were resolved.
-            if (instance.module() == module) {
-                return resolvedImports.get(importDesc.importedSymbolIndex());
-            } else {
-                return null;
-            }
-        };
-    }
-
-    private static Object requireImportObject(Object importObject) {
-        InteropLibrary interop = InteropLibrary.getUncached(importObject);
-        if (interop.isNull(importObject) || !interop.hasMembers(importObject)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Module requires imports, but import object is undefined.");
-        }
-        return importObject;
-    }
-
-    private static Object getImportObjectMember(Object importObject, ImportDescriptor descriptor) {
-        try {
-            final InteropLibrary importObjectInterop = InteropLibrary.getUncached(importObject);
-            if (!importObjectInterop.isMemberReadable(importObject, descriptor.moduleName())) {
-                throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Import object does not contain module \"%s\".", descriptor.moduleName());
-            }
-            final Object importedModuleObject = importObjectInterop.readMember(importObject, descriptor.moduleName());
-            final InteropLibrary moduleObjectInterop = InteropLibrary.getUncached(importedModuleObject);
-            if (!moduleObjectInterop.isMemberReadable(importedModuleObject, descriptor.memberName())) {
-                throw WasmJsApiException.format(WasmJsApiException.Kind.LinkError, "Import module object \"%s\" does not contain \"%s\".", descriptor.moduleName(), descriptor.memberName());
-            }
-            return moduleObjectInterop.readMember(importedModuleObject, descriptor.memberName());
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unexpected state.");
-        }
-    }
-
-    private static Object requireCallable(Object member, ImportDescriptor importDescriptor) {
-        if (!(member instanceof WasmFunctionInstance || InteropLibrary.getUncached().isExecutable(member))) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Member " + member + " " + importDescriptor + " is not callable.");
-        }
-        return member;
-    }
-
-    private static WasmMemory requireWasmMemory(Object member, ImportDescriptor importDescriptor) {
-        if (!(member instanceof WasmMemory memory)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Member " + member + " " + importDescriptor + " is not a valid memory.");
-        }
-        return memory;
-    }
-
-    private static WasmTable requireWasmTable(Object member, ImportDescriptor importDescriptor) {
-        if (!(member instanceof WasmTable table)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Member " + member + " " + importDescriptor + " is not a valid table.");
-        }
-        return table;
-    }
-
-    private static WasmGlobal requireWasmGlobal(Object member, ImportDescriptor importDescriptor) {
-        if (!(member instanceof WasmGlobal global)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Member " + member + " " + importDescriptor + " is not a valid global.");
-        }
-        return global;
+        final WasmStore store = new WasmStore(currentContext, currentContext.language());
+        return module.createInstance(store, importObject, WasmJsApiException.provider(), true);
     }
 
     private static String makeModuleName(byte[] data) {

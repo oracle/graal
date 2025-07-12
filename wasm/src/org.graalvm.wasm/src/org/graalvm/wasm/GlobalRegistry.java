@@ -40,13 +40,13 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.globals.WasmGlobal;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
@@ -59,12 +59,13 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 public class GlobalRegistry {
     private static final int INITIAL_GLOBALS_SIZE = 8;
 
-    // If we support late linking, we need to ensure that methods accessing the global array
-    // are compiled with assumptions on what this field points to.
-    // Such an assumption can be invalidated if the late-linking causes this array
-    // to be replaced with a larger array.
-    @CompilationFinal(dimensions = 0) private long[] globals;
-    @CompilationFinal(dimensions = 0) private Object[] objectGlobals;
+    /**
+     * If we support late linking, and the global arrays are @CompilationFinal, we need to ensure
+     * that methods accessing the global array are compiled with assumptions that will be
+     * invalidated if the late linking causes this array to be replaced with a larger array.
+     */
+    private long[] globals;
+    private Object[] objectGlobals;
     @CompilationFinal(dimensions = 1) private WasmGlobal[] externalGlobals;
     private int globalCount;
     private int externalGlobalCount;
