@@ -45,6 +45,7 @@ import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
+import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.options.Option;
@@ -65,7 +66,7 @@ public class PerfManager {
     public PerfManager() {
         perfDataHolders = new ArrayList<>();
         mutablePerfDataEntries = new ArrayList<>();
-        longEntries = EconomicMap.create();
+        longEntries = ImageHeapMap.createNonLayeredMap();
         perfDataThread = new PerfDataThread(this);
     }
 

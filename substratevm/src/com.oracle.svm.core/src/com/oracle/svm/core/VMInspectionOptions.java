@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.jvmstat.PerfManager.Options.PerfDataMemoryMappedFile;
+
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
@@ -78,14 +80,14 @@ public final class VMInspectionOptions {
                     ", '" + MONITORING_JCMD_NAME + "' (experimental)" +
                     ", or '" + MONITORING_ALL_NAME + "' (deprecated behavior: defaults to '" + MONITORING_ALL_NAME + "' if no argument is provided)";
 
-    @APIOption(name = ENABLE_MONITORING_OPTION, defaultValue = MONITORING_DEFAULT_NAME) //
+    @APIOption(name = ENABLE_MONITORING_OPTION, defaultValue = MONITORING_DEFAULT_NAME)//
     @Option(help = "Enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain " + MONITORING_ALLOWED_VALUES_TEXT + ". " +
-                    "For example: '--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_HEAPDUMP_NAME + "," + MONITORING_JFR_NAME + "'.", type = OptionType.User) //
+                    "For example: '--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_HEAPDUMP_NAME + "," + MONITORING_JFR_NAME + "'.", type = OptionType.User)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> EnableMonitoringFeatures = new HostedOptionKey<>(
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter(),
                     VMInspectionOptions::validateEnableMonitoringFeatures);
 
-    @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //
+    @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false, VMInspectionOptions::notSupportedOnWindows);
 
     static {
@@ -100,7 +102,7 @@ public final class VMInspectionOptions {
         }
     }
 
-    @Option(help = "Print native memory tracking statistics on shutdown if native memory tracking is enabled.", type = OptionType.User) //
+    @Option(help = "Print native memory tracking statistics on shutdown if native memory tracking is enabled.", type = OptionType.User)//
     public static final RuntimeOptionKey<Boolean> PrintNMTStatistics = new RuntimeOptionKey<>(false);
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -122,6 +124,11 @@ public final class VMInspectionOptions {
         if (Platform.includedIn(WINDOWS_BASE.class)) {
             Set<String> notSupported = getEnabledMonitoringFeatures();
             notSupported.retainAll(NOT_SUPPORTED_ON_WINDOWS);
+            if (!PerfDataMemoryMappedFile.getValue()) {
+                /* Only not supported on Windows, if a memory-mapped file is needed. */
+                notSupported.remove(MONITORING_JVMSTAT_NAME);
+            }
+
             if (!notSupported.isEmpty()) {
                 String msg = String.format("the option '%s' contains value(s) that are not supported on Windows: %s. Those values will be ignored.", getDefaultMonitoringCommandArgument(),
                                 String.join(", ", notSupported));
@@ -191,7 +198,8 @@ public final class VMInspectionOptions {
 
     @Fold
     public static boolean hasJvmstatSupport() {
-        return hasAllOrKeywordMonitoringSupport(MONITORING_JVMSTAT_NAME) && !Platform.includedIn(WINDOWS_BASE.class);
+        /* Only not supported on Windows, if a memory-mapped file is needed. */
+        return hasAllOrKeywordMonitoringSupport(MONITORING_JVMSTAT_NAME) && (!Platform.includedIn(WINDOWS_BASE.class) || !PerfDataMemoryMappedFile.getValue());
     }
 
     @Fold
@@ -221,7 +229,7 @@ public final class VMInspectionOptions {
 
     static class DeprecatedOptions {
         @Option(help = "Enables features that allow the VM to be inspected during run time.", type = OptionType.User, //
-                        deprecated = true, deprecationMessage = "Please use '--" + ENABLE_MONITORING_OPTION + "'") //
+                        deprecated = true, deprecationMessage = "Please use '--" + ENABLE_MONITORING_OPTION + "'")//
         static final HostedOptionKey<Boolean> AllowVMInspection = new HostedOptionKey<>(false) {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
@@ -232,7 +240,7 @@ public final class VMInspectionOptions {
         };
 
         @Option(help = "Dumps all thread stacktraces on SIGQUIT/SIGBREAK.", type = OptionType.User, //
-                        deprecated = true, deprecationMessage = "Please use '--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_THREADDUMP_NAME + "'") //
+                        deprecated = true, deprecationMessage = "Please use '--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_THREADDUMP_NAME + "'")//
         public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false);
     }
 
