@@ -22,35 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.hub;
+package com.oracle.svm.interpreter.metadata;
 
-import java.util.List;
+import com.oracle.svm.espresso.shared.meta.FieldAccess;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.espresso.classfile.ParserKlass;
-
-import jdk.vm.ci.meta.ResolvedJavaType;
-
-public interface CremaSupport {
-    @Platforms(Platform.HOSTED_ONLY.class)
-    ResolvedJavaType createInterpreterType(DynamicHub hub, ResolvedJavaType analysisType);
-
-    int getAfterFieldsOffset(DynamicHub hub);
-
-    interface CremaDispatchTable {
-        int vtableLength();
-
-        int itableLength(Class<?> iface);
-    }
-
-    CremaDispatchTable getDispatchTable(ParserKlass parsed, Class<?> superClass, List<Class<?>> superInterfaces);
-
-    void fillDynamicHubInfo(DynamicHub hub, CremaDispatchTable table, List<Class<?>> transitiveSuperInterfaces, int[] interfaceIndices);
-
-    static CremaSupport singleton() {
-        return ImageSingletons.lookup(CremaSupport.class);
-    }
+public interface CremaFieldAccess extends WithModifiers, FieldAccess<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> {
 }

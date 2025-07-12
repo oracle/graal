@@ -44,8 +44,10 @@ import com.oracle.svm.core.hub.CremaSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -102,7 +104,7 @@ public class CremaFeature implements InternalFeature {
                 if (!analysisType.isReachable()) {
                     continue;
                 }
-                assert btiUniverse.getOrCreateType(analysisType) != null : "type is reachable but not part of interpreter universe: " + analysisType;
+                assert btiUniverse.getType(analysisType) != null : "type is reachable but not part of interpreter universe: " + analysisType;
             }
         }
     }
@@ -116,6 +118,25 @@ public class CremaFeature implements InternalFeature {
 
         for (HostedType hType : hUniverse.getTypes()) {
             iUniverse.mirrorSVMVTable(hType, objectType -> accessImpl.getHeapScanner().rescanField(objectType, vtableHolderField));
+        }
+    }
+
+    @Override
+    public void afterCompilation(AfterCompilationAccess access) {
+        FeatureImpl.AfterCompilationAccessImpl accessImpl = (FeatureImpl.AfterCompilationAccessImpl) access;
+        BuildTimeInterpreterUniverse iUniverse = BuildTimeInterpreterUniverse.singleton();
+        for (HostedType type : accessImpl.getUniverse().getTypes()) {
+            if (type.isPrimitive() || type.isArray() || type.isInterface()) {
+                continue;
+            }
+            InterpreterResolvedJavaType iType = iUniverse.getType(type.getWrapped());
+            if (iType == null) {
+                assert !type.getWrapped().isReachable() : "No interpreter type for " + type;
+                continue;
+            }
+            InterpreterResolvedObjectType objectType = (InterpreterResolvedObjectType) iType;
+            HostedInstanceClass instanceClass = (HostedInstanceClass) type;
+            objectType.setAfterFieldsOffset(instanceClass.getAfterFieldsOffset());
         }
     }
 

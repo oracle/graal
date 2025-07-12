@@ -153,6 +153,7 @@ import jdk.internal.reflect.ConstructorAccessor;
 import jdk.internal.reflect.FieldAccessor;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.reflect.ReflectionFactory;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.reflect.annotation.AnnotationType;
 import sun.reflect.generics.factory.GenericsFactory;
@@ -432,47 +433,95 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      */
     @NeverInline("Fields of DynamicHub are immutable. Immutable reads could float above ANY_LOCATION writes.")
     public static DynamicHub allocate(String name, DynamicHub superHub, Object interfacesEncoding, DynamicHub componentHub, String sourceFileName,
-                    int modifiers, short flags, ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName,
-                    Object declaringClass, String signature) {
+                    int modifiers, short flags, ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName, Module module,
+                    Object declaringClass, String signature, int typeID,
+                    short numClassTypes,
+                    short typeIDDepth,
+                    short numInterfacesTypes,
+                    int[] openTypeWorldTypeCheckSlots, int vTableEntries,
+                    int afterFieldsOffset, boolean valueBased) {
         VMError.guarantee(RuntimeClassLoading.isSupported());
 
         ReferenceType referenceType = ReferenceType.computeReferenceType(DynamicHub.toClass(superHub));
-        // GR-59683: HubType.OBJECT_ARRAY?
-        byte hubType = HubType.INSTANCE;
-        if (referenceType != ReferenceType.None) {
-            hubType = HubType.REFERENCE_INSTANCE;
+        byte hubType;
+        if (componentHub != null) {
+            if (componentHub.isPrimitive()) {
+                hubType = HubType.PRIMITIVE_ARRAY;
+            } else {
+                hubType = HubType.OBJECT_ARRAY;
+            }
+        } else {
+            if (referenceType == ReferenceType.None) {
+                hubType = HubType.INSTANCE;
+            } else {
+                hubType = HubType.REFERENCE_INSTANCE;
+            }
         }
 
-        // GR-62339
-        Module module = null;
-
-        // GR-59683: Setup interpreter metadata at run-time.
-        ResolvedJavaType interpreterType = null;
-
-        DynamicHubCompanion companion = DynamicHubCompanion.createAtRuntime(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature,
-                        interpreterType);
+        DynamicHubCompanion companion = DynamicHubCompanion.createAtRuntime(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature);
 
         /* Always allow unsafe allocation for classes that were loaded at run-time. */
         companion.canUnsafeAllocate = true;
 
-        // GR-59687: Correct size and content for vtable
-        int vTableEntries = 0x100;
         companion.classInitializationInfo = new ClassInitializationInfo(false);
 
-        // GR-60069: Determine size for instance and offsets for monitor and identityHashCode
-        int layoutEncoding = 0x40;
-        char monitorOffset = 0;
-        char identityHashOffset = 0;
+        assert !isFlagSet(flags, IS_PRIMITIVE_FLAG_BIT);
+        boolean isInterface = isFlagSet(flags, IS_INTERFACE_FLAG_BIT);
+        int layoutEncoding;
+        int monitorOffset = 0;
+        int identityHashOffset = 0;
 
-        // GR-59687: Determine typecheck related infos
-        int typeID = 0;
-        short typeIDDepth = 0;
-        short numClassTypes = 2;
-        short numInterfacesTypes = 0;
-        int[] openTypeWorldTypeCheckSlots = new int[numClassTypes + (numInterfacesTypes * 2)];
+        // See also similar logic in UniverseBuilder.buildHubs
+        ObjectLayout ol = ConfigurationValues.getObjectLayout();
+        if (componentHub != null) {
+            // array
+            JavaKind componentKind = JavaKind.fromJavaClass(DynamicHub.toClass(componentHub));
+            boolean isObject = (componentKind == JavaKind.Object);
+            layoutEncoding = LayoutEncoding.forArray(isObject, ol.getArrayBaseOffset(componentKind), ol.getArrayIndexShift(componentKind));
+            if (ol.isIdentityHashFieldInObjectHeader() || ol.isIdentityHashFieldAtTypeSpecificOffset()) {
+                identityHashOffset = NumUtil.safeToInt(ol.getObjectHeaderIdentityHashOffset());
+            }
+        } else if (isInterface) {
+            layoutEncoding = LayoutEncoding.forInterface();
+        } else {
+            // instance class
+            assert !"java.lang.Class".equals(name);
+            /*
+             * @Hybrid types are not supported. The absence of the annotation is assumed to be
+             * checked by callers. See AbstractRuntimeClassRegistry.checkNotHybrid.
+             */
+            if (Modifier.isAbstract(modifiers)) {
+                layoutEncoding = LayoutEncoding.forAbstract();
+            } else {
+                int instanceSize = afterFieldsOffset;
+
+                boolean needsMonitorOffset = !valueBased;
+                if (needsMonitorOffset) {
+                    // GR-60069 could look for gaps
+                    int size = ol.getReferenceSize();
+                    int bits = size - 1;
+                    int alignmentAdjust = ((instanceSize + bits) & ~bits) - instanceSize;
+                    monitorOffset = instanceSize + alignmentAdjust;
+                    instanceSize = monitorOffset + size;
+                }
+
+                if (ol.isIdentityHashFieldInObjectHeader()) {
+                    identityHashOffset = ol.getObjectHeaderIdentityHashOffset();
+                } else if (ol.isIdentityHashFieldAtTypeSpecificOffset() || ol.isIdentityHashFieldOptional()) {
+                    // GR-60069 could look for gaps
+                    int bits = Integer.BYTES - 1;
+                    int alignmentAdjust = ((instanceSize + bits) & ~bits) - instanceSize;
+                    identityHashOffset = instanceSize + alignmentAdjust;
+                    instanceSize = identityHashOffset + Integer.BYTES;
+                } else {
+                    throw VMError.shouldNotReachHere("Unexpected identity hash mode");
+                }
+                layoutEncoding = LayoutEncoding.forPureInstance(ol.alignUp(instanceSize));
+            }
+        }
 
         companion.interfacesEncoding = interfacesEncoding;
-        // GR-59683: Proper value needed.
+        // GR-57813: setup a LazyFinalReference that calls `values` via reflection.
         companion.enumConstantsReference = null;
 
         /*
@@ -519,8 +568,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         writeShort(hub, dynamicHubOffsets.getNumInterfaceTypesOffset(), numInterfacesTypes);
         writeObject(hub, dynamicHubOffsets.getOpenTypeWorldTypeCheckSlotsOffset(), openTypeWorldTypeCheckSlots);
 
-        writeChar(hub, dynamicHubOffsets.getMonitorOffsetOffset(), monitorOffset);
-        writeChar(hub, dynamicHubOffsets.getIdentityHashOffsetOffset(), identityHashOffset);
+        VMError.guarantee(monitorOffset == (char) monitorOffset);
+        VMError.guarantee(identityHashOffset == (char) identityHashOffset);
+        writeChar(hub, dynamicHubOffsets.getMonitorOffsetOffset(), (char) monitorOffset);
+        writeChar(hub, dynamicHubOffsets.getIdentityHashOffsetOffset(), (char) identityHashOffset);
 
         writeShort(hub, dynamicHubOffsets.getFlagsOffset(), flags);
 

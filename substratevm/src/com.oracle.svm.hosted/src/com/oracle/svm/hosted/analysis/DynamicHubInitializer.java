@@ -154,7 +154,7 @@ public class DynamicHubInitializer {
             ResolvedJavaType interpreterType = RuntimeClassLoading.createInterpreterType(hub, type);
             hub.setInterpreterType(interpreterType);
             heapScanner.rescanField(hub.getCompanion(), hubCompanionInterpreterType);
-            heapScanner.rescanObject(interpreterType.getDeclaredMethods());
+            heapScanner.rescanObject(interpreterType.getDeclaredMethods(false));
         }
     }
 

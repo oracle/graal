@@ -707,12 +707,12 @@ public final class InterpreterToVM {
 
     private static InterpreterResolvedJavaMethod peekAtInterpreterVTable(Class<?> seedClass, Class<?> thisClass, int vTableIndex, boolean isInvokeInterface) {
         ResolvedJavaType thisType;
-        if (DebuggerWithInterpreter.getValue()) {
+        if (RuntimeClassLoading.isSupported()) {
+            thisType = DynamicHub.fromClass(thisClass).getInterpreterType();
+        } else {
+            assert DebuggerWithInterpreter.getValue();
             DebuggerSupport interpreterSupport = ImageSingletons.lookup(DebuggerSupport.class);
             thisType = interpreterSupport.getUniverse().lookupType(thisClass);
-        } else {
-            assert RuntimeClassLoading.isSupported();
-            throw VMError.unimplemented("obtain java type with vtable mirror");
         }
         VMError.guarantee(thisType != null);
         VMError.guarantee(thisType instanceof InterpreterResolvedObjectType);

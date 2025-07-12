@@ -22,35 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.hub;
+package com.oracle.svm.hosted;
 
-import java.util.List;
+import java.lang.reflect.Field;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.espresso.classfile.ParserKlass;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.fieldvaluetransformer.NewInstanceFieldValueTransformer;
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
+public class SymbolsFeature implements InternalFeature {
 
-public interface CremaSupport {
-    @Platforms(Platform.HOSTED_ONLY.class)
-    ResolvedJavaType createInterpreterType(DynamicHub hub, ResolvedJavaType analysisType);
-
-    int getAfterFieldsOffset(DynamicHub hub);
-
-    interface CremaDispatchTable {
-        int vtableLength();
-
-        int itableLength(Class<?> iface);
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(SymbolsSupport.class, new SymbolsSupport());
     }
 
-    CremaDispatchTable getDispatchTable(ParserKlass parsed, Class<?> superClass, List<Class<?>> superInterfaces);
-
-    void fillDynamicHubInfo(DynamicHub hub, CremaDispatchTable table, List<Class<?>> transitiveSuperInterfaces, int[] interfaceIndices);
-
-    static CremaSupport singleton() {
-        return ImageSingletons.lookup(CremaSupport.class);
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
+        /*
+         * This works around issues when analysis concurrently scans the readWriteLock in
+         * SymbolsImpl and might add a Thread to the image heap. It could be generalized (GR-62530).
+         */
+        Field readWriteLockField = access.findField("com.oracle.svm.espresso.classfile.descriptors.SymbolsImpl", "readWriteLock");
+        access.registerFieldValueTransformer(readWriteLockField, new NewInstanceFieldValueTransformer());
     }
 }
