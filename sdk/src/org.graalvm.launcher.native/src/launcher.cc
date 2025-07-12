@@ -118,6 +118,7 @@
 #define IS_VM_LIBRARY_PATH_ARG(ARG) STARTS_WITH(ARG, VM_LIBRARY_PATH_ARG_PREFIX)
 #define IS_VM_STACK_SIZE_ARG(ARG) STARTS_WITH(ARG, VM_STACK_SIZE_ARG_PREFIX)
 #define IS_VM_ARG_FILE_ARG(ARG) STARTS_WITH(ARG, VM_ARG_FILE_ARG_PREFIX)
+#define IS_VM_START_ON_FIRST_THREAD(ARG) (ARG == "--vm.XstartOnFirstThread")
 
 #define NMT_ARG_NAME "XX:NativeMemoryTracking"
 #define NMT_ENV_NAME "NMT_LEVEL_"
@@ -364,7 +365,8 @@ static void parse_vm_option(
         std::ostringstream *cp,
         std::ostringstream *modulePath,
         std::ostringstream *libraryPath,
-        size_t* stack_size,
+        size_t *stack_size,
+        bool *startOnFirstThread,
         std::string_view option) {
     if (IS_VM_CP_ARG(option)) {
         *cp << CP_SEP_STR << option.substr(VM_CP_ARG_OFFSET);
@@ -379,6 +381,10 @@ static void parse_vm_option(
     } else if (IS_VM_ARG_FILE_ARG(option)) {
         std::string arg_file(option.substr(VM_ARG_FILE_ARG_OFFSET));
         expand_vm_arg_file(arg_file.c_str(), vmArgs, cp, modulePath, libraryPath, stack_size);
+#if defined (__APPLE__)
+    } else if (IS_VM_START_ON_FIRST_THREAD(option)) {
+        *startOnFirstThread = true;
+#endif
     } else if (IS_VM_ARG(option)) {
         if (IS_VM_STACK_SIZE_ARG(option)) {
             *stack_size = parse_size(option.substr(VM_STACK_SIZE_ARG_OFFSET));
@@ -555,13 +561,14 @@ struct MainThreadArgs {
     bool jvmMode;
     std::string libPath;
     size_t stack_size{};
+    bool startOnFirstThread;
     std::vector<std::string> vmArgs;
     std::vector<std::string> optionVarsArgs;
 };
 
 /* parse the VM arguments that should be passed to JNI_CreateJavaVM */
 static void parse_vm_options(struct MainThreadArgs& parsedArgs) {
-    auto& [argc, argv, exeDir, jvmMode, _, stack_size, vmArgs, optionVarsArgs] = parsedArgs;
+    auto& [argc, argv, exeDir, jvmMode, _, stack_size, startOnFirstThread, vmArgs, optionVarsArgs] = parsedArgs;
 
     /* check if vm args have been set on relaunch already */
     int vmArgCount = 0;
@@ -715,7 +722,7 @@ static void parse_vm_options(struct MainThreadArgs& parsedArgs) {
     const char *launcherDefaultVmArgs[] = LAUNCHER_DEFAULT_VM_ARGS;
     for (int i = 0; i < sizeof(launcherDefaultVmArgs)/sizeof(char*); i++) {
         if (IS_VM_ARG(std::string(launcherDefaultVmArgs[i]))) {
-            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, launcherDefaultVmArgs[i]);
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, &startOnFirstThread, launcherDefaultVmArgs[i]);
         }
     }
     #endif
@@ -724,7 +731,7 @@ static void parse_vm_options(struct MainThreadArgs& parsedArgs) {
     if (!relaunch) {
         /* handle CLI arguments */
         for (int i = 1; i < argc; i++) {
-            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, argv[i]);
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, &startOnFirstThread, argv[i]);
         }
 
         /* handle optional vm args from LanguageLibraryConfig.option_vars */
@@ -745,12 +752,12 @@ static void parse_vm_options(struct MainThreadArgs& parsedArgs) {
             while ((next = optionLine.find(" ", last)) != std::string::npos) {
                 option = optionLine.substr(last, next-last);
                 optionVarsArgs.push_back(option);
-                parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, option);
+                parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, &startOnFirstThread, option);
                 last = next + 1;
             };
             option = optionLine.substr(last);
             optionVarsArgs.push_back(option);
-            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, option);
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, &startOnFirstThread, option);
         }
         #endif
     } else {
@@ -769,7 +776,7 @@ static void parse_vm_options(struct MainThreadArgs& parsedArgs) {
                 std::cerr << "VM arguments specified: " << vmArgCount << " but argument " << i << "missing" << std::endl;
                 break;
             }
-            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, cur);
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, &startOnFirstThread, cur);
             /* clean up env variable */
             setenv(envKey, "");
         }
@@ -865,7 +872,7 @@ int main(int argc, char *argv[]) {
 
 
     /* parse VM args */
-    struct MainThreadArgs parsedArgs{argc, argv, exeDir, jvmMode, libPath, 0};
+    struct MainThreadArgs parsedArgs{argc, argv, exeDir, jvmMode, libPath, 0, false};
     parse_vm_options(parsedArgs);
     size_t stack_size = parsedArgs.stack_size;
 
@@ -883,10 +890,12 @@ int main(int argc, char *argv[]) {
     size_t main_thread_stack_size = current_thread_stack_size();
     bool use_new_thread = stack_size > main_thread_stack_size;
 #if defined (__APPLE__)
-    /* On macOS, always create a dedicated "main" thread for the JVM.
+    /* On macOS, default to creating a dedicated "main" thread for the JVM.
      * The actual main thread must run the UI event loop (needed for AWT).
+     * It can be overridden with -XstartOnFirstThread, this is needed to
+     * use other UI frameworks that *do* need to run on the main thread.
      */
-    use_new_thread = true;
+    use_new_thread = !parsedArgs.startOnFirstThread;
 
     if (jvmMode) {
         if (!load_jli_lib(exeDir)) {
@@ -965,7 +974,7 @@ int main(int argc, char *argv[]) {
 }
 
 static int jvm_main_thread(struct MainThreadArgs& parsedArgs) {
-    auto& [argc, argv, _, jvmMode, libPath, stack_size, vmArgs, optionVarsArgs] = parsedArgs;
+    auto& [argc, argv, _, jvmMode, libPath, stack_size, startOnFirstThread, vmArgs, optionVarsArgs] = parsedArgs;
 
     /* load VM library - after parsing arguments s.t. NMT
      * tracking environment variables are already set */
