@@ -28,6 +28,7 @@ import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optional
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.graph.Graph;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -47,6 +48,7 @@ import jdk.graal.compiler.phases.common.ProfileCompiledMethodsPhase;
 import jdk.graal.compiler.phases.common.PropagateDeoptimizeProbabilityPhase;
 import jdk.graal.compiler.phases.common.RemoveOpaqueValuePhase;
 import jdk.graal.compiler.phases.common.TransplantGraphsPhase;
+import jdk.graal.compiler.phases.common.WriteBarrierAdditionPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
@@ -86,6 +88,8 @@ public class LowTier extends BaseTier<LowTierContext> {
 
         appendPhase(new FixReadsPhase(true,
                         new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS)));
+
+        appendPhase(new WriteBarrierAdditionPhase(GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION));
 
         appendPhase(canonicalizerWithoutGVN);
 
