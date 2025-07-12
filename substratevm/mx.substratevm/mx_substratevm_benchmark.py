@@ -854,9 +854,6 @@ class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
         # We cannot enable assertions along with emitting a build report for layered images, due to GR-65751
         if self.stages_info.current_stage.is_layered():
             return []
-        # We cannot enable assertions for Micronaut Pegasus Function due to an AssertionError (see GR-67326)
-        if self._get_benchmark_config(benchmark)["app"] == "micronaut-pegasus-function":
-            return []
         return super().build_assertions(benchmark, is_gate)
 
     def rules(self, output, benchmarks, bmSuiteArgs) -> List[Rule]:
