@@ -53,11 +53,11 @@ public class WasmOptions {
     public static final OptionKey<String> Builtins = new OptionKey<>("");
 
     @Option(help = "The minimal binary size for which to use async parsing. If threads are not supported, async parsing will not be used.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[0, inf)", //
-                    deprecated = true, deprecationMessage = "Option no longer has any effect and can be safely omitted.")//
+                    deprecated = true, deprecationMessage = "Option no longer has any effect and can be safely omitted")//
     public static final OptionKey<Integer> AsyncParsingBinarySize = new OptionKey<>(100_000);
 
     @Option(help = "The stack size in kilobytes to use during async parsing, or zero to use defaults.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[0, inf)", //
-                    deprecated = true, deprecationMessage = "Option no longer has any effect and can be safely omitted.")//
+                    deprecated = true, deprecationMessage = "Option no longer has any effect and can be safely omitted")//
     public static final OptionKey<Integer> AsyncParsingStackSize = new OptionKey<>(0);
 
     @Option(help = "A comma-separated list of pre-opened Wasi directories.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[<virtualDir>::]<hostDir>,[<virtualDir>::]<hostDir>,...")//

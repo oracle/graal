@@ -125,7 +125,7 @@ public @interface Option {
     boolean deprecated() default false;
 
     /**
-     * Returns the deprecation reason and the recommended fix. The generated option descriptor
+     * Returns the deprecation reason and the recommended fix. Do not include closing punctuation. The generated option descriptor
      * returns this value as result of {@link OptionDescriptor#getDeprecationMessage()}.
      *
      * @since 20.1.0
