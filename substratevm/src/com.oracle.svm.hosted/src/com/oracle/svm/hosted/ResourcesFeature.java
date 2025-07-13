@@ -200,7 +200,7 @@ public class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addCondition(ConfigurationCondition condition, Module module, String resourcePath) {
-            var conditionalResource = Resources.currentLayer().getResource(createStorageKey(module, resourcePath));
+            var conditionalResource = Resources.currentLayer().resources().get(createStorageKey(module, resourcePath));
             if (conditionalResource != null) {
                 classInitializationSupport.addForTypeReachedTracking(condition.getType());
                 conditionalResource.getConditions().addCondition(condition);

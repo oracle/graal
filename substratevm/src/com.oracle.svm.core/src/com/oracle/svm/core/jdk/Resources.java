@@ -48,6 +48,7 @@ import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -275,23 +276,8 @@ public final class Resources implements MultiLayeredImageSingleton {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public ConditionalRuntimeValue<ResourceStorageEntryBase> getResource(ModuleResourceKey storageKey) {
-        return resources.get(storageKey);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public Iterable<ConditionalRuntimeValue<ResourceStorageEntryBase>> resources() {
-        return resources.getValues();
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public Iterable<ModuleResourceKey> resourceKeys() {
-        return resources.getKeys();
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public int count() {
-        return resources.size();
+    public UnmodifiableEconomicMap<ModuleResourceKey, ConditionalRuntimeValue<ResourceStorageEntryBase>> resources() {
+        return resources;
     }
 
     public static long getLastModifiedTime() {
@@ -828,7 +814,7 @@ final class ResourcesFeature implements InternalFeature {
          * of lazily initialized fields. Only the byte[] arrays themselves can be safely made
          * read-only.
          */
-        for (ConditionalRuntimeValue<ResourceStorageEntryBase> entry : Resources.currentLayer().resources()) {
+        for (ConditionalRuntimeValue<ResourceStorageEntryBase> entry : Resources.currentLayer().resources().getValues()) {
             var unconditionalEntry = entry.getValueUnconditionally();
             if (unconditionalEntry.hasData()) {
                 for (byte[] resource : unconditionalEntry.getData()) {

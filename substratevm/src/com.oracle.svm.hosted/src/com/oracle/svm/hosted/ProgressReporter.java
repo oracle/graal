@@ -52,6 +52,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.configure.ConditionalRuntimeValue;
+import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
@@ -109,6 +111,7 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.util.json.JsonWriter;
+import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class ProgressReporter {
@@ -506,10 +509,24 @@ public class ProgressReporter {
         String stubsFormat = "%,9d downcalls and %,d upcalls ";
         recordJsonMetric(AnalysisResults.FOREIGN_DOWNCALLS, (numForeignDowncalls >= 0 ? numForeignDowncalls : UNAVAILABLE_METRIC));
         recordJsonMetric(AnalysisResults.FOREIGN_UPCALLS, (numForeignUpcalls >= 0 ? numForeignUpcalls : UNAVAILABLE_METRIC));
-        if (numForeignDowncalls >= 0 || numForeignUpcalls >= 0) {
+        if (numForeignDowncalls > 0 || numForeignUpcalls > 0) {
             l().a(stubsFormat, numForeignDowncalls, numForeignUpcalls)
                             .doclink("registered for foreign access", "#glossary-foreign-downcall-and-upcall-registrations").println();
         }
+        RuntimeResourceSupport runtimeResourceSupport = ImageSingletons.lookup(RuntimeResourceSupport.class);
+        int resourceCount = Resources.currentLayer().resources().size();
+        long totalResourceSize = 0;
+        for (ConditionalRuntimeValue<ResourceStorageEntryBase> value : Resources.currentLayer().resources().getValues()) {
+            if (value.getValueUnconditionally().hasData()) {
+                for (byte[] bytes : value.getValueUnconditionally().getData()) {
+                    totalResourceSize += bytes.length;
+                }
+            }
+        }
+        if (resourceCount > 0) {
+            l().a("%,9d %s found with %s total size", resourceCount, resourceCount == 1 ? "resource" : "resources", ByteFormattingUtil.bytesToHuman(totalResourceSize)).println();
+        }
+        ConditionalRuntimeValue<ResourceStorageEntryBase> value;
         int numLibraries = libraries.size();
         if (numLibraries > 0) {
             TreeSet<String> sortedLibraries = new TreeSet<>(libraries);
@@ -578,7 +595,7 @@ public class ProgressReporter {
         String format = "%9s (%5.2f%%) for ";
         l().a(format, ByteFormattingUtil.bytesToHuman(codeAreaSize), Utils.toPercentage(codeAreaSize, imageFileSize))
                         .doclink("code area", "#glossary-code-area").a(":%,10d compilation units", numCompilations).println();
-        int numResources = Resources.currentLayer().count();
+        int numResources = Resources.currentLayer().resources().size();
         recordJsonMetric(ImageDetailKey.IMAGE_HEAP_RESOURCE_COUNT, numResources);
         l().a(format, ByteFormattingUtil.bytesToHuman(imageHeapSize), Utils.toPercentage(imageHeapSize, imageFileSize))
                         .doclink("image heap", "#glossary-image-heap").a(":%,9d objects and %,d resources", heapObjectCount, numResources).println();
