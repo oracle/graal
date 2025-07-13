@@ -267,7 +267,8 @@ public class WasmInstantiator {
                 }
                 final byte[] dataOffsetBytecode;
                 final long dataOffsetAddress;
-                if ((encoding & BytecodeBitEncoding.DATA_SEG_BYTECODE_OR_OFFSET_MASK) == BytecodeBitEncoding.DATA_SEG_BYTECODE) {
+                if ((encoding & BytecodeBitEncoding.DATA_SEG_BYTECODE_OR_OFFSET_MASK) == BytecodeBitEncoding.DATA_SEG_BYTECODE &&
+                                ((encoding & BytecodeBitEncoding.DATA_SEG_VALUE_MASK) != BytecodeBitEncoding.DATA_SEG_VALUE_UNDEFINED)) {
                     int dataOffsetBytecodeLength = (int) value;
                     dataOffsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + dataOffsetBytecodeLength);
                     effectiveOffset += dataOffsetBytecodeLength;
@@ -285,7 +286,7 @@ public class WasmInstantiator {
                     effectiveOffset++;
                     switch (memoryIndexEncoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_MASK) {
                         case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U6:
-                            memoryIndex = encoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_VALUE;
+                            memoryIndex = memoryIndexEncoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_VALUE;
                             break;
                         case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U8:
                             memoryIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,80 +38,51 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
 package org.graalvm.wasm;
 
-import java.util.Map;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
 @ExportLibrary(InteropLibrary.class)
-@SuppressWarnings({"static-method"})
-public final class WasmScope implements TruffleObject {
-    private final WasmStore store;
+public final class WasmNamesObject implements TruffleObject {
+    private final String[] names;
 
-    public WasmScope(WasmStore store) {
-        this.store = store;
+    public WasmNamesObject(String[] names) {
+        this.names = names;
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
-    boolean hasLanguage() {
+    boolean hasArrayElements() {
         return true;
     }
 
     @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return WasmLanguage.class;
+    boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < names.length;
     }
 
     @ExportMessage
-    boolean hasMembers() {
-        return true;
-    }
-
-    private Map<String, WasmInstance> instances() {
-        return store.moduleInstances();
+    long getArraySize() {
+        return names.length;
     }
 
     @ExportMessage
-    @TruffleBoundary
-    Object readMember(String member) throws UnknownIdentifierException {
-        var instances = instances();
-        Object value = instances.get(member);
-        if (value != null) {
-            return value;
+    Object readArrayElement(long index,
+                    @Bind Node node,
+                    @Cached InlinedBranchProfile errorBranch) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(index)) {
+            errorBranch.enter(node);
+            throw InvalidArrayIndexException.create(index);
         }
-        throw UnknownIdentifierException.create(member);
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    boolean isMemberReadable(String member) {
-        var instances = instances();
-        return instances.containsKey(member);
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        var instances = instances();
-        final String[] keys = instances.keySet().toArray(new String[instances.size()]);
-        return new WasmNamesObject(keys);
-    }
-
-    @ExportMessage
-    boolean isScope() {
-        return true;
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return "wasm-global-scope" + instances().keySet();
+        return names[(int) index];
     }
 }
