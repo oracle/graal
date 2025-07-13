@@ -111,7 +111,6 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.util.json.JsonWriter;
-import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class ProgressReporter {
@@ -513,7 +512,6 @@ public class ProgressReporter {
             l().a(stubsFormat, numForeignDowncalls, numForeignUpcalls)
                             .doclink("registered for foreign access", "#glossary-foreign-downcall-and-upcall-registrations").println();
         }
-        RuntimeResourceSupport runtimeResourceSupport = ImageSingletons.lookup(RuntimeResourceSupport.class);
         int resourceCount = Resources.currentLayer().resources().size();
         long totalResourceSize = 0;
         for (ConditionalRuntimeValue<ResourceStorageEntryBase> value : Resources.currentLayer().resources().getValues()) {
@@ -526,7 +524,6 @@ public class ProgressReporter {
         if (resourceCount > 0) {
             l().a("%,9d %s found with %s total size", resourceCount, resourceCount == 1 ? "resource" : "resources", ByteFormattingUtil.bytesToHuman(totalResourceSize)).println();
         }
-        ConditionalRuntimeValue<ResourceStorageEntryBase> value;
         int numLibraries = libraries.size();
         if (numLibraries > 0) {
             TreeSet<String> sortedLibraries = new TreeSet<>(libraries);

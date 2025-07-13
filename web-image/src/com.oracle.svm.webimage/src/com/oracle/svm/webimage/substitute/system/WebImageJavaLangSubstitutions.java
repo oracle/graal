@@ -644,7 +644,7 @@ final class Target_java_lang_Module_Web {
             resName = resName.substring(1);
         }
         ResourceStorageEntryBase res = Resources.getAtRuntime(SubstrateUtil.cast(this, Module.class), resName, true);
-        return res == null ? null : new ByteArrayInputStream(res.getData().get(0));
+        return res == null ? null : new ByteArrayInputStream(res.getData()[0]);
     }
 }
 

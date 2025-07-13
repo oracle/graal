@@ -628,8 +628,8 @@ public final class Resources implements MultiLayeredImageSingleton {
         } else if (entry == null) {
             return null;
         }
-        List<byte[]> data = entry.getData();
-        return data.isEmpty() ? null : new ByteArrayInputStream(data.get(0));
+        byte[][] data = entry.getData();
+        return data.length == 0 ? null : new ByteArrayInputStream(data[0]);
     }
 
     private static ResourceStorageEntryBase findResourceForInputStream(Module module, String resourceName) {
@@ -703,8 +703,7 @@ public final class Resources implements MultiLayeredImageSingleton {
         if (entry == null) {
             return;
         }
-        int numberOfResources = entry.getData().size();
-        for (int index = 0; index < numberOfResources; index++) {
+        for (int index = 0; index < entry.getData().length; index++) {
             resourcesURLs.add(createURL(module, canonicalResourceName, index));
         }
     }
