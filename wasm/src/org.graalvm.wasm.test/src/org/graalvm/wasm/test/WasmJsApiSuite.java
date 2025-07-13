@@ -47,6 +47,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
@@ -82,7 +83,6 @@ import org.graalvm.wasm.globals.DefaultWasmGlobal;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
-import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -95,7 +95,6 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -2381,7 +2380,7 @@ public class WasmJsApiSuite {
                                     }),
                     });
                     WasmInstance instance1 = moduleInstantiate(wasm, sourceBytesMod1, importObj1);
-                    var mod1Sum = instance1.readMember("sum");
+                    var mod1Sum = WebAssembly.instanceExport(instance1, "sum");
                     Dictionary importObj2 = Dictionary.create(new Object[]{
                                     "mod1", Dictionary.create(new Object[]{
                                                     "sum", mod1Sum,
@@ -2527,24 +2526,10 @@ public class WasmJsApiSuite {
         try (Context context = contextBuilder.build()) {
             Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
             Source source = sourceBuilder.build();
-            context.eval(source);
-            Value main = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+            Value mainInstance = context.eval(source).newInstance();
+            Value main = mainInstance.getMember("exports").getMember("main");
             main.execute();
-            Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
-            run.execute(new GuestCode(testCase));
-        }
-    }
-
-    private static final class GuestCode implements Consumer<WasmContext>, TruffleObject {
-        private final Consumer<WasmContext> testCase;
-
-        private GuestCode(Consumer<WasmContext> testCase) {
-            this.testCase = testCase;
-        }
-
-        @Override
-        public void accept(WasmContext context) {
-            testCase.accept(context);
+            WasmTestUtils.runInWasmContext(context, testCase);
         }
     }
 
@@ -2916,6 +2901,6 @@ public class WasmJsApiSuite {
 
     public static WasmInstance moduleInstantiate(WebAssembly wasm, byte[] source, Object importObject) {
         final WasmModule module = wasm.moduleDecode(source);
-        return wasm.moduleInstantiate(module, importObject);
+        return wasm.moduleInstantiate(module, Objects.requireNonNullElse(importObject, WasmConstant.NULL));
     }
 }
