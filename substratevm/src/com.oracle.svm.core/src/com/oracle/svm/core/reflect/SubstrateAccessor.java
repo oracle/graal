@@ -101,7 +101,7 @@ public abstract class SubstrateAccessor {
     @SuppressWarnings("unchecked")
     protected static <T extends CFunctionPointer> T getCodePointer(MethodRef ref) {
         Pointer p = (Pointer) ref;
-        if (SubstrateOptions.useRelativeCodePointers()) {
+        if (SubstrateOptions.useRelativeCodePointers() && p.notEqual(0)) {
             p = p.add(KnownIntrinsics.codeBase());
         }
         return (T) p;

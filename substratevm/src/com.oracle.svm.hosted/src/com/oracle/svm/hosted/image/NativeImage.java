@@ -1125,6 +1125,18 @@ final class MethodPointerInvalidHandlerFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-        access.registerAsRoot(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD, true, "InvalidMethodPointerHandler, registered in " + MethodPointerInvalidHandlerFeature.class);
+        Method invalidCodeAddressHandler = getInvalidCodeAddressHandler();
+        if (invalidCodeAddressHandler != null) {
+            access.registerAsRoot(invalidCodeAddressHandler, true, "Registered in " + MethodPointerInvalidHandlerFeature.class);
+        }
+        access.registerAsRoot(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD, true, "Registered in " + MethodPointerInvalidHandlerFeature.class);
+    }
+
+    static Method getInvalidCodeAddressHandler() {
+        if (HostedImageLayerBuildingSupport.buildingExtensionLayer()) {
+            /* Code offset 0 is in the initial layer, where the handler is already present. */
+            return null;
+        }
+        return InvalidMethodPointerHandler.INVALID_CODE_ADDRESS_HANDLER_METHOD;
     }
 }
