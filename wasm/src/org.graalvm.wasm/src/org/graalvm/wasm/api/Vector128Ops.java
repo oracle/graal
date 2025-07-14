@@ -77,6 +77,10 @@ public class Vector128Ops {
             return species().broadcast(e);
         }
 
+        /**
+         * This is used by floating-point Shapes to be able to broadcast -0.0, which cannot be
+         * faithfully represented as a long.
+         */
         default Vector<E> broadcast(double e) {
             throw CompilerDirectives.shouldNotReachHere();
         }
@@ -316,16 +320,16 @@ public class Vector128Ops {
             case Bytecode.VECTOR_F32X4_ABS -> unop(x, F32X4, VectorOperators.ABS);
             case Bytecode.VECTOR_F32X4_NEG -> unop(x, F32X4, VectorOperators.NEG);
             case Bytecode.VECTOR_F32X4_SQRT -> unop(x, F32X4, VectorOperators.SQRT);
-            case Bytecode.VECTOR_F32X4_CEIL -> ceil(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.REINTERPRET_I2F, Vector128Ops::f32x4_getExponent, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
-            case Bytecode.VECTOR_F32X4_FLOOR -> floor(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.REINTERPRET_I2F, Vector128Ops::f32x4_getExponent, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
-            case Bytecode.VECTOR_F32X4_TRUNC -> trunc(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.I2F, Vector128Ops::f32x4_getExponent, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
+            case Bytecode.VECTOR_F32X4_CEIL -> ceil(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.REINTERPRET_I2F, Vector128Ops::getExponentFloats, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
+            case Bytecode.VECTOR_F32X4_FLOOR -> floor(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.REINTERPRET_I2F, Vector128Ops::getExponentFloats, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
+            case Bytecode.VECTOR_F32X4_TRUNC -> trunc(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.I2F, Vector128Ops::getExponentFloats, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
             case Bytecode.VECTOR_F32X4_NEAREST -> nearest(x, F32X4, (float)(1 << (FLOAT_SIGNIFICAND_WIDTH - 1)));
             case Bytecode.VECTOR_F64X2_ABS -> unop(x, F64X2, VectorOperators.ABS);
             case Bytecode.VECTOR_F64X2_NEG -> unop(x, F64X2, VectorOperators.NEG);
             case Bytecode.VECTOR_F64X2_SQRT -> unop(x, F64X2, VectorOperators.SQRT);
-            case Bytecode.VECTOR_F64X2_CEIL -> ceil(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D, Vector128Ops::f64x2_getExponent, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
-            case Bytecode.VECTOR_F64X2_FLOOR -> floor(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D, Vector128Ops::f64x2_getExponent, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
-            case Bytecode.VECTOR_F64X2_TRUNC -> trunc(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D, Vector128Ops::f64x2_getExponent, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
+            case Bytecode.VECTOR_F64X2_CEIL -> ceil(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D, Vector128Ops::getExponentDoubles, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
+            case Bytecode.VECTOR_F64X2_FLOOR -> floor(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D, Vector128Ops::getExponentDoubles, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
+            case Bytecode.VECTOR_F64X2_TRUNC -> trunc(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D, Vector128Ops::getExponentDoubles, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
             case Bytecode.VECTOR_F64X2_NEAREST -> nearest(x, F64X2, (double)(1L << (DOUBLE_SIGNIFICAND_WIDTH - 1)));
             case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S -> convert(x, F32X4, VectorOperators.F2I);
             case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U -> i32x4_trunc_sat_f32x4(x);
@@ -339,98 +343,6 @@ public class Vector128Ops {
             case Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4 -> convert(x, F32X4, VectorOperators.F2D);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
-    }
-
-    private static final int FLOAT_SIGNIFICAND_WIDTH = Float.PRECISION;
-    private static final int FLOAT_EXP_BIAS = (1 << (Float.SIZE - FLOAT_SIGNIFICAND_WIDTH - 1)) - 1;
-    private static final int FLOAT_EXP_BIT_MASK = ((1 << (Float.SIZE - FLOAT_SIGNIFICAND_WIDTH)) - 1) << (FLOAT_SIGNIFICAND_WIDTH - 1);
-    private static final long FLOAT_SIGNIF_BIT_MASK = (1L << (FLOAT_SIGNIFICAND_WIDTH - 1)) - 1;
-
-    private static final int DOUBLE_SIGNIFICAND_WIDTH = Double.PRECISION;
-    private static final int DOUBLE_EXP_BIAS = (1 << (Double.SIZE - DOUBLE_SIGNIFICAND_WIDTH - 1)) - 1; // 1023
-    private static final long DOUBLE_EXP_BIT_MASK = ((1L << (Double.SIZE - DOUBLE_SIGNIFICAND_WIDTH)) - 1) << (DOUBLE_SIGNIFICAND_WIDTH - 1);
-    private static final long DOUBLE_SIGNIF_BIT_MASK = (1L << (DOUBLE_SIGNIFICAND_WIDTH - 1)) - 1;
-
-    private static final double CEIL_NEGATIVE_BOUNDARY_ARG = -0.0;
-    private static final double CEIL_POSITIVE_BOUNDARY_ARG = 1.0;
-    private static final double CIEL_SIGN_ARG = 1.0;
-
-    private static final double FLOOR_NEGATIVE_BOUNDARY_ARG = -1.0;
-    private static final double FLOOR_POSITIVE_BOUNDARY_ARG = 0.0;
-    private static final double FLOOR_SIGN_ARG = -1.0;
-
-    private static IntVector f32x4_getExponent(Vector<Float> x) {
-        return castInt128(x.convert(VectorOperators.REINTERPRET_F2I, 0).lanewise(VectorOperators.AND, FLOAT_EXP_BIT_MASK).lanewise(VectorOperators.LSHR, FLOAT_SIGNIFICAND_WIDTH - 1).sub(I32X4.broadcast(FLOAT_EXP_BIAS)));
-    }
-
-    private static LongVector f64x2_getExponent(Vector<Double> x) {
-        return castLong128(x.convert(VectorOperators.REINTERPRET_D2L, 0).lanewise(VectorOperators.AND, DOUBLE_EXP_BIT_MASK).lanewise(VectorOperators.LSHR, DOUBLE_SIGNIFICAND_WIDTH - 1).sub(I64X2.broadcast(DOUBLE_EXP_BIAS)));
-    }
-
-    private static <E, F extends Number> ByteVector ceil(ByteVector xBytes, Shape<E> shape, Shape<F> integralShape, VectorOperators.Conversion<E, F> floatingAsIntegral, VectorOperators.Conversion<F, E> integralAsFloating, Function<Vector<E>, Vector<F>> getExponent, int significantWidth, Vector<F> significandBitMask) {
-        Vector<E> x = shape.reinterpret(xBytes);
-        return floorOrCeil(x, shape, integralShape, floatingAsIntegral, integralAsFloating, getExponent, significantWidth, significandBitMask, shape.broadcast(CEIL_NEGATIVE_BOUNDARY_ARG), shape.broadcast(CEIL_POSITIVE_BOUNDARY_ARG), shape.broadcast(CIEL_SIGN_ARG));
-    }
-
-    private static <E, F extends Number> ByteVector floor(ByteVector xBytes, Shape<E> shape, Shape<F> integralShape, VectorOperators.Conversion<E, F> floatingAsIntegral, VectorOperators.Conversion<F, E> integralAsFloating, Function<Vector<E>, Vector<F>> getExponent, int significantWidth, Vector<F> significandBitMask) {
-        Vector<E> x = shape.reinterpret(xBytes);
-        return floorOrCeil(x, shape, integralShape, floatingAsIntegral, integralAsFloating, getExponent, significantWidth, significandBitMask, shape.broadcast(FLOOR_NEGATIVE_BOUNDARY_ARG), shape.broadcast(FLOOR_POSITIVE_BOUNDARY_ARG), shape.broadcast(FLOOR_SIGN_ARG));
-    }
-
-    private static <E, F extends Number> ByteVector trunc(ByteVector xBytes, Shape<E> shape, Shape<F> integralShape, VectorOperators.Conversion<E, F> floatingAsIntegral, VectorOperators.Conversion<F, E> integralAsFloating, Function<Vector<E>, Vector<F>> getExponent, int significantWidth, Vector<F> significandBitMask) {
-        Vector<E> x = shape.reinterpret(xBytes);
-        VectorMask<E> ceil = x.lt(shape.broadcast(0));
-        return floorOrCeil(x, shape, integralShape, floatingAsIntegral, integralAsFloating, getExponent, significantWidth, significandBitMask,
-                shape.broadcast(FLOOR_NEGATIVE_BOUNDARY_ARG).blend(shape.broadcast(CEIL_NEGATIVE_BOUNDARY_ARG), ceil),
-                shape.broadcast(FLOOR_POSITIVE_BOUNDARY_ARG).blend(shape.broadcast(CEIL_POSITIVE_BOUNDARY_ARG), ceil),
-                shape.broadcast(FLOOR_SIGN_ARG).blend(shape.broadcast(CIEL_SIGN_ARG), ceil));
-    }
-
-    private static <E, F extends Number> ByteVector floorOrCeil(Vector<E> x, Shape<E> shape, Shape<F> integralShape, VectorOperators.Conversion<E, F> floatingAsIntegral, VectorOperators.Conversion<F, E> integralAsFloating, Function<Vector<E>, Vector<F>> getExponent, int significandWidth, Vector<F> significandBitMaskVec, Vector<E> negativeBoundary, Vector<E> positiveBoundary, Vector<E> sign) {
-        Vector<F> exponent = getExponent.apply(x);
-        VectorMask<E> isNegativeExponent = exponent.lt(integralShape.broadcast(0)).cast(shape.species());
-        VectorMask<E> isZero = x.eq(shape.broadcast(0));
-        VectorMask<E> isNegative = x.lt(shape.broadcast(0));
-        Vector<E> negativeExponentResult = positiveBoundary.blend(negativeBoundary, isNegative).blend(x, isZero);
-        VectorMask<E> isHighExponent = exponent.compare(VectorOperators.GE, significandWidth - 1).cast(shape.species());
-        Vector<E> highExponentResult = x;
-        Vector<F> doppel = x.convert(floatingAsIntegral, 0);
-        Vector<F> mask = significandBitMaskVec.lanewise(VectorOperators.LSHR, exponent);
-        VectorMask<E> isIntegral = doppel.lanewise(VectorOperators.AND, mask).eq(integralShape.broadcast(0)).cast(shape.species());
-        Vector<E> integralResult = x;
-        Vector<E> fractional = doppel.lanewise(VectorOperators.AND, mask.neg()).convert(integralAsFloating, 0);
-        VectorMask<E> signMatch = x.mul(sign).compare(VectorOperators.GT, 0).cast(shape.species());
-        Vector<E> fractionalResult = fractional.blend(fractional.add(sign), signMatch);
-        Vector<E> defaultResult = fractionalResult.blend(integralResult, isIntegral);
-        Vector<E> result = defaultResult.blend(highExponentResult, isHighExponent).blend(negativeExponentResult, isNegativeExponent);
-        return result.reinterpretAsBytes();
-    }
-
-    private static <E> Vector<E> sign(Vector<E> x, Shape<E> shape) {
-        VectorMask<E> negative = x.test(VectorOperators.IS_NEGATIVE);
-        return shape.broadcast(1).blend(shape.broadcast(-1), negative);
-    }
-
-    private static <E extends Number> ByteVector nearest(ByteVector xBytes, Shape<E> shape, E maxFiniteValue) {
-        Vector<E> x = shape.reinterpret(xBytes);
-        /*
-         * If the absolute value of x is not less than 2^52, it
-         * is either a finite integer (the double format does not have
-         * enough significand bits for a number that large to have any
-         * fractional portion), an infinity, or a NaN.  In any of
-         * these cases, rint of the argument is the argument.
-         *
-         * Otherwise, the sum (x + twoToThe52) will properly round
-         * away any fractional portion of x since ulp(twoToThe52) ==
-         * 1.0; subtracting out twoToThe52 from this sum will then be
-         * exact and leave the rounded integer portion of x.
-         */
-        Vector<E> sign = sign(x, shape); // preserve sign info
-        Vector<E> xAbs = x.lanewise(VectorOperators.ABS);
-        Vector<E> maxFiniteValueVec = shape.broadcast(maxFiniteValue.longValue());
-        VectorMask<E> small = xAbs.lt(maxFiniteValueVec);
-        Vector<E> xTrunc = xAbs.blend(xAbs.add(maxFiniteValueVec).sub(maxFiniteValueVec), small);
-        return xTrunc.mul(sign).reinterpretAsBytes(); // restore original sign
     }
 
     public static ByteVector binary(ByteVector x, ByteVector y, int vectorOpcode) {
@@ -696,6 +608,112 @@ public class Vector128Ops {
         Vector<E> x = shape.reinterpret(xBytes);
         Vector<F> result = x.convert(conv, part);
         return result.reinterpretAsBytes();
+    }
+
+    private static final int FLOAT_SIGNIFICAND_WIDTH = Float.PRECISION;
+    private static final int FLOAT_EXP_BIAS = (1 << (Float.SIZE - FLOAT_SIGNIFICAND_WIDTH - 1)) - 1;
+    private static final int FLOAT_EXP_BIT_MASK = ((1 << (Float.SIZE - FLOAT_SIGNIFICAND_WIDTH)) - 1) << (FLOAT_SIGNIFICAND_WIDTH - 1);
+    private static final long FLOAT_SIGNIF_BIT_MASK = (1L << (FLOAT_SIGNIFICAND_WIDTH - 1)) - 1;
+
+    private static final int DOUBLE_SIGNIFICAND_WIDTH = Double.PRECISION;
+    private static final int DOUBLE_EXP_BIAS = (1 << (Double.SIZE - DOUBLE_SIGNIFICAND_WIDTH - 1)) - 1; // 1023
+    private static final long DOUBLE_EXP_BIT_MASK = ((1L << (Double.SIZE - DOUBLE_SIGNIFICAND_WIDTH)) - 1) << (DOUBLE_SIGNIFICAND_WIDTH - 1);
+    private static final long DOUBLE_SIGNIF_BIT_MASK = (1L << (DOUBLE_SIGNIFICAND_WIDTH - 1)) - 1;
+
+    private static final double CEIL_NEGATIVE_BOUNDARY_ARG = -0.0;
+    private static final double CEIL_POSITIVE_BOUNDARY_ARG = 1.0;
+    private static final double CEIL_SIGN_ARG = 1.0;
+
+    private static final double FLOOR_NEGATIVE_BOUNDARY_ARG = -1.0;
+    private static final double FLOOR_POSITIVE_BOUNDARY_ARG = 0.0;
+    private static final double FLOOR_SIGN_ARG = -1.0;
+
+    private static IntVector getExponentFloats(Vector<Float> x) {
+        return castInt128(x.convert(VectorOperators.REINTERPRET_F2I, 0).lanewise(VectorOperators.AND, FLOAT_EXP_BIT_MASK).lanewise(VectorOperators.LSHR, FLOAT_SIGNIFICAND_WIDTH - 1).sub(I32X4.broadcast(FLOAT_EXP_BIAS)));
+    }
+
+    private static LongVector getExponentDoubles(Vector<Double> x) {
+        return castLong128(x.convert(VectorOperators.REINTERPRET_D2L, 0).lanewise(VectorOperators.AND, DOUBLE_EXP_BIT_MASK).lanewise(VectorOperators.LSHR, DOUBLE_SIGNIFICAND_WIDTH - 1).sub(I64X2.broadcast(DOUBLE_EXP_BIAS)));
+    }
+
+    private static <F, I> ByteVector ceil(ByteVector xBytes, Shape<F> floatingShape, Shape<I> integralShape,
+                                          VectorOperators.Conversion<F, I> floatingAsIntegral, VectorOperators.Conversion<I, F> integralAsFloating,
+                                          Function<Vector<F>, Vector<I>> getExponent, int significantWidth, Vector<I> significandBitMaskVec) {
+        // This is based on JDK's StrictMath.ceil
+        Vector<F> x = floatingShape.reinterpret(xBytes);
+        return floorOrCeil(x, floatingShape, integralShape, floatingAsIntegral, integralAsFloating, getExponent, significantWidth, significandBitMaskVec,
+                floatingShape.broadcast(CEIL_NEGATIVE_BOUNDARY_ARG), floatingShape.broadcast(CEIL_POSITIVE_BOUNDARY_ARG), floatingShape.broadcast(CEIL_SIGN_ARG));
+    }
+
+    private static <F, I> ByteVector floor(ByteVector xBytes, Shape<F> floatingShape, Shape<I> integralShape,
+                                           VectorOperators.Conversion<F, I> floatingAsIntegral, VectorOperators.Conversion<I, F> integralAsFloating,
+                                           Function<Vector<F>, Vector<I>> getExponent, int significantWidth, Vector<I> significandBitMaskVec) {
+        // This is based on JDK's StrictMath.floor
+        Vector<F> x = floatingShape.reinterpret(xBytes);
+        return floorOrCeil(x, floatingShape, integralShape, floatingAsIntegral, integralAsFloating, getExponent, significantWidth, significandBitMaskVec,
+                floatingShape.broadcast(FLOOR_NEGATIVE_BOUNDARY_ARG), floatingShape.broadcast(FLOOR_POSITIVE_BOUNDARY_ARG), floatingShape.broadcast(FLOOR_SIGN_ARG));
+    }
+
+    private static <F, I> ByteVector trunc(ByteVector xBytes, Shape<F> floatingShape, Shape<I> integralShape,
+                                           VectorOperators.Conversion<F, I> floatingAsIntegral, VectorOperators.Conversion<I, F> integralAsFloating,
+                                           Function<Vector<F>, Vector<I>> getExponent, int significantWidth, Vector<I> significandBitMaskVec) {
+        // This is based on JDK's ExactMath.truncate
+        Vector<F> x = floatingShape.reinterpret(xBytes);
+        VectorMask<F> ceil = x.lt(floatingShape.broadcast(0));
+        return floorOrCeil(x, floatingShape, integralShape, floatingAsIntegral, integralAsFloating, getExponent, significantWidth, significandBitMaskVec,
+                floatingShape.broadcast(FLOOR_NEGATIVE_BOUNDARY_ARG).blend(floatingShape.broadcast(CEIL_NEGATIVE_BOUNDARY_ARG), ceil),
+                floatingShape.broadcast(FLOOR_POSITIVE_BOUNDARY_ARG).blend(floatingShape.broadcast(CEIL_POSITIVE_BOUNDARY_ARG), ceil),
+                floatingShape.broadcast(FLOOR_SIGN_ARG).blend(floatingShape.broadcast(CEIL_SIGN_ARG), ceil));
+    }
+
+    private static <F, I> ByteVector floorOrCeil(Vector<F> x, Shape<F> floatingShape, Shape<I> integralShape,
+                                                 VectorOperators.Conversion<F, I> floatingAsIntegral, VectorOperators.Conversion<I, F> integralAsFloating,
+                                                 Function<Vector<F>, Vector<I>> getExponent, int significandWidth, Vector<I> significandBitMaskVec,
+                                                 Vector<F> negativeBoundary, Vector<F> positiveBoundary, Vector<F> sign) {
+        // This is based on JDK's StrictMath.floorOrCeil
+        Vector<I> exponent = getExponent.apply(x);
+        VectorMask<F> isNegativeExponent = exponent.lt(integralShape.broadcast(0)).cast(floatingShape.species());
+        VectorMask<F> isZero = x.eq(floatingShape.broadcast(0));
+        VectorMask<F> isNegative = x.lt(floatingShape.broadcast(0));
+        Vector<F> negativeExponentResult = positiveBoundary.blend(negativeBoundary, isNegative).blend(x, isZero);
+        VectorMask<F> isHighExponent = exponent.compare(VectorOperators.GE, significandWidth - 1).cast(floatingShape.species());
+        Vector<F> highExponentResult = x;
+        Vector<I> doppel = x.convert(floatingAsIntegral, 0);
+        Vector<I> mask = significandBitMaskVec.lanewise(VectorOperators.LSHR, exponent);
+        VectorMask<F> isIntegral = doppel.lanewise(VectorOperators.AND, mask).eq(integralShape.broadcast(0)).cast(floatingShape.species());
+        Vector<F> integralResult = x;
+        Vector<F> fractional = doppel.lanewise(VectorOperators.AND, mask.neg()).convert(integralAsFloating, 0);
+        VectorMask<F> signMatch = x.mul(sign).compare(VectorOperators.GT, 0).cast(floatingShape.species());
+        Vector<F> fractionalResult = fractional.blend(fractional.add(sign), signMatch);
+        Vector<F> defaultResult = fractionalResult.blend(integralResult, isIntegral);
+        Vector<F> result = defaultResult.blend(highExponentResult, isHighExponent).blend(negativeExponentResult, isNegativeExponent);
+        return result.reinterpretAsBytes();
+    }
+
+    private static <E> Vector<E> sign(Vector<E> x, Shape<E> shape) {
+        VectorMask<E> negative = x.test(VectorOperators.IS_NEGATIVE);
+        return shape.broadcast(1).blend(shape.broadcast(-1), negative);
+    }
+
+    private static <E extends Number> ByteVector nearest(ByteVector xBytes, Shape<E> shape, E maxSafePowerOfTwo) {
+        // This is based on JDK's StrictMath.rint
+        Vector<E> x = shape.reinterpret(xBytes);
+        /*
+         * If the absolute value of x is not less than 2^52 for double and 2^23 for float, it is
+         * either a finite integer (the floating-point format does not have enough significand bits
+         * for a number that large to have any fractional portion), an infinity, or a NaN.  In any
+         * of these cases, nearest(x) == x.
+         *
+         * Otherwise, the sum (x + maxSafePowerOfTwo) will properly round away any fractional
+         * portion of x since ulp(maxSafePowerOfTwo) == 1.0; subtracting out maxSafePowerOfTwo from
+         * this sum will then be exact and leave the rounded integer portion of x.
+         */
+        Vector<E> sign = sign(x, shape); // preserve sign info
+        Vector<E> xAbs = x.lanewise(VectorOperators.ABS);
+        Vector<E> maxFiniteValueVec = shape.broadcast(maxSafePowerOfTwo.longValue());
+        VectorMask<E> small = xAbs.lt(maxFiniteValueVec);
+        Vector<E> xTrunc = xAbs.blend(xAbs.add(maxFiniteValueVec).sub(maxFiniteValueVec), small);
+        return xTrunc.mul(sign).reinterpretAsBytes(); // restore original sign
     }
 
     private static <E, F> ByteVector convert(ByteVector xBytes, Shape<E> shape, VectorOperators.Conversion<E, F> conv) {
