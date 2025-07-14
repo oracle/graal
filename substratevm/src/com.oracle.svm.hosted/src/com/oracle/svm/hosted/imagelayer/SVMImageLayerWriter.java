@@ -123,6 +123,8 @@ import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
 import com.oracle.svm.hosted.annotation.AnnotationMetadata;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
+import com.oracle.svm.hosted.c.CGlobalDataFeature;
+import com.oracle.svm.hosted.c.InitialLayerCGlobalTracking;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubMethod;
@@ -381,6 +383,9 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         AnalysisField[] fieldsToPersist = aUniverse.getFields().stream().filter(AnalysisField::isTrackedAcrossLayers).sorted(Comparator.comparingInt(AnalysisField::getId))
                         .toArray(AnalysisField[]::new);
         initSortedArray(snapshotBuilder::initFields, fieldsToPersist, this::persistField);
+
+        InitialLayerCGlobalTracking initialLayerCGlobalTracking = CGlobalDataFeature.singleton().getInitialLayerCGlobalTracking();
+        initSortedArray(snapshotBuilder::initCGlobals, initialLayerCGlobalTracking.getInfosOrderedByIndex(), initialLayerCGlobalTracking::persistCGlobalInfo);
 
         /*
          * Note the set of elements within the hosted method array are created as a side effect of

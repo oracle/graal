@@ -301,6 +301,7 @@ struct SharedLayerSnapshot {
   nodeClassMapLocation @20 :Text;
   sharedLayerBootLayerModules @21 :List(Text);
   layeredModule @22 :LayeredModule;
+  cGlobals @23 :List(CGlobalDataInfo);
 }
 
 struct StaticFinalFieldFoldingSingleton {
@@ -349,6 +350,22 @@ struct PrimitiveArray {
     j @6 :List(Int64);
     d @7 :List(Float64);
   }
+}
+
+struct CGlobalDataInfo {
+   isSymbolReference @0 :Bool;
+   isGlobalSymbol @1 :Bool;
+   nonConstant @2 :Bool;
+   layeredSymbolName @3 :Text;
+   linkingInfo :union {
+     originalSymbolName @4 :Text;
+     codeLocation @5 :CodeLocation;
+   }
+}
+
+struct CodeLocation {
+    bytecodeIndex @0 :Int32;
+    stacktraceName @1 :Text;
 }
 
 struct DispatchSlotInfo {

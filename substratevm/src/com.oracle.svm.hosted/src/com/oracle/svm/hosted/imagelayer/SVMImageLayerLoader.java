@@ -84,7 +84,6 @@ import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
-import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodOffset;
@@ -94,7 +93,6 @@ import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
@@ -1025,6 +1023,10 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         return snapshot.getDynamicHubInfos();
     }
 
+    public StructList.Reader<SharedLayerSnapshotCapnProtoSchemaHolder.CGlobalDataInfo.Reader> getCGlobals() {
+        return snapshot.getCGlobals();
+    }
+
     public DynamicHubInfo.Reader getDynamicHubInfo(AnalysisType aType) {
         DynamicHubInfo.Reader result = CapnProtoAdapters.binarySearchUnique(getBaseLayerTypeId(aType), snapshot.getDynamicHubInfos(), DynamicHubInfo.Reader::getTypeId);
         assert result != null : aType;
@@ -1089,10 +1091,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         SVMImageLayerSnapshotUtil.AbstractSVMGraphDecoder decoder = imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection(), nodeClassMap);
         EncodedGraph encodedGraph = (EncodedGraph) ObjectCopier.decode(decoder, encodedAnalyzedGraph);
         for (int i = 0; i < encodedGraph.getNumObjects(); ++i) {
-            Object obj = encodedGraph.getObject(i);
-            if (obj instanceof CGlobalDataInfo cGlobalDataInfo) {
-                encodedGraph.setObject(i, CGlobalDataFeature.singleton().registerAsAccessedOrGet(cGlobalDataInfo.getData()));
-            } else if (buildingApplicationLayer && obj instanceof LoadImageSingletonDataImpl data) {
+            if (buildingApplicationLayer && encodedGraph.getObject(i) instanceof LoadImageSingletonDataImpl data) {
                 data.setApplicationLayerConstant();
             }
         }

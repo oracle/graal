@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.c;
-
-import org.graalvm.word.PointerBase;
-
-import com.oracle.svm.core.c.function.CEntryPointOptions;
+package com.oracle.svm.hosted.imagelayer;
 
 /**
- * An object of this class represents a chunk of static global data that is located outside the heap
- * and can be accessed directly {@linkplain PointerBase by address}. No
- * {@linkplain CEntryPointOptions#prologue() Java execution context} is required.
+ * Stores information used to match a given code location across layers.
  */
-public abstract class CGlobalData<T extends PointerBase> {
-    /**
-     * @return at runtime, a pointer to the data represented by this object.
-     */
-    public final T get() {
-        throw new IllegalStateException("Cannot access address of global data during native image generation");
+public record CodeLocation(int bci, String name) {
+
+    public static CodeLocation fromStackFrame(StackWalker.StackFrame stackFrame) {
+        return new CodeLocation(stackFrame.getByteCodeIndex(), stackFrame.toString());
     }
 }
