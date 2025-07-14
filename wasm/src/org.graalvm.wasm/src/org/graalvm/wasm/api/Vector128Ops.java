@@ -285,6 +285,11 @@ public class Vector128Ops {
     public static final F64X2Shape F64X2 = new F64X2Shape();
 
     @FunctionalInterface
+    private interface UnaryVectorOp<E, F> {
+        Vector<F> apply(Vector<E> operand);
+    }
+
+    @FunctionalInterface
     private interface BinaryVectorOp<F> {
         Vector<F> apply(Vector<F> leftOperand, Vector<F> rightOperand);
     }
@@ -723,28 +728,16 @@ public class Vector128Ops {
     }
 
     private static ByteVector i32x4_trunc_sat_f32x4_u(ByteVector xBytes) {
-        FloatVector x = F32X4.reinterpret(xBytes);
-        DoubleVector xLow = castDouble128(x.convert(VectorOperators.F2D, 0));
-        DoubleVector xHigh = castDouble128(x.convert(VectorOperators.F2D, 1));
-        IntVector resultLow = castInt128(truncSatU32(xLow).convert(VectorOperators.L2I, 0));
-        IntVector resultHigh = castInt128(truncSatU32(xHigh).convert(VectorOperators.L2I, -1));
-        Vector<Integer> result = firstNonzero(resultLow, resultHigh);
-        return result.reinterpretAsBytes();
+        return upcastUnopDowncast(xBytes, F32X4, VectorOperators.F2D, VectorOperators.L2I, Vector128Ops::truncSatU32);
     }
 
     private static ByteVector f32x4_convert_i32x4_u(ByteVector xBytes) {
-        IntVector x = xBytes.reinterpretAsInts();
-        LongVector xUnsignedLow = castLong128(x.convert(VectorOperators.ZERO_EXTEND_I2L, 0));
-        LongVector xUnsignedHigh = castLong128(x.convert(VectorOperators.ZERO_EXTEND_I2L, 1));
-        FloatVector resultLow = castFloat128(xUnsignedLow.convert(VectorOperators.L2F, 0));
-        FloatVector resultHigh = castFloat128(xUnsignedHigh.convert(VectorOperators.L2F, -1));
-        Vector<Float> result = firstNonzero(resultLow, resultHigh);
-        return result.reinterpretAsBytes();
+        return upcastUnopDowncast(xBytes, I32X4, VectorOperators.ZERO_EXTEND_I2L, VectorOperators.L2F, x -> x);
     }
 
     private static ByteVector i32x4_trunc_sat_f64x2_u_zero(ByteVector xBytes) {
         DoubleVector x = F64X2.reinterpret(xBytes);
-        LongVector longResult = truncSatU32(x);
+        Vector<Long> longResult = truncSatU32(x);
         IntVector result = castInt128(longResult.convert(VectorOperators.L2I, 0));
         return result.reinterpretAsBytes();
     }
@@ -798,16 +791,27 @@ public class Vector128Ops {
     private static <E, F> ByteVector narrow(ByteVector xBytes, ByteVector yBytes, Shape<E> shape, VectorOperators.Conversion<E, F> conv, long min, long max) {
         Vector<E> x = shape.reinterpret(xBytes);
         Vector<E> y = shape.reinterpret(yBytes);
-        Vector<E> xSat = sat(x, min, max);
-        Vector<E> ySat = sat(y, min, max);
-        Vector<F> resultLow = xSat.convert(conv, 0);
-        Vector<F> resultHigh = ySat.convert(conv, -1);
-        Vector<F> result = firstNonzero(resultLow, resultHigh);
-        return result.reinterpretAsBytes();
+        if (VectorShape.preferredShape().vectorBitSize() >= VectorShape.S_256_BIT.vectorBitSize()) {
+            Vector<E> xUp = x.reinterpretShape(VectorShape.S_256_BIT.withLanes(shape.species().elementType()), 0);
+            Vector<E> yUp = y.reinterpretShape(VectorShape.S_256_BIT.withLanes(shape.species().elementType()), -1);
+            // concatenate x and y
+            Vector<E> xyUp = firstNonzero(xUp, yUp);
+            Vector<E> xyUpSat = sat(xyUp, min, max);
+            Vector<F> result = xyUpSat.convertShape(conv, shape.species().withLanes(conv.rangeType()), 0);
+            return result.reinterpretAsBytes();
+        } else {
+            Vector<E> xSat = sat(x, min, max);
+            Vector<E> ySat = sat(y, min, max);
+            Vector<F> resultLow = xSat.convert(conv, 0);
+            Vector<F> resultHigh = ySat.convert(conv, -1);
+            Vector<F> result = firstNonzero(resultLow, resultHigh);
+            return result.reinterpretAsBytes();
+        }
     }
 
-    private static <E, F> ByteVector binop_sat_u(ByteVector xBytes, ByteVector yBytes, Shape<E> shape, VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast,
-                    VectorOperators.Binary op, long min, long max) {
+    private static <E, F> ByteVector binop_sat_u(ByteVector xBytes, ByteVector yBytes, Shape<E> shape,
+                                                 VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast,
+                                                VectorOperators.Binary op, long min, long max) {
         return upcastBinopDowncast(xBytes, yBytes, shape, upcast, downcast, (x, y) -> {
             Vector<F> rawResult = x.lanewise(op, y);
             Vector<F> satResult = sat(rawResult, min, max);
@@ -815,15 +819,14 @@ public class Vector128Ops {
         });
     }
 
-    private static <E, F> ByteVector avgr(ByteVector xBytes, ByteVector yBytes, Shape<E> shape, VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast) {
-        Vector<F> one = VectorShape.S_128_BIT.withLanes(upcast.rangeType()).broadcast(1);
-        Vector<F> two = VectorShape.S_128_BIT.withLanes(upcast.rangeType()).broadcast(2);
-        return upcastBinopDowncast(xBytes, yBytes, shape, upcast, downcast, (x, y) -> x.add(y).add(one).div(two));
+    private static <E, F> ByteVector avgr(ByteVector xBytes, ByteVector yBytes, Shape<E> shape,
+                                          VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast) {
+        return upcastBinopDowncast(xBytes, yBytes, shape, upcast, downcast, (x, y) -> x.add(y).add(x.broadcast(1)).div(x.broadcast(2)));
     }
 
     private static ByteVector i16x8_q15mulr_sat_s(ByteVector xBytes, ByteVector yBytes) {
         return upcastBinopDowncast(xBytes, yBytes, I16X8, VectorOperators.S2I, VectorOperators.I2S, (x, y) -> {
-            Vector<Integer> rawResult = x.mul(y).add(I32X4.broadcast(1 << 14)).lanewise(VectorOperators.ASHR, I32X4.broadcast(15));
+            Vector<Integer> rawResult = x.mul(y).add(x.broadcast(1 << 14)).lanewise(VectorOperators.ASHR, x.broadcast(15));
             Vector<Integer> satResult = sat(rawResult, Short.MIN_VALUE, Short.MAX_VALUE);
             return satResult;
         });
@@ -1009,32 +1012,56 @@ public class Vector128Ops {
     }
 
     private static <E> Vector<E> sat(Vector<E> vec, long min, long max) {
-        Vector<E> vMin = VectorShape.S_128_BIT.withLanes(vec.elementType()).broadcast(min);
-        Vector<E> vMax = VectorShape.S_128_BIT.withLanes(vec.elementType()).broadcast(max);
-        return vec.max(vMin).min(vMax);
+        return vec.max(vec.broadcast(min)).min(vec.broadcast(max));
     }
 
-    private static LongVector truncSatU32(DoubleVector x) {
-        VectorMask<Long> underflow = x.test(VectorOperators.IS_NAN).or(x.test(VectorOperators.IS_NEGATIVE)).cast(I64X2.species());
-        VectorMask<Long> overflow = x.compare(VectorOperators.GT, F64X2.broadcast((double) 0xffff_ffffL)).cast(I64X2.species());
-        LongVector zero = I64X2.zero();
-        LongVector u32max = I64X2.broadcast(0xffff_ffffL);
-        LongVector trunc = castLong128(x.convert(VectorOperators.D2L, 0));
-        return trunc.blend(u32max, overflow).blend(zero, underflow);
+    private static Vector<Long> truncSatU32(Vector<Double> x) {
+        VectorMask<Long> underflow = x.test(VectorOperators.IS_NAN).or(x.test(VectorOperators.IS_NEGATIVE)).cast(x.shape().withLanes(Long.class));
+        VectorMask<Long> overflow = x.compare(VectorOperators.GT, DoubleVector.broadcast(x.species(), (double) 0xffff_ffffL)).cast(x.shape().withLanes(Long.class));
+        Vector<Long> trunc = x.convert(VectorOperators.D2L, 0);
+        return trunc.blend(0xffff_ffffL, overflow).blend(0, underflow);
     }
 
-    private static <E, F> ByteVector upcastBinopDowncast(ByteVector xBytes, ByteVector yBytes, Shape<E> shape, VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast,
-                    BinaryVectorOp<F> op) {
+    private static <E, F, G, H> ByteVector upcastUnopDowncast(ByteVector xBytes, Shape<E> shape,
+                                                              VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<G, H> downcast,
+                                                              UnaryVectorOp<F, G> op) {
+        Vector<E> x = shape.reinterpret(xBytes);
+        if (VectorShape.preferredShape().vectorBitSize() >= VectorShape.S_256_BIT.vectorBitSize()) {
+            Vector<F> xUp = x.convertShape(upcast, VectorShape.S_256_BIT.withLanes(upcast.rangeType()), 0);
+            Vector<G> resultUp = op.apply(xUp);
+            Vector<H> result = resultUp.convertShape(downcast, VectorShape.S_128_BIT.withLanes(downcast.rangeType()), 0);
+            return result.reinterpretAsBytes();
+        } else {
+            Vector<F> xLow = x.convert(upcast, 0);
+            Vector<F> xHigh = x.convert(upcast, 1);
+            Vector<H> resultLow = op.apply(xLow).convert(downcast, 0);
+            Vector<H> resultHigh = op.apply(xHigh).convert(downcast, -1);
+            Vector<H> result = firstNonzero(resultLow, resultHigh);
+            return result.reinterpretAsBytes();
+        }
+    }
+
+    private static <E, F> ByteVector upcastBinopDowncast(ByteVector xBytes, ByteVector yBytes, Shape<E> shape,
+                                                         VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast,
+                                                         BinaryVectorOp<F> op) {
         Vector<E> x = shape.reinterpret(xBytes);
         Vector<E> y = shape.reinterpret(yBytes);
-        Vector<F> xLow = x.convert(upcast, 0);
-        Vector<F> xHigh = x.convert(upcast, 1);
-        Vector<F> yLow = y.convert(upcast, 0);
-        Vector<F> yHigh = y.convert(upcast, 1);
-        Vector<E> resultLow = op.apply(xLow, yLow).convert(downcast, 0);
-        Vector<E> resultHigh = op.apply(xHigh, yHigh).convert(downcast, -1);
-        Vector<E> result = firstNonzero(resultLow, resultHigh);
-        return result.reinterpretAsBytes();
+        if (VectorShape.preferredShape().vectorBitSize() >= VectorShape.S_256_BIT.vectorBitSize()) {
+            Vector<F> xUp = x.convertShape(upcast, VectorShape.S_256_BIT.withLanes(upcast.rangeType()), 0);
+            Vector<F> yUp = y.convertShape(upcast, VectorShape.S_256_BIT.withLanes(upcast.rangeType()), 0);
+            Vector<F> resultUp = op.apply(xUp, yUp);
+            Vector<E> result = resultUp.convertShape(downcast, shape.species(), 0);
+            return result.reinterpretAsBytes();
+        } else {
+            Vector<F> xLow = x.convert(upcast, 0);
+            Vector<F> xHigh = x.convert(upcast, 1);
+            Vector<F> yLow = y.convert(upcast, 0);
+            Vector<F> yHigh = y.convert(upcast, 1);
+            Vector<E> resultLow = op.apply(xLow, yLow).convert(downcast, 0);
+            Vector<E> resultHigh = op.apply(xHigh, yHigh).convert(downcast, -1);
+            Vector<E> result = firstNonzero(resultLow, resultHigh);
+            return result.reinterpretAsBytes();
+        }
     }
 
     private static final boolean[] ALTERNATING_BITS;
