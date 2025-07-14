@@ -69,7 +69,6 @@ public final class WasmStore implements TruffleObject {
     private final WasmContext context;
     private final WasmLanguage language;
     private final MemoryRegistry memoryRegistry;
-    private final GlobalRegistry globals;
     private final TableRegistry tableRegistry;
     private final Linker linker;
     private final Map<String, WasmInstance> moduleInstances;
@@ -80,7 +79,6 @@ public final class WasmStore implements TruffleObject {
         this.context = context;
         this.language = language;
         this.contextOptions = context.getContextOptions();
-        this.globals = new GlobalRegistry();
         this.tableRegistry = new TableRegistry();
         this.memoryRegistry = new MemoryRegistry();
         this.moduleInstances = new LinkedHashMap<>();
@@ -102,10 +100,6 @@ public final class WasmStore implements TruffleObject {
 
     public MemoryRegistry memories() {
         return memoryRegistry;
-    }
-
-    public GlobalRegistry globals() {
-        return globals;
     }
 
     public TableRegistry tables() {
@@ -206,9 +200,9 @@ public final class WasmStore implements TruffleObject {
         // Note: this is not a complete and correct instantiation as defined in
         // https://webassembly.github.io/spec/core/exec/modules.html#instantiation
         // For testing only.
-        BytecodeParser.resetGlobalState(this, instance.module(), instance);
+        BytecodeParser.resetGlobalState(instance.module(), instance);
         if (reinitMemory) {
-            BytecodeParser.resetMemoryState(this, instance.module(), instance);
+            BytecodeParser.resetMemoryState(instance.module(), instance);
             BytecodeParser.resetTableState(this, instance.module(), instance);
             Linker.runStartFunction(instance);
         }

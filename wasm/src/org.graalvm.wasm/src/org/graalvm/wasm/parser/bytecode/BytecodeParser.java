@@ -52,7 +52,6 @@ import java.util.List;
 import java.util.Objects;
 
 import org.graalvm.wasm.BinaryStreamParser;
-import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.Linker;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmModule;
@@ -61,12 +60,17 @@ import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
+import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 /**
  * Allows to parse the runtime bytecode and reset modules.
@@ -75,16 +79,33 @@ public abstract class BytecodeParser {
     /**
      * Reset the state of the globals in a module that had already been parsed and linked.
      */
-    public static void resetGlobalState(WasmStore store, WasmModule module, WasmInstance instance) {
-        final GlobalRegistry globals = store.globals();
+    public static void resetGlobalState(WasmModule module, WasmInstance instance) {
         for (int i = 0; i < module.numGlobals(); i++) {
             if (module.globalImported(i)) {
                 continue;
             }
+            Object initValue;
             if (module.globalInitialized(i)) {
-                globals.store(module.globalValueType(i), instance.globalAddress(i), module.globalInitialValue(i));
+                initValue = module.globalInitialValue(i);
             } else {
-                Linker.initializeGlobal(store, instance, i, module.globalInitializerBytecode(i));
+                initValue = Linker.evalConstantExpression(instance, module.globalInitializerBytecode(i));
+            }
+            if (module.globalExternal(i)) {
+                final WasmGlobal global = instance.externalGlobal(i);
+                try {
+                    InteropLibrary interop = InteropLibrary.getUncached(global);
+                    if (!global.isMutable()) {
+                        if (!Objects.equals(interop.readMember(global, WasmGlobal.VALUE_MEMBER), initValue)) {
+                            throw CompilerDirectives.shouldNotReachHere("Value of immutable global is not equal to init value");
+                        }
+                        continue;
+                    }
+                    interop.writeMember(global, WasmGlobal.VALUE_MEMBER, initValue);
+                } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+            } else {
+                instance.globals().store(module.globalValueType(i), module.globalAddress(i), initValue);
             }
         }
     }
@@ -92,7 +113,7 @@ public abstract class BytecodeParser {
     /**
      * Reset the state of the memory in a module that had already been parsed and linked.
      */
-    public static void resetMemoryState(WasmStore store, WasmModule module, WasmInstance instance) {
+    public static void resetMemoryState(WasmModule module, WasmInstance instance) {
         final byte[] bytecode = module.bytecode();
         for (int i = 0; i < module.dataInstanceCount(); i++) {
             final int dataOffset = module.dataInstanceOffset(i);
@@ -155,7 +176,7 @@ public abstract class BytecodeParser {
                     offsetAddress = value;
                 }
                 if (offsetBytecode != null) {
-                    offsetAddress = ((Number) Linker.evalConstantExpression(store, instance, offsetBytecode)).longValue();
+                    offsetAddress = ((Number) Linker.evalConstantExpression(instance, offsetBytecode)).longValue();
                 }
 
                 final int memoryIndex;

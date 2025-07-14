@@ -42,8 +42,11 @@
 package org.graalvm.wasm.globals;
 
 import org.graalvm.wasm.EmbedderDataHolder;
+import org.graalvm.wasm.WasmConstant;
+import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmNamesObject;
 import org.graalvm.wasm.api.ValueType;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.constants.GlobalModifier;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -83,15 +86,19 @@ public abstract class WasmGlobal extends EmbedderDataHolder implements TruffleOb
 
     public abstract long loadAsLong();
 
-    public abstract Object loadAsObject();
+    public abstract Vector128 loadAsVector128();
+
+    public abstract Object loadAsReference();
 
     public abstract void storeInt(int value);
 
     public abstract void storeLong(long value);
 
-    public abstract void storeObject(Object value);
+    public abstract void storeVector128(Vector128 value);
 
-    private static final String VALUE_MEMBER = "value";
+    public abstract void storeReference(Object value);
+
+    public static final String VALUE_MEMBER = "value";
 
     @ExportMessage
     final boolean hasMembers() {
@@ -116,7 +123,8 @@ public abstract class WasmGlobal extends EmbedderDataHolder implements TruffleOb
             case i64 -> loadAsLong();
             case f32 -> Float.intBitsToFloat(loadAsInt());
             case f64 -> Double.longBitsToDouble(loadAsLong());
-            case v128, anyfunc, externref -> loadAsObject();
+            case v128 -> loadAsVector128();
+            case anyfunc, externref -> loadAsReference();
         };
     }
 
@@ -135,7 +143,7 @@ public abstract class WasmGlobal extends EmbedderDataHolder implements TruffleOb
     @ExportMessage
     @TruffleBoundary
     final void writeMember(String member, Object value,
-                    @CachedLibrary(limit = "4") InteropLibrary valueLibrary) throws UnknownIdentifierException, UnsupportedMessageException {
+                    @CachedLibrary(limit = "5") InteropLibrary valueLibrary) throws UnknownIdentifierException, UnsupportedMessageException {
         if (!isMemberReadable(member)) {
             throw UnknownIdentifierException.create(member);
         }
@@ -148,7 +156,24 @@ public abstract class WasmGlobal extends EmbedderDataHolder implements TruffleOb
             case i64 -> storeLong(valueLibrary.asLong(value));
             case f32 -> storeInt(Float.floatToRawIntBits(valueLibrary.asFloat(value)));
             case f64 -> storeLong(Double.doubleToRawLongBits(valueLibrary.asDouble(value)));
-            default -> throw UnsupportedMessageException.create();
+            case v128 -> {
+                if (value instanceof Vector128 vector) {
+                    storeVector128(vector);
+                }
+                throw UnsupportedMessageException.create();
+            }
+            case anyfunc -> {
+                if (value == WasmConstant.NULL || value instanceof WasmFunctionInstance) {
+                    storeReference(value);
+                }
+                throw UnsupportedMessageException.create();
+            }
+            case externref -> {
+                if (value instanceof TruffleObject) {
+                    storeReference(value);
+                }
+                throw UnsupportedMessageException.create();
+            }
         }
     }
 

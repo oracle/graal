@@ -45,8 +45,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.wasm.api.Sequence;
-import org.graalvm.wasm.api.ValueType;
-import org.graalvm.wasm.globals.ExportedWasmGlobal;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
@@ -90,7 +88,7 @@ public final class WasmInstanceExports implements TruffleObject {
         }
         final Integer globalIndex = symbolTable.exportedGlobals().get(member);
         if (globalIndex != null) {
-            return readGlobal(symbolTable, globalIndex);
+            return instance.externalGlobal(globalIndex);
         }
         throw UnknownIdentifierException.create(member);
     }
@@ -103,17 +101,6 @@ public final class WasmInstanceExports implements TruffleObject {
                         symbolTable.exportedMemories().containsKey(member) ||
                         symbolTable.exportedTables().containsKey(member) ||
                         symbolTable.exportedGlobals().containsKey(member);
-    }
-
-    private Object readGlobal(SymbolTable symbolTable, int globalIndex) {
-        final int address = instance.globalAddress(globalIndex);
-        if (address < 0) {
-            return instance.store().globals().externalGlobal(address);
-        } else {
-            final ValueType valueType = ValueType.fromByteValue(symbolTable.globalValueType(globalIndex));
-            final boolean mutable = symbolTable.isGlobalMutable(globalIndex);
-            return new ExportedWasmGlobal(valueType, mutable, instance.store().globals(), address);
-        }
     }
 
     @ExportMessage
