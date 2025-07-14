@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,27 +42,31 @@
 package org.graalvm.wasm.globals;
 
 import org.graalvm.wasm.api.ValueType;
+import org.graalvm.wasm.api.Vector128;
 
-public class DefaultWasmGlobal extends WasmGlobal {
+public final class DefaultWasmGlobal extends WasmGlobal {
     private long globalValue;
     private Object globalObjectValue;
 
-    @SuppressWarnings("this-escape")
     public DefaultWasmGlobal(ValueType valueType, boolean mutable, int value) {
-        super(valueType, mutable);
-        storeInt(value);
+        this(valueType, mutable, (long) value);
     }
 
-    @SuppressWarnings("this-escape")
     public DefaultWasmGlobal(ValueType valueType, boolean mutable, long value) {
         super(valueType, mutable);
-        storeLong(value);
+        assert ValueType.isNumberType(getValueType());
+        this.globalValue = value;
     }
 
-    @SuppressWarnings("this-escape")
     public DefaultWasmGlobal(ValueType valueType, boolean mutable, Object value) {
         super(valueType, mutable);
-        storeObject(value);
+        switch (valueType) {
+            case i32 -> this.globalValue = (int) value;
+            case i64 -> this.globalValue = (long) value;
+            case f32 -> this.globalValue = Float.floatToRawIntBits((float) value);
+            case f64 -> this.globalValue = Double.doubleToRawLongBits((double) value);
+            case v128, anyfunc, externref -> this.globalObjectValue = value;
+        }
     }
 
     @Override
@@ -78,9 +82,16 @@ public class DefaultWasmGlobal extends WasmGlobal {
     }
 
     @Override
-    public Object loadAsObject() {
+    public Vector128 loadAsVector128() {
+        assert ValueType.isVectorType(getValueType());
         assert globalObjectValue != null;
-        assert ValueType.isReferenceType(getValueType()) || ValueType.isVectorType(getValueType());
+        return (Vector128) globalObjectValue;
+    }
+
+    @Override
+    public Object loadAsReference() {
+        assert ValueType.isReferenceType(getValueType());
+        assert globalObjectValue != null;
         return globalObjectValue;
     }
 
@@ -97,8 +108,14 @@ public class DefaultWasmGlobal extends WasmGlobal {
     }
 
     @Override
-    public void storeObject(Object value) {
-        assert ValueType.isReferenceType(getValueType()) || ValueType.isVectorType(getValueType());
+    public void storeVector128(Vector128 value) {
+        assert ValueType.isVectorType(getValueType());
+        this.globalObjectValue = value;
+    }
+
+    @Override
+    public void storeReference(Object value) {
+        assert ValueType.isReferenceType(getValueType());
         this.globalObjectValue = value;
     }
 }

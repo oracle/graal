@@ -67,6 +67,7 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushVector128;
 import java.util.Arrays;
 
 import org.graalvm.wasm.BinaryStreamParser;
+import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmCodeEntry;
@@ -711,14 +712,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case Bytecode.GLOBAL_GET_U8: {
                     final int index = rawPeekU8(bytecode, offset);
                     offset++;
-                    global_get(store, instance, frame, stackPointer, index);
+                    global_get(instance, frame, stackPointer, index);
                     stackPointer++;
                     break;
                 }
                 case Bytecode.GLOBAL_GET_I32: {
                     final int index = rawPeekI32(bytecode, offset);
                     offset += 4;
-                    global_get(store, instance, frame, stackPointer, index);
+                    global_get(instance, frame, stackPointer, index);
                     stackPointer++;
                     break;
                 }
@@ -726,14 +727,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int index = rawPeekU8(bytecode, offset);
                     offset++;
                     stackPointer--;
-                    global_set(store, instance, frame, stackPointer, index);
+                    global_set(instance, frame, stackPointer, index);
                     break;
                 }
                 case Bytecode.GLOBAL_SET_I32: {
                     final int index = rawPeekI32(bytecode, offset);
                     offset += 4;
                     stackPointer--;
-                    global_set(store, instance, frame, stackPointer, index);
+                    global_set(instance, frame, stackPointer, index);
                     break;
                 }
                 case Bytecode.I32_LOAD:
@@ -3295,62 +3296,69 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     // Checkstyle: stop method name check
 
-    private void global_set(WasmStore store, WasmInstance instance, VirtualFrame frame, int stackPointer, int index) {
-        byte type = module.symbolTable().globalValueType(index);
+    private void global_set(WasmInstance instance, VirtualFrame frame, int stackPointer, int index) {
+        final byte type = module.globalValueType(index);
         CompilerAsserts.partialEvaluationConstant(type);
         // For global.set, we don't need to make sure that the referenced global is
         // mutable.
         // This is taken care of by validation during wat to wasm compilation.
+        assert module.symbolTable().isGlobalMutable(index) : index;
+        final int globalAddress = module.symbolTable().globalAddress(index);
+        final GlobalRegistry globals = instance.globals();
+
         switch (type) {
             case WasmType.I32_TYPE:
-                store.globals().storeInt(instance.globalAddress(index), popInt(frame, stackPointer));
+                globals.storeInt(globalAddress, popInt(frame, stackPointer));
                 break;
             case WasmType.F32_TYPE:
-                store.globals().storeInt(instance.globalAddress(index), Float.floatToRawIntBits(popFloat(frame, stackPointer)));
+                globals.storeFloat(globalAddress, popFloat(frame, stackPointer));
                 break;
             case WasmType.I64_TYPE:
-                store.globals().storeLong(instance.globalAddress(index), popLong(frame, stackPointer));
+                globals.storeLong(globalAddress, popLong(frame, stackPointer));
                 break;
             case WasmType.F64_TYPE:
-                store.globals().storeLong(instance.globalAddress(index), Double.doubleToRawLongBits(popDouble(frame, stackPointer)));
+                globals.storeDouble(globalAddress, popDouble(frame, stackPointer));
                 break;
             case WasmType.V128_TYPE:
-                store.globals().storeVector128(instance.globalAddress(index), popVector128(frame, stackPointer));
+                globals.storeVector128(globalAddress, popVector128(frame, stackPointer));
                 break;
             case WasmType.FUNCREF_TYPE:
             case WasmType.EXTERNREF_TYPE:
-                store.globals().storeReference(instance.globalAddress(index), popReference(frame, stackPointer));
+                globals.storeReference(globalAddress, popReference(frame, stackPointer));
                 break;
             default:
-                throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");
+                throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Global variable cannot have the void type.");
         }
     }
 
-    private void global_get(WasmStore store, WasmInstance instance, VirtualFrame frame, int stackPointer, int index) {
-        byte type = module.symbolTable().globalValueType(index);
+    private void global_get(WasmInstance instance, VirtualFrame frame, int stackPointer, int index) {
+        final byte type = module.symbolTable().globalValueType(index);
         CompilerAsserts.partialEvaluationConstant(type);
+        final int globalAddress = module.symbolTable().globalAddress(index);
+        final GlobalRegistry globals = instance.globals();
+
         switch (type) {
             case WasmType.I32_TYPE:
-                pushInt(frame, stackPointer, store.globals().loadAsInt(instance.globalAddress(index)));
+                pushInt(frame, stackPointer, globals.loadAsInt(globalAddress));
                 break;
             case WasmType.F32_TYPE:
-                pushFloat(frame, stackPointer, Float.intBitsToFloat(store.globals().loadAsInt(instance.globalAddress(index))));
+                pushFloat(frame, stackPointer, globals.loadAsFloat(globalAddress));
                 break;
             case WasmType.I64_TYPE:
-                pushLong(frame, stackPointer, store.globals().loadAsLong(instance.globalAddress(index)));
+                pushLong(frame, stackPointer, globals.loadAsLong(globalAddress));
                 break;
             case WasmType.F64_TYPE:
-                pushDouble(frame, stackPointer, Double.longBitsToDouble(store.globals().loadAsLong(instance.globalAddress(index))));
+                pushDouble(frame, stackPointer, globals.loadAsDouble(globalAddress));
                 break;
             case WasmType.V128_TYPE:
-                pushVector128(frame, stackPointer, store.globals().loadAsVector128(instance.globalAddress(index)));
+                pushVector128(frame, stackPointer, globals.loadAsVector128(globalAddress));
                 break;
             case WasmType.FUNCREF_TYPE:
             case WasmType.EXTERNREF_TYPE:
-                pushReference(frame, stackPointer, store.globals().loadAsReference(instance.globalAddress(index)));
+                pushReference(frame, stackPointer, globals.loadAsReference(globalAddress));
                 break;
             default:
-                throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");
+                throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Global variable cannot have the void type.");
         }
     }
 
