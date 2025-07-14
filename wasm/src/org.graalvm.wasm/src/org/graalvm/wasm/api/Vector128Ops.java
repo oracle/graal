@@ -1016,8 +1016,8 @@ public class Vector128Ops {
     }
 
     private static Vector<Long> truncSatU32(Vector<Double> x) {
-        VectorMask<Long> underflow = x.test(VectorOperators.IS_NAN).or(x.test(VectorOperators.IS_NEGATIVE)).cast(x.shape().withLanes(Long.class));
-        VectorMask<Long> overflow = x.compare(VectorOperators.GT, DoubleVector.broadcast(x.species(), (double) 0xffff_ffffL)).cast(x.shape().withLanes(Long.class));
+        VectorMask<Long> underflow = x.test(VectorOperators.IS_NAN).or(x.test(VectorOperators.IS_NEGATIVE)).cast(x.shape().withLanes(long.class));
+        VectorMask<Long> overflow = x.compare(VectorOperators.GT, DoubleVector.broadcast(x.species(), (double) 0xffff_ffffL)).cast(x.shape().withLanes(long.class));
         Vector<Long> trunc = x.convert(VectorOperators.D2L, 0);
         return trunc.blend(0xffff_ffffL, overflow).blend(0, underflow);
     }
