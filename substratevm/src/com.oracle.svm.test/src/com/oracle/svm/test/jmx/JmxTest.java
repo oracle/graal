@@ -42,6 +42,7 @@ import java.lang.management.MemoryUsage;
 import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.RuntimeMXBean;
 import java.lang.management.ThreadMXBean;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
@@ -61,6 +62,7 @@ import javax.management.remote.JMXServiceURL;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 
 import org.graalvm.nativeimage.ImageInfo;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -96,6 +98,8 @@ public class JmxTest {
     static final String TEST_ROLE_PASSWORD = "MYTESTP@SSWORD";
     static final String TRUE = "true";
 
+    private static Path tempDirectory;
+
     @BeforeClass
     public static void setup() throws IOException {
         assumeTrue("skipping JMX tests", !ImageInfo.inImageCode() ||
@@ -109,19 +113,19 @@ public class JmxTest {
         System.setProperty(REGISTRY_SSL_PROPERTY, TRUE);
 
         // Prepare temp directory with files required for testing authentication.
-        Path tempDirectory = Files.createTempDirectory("jmxtest");
+        tempDirectory = Files.createTempDirectory("jmxtest");
         Path jmxRemoteAccess = tempDirectory.resolve("jmxremote.access");
         Path jmxRemotePassword = tempDirectory.resolve("jmxremote.password");
         Path clientKeyStore = tempDirectory.resolve(KEYSTORE_FILENAME);
         Path serverTrustStore = tempDirectory.resolve(TRUSTSTORE_FILENAME);
 
         // Generate SSL keystore, client cert, and truststore for testing SSL connection.
-        createClientKey(tempDirectory);
-        createClientCert(tempDirectory);
+        createClientKey();
+        createClientCert();
         assertTrue("Failed to create " + KEYSTORE_FILENAME, Files.exists(clientKeyStore));
         System.setProperty(KEYSTORE_PROPERTY, clientKeyStore.toString());
         System.setProperty(KEYSTORE_PASSWORD_PROPERTY, KEYSTORE_PASSWORD);
-        createServerTrustStore(tempDirectory);
+        createServerTrustStore();
         assertTrue("Failed to create " + TRUSTSTORE_FILENAME, Files.exists(serverTrustStore));
         System.setProperty(TRUSTSTORE_PROPERTY, serverTrustStore.toString());
         System.setProperty(TRUSTSTORE_PASSWORD_PROPERTY, TRUSTSTORE_PASSWORD);
@@ -144,8 +148,26 @@ public class JmxTest {
         }
     }
 
-    private static void createClientKey(Path tempDirectory) throws IOException {
-        runCommand(tempDirectory, List.of("keytool", "-genkey",
+    @AfterClass
+    public static void teardown() throws IOException {
+        if (tempDirectory != null) {
+            delete(tempDirectory);
+        }
+    }
+
+    private static void delete(Path file) throws IOException {
+        if (Files.isDirectory(file)) {
+            try (DirectoryStream<Path> children = Files.newDirectoryStream(file)) {
+                for (Path child : children) {
+                    delete(child);
+                }
+            }
+        }
+        Files.deleteIfExists(file);
+    }
+
+    private static void createClientKey() throws IOException {
+        runCommand(List.of("keytool", "-genkey",
                         "-keystore", KEYSTORE_FILENAME,
                         "-alias", "clientkey",
                         "-storepass", KEYSTORE_PASSWORD,
@@ -155,23 +177,23 @@ public class JmxTest {
                         "-keyalg", "rsa"));
     }
 
-    private static void createClientCert(Path tempDirectory) throws IOException {
-        runCommand(tempDirectory, List.of("keytool", "-exportcert",
+    private static void createClientCert() throws IOException {
+        runCommand(List.of("keytool", "-exportcert",
                         "-keystore", KEYSTORE_FILENAME,
                         "-alias", "clientkey",
                         "-storepass", KEYSTORE_PASSWORD,
                         "-file", "client.cer"));
     }
 
-    private static void createServerTrustStore(Path tempDirectory) throws IOException {
-        runCommand(tempDirectory, List.of("keytool", "-importcert",
+    private static void createServerTrustStore() throws IOException {
+        runCommand(List.of("keytool", "-importcert",
                         "-noprompt",
                         "-file", "client.cer",
                         "-keystore", TRUSTSTORE_FILENAME,
                         "-storepass", TRUSTSTORE_PASSWORD));
     }
 
-    private static void runCommand(Path tempDirectory, List<String> command) throws IOException {
+    private static void runCommand(List<String> command) throws IOException {
         ProcessBuilder pb = new ProcessBuilder().command(command);
         pb.directory(tempDirectory.toFile());
         final Process process = pb.start();
