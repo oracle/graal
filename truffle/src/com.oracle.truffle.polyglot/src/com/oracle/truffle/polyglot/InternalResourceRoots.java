@@ -319,8 +319,10 @@ final class InternalResourceRoots {
             case LINUX -> {
                 ResolvedCacheFolder userCacheDir = null;
                 String xdgCacheValue = System.getenv("XDG_CACHE_HOME");
-                if (xdgCacheValue != null) {
-                    try {
+                if (xdgCacheValue == null) {
+                    xdgCacheValue = System.getProperty("XDG_CACHE_HOME");
+                }
+                try {
                         Path xdgCacheDir = Path.of(xdgCacheValue);
                         // Do not fail when XDG_CACHE_HOME value is invalid. Fall back to
                         // $HOME/.cache.
