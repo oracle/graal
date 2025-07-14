@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -173,19 +174,36 @@ public final class MetadataTracer {
     }
 
     /**
-     * Marks the given type as reachable from reflection.
+     * Marks the type with the given name as reachable from reflection.
      */
     public void traceReflectionType(String typeName) {
-        traceReflectionTypeImpl(typeName);
+        traceReflectionTypeImpl(new NamedConfigurationTypeDescriptor(typeName));
+    }
+
+    /**
+     * Marks the given type as reachable from reflection.
+     */
+    public void traceReflectionType(Class<?> clazz) {
+        traceReflectionTypeImpl(ConfigurationTypeDescriptor.fromClass(clazz));
+    }
+
+    public void traceReflectionArrayType(Class<?> componentClazz) {
+        ConfigurationTypeDescriptor typeDescriptor = ConfigurationTypeDescriptor.fromClass(componentClazz);
+        if (typeDescriptor instanceof NamedConfigurationTypeDescriptor(String name)) {
+            traceReflectionType(name + "[]");
+        } else {
+            debug("array type not registered for reflection (component type is not a named type)", typeDescriptor);
+        }
     }
 
     /**
      * Marks the given field as reachable from reflection.
      */
-    public void traceField(String typeName, String fieldName, ConfigurationMemberInfo.ConfigurationMemberDeclaration declaration) {
-        ConfigurationType type = traceReflectionTypeImpl(typeName);
+    public void traceField(Class<?> declaringClass, String fieldName, ConfigurationMemberInfo.ConfigurationMemberDeclaration declaration) {
+        ConfigurationTypeDescriptor typeDescriptor = ConfigurationTypeDescriptor.fromClass(declaringClass);
+        ConfigurationType type = traceReflectionTypeImpl(typeDescriptor);
         if (type != null) {
-            debugField(typeName, fieldName);
+            debugField(typeDescriptor, fieldName);
             type.addField(fieldName, declaration, false);
         }
     }
@@ -193,11 +211,12 @@ public final class MetadataTracer {
     /**
      * Marks the given method as reachable from reflection.
      */
-    public void traceMethod(String typeName, String methodName, String internalSignature, ConfigurationMemberInfo.ConfigurationMemberDeclaration declaration,
+    public void traceMethod(Class<?> declaringClass, String methodName, String internalSignature, ConfigurationMemberInfo.ConfigurationMemberDeclaration declaration,
                     ConfigurationMemberInfo.ConfigurationMemberAccessibility accessibility) {
-        ConfigurationType type = traceReflectionTypeImpl(typeName);
+        ConfigurationTypeDescriptor typeDescriptor = ConfigurationTypeDescriptor.fromClass(declaringClass);
+        ConfigurationType type = traceReflectionTypeImpl(typeDescriptor);
         if (type != null) {
-            debugMethod(typeName, methodName, internalSignature, accessibility);
+            debugMethod(typeDescriptor, methodName, internalSignature, accessibility);
             type.addMethod(methodName, internalSignature, declaration, accessibility);
         }
     }
@@ -205,10 +224,11 @@ public final class MetadataTracer {
     /**
      * Marks the given type as unsafely allocated.
      */
-    public void traceUnsafeAllocatedType(String typeName) {
-        ConfigurationType type = traceReflectionTypeImpl(typeName);
+    public void traceUnsafeAllocatedType(Class<?> clazz) {
+        ConfigurationTypeDescriptor typeDescriptor = ConfigurationTypeDescriptor.fromClass(clazz);
+        ConfigurationType type = traceReflectionTypeImpl(typeDescriptor);
         if (type != null) {
-            debug("type marked as unsafely allocated", typeName);
+            debug("type marked as unsafely allocated", clazz.getTypeName());
             type.setUnsafeAllocated();
         }
     }
@@ -216,7 +236,8 @@ public final class MetadataTracer {
     /**
      * Marks the given proxy type as reachable from reflection.
      */
-    public void traceProxyType(List<String> interfaceNames) {
+    public void traceProxyType(Class<?>[] interfaces) {
+        List<String> interfaceNames = Arrays.stream(interfaces).map(Class::getTypeName).toList();
         ProxyConfigurationTypeDescriptor descriptor = new ProxyConfigurationTypeDescriptor(interfaceNames);
         for (String interfaceName : interfaceNames) {
             if (isInternal(interfaceName)) {
@@ -233,15 +254,11 @@ public final class MetadataTracer {
      * not want to expose ConfigurationTypes to the caller, because they could perform further
      * registration (e.g., of methods) which would not be traced by debug logging.
      */
-    public ConfigurationType traceReflectionTypeImpl(String typeName) {
-        if (isInternal(typeName)) {
+    public ConfigurationType traceReflectionTypeImpl(ConfigurationTypeDescriptor typeDescriptor) {
+        assert enabledAtRunTime();
+        if (isInternal(typeDescriptor)) {
             return null;
         }
-        return traceReflectionTypeImpl(new NamedConfigurationTypeDescriptor(typeName));
-    }
-
-    private ConfigurationType traceReflectionTypeImpl(ConfigurationTypeDescriptor typeDescriptor) {
-        assert enabledAtRunTime();
         ConfigurationSet configurationSet = getConfigurationSetForTracing();
         if (configurationSet != null) {
             debugReflectionType(typeDescriptor, configurationSet);
@@ -250,18 +267,36 @@ public final class MetadataTracer {
         return null;
     }
 
+    private static boolean isInternal(ConfigurationTypeDescriptor typeDescriptor) {
+        if (typeDescriptor instanceof NamedConfigurationTypeDescriptor(String name)) {
+            return isInternal(name);
+        }
+        return false;
+    }
+
     private static boolean isInternal(String typeName) {
         return typeName.startsWith("com.oracle.svm.core");
     }
 
     /**
-     * Marks the given type as reachable from JNI.
+     * Marks the type with the given name as reachable from JNI.
      */
     public void traceJNIType(String typeName) {
+        traceJNITypeImpl(new NamedConfigurationTypeDescriptor(typeName));
+    }
+
+    /**
+     * Marks the given type as reachable from JNI.
+     */
+    public void traceJNIType(Class<?> clazz) {
+        traceJNITypeImpl(ConfigurationTypeDescriptor.fromClass(clazz));
+    }
+
+    private void traceJNITypeImpl(ConfigurationTypeDescriptor typeDescriptor) {
         assert enabledAtRunTime();
-        ConfigurationType type = traceReflectionTypeImpl(typeName);
+        ConfigurationType type = traceReflectionTypeImpl(typeDescriptor);
         if (type != null && !type.isJniAccessible()) {
-            debug("type registered for jni", typeName);
+            debug("type registered for jni", typeDescriptor);
             type.setJniAccessible();
         }
     }
@@ -294,11 +329,12 @@ public final class MetadataTracer {
     /**
      * Marks the given type as serializable.
      */
-    public void traceSerializationType(String typeName) {
+    public void traceSerializationType(Class<?> clazz) {
         assert enabledAtRunTime();
-        ConfigurationType result = traceReflectionTypeImpl(typeName);
+        ConfigurationTypeDescriptor typeDescriptor = ConfigurationTypeDescriptor.fromClass(clazz);
+        ConfigurationType result = traceReflectionTypeImpl(typeDescriptor);
         if (result != null && !result.isSerializable()) {
-            debug("type registered for serialization", typeName);
+            debug("type registered for serialization", typeDescriptor);
             result.setSerializable();
         }
     }
@@ -359,21 +395,21 @@ public final class MetadataTracer {
     /**
      * Debug helper for fields. Avoids field name computations if debug logging is disabled.
      */
-    private void debugField(String typeName, String fieldName) {
+    private void debugField(ConfigurationTypeDescriptor typeDescriptor, String fieldName) {
         if (debugWriter == null) {
             return;
         }
-        debug("field registered for reflection", typeName + "." + fieldName);
+        debug("field registered for reflection", typeDescriptor + "." + fieldName);
     }
 
     /**
      * Debug helper for methods. Avoids method name computations if debug logging is disabled.
      */
-    private void debugMethod(String typeName, String methodName, String internalSignature, ConfigurationMemberInfo.ConfigurationMemberAccessibility accessibility) {
+    private void debugMethod(ConfigurationTypeDescriptor typeDescriptor, String methodName, String internalSignature, ConfigurationMemberInfo.ConfigurationMemberAccessibility accessibility) {
         if (debugWriter == null) {
             return;
         }
-        debug("method registered for reflection (" + accessibility.name().toLowerCase() + ")", typeName + "." + methodName + internalSignature);
+        debug("method registered for reflection (" + accessibility.name().toLowerCase() + ")", typeDescriptor + "." + methodName + internalSignature);
     }
 
     /**

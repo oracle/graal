@@ -66,7 +66,7 @@ final class Target_java_io_ObjectStreamClass {
 
         if (Serializable.class.isAssignableFrom(cl) && !cl.isArray()) {
             if (MetadataTracer.enabled()) {
-                MetadataTracer.singleton().traceSerializationType(cl.getTypeName());
+                MetadataTracer.singleton().traceSerializationType(cl);
             }
             if (!DynamicHub.fromClass(cl).isRegisteredForSerialization()) {
                 MissingSerializationRegistrationUtils.reportSerialization(cl);
