@@ -332,11 +332,11 @@ public class Vector128Ops {
             case Bytecode.VECTOR_F64X2_TRUNC -> trunc(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D, Vector128Ops::getExponentDoubles, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
             case Bytecode.VECTOR_F64X2_NEAREST -> nearest(x, F64X2, 1L << (DOUBLE_SIGNIFICAND_WIDTH - 1));
             case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S -> convert(x, F32X4, VectorOperators.F2I);
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U -> i32x4_trunc_sat_f32x4(x);
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U -> i32x4_trunc_sat_f32x4_u(x);
             case Bytecode.VECTOR_F32X4_CONVERT_I32X4_S -> convert(x, I32X4, VectorOperators.I2F);
             case Bytecode.VECTOR_F32X4_CONVERT_I32X4_U -> f32x4_convert_i32x4_u(x);
             case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_S_ZERO -> convert(x, F64X2, VectorOperators.D2I);
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_U_ZERO -> i32x4_trunc_sat_f64x2_zero(x);
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_U_ZERO -> i32x4_trunc_sat_f64x2_u_zero(x);
             case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_S -> convert(x, I32X4, VectorOperators.I2D);
             case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U -> f64x2_convert_low_i32x4_u(x);
             case Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO -> convert(x, F64X2, VectorOperators.D2F);
@@ -722,7 +722,7 @@ public class Vector128Ops {
         return result.reinterpretAsBytes();
     }
 
-    private static ByteVector i32x4_trunc_sat_f32x4(ByteVector xBytes) {
+    private static ByteVector i32x4_trunc_sat_f32x4_u(ByteVector xBytes) {
         FloatVector x = F32X4.reinterpret(xBytes);
         DoubleVector xLow = castDouble128(x.convert(VectorOperators.F2D, 0));
         DoubleVector xHigh = castDouble128(x.convert(VectorOperators.F2D, 1));
@@ -742,7 +742,7 @@ public class Vector128Ops {
         return result.reinterpretAsBytes();
     }
 
-    private static ByteVector i32x4_trunc_sat_f64x2_zero(ByteVector xBytes) {
+    private static ByteVector i32x4_trunc_sat_f64x2_u_zero(ByteVector xBytes) {
         DoubleVector x = F64X2.reinterpret(xBytes);
         LongVector longResult = truncSatU32(x);
         IntVector result = castInt128(longResult.convert(VectorOperators.L2I, 0));
