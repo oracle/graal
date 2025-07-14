@@ -59,6 +59,7 @@ import org.graalvm.wasm.constants.Bytecode;
 
 import java.util.function.Function;
 
+import static java.lang.Double.SIZE;
 import static org.graalvm.wasm.api.Vector128.BYTES;
 
 public class Vector128Ops {
@@ -327,7 +328,7 @@ public class Vector128Ops {
             case Bytecode.VECTOR_F32X4_SQRT -> unop(x, F32X4, VectorOperators.SQRT);
             case Bytecode.VECTOR_F32X4_CEIL -> ceil(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.REINTERPRET_I2F, Vector128Ops::getExponentFloats, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
             case Bytecode.VECTOR_F32X4_FLOOR -> floor(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.REINTERPRET_I2F, Vector128Ops::getExponentFloats, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
-            case Bytecode.VECTOR_F32X4_TRUNC -> trunc(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.I2F, Vector128Ops::getExponentFloats, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
+            case Bytecode.VECTOR_F32X4_TRUNC -> trunc(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.REINTERPRET_I2F, Vector128Ops::getExponentFloats, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
             case Bytecode.VECTOR_F32X4_NEAREST -> nearest(x, F32X4, 1 << (FLOAT_SIGNIFICAND_WIDTH - 1));
             case Bytecode.VECTOR_F64X2_ABS -> unop(x, F64X2, VectorOperators.ABS);
             case Bytecode.VECTOR_F64X2_NEG -> unop(x, F64X2, VectorOperators.NEG);
@@ -616,10 +617,11 @@ public class Vector128Ops {
     }
 
     private static final int FLOAT_SIGNIFICAND_WIDTH = Float.PRECISION;
-    private static final int FLOAT_EXP_BIAS = (1 << (Float.SIZE - FLOAT_SIGNIFICAND_WIDTH - 1)) - 1;
+    private static final int FLOAT_EXP_BIAS = (1 << (Float.SIZE - FLOAT_SIGNIFICAND_WIDTH - 1)) - 1; // 127
     private static final int FLOAT_EXP_BIT_MASK = ((1 << (Float.SIZE - FLOAT_SIGNIFICAND_WIDTH)) - 1) << (FLOAT_SIGNIFICAND_WIDTH - 1);
     private static final long FLOAT_SIGNIF_BIT_MASK = (1L << (FLOAT_SIGNIFICAND_WIDTH - 1)) - 1;
 
+    // Based on JDK's DoubleConsts
     private static final int DOUBLE_SIGNIFICAND_WIDTH = Double.PRECISION;
     private static final int DOUBLE_EXP_BIAS = (1 << (Double.SIZE - DOUBLE_SIGNIFICAND_WIDTH - 1)) - 1; // 1023
     private static final long DOUBLE_EXP_BIT_MASK = ((1L << (Double.SIZE - DOUBLE_SIGNIFICAND_WIDTH)) - 1) << (DOUBLE_SIGNIFICAND_WIDTH - 1);
@@ -662,7 +664,7 @@ public class Vector128Ops {
     private static <F, I> ByteVector trunc(ByteVector xBytes, Shape<F> floatingShape, Shape<I> integralShape,
                                            VectorOperators.Conversion<F, I> floatingAsIntegral, VectorOperators.Conversion<I, F> integralAsFloating,
                                            Function<Vector<F>, Vector<I>> getExponent, int significantWidth, Vector<I> significandBitMaskVec) {
-        // This is based on JDK's ExactMath.truncate
+        // This is based on Truffle's ExactMath.truncate
         Vector<F> x = floatingShape.reinterpret(xBytes);
         VectorMask<F> ceil = x.lt(floatingShape.broadcast(0));
         return floorOrCeil(x, floatingShape, integralShape, floatingAsIntegral, integralAsFloating, getExponent, significantWidth, significandBitMaskVec,
@@ -687,7 +689,7 @@ public class Vector128Ops {
         Vector<I> mask = significandBitMaskVec.lanewise(VectorOperators.LSHR, exponent);
         VectorMask<F> isIntegral = doppel.lanewise(VectorOperators.AND, mask).eq(integralShape.broadcast(0)).cast(floatingShape.species());
         Vector<F> integralResult = x;
-        Vector<F> fractional = doppel.lanewise(VectorOperators.AND, mask.neg()).convert(integralAsFloating, 0);
+        Vector<F> fractional = doppel.lanewise(VectorOperators.AND, mask.lanewise(VectorOperators.NOT)).convert(integralAsFloating, 0);
         VectorMask<F> signMatch = x.mul(sign).compare(VectorOperators.GT, 0).cast(floatingShape.species());
         Vector<F> fractionalResult = fractional.blend(fractional.add(sign), signMatch);
         Vector<F> defaultResult = fractionalResult.blend(integralResult, isIntegral);
