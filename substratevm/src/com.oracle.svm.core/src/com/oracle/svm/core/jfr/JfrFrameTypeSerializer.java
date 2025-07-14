@@ -31,18 +31,22 @@ import org.graalvm.nativeimage.Platforms;
  * Used to serialize all predefined frame types into the chunk.
  */
 public class JfrFrameTypeSerializer implements JfrSerializer {
+    // This is necessary to avoid code that may allocate so JFR can be used when OOM.
+    private JfrFrameType[] frameTypes;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrFrameTypeSerializer() {
+        frameTypes = JfrFrameType.values();
+
     }
 
     @Override
     public void write(JfrChunkWriter writer) {
-        JfrFrameType[] values = JfrFrameType.values();
         writer.writeCompressedLong(JfrType.FrameType.getId());
-        writer.writeCompressedLong(values.length);
-        for (JfrFrameType value : values) {
-            writer.writeCompressedLong(value.getId());
-            writer.writeString(value.getText());
+        writer.writeCompressedLong(frameTypes.length);
+        for (int i = 0; i < frameTypes.length; i++) {
+            writer.writeCompressedLong(frameTypes[i].getId());
+            writer.writeString(frameTypes[i].getText());
         }
     }
 }

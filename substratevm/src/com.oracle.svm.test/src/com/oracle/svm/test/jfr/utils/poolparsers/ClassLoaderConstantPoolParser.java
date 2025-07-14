@@ -34,8 +34,8 @@ import com.oracle.svm.test.jfr.utils.RecordingInput;
 
 public class ClassLoaderConstantPoolParser extends AbstractRepositoryParser {
     public ClassLoaderConstantPoolParser(JfrFileParser parser) {
-        /* 0 is the null class loader. */
-        super(parser, 0L);
+        /* 0 is the null class loader, but still should be serialized every epoch if tagged. */
+        super(parser);
     }
 
     @Override
