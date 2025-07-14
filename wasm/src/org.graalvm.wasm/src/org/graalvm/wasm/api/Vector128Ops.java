@@ -42,7 +42,6 @@
 package org.graalvm.wasm.api;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.DoubleVector;
@@ -57,6 +56,8 @@ import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorShuffle;
 import jdk.incubator.vector.VectorSpecies;
 import org.graalvm.wasm.constants.Bytecode;
+
+import java.util.function.Function;
 
 import static org.graalvm.wasm.api.Vector128.BYTES;
 
@@ -74,6 +75,10 @@ public class Vector128Ops {
 
         default Vector<E> broadcast(long e) {
             return species().broadcast(e);
+        }
+
+        default Vector<E> broadcast(double e) {
+            throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
@@ -226,6 +231,15 @@ public class Vector128Ops {
             return castFloat128(FloatVector.broadcast(species(), e));
         }
 
+        @Override
+        public FloatVector broadcast(double e) {
+            float f = (float) e;
+            if ((double) f != e) {
+                throw new IllegalArgumentException();
+            }
+            return broadcast(f);
+        }
+
         public FloatVector broadcast(float e) {
             return castFloat128(FloatVector.broadcast(species(), e));
         }
@@ -258,31 +272,13 @@ public class Vector128Ops {
             return castDouble128(DoubleVector.broadcast(species(), e));
         }
 
+        @Override
         public DoubleVector broadcast(double e) {
             return castDouble128(DoubleVector.broadcast(species(), e));
         }
     }
 
     public static final F64X2Shape F64X2 = new F64X2Shape();
-
-    private static final Class<? extends ByteVector> BYTE_128_CLASS = ByteVector.zero(I8X16.species()).getClass();
-    private static final Class<? extends ShortVector> SHORT_128_CLASS = ShortVector.zero(I16X8.species()).getClass();
-    private static final Class<? extends IntVector> INT_128_CLASS = IntVector.zero(I32X4.species()).getClass();
-    private static final Class<? extends LongVector> LONG_128_CLASS = LongVector.zero(I64X2.species()).getClass();
-    private static final Class<? extends FloatVector> FLOAT_128_CLASS = FloatVector.zero(F32X4.species()).getClass();
-    private static final Class<? extends DoubleVector> DOUBLE_128_CLASS = DoubleVector.zero(F64X2.species()).getClass();
-
-    private static final Class<? extends VectorMask> BYTE_128_MASK_CLASS = VectorMask.fromLong(I8X16.species(), 0).getClass();
-    private static final Class<? extends VectorMask> SHORT_128_MASK_CLASS = VectorMask.fromLong(I16X8.species(), 0).getClass();
-    private static final Class<? extends VectorMask> INT_128_MASK_CLASS = VectorMask.fromLong(I32X4.species(), 0).getClass();
-    private static final Class<? extends VectorMask> LONG_128_MASK_CLASS = VectorMask.fromLong(I64X2.species(), 0).getClass();
-    private static final Class<? extends VectorMask> FLOAT_128_MASK_CLASS = VectorMask.fromLong(F32X4.species(), 0).getClass();
-    private static final Class<? extends VectorMask> DOUBLE_128_MASK_CLASS = VectorMask.fromLong(F64X2.species(), 0).getClass();
-
-    @FunctionalInterface
-    private interface UnaryScalarOp<F> {
-        F apply(F operand);
-    }
 
     @FunctionalInterface
     private interface BinaryVectorOp<F> {
@@ -320,17 +316,17 @@ public class Vector128Ops {
             case Bytecode.VECTOR_F32X4_ABS -> unop(x, F32X4, VectorOperators.ABS);
             case Bytecode.VECTOR_F32X4_NEG -> unop(x, F32X4, VectorOperators.NEG);
             case Bytecode.VECTOR_F32X4_SQRT -> unop(x, F32X4, VectorOperators.SQRT);
-            case Bytecode.VECTOR_F32X4_CEIL -> f32x4_unop_fallback(x, f -> (float) Math.ceil(f));
-            case Bytecode.VECTOR_F32X4_FLOOR -> f32x4_unop_fallback(x, f -> (float) Math.floor(f));
-            case Bytecode.VECTOR_F32X4_TRUNC -> f32x4_unop_fallback(x, f -> ExactMath.truncate(f));
-            case Bytecode.VECTOR_F32X4_NEAREST -> f32x4_unop_fallback(x, f -> (float) Math.rint(f));
+            case Bytecode.VECTOR_F32X4_CEIL -> ceil(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.REINTERPRET_I2F, Vector128Ops::f32x4_getExponent, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
+            case Bytecode.VECTOR_F32X4_FLOOR -> floor(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.REINTERPRET_I2F, Vector128Ops::f32x4_getExponent, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
+            case Bytecode.VECTOR_F32X4_TRUNC -> trunc(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.I2F, Vector128Ops::f32x4_getExponent, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
+            case Bytecode.VECTOR_F32X4_NEAREST -> nearest(x, F32X4, (float)(1 << (FLOAT_SIGNIFICAND_WIDTH - 1)));
             case Bytecode.VECTOR_F64X2_ABS -> unop(x, F64X2, VectorOperators.ABS);
             case Bytecode.VECTOR_F64X2_NEG -> unop(x, F64X2, VectorOperators.NEG);
             case Bytecode.VECTOR_F64X2_SQRT -> unop(x, F64X2, VectorOperators.SQRT);
-            case Bytecode.VECTOR_F64X2_CEIL -> f64x2_ceil(x);
-            case Bytecode.VECTOR_F64X2_FLOOR -> f64x2_floor(x);
-            case Bytecode.VECTOR_F64X2_TRUNC -> f64x2_trunc(x);
-            case Bytecode.VECTOR_F64X2_NEAREST -> f64x2_nearest(x);
+            case Bytecode.VECTOR_F64X2_CEIL -> ceil(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D, Vector128Ops::f64x2_getExponent, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
+            case Bytecode.VECTOR_F64X2_FLOOR -> floor(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D, Vector128Ops::f64x2_getExponent, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
+            case Bytecode.VECTOR_F64X2_TRUNC -> trunc(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D, Vector128Ops::f64x2_getExponent, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
+            case Bytecode.VECTOR_F64X2_NEAREST -> nearest(x, F64X2, (double)(1L << (DOUBLE_SIGNIFICAND_WIDTH - 1)));
             case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S -> convert(x, F32X4, VectorOperators.F2I);
             case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U -> i32x4_trunc_sat_f32x4(x);
             case Bytecode.VECTOR_F32X4_CONVERT_I32X4_S -> convert(x, I32X4, VectorOperators.I2F);
@@ -345,66 +341,78 @@ public class Vector128Ops {
         };
     }
 
+    private static final int FLOAT_SIGNIFICAND_WIDTH = Float.PRECISION;
+    private static final int FLOAT_EXP_BIAS = (1 << (Float.SIZE - FLOAT_SIGNIFICAND_WIDTH - 1)) - 1;
+    private static final int FLOAT_EXP_BIT_MASK = ((1 << (Float.SIZE - FLOAT_SIGNIFICAND_WIDTH)) - 1) << (FLOAT_SIGNIFICAND_WIDTH - 1);
+    private static final long FLOAT_SIGNIF_BIT_MASK = (1L << (FLOAT_SIGNIFICAND_WIDTH - 1)) - 1;
+
     private static final int DOUBLE_SIGNIFICAND_WIDTH = Double.PRECISION;
     private static final int DOUBLE_EXP_BIAS = (1 << (Double.SIZE - DOUBLE_SIGNIFICAND_WIDTH - 1)) - 1; // 1023
     private static final long DOUBLE_EXP_BIT_MASK = ((1L << (Double.SIZE - DOUBLE_SIGNIFICAND_WIDTH)) - 1) << (DOUBLE_SIGNIFICAND_WIDTH - 1);
     private static final long DOUBLE_SIGNIF_BIT_MASK = (1L << (DOUBLE_SIGNIFICAND_WIDTH - 1)) - 1;
 
-    private static final DoubleVector CEIL_NEGATIVE_BOUNDARY_ARG = F64X2.broadcast(-0.0);
-    private static final DoubleVector CEIL_POSITIVE_BOUNDARY_ARG = F64X2.broadcast(1.0);
-    private static final DoubleVector CIEL_SIGN_ARG = F64X2.broadcast(1.0);
+    private static final double CEIL_NEGATIVE_BOUNDARY_ARG = -0.0;
+    private static final double CEIL_POSITIVE_BOUNDARY_ARG = 1.0;
+    private static final double CIEL_SIGN_ARG = 1.0;
 
-    private static final DoubleVector FLOOR_NEGATIVE_BOUNDARY_ARG = F64X2.broadcast(-1.0);
-    private static final DoubleVector FLOOR_POSITIVE_BOUNDARY_ARG = F64X2.broadcast(0.0);
-    private static final DoubleVector FLOOR_SIGN_ARG = F64X2.broadcast(-1.0);
+    private static final double FLOOR_NEGATIVE_BOUNDARY_ARG = -1.0;
+    private static final double FLOOR_POSITIVE_BOUNDARY_ARG = 0.0;
+    private static final double FLOOR_SIGN_ARG = -1.0;
 
-    private static LongVector getExponent(DoubleVector x) {
-        return x.viewAsIntegralLanes().and(DOUBLE_EXP_BIT_MASK).lanewise(VectorOperators.LSHR, DOUBLE_SIGNIFICAND_WIDTH - 1).sub(DOUBLE_EXP_BIAS);
+    private static IntVector f32x4_getExponent(Vector<Float> x) {
+        return castInt128(x.convert(VectorOperators.REINTERPRET_F2I, 0).lanewise(VectorOperators.AND, FLOAT_EXP_BIT_MASK).lanewise(VectorOperators.LSHR, FLOAT_SIGNIFICAND_WIDTH - 1).sub(I32X4.broadcast(FLOAT_EXP_BIAS)));
     }
 
-    private static ByteVector f64x2_ceil(ByteVector xBytes) {
-        DoubleVector x = F64X2.reinterpret(xBytes);
-        return f64x2_floorOrCeil(x, CEIL_NEGATIVE_BOUNDARY_ARG, CEIL_POSITIVE_BOUNDARY_ARG, CIEL_SIGN_ARG);
+    private static LongVector f64x2_getExponent(Vector<Double> x) {
+        return castLong128(x.convert(VectorOperators.REINTERPRET_D2L, 0).lanewise(VectorOperators.AND, DOUBLE_EXP_BIT_MASK).lanewise(VectorOperators.LSHR, DOUBLE_SIGNIFICAND_WIDTH - 1).sub(I64X2.broadcast(DOUBLE_EXP_BIAS)));
     }
 
-    private static ByteVector f64x2_floor(ByteVector xBytes) {
-        DoubleVector x = F64X2.reinterpret(xBytes);
-        return f64x2_floorOrCeil(x, FLOOR_NEGATIVE_BOUNDARY_ARG, FLOOR_POSITIVE_BOUNDARY_ARG, FLOOR_SIGN_ARG);
+    private static <E, F extends Number> ByteVector ceil(ByteVector xBytes, Shape<E> shape, Shape<F> integralShape, VectorOperators.Conversion<E, F> floatingAsIntegral, VectorOperators.Conversion<F, E> integralAsFloating, Function<Vector<E>, Vector<F>> getExponent, int significantWidth, Vector<F> significandBitMask) {
+        Vector<E> x = shape.reinterpret(xBytes);
+        return floorOrCeil(x, shape, integralShape, floatingAsIntegral, integralAsFloating, getExponent, significantWidth, significandBitMask, shape.broadcast(CEIL_NEGATIVE_BOUNDARY_ARG), shape.broadcast(CEIL_POSITIVE_BOUNDARY_ARG), shape.broadcast(CIEL_SIGN_ARG));
     }
 
-    private static ByteVector f64x2_trunc(ByteVector xBytes) {
-        DoubleVector x = F64X2.reinterpret(xBytes);
-        VectorMask<Double> ceil = x.lt(0);
-        return f64x2_floorOrCeil(x, FLOOR_NEGATIVE_BOUNDARY_ARG.blend(CEIL_NEGATIVE_BOUNDARY_ARG, ceil), FLOOR_POSITIVE_BOUNDARY_ARG.blend(CEIL_POSITIVE_BOUNDARY_ARG, ceil), FLOOR_SIGN_ARG.blend(CIEL_SIGN_ARG, ceil));
+    private static <E, F extends Number> ByteVector floor(ByteVector xBytes, Shape<E> shape, Shape<F> integralShape, VectorOperators.Conversion<E, F> floatingAsIntegral, VectorOperators.Conversion<F, E> integralAsFloating, Function<Vector<E>, Vector<F>> getExponent, int significantWidth, Vector<F> significandBitMask) {
+        Vector<E> x = shape.reinterpret(xBytes);
+        return floorOrCeil(x, shape, integralShape, floatingAsIntegral, integralAsFloating, getExponent, significantWidth, significandBitMask, shape.broadcast(FLOOR_NEGATIVE_BOUNDARY_ARG), shape.broadcast(FLOOR_POSITIVE_BOUNDARY_ARG), shape.broadcast(FLOOR_SIGN_ARG));
     }
 
-    private static ByteVector f64x2_floorOrCeil(DoubleVector x, DoubleVector negativeBoundary, DoubleVector positiveBoundary, DoubleVector sign) {
-        LongVector exponent = castLong128(getExponent(x));
-        VectorMask<Double> isNegativeExponent = exponent.lt(0).cast(F64X2.species());
-        VectorMask<Double> isZero = x.eq(0);
-        VectorMask<Double> isNegative = x.lt(0);
-        DoubleVector negativeExponentResult = positiveBoundary.blend(negativeBoundary, isNegative).blend(x, isZero);
-        VectorMask<Double> isHighExponent = exponent.compare(VectorOperators.GE, 52).cast(F64X2.species());
-        DoubleVector highExponentResult = x;
-        LongVector doppel = x.viewAsIntegralLanes();
-        LongVector mask = I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK).lanewise(VectorOperators.LSHR, exponent);
-        VectorMask<Double> isIntegral = doppel.and(mask).eq(0).cast(F64X2.species());
-        DoubleVector integralResult = x;
-        DoubleVector fractional = doppel.and(mask.neg()).viewAsFloatingLanes();
-        VectorMask<Double> signMatch = x.mul(sign).compare(VectorOperators.GT, 0).cast(F64X2.species());
-        DoubleVector fractionalResult = fractional.blend(fractional.add(sign), signMatch);
-        DoubleVector defaultResult = fractionalResult.blend(integralResult, isIntegral);
-        DoubleVector result = defaultResult.blend(highExponentResult, isHighExponent).blend(negativeExponentResult, isNegativeExponent);
+    private static <E, F extends Number> ByteVector trunc(ByteVector xBytes, Shape<E> shape, Shape<F> integralShape, VectorOperators.Conversion<E, F> floatingAsIntegral, VectorOperators.Conversion<F, E> integralAsFloating, Function<Vector<E>, Vector<F>> getExponent, int significantWidth, Vector<F> significandBitMask) {
+        Vector<E> x = shape.reinterpret(xBytes);
+        VectorMask<E> ceil = x.lt(shape.broadcast(0));
+        return floorOrCeil(x, shape, integralShape, floatingAsIntegral, integralAsFloating, getExponent, significantWidth, significandBitMask,
+                shape.broadcast(FLOOR_NEGATIVE_BOUNDARY_ARG).blend(shape.broadcast(CEIL_NEGATIVE_BOUNDARY_ARG), ceil),
+                shape.broadcast(FLOOR_POSITIVE_BOUNDARY_ARG).blend(shape.broadcast(CEIL_POSITIVE_BOUNDARY_ARG), ceil),
+                shape.broadcast(FLOOR_SIGN_ARG).blend(shape.broadcast(CIEL_SIGN_ARG), ceil));
+    }
+
+    private static <E, F extends Number> ByteVector floorOrCeil(Vector<E> x, Shape<E> shape, Shape<F> integralShape, VectorOperators.Conversion<E, F> floatingAsIntegral, VectorOperators.Conversion<F, E> integralAsFloating, Function<Vector<E>, Vector<F>> getExponent, int significandWidth, Vector<F> significandBitMaskVec, Vector<E> negativeBoundary, Vector<E> positiveBoundary, Vector<E> sign) {
+        Vector<F> exponent = getExponent.apply(x);
+        VectorMask<E> isNegativeExponent = exponent.lt(integralShape.broadcast(0)).cast(shape.species());
+        VectorMask<E> isZero = x.eq(shape.broadcast(0));
+        VectorMask<E> isNegative = x.lt(shape.broadcast(0));
+        Vector<E> negativeExponentResult = positiveBoundary.blend(negativeBoundary, isNegative).blend(x, isZero);
+        VectorMask<E> isHighExponent = exponent.compare(VectorOperators.GE, significandWidth - 1).cast(shape.species());
+        Vector<E> highExponentResult = x;
+        Vector<F> doppel = x.convert(floatingAsIntegral, 0);
+        Vector<F> mask = significandBitMaskVec.lanewise(VectorOperators.LSHR, exponent);
+        VectorMask<E> isIntegral = doppel.lanewise(VectorOperators.AND, mask).eq(integralShape.broadcast(0)).cast(shape.species());
+        Vector<E> integralResult = x;
+        Vector<E> fractional = doppel.lanewise(VectorOperators.AND, mask.neg()).convert(integralAsFloating, 0);
+        VectorMask<E> signMatch = x.mul(sign).compare(VectorOperators.GT, 0).cast(shape.species());
+        Vector<E> fractionalResult = fractional.blend(fractional.add(sign), signMatch);
+        Vector<E> defaultResult = fractionalResult.blend(integralResult, isIntegral);
+        Vector<E> result = defaultResult.blend(highExponentResult, isHighExponent).blend(negativeExponentResult, isNegativeExponent);
         return result.reinterpretAsBytes();
     }
 
-    private static DoubleVector sign(DoubleVector x) {
-        VectorMask<Double> negative = x.test(VectorOperators.IS_NEGATIVE);
-        return F64X2.broadcast(1.0).blend(F64X2.broadcast(-1.0), negative);
+    private static <E> Vector<E> sign(Vector<E> x, Shape<E> shape) {
+        VectorMask<E> negative = x.test(VectorOperators.IS_NEGATIVE);
+        return shape.broadcast(1).blend(shape.broadcast(-1), negative);
     }
 
-    private static ByteVector f64x2_nearest(ByteVector xBytes) {
-        DoubleVector x = F64X2.reinterpret(xBytes);
+    private static <E extends Number> ByteVector nearest(ByteVector xBytes, Shape<E> shape, E maxFiniteValue) {
+        Vector<E> x = shape.reinterpret(xBytes);
         /*
          * If the absolute value of x is not less than 2^52, it
          * is either a finite integer (the double format does not have
@@ -417,11 +425,11 @@ public class Vector128Ops {
          * 1.0; subtracting out twoToThe52 from this sum will then be
          * exact and leave the rounded integer portion of x.
          */
-        double twoToThe52 = (double)(1L << 52); // 2^52
-        DoubleVector sign = sign(x); // preserve sign info
-        DoubleVector xAbs = x.lanewise(VectorOperators.ABS);
-        VectorMask<Double> small = xAbs.lt(twoToThe52);
-        DoubleVector xTrunc = xAbs.blend(xAbs.add(twoToThe52).sub(twoToThe52), small);
+        Vector<E> sign = sign(x, shape); // preserve sign info
+        Vector<E> xAbs = x.lanewise(VectorOperators.ABS);
+        Vector<E> maxFiniteValueVec = shape.broadcast(maxFiniteValue.longValue());
+        VectorMask<E> small = xAbs.lt(maxFiniteValueVec);
+        Vector<E> xTrunc = xAbs.blend(xAbs.add(maxFiniteValueVec).sub(maxFiniteValueVec), small);
         return xTrunc.mul(sign).reinterpretAsBytes(); // restore original sign
     }
 
@@ -690,26 +698,6 @@ public class Vector128Ops {
         return result.reinterpretAsBytes();
     }
 
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static ByteVector f32x4_unop_fallback(ByteVector xBytes, UnaryScalarOp<Float> op) {
-        FloatVector x = xBytes.reinterpretAsFloats();
-        float[] xArray = x.toArray();
-        for (int i = 0; i < xArray.length; i++) {
-            xArray[i] = op.apply(xArray[i]);
-        }
-        return fromArray(xArray);
-    }
-
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static ByteVector f64x2_unop_fallback(ByteVector xBytes, UnaryScalarOp<Double> op) {
-        DoubleVector x = xBytes.reinterpretAsDoubles();
-        double[] xArray = x.toArray();
-        for (int i = 0; i < xArray.length; i++) {
-            xArray[i] = op.apply(xArray[i]);
-        }
-        return fromArray(xArray);
-    }
-
     private static <E, F> ByteVector convert(ByteVector xBytes, Shape<E> shape, VectorOperators.Conversion<E, F> conv) {
         Vector<E> x = shape.reinterpret(xBytes);
         Vector<F> result = x.convert(conv, 0);
@@ -939,6 +927,20 @@ public class Vector128Ops {
     }
 
     // Checkstyle: resume method name check
+
+    private static final Class<? extends ByteVector> BYTE_128_CLASS = ByteVector.zero(I8X16.species()).getClass();
+    private static final Class<? extends ShortVector> SHORT_128_CLASS = ShortVector.zero(I16X8.species()).getClass();
+    private static final Class<? extends IntVector> INT_128_CLASS = IntVector.zero(I32X4.species()).getClass();
+    private static final Class<? extends LongVector> LONG_128_CLASS = LongVector.zero(I64X2.species()).getClass();
+    private static final Class<? extends FloatVector> FLOAT_128_CLASS = FloatVector.zero(F32X4.species()).getClass();
+    private static final Class<? extends DoubleVector> DOUBLE_128_CLASS = DoubleVector.zero(F64X2.species()).getClass();
+
+    private static final Class<? extends VectorMask> BYTE_128_MASK_CLASS = VectorMask.fromLong(I8X16.species(), 0).getClass();
+    private static final Class<? extends VectorMask> SHORT_128_MASK_CLASS = VectorMask.fromLong(I16X8.species(), 0).getClass();
+    private static final Class<? extends VectorMask> INT_128_MASK_CLASS = VectorMask.fromLong(I32X4.species(), 0).getClass();
+    private static final Class<? extends VectorMask> LONG_128_MASK_CLASS = VectorMask.fromLong(I64X2.species(), 0).getClass();
+    private static final Class<? extends VectorMask> FLOAT_128_MASK_CLASS = VectorMask.fromLong(F32X4.species(), 0).getClass();
+    private static final Class<? extends VectorMask> DOUBLE_128_MASK_CLASS = VectorMask.fromLong(F64X2.species(), 0).getClass();
 
     public static final ByteVector castByte128(Vector<Byte> vec) {
         return BYTE_128_CLASS.cast(vec);
