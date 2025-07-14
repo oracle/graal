@@ -323,14 +323,14 @@ public class Vector128Ops {
             case Bytecode.VECTOR_F32X4_CEIL -> ceil(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.REINTERPRET_I2F, Vector128Ops::getExponentFloats, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
             case Bytecode.VECTOR_F32X4_FLOOR -> floor(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.REINTERPRET_I2F, Vector128Ops::getExponentFloats, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
             case Bytecode.VECTOR_F32X4_TRUNC -> trunc(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.I2F, Vector128Ops::getExponentFloats, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
-            case Bytecode.VECTOR_F32X4_NEAREST -> nearest(x, F32X4, (float)(1 << (FLOAT_SIGNIFICAND_WIDTH - 1)));
+            case Bytecode.VECTOR_F32X4_NEAREST -> nearest(x, F32X4, 1 << (FLOAT_SIGNIFICAND_WIDTH - 1));
             case Bytecode.VECTOR_F64X2_ABS -> unop(x, F64X2, VectorOperators.ABS);
             case Bytecode.VECTOR_F64X2_NEG -> unop(x, F64X2, VectorOperators.NEG);
             case Bytecode.VECTOR_F64X2_SQRT -> unop(x, F64X2, VectorOperators.SQRT);
             case Bytecode.VECTOR_F64X2_CEIL -> ceil(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D, Vector128Ops::getExponentDoubles, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
             case Bytecode.VECTOR_F64X2_FLOOR -> floor(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D, Vector128Ops::getExponentDoubles, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
             case Bytecode.VECTOR_F64X2_TRUNC -> trunc(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D, Vector128Ops::getExponentDoubles, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
-            case Bytecode.VECTOR_F64X2_NEAREST -> nearest(x, F64X2, (double)(1L << (DOUBLE_SIGNIFICAND_WIDTH - 1)));
+            case Bytecode.VECTOR_F64X2_NEAREST -> nearest(x, F64X2, 1L << (DOUBLE_SIGNIFICAND_WIDTH - 1));
             case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S -> convert(x, F32X4, VectorOperators.F2I);
             case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U -> i32x4_trunc_sat_f32x4(x);
             case Bytecode.VECTOR_F32X4_CONVERT_I32X4_S -> convert(x, I32X4, VectorOperators.I2F);
@@ -695,7 +695,7 @@ public class Vector128Ops {
         return shape.broadcast(1).blend(shape.broadcast(-1), negative);
     }
 
-    private static <E extends Number> ByteVector nearest(ByteVector xBytes, Shape<E> shape, E maxSafePowerOfTwo) {
+    private static <E> ByteVector nearest(ByteVector xBytes, Shape<E> shape, long maxSafePowerOfTwo) {
         // This is based on JDK's StrictMath.rint
         Vector<E> x = shape.reinterpret(xBytes);
         /*
@@ -710,7 +710,7 @@ public class Vector128Ops {
          */
         Vector<E> sign = sign(x, shape); // preserve sign info
         Vector<E> xAbs = x.lanewise(VectorOperators.ABS);
-        Vector<E> maxFiniteValueVec = shape.broadcast(maxSafePowerOfTwo.longValue());
+        Vector<E> maxFiniteValueVec = shape.broadcast(maxSafePowerOfTwo);
         VectorMask<E> small = xAbs.lt(maxFiniteValueVec);
         Vector<E> xTrunc = xAbs.blend(xAbs.add(maxFiniteValueVec).sub(maxFiniteValueVec), small);
         return xTrunc.mul(sign).reinterpretAsBytes(); // restore original sign
