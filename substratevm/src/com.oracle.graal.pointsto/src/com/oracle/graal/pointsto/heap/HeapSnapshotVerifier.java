@@ -333,11 +333,11 @@ public class HeapSnapshotVerifier {
                 result = (ImageHeapConstant) constant;
             } else {
                 Object task = imageHeap.getSnapshot(constant);
-                if (task == null && bb.getUniverse().hostVM().useBaseLayer() && bb.getUniverse().getImageLayerLoader().hasValueForConstant(constant)) {
+                if (task == null && bb.getUniverse().hostVM().buildingExtensionLayer() && bb.getUniverse().getImageLayerLoader().hasValueForConstant(constant)) {
                     /* The constant might not have been accessed in the extension image yet */
                     task = bb.getUniverse().getImageLayerLoader().getValueForConstant(constant);
                 }
-                if (task == null && bb.getUniverse().hostVM().useBaseLayer()) {
+                if (task == null && bb.getUniverse().hostVM().buildingExtensionLayer()) {
                     /*
                      * This does not distinguish between base and extension layer constants at the
                      * moment. Doing so would require some refactoring to determine earlier if the

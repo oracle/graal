@@ -184,10 +184,6 @@ public abstract class HostVM {
         return false;
     }
 
-    public boolean useBaseLayer() {
-        return false;
-    }
-
     public boolean analyzedInPriorLayer(@SuppressWarnings("unused") AnalysisMethod method) {
         return false;
     }
@@ -429,6 +425,14 @@ public abstract class HostVM {
     }
 
     public boolean buildingImageLayer() {
+        return false;
+    }
+
+    public boolean buildingSharedLayer() {
+        return false;
+    }
+
+    public boolean buildingExtensionLayer() {
         return false;
     }
 

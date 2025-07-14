@@ -141,7 +141,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
             sinkFlow = new ContextInsensitiveFieldTypeFlow(this, getType());
         }
 
-        if (universe.hostVM().useBaseLayer() && declaringClass.isInBaseLayer()) {
+        if (universe.hostVM().buildingExtensionLayer() && declaringClass.isInBaseLayer()) {
             int fid = universe.getImageLayerLoader().lookupHostedFieldInBaseLayer(this);
             if (fid != -1) {
                 /*

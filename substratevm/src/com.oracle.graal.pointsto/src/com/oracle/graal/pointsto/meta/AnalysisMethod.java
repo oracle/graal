@@ -219,7 +219,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         qualifiedName = format("%H.%n(%P)");
         modifiers = wrapped.getModifiers();
 
-        if (universe.hostVM().useBaseLayer() && declaringClass.isInBaseLayer()) {
+        if (universe.hostVM().buildingExtensionLayer() && declaringClass.isInBaseLayer()) {
             int mid = universe.getImageLayerLoader().lookupHostedMethodInBaseLayer(this);
             if (mid != -1) {
                 /*

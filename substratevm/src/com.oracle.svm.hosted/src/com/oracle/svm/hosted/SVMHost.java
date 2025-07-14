@@ -212,7 +212,9 @@ public class SVMHost extends HostVM {
     private final SymbolEncoder encoder = SymbolEncoder.singleton();
 
     private final int layerId;
-    private final boolean useBaseLayer;
+    private final boolean buildingImageLayer = ImageLayerBuildingSupport.buildingImageLayer();
+    private final boolean buildingSharedLayer = ImageLayerBuildingSupport.buildingSharedLayer();
+    private final boolean buildingExtensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
 
     // All elements below are from the host VM universe, not the analysis universe
     private Set<ResolvedJavaField> sharedLayerExcludedFields;
@@ -221,9 +223,6 @@ public class SVMHost extends HostVM {
 
     private final Boolean optionAllowUnsafeAllocationOfAllInstantiatedTypes = SubstrateOptions.AllowUnsafeAllocationOfAllInstantiatedTypes.getValue();
     private final boolean isClosedTypeWorld = SubstrateOptions.useClosedTypeWorld();
-    private final boolean enableTrackAcrossLayers;
-    private final boolean enableReachableInCurrentLayer;
-    private final boolean buildingImageLayer = ImageLayerBuildingSupport.buildingImageLayer();
     private final LayeredStaticFieldSupport layeredStaticFieldSupport;
     private final MetaAccessProvider originalMetaAccess;
 
@@ -256,15 +255,11 @@ public class SVMHost extends HostVM {
         } else {
             parsingSupport = null;
         }
-        layerId = ImageLayerBuildingSupport.buildingImageLayer() ? DynamicImageLayerInfo.getCurrentLayerNumber() : 0;
-        useBaseLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
-        if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+        layerId = buildingImageLayer ? DynamicImageLayerInfo.getCurrentLayerNumber() : 0;
+        if (buildingSharedLayer) {
             initializeSharedLayerExcludedFields();
         }
-
-        enableTrackAcrossLayers = ImageLayerBuildingSupport.buildingSharedLayer();
-        enableReachableInCurrentLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
-        layeredStaticFieldSupport = ImageLayerBuildingSupport.buildingImageLayer() ? LayeredStaticFieldSupport.singleton() : null;
+        layeredStaticFieldSupport = buildingImageLayer ? LayeredStaticFieldSupport.singleton() : null;
 
         optionKeyType = lookupOriginalType(OptionKey.class);
         featureType = lookupOriginalType(Feature.class);
@@ -283,8 +278,18 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public boolean useBaseLayer() {
-        return useBaseLayer;
+    public boolean buildingImageLayer() {
+        return buildingImageLayer;
+    }
+
+    @Override
+    public boolean buildingSharedLayer() {
+        return buildingSharedLayer;
+    }
+
+    @Override
+    public boolean buildingExtensionLayer() {
+        return buildingExtensionLayer;
     }
 
     /**
@@ -989,7 +994,7 @@ public class SVMHost extends HostVM {
          * If building layered images sort the fields by kind and name to ensure stable order.
          * Sorting fields in general may lead to some issues. (GR-62599)
          */
-        return ImageLayerBuildingSupport.buildingImageLayer();
+        return buildingImageLayer;
     }
 
     /** If it's not one of the known builder types it must be an original VM type. */
@@ -1175,17 +1180,12 @@ public class SVMHost extends HostVM {
 
     @Override
     public boolean enableTrackAcrossLayers() {
-        return enableTrackAcrossLayers;
+        return buildingSharedLayer();
     }
 
     @Override
     public boolean enableReachableInCurrentLayer() {
-        return enableReachableInCurrentLayer;
-    }
-
-    @Override
-    public boolean buildingImageLayer() {
-        return buildingImageLayer;
+        return buildingExtensionLayer;
     }
 
     @Override
