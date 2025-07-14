@@ -71,12 +71,13 @@ public abstract class ResourceConfigurationParser<C> extends ConditionalConfigur
     protected void parseBundle(Object bundle, boolean inResourcesSection) {
         EconomicMap<String, Object> resource = asMap(bundle, "Elements of 'bundles' list must be a bundle descriptor object");
         String bundleNameAttribute = inResourcesSection ? BUNDLE_KEY : NAME_KEY;
-        checkAttributes(resource, "bundle descriptor object", Collections.singletonList(bundleNameAttribute), Arrays.asList("locales", "classNames", "condition"));
+        checkAttributes(resource, "bundle descriptor object", Collections.singletonList(bundleNameAttribute), Arrays.asList(MODULE_KEY, "locales", "classNames", "condition"));
         String basename = asString(resource.get(bundleNameAttribute));
         TypeResult<C> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(resource));
         if (!resolvedConfigurationCondition.isPresent()) {
             return;
         }
+        // TODO GR-67556 - Add full support for MODULE_KEY in ResourceBundle configurations
         Object locales = resource.get("locales");
         if (locales != null) {
             List<Locale> asList = asList(locales, "Attribute 'locales' must be a list of locales")
