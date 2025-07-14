@@ -129,9 +129,22 @@ public class PermissionsFeature implements Feature {
         Throw
     }
 
+    /**
+     * Specifies how privileged method violations are reported. See
+     * {@link Options#TruffleTCKCollectMode}.
+     */
     public enum CollectMode {
+        /**
+         * Reports only one violation in total.
+         */
         Single,
+        /**
+         * Reports one call path per privileged method used.
+         */
         SinglePrivilegedMethodUsage,
+        /**
+         * Reports all call paths for all violations.
+         */
         All
     }
 
@@ -386,7 +399,14 @@ public class PermissionsFeature implements Feature {
                                 (pw) -> {
                                     StringBuilder builder = new StringBuilder();
                                     for (List<BaseMethodNode> callPath : report) {
+                                        boolean privilegedMethod = true;
                                         for (BaseMethodNode call : callPath) {
+                                            if (privilegedMethod) {
+                                                builder.append("Illegal call to privileged method ");
+                                                privilegedMethod = false;
+                                            } else {
+                                                builder.append("    at ");
+                                            }
                                             builder.append(call.asStackTraceElement()).append(System.lineSeparator());
                                         }
                                         builder.append(System.lineSeparator());

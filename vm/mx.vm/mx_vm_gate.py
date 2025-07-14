@@ -645,6 +645,9 @@ def _svm_truffle_tck(native_image, language_id, language_distribution=None, fail
             with open(report_file, "r") as f:
                 for line in f.readlines():
                     message = message + line
+            message = message + ("\nNote: If the method is not used directly by the language, but is part of the call path "
+                                 "because it is used internally by the JDK and introduced by a polymorphic call, consider "
+                                 "adding it to `jdk_allowed_methods.json`.")
             if fail_on_error:
                 mx.abort(message)
             else:
