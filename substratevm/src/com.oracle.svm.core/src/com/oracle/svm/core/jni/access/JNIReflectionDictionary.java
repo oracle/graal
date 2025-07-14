@@ -273,9 +273,9 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
 
     private static JNIAccessibleMethod getDeclaredMethod(Class<?> classObject, JNIAccessibleMethodDescriptor descriptor, String dumpLabel) {
         if (MetadataTracer.enabled()) {
-            MetadataTracer.singleton().traceJNIType(classObject.getTypeName());
+            MetadataTracer.singleton().traceJNIType(classObject);
             // TODO (GR-64765) loosen to queried accessibility once method invocations are traced
-            MetadataTracer.singleton().traceMethod(classObject.getTypeName(), descriptor.getNameConvertToString(), descriptor.getSignatureConvertToString(),
+            MetadataTracer.singleton().traceMethod(classObject, descriptor.getNameConvertToString(), descriptor.getSignatureConvertToString(),
                             ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED, ConfigurationMemberInfo.ConfigurationMemberAccessibility.ACCESSED);
         }
         boolean foundClass = false;
@@ -334,8 +334,8 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
 
     private static JNIAccessibleField getDeclaredField(Class<?> classObject, CharSequence name, boolean isStatic, String dumpLabel) {
         if (MetadataTracer.enabled()) {
-            MetadataTracer.singleton().traceJNIType(classObject.getTypeName());
-            MetadataTracer.singleton().traceField(classObject.getTypeName(), name.toString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
+            MetadataTracer.singleton().traceJNIType(classObject);
+            MetadataTracer.singleton().traceField(classObject, name.toString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
         }
         boolean foundClass = false;
         for (var dictionary : layeredSingletons()) {
