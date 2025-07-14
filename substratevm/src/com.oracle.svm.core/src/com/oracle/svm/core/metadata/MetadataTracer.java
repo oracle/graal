@@ -239,12 +239,6 @@ public final class MetadataTracer {
     public void traceProxyType(Class<?>[] interfaces) {
         List<String> interfaceNames = Arrays.stream(interfaces).map(Class::getTypeName).toList();
         ProxyConfigurationTypeDescriptor descriptor = new ProxyConfigurationTypeDescriptor(interfaceNames);
-        for (String interfaceName : interfaceNames) {
-            if (isInternal(interfaceName)) {
-                debug("proxy type not registered for reflection (uses an internal interface)", descriptor);
-                return;
-            }
-        }
         traceReflectionTypeImpl(descriptor);
     }
 
@@ -257,6 +251,7 @@ public final class MetadataTracer {
     public ConfigurationType traceReflectionTypeImpl(ConfigurationTypeDescriptor typeDescriptor) {
         assert enabledAtRunTime();
         if (isInternal(typeDescriptor)) {
+            debug("type not registered for reflection (uses an internal interface)", typeDescriptor);
             return null;
         }
         ConfigurationSet configurationSet = getConfigurationSetForTracing();
@@ -270,6 +265,12 @@ public final class MetadataTracer {
     private static boolean isInternal(ConfigurationTypeDescriptor typeDescriptor) {
         if (typeDescriptor instanceof NamedConfigurationTypeDescriptor(String name)) {
             return isInternal(name);
+        } else if (typeDescriptor instanceof ProxyConfigurationTypeDescriptor proxyType) {
+            for (String interfaceName : proxyType.interfaceNames()) {
+                if (isInternal(interfaceName)) {
+                    return true;
+                }
+            }
         }
         return false;
     }
