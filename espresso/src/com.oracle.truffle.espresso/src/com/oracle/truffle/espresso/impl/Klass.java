@@ -945,18 +945,22 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     /**
      * Gets the array class type representing an array with elements of this type.
      *
-     * This method is equivalent to {@link Klass#getArrayClass()}.
+     * This method is equivalent to {@link Klass#getArrayKlass()}.
      */
     public final ArrayKlass array() {
-        return getArrayClass();
+        return getArrayKlass();
     }
 
     /**
      * Gets the array class type representing an array with elements of this type.
      */
-    public final ArrayKlass getArrayClass() {
+    public final ArrayKlass getArrayKlass() {
+        return getArrayKlass(true);
+    }
+
+    public final ArrayKlass getArrayKlass(boolean create) {
         ArrayKlass result = this.arrayKlass;
-        if (result == null) {
+        if (result == null && create) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             result = createArrayKlass();
         }
@@ -972,10 +976,13 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
         return result;
     }
 
-    @Override
-    public ArrayKlass getArrayClass(int dimensions) {
+    public ArrayKlass getArrayKlass(int dimensions) {
+        return getArrayKlass(dimensions, true);
+    }
+
+    private ArrayKlass getArrayKlass(int dimensions, boolean create) {
         assert dimensions > 0;
-        ArrayKlass array = array();
+        ArrayKlass array = getArrayKlass(create);
 
         // Careful with of impossible void[].
         if (array == null) {
@@ -983,9 +990,17 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
         }
 
         for (int i = 1; i < dimensions; ++i) {
-            array = array.getArrayClass();
+            array = array.getArrayKlass(create);
+            if (array == null) {
+                return null;
+            }
         }
         return array;
+    }
+
+    @Override
+    public ArrayKlass getArrayClassNoCreate(int dimensions) {
+        return getArrayKlass(dimensions, false);
     }
 
     @Override
@@ -1346,7 +1361,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
         for (int i = 0; i < array.length; ++i) {
             array[i] = generator.apply(i);
         }
-        return meta.getAllocator().wrapArrayAs(getArrayClass(), array);
+        return meta.getAllocator().wrapArrayAs(getArrayKlass(), array);
     }
 
     // region Lookup

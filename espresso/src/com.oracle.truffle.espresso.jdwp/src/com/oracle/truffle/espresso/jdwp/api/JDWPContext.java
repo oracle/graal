@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.jdwp.api;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
@@ -65,7 +66,7 @@ public interface JDWPContext {
      *
      * @return array containing every class loaded
      */
-    KlassRef[] getAllLoadedClasses();
+    Set<? extends KlassRef> getAllLoadedClasses();
 
     /**
      * Finds the method for which an root node was created from.
@@ -177,9 +178,9 @@ public interface JDWPContext {
      * Returns all classes for which the class loader initiated loading.
      *
      * @param classLoader guest language class loader
-     * @return array of classes initiated by the class loader
+     * @return set of classes initiated by the class loader
      */
-    List<? extends KlassRef> getInitiatedClasses(Object classLoader);
+    Set<? extends KlassRef> getInitiatedClasses(Object classLoader);
 
     /**
      * Retrieves the field value of a static field.

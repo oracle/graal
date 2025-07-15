@@ -351,7 +351,7 @@ public final class InnerClassRedefiner {
 
             // do a one-time look up of all currently loaded
             // classes for this loader and fill in the map
-            List<Klass> loadedKlasses = classRegistry.getLoadedKlasses();
+            Set<Klass> loadedKlasses = context.getRegistries().getLoadedClassesByLoader(klass.getDefiningClassLoader(), false);
             for (Klass loadedKlass : loadedKlasses) {
                 if (loadedKlass instanceof ObjectKlass objectKlass) {
                     Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(loadedKlass.getNameAsString());

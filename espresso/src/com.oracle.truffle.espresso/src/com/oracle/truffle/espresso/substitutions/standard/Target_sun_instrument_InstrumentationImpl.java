@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.substitutions.standard;
 
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -166,15 +166,16 @@ public final class Target_sun_instrument_InstrumentationImpl {
                     @SuppressWarnings("unused") long agentId,
                     @JavaType(ClassLoader.class) StaticObject loader,
                     @Inject EspressoContext context) {
-        List<Klass> initiatedKlasses = context.getRegistries().getClassRegistry(loader).getLoadedKlasses();
+        Set<Klass> initiatedKlasses = context.getRegistries().getLoadedClassesByLoader(loader, false);
         return toGuestClassArray(context, initiatedKlasses);
     }
 
     @TruffleBoundary
-    private static StaticObject toGuestClassArray(EspressoContext context, List<Klass> initiatedKlasses) {
+    private static StaticObject toGuestClassArray(EspressoContext context, Set<Klass> initiatedKlasses) {
         StaticObject[] guestKlasses = new StaticObject[initiatedKlasses.size()];
-        for (int i = 0; i < initiatedKlasses.size(); i++) {
-            guestKlasses[i] = initiatedKlasses.get(i).mirror();
+        int i = 0;
+        for (Klass initiatedKlass : initiatedKlasses) {
+            guestKlasses[i++] = initiatedKlass.mirror();
         }
         return StaticObject.wrap(guestKlasses, context.getMeta());
     }
