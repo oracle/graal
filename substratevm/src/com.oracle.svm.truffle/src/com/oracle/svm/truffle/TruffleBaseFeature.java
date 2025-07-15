@@ -182,8 +182,8 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     private static final String NATIVE_IMAGE_FILELIST_FILE_NAME = "native-image-resources.filelist";
-    private static final Version NEXT_POLYGLOT_VERSION_UPDATE = Version.create(29, 1);
-    private static final int MAX_JDK_VERSION = 29;
+    private static final Version NEXT_POLYGLOT_VERSION_UPDATE = Version.create(26, 0);
+    private static final int MAX_JDK_VERSION = 26;
 
     @Override
     public String getURL() {
