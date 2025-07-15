@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -132,7 +132,7 @@ final class EventContextObject extends AbstractContextObject {
             Node instrumentableNode = findInstrumentableParent(n);
             if (instrumentableNode != null && lib.hasScope(instrumentableNode, frame)) {
                 try {
-                    Object frameVars = new CurrentScopeView(lib.getScope(instrumentableNode, frame, false));
+                    Object frameVars = lib.getScope(instrumentableNode, frame, false);
                     Object ret = iop.execute(callback, location, frameVars);
                     return iop.isNull(ret) ? null : ret;
                 } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException ex) {
