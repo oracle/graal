@@ -554,6 +554,10 @@ public abstract class Accessor {
 
         public abstract LogRecord createLogRecord(Object loggerCache, Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
 
+        public abstract boolean isKnownLoggerId(String id);
+
+        public abstract Collection<String> getKnownLoggerIds();
+
         public abstract boolean isContextBoundLogger(Object loggerCache);
 
         public abstract Object getOuterContext(Object polyglotContext);
@@ -606,12 +610,6 @@ public abstract class Accessor {
         public abstract boolean isCreateProcessSupported();
 
         public abstract ZoneId getTimeZone(Object polyglotLanguageContext);
-
-        public abstract Set<String> getLanguageIds();
-
-        public abstract Set<String> getInstrumentIds();
-
-        public abstract Set<String> getInternalIds();
 
         public abstract String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey);
 
