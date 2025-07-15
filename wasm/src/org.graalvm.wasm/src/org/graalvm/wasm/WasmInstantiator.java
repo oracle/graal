@@ -144,8 +144,6 @@ public class WasmInstantiator {
             if (tableDescriptor != null) {
                 linkActions.add((context, store, instance, imports) -> {
                     instance.setTableAddress(tableIndex, SymbolTable.UNINITIALIZED_ADDRESS);
-                });
-                linkActions.add((context, store, instance, imports) -> {
                     store.linker().resolveTableImport(store, instance, tableDescriptor, tableIndex, tableMinSize, tableMaxSize, tableElemType, imports);
                 });
             } else {
