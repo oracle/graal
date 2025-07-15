@@ -133,6 +133,23 @@ final class Target_jdk_incubator_vector_VectorOperators {
     }
 }
 
+@TargetClass(className = "jdk.incubator.vector.AbstractVector", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_AbstractVector {
+}
+
+@TargetClass(className = "jdk.incubator.vector.AbstractSpecies", onlyWith = VectorAPIEnabled.class)
+final class Target_jdk_incubator_vector_AbstractSpecies {
+
+    @Alias private Target_jdk_incubator_vector_AbstractVector dummyVector;
+
+    // We initialize the `dummyVector` fields during image build-time using VectorAPIFeature. We
+    // can have the getter method return the precomputed dummy vector directly.
+    @Substitute
+    Target_jdk_incubator_vector_AbstractVector dummyVector() {
+        return dummyVector;
+    }
+}
+
 @TargetClass(className = "jdk.incubator.vector.ByteVector", onlyWith = VectorAPIEnabled.class)
 final class Target_jdk_incubator_vector_ByteVector {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.ArrayIndexShift, declClass = byte[].class, isFinal = true) //
