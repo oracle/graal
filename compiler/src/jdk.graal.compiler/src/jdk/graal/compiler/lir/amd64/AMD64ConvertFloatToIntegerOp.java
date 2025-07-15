@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,12 @@
 package jdk.graal.compiler.lir.amd64;
 
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.SSEOp.UCOMIS;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.SSEOp.XOR;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VUCOMISD;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VUCOMISS;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPXOR;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
+import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
@@ -34,12 +39,13 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64SIMDInstructionEncoding;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
-import jdk.graal.compiler.asm.amd64.AVXKind;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaConstant;
@@ -58,11 +64,20 @@ public class AMD64ConvertFloatToIntegerOp extends AMD64LIRInstruction {
 
     @Def({REG}) protected Value dstValue;
     @Alive({REG}) protected Value srcValue;
-    @Temp({REG, ILLEGAL}) protected Value tmpValue;
+    @Temp({REG, ILLEGAL}) protected Value zeroTmp;
 
-    private final OpcodeEmitter opcode;
+    private final OpcodeEmitter opcodeEmitter;
     private final boolean canBeNaN;
     private final boolean canOverflow;
+    private final int integerBytes;
+    /**
+     * The size of the input float operand. We only emit scalar instructions, but UCOMIS wants to be
+     * encoded with a packed size.
+     */
+    private final OperandSize packedSize;
+    /** The size of the input float operand. */
+    private final OperandSize scalarSize;
+    private final AMD64SIMDInstructionEncoding encoding;
 
     @FunctionalInterface
     public interface OpcodeEmitter {
@@ -70,14 +85,30 @@ public class AMD64ConvertFloatToIntegerOp extends AMD64LIRInstruction {
         void emit(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, Register src);
     }
 
-    public AMD64ConvertFloatToIntegerOp(LIRGeneratorTool tool, OpcodeEmitter opcode, Value dstValue, Value srcValue, boolean canBeNaN, boolean canOverflow) {
+    public AMD64ConvertFloatToIntegerOp(LIRGeneratorTool tool, OpcodeEmitter opcodeEmitter, Value dstValue, Value srcValue, boolean canBeNaN,
+                    boolean canOverflow) {
         super(TYPE);
+        this.opcodeEmitter = opcodeEmitter;
         this.dstValue = dstValue;
         this.srcValue = srcValue;
-        this.opcode = opcode;
-        this.tmpValue = canOverflow ? tool.newVariable(srcValue.getValueKind()) : Value.ILLEGAL;
+        this.zeroTmp = canOverflow ? tool.newVariable(srcValue.getValueKind()) : Value.ILLEGAL;
         this.canBeNaN = canBeNaN;
         this.canOverflow = canOverflow;
+        this.integerBytes = dstValue.getPlatformKind().getSizeInBytes();
+        GraalError.guarantee(integerBytes == 4 || integerBytes == 8, "unexpected target %s", dstValue);
+        switch (srcValue.getPlatformKind().getSizeInBytes()) {
+            case 4:
+                this.packedSize = OperandSize.PS;
+                this.scalarSize = OperandSize.SS;
+                break;
+            case 8:
+                this.packedSize = OperandSize.PD;
+                this.scalarSize = OperandSize.SD;
+                break;
+            default:
+                throw GraalError.shouldNotReachHere("unexpected input %s".formatted(srcValue));
+        }
+        this.encoding = AMD64SIMDInstructionEncoding.forFeatures(((AMD64) tool.target().arch).getFeatures());
 
         GraalError.guarantee(srcValue.getPlatformKind() instanceof AMD64Kind kind && kind.getVectorLength() == 1 && kind.isXMM(), "source must be scalar floating-point: %s", srcValue);
         GraalError.guarantee(dstValue.getPlatformKind() instanceof AMD64Kind kind && kind.getVectorLength() == 1 && kind.isInteger(), "destination must be integer: %s", dstValue);
@@ -90,20 +121,12 @@ public class AMD64ConvertFloatToIntegerOp extends AMD64LIRInstruction {
         Label fixupPath = new Label();
         Label done = new Label();
 
-        opcode.emit(crb, masm, dst, src);
+        opcodeEmitter.emit(crb, masm, dst, src);
 
         if (!canBeNaN && !canOverflow) {
             /* No fixup needed. */
             return;
         }
-
-        int integerBytes = dstValue.getPlatformKind().getSizeInBytes();
-        GraalError.guarantee(integerBytes == 4 || integerBytes == 8, "unexpected target %s", dstValue);
-        OperandSize floatSize = switch (srcValue.getPlatformKind().getSizeInBytes()) {
-            case 4 -> OperandSize.PS;
-            case 8 -> OperandSize.PD;
-            default -> throw GraalError.shouldNotReachHere("unexpected input %s".formatted(srcValue));
-        };
 
         /*
          * if (dst == MIN_VALUE) { goto fixupPath; }
@@ -117,48 +140,67 @@ public class AMD64ConvertFloatToIntegerOp extends AMD64LIRInstruction {
 
         crb.getLIR().addSlowPath(this, () -> {
             masm.bind(fixupPath);
-
-            if (canBeNaN) {
-                /*
-                 * if (isNaN(src)) { result = 0; goto done; }
-                 *
-                 * The isNaN check is implemented as src != src. C2's fixup stubs check for a NaN
-                 * bit pattern directly, using the same number of cycles but using an extra general
-                 * purpose register.
-                 */
-                Label isNotNaN = new Label();
-                UCOMIS.emit(masm, floatSize, src, src);
-                masm.jcc(AMD64Assembler.ConditionFlag.NoParity, isNotNaN, true);
-                masm.moveInt(dst, 0);
-                masm.jmp(done);
-                masm.bind(isNotNaN);
-            }
-
-            if (canOverflow) {
-                /*
-                 * if (src > 0.0) { result = MAX_VALUE; }
-                 *
-                 * We use an actual floating point compare, C2's stubs check the sign bit in a GPR.
-                 */
-                Register zero = asRegister(tmpValue);
-                masm.pxor(AVXKind.AVXSize.XMM, zero, zero);
-                UCOMIS.emit(masm, floatSize, src, zero);
-                masm.jcc(AMD64Assembler.ConditionFlag.BelowEqual, done);
-                /*
-                 * MAX_VALUE is the bitwise negation of MIN_VALUE, which is already in dst. A
-                 * negation takes the same number of cycles as a move, but its encoding is shorter.
-                 */
-                if (integerBytes == 4) {
-                    masm.notl(dst);
-                } else {
-                    masm.notq(dst);
-                }
-            }
-
-            /* Return to inline code. */
+            emitFixups(masm, src, dst, done);
             masm.jmp(done);
         });
 
         masm.bind(done);
+    }
+
+    @SuppressWarnings("unused")
+    private void emitFixups(AMD64MacroAssembler masm, Register src, Register dst, Label done) {
+        if (canBeNaN) {
+            /*
+             * if (isNaN(src)) { result = 0; goto done; }
+             *
+             * The isNaN check is implemented as src != src. C2's fixup stubs check for a NaN bit
+             * pattern directly, using the same number of cycles but using an extra general purpose
+             * register.
+             */
+            Label isNotNaN = new Label();
+            compare(masm, src, src);
+            masm.jcc(AMD64Assembler.ConditionFlag.NoParity, isNotNaN, true);
+            masm.moveInt(dst, 0);
+            masm.jmp(done);
+            masm.bind(isNotNaN);
+        }
+
+        if (canOverflow) {
+            /*
+             * if (src > 0.0) { result = MAX_VALUE; }
+             *
+             * We use an actual floating point compare, C2's stubs check the sign bit in a GPR.
+             */
+            Register zero = asRegister(zeroTmp);
+            clearRegister(masm, zero);
+            compare(masm, src, zero);
+            masm.jcc(AMD64Assembler.ConditionFlag.BelowEqual, done);
+            /*
+             * MAX_VALUE is the bitwise negation of MIN_VALUE, which is already in dst. A negation
+             * takes the same number of cycles as a move, but its encoding is shorter.
+             */
+            if (integerBytes == 4) {
+                masm.notl(dst);
+            } else {
+                masm.notq(dst);
+            }
+        }
+    }
+
+    private void clearRegister(AMD64MacroAssembler masm, Register register) {
+        if (masm.isAVX()) {
+            VPXOR.encoding(encoding).emit(masm, XMM, register, register, register);
+        } else {
+            XOR.emit(masm, packedSize, register, register);
+        }
+    }
+
+    private void compare(AMD64MacroAssembler masm, Register x, Register y) {
+        if (masm.isAVX()) {
+            var ucomis = scalarSize == OperandSize.SS ? VUCOMISS : VUCOMISD;
+            ucomis.encoding(encoding).emit(masm, XMM, x, y);
+        } else {
+            UCOMIS.emit(masm, packedSize, x, y);
+        }
     }
 }
