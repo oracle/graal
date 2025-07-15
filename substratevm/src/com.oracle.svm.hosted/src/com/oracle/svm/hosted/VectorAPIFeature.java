@@ -199,7 +199,7 @@ public class VectorAPIFeature implements InternalFeature {
                 int laneCountLog2P1 = Integer.numberOfTrailingZeros(laneCount) + 1;
                 Method makeDummyVector = ReflectionUtil.lookupMethod(speciesClass, "makeDummyVector");
                 Object dummyVector = ReflectionUtil.invokeMethod(makeDummyVector, species);
-                Object laneType = ReflectionUtil.readStaticField(laneTypeClass, elementName.toUpperCase());
+                Object laneType = ReflectionUtil.readStaticField(laneTypeClass, elementName.toUpperCase(Locale.ROOT));
                 speciesStableFields.put(species, new AbstractSpeciesStableFields(laneCount, laneCountLog2P1, vectorBitSize, vectorByteSize, dummyVector, laneType));
 
                 Array.set(Array.get(speciesCache, laneTypeSwitchKey), vectorShapeSwitchKey, species);
