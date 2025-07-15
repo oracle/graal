@@ -5,6 +5,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 26.0
 * GR-65048: Introduced `InternalResource.OS.UNSUPPORTED` and `InternalResource.CPUArchitecture.UNSUPPORTED` to represent unsupported platforms. Execution on unsupported platforms must be explicitly enabled using the system property `-Dpolyglot.engine.allowUnsupportedPlatform=true`. If this property is not set, calls to `OS.getCurrent()` or `CPUArchitecture.getCurrent()` will throw an `IllegalStateException` when running on an unsupported platform. `InternalResource` implementations should handle the unsupported platform and describe possible steps in the error message on how to proceed.
 * GR-66839: Deprecate `Location#isFinal()` as it always returns false.
+* GR-67702: If a node is annotated with `@GenerateInline(false)` it is no longer warned at usages inside an inlined node, that is `@GenerateInline(false)` is considered a conscious decision to make that node not inlined.
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.

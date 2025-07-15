@@ -1796,7 +1796,8 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization()
         Object doInt(int arg,
-                        @ExpectError("The cached node type does not support object inlining. Add @GenerateInline on the node type or disable inline using @Cached(inline=false) to resolve this.") @Cached(inline = true) NoInliningNode simpleNode) {
+                        @ExpectError("The cached node type does not support object inlining. " +
+                                        "Add @GenerateInline or @GenerateInline(false) on the node type or disable inlining using @Cached(inline=false) to resolve this.") @Cached(inline = true) NoInliningNode simpleNode) {
             return "";
         }
 

@@ -3761,13 +3761,15 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (declaresInline) {
                 cache.addError(cachedAnnotation, getAnnotationValue(cachedAnnotation, "inline"),
                                 "The cached node type does not support object inlining." + //
-                                                " Add @%s on the node type or disable inline using @%s(inline=false) to resolve this.",
+                                                " Add @%s or @%s(false) on the node type or disable inlining using @%s(inline=false) to resolve this.",
+                                getSimpleName(types.GenerateInline),
                                 getSimpleName(types.GenerateInline),
                                 getSimpleName(types.Cached));
-            } else if (node.isGenerateInline()) {
+            } else if (node.isGenerateInline() && !isGenerateInlineFalse(cache)) {
                 cache.addSuppressableWarning(TruffleSuppressedWarnings.INLINING_RECOMMENDATION,
                                 "The cached node type does not support object inlining." + //
-                                                " Add @%s on the node type or disable inline using @%s(inline=false) to resolve this.",
+                                                " Add @%s or @%s(false) on the node type or disable inlining using @%s(inline=false) to resolve this.",
+                                getSimpleName(types.GenerateInline),
                                 getSimpleName(types.GenerateInline),
                                 getSimpleName(types.Cached));
                 inline = false;
@@ -4157,6 +4159,20 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (inlineAnnotation != null) {
                 return getAnnotationValue(Boolean.class, inlineAnnotation, "value") &&
                                 getAnnotationValue(Boolean.class, inlineAnnotation, "inlineByDefault");
+            }
+        }
+        return false;
+    }
+
+    private boolean isGenerateInlineFalse(CacheExpression cache) {
+        TypeElement parameterType = ElementUtils.castTypeElement(cache.getParameter().getType());
+        if (parameterType == null) {
+            return false;
+        }
+        if (ElementUtils.isAssignable(parameterType.asType(), types.Node)) {
+            AnnotationMirror inlineAnnotation = getGenerateInlineAnnotation(parameterType);
+            if (inlineAnnotation != null && getAnnotationValue(Boolean.class, inlineAnnotation, "value") == false) {
+                return true;
             }
         }
         return false;
