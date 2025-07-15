@@ -881,7 +881,6 @@ public class HelloWorld {
 }
 ''',
     'noArgs': '''
-// requires JDK 21 and --enable-preview
 public class HelloWorld {
     static void main() {
         System.out.println(System.getenv("%s"));
@@ -889,7 +888,6 @@ public class HelloWorld {
 }
 ''',
     'instance': '''
-// requires JDK 21 and --enable-preview
 class HelloWorld {
     void main(String[] args) {
         System.out.println(System.getenv("%s"));
@@ -897,7 +895,6 @@ class HelloWorld {
 }
 ''',
     'instanceNoArgs': '''
-// requires JDK 21 and --enable-preview
 class HelloWorld {
     void main() {
         System.out.println(System.getenv("%s"));
@@ -905,9 +902,8 @@ class HelloWorld {
 }
 ''',
     'unnamedClass': '''
-// requires JDK 21 and javac --enable-preview --source 21 and native-image --enable-preview
 void main() {
-    System.out.println(System.getenv("%s"));
+    IO.println(System.getenv("%s"));
 }
 ''',
 }
