@@ -283,7 +283,7 @@ suite = {
         "truffle:TRUFFLE_API",
         "sdk:POLYGLOT",
       ],
-      "description" : "GraalWasm, a high-performance embeddable WebAssembly runtime for Java. This artifact includes the core language runtime. It is not recommended to depend on the artifact directly. Instead, use `org.graalvm.polyglot:wasm` or `org.graalvm.polyglot:wasm-community` to ensure all dependencies are pulled in correctly.", # pylint: disable=line-too-long
+      "description" : "GraalWasm, a high-performance embeddable WebAssembly runtime for Java. This artifact includes the core language runtime. It is not recommended to depend on the artifact directly. Instead, use `org.graalvm.polyglot:wasm` to ensure all dependencies are pulled in correctly.", # pylint: disable=line-too-long
       "allowsJavadocWarnings": True,
       "license" : "UPL",
       "maven" : {
@@ -293,17 +293,17 @@ suite = {
       "noMavenJavadoc": True,
     },
 
-    "WASM_COMMUNITY": {
+    "WASM_POM": {
       "type": "pom",
       "runtimeDependencies": [
         "WASM",
         "truffle:TRUFFLE_RUNTIME",
       ],
       "maven": {
-        "artifactId": "wasm-community",
+        "artifactId": "wasm",
         "tag": ["default", "public"],
       },
-      "description": "GraalWasm, a high-performance embeddable WebAssembly runtime for Java. This POM dependency includes GraalWasm dependencies and Truffle Community Edition.",
+      "description": "GraalWasm, a high-performance embeddable WebAssembly runtime for Java. This POM dependency includes GraalWasm dependencies and Truffle.",
       "license": "UPL",
     },
 

@@ -62,14 +62,17 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Engine;
@@ -108,6 +111,14 @@ import com.oracle.truffle.polyglot.PolyglotLoggers.EngineLoggerProvider;
  * Internal service implementation of the polyglot API.
  */
 public final class PolyglotImpl extends AbstractPolyglotImpl {
+
+    private static final Set<String> TRUFFLE_ENTERPRISE_OPTIONS = Set.of(
+                    "engine.Cache",
+                    "engine.CacheLoad",
+                    "engine.CacheStore",
+                    "engine.DebugCacheLoad",
+                    "engine.DebugCacheStore",
+                    "engine.SpawnIsolate");
 
     /*
      * Used to prevent implementations of accessible API classes.
@@ -277,6 +288,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                     boolean registerInActiveEngines, Object polyglotHostService) {
         PolyglotEngineImpl impl = null;
         try {
+            validateVendorOptions(options);
             validateSandbox(sandboxPolicy);
             if (TruffleOptions.AOT) {
                 EngineAccessor.ACCESSOR.initializeNativeImageTruffleLocator();
@@ -404,6 +416,27 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                             To disable this warning use the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.""", reason));
         }
 
+    }
+
+    private void validateVendorOptions(Map<String, String> options) {
+        if (this != this.getRootImpl()) {
+            return;
+        }
+        Set<String> usedEnterpriseOptions = new HashSet<>();
+        for (String key : options.keySet()) {
+            if (TRUFFLE_ENTERPRISE_OPTIONS.contains(key) || key.startsWith("sandbox.") || key.equals("sandbox")) {
+                usedEnterpriseOptions.add(key);
+            }
+        }
+        if (!usedEnterpriseOptions.isEmpty()) {
+            String optionNames = usedEnterpriseOptions.stream().map((s) -> '\'' + s + '\'').collect(Collectors.joining(", "));
+            throw PolyglotEngineException.illegalArgument(String.format(
+                            "The following options %s require Truffle Enterprise Extensions to be available on the classpath or module path. " +
+                                            "Please ensure that the 'org.graalvm.truffle:truffle-enterprise' Maven artifact is correctly included in your build configuration. " +
+                                            "Note that Truffle Enterprise Extensions are only supported when running on Oracle GraalVM or Oracle JDK. " +
+                                            "Remove these option or add the 'org.graalvm.truffle:truffle-enterprise' artefact to resolve this issue.",
+                            optionNames));
+        }
     }
 
     private void validateSandbox(SandboxPolicy sandboxPolicy) {
