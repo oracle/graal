@@ -396,9 +396,9 @@ public class SubstrateOptions {
         ConcealedOptions.CodeAlignment.update(values, 1);
         GraalOptions.LoopHeaderAlignment.update(values, 0);
         GraalOptions.IsolatedLoopHeaderAlignment.update(values, 0);
-        if (ConfigurationValues.getTarget().arch instanceof AMD64) {
-            disable(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
-        }
+        // We cannot check for architecture at the moment because ImageSingletons has not been
+        // initialized yet
+        disable(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
 
         /*
          * Do not run PEA - it can fan out allocations too much.
