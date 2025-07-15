@@ -113,7 +113,7 @@ final class PolyglotSharingLayer {
         int claimedCount;
 
         private Shared(PolyglotEngineImpl engine, ContextPolicy contextPolicy, Map<PolyglotLanguage, OptionValuesImpl> previousLanguageOptions) {
-            this.sourceCache = new PolyglotSourceCache(engine.getDeadSourcesQueue(), TracingSourceCacheListener.createOrNull(engine));
+            this.sourceCache = new PolyglotSourceCache(engine.getDeadSourcesQueue(), TracingSourceCacheListener.createOrNull(engine), engine.sourceCacheStatisticsListener);
             this.contextPolicy = contextPolicy;
             this.instances = new PolyglotLanguageInstance[engine.languageCount];
             this.previousLanguageOptions = previousLanguageOptions;
