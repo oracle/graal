@@ -77,7 +77,7 @@ abstract class ExtLayoutStrategy extends LayoutStrategy {
 
     @Override
     protected Location createLocationForValue(ShapeImpl shape, Object value, int putFlags) {
-        return ((ExtAllocator) shape.allocator()).locationForValue(value, value != null, putFlags);
+        return ((ExtAllocator) shape.allocator()).locationForValue(value, putFlags);
     }
 
     @Override

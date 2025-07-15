@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.object.ext.test;
 
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.assumeExtLayout;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -54,7 +56,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.ext.test.ObjectModelRegressionTest.TestDynamicObject;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class GR42603 {
 
@@ -63,7 +64,7 @@ public class GR42603 {
 
     @Test
     public void testReplacePropertyRace() throws Throwable {
-        TruffleTestAssumptions.assumeEnterpriseRuntime();
+        assumeExtLayout();
         for (int i = 0; i < 100; i++) {
             testConcurrentReplaceProperty();
         }

@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import static org.hamcrest.CoreMatchers.either;
+import static org.hamcrest.CoreMatchers.endsWith;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -139,6 +142,14 @@ public abstract class DOTestAsserts {
         } catch (ClassNotFoundException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
             throw new AssertionError(e);
         }
+    }
+
+    public static void assumeExtLayout() {
+        Shape shape = Shape.newBuilder().build();
+        assertThat("Unexpected Shape class name (the assertion may need to be updated if the code is refactored)",
+                        shape.getClass().getName(), either(endsWith("ShapeExt")).or(endsWith("ShapeBasic")));
+        Assume.assumeTrue("Test is specific to the Extended Dynamic Object Layout",
+                        shape.getClass().getName().endsWith("ShapeExt"));
     }
 
     public static Location assumeCoreLocation(Location location) {

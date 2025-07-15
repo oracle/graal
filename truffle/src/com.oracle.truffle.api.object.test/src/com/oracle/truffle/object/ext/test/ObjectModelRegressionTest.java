@@ -42,6 +42,7 @@ package com.oracle.truffle.object.ext.test;
 
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertObjectLocation;
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertPrimitiveLocation;
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.assumeExtLayout;
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeGetter;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -56,6 +57,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import org.hamcrest.CoreMatchers;
+import org.hamcrest.MatcherAssert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -67,7 +70,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
@@ -386,7 +388,7 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testTryMergeShapes() {
-        TruffleTestAssumptions.assumeEnterpriseRuntime();
+        assumeExtLayout();
 
         // Assume (MaxMergeDepth >= 5)
         Shape emptyShape = Shape.newBuilder().allowImplicitCastIntToDouble(true).build();
@@ -437,7 +439,7 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testTryMergeShapes2() {
-        TruffleTestAssumptions.assumeEnterpriseRuntime();
+        assumeExtLayout();
 
         // Assume (MaxMergeDepth >= 5 && MaxMergeDiff >= 2)
 
@@ -471,6 +473,25 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
         a.getShape().tryMerge(b.getShape());
         library.updateShape(a);
         assertSame(b.getShape(), a.getShape());
+    }
+
+    @Test
+    public void testBooleanLocationTypeAssumption() {
+        assumeExtLayout();
+
+        Shape emptyShape = Shape.newBuilder().build();
+
+        DynamicObject obj = new TestDynamicObject(emptyShape);
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, obj);
+
+        library.put(obj, "b1", true);
+        library.put(obj, "b2", true);
+        library.put(obj, "b2", false);
+
+        Shape shape = obj.getShape();
+        MatcherAssert.assertThat(shape.getProperty("b1").getLocation().toString(), CoreMatchers.containsString("Boolean"));
+        MatcherAssert.assertThat(shape.getProperty("b2").getLocation().toString(), CoreMatchers.containsString("Boolean"));
     }
 
     /**
@@ -508,6 +529,132 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
         assertTrue(assumption.toString(), assumption.isValid());
         library.putConstant(a, "d", 40, 0);
         assertFalse(assumption.toString(), assumption.isValid());
+    }
+
+    /**
+     * Tests that property assumptions are blocked after remove property transitions.
+     */
+    @Test
+    public void testPropertyAssumptionInvalidAfterRemove() {
+        Shape emptyShape = Shape.newBuilder().propertyAssumptions(true).build();
+
+        DynamicObject h1 = new TestDynamicObject(emptyShape);
+        DynamicObjectLibrary on = createLibrary(DynamicObjectLibrary.class, h1);
+        DynamicObjectLibrary off = createLibrary(DynamicObjectLibrary.class, h1);
+
+        // initialize caches
+        on.put(h1, "name", h1);
+        on.put(h1, "alias", h1);
+        off.removeKey(h1, "name");
+        off.removeKey(h1, "alias");
+
+        DynamicObject h2 = new TestDynamicObject(emptyShape);
+        // repeat on another object with cached transitions
+        on.put(h2, "name", h2);
+        on.put(h2, "alias", h2);
+
+        Assumption aliasAssumption = h2.getShape().getPropertyAssumption("alias");
+        assertFalse("Property assumption for 'alias' should already be invalid: " + aliasAssumption, aliasAssumption.isValid());
+
+        on.put(h2, "alias", h2);
+        off.removeKey(h2, "name");
+        off.removeKey(h2, "alias");
+    }
+
+    /**
+     * Tests that property assumptions are blocked after replace property transitions.
+     */
+    @Test
+    public void testPropertyAssumptionInvalidAfterReplace1() {
+        assumeExtLayout();
+
+        Shape emptyShape = Shape.newBuilder().propertyAssumptions(true).build();
+
+        int flag = 2;
+        DynamicObject h1 = new TestDynamicObject(emptyShape);
+        DynamicObjectLibrary on = createLibrary(DynamicObjectLibrary.class, h1);
+        DynamicObjectLibrary off = createLibrary(DynamicObjectLibrary.class, h1);
+
+        // initialize caches
+        on.put(h1, "name", h1);
+        on.put(h1, "alias", h1);
+        off.setPropertyFlags(h1, "name", flag);
+        off.setPropertyFlags(h1, "alias", flag);
+
+        DynamicObject h2 = new TestDynamicObject(emptyShape);
+        // repeat cached operations on another object
+        on.put(h2, "name", h2);
+        on.put(h2, "alias", h2);
+
+        Assumption aliasAssumption = h2.getShape().getPropertyAssumption("alias");
+        assertFalse("Property assumption for 'alias' should already be invalid: " + aliasAssumption, aliasAssumption.isValid());
+
+        on.put(h2, "alias", h2);
+        off.setPropertyFlags(h2, "name", flag);
+        off.setPropertyFlags(h2, "alias", flag);
+
+        assertEquals(flag, h2.getShape().getProperty("name").getFlags());
+        assertEquals(flag, h2.getShape().getProperty("alias").getFlags());
+    }
+
+    /**
+     * Tests that property assumptions are blocked after replace property transitions.
+     */
+    @Test
+    public void testPropertyAssumptionInvalidAfterReplace2() {
+        assumeExtLayout();
+
+        Shape emptyShape = Shape.newBuilder().propertyAssumptions(true).build();
+
+        int flag = 2;
+        DynamicObject h1 = new TestDynamicObject(emptyShape);
+        DynamicObjectLibrary on = createLibrary(DynamicObjectLibrary.class, h1);
+        DynamicObjectLibrary off = createLibrary(DynamicObjectLibrary.class, h1);
+
+        // initialize caches
+        on.put(h1, "name", h1);
+        on.put(h1, "alias", h1);
+        off.putWithFlags(h1, "name", h1, flag);
+        off.putWithFlags(h1, "alias", h1, flag);
+
+        DynamicObject h2 = new TestDynamicObject(emptyShape);
+        // repeat cached operations on another object
+        on.put(h2, "name", h2);
+        on.put(h2, "alias", h2);
+
+        Assumption aliasAssumption = h2.getShape().getPropertyAssumption("alias");
+        assertFalse("Property assumption for 'alias' should already be invalid: " + aliasAssumption, aliasAssumption.isValid());
+
+        on.put(h2, "alias", h2);
+        off.putWithFlags(h2, "name", h2, flag);
+        off.putWithFlags(h2, "alias", h2, flag);
+
+        assertEquals(flag, h2.getShape().getProperty("name").getFlags());
+        assertEquals(flag, h2.getShape().getProperty("alias").getFlags());
+    }
+
+    /**
+     * Tests that property assumptions are invalid after value type transitions.
+     */
+    @Test
+    public void testPropertyAssumptionInvalidAfterTypeTransition() {
+        Shape emptyShape = Shape.newBuilder().propertyAssumptions(true).build();
+
+        DynamicObject h1 = new TestDynamicObject(emptyShape);
+        DynamicObjectLibrary lib = createLibrary(DynamicObjectLibrary.class, h1);
+
+        // initialize caches
+        lib.put(h1, "name", 42);
+        lib.put(h1, "alias", 43);
+
+        Assumption aliasAssumption = h1.getShape().getPropertyAssumption("alias");
+
+        DynamicObject h2 = new TestDynamicObject(emptyShape);
+        // repeat cached operations on another object
+        lib.put(h2, "name", 42);
+        lib.put(h2, "alias", h1);
+
+        assertFalse("Property assumption for 'alias' should be invalid: " + aliasAssumption, aliasAssumption.isValid());
     }
 
     static class TestDynamicObject extends DynamicObject {
