@@ -234,7 +234,7 @@ final class ConstantExpressionAnalyzer extends AbstractInterpreter<ConstantExpre
     }
 
     @Override
-    protected void storeArrayElement(InstructionContext<Value> context, AbstractFrame<Value> state, Value array, Value index, Value value) {
+    protected void storeArrayElement(InstructionContext<Value> context, Value array, Value index, Value value) {
         if (array instanceof CompileTimeArrayConstant<?> constantArray) {
             if (index instanceof CompileTimeImmutableConstant<?> constantIndex && value instanceof CompileTimeImmutableConstant<?> constantValue) {
                 CompileTimeArrayConstant<?> newConstantArray = new CompileTimeArrayConstant<>(context.bci(), constantArray);
@@ -243,10 +243,10 @@ final class ConstantExpressionAnalyzer extends AbstractInterpreter<ConstantExpre
                     newConstantArray.setElement(realIndex, constantValue.getValue());
                     context.state().transform(v -> v.equals(constantArray), v -> newConstantArray);
                 } catch (Exception e) {
-                    state.transform(v -> v.equals(constantArray), v -> defaultValue());
+                    context.state().transform(v -> v.equals(constantArray), v -> defaultValue());
                 }
             } else {
-                state.transform(v -> v.equals(constantArray), v -> defaultValue());
+                context.state().transform(v -> v.equals(constantArray), v -> defaultValue());
             }
         }
     }

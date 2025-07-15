@@ -571,7 +571,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
 
     protected abstract T storeVariable(InstructionContext<T> context, T value);
 
-    protected abstract void storeArrayElement(InstructionContext<T> context, AbstractFrame<T> state, T array, T index, T value);
+    protected abstract void storeArrayElement(InstructionContext<T> context, T array, T index, T value);
 
     protected abstract T invokeNonVoidMethod(InstructionContext<T> context, JavaMethod method, T receiver, List<T> operands);
 
@@ -707,7 +707,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
         T index = stack.pop();
         T array = stack.pop();
         onValueEscape(context, value);
-        storeArrayElement(context, context.state, array, index, value);
+        storeArrayElement(context, array, index, value);
     }
 
     private void handleCastCheck(InstructionContext<T> context, JavaType type) {
