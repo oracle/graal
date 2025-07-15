@@ -35,6 +35,7 @@ import java.util.Base64;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
+import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 public class JsonFileWriter implements Closeable {
@@ -62,7 +63,9 @@ public class JsonFileWriter implements Closeable {
                         json.append(", ");
                     }
                     json.quote(cursor.getKey()).append(':');
-                    if (cursor.getValue() instanceof Object[]) {
+                    if (cursor.getValue() instanceof JsonPrintable value) {
+                        value.printJson(json);
+                    } else if (cursor.getValue() instanceof Object[]) {
                         printArray(json, (Object[]) cursor.getValue());
                     } else {
                         printValue(json, cursor.getValue());
