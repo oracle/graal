@@ -349,7 +349,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         UnsignedWord heapSizeLimit = UnsignedUtils.max(alignDown(getHeapSizeLimit()), minAllSpaces);
 
         UnsignedWord maxHeap;
-        long optionMax = SubstrateGCOptions.MaxHeapSize.getValue();
+        long optionMax = getMaximumHeapSizeOptionValue();
         if (optionMax > 0L) {
             maxHeap = Word.unsigned(optionMax);
         } else {
@@ -416,6 +416,10 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
     protected UnsignedWord getYoungSizeLimit(UnsignedWord maxHeap) {
         return maxHeap.subtract(minSpaceSize());
+    }
+
+    protected long getMaximumHeapSizeOptionValue() {
+        return SubstrateGCOptions.MaxHeapSize.getValue();
     }
 
     protected UnsignedWord getInitialHeapSize() {
