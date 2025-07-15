@@ -386,9 +386,12 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
         TypeMirror returnType = methodData.type.getReturnType();
         boolean voidMethod = returnType.getKind() == TypeKind.VOID;
         MarshallerSnippet resultMarshallerSnippets = marshallerSnippets(resultMarshallerData);
-        CharSequence isolateVar = "hsIsolate";
+        CharSequence isolateVar;
         if (resultMarshallerData.isCustom() || firstOutMarshalledParameter != null) {
-            builder.lineStart().write(typeCache.hsIsolate).space().write(isolateVar).write(" = ").invoke(PEER_FIELD, "getIsolate").lineEnd(";");
+            isolateVar = "hsIsolate";
+            builder.lineStart().write(typeCache.hsIsolate).space().write(isolateVar).write(" = ").write(createGetIsolate(builder, receiver)).lineEnd(";");
+        } else {
+            isolateVar = null;
         }
         if (cacheData != null) {
             if (hasOutParameters) {
@@ -440,7 +443,7 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
             CharSequence foreignException = "foreignException";
             builder.lineStart("} catch (").write(typeCache.foreignException).space().write(foreignException).lineEnd(") {");
             builder.indent();
-            builder.lineStart("throw ").invoke(foreignException, "throwOriginalException", "null", getDefinition().getCustomMarshaller(typeCache.throwable, null, types).name).lineEnd(";");
+            generateThrowOriginalException(builder, receiver, foreignException, isolateVar);
             builder.dedent();
             builder.line("}");
             builder.dedent();
@@ -514,12 +517,39 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
             CharSequence foreignException = "foreignException";
             builder.lineStart("} catch (").write(typeCache.foreignException).space().write(foreignException).lineEnd(") {");
             builder.indent();
-            builder.lineStart("throw ").invoke(foreignException, "throwOriginalException", "null", getDefinition().getCustomMarshaller(typeCache.throwable, null, types).name).lineEnd(";");
+            generateThrowOriginalException(builder, receiver, foreignException, isolateVar);
             builder.dedent();
             builder.line("}");
         }
         builder.dedent();
         builder.line("}");
+    }
+
+    private void generateThrowOriginalException(CodeBuilder builder, CharSequence receiver, CharSequence foreignException, CharSequence hsIsolate) {
+        CharSequence isolate;
+        if (hsIsolate != null) {
+            isolate = hsIsolate;
+        } else {
+            isolate = createGetIsolate(builder, receiver);
+        }
+        builder.lineStart("throw ").invoke(foreignException, "throwOriginalException", isolate, getDefinition().getCustomMarshaller(typeCache.throwable, null, types).name).lineEnd(";");
+    }
+
+    private CharSequence createGetIsolate(CodeBuilder builder, CharSequence receiver) {
+        return new CodeBuilder(builder).invoke(createGetPeer(builder, receiver, false), "getIsolate").build();
+    }
+
+    private CharSequence createGetPeer(CodeBuilder builder, CharSequence receiver, boolean castToHSPeer) {
+        if (getDefinition().hasCustomDispatch()) {
+            CharSequence foreignObject = new CodeBuilder(builder).cast(typeCache.foreignObject, receiver, true).build();
+            CharSequence result = new CodeBuilder(builder).invoke(foreignObject, "getPeer").build();
+            if (castToHSPeer) {
+                result = new CodeBuilder(builder).cast(typeCache.hSPeer, result, true).build();
+            }
+            return result;
+        } else {
+            return receiver;
+        }
     }
 
     private static CharSequence generateStoreEndPointResult(CodeBuilder builder, MarshallerSnippet snippets, TypeMirror returnType, CharSequence nativeCall, CharSequence jniEnvFieldName) {
@@ -708,14 +738,7 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
         builder.lineStart().write(typeCache.jValue).space().write(jniArgs).write(" = ").invokeStatic(typeCache.stackValue, "get", Integer.toString(argumentCount),
                         jValueClassLiteral.build()).lineEnd(";");
         CharSequence address = new CodeBuilder(builder).invoke(jniArgs, "addressOf", "0").build();
-        CharSequence receiverHSPeer;
-        if (hasExplicitReceiver) {
-            CharSequence foreignObject = new CodeBuilder(builder).cast(typeCache.foreignObject, receiver, true).build();
-            CharSequence getPeer = new CodeBuilder(builder).invoke(foreignObject, "getPeer").build();
-            receiverHSPeer = new CodeBuilder(builder).cast(typeCache.hSPeer, getPeer, true).build();
-        } else {
-            receiverHSPeer = receiver;
-        }
+        CharSequence receiverHSPeer = createGetPeer(builder, receiver, true);
         CharSequence value = new CodeBuilder(builder).invoke(receiverHSPeer, "getJObject").build();
         builder.lineStart().invoke(address, "setJObject", value).lineEnd(";");
         int stackIndex;
