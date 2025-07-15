@@ -11,9 +11,9 @@ local utils = import "common-utils.libsonnet";
   ,
   # Return true if this is a gate job.
   local is_gate(b) =
-    std.find("gate", b.targets) != []
+    std.setInter(["gate", "tier1", "tier2", "tier3"], b.targets) != []
   ,
-  local gate_or_postmerge_targets = ["gate", "post-merge", "deploy"],
+  local gate_or_postmerge_targets = ["gate", "tier1", "tier2", "tier3", "post-merge", "deploy"],
   # Return true if this is a gate or post-merge/deployment job.
   local is_gate_or_postmerge(b) =
     std.setInter(gate_or_postmerge_targets, b.targets) != []
