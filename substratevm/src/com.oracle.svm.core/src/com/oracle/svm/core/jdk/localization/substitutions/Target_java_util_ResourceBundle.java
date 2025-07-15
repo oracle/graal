@@ -25,7 +25,6 @@
 package com.oracle.svm.core.jdk.localization.substitutions;
 
 import java.util.Locale;
-import java.util.MissingResourceException;
 import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.ResourceBundle.Control;
@@ -155,12 +154,14 @@ final class Target_java_util_ResourceBundle {
                     Control control) {
         Objects.requireNonNull(module);
         Module callerModule = getCallerModule(caller);
-        try {
-            return MissingRegistrationUtils.runIgnoringMissingRegistrations(() -> getBundleImpl(callerModule, module, baseName, locale, control));
-        } catch (MissingResourceException mre) {
+        /*
+         * TODO GR-67556 - Implement proper module-aware LocalizationSupport bundle registration to
+         * ensure we show MissingResourceRegistrationError in all relevant situations.
+         */
+        if (!ImageSingletons.lookup(LocalizationSupport.class).isRegisteredBundleLookup(baseName, locale, control)) {
             MissingResourceRegistrationUtils.reportResourceBundleAccess(module, baseName);
-            throw mre;
         }
+        return MissingRegistrationUtils.runIgnoringMissingRegistrations(() -> getBundleImpl(callerModule, module, baseName, locale, control));
     }
 
     @Alias
