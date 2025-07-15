@@ -58,6 +58,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -1125,6 +1126,38 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Applies the provided Consumer to this Builder instance.
+         * <p>
+         * This method allows encapsulating complex Builder configuration logic into separate
+         * methods while maintaining the fluent API of {@link Context.Builder}.
+         * <p>
+         * Example
+         *
+         * <pre>
+         * private void configureEnv(Builder builder) {
+         *     return builder.environment("DEBUG", appConfiguration.isDebugMode())
+         *                   .environment("APP_NAME", appConfiguration.getApplicationName())
+         *                   .environment("JAVA_VER", System.getProperty("java.version"))&#64;
+         * }
+         *
+         * public Context createContext() {
+         *     return Context.newBuilder()
+         *                   .apply(this::configureEnv)
+         *                   .allowNativeAccess(true)
+         *                   .build();
+         * }
+         * </pre>
+         *
+         * @param action The Consumer that configures this Builder instance; it is not supposed to
+         *            finalize the Builder using {@link #build()}.
+         * @since 25.0
+         */
+        public Builder apply(Consumer<Builder> action) {
+            action.accept(this);
+            return this;
+        }
+
+        /**
          * Explicitly sets the underlying engine to use. By default, every context has its own
          * isolated engine. If multiple contexts are created from one engine, then they may
          * share/cache certain system resources like ASTs or optimized code by specifying a single
@@ -1196,18 +1229,88 @@ public final class Context implements AutoCloseable {
          * by guest applications. By default if {@link #allowAllAccess(boolean)} is
          * <code>false</code> the {@link HostAccess#EXPLICIT} policy will be used, otherwise
          * {@link HostAccess#ALL}.
+         * <p>
+         * Repeated calls of this method on the same {@link Context.Builder} instance override the
+         * previously set {@link HostAccess} configuration. Use
+         * {@link #extendHostAccess(HostAccess, Consumer)} for composable {@link HostAccess}
+         * configuration.
          *
          * @see HostAccess#EXPLICIT EXPLICIT - to allow explicitly annotated constructors, methods
          *      or fields.
          * @see HostAccess#ALL ALL - to allow unrestricted access (use only for trusted guest
-         *      applications)
-         * @see HostAccess#NONE NONE - to not allow any access
+         *      applications).
+         * @see HostAccess#NONE NONE - to not allow any access.
          * @see HostAccess#newBuilder() newBuilder() - to create a custom configuration.
+         * @see #extendHostAccess(HostAccess, Consumer) - for composable {@code HostAccess}
+         *      configuration.
          *
          * @since 19.0
          */
         public Builder allowHostAccess(HostAccess config) {
             this.hostAccess = config;
+            return this;
+        }
+
+        /**
+         * Extends the existing host access configuration that determines, which public
+         * constructors, methods or fields of public classes are accessible by guest applications.
+         * <p>
+         * This method allows composing code that configures {@link HostAccess}.
+         * <p>
+         * The provided {@code setup} is applied to a {@link HostAccess.Builder} instance, which is
+         * initialized with the current {@link HostAccess} configuration. If no {@link HostAccess}
+         * configuration exists, the {@code defaultInitialValue} is used to initialize the builder.
+         * <p>
+         * Example usage
+         *
+         * <pre>
+         * public static final class MyArrayWrapper {
+         *     private final Value v;
+         *
+         *     private MyArrayWrapper(Value v) {
+         *         this.v = v;
+         *     }
+         *
+         *     // ...
+         *
+         *     public static void addMapping(Context.Builder builder) {
+         *         builder.extendHostAccess(HostAccess.NONE,
+         *                         b -> b.targetTypeMapping(Value.class, MyArrayWrapper.class,
+         *                                         Value::hasArrayElements,
+         *                                         MyArrayWrapper::new));
+         *     }
+         * }
+         *
+         * // ...
+         *
+         * public Context createContext() {
+         *     return Context.newBuilder().
+         *                   .allowHostAccess(HostAccess.ALL)
+         *                   .apply(MyArrayWrapper::addMapping)
+         *                     // ...
+         *                   .build();
+         * }
+         * </pre>
+         *
+         * In this example the call to {@code extendHostAccess} in
+         * {@code MyArrayWrapper::addMapping} does not override the {@link HostAccess#ALL}
+         * configured before. Using {@link #allowHostAccess(HostAccess)} in this situation would
+         * override the previous configuration.
+         *
+         * @see #allowHostAccess - to set or override existing {@code HostAccess} configuration.
+         * @see #extendIO(IOAccess, Consumer) - to extend existing {@code IOAccess} configuration.
+         * @param defaultInitialValue - the initial value to use if no {@code HostAccess} is
+         *            configured.
+         * @param setup - Consumer that receives a {@link HostAccess.Builder} preconfigured with the
+         *            current {@link HostAccess} configuration.
+         * @return the {@link Builder}
+         * @since 25.0
+         */
+        public Builder extendHostAccess(HostAccess defaultInitialValue, Consumer<HostAccess.Builder> setup) {
+            HostAccess prototype = hostAccess != null ? hostAccess : defaultInitialValue;
+            HostAccess.Builder builder = HostAccess.newBuilder(prototype);
+            setup.accept(builder);
+            allowHostAccess(builder.build());
             return this;
         }
 
@@ -1554,10 +1657,15 @@ public final class Context implements AutoCloseable {
          * {@link IOAccess#ALL} is used unless explicitly set. This method can be used to virtualize
          * file system access in the guest language by using an {@link IOAccess} with a custom
          * filesystem.
+         * <p>
+         * Repeated calls of this method on the same {@link Context.Builder} instance override the
+         * previously set {@link IOAccess} configuration. Use {@link #extendIO(IOAccess, Consumer)}
+         * for composable {@link IOAccess} configuration.
          *
-         * @see IOAccess#ALL - to allow full host IO access
-         * @see IOAccess#NONE - to disable host IO access
+         * @see IOAccess#ALL - to allow full host IO access.
+         * @see IOAccess#NONE - to disable host IO access.
          * @see IOAccess#newBuilder() - to create a custom configuration.
+         * @see #extendIO(IOAccess, Consumer) - for composable IOAccess configuration.
          *
          * @param ioAccess the IO configuration
          * @return the {@link Builder}
@@ -1565,6 +1673,52 @@ public final class Context implements AutoCloseable {
          */
         public Builder allowIO(IOAccess ioAccess) {
             this.ioAccess = ioAccess;
+            return this;
+        }
+
+        /**
+         * Extends the existing guest language access to host IO configuration. This method allows
+         * composing code that configures {@link IOAccess}.
+         * <p>
+         * The provided {@code setup} is applied to a {@link IOAccess.Builder} instance, which is
+         * initialized with the current {@link IOAccess} configuration. If no {@link IOAccess}
+         * configuration exists, the {@code defaultInitialValue} is used to initialize the builder.
+         * <p>
+         * Example usage
+         *
+         * <pre>
+         * private void addFileSystem(IOAccess.Builder builder) {
+         *     builder.fileSystem(new MyCustomFileSystem());
+         * }
+         *
+         * public Context createContext() {
+         *     return Context.newBuilder().extendIOAccess(IOAccess.NONE, this::addFileSystem)
+         *                     // ...
+         *                     .extendIOAccess(IOAccess.NONE, b -> b.allowHostSocketAccess(true))
+         *                     // ...
+         *                     .build();
+         * }
+         * </pre>
+         *
+         * In this example the call to {@code extendIOAccess} does not override the
+         * {@link FileSystem} configured in {@code addFileSystem}. Using {@link #allowIO(IOAccess)}
+         * in this situation would override the configured {@link FileSystem}.
+         *
+         * @see #allowIO(IOAccess) - to set or override existing {@code IOAccess}.
+         * @see #extendHostAccess(HostAccess, Consumer) - to extend existing {@code HostAccess}
+         *      configuration.
+         * @param defaultInitialValue - the initial value to use if no {@link IOAccess} is
+         *            configured.
+         * @param setup - Consumer that receives a {@link IOAccess.Builder} preconfigured with the
+         *            current {@link IOAccess} configuration.
+         * @return the {@link Builder}
+         * @since 25.0
+         */
+        public Builder extendIO(IOAccess defaultInitialValue, Consumer<IOAccess.Builder> setup) {
+            IOAccess prototype = ioAccess != null ? ioAccess : defaultInitialValue;
+            IOAccess.Builder builder = IOAccess.newBuilder(prototype);
+            setup.accept(builder);
+            allowIO(builder.build());
             return this;
         }
 
@@ -1866,10 +2020,12 @@ public final class Context implements AutoCloseable {
                 throw new IllegalArgumentException("The method Context.Builder.allowHostAccess(boolean) and the method Context.Builder.allowHostAccess(HostAccess) are mutually exclusive.");
             }
             if (ioAccess != null && allowIO != null) {
-                throw new IllegalArgumentException("The method Context.Builder.allowIO(boolean) and the method Context.Builder.allowIO(IOAccess) are mutually exclusive.");
+                throw new IllegalArgumentException(
+                                "The method Context.Builder.allowIO(boolean) and the method Context.Builder.allowIO(IOAccess) or Context.Builder.extendIO(IOAccess, Consumer<IOAccess.Builder>) are mutually exclusive.");
             }
             if (ioAccess != null && customFileSystem != null) {
-                throw new IllegalArgumentException("The method Context.Builder.allowIO(IOAccess) and the method Context.Builder.fileSystem(FileSystem) are mutually exclusive.");
+                throw new IllegalArgumentException(
+                                "The method Context.Builder.allowIO(IOAccess) or Context.Builder.extendIO(IOAccess, Consumer<IOAccess.Builder>) and the method Context.Builder.fileSystem(FileSystem) are mutually exclusive.");
             }
             SandboxPolicy useSandboxPolicy = resolveSandboxPolicy();
             validateSandbox(useSandboxPolicy);
