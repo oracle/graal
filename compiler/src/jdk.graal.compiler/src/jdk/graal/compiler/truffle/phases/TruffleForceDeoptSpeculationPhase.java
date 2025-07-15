@@ -26,7 +26,6 @@ package jdk.graal.compiler.truffle.phases;
 
 import com.oracle.truffle.compiler.TruffleCompilable;
 
-import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -59,13 +58,13 @@ public class TruffleForceDeoptSpeculationPhase extends ForceDeoptSpeculationPhas
     @Override
     protected GraalError reportTooManySpeculationFailures(ValueNode deopt) {
         StackTraceElement[] elements = GraphUtil.approxSourceStackTraceElement(deopt);
-        String additionalMessage = "";
-        if (elements.length == 0 && !TruffleCompilerOptions.NodeSourcePositions.getValue(deopt.graph().getOptions()) &&
-                        !GraalOptions.TrackNodeSourcePosition.getValue(deopt.graph().getOptions())) {
-            additionalMessage = " Please set the option 'compiler.NodeSourcePositions' to 'true' to get the stacktrace for the location of the deopt.";
-        }
+        String additionalMessage = elements.length != 0 ? ""
+                        : " The node source position of the deoptimization is not available. " +
+                                        "In a native image, this usually means the image was not built with -H:+IncludeNodeSourcePositions, " +
+                                        "otherwise the missing source position typically indicates a compiler bug. Please file an issue.";
         throw GraphUtil.createBailoutException(
-                        "Deopt taken too many times: " + deopt + ". This could indicate a deopt cycle, which typically hints at a bug in the language implementation or Truffle." + additionalMessage,
+                        "Deopt taken too many times. Deopt Node: " + deopt + ". This could indicate a deopt cycle, which typically hints at a bug in the language implementation or Truffle." +
+                                        additionalMessage,
                         null, elements);
     }
 }

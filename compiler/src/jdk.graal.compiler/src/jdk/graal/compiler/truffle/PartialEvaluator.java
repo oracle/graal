@@ -87,7 +87,7 @@ public abstract class PartialEvaluator {
     // Configs
     protected final TruffleCompilerConfiguration config;
     // TODO GR-37097 Move to TruffleCompilerImpl
-    volatile GraphBuilderConfiguration graphBuilderConfigForParsing;
+    private volatile GraphBuilderConfiguration graphBuilderConfigForParsing;
     // Plugins
     private final GraphBuilderConfiguration graphBuilderConfigPrototype;
     private final InvocationPlugins firstTierDecodingPlugins;
@@ -388,7 +388,7 @@ public abstract class PartialEvaluator {
     protected PEGraphDecoder createGraphDecoder(TruffleTierContext context, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
                     NodePlugin[] nodePluginList, SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache,
                     Supplier<AutoCloseable> createCachedGraphScope) {
-        final GraphBuilderConfiguration newConfig = graphBuilderConfigForParsing.copy();
+        final GraphBuilderConfiguration newConfig = getGraphBuilderConfigurationCopy(context.forceNodeSourcePositions);
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
 
         Plugins plugins = newConfig.getPlugins();
@@ -410,6 +410,11 @@ public abstract class PartialEvaluator {
                         sourceLanguagePositionProvider, postParsingPhase, graphCache, createCachedGraphScope,
                         createGraphBuilderPhaseInstance(compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations),
                         allowAssumptionsDuringParsing, false, true);
+    }
+
+    private GraphBuilderConfiguration getGraphBuilderConfigurationCopy(boolean forceNodeSourcePositions) {
+        GraphBuilderConfiguration copy = getGraphBuilderConfigForParsing().copy();
+        return copy.withNodeSourcePosition(copy.trackNodeSourcePosition() || forceNodeSourcePositions);
     }
 
     protected abstract GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts);
