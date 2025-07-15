@@ -52,6 +52,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.reflect.UnsafeFieldUtil;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -134,11 +135,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         if (self.intrinsic != null) {
             return -1L;
         }
-        int offset = SubstrateUtil.cast(self.reflectAccess, Target_java_lang_reflect_Field.class).offset;
-        if (offset == -1) {
-            throw unsupportedFeature("Trying to access field " + self.reflectAccess + " without registering it as unsafe accessed.");
-        }
-        return offset;
+        return UnsafeFieldUtil.getFieldOffset(SubstrateUtil.cast(self.reflectAccess, Target_java_lang_reflect_Field.class));
     }
 
     @Substitute
@@ -153,11 +150,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         if (self.intrinsic != null) {
             return -1L;
         }
-        int offset = SubstrateUtil.cast(self.reflectAccess, Target_java_lang_reflect_Field.class).offset;
-        if (offset == -1) {
-            throw unsupportedFeature("Trying to access field " + self.reflectAccess + " without registering it as unsafe accessed.");
-        }
-        return offset;
+        return UnsafeFieldUtil.getFieldOffset(SubstrateUtil.cast(self.reflectAccess, Target_java_lang_reflect_Field.class));
     }
 
     @Substitute
