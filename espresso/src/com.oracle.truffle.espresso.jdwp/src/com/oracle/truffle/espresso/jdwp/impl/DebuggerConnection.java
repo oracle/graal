@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,19 +58,8 @@ public final class DebuggerConnection implements Commands {
     }
 
     @Override
-    public void stepInto(Object thread, RequestFilter filter) {
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false, DebuggerCommand.Kind.STEP_INTO);
-    }
-
-    @Override
-    public void stepOver(Object thread, RequestFilter filter) {
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false, DebuggerCommand.Kind.STEP_OVER);
-    }
-
-    @Override
-    public void stepOut(Object thread, RequestFilter filter) {
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false, DebuggerCommand.Kind.STEP_OUT);
-        controller.stepOut(filter);
+    public void step(Object thread, RequestFilter filter, DebuggerCommand.Kind stepKind) {
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false, stepKind);
     }
 
     @Override

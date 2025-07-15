@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.jdwp.impl.BreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.impl.ClassPrepareRequest;
+import com.oracle.truffle.espresso.jdwp.impl.DebuggerCommand;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointEvent;
 import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointInfo;
@@ -530,7 +531,14 @@ public final class VMEventListenerImpl implements VMEventListener {
             stream.writeByte(currentFrame.getTypeTag());
             stream.writeLong(currentFrame.getClassId());
             stream.writeLong(currentFrame.getMethodId());
-            long codeIndex = info.getStepOutBCI() != -1 ? info.getStepOutBCI() : currentFrame.getCodeIndex();
+            long codeIndex = currentFrame.getCodeIndex();
+            if (info.getStepKind() == DebuggerCommand.Kind.STEP_OUT) {
+                // Step out in Truffle is implemented on the callee exit, where the event's top
+                // stack frame is set to the caller frame. Hence, to avoid sending the code index
+                // from the caller location, we must fetch the next bci from the frame to pass the
+                // correct location.
+                codeIndex = context.getNextBCI(currentFrame.getRootNode(), currentFrame.getFrame());
+            }
             stream.writeLong(codeIndex);
             debuggerController.fine(() -> "Sending step completed event");
 
