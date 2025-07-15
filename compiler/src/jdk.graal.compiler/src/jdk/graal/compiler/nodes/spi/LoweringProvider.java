@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -123,4 +123,12 @@ public interface LoweringProvider {
      * {@link ExtendableMemoryAccess}.
      */
     boolean supportsFoldingExtendIntoAccess(ExtendableMemoryAccess access, MemoryExtendKind extendKind);
+
+    /**
+     * Indicates whether this target platform supports lowering floating point conversions to and
+     * from unsigned integer.
+     */
+    default boolean supportsUnsignedFloatConvert() {
+        return false;
+    }
 }

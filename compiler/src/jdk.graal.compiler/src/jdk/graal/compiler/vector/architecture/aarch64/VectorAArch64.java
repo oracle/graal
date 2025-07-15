@@ -462,22 +462,19 @@ public final class VectorAArch64 extends VectorArchitecture {
         }
 
         public static boolean isSupportedConversion(FloatConvert op) {
-            switch (op) {
-                case D2L:
-                case I2F:
-                case D2F:
-                case L2D:
-                case F2D:
-                    return true;
-                /* I think I have support for these two. TODO enable them */
-                case D2I:
-                case I2D:
-                    /* Don't see a good strategy for implementing these. */
-                case F2L:
-                case L2F:
-                default:
-                    return false;
-            }
+            return switch (op) {
+                /* floating-point convert narrow or long */
+                case D2F, F2D -> true;
+                /* same element size */
+                case D2L, L2D, F2I, I2F -> true;
+                /* unsigned conversions need testing */
+                case D2UL, UL2D, F2UI, UI2F -> false;
+                /* I think I have support for these. TODO enable them */
+                case D2I, I2D, D2UI, UI2D -> false;
+                /* Don't see a good strategy for implementing these. */
+                case F2L, L2F, F2UL, UL2F -> false;
+                default -> false;
+            };
         }
     }
 }

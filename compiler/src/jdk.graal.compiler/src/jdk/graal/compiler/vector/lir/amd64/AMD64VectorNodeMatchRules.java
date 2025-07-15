@@ -41,9 +41,6 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBSD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBSS;
 
-import jdk.graal.compiler.vector.lir.VectorLIRGeneratorTool;
-import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
-
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64SIMDInstructionEncoding;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
@@ -76,6 +73,8 @@ import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.memory.AddressableMemoryAccess;
 import jdk.graal.compiler.nodes.memory.LIRLowerableAccess;
 import jdk.graal.compiler.nodes.memory.WriteNode;
+import jdk.graal.compiler.vector.lir.VectorLIRGeneratorTool;
+import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -351,6 +350,7 @@ public class AMD64VectorNodeMatchRules extends AMD64NodeMatchRules {
                 case I2F -> emitConvertMemory(AMD64Kind.SINGLE, VCVTSI2SS, access);
                 case L2D -> emitConvertMemory(AMD64Kind.DOUBLE, VCVTSQ2SD, access);
                 case L2F -> emitConvertMemory(AMD64Kind.SINGLE, VCVTSQ2SS, access);
+                default -> throw GraalError.shouldNotReachHereUnexpectedValue(root.getFloatConvert()); // ExcludeFromJacocoGeneratedReport
             };
         }
     }

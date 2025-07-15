@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -94,12 +94,21 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
         switch (getFloatConvert()) {
             case F2D:
             case I2D:
+            case UI2D:
                 return true;
             case I2F:
             case L2D:
             case L2F:
-                if (value.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
-                    return isLosslessIntegerToFloatingPoint((IntegerStamp) value.stamp(NodeView.DEFAULT), (FloatStamp) stamp(NodeView.DEFAULT));
+                if (value.stamp(NodeView.DEFAULT) instanceof IntegerStamp inputStamp) {
+                    return isLosslessIntegerToFloatingPoint(inputStamp, (FloatStamp) stamp(NodeView.DEFAULT), false);
+                } else {
+                    return false;
+                }
+            case UI2F:
+            case UL2D:
+            case UL2F:
+                if (value.stamp(NodeView.DEFAULT) instanceof IntegerStamp inputStamp) {
+                    return isLosslessIntegerToFloatingPoint(inputStamp, (FloatStamp) stamp(NodeView.DEFAULT), true);
                 } else {
                     return false;
                 }
@@ -118,7 +127,7 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
         return ArithmeticOpTable.forStamp(inputStamp).getFloatConvert(op).canOverflowInteger(inputStamp);
     }
 
-    private static boolean isLosslessIntegerToFloatingPoint(IntegerStamp inputStamp, FloatStamp resultStamp) {
+    private static boolean isLosslessIntegerToFloatingPoint(IntegerStamp inputStamp, FloatStamp resultStamp, boolean unsigned) {
         int mantissaBits;
         switch (resultStamp.getBits()) {
             case 32:
@@ -132,7 +141,11 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
         }
         long max = 1L << mantissaBits;
         long min = -(1L << mantissaBits);
-        return min <= inputStamp.lowerBound() && inputStamp.upperBound() <= max;
+        if (unsigned) {
+            return Long.compareUnsigned(inputStamp.unsignedUpperBound(), max) <= 0;
+        } else {
+            return min <= inputStamp.lowerBound() && inputStamp.upperBound() <= max;
+        }
     }
 
     @Override
