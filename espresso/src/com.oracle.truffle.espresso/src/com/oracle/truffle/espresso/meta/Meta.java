@@ -2454,7 +2454,8 @@ public final class Meta extends ContextAccessImpl
         public final Method java_util_regex_Matcher_init;
         public final Method java_util_regex_Matcher_reset;
         public final Field java_util_regex_Matcher_HIDDEN_tstring;
-        public final Field java_util_regex_Matcher_HIDDEN_sync;
+        public final Field java_util_regex_Matcher_HIDDEN_textSync;
+        public final Field java_util_regex_Matcher_HIDDEN_patternSync;
         public final Field java_util_regex_Matcher_HIDDEN_oldLastBackup;
         public final Field java_util_regex_Matcher_HIDDEN_modCountBackup;
         public final Field java_util_regex_Matcher_HIDDEN_transparentBoundsBackup;
@@ -2463,6 +2464,7 @@ public final class Meta extends ContextAccessImpl
         public final Field java_util_regex_Matcher_HIDDEN_toBackup;
         public final Field java_util_regex_Matcher_HIDDEN_matchingModeBackup;
         public final Field java_util_regex_Matcher_HIDDEN_searchFromBackup;
+        public final Field java_util_regex_Matcher_text;
         public final Field java_util_regex_Matcher_modCount;
         public final Field java_util_regex_Matcher_parentPattern;
         public final Field java_util_regex_Matcher_groups;
@@ -2516,7 +2518,8 @@ public final class Meta extends ContextAccessImpl
             java_util_regex_Matcher_requireEnd = java_util_regex_Matcher.requireDeclaredField(Names.requireEnd, Types._boolean);
 
             java_util_regex_Matcher_HIDDEN_tstring = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_TSTRING);
-            java_util_regex_Matcher_HIDDEN_sync = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_SYNC);
+            java_util_regex_Matcher_HIDDEN_textSync = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_TEXT_SYNC);
+            java_util_regex_Matcher_HIDDEN_patternSync = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_PATTERN_SYNC);
             java_util_regex_Matcher_HIDDEN_oldLastBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_OLD_LAST_BACKUP);
             java_util_regex_Matcher_HIDDEN_modCountBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_MOD_COUNT_BACKUP);
             java_util_regex_Matcher_HIDDEN_transparentBoundsBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_TRANSPARENT_BOUNDS_BACKUP);
@@ -2527,6 +2530,7 @@ public final class Meta extends ContextAccessImpl
             java_util_regex_Matcher_HIDDEN_searchFromBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_SEARCH_FROM_BACKUP);
 
             java_util_regex_Matcher_parentPattern = java_util_regex_Matcher.requireDeclaredField(Names.parentPattern, Types.java_util_regex_Pattern);
+            java_util_regex_Matcher_text = java_util_regex_Matcher.requireDeclaredField(Names.text, Types.java_lang_CharSequence);
             java_util_regex_Matcher_groups = java_util_regex_Matcher.requireDeclaredField(Names.groups, Types._int_array);
             java_util_regex_Matcher_first = java_util_regex_Matcher.requireDeclaredField(Names.first, Types._int);
             java_util_regex_Matcher_last = java_util_regex_Matcher.requireDeclaredField(Names.last, Types._int);

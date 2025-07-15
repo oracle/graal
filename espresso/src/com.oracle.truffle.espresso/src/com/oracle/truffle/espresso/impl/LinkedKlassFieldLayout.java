@@ -247,14 +247,15 @@ final class LinkedKlassFieldLayout {
                         }),
                         entry(Types.java_util_regex_Matcher, new HiddenField[]{
                                         new HiddenField(Names.HIDDEN_TREGEX_TSTRING, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
-                                        new HiddenField(Names.HIDDEN_TREGEX_SYNC, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
-                                        new HiddenField(Names.HIDDEN_TREGEX_OLD_LAST_BACKUP, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
-                                        new HiddenField(Names.HIDDEN_TREGEX_MOD_COUNT_BACKUP, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
-                                        new HiddenField(Names.HIDDEN_TREGEX_TRANSPARENT_BOUNDS_BACKUP, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
-                                        new HiddenField(Names.HIDDEN_TREGEX_ANCHORING_BOUNDS_BACKUP, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
-                                        new HiddenField(Names.HIDDEN_TREGEX_FROM_BACKUP, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
-                                        new HiddenField(Names.HIDDEN_TREGEX_TO_BACKUP, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
-                                        new HiddenField(Names.HIDDEN_TREGEX_SEARCH_FROM_BACKUP, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_TEXT_SYNC, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_PATTERN_SYNC, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_OLD_LAST_BACKUP, Types._int, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_MOD_COUNT_BACKUP, Types._int, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_TRANSPARENT_BOUNDS_BACKUP, Types._boolean, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_ANCHORING_BOUNDS_BACKUP, Types._boolean, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_FROM_BACKUP, Types._int, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_TO_BACKUP, Types._int, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_TREGEX_SEARCH_FROM_BACKUP, Types._int, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS),
                                         new HiddenField(Names.HIDDEN_TREGEX_MATCHING_MODE_BACKUP, Types.java_lang_Object, EspressoLanguage::useTRegex, NO_ADDITIONAL_FLAGS)
                         }),
                         entry(Types.com_oracle_truffle_espresso_polyglot_TypeLiteral, new HiddenField[]{

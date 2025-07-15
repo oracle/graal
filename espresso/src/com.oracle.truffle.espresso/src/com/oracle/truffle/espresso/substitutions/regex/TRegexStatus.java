@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.substitutions.regex;
 
 import com.oracle.truffle.espresso.meta.Meta;
@@ -34,7 +33,7 @@ public enum TRegexStatus {
 
     static final class Constants {
         // @formatter:off
-        private static final int UNSUPPORTED =          0b00_0001;
+        private static final int SUPPORTED =            0b00_0001;
         private static final int MATCH_AVAILABLE =      0b00_0010;
         private static final int FULLMATCH_AVAILABLE =  0b00_0100;
         private static final int SEARCH_AVAILABLE =     0b00_1000;
@@ -68,11 +67,11 @@ public enum TRegexStatus {
         set(meta, pattern, Constants.INITALIZED);
     }
 
-    public static void setUnsupported(Meta meta, StaticObject pattern) {
-        set(meta, pattern, Constants.UNSUPPORTED);
+    public static void setSupported(Meta meta, StaticObject pattern) {
+        set(meta, pattern, Constants.SUPPORTED);
     }
 
-    public static void setRegexStatus(Meta meta, StaticObject pattern, TRegexStatus action) {
+    public static void setTRegexStatus(Meta meta, StaticObject pattern, TRegexStatus action) {
         set(meta, pattern, action.mask);
     }
 
@@ -91,12 +90,21 @@ public enum TRegexStatus {
         }
     }
 
-    public static boolean isUnsupported(Meta meta, StaticObject pattern) {
-        return isStatus(meta, pattern, Constants.UNSUPPORTED);
+    public static boolean isSupported(Meta meta, StaticObject pattern) {
+        return isStatus(meta, pattern, Constants.SUPPORTED);
+    }
+
+    public static boolean isInitialized(Meta meta, StaticObject pattern) {
+        return isStatus(meta, pattern, Constants.INITALIZED);
     }
 
     public static boolean isTRegexCompiled(Meta meta, StaticObject pattern) {
         return isStatus(meta, pattern, Constants.TREGEX_AVAILABLE_MASK);
+    }
+
+    public static boolean isTRegexCompiled(Meta meta, StaticObject pattern, TRegexStatus action) {
+        assert action != Validate;
+        return isStatus(meta, pattern, action.mask);
     }
 
     public static boolean isGuestCompiled(Meta meta, StaticObject pattern) {
