@@ -197,9 +197,9 @@ public final class MetadataTracer {
     }
 
     /**
-     * Marks the given field as reachable from reflection.
+     * Marks the given field as accessible from reflection.
      */
-    public void traceField(Class<?> declaringClass, String fieldName, ConfigurationMemberInfo.ConfigurationMemberDeclaration declaration) {
+    public void traceFieldAccess(Class<?> declaringClass, String fieldName, ConfigurationMemberInfo.ConfigurationMemberDeclaration declaration) {
         ConfigurationTypeDescriptor typeDescriptor = ConfigurationTypeDescriptor.fromClass(declaringClass);
         ConfigurationType type = traceReflectionTypeImpl(typeDescriptor);
         if (type != null) {
@@ -209,15 +209,14 @@ public final class MetadataTracer {
     }
 
     /**
-     * Marks the given method as reachable from reflection.
+     * Marks the given method as accessible from reflection.
      */
-    public void traceMethod(Class<?> declaringClass, String methodName, String internalSignature, ConfigurationMemberInfo.ConfigurationMemberDeclaration declaration,
-                    ConfigurationMemberInfo.ConfigurationMemberAccessibility accessibility) {
+    public void traceMethodAccess(Class<?> declaringClass, String methodName, String internalSignature, ConfigurationMemberInfo.ConfigurationMemberDeclaration declaration) {
         ConfigurationTypeDescriptor typeDescriptor = ConfigurationTypeDescriptor.fromClass(declaringClass);
         ConfigurationType type = traceReflectionTypeImpl(typeDescriptor);
         if (type != null) {
-            debugMethod(typeDescriptor, methodName, internalSignature, accessibility);
-            type.addMethod(methodName, internalSignature, declaration, accessibility);
+            debugMethod(typeDescriptor, methodName, internalSignature);
+            type.addMethod(methodName, internalSignature, declaration, ConfigurationMemberInfo.ConfigurationMemberAccessibility.ACCESSED);
         }
     }
 
@@ -242,13 +241,7 @@ public final class MetadataTracer {
         traceReflectionTypeImpl(descriptor);
     }
 
-    /*
-     * TODO (GR-64765): This method should not be used outside of this class, but we need it for
-     * tracing class flag queries. Once class flag tracing is unnecessary, mark it private. We do
-     * not want to expose ConfigurationTypes to the caller, because they could perform further
-     * registration (e.g., of methods) which would not be traced by debug logging.
-     */
-    public ConfigurationType traceReflectionTypeImpl(ConfigurationTypeDescriptor typeDescriptor) {
+    private ConfigurationType traceReflectionTypeImpl(ConfigurationTypeDescriptor typeDescriptor) {
         assert enabledAtRunTime();
         if (isInternal(typeDescriptor)) {
             debug("type not registered for reflection (uses an internal interface)", typeDescriptor);
@@ -406,11 +399,11 @@ public final class MetadataTracer {
     /**
      * Debug helper for methods. Avoids method name computations if debug logging is disabled.
      */
-    private void debugMethod(ConfigurationTypeDescriptor typeDescriptor, String methodName, String internalSignature, ConfigurationMemberInfo.ConfigurationMemberAccessibility accessibility) {
+    private void debugMethod(ConfigurationTypeDescriptor typeDescriptor, String methodName, String internalSignature) {
         if (debugWriter == null) {
             return;
         }
-        debug("method registered for reflection (" + accessibility.name().toLowerCase() + ")", typeDescriptor + "." + methodName + internalSignature);
+        debug("method registered for reflection", typeDescriptor + "." + methodName + internalSignature);
     }
 
     /**
