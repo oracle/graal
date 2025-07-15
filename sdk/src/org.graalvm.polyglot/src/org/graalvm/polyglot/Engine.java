@@ -80,6 +80,7 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -90,6 +91,7 @@ import java.util.logging.Level;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
@@ -314,6 +316,76 @@ public final class Engine implements AutoCloseable {
     @Override
     public void close() {
         close(false);
+    }
+
+    /**
+     * Stores the auxiliary engine cache to the targetFile without cancellation.
+     *
+     * @see #storeCache(Path, WordPointer)
+     * @throws UnsupportedOperationException if this engine or the host virtual machine does not
+     *             support storing the cache.
+     * @since 25.0
+     */
+    public boolean storeCache(Path targetFile) throws UnsupportedOperationException {
+        return dispatch.storeCache(receiver, targetFile, 0L);
+    }
+
+    /**
+     * Stores the auxiliary engine cache to the {@code targetFile}. If it already exists, the file
+     * will be overwritten. The option <code>engine.CacheStoreEnabled</code> must be set to
+     * <code>true</code> to use this feature. Stored caches may be loaded by specifying the path
+     * using the <code>engine.CacheLoad</code> option.
+     * <p>
+     * Note that this feature is experimental and only supported on native-image hosts with
+     * Truffle's enterprise extensions.
+     * </p>
+     *
+     * <h3>Basic Usage:</h3>
+     *
+     * <pre>
+     * // Store the engine cache into a file
+     * Path store = Files.createTempFile("cache", "engine");
+     * try (Engine e = Engine.newBuilder().allowExperimentalOptions(true).option("engine.CacheStoreEnabled", "true").build()) {
+     *     try (Context c = Context.newBuilder().engine(e).build()) {
+     *         // Evaluate sources, run application
+     *     }
+     *     e.storeCache(store);
+     * }
+     *
+     * // Load the engine cache from a file
+     * try (Engine e = Engine.newBuilder().allowExperimentalOptions(true).option("engine.CacheLoad", store.toAbsolutePath().toString()).build()) {
+     *     try (Context c = Context.newBuilder().engine(e).build()) {
+     *         // The context should be able to use
+     *         // the existing code cache.
+     *     }
+     * }
+     * </pre>
+     *
+     * <p>
+     * See the <a href=
+     * "https://github.com/oracle/graal/blob/master/truffle/docs/AuxiliaryEngineCachingEnterprise.md">
+     * documentation</a> on auxiliary engine caching for further details.
+     * </p>
+     *
+     * @param targetFile the file to which the cache is stored
+     * @param cancelledWord a native pointer; if set to a non-zero value, the operation is
+     *            cancelled. Allows cancellation of the cache store operation through a
+     *            <code>cancelled</code> control word. The memory {@code address} pointing to the
+     *            control word is polled periodically during storage without guaranteed frequency
+     *            and may be delayed by safepoints such as garbage collection. A control word value
+     *            of zero must be maintained for the duration of the operation. If a non-zero value
+     *            is detected, the operation will be cancelled. A non-null provided pointer must
+     *            remain accessible during the entire operation. Providing an invalid or
+     *            inaccessible pointer may result in a VM crash.
+     * @return <code>true</code> if the file was written; otherwise, <code>false</code>
+     * @throws CancellationException if the storeCache operation was cancelled via the
+     *             <code>cancelled</code> pointer
+     * @throws UnsupportedOperationException if this engine or host virtual machine does not support
+     *             cache storage
+     * @since 25.0
+     */
+    public boolean storeCache(Path targetFile, WordPointer cancelledWord) throws CancellationException, UnsupportedOperationException {
+        return dispatch.storeCache(receiver, targetFile, cancelledWord.rawValue());
     }
 
     /**
