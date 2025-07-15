@@ -121,11 +121,11 @@ final class Target_jdk_incubator_vector_VectorOperators {
     @TargetClass(className = "jdk.incubator.vector.VectorOperators", innerClass = "ImplCache", onlyWith = VectorAPIEnabled.class)
     static final class Target_jdk_incubator_vector_VectorOperators_ImplCache<OP extends Target_jdk_incubator_vector_VectorOperators_Operator, T> {
 
-        @Alias
-        Object[] cache;
+        @Alias Object[] cache;
 
         @Substitute
         @ForceInline
+        @SuppressWarnings({"unchecked", "unused"})
         public T find(OP op, int opc, IntFunction<T> supplier) {
             T fn = (T) cache[opc];
             return fn;
@@ -159,17 +159,18 @@ final class Target_jdk_incubator_vector_ByteVector {
     @TargetElement(name = "ARRAY_BASE") //
     private static long arrayBase;
 
-    @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
-    @Alias static ValueLayout.OfByte ELEMENT_LAYOUT;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    @TargetElement(name = "ELEMENT_LAYOUT") //
+    static ValueLayout.OfByte elementLayout;
 
     @Substitute
     static void memorySegmentSet(MemorySegment ms, long o, int i, byte e) {
-        ELEMENT_LAYOUT.varHandle().set(ms, o + i * 1L, e);
+        elementLayout.varHandle().set(ms, o + i * 1L, e);
     }
 
     @Substitute
     static byte memorySegmentGet(MemorySegment ms, long o, int i) {
-        return (byte) ELEMENT_LAYOUT.varHandle().get(ms, o + i * 1L);
+        return (byte) elementLayout.varHandle().get(ms, o + i * 1L);
     }
 }
 
@@ -182,17 +183,18 @@ final class Target_jdk_incubator_vector_ShortVector {
     @TargetElement(name = "ARRAY_BASE") //
     private static long arrayBase;
 
-    @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
-    @Alias static ValueLayout.OfShort ELEMENT_LAYOUT;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    @TargetElement(name = "ELEMENT_LAYOUT") //
+    static ValueLayout.OfShort elementLayout;
 
     @Substitute
     static void memorySegmentSet(MemorySegment ms, long o, int i, short e) {
-        ELEMENT_LAYOUT.varHandle().set(ms, o + i * 2L, e);
+        elementLayout.varHandle().set(ms, o + i * 2L, e);
     }
 
     @Substitute
     static short memorySegmentGet(MemorySegment ms, long o, int i) {
-        return (short) ELEMENT_LAYOUT.varHandle().get(ms, o + i * 2L);
+        return (short) elementLayout.varHandle().get(ms, o + i * 2L);
     }
 }
 
@@ -205,17 +207,18 @@ final class Target_jdk_incubator_vector_IntVector {
     @TargetElement(name = "ARRAY_BASE") //
     private static long arrayBase;
 
-    @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
-    @Alias static ValueLayout.OfInt ELEMENT_LAYOUT;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    @TargetElement(name = "ELEMENT_LAYOUT") //
+    static ValueLayout.OfInt elementLayout;
 
     @Substitute
     static void memorySegmentSet(MemorySegment ms, long o, int i, int e) {
-        ELEMENT_LAYOUT.varHandle().set(ms, o + i * 4L, e);
+        elementLayout.varHandle().set(ms, o + i * 4L, e);
     }
 
     @Substitute
     static int memorySegmentGet(MemorySegment ms, long o, int i) {
-        return (int) ELEMENT_LAYOUT.varHandle().get(ms, o + i * 4L);
+        return (int) elementLayout.varHandle().get(ms, o + i * 4L);
     }
 }
 
@@ -228,17 +231,18 @@ final class Target_jdk_incubator_vector_LongVector {
     @TargetElement(name = "ARRAY_BASE") //
     private static long arrayBase;
 
-    @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
-    @Alias static ValueLayout.OfLong ELEMENT_LAYOUT;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    @TargetElement(name = "ELEMENT_LAYOUT") //
+    static ValueLayout.OfLong elementLayout;
 
     @Substitute
     static void memorySegmentSet(MemorySegment ms, long o, int i, long e) {
-        ELEMENT_LAYOUT.varHandle().set(ms, o + i * 8L, e);
+        elementLayout.varHandle().set(ms, o + i * 8L, e);
     }
 
     @Substitute
     static long memorySegmentGet(MemorySegment ms, long o, int i) {
-        return (long) ELEMENT_LAYOUT.varHandle().get(ms, o + i * 8L);
+        return (long) elementLayout.varHandle().get(ms, o + i * 8L);
     }
 }
 
@@ -251,17 +255,18 @@ final class Target_jdk_incubator_vector_FloatVector {
     @TargetElement(name = "ARRAY_BASE") //
     private static long arrayBase;
 
-    @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
-    @Alias static ValueLayout.OfFloat ELEMENT_LAYOUT;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    @TargetElement(name = "ELEMENT_LAYOUT") //
+    static ValueLayout.OfFloat elementLayout;
 
     @Substitute
     static void memorySegmentSet(MemorySegment ms, long o, int i, float e) {
-        ELEMENT_LAYOUT.varHandle().set(ms, o + i * 4L, e);
+        elementLayout.varHandle().set(ms, o + i * 4L, e);
     }
 
     @Substitute
     static float memorySegmentGet(MemorySegment ms, long o, int i) {
-        return (float) ELEMENT_LAYOUT.varHandle().get(ms, o + i * 4L);
+        return (float) elementLayout.varHandle().get(ms, o + i * 4L);
     }
 }
 
@@ -274,16 +279,17 @@ final class Target_jdk_incubator_vector_DoubleVector {
     @TargetElement(name = "ARRAY_BASE") //
     private static long arrayBase;
 
-    @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
-    @Alias static ValueLayout.OfDouble ELEMENT_LAYOUT;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    @TargetElement(name = "ELEMENT_LAYOUT") //
+    static ValueLayout.OfDouble elementLayout;
 
     @Substitute
     static void memorySegmentSet(MemorySegment ms, long o, int i, double e) {
-        ELEMENT_LAYOUT.varHandle().set(ms, o + i * 8L, e);
+        elementLayout.varHandle().set(ms, o + i * 8L, e);
     }
 
     @Substitute
     static double memorySegmentGet(MemorySegment ms, long o, int i) {
-        return (double) ELEMENT_LAYOUT.varHandle().get(ms, o + i * 8L);
+        return (double) elementLayout.varHandle().get(ms, o + i * 8L);
     }
 }
