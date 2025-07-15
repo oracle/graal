@@ -128,7 +128,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private final WasmModule module;
     private final WasmCodeEntry codeEntry;
 
-    @Children private Node[] callNodes;
+    @Children private final Node[] callNodes;
     @CompilationFinal private Object osrMetadata;
 
     private final int bytecodeStartOffset;
@@ -136,7 +136,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @CompilationFinal(dimensions = 1) private final byte[] bytecode;
     @CompilationFinal private WasmNotifyFunction notifyFunction;
 
-    @Children private WasmMemoryLibrary[] memoryLibs;
+    @Children private final WasmMemoryLibrary[] memoryLibs;
 
     public WasmFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, Node[] callNodes, WasmMemoryLibrary[] memoryLibs) {
         this.module = module;
