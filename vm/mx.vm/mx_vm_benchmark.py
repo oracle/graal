@@ -518,6 +518,8 @@ def register_graalvm_vms():
             if config_name.startswith("jvm"):
                 # needed for NFI CLinker benchmarks
                 launcher_args += ['--vm.-enable-preview']
+                # needed for GraalWasm SIMD benchmarks
+                launcher_args += ['--vm.-add-modules=jdk.incubator.vector']
             mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args), _suite, priority)
             for mode, mode_options in _polybench_modes:
                 _polybench_vm_registry.add_vm(PolyBenchVm(host_vm_name, config_name + "-" + mode, [], mode_options + launcher_args))
