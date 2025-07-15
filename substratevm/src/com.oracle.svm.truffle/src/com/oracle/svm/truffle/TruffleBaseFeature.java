@@ -1809,114 +1809,157 @@ final class Target_jdk_internal_vm_vector_VectorSupport {
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload fromBitsCoerced(Class<?> vmClass, Class<?> eClass, int length, long bits, int mode, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_FromBitsCoercedOperation defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload fromBitsCoerced(Class<?> vmClass, Class<?> eClass, int length, long bits, int mode,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_FromBitsCoercedOperation defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_VectorMask indexPartiallyInUpperRange(Class<?> mClass, Class<?> eClass, int length, long offset, long limit, Target_jdk_internal_vm_vector_VectorSupport_IndexPartiallyInUpperRangeOperation defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_VectorMask indexPartiallyInUpperRange(Class<?> mClass, Class<?> eClass, int length, long offset, long limit,
+                    Target_jdk_internal_vm_vector_VectorSupport_IndexPartiallyInUpperRangeOperation defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native long reductionCoerced(int oprId, Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_ReductionOperation defaultImpl);
+    static native long reductionCoerced(int oprId, Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_ReductionOperation defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native long extract(Class<?> vClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload vm, int i, Target_jdk_internal_vm_vector_VectorSupport_VecExtractOp defaultImpl);
+    static native long extract(Class<?> vClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload vm, int i,
+                    Target_jdk_internal_vm_vector_VectorSupport_VecExtractOp defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_Vector insert(Class<?> vClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v, int i, long val, Target_jdk_internal_vm_vector_VectorSupport_VecInsertOp defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector insert(Class<?> vClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v, int i, long val,
+                    Target_jdk_internal_vm_vector_VectorSupport_VecInsertOp defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_Vector unaryOp(int oprId, Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_UnaryOperation defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector unaryOp(int oprId, Class<?> vClass, Class<?> mClass, Class<?> eClass, int length,
+                    Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m,
+                    Target_jdk_internal_vm_vector_VectorSupport_UnaryOperation defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload binaryOp(int oprId, Class<?> vmClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v1, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v2, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_BinaryOperation defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload binaryOp(int oprId, Class<?> vmClass, Class<?> mClass, Class<?> eClass, int length,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v1, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v2,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_BinaryOperation defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_Vector ternaryOp(int oprId, Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v1, Target_jdk_internal_vm_vector_VectorSupport_Vector v2, Target_jdk_internal_vm_vector_VectorSupport_Vector v3, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_TernaryOperation defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector ternaryOp(int oprId, Class<?> vClass, Class<?> mClass, Class<?> eClass, int length,
+                    Target_jdk_internal_vm_vector_VectorSupport_Vector v1, Target_jdk_internal_vm_vector_VectorSupport_Vector v2, Target_jdk_internal_vm_vector_VectorSupport_Vector v3,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_TernaryOperation defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload load(Class<?> vmClass, Class<?> eClass, int length, Object base, long offset, boolean fromSegment, Object container, long index, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_LoadOperation defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload load(Class<?> vmClass, Class<?> eClass, int length, Object base, long offset, boolean fromSegment, Object container,
+                    long index, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_LoadOperation defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_Vector loadMasked(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Object base, long offset, boolean fromSegment, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, int offsetInRange, Object container, long index, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_LoadVectorMaskedOperation defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector loadMasked(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Object base, long offset, boolean fromSegment,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, int offsetInRange, Object container, long index, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s,
+                    Target_jdk_internal_vm_vector_VectorSupport_LoadVectorMaskedOperation defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native void store(Class<?> vClass, Class<?> eClass, int length, Object base, long offset, boolean fromSegment, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v, Object container, long index, Target_jdk_internal_vm_vector_VectorSupport_StoreVectorOperation defaultImpl);
+    static native void store(Class<?> vClass, Class<?> eClass, int length, Object base, long offset, boolean fromSegment, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v, Object container,
+                    long index, Target_jdk_internal_vm_vector_VectorSupport_StoreVectorOperation defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native void storeMasked(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Object base, long offset, boolean fromSegment, Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Object container, long index, Target_jdk_internal_vm_vector_VectorSupport_StoreVectorMaskedOperation defaultImpl);
+    static native void storeMasked(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Object base, long offset, boolean fromSegment, Target_jdk_internal_vm_vector_VectorSupport_Vector v,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Object container, long index, Target_jdk_internal_vm_vector_VectorSupport_StoreVectorMaskedOperation defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native boolean test(int cond, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m1, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m2, BiFunction<Target_jdk_internal_vm_vector_VectorSupport_VectorMask, Target_jdk_internal_vm_vector_VectorSupport_VectorMask, Boolean> defaultImpl);
+    static native boolean test(int cond, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m1,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorMask m2,
+                    BiFunction<Target_jdk_internal_vm_vector_VectorSupport_VectorMask, Target_jdk_internal_vm_vector_VectorSupport_VectorMask, Boolean> defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_VectorMask compare(int cond, Class<?> vectorClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v1, Target_jdk_internal_vm_vector_VectorSupport_Vector v2, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_VectorCompareOp defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_VectorMask compare(int cond, Class<?> vectorClass, Class<?> mClass, Class<?> eClass, int length,
+                    Target_jdk_internal_vm_vector_VectorSupport_Vector v1, Target_jdk_internal_vm_vector_VectorSupport_Vector v2, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorCompareOp defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_Vector blend(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v1, Target_jdk_internal_vm_vector_VectorSupport_Vector v2, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_VectorBlendOp defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector blend(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v1,
+                    Target_jdk_internal_vm_vector_VectorSupport_Vector v2, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorBlendOp defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_Vector broadcastInt(int opr, Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v, int n, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_VectorBroadcastIntOp defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector broadcastInt(int opr, Class<?> vClass, Class<?> mClass, Class<?> eClass, int length,
+                    Target_jdk_internal_vm_vector_VectorSupport_Vector v, int n, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorBroadcastIntOp defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload convert(int oprId, Class<?> fromVectorClass, Class<?> fromeClass, int fromVLen, Class<?> toVectorClass, Class<?> toeClass, int toVLen, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_VectorConvertOp defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload convert(int oprId, Class<?> fromVectorClass, Class<?> fromeClass, int fromVLen, Class<?> toVectorClass, Class<?> toeClass,
+                    int toVLen, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorConvertOp defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_Vector rearrangeOp(Class<?> vClass, Class<?> shClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_VectorShuffle sh, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_VectorRearrangeOp defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector rearrangeOp(Class<?> vClass, Class<?> shClass, Class<?> mClass, Class<?> eClass, int length,
+                    Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_VectorShuffle sh, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorRearrangeOp defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native long maskReductionCoerced(int oper, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_VectorMaskOp defaultImpl);
+    static native long maskReductionCoerced(int oper, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorMaskOp defaultImpl);
 
     // The following methods are not yet intrinsified, but they pull in a lot of code into the
     // native image nevertheless.
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_Vector indexVector(Class<?> vClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v, int step, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_IndexOperation defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector indexVector(Class<?> vClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v, int step,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_IndexOperation defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_Vector libraryUnaryOp(long addr, Class<?> vClass, Class<?> eClass, int length, String debugName, Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_UnaryOperation defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector libraryUnaryOp(long addr, Class<?> vClass, Class<?> eClass, int length, String debugName,
+                    Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_UnaryOperation defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload libraryBinaryOp(long addr, Class<?> vClass, Class<?> eClass, int length, String debugName, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v1, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v2, Target_jdk_internal_vm_vector_VectorSupport_BinaryOperation defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload libraryBinaryOp(long addr, Class<?> vClass, Class<?> eClass, int length, String debugName,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v1, Target_jdk_internal_vm_vector_VectorSupport_VectorPayload v2,
+                    Target_jdk_internal_vm_vector_VectorSupport_BinaryOperation defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_Vector selectFromTwoVectorOp(Class<?> vClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v1, Target_jdk_internal_vm_vector_VectorSupport_Vector v2, Target_jdk_internal_vm_vector_VectorSupport_Vector v3, Target_jdk_internal_vm_vector_VectorSupport_SelectFromTwoVector defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector selectFromTwoVectorOp(Class<?> vClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v1,
+                    Target_jdk_internal_vm_vector_VectorSupport_Vector v2, Target_jdk_internal_vm_vector_VectorSupport_Vector v3,
+                    Target_jdk_internal_vm_vector_VectorSupport_SelectFromTwoVector defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_Vector loadWithMap(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Class<?> vectorIndexClass, Object base, long offset, Target_jdk_internal_vm_vector_VectorSupport_Vector index_vector, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Object container, int index, int[] indexMap, int indexM, Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_LoadVectorOperationWithMap defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector loadWithMap(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Class<?> vectorIndexClass, Object base, long offset,
+                    Target_jdk_internal_vm_vector_VectorSupport_Vector indexVector, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Object container, int index, int[] indexMap, int indexM,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorSpecies s, Target_jdk_internal_vm_vector_VectorSupport_LoadVectorOperationWithMap defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native void storeWithMap(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Class<?> vectorIndexClass, Object base, long offset, Target_jdk_internal_vm_vector_VectorSupport_Vector index_vector, Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Object container, int index, int[] indexMap, int indexM, Target_jdk_internal_vm_vector_VectorSupport_StoreVectorOperationWithMap defaultImpl);
+    static native void storeWithMap(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Class<?> vectorIndexClass, Object base, long offset,
+                    Target_jdk_internal_vm_vector_VectorSupport_Vector indexVector, Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m,
+                    Object container, int index, int[] indexMap, int indexM, Target_jdk_internal_vm_vector_VectorSupport_StoreVectorOperationWithMap defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_Vector selectFromOp(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v1, Target_jdk_internal_vm_vector_VectorSupport_Vector v2, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_VectorSelectFromOp defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_Vector selectFromOp(Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v1,
+                    Target_jdk_internal_vm_vector_VectorSupport_Vector v2, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m,
+                    Target_jdk_internal_vm_vector_VectorSupport_VectorSelectFromOp defaultImpl);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload compressExpandOp(int opr, Class<?> vClass, Class<?> mClass, Class<?> eClass, int length, Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m, Target_jdk_internal_vm_vector_VectorSupport_CompressExpandOperation defaultImpl);
+    static native Target_jdk_internal_vm_vector_VectorSupport_VectorPayload compressExpandOp(int opr, Class<?> vClass, Class<?> mClass, Class<?> eClass, int length,
+                    Target_jdk_internal_vm_vector_VectorSupport_Vector v, Target_jdk_internal_vm_vector_VectorSupport_VectorMask m,
+                    Target_jdk_internal_vm_vector_VectorSupport_CompressExpandOperation defaultImpl);
 }
 
 @TargetClass(className = "jdk.incubator.vector.VectorMathLibrary", onlyWith = VectorAPIEnabled.class)
@@ -1924,11 +1967,16 @@ final class Target_jdk_incubator_vector_VectorMathLibrary {
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_incubator_vector_Vector unaryMathOp(Target_jdk_incubator_vector_VectorOperators.Target_jdk_incubator_vector_VectorOperators_Unary op, int opc, Target_jdk_incubator_vector_VectorSpecies vspecies, IntFunction<Target_jdk_internal_vm_vector_VectorSupport.Target_jdk_internal_vm_vector_VectorSupport_UnaryOperation> implSupplier, Target_jdk_incubator_vector_Vector v);
+    static native Target_jdk_incubator_vector_Vector unaryMathOp(Target_jdk_incubator_vector_VectorOperators.Target_jdk_incubator_vector_VectorOperators_Unary op, int opc,
+                    Target_jdk_incubator_vector_VectorSpecies vspecies,
+                    IntFunction<Target_jdk_internal_vm_vector_VectorSupport.Target_jdk_internal_vm_vector_VectorSupport_UnaryOperation> implSupplier, Target_jdk_incubator_vector_Vector v);
 
     @AnnotateOriginal
     @CompilerDirectives.TruffleBoundary
-    static native Target_jdk_incubator_vector_Vector binaryMathOp(Target_jdk_incubator_vector_VectorOperators.Target_jdk_incubator_vector_VectorOperators_Binary op, int opc, Target_jdk_incubator_vector_VectorSpecies vspecies, IntFunction<Target_jdk_internal_vm_vector_VectorSupport.Target_jdk_internal_vm_vector_VectorSupport_BinaryOperation> implSupplier, Target_jdk_incubator_vector_Vector v1, Target_jdk_incubator_vector_Vector v2);
+    static native Target_jdk_incubator_vector_Vector binaryMathOp(Target_jdk_incubator_vector_VectorOperators.Target_jdk_incubator_vector_VectorOperators_Binary op, int opc,
+                    Target_jdk_incubator_vector_VectorSpecies vspecies,
+                    IntFunction<Target_jdk_internal_vm_vector_VectorSupport.Target_jdk_internal_vm_vector_VectorSupport_BinaryOperation> implSupplier, Target_jdk_incubator_vector_Vector v1,
+                    Target_jdk_incubator_vector_Vector v2);
 }
 
 @TargetClass(className = "jdk.incubator.vector.AbstractSpecies", onlyWith = VectorAPIEnabled.class)
