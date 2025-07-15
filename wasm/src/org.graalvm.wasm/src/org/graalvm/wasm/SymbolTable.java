@@ -979,8 +979,6 @@ public abstract class SymbolTable {
         importSymbol(importedTable);
         module().addLinkAction((context, store, instance, imports) -> {
             instance.setTableAddress(index, UNINITIALIZED_ADDRESS);
-        });
-        module().addLinkAction((context, store, instance, imports) -> {
             store.linker().resolveTableImport(store, instance, importedTable, index, initSize, maxSize, elemType, imports);
         });
     }
