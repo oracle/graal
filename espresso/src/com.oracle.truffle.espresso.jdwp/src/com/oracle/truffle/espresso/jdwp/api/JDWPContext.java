@@ -506,4 +506,8 @@ public interface JDWPContext {
     boolean isSteppingInProgress(Thread t);
 
     void replaceController(DebuggerController newController);
+
+    int getJavaFeatureVersion();
+
+    String getSystemProperty(String name);
 }

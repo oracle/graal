@@ -638,6 +638,7 @@ public final class Meta extends ContextAccessImpl
 
         java_lang_System = knownKlass(Types.java_lang_System);
         java_lang_System_exit = java_lang_System.requireDeclaredMethod(Names.exit, Signatures._void_int);
+        java_lang_System_getProperty = java_lang_System.requireDeclaredMethod(Names.getProperty, Signatures.String_String);
         java_lang_System_securityManager = diff() //
                         .field(VERSION_21_OR_LOWER, Names.security, Types.java_lang_SecurityManager) //
                         .notRequiredField(java_lang_System);
@@ -1755,6 +1756,7 @@ public final class Meta extends ContextAccessImpl
     public final Method java_lang_System_initPhase1;
     public final Method java_lang_System_initPhase2;
     public final Method java_lang_System_initPhase3;
+    public final Method java_lang_System_getProperty;
     public final Method java_lang_System_exit;
     public final Field java_lang_System_securityManager;
     public final Field java_lang_System_in;

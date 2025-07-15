@@ -830,4 +830,16 @@ public final class JDWPContextImpl implements JDWPContext {
     public synchronized int redefineClasses(List<RedefineInfo> redefineInfos) {
         return context.getClassRedefinition().redefineClasses(redefineInfos, false, true);
     }
+
+    @Override
+    public int getJavaFeatureVersion() {
+        return context.getJavaVersion().featureVersion();
+    }
+
+    @Override
+    public String getSystemProperty(String name) {
+        Meta meta = context.getMeta();
+        StaticObject guestString = (StaticObject) meta.java_lang_System_getProperty.invokeDirectStatic(meta.toGuestString(name));
+        return meta.toHostString(guestString);
+    }
 }

@@ -231,6 +231,10 @@ public final class JavaVersion implements Comparable<JavaVersion> {
         return version + 44;
     }
 
+    public int featureVersion() {
+        return version;
+    }
+
     @Override
     public int compareTo(JavaVersion o) {
         return Integer.compare(this.version, o.version);

@@ -93,7 +93,6 @@ public final class DebuggerController implements ContextsListener {
     private JDWPOptions options;
     private DebuggerSession debuggerSession;
     private Ids<Object> ids;
-    private final VirtualMachine vm;
     private Debugger debugger;
     private final GCPrevention gcPrevention;
     private final ThreadSuspension threadSuspension;
@@ -111,7 +110,6 @@ public final class DebuggerController implements ContextsListener {
     private volatile Throwable lateStartupError;
 
     public DebuggerController(TruffleLogger logger) {
-        this.vm = new VirtualMachineImpl();
         this.gcPrevention = new GCPrevention();
         this.threadSuspension = new ThreadSuspension();
         this.eventFilters = new EventFilters();
@@ -656,10 +654,6 @@ public final class DebuggerController implements ContextsListener {
 
     public void prepareMethodBreakpoint(MethodBreakpointEvent event) {
         methodBreakpointExpected.put(Thread.currentThread(), event);
-    }
-
-    public VirtualMachine getVirtualMachine() {
-        return vm;
     }
 
     public GCPrevention getGCPrevention() {
