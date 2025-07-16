@@ -17,10 +17,11 @@
 
   local hotspot_profiling_builds = std.flattenArrays([
     [
-    c.monthly + hw.x52  + jdk + cc.c2 + suite + cc.enable_profiling   + { job_prefix:: "bench-compiler-profiling" },
-    c.monthly + hw.a12c + jdk + cc.c2 + suite + cc.enable_profiling   + { job_prefix:: "bench-compiler-profiling" },
-    c.monthly + hw.x52  + jdk + cc.c2 + suite + cc.footprint_tracking + { job_prefix:: "bench-compiler-footprint" },
-    c.monthly + hw.a12c + jdk + cc.c2 + suite + cc.footprint_tracking + { job_prefix:: "bench-compiler-footprint" }
+    c.monthly + hw.x52  + jdk + cc.c2 + suite + cc.enable_profiling    + { job_prefix:: "bench-compiler-profiling" },
+    c.monthly + hw.a12c + jdk + cc.c2 + suite + cc.enable_profiling    + { job_prefix:: "bench-compiler-profiling" },
+    c.monthly + hw.x52  + jdk + cc.c2 + suite + cc.footprint_tracking  + { job_prefix:: "bench-compiler-footprint" },
+    c.monthly + hw.a12c + jdk + cc.c2 + suite + cc.footprint_tracking  + { job_prefix:: "bench-compiler-footprint" },
+    c.monthly + hw.x52_root + jdk + cc.c2 + suite + cc.energy_tracking + { job_prefix:: "bench-compiler-energy" }
     ]
   for jdk in cc.product_jdks
   for suite in bench.groups.main_suites
