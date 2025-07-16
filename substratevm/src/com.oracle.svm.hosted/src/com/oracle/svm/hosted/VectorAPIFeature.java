@@ -33,7 +33,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.function.Function;
-import java.util.function.IntFunction;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -336,8 +335,7 @@ public class VectorAPIFeature implements InternalFeature {
      */
     private static final class WarmupData {
         final Class<?> implCacheClass;
-        final Class<?> operatorClass;
-        final Method implCacheFind;
+        final Field implCacheField;
         final int[] vectorOpcodes;
         final Class<?> laneTypeClass;
         final Object[] laneTypes;
@@ -348,8 +346,7 @@ public class VectorAPIFeature implements InternalFeature {
 
         private WarmupData() {
             implCacheClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".VectorOperators$ImplCache");
-            operatorClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".VectorOperators$Operator");
-            implCacheFind = ReflectionUtil.lookupMethod(implCacheClass, "find", operatorClass, int.class, IntFunction.class);
+            implCacheField = ReflectionUtil.lookupField(implCacheClass, "cache");
             Class<?> vectorSupportClass = ReflectionUtil.lookupClass("jdk.internal.vm.vector.VectorSupport");
             ArrayList<Integer> opcodeList = new ArrayList<>();
             for (Field f : vectorSupportClass.getDeclaredFields()) {
@@ -384,16 +381,11 @@ public class VectorAPIFeature implements InternalFeature {
         Object cacheObject = ReflectionUtil.readStaticField(vectorClass, cacheName);
         Method cachedMethod = ReflectionUtil.lookupMethod(vectorClass, cachedMethodName, int.class);
 
-        IntFunction<?> methodAsIntFunction = (int opc) -> {
-            try {
-                return cachedMethod.invoke(null, (Object) opc);
-            } catch (Throwable ex) {
-                throw VMError.shouldNotReachHere(ex);
-            }
-        };
         for (int opcode : warmupData.vectorOpcodes) {
             try {
-                warmupData.implCacheFind.invoke(cacheObject, null, opcode, methodAsIntFunction);
+                Object implFn = cachedMethod.invoke(null, opcode);
+                Object[] cacheArray = (Object[]) warmupData.implCacheField.get(cacheObject);
+                cacheArray[opcode] = implFn;
             } catch (InvocationTargetException ex) {
                 if (ex.getCause() instanceof UnsupportedOperationException) {
                     /*
