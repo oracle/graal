@@ -42,6 +42,10 @@ import java.io.File;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
 import java.lang.invoke.ConstantBootstraps;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandleProxies;
@@ -75,7 +79,8 @@ import java.util.Set;
 public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
     public enum DynamicAccessKind {
         Reflection("reflection-calls.json"),
-        Resource("resource-calls.json");
+        Resource("resource-calls.json"),
+        Foreign("foreign-calls.json");
 
         public final String fileName;
 
@@ -89,6 +94,7 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
 
     private static final EconomicMap<Class<?>, Set<MethodSignature>> reflectionMethodSignatures = EconomicMap.create();
     private static final EconomicMap<Class<?>, Set<MethodSignature>> resourceMethodSignatures = EconomicMap.create();
+    private static final EconomicMap<Class<?>, Set<MethodSignature>> foreignMethodSignatures = EconomicMap.create();
 
     private final DynamicAccessDetectionFeature dynamicAccessDetectionFeature;
 
@@ -184,6 +190,11 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
         resourceMethodSignatures.put(Class.class, Set.of(
                         new MethodSignature("getResource", String.class),
                         new MethodSignature("getResourceAsStream", String.class)));
+
+        foreignMethodSignatures.put(Linker.class, Set.of(
+                        new MethodSignature("downcallHandle", MemorySegment.class, FunctionDescriptor.class, Linker.Option[].class),
+                        new MethodSignature("downcallHandle", FunctionDescriptor.class, Linker.Option[].class),
+                        new MethodSignature("upcallStub", MethodHandle.class, FunctionDescriptor.class, Arena.class, Linker.Option[].class)));
     }
 
     public DynamicAccessDetectionPhase() {
@@ -216,7 +227,8 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
     private static MethodInfo getMethodInfo(ResolvedJavaMethod method) {
         Class<?> declaringClass = OriginalClassProvider.getJavaClass(method.getDeclaringClass());
         if (!reflectionMethodSignatures.containsKey(declaringClass) &&
-                        !resourceMethodSignatures.containsKey(declaringClass)) {
+                        !resourceMethodSignatures.containsKey(declaringClass) &&
+                        !foreignMethodSignatures.containsKey(declaringClass)) {
             return null;
         }
 
@@ -236,6 +248,9 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
         } else if (resourceMethodSignatures.containsKey(declaringClass) &&
                         resourceMethodSignatures.get(declaringClass).contains(methodSignature)) {
             return new MethodInfo(DynamicAccessKind.Resource, declaringClass.getName() + "#" + methodSignature);
+        } else if (foreignMethodSignatures.containsKey(declaringClass) &&
+                        foreignMethodSignatures.get(declaringClass).contains(methodSignature)) {
+            return new MethodInfo(DynamicAccessKind.Foreign, declaringClass.getName() + "#" + methodSignature);
         }
 
         return null;
@@ -288,6 +303,7 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
     public static void clearMethodSignatures() {
         reflectionMethodSignatures.clear();
         resourceMethodSignatures.clear();
+        foreignMethodSignatures.clear();
     }
 
     private static class MethodSignature {
