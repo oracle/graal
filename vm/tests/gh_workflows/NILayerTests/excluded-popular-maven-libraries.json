@@ -132,12 +132,6 @@
     "reason": "Finishes generating, but requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
   },
   {
-    "group_id": "com.fasterxml.jackson.dataformat",
-    "artifact_id": "jackson-dataformat-cbor",
-    "version": "2.17.2",
-    "reason": "GR-57738"
-  },
-  {
     "group_id": "io.undertow",
     "artifact_id": "undertow-core",
     "version": "2.3.17.Final",
@@ -273,7 +267,7 @@
     "group_id": "org.apache.hadoop",
     "artifact_id": "hadoop-hdfs",
     "version": "3.4.0",
-    "reason": "GR-57738"
+    "reason": "Finishes generating, but requires user 'initialize-at-build-time' and 'initialize-at-run-time' input"
   },
   {
     "group_id": "org.apache.felix",
@@ -298,12 +292,6 @@
     "artifact_id": "circe-generic_3",
     "version": "0.14.10",
     "reason": "[Maven ERROR] Missing dependencies"
-  },
-  {
-    "group_id": "org.typelevel",
-    "artifact_id": "cats-effect_3",
-    "version": "3.6-0142603",
-    "reason": "GR-59420"
   },
   {
     "group_id": "org.apache.cassandra",
