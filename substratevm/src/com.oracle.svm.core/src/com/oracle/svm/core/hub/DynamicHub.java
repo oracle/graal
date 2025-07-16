@@ -540,7 +540,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
                 boolean needsMonitorOffset = !valueBased;
                 if (needsMonitorOffset) {
-                    // GR-60069 could look for gaps
+                    // GR-69304 could look for gaps
                     int size = ol.getReferenceSize();
                     int bits = size - 1;
                     int alignmentAdjust = ((instanceSize + bits) & ~bits) - instanceSize;
@@ -551,7 +551,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                 if (ol.isIdentityHashFieldInObjectHeader()) {
                     identityHashOffset = ol.getObjectHeaderIdentityHashOffset();
                 } else if (ol.isIdentityHashFieldAtTypeSpecificOffset() || ol.isIdentityHashFieldOptional()) {
-                    // GR-60069 could look for gaps
+                    // GR-69304 could look for gaps
                     int bits = Integer.BYTES - 1;
                     int alignmentAdjust = ((instanceSize + bits) & ~bits) - instanceSize;
                     identityHashOffset = instanceSize + alignmentAdjust;

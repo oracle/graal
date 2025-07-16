@@ -43,7 +43,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.interpreter.classfile.ClassFile;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -56,11 +55,13 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.pltgot.GOTEntryAllocator;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
+import com.oracle.svm.interpreter.classfile.ClassFile;
 import com.oracle.svm.interpreter.metadata.BytecodeStream;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -332,7 +333,7 @@ public final class BuildTimeInterpreterUniverse {
                 } else if (constant.getJavaKind() == JavaKind.Illegal) {
                     // Materialized field without location e.g. DynamicHub#vtable.
                     thiz.setUnmaterializedConstant(buildTimeInterpreterUniverse.constant(JavaConstant.ILLEGAL));
-                } else if (thiz.getType().isWordType()) {
+                } else if (thiz.getResolvedType().isWordType()) {
                     // Can be a WordType with a primitive constant value.
                     thiz.setUnmaterializedConstant(buildTimeInterpreterUniverse.constant(constant));
                 } else if (constant instanceof ImageHeapConstant imageHeapConstant) {
@@ -347,7 +348,7 @@ public final class BuildTimeInterpreterUniverse {
                 throw VMError.shouldNotReachHere("Invalid field kind: " + thiz.getJavaKind());
         }
         if (!thiz.isUndefined()) {
-            if (thiz.getType().isWordType()) {
+            if (thiz.getResolvedType().isWordType()) {
                 VMError.guarantee(thiz.getUnmaterializedConstant().getJavaKind() == InterpreterToVM.wordJavaKind());
             } else {
                 VMError.guarantee(thiz.getUnmaterializedConstant().getJavaKind() == thiz.getJavaKind());
@@ -498,6 +499,14 @@ public final class BuildTimeInterpreterUniverse {
 
         InterpreterUtil.log("[universe] Adding type '%s'", resolvedJavaType);
         return result;
+    }
+
+    public InterpreterResolvedJavaField getField(ResolvedJavaField resolvedJavaField) {
+        ResolvedJavaField wrapped = resolvedJavaField;
+        if (wrapped instanceof HostedField hostedField) {
+            wrapped = hostedField.getWrapped();
+        }
+        return fields.get(wrapped);
     }
 
     public InterpreterResolvedJavaField getOrCreateField(ResolvedJavaField resolvedJavaField) {
@@ -791,7 +800,7 @@ public final class BuildTimeInterpreterUniverse {
         Iterator<Map.Entry<ResolvedJavaField, InterpreterResolvedJavaField>> iteratorFields = fields.entrySet().iterator();
         while (iteratorFields.hasNext()) {
             Map.Entry<ResolvedJavaField, InterpreterResolvedJavaField> next = iteratorFields.next();
-            if (!isReachable(next.getValue()) || !isReachable(next.getValue().getDeclaringClass()) || !isReachable(next.getValue().getType())) {
+            if (!isReachable(next.getValue()) || !isReachable(next.getValue().getDeclaringClass()) || !isReachable(next.getValue().getResolvedType())) {
                 InterpreterUtil.log("[purge] remove field '%s'", next.getValue());
                 iteratorFields.remove();
             }
@@ -915,7 +924,7 @@ public final class BuildTimeInterpreterUniverse {
 
         InterpreterResolvedJavaMethod[] iVTable;
         if (hostedDispatchTable.length == 0) {
-            iVTable = InterpreterResolvedJavaType.NO_METHODS;
+            iVTable = InterpreterResolvedJavaMethod.EMPTY_ARRAY;
         } else {
             iVTable = new InterpreterResolvedJavaMethod[hostedDispatchTable.length];
 

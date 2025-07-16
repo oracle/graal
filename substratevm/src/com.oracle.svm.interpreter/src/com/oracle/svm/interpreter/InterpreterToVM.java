@@ -323,7 +323,7 @@ public final class InterpreterToVM {
 
     public static WordBase getFieldWord(Object obj, InterpreterResolvedJavaField wordField) throws SemanticJavaException {
         assert obj != null;
-        assert wordField.getType().isWordType();
+        assert wordField.getResolvedType().isWordType();
         return switch (wordJavaKind()) {
             case Long -> Word.signed(getFieldLong(obj, wordField));
             case Int -> Word.signed(getFieldInt(obj, wordField));
@@ -482,7 +482,7 @@ public final class InterpreterToVM {
 
     public static void setFieldInt(int value, Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
-        assert field.getJavaKind() == JavaKind.Int || field.getType().isWordType();
+        assert field.getJavaKind() == JavaKind.Int || field.getResolvedType().isWordType();
         if (field.isVolatile()) {
             U.putIntVolatile(obj, field.getOffset(), value);
         } else {
@@ -492,7 +492,7 @@ public final class InterpreterToVM {
 
     public static void setFieldLong(long value, Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
-        assert field.getJavaKind() == JavaKind.Long || field.getType().isWordType();
+        assert field.getJavaKind() == JavaKind.Long || field.getResolvedType().isWordType();
         if (field.isVolatile()) {
             U.putLongVolatile(obj, field.getOffset(), value);
         } else {
