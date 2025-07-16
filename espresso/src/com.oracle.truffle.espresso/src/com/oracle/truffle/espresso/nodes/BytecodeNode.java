@@ -297,7 +297,6 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
@@ -305,7 +304,6 @@ import com.oracle.truffle.espresso.bytecode.MapperBCI;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 import com.oracle.truffle.espresso.classfile.JavaKind;
-import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
@@ -485,12 +483,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         return frameDescriptor;
     }
 
-    Source getSource() {
-        return getMethodVersion().getMethod().getSource();
-    }
-
     public SourceSection getSourceSectionAtBCI(int bci) {
         return getMethodVersion().getSourceSectionAtBCI(bci);
+    }
+
+    private EspressoContext getMethodContext() {
+        // This should be used instead of getContext() because it leads to a constant while the
+        // generic EspressoNode.getContext() doesn't necessarily lead to a constant.
+        return getMethodVersion().getMethod().getContext();
     }
 
     @ExplodeLoop
@@ -1540,14 +1540,15 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 CompilerAsserts.partialEvaluationConstant(curBCI);
                 // Handle both guest and host StackOverflowError.
-                if (e == getContext().getStackOverflow() || e instanceof StackOverflowError) {
+                EspressoContext context = getMethodContext();
+                if (e == context.getStackOverflow() || e instanceof StackOverflowError) {
                     // Always deopt on SOE.
                     CompilerDirectives.transferToInterpreter();
                     EspressoException wrappedStackOverflowError = null;
-                    if (e == getContext().getStackOverflow()) {
+                    if (e == context.getStackOverflow()) {
                         wrappedStackOverflowError = (EspressoException) e;
                     } else {
-                        wrappedStackOverflowError = getContext().getStackOverflow();
+                        wrappedStackOverflowError = context.getStackOverflow();
                     }
                     /*
                      * Stack Overflow management. All calls to stack manipulation are manually
@@ -1591,15 +1592,18 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                             // this branch is not compiled, it can be a loop exit
                             throw e;
                         }
-                        assert getContext().getEspressoEnv().Polyglot;
+                        if (!context.getEspressoEnv().Polyglot) {
+                            CompilerDirectives.transferToInterpreter();
+                            throw EspressoError.shouldNotReachHere("Unexpected non-espresso AbstractTruffleException", e);
+                        }
                         Meta meta = getMethod().getMeta();
                         meta.polyglot.ForeignException.safeInitialize(); // should fold
                         wrappedException = EspressoException.wrap(
-                                        getAllocator().createForeignException(getContext(), e, InteropLibrary.getUncached(e)), meta);
+                                        getAllocator().createForeignException(context, e, InteropLibrary.getUncached(e)), meta);
                     } else {
                         assert e instanceof OutOfMemoryError;
                         CompilerDirectives.transferToInterpreter();
-                        wrappedException = getContext().getOutOfMemory();
+                        wrappedException = context.getOutOfMemory();
                     }
 
                     ExceptionHandler[] handlers = getMethodVersion().getExceptionHandlers();
@@ -1737,8 +1741,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     private BaseQuickNode getBaseQuickNode(int curBCI, int top, int statementIndex, BaseQuickNode quickNode) {
+        EspressoContext context = getMethodContext();
         // block while class redefinition is ongoing
-        getMethod().getContext().getClassRedefinition().check();
+        context.getClassRedefinition().check();
         // re-check if node was already replaced by another thread
         if (quickNode != nodes[readCPI(curBCI)]) {
             // another thread beat us
@@ -1754,7 +1759,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // another thread beat us
                 return nodes[cpi];
             } else {
-                BaseQuickNode newNode = insert(dispatchQuickened(top, curBCI, originalOpcode, statementIndex, resolvedInvoke, getMethod().getContext().getEspressoEnv().bytecodeLevelInlining));
+                BaseQuickNode newNode = insert(dispatchQuickened(top, curBCI, originalOpcode, statementIndex, resolvedInvoke, context.getEspressoEnv().bytecodeLevelInlining));
                 nodes[cpi] = newNode;
                 return newNode;
             }
@@ -2111,11 +2116,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         return getMethodVersion().getPool();
     }
 
-    @TruffleBoundary
-    private BootstrapMethodsAttribute getBootstrapMethods() {
-        return (BootstrapMethodsAttribute) (getDeclaringKlass()).getAttribute(BootstrapMethodsAttribute.NAME);
-    }
-
     // region Bytecode quickening
 
     private char readCPI(int curBCI) {
@@ -2258,7 +2258,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert Bytecodes.isInvoke(opcode);
         InvokeQuickNode quick = (InvokeQuickNode) tryPatchQuick(curBCI, cpi -> getResolvedInvoke(opcode, cpi),
-                        resolvedInvoke -> dispatchQuickened(top, curBCI, opcode, statementIndex, resolvedInvoke, getMethod().getContext().getEspressoEnv().bytecodeLevelInlining));
+                        resolvedInvoke -> dispatchQuickened(top, curBCI, opcode, statementIndex, resolvedInvoke, getMethodContext().getEspressoEnv().bytecodeLevelInlining));
         return quick;
     }
 
@@ -2488,11 +2488,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     private Field resolveField(int opcode, char cpi) {
         assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC;
-        Field field = getConstantPool().resolvedFieldAt(getMethod().getDeclaringKlass(), cpi);
+        ObjectKlass declaringKlass = getMethod().getDeclaringKlass();
+        Field field = getConstantPool().resolvedFieldAt(declaringKlass, cpi);
         if (field.needsReResolution()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getMethod().getContext().getClassRedefinition().check();
-            field = getConstantPool().resolveFieldAndUpdate(getMethod().getDeclaringKlass(), cpi, field);
+            declaringKlass.getContext().getClassRedefinition().check();
+            field = getConstantPool().resolveFieldAndUpdate(declaringKlass, cpi, field);
         }
         return field;
     }
@@ -2509,12 +2510,13 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         assert !lockIsHeld();
         // During resolution of the symbolic reference to the method, any of the exceptions
         // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
-        ResolvedConstant resolvedConstant = getConstantPool().resolvedAt(getDeclaringKlass(), cpi);
+        ObjectKlass declaringKlass = getDeclaringKlass();
+        ResolvedConstant resolvedConstant = getConstantPool().resolvedAt(declaringKlass, cpi);
         Method resolutionSeed = (Method) resolvedConstant.value();
 
-        Klass symbolicRef = getConstantPool().getResolvedHolderKlass(cpi, getDeclaringKlass());
+        Klass symbolicRef = getConstantPool().getResolvedHolderKlass(cpi, declaringKlass);
         CallSiteType callSiteType = SiteTypes.callSiteFromOpCode(opcode);
-        ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSiteOrThrow(getContext(), getDeclaringKlass(), resolutionSeed, callSiteType, symbolicRef);
+        ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSiteOrThrow(declaringKlass.getContext(), declaringKlass, resolutionSeed, callSiteType, symbolicRef);
         MethodHandleInvoker invoker = null;
         // There might be an invoker if it's an InvokeGeneric
         if (resolvedConstant instanceof ResolvedWithInvokerClassMethodRefConstant withInvoker) {
@@ -2698,7 +2700,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         CompilerAsserts.partialEvaluationConstant(field);
         CompilerAsserts.partialEvaluationConstant(mode);
 
-        EspressoLinkResolver.checkFieldAccessOrThrow(getContext(), field, mode, getDeclaringKlass(), getMethod());
+        Method method = getMethod();
+        EspressoLinkResolver.checkFieldAccessOrThrow(method.getContext(), field, mode, getDeclaringKlass(), method);
 
         byte typeHeader = field.getType().byteAt(0);
         int slotCount = (typeHeader == 'J' || typeHeader == 'D') ? 2 : 1;
@@ -2811,7 +2814,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         CompilerAsserts.partialEvaluationConstant(field);
 
-        EspressoLinkResolver.checkFieldAccessOrThrow(getContext(), field, mode, getDeclaringKlass(), getMethod());
+        Method method = getMethod();
+        EspressoLinkResolver.checkFieldAccessOrThrow(method.getContext(), field, mode, getDeclaringKlass(), method);
 
         int slot = top - 1;
         StaticObject receiver;

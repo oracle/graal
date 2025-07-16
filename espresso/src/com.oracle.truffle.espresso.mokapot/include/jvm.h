@@ -406,6 +406,9 @@ JVM_SetCurrentThread(JNIEnv *env, jobject thisThread, jobject theThread);
 JNIEXPORT jint JNICALL // Removed in 11
 JVM_CountStackFrames(JNIEnv *env, jobject thread);
 
+JNIEXPORT jobject JNICALL
+JVM_CreateThreadSnapshot(JNIEnv* env, jobject thread);
+
 JNIEXPORT void JNICALL
 JVM_Interrupt(JNIEnv *env, jobject thread);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.ffi;
+package com.oracle.truffle.espresso.substitutions.standard;
 
-/**
- * Encoded native types similar to j* types defined for JNI.
- * 
- * This enum provides an unambiguous mapping from Java to native (similar to JNI j* types), and from
- * native to Java.
- * 
- * {@link #BOOLEAN} encodes a native 1-byte value, a boolean in Java.
- * 
- * {@link #SHORT} and {@link #CHAR} represents the same native 2-byte value, but a short and char
- * types in Java.
- */
-public enum NativeType {
+import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
+import com.oracle.truffle.espresso.substitutions.Substitution;
 
-    VOID,
-    BOOLEAN, // 1 byte
-    BYTE,
-    CHAR, // unsigned short
-    SHORT,
-    INT,
-    LONG,
-    FLOAT,
-    DOUBLE,
+@EspressoSubstitutions
+public final class Target_java_lang_VirtualThread {
+    private Target_java_lang_VirtualThread() {
+    }
 
-    OBJECT, // word-sized handle
-    POINTER,
-    BITFIELD_INT,
+    @Substitution
+    public static void unblockVirtualThreads() {
+        // no-op: loom continuations are not supported
+    }
 }
