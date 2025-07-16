@@ -232,6 +232,8 @@ public class VectorAPIFeature implements InternalFeature {
                 if (size.equals("Max")) {
                     int laneCount = VectorAPISupport.singleton().getMaxLaneCount(vectorElement);
                     Class<?> shuffleElement = (vectorElement == float.class ? int.class : vectorElement == double.class ? long.class : vectorElement);
+                    access.registerFieldValueTransformer(ReflectionUtil.lookupField(shuffleClass, "VLENGTH"),
+                                    (receiver, originalValue) -> laneCount);
                     access.registerFieldValueTransformer(ReflectionUtil.lookupField(shuffleClass, "IOTA"),
                                     (receiver, originalValue) -> makeIotaVector(shuffleClass, shuffleElement, laneCount));
                     access.registerFieldValueTransformer(ReflectionUtil.lookupField(maskClass, "TRUE_MASK"),
@@ -411,6 +413,9 @@ public class VectorAPIFeature implements InternalFeature {
         for (char kind : WarmupData.CONVERSION_KINDS) {
             for (Object dom : warmupData.laneTypes) {
                 for (Object ran : warmupData.laneTypes) {
+                    if (kind == 'I' && dom != ran) {
+                        continue;
+                    }
                     ReflectionUtil.invokeMethod(makeConv, null, kind, dom, ran);
                 }
             }
@@ -438,6 +443,18 @@ public class VectorAPIFeature implements InternalFeature {
     }
 
     private static Object makeIotaVector(Class<?> vectorClass, Class<?> vectorElement, int laneCount) {
+        /*
+         * The constructors for Shuffle classes ensure that the payload array is based on the
+         * species length, which we also substitute but whose substituted values will not be used
+         * yet. So we first allocate a new instance, whose payload has the host-specific length, and
+         * then we override its payload field with a payload of the target-specific length.
+         */
+        int hostLaneCount = ReflectionUtil.readStaticField(vectorClass, "VLENGTH");
+        Object dummyPayload = Array.newInstance(vectorElement, hostLaneCount);
+        for (int i = 0; i < hostLaneCount; i++) {
+            Array.setByte(dummyPayload, i, (byte) 0);
+        }
+        Object iotaVector = ReflectionUtil.newInstance(ReflectionUtil.lookupConstructor(vectorClass, dummyPayload.getClass()), dummyPayload);
         Object iotaPayload = Array.newInstance(vectorElement, laneCount);
         for (int i = 0; i < laneCount; i++) {
             // adapted from AbstractSpecies.iotaArray
@@ -450,7 +467,8 @@ public class VectorAPIFeature implements InternalFeature {
             }
             VMError.guarantee(Array.getDouble(iotaPayload, i) == i, "wrong initialization of iota array: %s at %s", Array.getDouble(iotaPayload, i), i);
         }
-        return ReflectionUtil.newInstance(ReflectionUtil.lookupConstructor(vectorClass, iotaPayload.getClass()), iotaPayload);
+        ReflectionUtil.writeField(PAYLOAD_CLASS, "payload", iotaVector, iotaPayload);
+        return iotaVector;
     }
 
     @Override
