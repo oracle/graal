@@ -400,7 +400,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             CompilerAsserts.partialEvaluationConstant(ip);
             if (ip == IP_BEGIN) {
                 /*
-                 * Begin of the regex match. Here, we select the inital state based on "^".
+                 * Begin of the regex match. Here, we select the initial state based on "^".
                  */
                 if (nfa.getAnchoredInitialState() != nfa.getUnAnchoredInitialState() && inputAtBegin(locals)) {
                     ip = nfa.getAnchoredInitialState().getId();

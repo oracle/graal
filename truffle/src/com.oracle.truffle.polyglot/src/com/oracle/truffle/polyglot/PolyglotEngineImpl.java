@@ -509,7 +509,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             return;
         }
 
-        // we crate a dummy node
+        // we create a dummy node
         RootNode node = RootNode.createConstantNode(42);
         // since we are not entered we need to set the sharing layer here
         EngineAccessor.NODES.setSharingLayer(node, context.layer);

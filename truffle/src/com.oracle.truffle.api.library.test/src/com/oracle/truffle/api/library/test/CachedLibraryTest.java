@@ -933,7 +933,7 @@ public class CachedLibraryTest extends AbstractLibraryTest {
     }
 
     /*
-     * This test was crashing in GR-24920 as the uncached library lookup was accidently using lib1
+     * This test was crashing in GR-24920 as the uncached library lookup was accidentally using lib1
      * to match lib2 for the generated uncached specializations.
      */
     abstract static class DispatchedAndExpressionLibraryNode extends Node {

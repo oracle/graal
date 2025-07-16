@@ -120,7 +120,7 @@ public class SourceUtils {
     }
 
     /**
-     * Trasnforms graph nodes into nodes that represent selectable items, whole Figures.
+     * Transforms graph nodes into nodes that represent selectable items, whole Figures.
      * The diagram may not be ready yet; {@link DiagramViewModel#withDiagramToView}
      * must be called and the nodes processed in a callback.
      *

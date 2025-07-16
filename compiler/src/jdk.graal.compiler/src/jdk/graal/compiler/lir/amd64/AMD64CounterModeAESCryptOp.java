@@ -239,7 +239,7 @@ public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
         masm.pshufb(AVXSize.XMM, xmmCurrCounter, xmmCounterShufMask);
         masm.movq(pos, 0);
 
-        // Use the partially used encrpyted counter from last invocation
+        // Use the partially used encrypted counter from last invocation
         masm.bind(labelPreLoopStart);
         masm.cmplAndJcc(used, 16, ConditionFlag.AboveEqual, labelExitPreLoop, false);
         masm.cmplAndJcc(lenReg, 0, ConditionFlag.LessEqual, labelExitPreLoop, false);

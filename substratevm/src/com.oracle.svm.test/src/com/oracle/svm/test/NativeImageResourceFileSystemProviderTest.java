@@ -535,8 +535,8 @@ public class NativeImageResourceFileSystemProviderTest {
         // 3. Reading in the new file.
         try (InputStream inputStream = Files.newInputStream(newResource, StandardOpenOption.READ)) {
             String content = new String(inputStream.readAllBytes());
-            Assert.assertTrue("Nothing has been writen into file!", content.length() > 0);
-            Assert.assertTrue("Content has been writen into file improperly!", content.startsWith("test string#"));
+            Assert.assertTrue("Nothing has been written into file!", content.length() > 0);
+            Assert.assertTrue("Content has been written into file improperly!", content.startsWith("test string#"));
         } catch (IOException ioException) {
             Assert.fail("Exception occurs during writing into file!");
         }
@@ -559,8 +559,8 @@ public class NativeImageResourceFileSystemProviderTest {
         channel.position(0);
         channel.read(byteBuffer2);
         String content = new String(byteBuffer2.array());
-        Assert.assertTrue("Nothing has been writen into file!", content.length() > 0);
-        Assert.assertTrue("Content has been writen into file improperly!", content.startsWith("test string#"));
+        Assert.assertTrue("Nothing has been written into file!", content.length() > 0);
+        Assert.assertTrue("Content has been written into file improperly!", content.startsWith("test string#"));
     }
 
     private Path copyFile(Path resourceFile1, Path newDirectory) {

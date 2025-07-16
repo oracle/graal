@@ -462,7 +462,7 @@ public class SubstrateUtil {
         /*
          * Lambda classes have a 32-byte digest (because hex encoding is required), so with the
          * prefix just the Lambda part is already longer than our desired maximum name. We keep only
-         * the first part of the digest, which is sufficent to distinguish multiple lambdas defined
+         * the first part of the digest, which is sufficient to distinguish multiple lambdas defined
          * by the same holder class.
          */
         int lambdaStart = result.indexOf(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING);

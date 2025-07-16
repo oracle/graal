@@ -30,7 +30,7 @@ import java.util.function.Function;
 
 /**
  * Encode the result of loading a class. It contains either a type object, if the loading is
- * succesful, or a Throwable object encoding the reason why the loading failed.
+ * successful, or a Throwable object encoding the reason why the loading failed.
  */
 public final class TypeResult<T> {
 

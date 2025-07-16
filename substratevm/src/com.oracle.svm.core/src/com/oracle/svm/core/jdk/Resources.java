@@ -450,7 +450,7 @@ public final class Resources implements MultiLayeredImageSingleton {
 
     /*
      * This handles generated include patterns which start and end with \Q and \E. The actual
-     * resource name is located inbetween those tags.
+     * resource name is located in between those tags.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     private static String handleEscapedCharacters(String pattern) {
