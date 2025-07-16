@@ -35,6 +35,8 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platform.LINUX_AMD64;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -270,9 +272,25 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return false;
     }
 
+    private static boolean supportedPlatform(Platform platform) {
+        boolean supported = platform instanceof LINUX_AMD64;
+        return supported;
+    }
+
     public static HostedImageLayerBuildingSupport initialize(HostedOptionValues values, ImageClassLoader imageClassLoader, Path builderTempDir) {
         boolean buildingSharedLayer = isLayerCreateOptionEnabled(values);
         boolean buildingExtensionLayer = isLayerUseOptionEnabled(values);
+
+        if (buildingSharedLayer) {
+            Platform platform = imageClassLoader.platform;
+            if (!supportedPlatform(platform)) {
+                ValueWithOrigin<String> valueWithOrigin = getLayerCreateValueWithOrigin(values);
+                String layerCreateValue = getLayerCreateValue(valueWithOrigin);
+                String layerCreateArg = SubstrateOptionsParser.commandArgument(SubstrateOptions.LayerCreate, layerCreateValue);
+                throw UserError.abort("Layer creation option '%s' from %s is not supported when building for platform %s/%s.",
+                                layerCreateArg, valueWithOrigin.origin(), platform.getOS(), platform.getArchitecture());
+            }
+        }
 
         boolean buildingImageLayer = buildingSharedLayer || buildingExtensionLayer;
         boolean buildingInitialLayer = buildingImageLayer && !buildingExtensionLayer;
