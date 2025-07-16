@@ -958,17 +958,22 @@ public class Vector128Ops {
 
     // Checkstyle: resume method name check
 
-    private static final Class<? extends ByteVector> BYTE_128_CLASS = ByteVector.zero(I8X16.species()).getClass();
-    private static final Class<? extends ShortVector> SHORT_128_CLASS = ShortVector.zero(I16X8.species()).getClass();
-    private static final Class<? extends IntVector> INT_128_CLASS = IntVector.zero(I32X4.species()).getClass();
-    private static final Class<? extends LongVector> LONG_128_CLASS = LongVector.zero(I64X2.species()).getClass();
-    private static final Class<? extends FloatVector> FLOAT_128_CLASS = FloatVector.zero(F32X4.species()).getClass();
-    private static final Class<? extends DoubleVector> DOUBLE_128_CLASS = DoubleVector.zero(F64X2.species()).getClass();
+    private static final String VECTOR_API_PACKAGE = Vector.class.getPackageName();
+
+    private static final Class<? extends ByteVector> BYTE_128_CLASS = lookupClass(VECTOR_API_PACKAGE + ".Byte128Vector");
+    private static final Class<? extends ShortVector> SHORT_128_CLASS = lookupClass(VECTOR_API_PACKAGE + ".Short128Vector");
+    private static final Class<? extends IntVector> INT_128_CLASS = lookupClass(VECTOR_API_PACKAGE + ".Int128Vector");
+    private static final Class<? extends LongVector> LONG_128_CLASS = lookupClass(VECTOR_API_PACKAGE + ".Long128Vector");
+    private static final Class<? extends FloatVector> FLOAT_128_CLASS = lookupClass(VECTOR_API_PACKAGE + ".Float128Vector");
+    private static final Class<? extends DoubleVector> DOUBLE_128_CLASS = lookupClass(VECTOR_API_PACKAGE + ".Double128Vector");
+
+    private static final Class<? extends VectorMask<Byte>> BYTE_128_MASK_CLASS = lookupClass(VECTOR_API_PACKAGE + ".Byte128Vector.Byte128Mask");
+    private static final Class<? extends VectorMask<Short>> SHORT_128_MASK_CLASS = lookupClass(VECTOR_API_PACKAGE + ".Short128Vector.Short128Mask");
 
     @SuppressWarnings("unchecked")
-    private static final Class<? extends VectorMask<Byte>> BYTE_128_MASK_CLASS = (Class<? extends VectorMask<Byte>>) VectorMask.fromLong(I8X16.species(), 0).getClass();
-    @SuppressWarnings("unchecked")
-    private static final Class<? extends VectorMask<Short>> SHORT_128_MASK_CLASS = (Class<? extends VectorMask<Short>>) VectorMask.fromLong(I16X8.species(), 0).getClass();
+    private static <E> Class<? extends E> lookupClass(String className) {
+        return (Class<? extends E>) Class.forName(Vector.class.getModule(), className);
+    }
 
     public static final ByteVector castByte128(Vector<Byte> vec) {
         return BYTE_128_CLASS.cast(vec);
