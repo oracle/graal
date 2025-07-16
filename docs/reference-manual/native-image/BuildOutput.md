@@ -30,7 +30,7 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
  Garbage collector: Serial GC (max heap size: 80% of RAM)
 --------------------------------------------------------------------------------
 Build resources:
- - 28.45GB of memory (42.5% of system memory, using available memory)
+ - 14.69GiB of memory (47.0% of system memory, using all available memory)
  - 20 thread(s) (100.0% of 20 available processor(s), determined at start)
 [2/8] Performing analysis...  [******]                           (3.4s @ 0.40GB)
     3,297 types,   3,733 fields, and  15,247 methods found reachable
@@ -145,11 +145,13 @@ The memory limit and number of threads used by the build process.
 
 More precisely, the memory limit of the Java heap, so actual memory consumption can be higher.
 Please check the [peak RSS](#glossary-peak-rss) reported at the end of the build to understand how much memory was actually used.
-By default, the build process uses the dedicated mode (up to 85% of system memory) in containers or CI environments (when the `$CI` environment variable is set to `true`), but never more than 32GB of memory.
-Otherwise, it tries to use available memory to avoid memory pressure on developer machines (shared mode).
+The actual memory consumption can also be lower than the limit set, as the GC only commits memory that it needs.
+By default, the build process uses the dedicated mode (which uses 85% of system memory) in containers or CI environments (when the `$CI` environment variable is set to `true`), but never more than 32GB of memory.
+Otherwise, it uses shared mode, which uses the available memory to avoid memory pressure on developer machines.
 If less than 8GB of memory are available, the build process falls back to the dedicated mode.
 Therefore, consider freeing up memory if your machine is slow during a build, for example, by closing applications that you do not need.
 It is possible to override the default behavior and set relative or absolute memory limits, for example with `-J-XX:MaxRAMPercentage=60.0` or `-J-Xmx16g`.
+`Xms` (for example, `-J-Xms9g`) can also be used to ensure a minimum for the limit, if you know the image needs at least that much memory to build.
 
 By default, the build process uses all available processors to maximize speed, but not more than 32 threads.
 Use the `--parallelism` option to set the number of threads explicitly (for example, `--parallelism=4`).

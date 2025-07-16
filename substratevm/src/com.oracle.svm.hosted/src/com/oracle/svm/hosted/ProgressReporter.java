@@ -419,18 +419,7 @@ public class ProgressReporter {
         long totalMemorySize = getOperatingSystemMXBean().getTotalMemorySize();
         recordJsonMetric(ResourceUsageKey.MEMORY_TOTAL, totalMemorySize);
 
-        List<String> inputArguments = ManagementFactory.getRuntimeMXBean().getInputArguments();
-        List<String> maxRAMPercentageValues = inputArguments.stream().filter(arg -> arg.startsWith("-XX:MaxRAMPercentage=") || arg.startsWith("-XX:MaximumHeapSizePercent=")).toList();
-        String memoryUsageReason = "unknown";
-        if (maxRAMPercentageValues.size() == 1) { // The driver sets one of these options once
-            memoryUsageReason = System.getProperty(SubstrateOptions.BUILD_MEMORY_USAGE_REASON_TEXT_PROPERTY, "unknown");
-        } else if (maxRAMPercentageValues.size() > 1) {
-            memoryUsageReason = "set via '%s'".formatted(maxRAMPercentageValues.getLast());
-        }
-        String xmxValueOrNull = inputArguments.stream().filter(arg -> arg.startsWith("-Xmx")).reduce((first, second) -> second).orElse(null);
-        if (xmxValueOrNull != null) { // -Xmx takes precedence over -XX:MaxRAMPercentage
-            memoryUsageReason = "set via '%s'".formatted(xmxValueOrNull);
-        }
+        String memoryUsageReason = System.getProperty(SubstrateOptions.BUILD_MEMORY_USAGE_REASON_TEXT_PROPERTY, "unknown");
 
         int maxNumberOfThreads = NativeImageOptions.getActualNumberOfThreads();
         recordJsonMetric(ResourceUsageKey.PARALLELISM, maxNumberOfThreads);
@@ -443,7 +432,7 @@ public class ProgressReporter {
 
         l().printLineSeparator();
         l().yellowBold().doclink("Build resources", "#glossary-build-resources").a(":").reset().println();
-        l().a(" - %s of memory (%.1f%% of system memory, %s)", ByteFormattingUtil.bytesToHuman(maxMemory), ProgressReporterUtils.toPercentage(maxMemory, totalMemorySize), memoryUsageReason).println();
+        l().a(" - %s", memoryUsageReason).println();
         l().a(" - %s thread(s) (%.1f%% of %s available processor(s), %s)",
                         maxNumberOfThreads, ProgressReporterUtils.toPercentage(maxNumberOfThreads, availableProcessors), availableProcessors, maxNumberOfThreadsSuffix).println();
     }
