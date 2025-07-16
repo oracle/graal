@@ -105,7 +105,8 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
                     "java.io.ObjectInputStream.readObject",
                     "java.io.ObjectStreamClass.lookup",
                     "java.lang.reflect.Array.newInstance",
-                    "java.lang.ClassLoader.loadClass");
+                    "java.lang.ClassLoader.loadClass",
+                    "java.lang.foreign.Linker.nativeLinker");
 
     public static final String GRAAL_SUBPATH = File.separator + "graal" + File.separator;
     public static final String TRACK_ALL = "all";
