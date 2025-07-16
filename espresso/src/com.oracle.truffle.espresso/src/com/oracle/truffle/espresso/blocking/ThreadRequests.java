@@ -29,6 +29,8 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ThreadLocalAction;
@@ -44,9 +46,10 @@ import com.oracle.truffle.espresso.vm.VM;
 
 public final class ThreadRequests {
     private static final Thread[] EMPTY_THREAD_ARRAY = new Thread[0];
+    private static final long GRACE_PERIOD_MILLIS = 100;
 
     public abstract static class Request<T> extends ThreadLocalAction {
-        private final Map<Thread, T> result;
+        private final Map<Thread, T> result = new ConcurrentHashMap<>();
 
         /**
          * Performs the request on the given thread, and return the result of that action.
@@ -70,7 +73,6 @@ public final class ThreadRequests {
         @TruffleBoundary
         public Request(boolean hasSideEffects, boolean synchronous) {
             super(hasSideEffects, synchronous);
-            this.result = new ConcurrentHashMap<>();
         }
 
         @Override
@@ -103,7 +105,9 @@ public final class ThreadRequests {
     /**
      * From the given {@code threads} array, finds the threads which are
      * {@link ThreadAccess#isResponsive(StaticObject) responsive}, then submits the {@code request}
-     * as a {@link ThreadLocalAction} only on these responsive threads.
+     * as a {@link ThreadLocalAction} only on these responsive threads. Unresponsive threads will be
+     * sent the request separately, but this method will wait no more than
+     * {@link EspressoOptions#ThreadRequestGracePeriod} for those to complete.
      * <p>
      * The {@code result} array will then be filled with the result of the request, with
      * {@code result[i]} corresponding to the result of running the action on the thread in
@@ -120,30 +124,52 @@ public final class ThreadRequests {
             throw EspressoError.shouldNotReachHere("Wrong usage of ThreadRequests.request");
         }
         try {
-            // Prevent responsive threads from entering native.
+            // Prevent threads from entering native.
             freeze(ctx, threads, true);
 
-            // Filter to remove unresponsive threads.
+            // Filter to separate responsive threads from unresponsive ones.
             ThreadAccess access = ctx.getThreadAccess();
             List<Thread> running = new ArrayList<>();
+            List<Thread> unresponsive = new ArrayList<>();
 
             for (int i = 0; i < threads.length; i++) {
                 StaticObject t = threads[i];
-                if (t == access.getCurrentGuestThread() || // current thread is always responsive.
-                                StaticObject.notNull(t) && isResponsive(access, t)) {
-                    running.add(access.getHost(t));
+                if (StaticObject.notNull(t)) {
+                    if (isResponsive(access, t) ||
+                                    t == access.getCurrentGuestThread() /*- current thread is always responsive. */) {
+                        running.add(access.getHost(t));
+                    } else {
+                        unresponsive.add(access.getHost(t));
+                    }
                 }
             }
 
+            // Submit the request to "unresponsive" threads, but do not wait yet.
+            Future<Void> unresponsiveFuture = ctx.getEnv().submitThreadLocal(unresponsive.toArray(EMPTY_THREAD_ARRAY), request);
+            long submitTime = System.currentTimeMillis();
+
             // Submit the request to responsive threads, and wait for completion.
-            Future<Void> future = ctx.getEnv().submitThreadLocal(running.toArray(EMPTY_THREAD_ARRAY), request);
+            Future<Void> runningFuture = ctx.getEnv().submitThreadLocal(running.toArray(EMPTY_THREAD_ARRAY), request);
             TruffleSafepoint.setBlockedThreadInterruptible(location, f -> {
                 try {
-                    future.get();
+                    runningFuture.get();
                 } catch (ExecutionException e) {
                     throw EspressoError.shouldNotReachHere(e);
                 }
-            }, future);
+            }, runningFuture);
+
+            long elapsed = submitTime - System.currentTimeMillis();
+            if (!unresponsiveFuture.isDone() && elapsed < GRACE_PERIOD_MILLIS) {
+                TruffleSafepoint.setBlockedThreadInterruptible(location, f -> {
+                    try {
+                        unresponsiveFuture.get(GRACE_PERIOD_MILLIS - elapsed, TimeUnit.MILLISECONDS);
+                    } catch (ExecutionException e) {
+                        throw EspressoError.shouldNotReachHere(e);
+                    } catch (TimeoutException e) {
+                        // Ignore
+                    }
+                }, unresponsiveFuture);
+            }
 
             // Build the result map.
             Map<Thread, T> tlaResult = request.result();
@@ -158,6 +184,8 @@ public final class ThreadRequests {
                 }
                 result[i] = request.placeHolderValue();
             }
+            // No longer relevant.
+            unresponsiveFuture.cancel(false);
         } finally {
             // Re-allow threads to enter native.
             freeze(ctx, threads, false);
