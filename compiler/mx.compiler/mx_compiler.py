@@ -1263,6 +1263,9 @@ def _check_latest_jvmci_version():
         mx.abort(msg)
 
     if version_check_setting == 'strict' and not success:
+        # [GR-67676] The `-llvm` artifacts are currently not up to date due to a JDK build system problem JDK-8361844.
+        if latest.endswith('-llvm'):
+            return
         if latest == 'not found':
             msg = f'No JVMCI JDK found in {common_path} that matches {_jdk_jvmci_version}.'
             msg += os.linesep + f'Check that {latest} matches the versions of the other JVMCI JDKs.'
