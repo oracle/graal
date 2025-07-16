@@ -33,6 +33,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
+import com.oracle.svm.core.genscavenge.StackVerifier.VerifyFrameReferencesVisitor;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.Heap;
@@ -384,10 +385,11 @@ public class HeapVerifier {
     }
 
     private static void printParent(Object parentObject) {
-        if (parentObject != null) {
-            Log.log().string("The object that contains the invalid reference is of type ").string(parentObject.getClass().getName()).newline();
+        if (parentObject instanceof VerifyFrameReferencesVisitor visitor) {
+            Log.log().string("The invalid reference is on the stack: sp=").zhex(visitor.getSP()).string(", ip=").zhex(visitor.getIP()).newline();
         } else {
-            Log.log().string("The invalid reference is on the stack").newline();
+            assert parentObject != null;
+            Log.log().string("The object that contains the invalid reference is of type ").string(parentObject.getClass().getName()).newline();
         }
     }
 
