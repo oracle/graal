@@ -47,6 +47,8 @@ public interface CremaSupport {
         int vtableLength();
 
         int itableLength(Class<?> iface);
+
+        int afterFieldsOffset(int superAfterFieldsOffset);
     }
 
     CremaDispatchTable getDispatchTable(ParserKlass parsed, Class<?> superClass, List<Class<?>> superInterfaces);

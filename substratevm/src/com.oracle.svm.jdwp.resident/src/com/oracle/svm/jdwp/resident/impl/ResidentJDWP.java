@@ -1324,7 +1324,7 @@ public final class ResidentJDWP implements JDWP {
         if (field.isStatic()) {
             assert typeOrReceiver instanceof InterpreterResolvedJavaType;
             // typeOrReceiver is ignored, all static fields are grouped together.
-            receiver = (fieldKind.isPrimitive() || field.getType().isWordType())
+            receiver = (fieldKind.isPrimitive() || field.getResolvedType().isWordType())
                             ? StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER)
                             : StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER);
         } else {
@@ -1339,7 +1339,7 @@ public final class ResidentJDWP implements JDWP {
 
         assert !field.isUndefined() : "Cannot read undefined field " + field;
 
-        if (field.getType().isWordType()) {
+        if (field.getResolvedType().isWordType()) {
             switch (InterpreterToVM.wordJavaKind()) {
                 case Int -> {
                     writer.writeByte(TagConstants.INT);
@@ -1715,7 +1715,7 @@ public final class ResidentJDWP implements JDWP {
         assert fieldCount >= 0;
         for (int i = 0; i < fieldCount; i++) {
             InterpreterResolvedJavaField field = readField(reader);
-            InterpreterResolvedJavaType fieldType = field.getType();
+            InterpreterResolvedJavaType fieldType = field.getResolvedType();
             if (!field.isStatic()) {
                 throw JDWPException.raise(ErrorCode.ILLEGAL_ARGUMENT);
             }
@@ -1742,7 +1742,7 @@ public final class ResidentJDWP implements JDWP {
         assert fieldCount >= 0;
         for (int i = 0; i < fieldCount; i++) {
             InterpreterResolvedJavaField field = readField(reader);
-            InterpreterResolvedJavaType fieldType = field.getType();
+            InterpreterResolvedJavaType fieldType = field.getResolvedType();
             if (field.isStatic()) {
                 throw JDWPException.raise(ErrorCode.ILLEGAL_ARGUMENT);
             }
@@ -1764,7 +1764,7 @@ public final class ResidentJDWP implements JDWP {
         if (field.isStatic()) {
             assert typeOrReceiver instanceof InterpreterResolvedJavaType;
             // typeOrReceiver is ignored, all static fields are grouped together.
-            receiver = (fieldKind.isPrimitive() || field.getType().isWordType())
+            receiver = (fieldKind.isPrimitive() || field.getResolvedType().isWordType())
                             ? StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER)
                             : StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER);
         } else {
@@ -1779,7 +1779,7 @@ public final class ResidentJDWP implements JDWP {
         assert !field.isUndefined() && !field.isUnmaterializedConstant() //
                         : "Cannot write undefined or unmaterialized field " + field;
 
-        if (field.getType().isWordType()) {
+        if (field.getResolvedType().isWordType()) {
             switch (InterpreterToVM.wordJavaKind()) {
                 case Int ->
                     InterpreterToVM.setFieldWord(Word.signed(reader.readInt()), receiver, field);
@@ -1802,9 +1802,9 @@ public final class ResidentJDWP implements JDWP {
             case Long    -> InterpreterToVM.setFieldLong(reader.readLong(), receiver, field);
             case Double  -> InterpreterToVM.setFieldDouble(reader.readDouble(), receiver, field);
             case Object  -> {
-                assert !field.getType().isWordType() : field; // handled above
+                assert !field.getResolvedType().isWordType() : field; // handled above
                 Object value = readReferenceOrNull(reader);
-                if (value != null && !field.getType().getJavaClass().isInstance(value)) {
+                if (value != null && !field.getResolvedType().getJavaClass().isInstance(value)) {
                     throw JDWPException.raise(ErrorCode.TYPE_MISMATCH);
                 }
                 InterpreterToVM.setFieldObject(value, receiver, field);

@@ -26,36 +26,38 @@ package com.oracle.svm.interpreter;
 
 import static com.oracle.svm.interpreter.InterpreterStubSection.getCremaStubForVTableIndex;
 
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-
-import com.oracle.svm.core.hub.RuntimeDynamicHubMetadata;
-import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
-import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.RuntimeDynamicHubMetadata;
+import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.AbstractClassRegistry;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.espresso.classfile.ParserField;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.ParserMethod;
+import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
-import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
@@ -64,6 +66,9 @@ import com.oracle.svm.espresso.shared.vtable.PartialMethod;
 import com.oracle.svm.espresso.shared.vtable.PartialType;
 import com.oracle.svm.espresso.shared.vtable.Tables;
 import com.oracle.svm.espresso.shared.vtable.VTable;
+import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.interpreter.fieldlayout.FieldLayout;
+import com.oracle.svm.interpreter.fieldlayout.FieldLayoutFactory;
 import com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl;
 import com.oracle.svm.interpreter.metadata.CremaResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
@@ -73,6 +78,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -88,12 +94,22 @@ public class CremaSupportImpl implements CremaSupport {
         InterpreterResolvedJavaType interpreterType = btiUniverse.getOrCreateType(analysisType);
 
         ResolvedJavaMethod[] declaredMethods = interpreterType.getDeclaredMethods(false);
-        assert declaredMethods == null || declaredMethods == InterpreterResolvedJavaType.NO_METHODS : "should only be set once";
+        assert declaredMethods == null || declaredMethods == InterpreterResolvedJavaMethod.EMPTY_ARRAY : "should only be set once";
 
         if (analysisType.isPrimitive()) {
             return interpreterType;
         }
 
+        List<InterpreterResolvedJavaMethod> methods = buildInterpreterMethods(analysisType, analysisUniverse, btiUniverse);
+        List<InterpreterResolvedJavaField> fields = buildInterpreterFields(analysisType, analysisUniverse, btiUniverse);
+
+        ((InterpreterResolvedObjectType) interpreterType).setDeclaredMethods(methods.toArray(InterpreterResolvedJavaMethod.EMPTY_ARRAY));
+        ((InterpreterResolvedObjectType) interpreterType).setDeclaredFields(fields.toArray(InterpreterResolvedJavaField.EMPTY_ARRAY));
+
+        return interpreterType;
+    }
+
+    private static List<InterpreterResolvedJavaMethod> buildInterpreterMethods(AnalysisType analysisType, AnalysisUniverse analysisUniverse, BuildTimeInterpreterUniverse btiUniverse) {
         List<InterpreterResolvedJavaMethod> methods = new ArrayList<>();
 
         // add declared methods
@@ -105,9 +121,7 @@ public class CremaSupportImpl implements CremaSupport {
             addSupportedElements(btiUniverse, analysisUniverse, methods, wrappedMethod);
         }
 
-        ((InterpreterResolvedObjectType) interpreterType).setDeclaredMethods(methods.toArray(new InterpreterResolvedJavaMethod[0]));
-
-        return interpreterType;
+        return methods;
     }
 
     private static void addSupportedElements(BuildTimeInterpreterUniverse btiUniverse, AnalysisUniverse analysisUniverse, List<InterpreterResolvedJavaMethod> methods,
@@ -132,6 +146,47 @@ public class CremaSupportImpl implements CremaSupport {
         methods.add(method);
     }
 
+    private static List<InterpreterResolvedJavaField> buildInterpreterFields(AnalysisType analysisType, AnalysisUniverse analysisUniverse, BuildTimeInterpreterUniverse btiUniverse) {
+        List<InterpreterResolvedJavaField> fields = new ArrayList<>();
+        buildInterpreterFieldsFromArray(analysisUniverse, btiUniverse, analysisType.getWrapped().getInstanceFields(false), fields);
+        buildInterpreterFieldsFromArray(analysisUniverse, btiUniverse, analysisType.getWrapped().getStaticFields(), fields);
+        return fields;
+    }
+
+    private static void buildInterpreterFieldsFromArray(AnalysisUniverse analysisUniverse, BuildTimeInterpreterUniverse btiUniverse, ResolvedJavaField[] declaredFields,
+                    List<InterpreterResolvedJavaField> fields) {
+        for (ResolvedJavaField wrappedField : declaredFields) {
+            if (wrappedField.isInternal()) {
+                /* ignore internal fields */
+                continue;
+            }
+            if (!analysisUniverse.hostVM().platformSupported(wrappedField)) {
+                /* ignore e.g. hosted fields */
+                continue;
+            }
+            if (!analysisUniverse.hostVM().platformSupported((AnnotatedElement) wrappedField.getType())) {
+                /* ignore fields with unsupported types */
+                continue;
+            }
+            if (wrappedField.getType().getUnqualifiedName().contains("Hosted")) {
+                // GR-68982: Better way to detect hosted-only fields.
+                continue;
+            }
+            AnalysisField analysisField;
+            try {
+                analysisField = analysisUniverse.lookup(wrappedField);
+            } catch (DeletedElementException e) {
+                /* deleted */
+                continue;
+            } catch (UnsupportedFeatureException e) {
+                /* Field has hosted type */
+                continue;
+            }
+            InterpreterResolvedJavaField field = btiUniverse.getOrCreateField(analysisField);
+            fields.add(field);
+        }
+    }
+
     @Override
     public void fillDynamicHubInfo(DynamicHub hub, CremaDispatchTable dispatchTable, List<Class<?>> transitiveSuperInterfaces, int[] interfaceIndicies) {
         CremaDispatchTableImpl table = (CremaDispatchTableImpl) dispatchTable;
@@ -148,7 +203,7 @@ public class CremaSupportImpl implements CremaSupport {
         if (componentHub != null) {
             componentType = (InterpreterResolvedJavaType) componentHub.getInterpreterType();
         }
-        CremaResolvedObjectType thisType = InterpreterResolvedObjectType.createForCrema(table.partialType.parserKlass, hub.getModifiers(), componentType, superType, interfaces,
+        CremaResolvedObjectType thisType = InterpreterResolvedObjectType.createForCrema(table.getParserKlass(), hub.getModifiers(), componentType, superType, interfaces,
                         DynamicHub.toClass(hub),
                         false);
 
@@ -157,12 +212,11 @@ public class CremaSupportImpl implements CremaSupport {
 
         table.registerClass(thisType);
 
+        // Methods
         thisType.setDeclaredMethods(table.declaredMethods());
-        // TODO(peterssen): GR-60069 Set declared fields.
-        // thisType.setDeclaredFields(declaredFields.toArray(new InterpreterResolvedJavaField[0]));
 
         List<InterpreterResolvedJavaMethod> completeTable = table.cremaVTable(transitiveSuperInterfaces);
-        thisType.setVtable(completeTable.toArray(new InterpreterResolvedJavaMethod[0]));
+        thisType.setVtable(completeTable.toArray(InterpreterResolvedJavaMethod.EMPTY_ARRAY));
 
         long vTableBaseOffset = KnownOffsets.singleton().getVTableBaseOffset();
         long vTableEntrySize = KnownOffsets.singleton().getVTableEntrySize();
@@ -179,6 +233,17 @@ public class CremaSupportImpl implements CremaSupport {
             i++;
         }
 
+        // Fields
+        ParserField[] fields = table.getParserKlass().getFields();
+        ArrayList<InterpreterResolvedJavaField> declaredFields = new ArrayList<>();
+        for (int j = 0; j < fields.length; j++) {
+            ParserField f = fields[j];
+            declaredFields.add(InterpreterResolvedJavaField.create(thisType, f, Math.toIntExact(table.layout().getOffset(j))));
+        }
+        thisType.setAfterFieldsOffset(Math.toIntExact(table.layout().afterInstanceFieldOffset()));
+        thisType.setDeclaredFields(declaredFields.toArray(InterpreterResolvedJavaField.EMPTY_ARRAY));
+
+        // Done
         hub.setInterpreterType(thisType);
 
         hub.getCompanion().setHubMetadata(new RuntimeDynamicHubMetadata(thisType));
@@ -354,17 +419,36 @@ public class CremaSupportImpl implements CremaSupport {
 
     private abstract static class CremaDispatchTableImpl implements CremaDispatchTable {
         protected final CremaPartialType partialType;
+        public final FieldLayout layout;
 
         CremaDispatchTableImpl(CremaPartialType partialType) {
             this.partialType = partialType;
+            this.layout = FieldLayoutFactory.FACTORY.build(getParserKlass().getFields(), getSuperResolvedType().getAfterFieldsOffset(), /*- GR-69003 */ 0);
         }
 
         public void registerClass(InterpreterResolvedObjectType thisType) {
             partialType.thisJavaType = thisType;
         }
 
+        @Override
+        public int afterFieldsOffset(int superAfterFieldsOffset) {
+            return Math.toIntExact(layout.afterInstanceFieldOffset());
+        }
+
+        public final ParserKlass getParserKlass() {
+            return partialType.parserKlass;
+        }
+
+        public final FieldLayout layout() {
+            return layout;
+        }
+
         public Class<?> superType() {
             return partialType.superClass;
+        }
+
+        public InterpreterResolvedObjectType getSuperResolvedType() {
+            return (InterpreterResolvedObjectType) DynamicHub.fromClass(superType()).getInterpreterType();
         }
 
         public InterpreterResolvedJavaMethod[] declaredMethods() {
