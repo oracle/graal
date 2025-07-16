@@ -411,6 +411,9 @@ public class VectorAPIFeature implements InternalFeature {
         for (char kind : WarmupData.CONVERSION_KINDS) {
             for (Object dom : warmupData.laneTypes) {
                 for (Object ran : warmupData.laneTypes) {
+                    if (kind == 'I' && dom != ran) {
+                        continue;
+                    }
                     ReflectionUtil.invokeMethod(makeConv, null, kind, dom, ran);
                 }
             }
