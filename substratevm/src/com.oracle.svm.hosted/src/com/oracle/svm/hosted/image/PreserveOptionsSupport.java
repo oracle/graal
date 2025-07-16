@@ -161,18 +161,12 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
          * registration.
          */
         classesToPreserve.forEach(c -> {
-            reflection.register(always, false, c);
+            registerType(reflection, c);
 
-            reflection.registerAllDeclaredFields(always, c);
-            reflection.registerAllDeclaredMethodsQuery(always, false, c);
-            reflection.registerAllDeclaredConstructorsQuery(always, false, c);
-            reflection.registerAllConstructorsQuery(always, false, c);
-            reflection.registerAllClassesQuery(always, c);
-            reflection.registerAllDeclaredClassesQuery(always, c);
-            reflection.registerAllNestMembersQuery(always, c);
-            reflection.registerAllPermittedSubclassesQuery(always, c);
-            reflection.registerAllRecordComponentsQuery(always, c);
-            reflection.registerAllSignersQuery(always, c);
+            /* Register array types for each type up to dimension 2 */
+            Class<?> arrayType = c.arrayType();
+            registerType(reflection, arrayType);
+            registerType(reflection, arrayType.arrayType());
 
             /* Register every single-interface proxy */
             // GR-62293 can't register proxies from jdk modules.
@@ -229,5 +223,21 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         for (String className : classLoaderSupport.getClassNamesToPreserve()) {
             reflection.registerClassLookup(always, className);
         }
+    }
+
+    private static void registerType(RuntimeReflectionSupport reflection, Class<?> c) {
+        ConfigurationCondition always = ConfigurationCondition.alwaysTrue();
+        reflection.register(always, false, c);
+
+        reflection.registerAllDeclaredFields(always, c);
+        reflection.registerAllDeclaredMethodsQuery(always, false, c);
+        reflection.registerAllDeclaredConstructorsQuery(always, false, c);
+        reflection.registerAllConstructorsQuery(always, false, c);
+        reflection.registerAllClassesQuery(always, c);
+        reflection.registerAllDeclaredClassesQuery(always, c);
+        reflection.registerAllNestMembersQuery(always, c);
+        reflection.registerAllPermittedSubclassesQuery(always, c);
+        reflection.registerAllRecordComponentsQuery(always, c);
+        reflection.registerAllSignersQuery(always, c);
     }
 }
