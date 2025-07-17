@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import static com.oracle.svm.core.util.EnvVariableUtils.EnvironmentVariable;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +45,7 @@ import com.oracle.svm.core.option.LayerVerifiedOption.Severity;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ArchiveSupport;
+import com.oracle.svm.core.util.EnvVariableUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
@@ -69,6 +73,16 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
         }
     }
 
+    private List<EnvironmentVariable> loadEnvironmentVariablesFile() {
+        List<EnvironmentVariable> envVariables = new ArrayList<>();
+        try (Stream<String> lines = Files.lines(getEnvVariablesFilePath())) {
+            lines.map(EnvironmentVariable::of).forEach(envVariables::add);
+            return envVariables;
+        } catch (IOException e) {
+            throw UserError.abort("Unable to load environment variables from file " + getEnvVariablesFilePath());
+        }
+    }
+
     @Override
     protected void validateLayerFile() {
         super.validateLayerFile();
@@ -81,14 +95,15 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
     public void verifyCompatibility(NativeImageClassLoaderSupport classLoaderSupport, Map<String, OptionLayerVerificationRequests> allRequests, boolean strict, boolean verbose) {
         Function<String, String> filterFunction = argument -> splitArgumentOrigin(argument).argument;
         boolean violationsFound = false;
-        violationsFound |= verifyCompatibility(builderArguments, classLoaderSupport.getHostedOptionParser().getArguments(), filterFunction, allRequests, strict, verbose, true);
-        violationsFound |= verifyCompatibility(builderArguments, classLoaderSupport.getHostedOptionParser().getArguments(), filterFunction, allRequests, strict, verbose, false);
+        violationsFound |= verifyBuilderArgumentsCompatibility(builderArguments, classLoaderSupport.getHostedOptionParser().getArguments(), filterFunction, allRequests, strict, verbose, true);
+        violationsFound |= verifyBuilderArgumentsCompatibility(builderArguments, classLoaderSupport.getHostedOptionParser().getArguments(), filterFunction, allRequests, strict, verbose, false);
+        violationsFound |= verifyEnvironmentVariablesCompatibility(loadEnvironmentVariablesFile(), parseEnvVariables(), strict, verbose);
         if (violationsFound && verbose) {
             UserError.abort("Verbose LayerOptionVerification failed.");
         }
     }
 
-    private static boolean verifyCompatibility(List<String> previousArgs, List<String> currentArgs, Function<String, String> filterFunction,
+    private static boolean verifyBuilderArgumentsCompatibility(List<String> previousArgs, List<String> currentArgs, Function<String, String> filterFunction,
                     Map<String, OptionLayerVerificationRequests> allRequests, boolean strict, boolean verbose, boolean positional) {
 
         List<String> left;
@@ -200,6 +215,41 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
             }
             System.out.println();
         }
+        return violationsFound;
+    }
+
+    /**
+     * Verifies that the user-specified environment variables in the previous layered image build
+     * are a subset of those used in the current layered image build. The environment variables
+     * obtained via {@link System#getenv()} were previously filtered to include only the
+     * user-specified variables for this verification. This filtering was performed in
+     * {@link LayerArchiveSupport#parseEnvVariables()}, which removed system-dependent variables
+     * defined in {@link EnvVariableUtils}. These excluded variables are required for image builds
+     * but are not considered by this verification, since mismatches between these don't affect
+     * layer compatibility.
+     */
+    private static boolean verifyEnvironmentVariablesCompatibility(List<EnvironmentVariable> previousEnvVars, List<EnvironmentVariable> currentEnvVars, boolean strict, boolean verbose) {
+        Set<EnvironmentVariable> currentEnvVarsSet = new HashSet<>(currentEnvVars);
+        boolean violationsFound = false;
+
+        for (EnvironmentVariable previousEnvVar : previousEnvVars) {
+            if (currentEnvVarsSet.contains(previousEnvVar)) {
+                continue;
+            }
+
+            violationsFound = true;
+            String message = "Current layered image build must set environment variable " + previousEnvVar + " as it was set in the previous layer build.";
+            if (verbose) {
+                LogUtils.info("Error: ", message);
+            } else {
+                if (strict) {
+                    throw UserError.abort(message);
+                } else {
+                    LogUtils.warning(message);
+                }
+            }
+        }
+
         return violationsFound;
     }
 

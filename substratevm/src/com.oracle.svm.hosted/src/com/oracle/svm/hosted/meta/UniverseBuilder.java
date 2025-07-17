@@ -608,8 +608,10 @@ public class UniverseBuilder {
 
         // Reserve "synthetic" fields in this class (but not subclasses) below.
 
-        // A reference to a {@link java.util.concurrent.locks.ReentrantLock for "synchronized" or
-        // Object.wait() and Object.notify() and friends.
+        /*
+         * A reference to a JavaMonitor instance for "synchronized" or Object.wait() and
+         * Object.notify() and friends.
+         */
         if (clazz.needMonitorField()) {
             int size = layout.getReferenceSize();
             int endOffset = usedBytes.length();
@@ -923,6 +925,7 @@ public class UniverseBuilder {
         for (HostedType type : hUniverse.getTypes()) {
             hUniverse.hostVM().recordActivity();
 
+            // See also similar logic in DynamicHub.allocate
             int layoutHelper;
             int monitorOffset = 0;
             int identityHashOffset = 0;

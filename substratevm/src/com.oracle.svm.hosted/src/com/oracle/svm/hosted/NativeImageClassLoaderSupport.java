@@ -135,12 +135,10 @@ public final class NativeImageClassLoaderSupport {
     private final IncludeSelectors preserveSelectors = new IncludeSelectors(SubstrateOptions.Preserve);
     private final IncludeSelectors dynamicAccessSelectors = new IncludeSelectors(SubstrateOptions.TrackDynamicAccess);
     private boolean includeConfigSealed;
-    private boolean preserveAll;
     private ValueWithOrigin<String> preserveAllOrigin;
 
     public void clearPreserveSelectors() {
         preserveSelectors.clear();
-        preserveAll = false;
         preserveAllOrigin = null;
     }
 
@@ -149,7 +147,31 @@ public final class NativeImageClassLoaderSupport {
     }
 
     public boolean isPreserveMode() {
-        return !preserveSelectors.classpathEntries.isEmpty() || !preserveSelectors.moduleNames.isEmpty() || !preserveSelectors.packages.isEmpty() || preserveAll;
+        return !preserveSelectors.classpathEntries.isEmpty() || !preserveSelectors.moduleNames.isEmpty() || !preserveSelectors.packages.isEmpty() || preserveAll();
+    }
+
+    /**
+     * @return true if {@link PreserveOptionsSupport#PRESERVE_ALL preserve all} is enabled.
+     */
+    private boolean preserveAll() {
+        return preserveAllOrigin().isPresent();
+    }
+
+    /**
+     * Returns the {@link PreserveOptionsSupport#PRESERVE_ALL preserve all} selector's
+     * {@link ValueWithOrigin} if it was set.
+     */
+    public Optional<ValueWithOrigin<?>> preserveAllOrigin() {
+        return Optional.ofNullable(preserveAllOrigin);
+    }
+
+    /**
+     * Returns the {@link NativeImageClassLoaderSupport#ALL_UNNAMED module} selector's
+     * {@link ValueWithOrigin} if it was set. If set, all elements from all class-path entries are
+     * preserved.
+     */
+    public Optional<ValueWithOrigin<?>> preserveClassPathOrigin() {
+        return Optional.ofNullable(preserveSelectors.preserveClassPathOrigin);
     }
 
     public IncludeSelectors getPreserveSelectors() {
@@ -290,7 +312,7 @@ public final class NativeImageClassLoaderSupport {
     public void loadAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
         VMError.guarantee(!includeConfigSealed, "This method should be executed only once.");
 
-        if (preserveAll) {
+        if (preserveAll()) {
             String msg = """
                             This image build includes all classes from the classpath and the JDK via the %s option. This will lead to noticeably bigger images and increased startup times.
                             If you notice '--initialize-at-build-time' related errors during the build, this is because unanticipated types ended up in the image heap.\
@@ -1154,8 +1176,6 @@ public final class NativeImageClassLoaderSupport {
 
     public void setPreserveAll(ValueWithOrigin<String> valueWithOrigin) {
         this.preserveAllOrigin = valueWithOrigin;
-        preserveAll = true;
-
     }
 
     public void setTrackAllDynamicAccess(ValueWithOrigin<String> valueWithOrigin) {
@@ -1183,6 +1203,12 @@ public final class NativeImageClassLoaderSupport {
     public class IncludeSelectors {
         private static final String CLASS_INCLUSION_SEALED_MSG = "Class inclusion configuration is already sealed.";
 
+        /**
+         * This is non-null if {@link NativeImageClassLoaderSupport#ALL_UNNAMED} is used as a module
+         * preserve selector. With this enabled, all elements from all class-path entries are
+         * preserved.
+         */
+        private ValueWithOrigin<?> preserveClassPathOrigin;
         private final Map<String, IncludeOptionsSupport.ExtendedOptionWithOrigin> moduleNames = new LinkedHashMap<>();
         private final Map<IncludeOptionsSupport.PackageOptionValue, IncludeOptionsSupport.ExtendedOptionWithOrigin> packages = new LinkedHashMap<>();
         private final Map<Path, IncludeOptionsSupport.ExtendedOptionWithOrigin> classpathEntries = new LinkedHashMap<>();
@@ -1283,9 +1309,9 @@ public final class NativeImageClassLoaderSupport {
         public void addModule(String moduleName, IncludeOptionsSupport.ExtendedOptionWithOrigin extendedOptionWithOrigin) {
             VMError.guarantee(!includeConfigSealed, CLASS_INCLUSION_SEALED_MSG);
             if (moduleName.equals(ALL_UNNAMED)) {
-                IncludeOptionsSupport.ExtendedOptionWithOrigin includeOptionsSupport = extendedOptionWithOrigin == null ? null
-                                : new IncludeOptionsSupport.ExtendedOptionWithOrigin(extendedOptionWithOrigin.option(),
-                                                extendedOptionWithOrigin.valueWithOrigin());
+                preserveClassPathOrigin = extendedOptionWithOrigin.valueWithOrigin();
+                IncludeOptionsSupport.ExtendedOptionWithOrigin includeOptionsSupport = new IncludeOptionsSupport.ExtendedOptionWithOrigin(extendedOptionWithOrigin.option(),
+                                extendedOptionWithOrigin.valueWithOrigin());
                 for (Path path : applicationClassPath()) {
                     classpathEntries.put(path, includeOptionsSupport);
                 }
@@ -1308,6 +1334,7 @@ public final class NativeImageClassLoaderSupport {
             packages.clear();
             moduleNames.clear();
             classpathEntries.clear();
+            preserveClassPathOrigin = null;
         }
 
         public Set<Path> classpathEntries() {

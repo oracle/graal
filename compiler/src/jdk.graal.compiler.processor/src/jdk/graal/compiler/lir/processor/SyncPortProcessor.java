@@ -209,8 +209,8 @@ public class SyncPortProcessor extends AbstractProcessor {
                                     latestCommit,
                                     path);
                     if (shouldDump) {
-                        dump(proxy, urlOld, lineStart - 1, lineEnd, element + ".old");
-                        dump(proxy, url, lineStart - 1, lineEnd, element + ".new");
+                        dump(proxy, urlOld, lineStart - 1, lineEnd, "old", element.toString());
+                        dump(proxy, url, lineStart - 1, lineEnd, "new", element.toString());
                     }
                 }
             } else {
@@ -225,6 +225,9 @@ public class SyncPortProcessor extends AbstractProcessor {
                                 lineStart,
                                 lineEnd,
                                 sha1Latest);
+                if (dumpUpdateCommands != null) {
+                    dumpUpdateCommands.printf("sed -i s+%s+%s+g $(git grep --files-with-matches %s)%n", sha1, sha1Latest, sha1);
+                }
             }
             env().getMessager().printMessage(kind,
                             String.format("Sha1 digest of %s (ported by %s) does not match https://github.com/%s/jdk/blob%s/%s#L%d-L%d : expected %s but was %s.%s",
@@ -289,11 +292,16 @@ public class SyncPortProcessor extends AbstractProcessor {
         return -1;
     }
 
-    private static void dump(Proxy proxy, String url, int lineStartExclusive, int lineEnd, String fileName) throws IOException, URISyntaxException {
+    private static void dump(Proxy proxy, String url, int lineStartExclusive, int lineEnd, String dirName, String fileName) throws IOException, URISyntaxException {
         URLConnection connection = new URI(url).toURL().openConnection(proxy);
         try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
             String content = in.lines().skip(lineStartExclusive).limit(lineEnd - lineStartExclusive).collect(Collectors.joining("\n"));
-            try (PrintWriter out = new PrintWriter(fileName + ".tmp")) {
+            File directory = new File(dirName);
+            if (!directory.exists()) {
+                directory.mkdir();
+            }
+
+            try (PrintWriter out = new PrintWriter(dirName + "/" + fileName + ".tmp")) {
                 out.print(content);
                 out.print('\n');
             }

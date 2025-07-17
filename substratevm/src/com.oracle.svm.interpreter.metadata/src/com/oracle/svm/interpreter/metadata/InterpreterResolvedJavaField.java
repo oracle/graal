@@ -25,19 +25,22 @@
 package com.oracle.svm.interpreter.metadata;
 
 import java.lang.annotation.Annotation;
+import java.util.function.Function;
 
-import com.oracle.svm.core.hub.DynamicHub;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.PrimitiveConstant;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.espresso.classfile.descriptors.Name;
+import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-public final class InterpreterResolvedJavaField implements ResolvedJavaField {
+public final class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFieldAccess {
 
     // Computed after analysis.
     private int offset;
@@ -196,6 +199,26 @@ public final class InterpreterResolvedJavaField implements ResolvedJavaField {
     }
 
     // region Unimplemented methods
+
+    @Override
+    public boolean shouldEnforceInitializerCheck() {
+        throw VMError.unimplemented("shouldEnforceInitializerCheck");
+    }
+
+    @Override
+    public boolean accessChecks(InterpreterResolvedJavaType accessingClass, InterpreterResolvedJavaType holderClass) {
+        throw VMError.unimplemented("accessChecks");
+    }
+
+    @Override
+    public void loadingConstraints(InterpreterResolvedJavaType accessingClass, Function<String, RuntimeException> errorHandler) {
+        throw VMError.unimplemented("loadingConstraints");
+    }
+
+    @Override
+    public Symbol<Name> getSymbolicName() {
+        throw VMError.unimplemented("getSymbolicName");
+    }
 
     @Override
     public boolean isInternal() {

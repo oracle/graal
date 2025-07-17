@@ -2218,7 +2218,7 @@ public final class JniEnv extends NativeEnv {
         }
 
         Symbol<Type> classType = clazz.getMirrorKlass(getMeta()).getType();
-        getSubstitutions().registerRuntimeSubstitution(classType, name, signature, factory, true);
+        getSubstitutions().registerRuntimeSubstitution(classType, name, signature, targetMethod.isStatic(), factory, true);
         return JNI_OK;
     }
 

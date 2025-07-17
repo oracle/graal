@@ -191,7 +191,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
 
     @Override
     public Class<?> getProxyClass(ClassLoader loader, Class<?>... interfaces) {
-        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+        if (MetadataTracer.enabled()) {
             List<String> interfaceNames = new ArrayList<>(interfaces.length);
             for (Class<?> iface : interfaces) {
                 interfaceNames.add(iface.getName());

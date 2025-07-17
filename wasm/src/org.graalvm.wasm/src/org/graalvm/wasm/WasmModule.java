@@ -44,22 +44,36 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.debugging.data.DebugFunction;
 import org.graalvm.wasm.debugging.parser.DebugTranslator;
+import org.graalvm.wasm.exception.ExceptionProvider;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.globals.WasmGlobal;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.Source;
 
 /**
  * Represents a parsed and validated WebAssembly module, which has not yet been instantiated.
  */
+@ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
 public final class WasmModule extends SymbolTable implements TruffleObject {
     private final String name;
@@ -269,5 +283,135 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
             debugFunctions = translator.readCompilationUnits(customData, debugInfoOffset);
         }
         return debugFunctions;
+    }
+
+    @ExportMessage
+    boolean isInstantiable() {
+        return true;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object instantiate(Object... arguments) {
+        final WasmContext context = WasmContext.get(null);
+        final Object importObject;
+        if (arguments.length == 0) {
+            importObject = WasmConstant.NULL;
+        } else if (arguments.length == 1) {
+            importObject = arguments[0];
+        } else {
+            throw WasmException.provider().createTypeError(Failure.TYPE_MISMATCH, "Can only provide a single import object.");
+        }
+        final WasmStore store = new WasmStore(context, context.language());
+        return createInstance(store, importObject, WasmException.provider(), false);
+    }
+
+    public WasmInstance createInstance(WasmStore store, Object importObject, ExceptionProvider exceptionProvider, boolean importsOnlyInImportObject) {
+        final WasmInstance instance = store.readInstance(this);
+        var imports = resolveModuleImports(importObject, exceptionProvider, importsOnlyInImportObject);
+        store.linker().tryLink(instance, imports);
+        return instance;
+    }
+
+    private ImportValueSupplier resolveModuleImports(Object importObject, ExceptionProvider exceptionProvider, boolean importsOnlyInImportObject) {
+        CompilerAsserts.neverPartOfCompilation();
+        Objects.requireNonNull(importObject);
+        List<Object> resolvedImports = new ArrayList<>(numImportedSymbols());
+
+        if (!importedSymbols().isEmpty()) {
+            if (!importObjectExists(importObject)) {
+                if (importsOnlyInImportObject) {
+                    throw exceptionProvider.createTypeError(Failure.TYPE_MISMATCH, "Module requires imports, but import object is undefined.");
+                } else {
+                    // imports could be provided by another source, such as a module.
+                    return ImportValueSupplier.none();
+                }
+            }
+        }
+
+        for (ImportDescriptor descriptor : importedSymbols()) {
+            final int listIndex = resolvedImports.size();
+            assert listIndex == descriptor.importedSymbolIndex();
+
+            final Object member = getImportObjectMember(importObject, descriptor, exceptionProvider, importsOnlyInImportObject);
+            if (member == null) {
+                // import could be provided by another source, such as a module.
+                assert !importsOnlyInImportObject;
+                resolvedImports.add(null);
+                continue;
+            }
+
+            resolvedImports.add(switch (descriptor.identifier()) {
+                case ImportIdentifier.FUNCTION -> requireCallable(member, descriptor, exceptionProvider);
+                case ImportIdentifier.TABLE -> requireWasmTable(member, descriptor, exceptionProvider);
+                case ImportIdentifier.MEMORY -> requireWasmMemory(member, descriptor, exceptionProvider);
+                case ImportIdentifier.GLOBAL -> requireWasmGlobal(member, descriptor, exceptionProvider);
+                default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unknown import descriptor type: " + descriptor.identifier());
+            });
+        }
+
+        assert resolvedImports.size() == numImportedSymbols();
+        return (importDesc, instance) -> {
+            // Import values are only valid in the module where they were resolved.
+            if (instance.module() == WasmModule.this) {
+                return resolvedImports.get(importDesc.importedSymbolIndex());
+            } else {
+                return null;
+            }
+        };
+    }
+
+    private static boolean importObjectExists(Object importObject) {
+        final InteropLibrary interop = InteropLibrary.getUncached(importObject);
+        return !interop.isNull(importObject) && interop.hasMembers(importObject);
+    }
+
+    private static Object getImportObjectMember(Object importObject, ImportDescriptor descriptor, ExceptionProvider exceptionProvider, boolean importsOnlyInImportObject) {
+        try {
+            final InteropLibrary importObjectInterop = InteropLibrary.getUncached(importObject);
+            if (!importObjectInterop.isMemberReadable(importObject, descriptor.moduleName())) {
+                // import could be provided by another source, such as a module.
+                if (!importsOnlyInImportObject) {
+                    return null;
+                }
+                throw exceptionProvider.formatTypeError(Failure.TYPE_MISMATCH, "Import object does not contain module \"%s\".", descriptor.moduleName());
+            }
+            final Object importedModuleObject = importObjectInterop.readMember(importObject, descriptor.moduleName());
+            final InteropLibrary moduleObjectInterop = InteropLibrary.getUncached(importedModuleObject);
+            if (!moduleObjectInterop.isMemberReadable(importedModuleObject, descriptor.memberName())) {
+                throw exceptionProvider.formatLinkError(Failure.UNKNOWN_IMPORT, "Import module object \"%s\" does not contain \"%s\".", descriptor.moduleName(), descriptor.memberName());
+            }
+            return moduleObjectInterop.readMember(importedModuleObject, descriptor.memberName());
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unexpected state.");
+        }
+    }
+
+    private static Object requireCallable(Object member, ImportDescriptor importDescriptor, ExceptionProvider exceptionProvider) {
+        if (!(member instanceof WasmFunctionInstance || InteropLibrary.getUncached().isExecutable(member))) {
+            throw exceptionProvider.createLinkError(Failure.INCOMPATIBLE_IMPORT_TYPE, "Member " + member + " " + importDescriptor + " is not callable.");
+        }
+        return member;
+    }
+
+    private static WasmMemory requireWasmMemory(Object member, ImportDescriptor importDescriptor, ExceptionProvider exceptionProvider) {
+        if (!(member instanceof WasmMemory memory)) {
+            throw exceptionProvider.createLinkError(Failure.INCOMPATIBLE_IMPORT_TYPE, "Member " + member + " " + importDescriptor + " is not a valid memory.");
+        }
+        return memory;
+    }
+
+    private static WasmTable requireWasmTable(Object member, ImportDescriptor importDescriptor, ExceptionProvider exceptionProvider) {
+        if (!(member instanceof WasmTable table)) {
+            throw exceptionProvider.createLinkError(Failure.INCOMPATIBLE_IMPORT_TYPE, "Member " + member + " " + importDescriptor + " is not a valid table.");
+        }
+        return table;
+    }
+
+    private static WasmGlobal requireWasmGlobal(Object member, ImportDescriptor importDescriptor, ExceptionProvider exceptionProvider) {
+        if (!(member instanceof WasmGlobal global)) {
+            throw exceptionProvider.createLinkError(Failure.INCOMPATIBLE_IMPORT_TYPE, "Member " + member + " " + importDescriptor + " is not a valid global.");
+        }
+        return global;
     }
 }

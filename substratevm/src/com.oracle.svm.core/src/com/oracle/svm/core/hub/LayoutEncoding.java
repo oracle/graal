@@ -118,7 +118,7 @@ public class LayoutEncoding {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static int forPureInstance(ResolvedJavaType type, int size) {
         guaranteeEncoding(type, true, size > LAST_SPECIAL_VALUE, "Instance type size must be above special values for encoding: " + size);
-        int encoding = size;
+        int encoding = forPureInstance(size);
         guaranteeEncoding(type, true, isPureInstance(encoding), "Instance type encoding denotes an instance");
         guaranteeEncoding(type, false, isArray(encoding) || isArrayLike(encoding), "Instance type encoding denotes an array-like object");
         guaranteeEncoding(type, false, isHybrid(encoding), "Instance type encoding denotes a hybrid");
@@ -128,9 +128,18 @@ public class LayoutEncoding {
         return encoding;
     }
 
+    public static int forPureInstance(int size) {
+        assert size > LAST_SPECIAL_VALUE;
+        return size;
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public static int forArray(ResolvedJavaType type, boolean objectElements, int arrayBaseOffset, int arrayIndexShift) {
         return forArrayLike(type, false, objectElements, arrayBaseOffset, arrayIndexShift);
+    }
+
+    public static int forArray(boolean objectElements, int arrayBaseOffset, int arrayIndexShift) {
+        return forArrayLike(false, objectElements, arrayBaseOffset, arrayIndexShift);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -146,9 +155,7 @@ public class LayoutEncoding {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static int forArrayLike(ResolvedJavaType type, boolean isHybrid, boolean objectElements, int arrayBaseOffset, int arrayIndexShift) {
         assert isHybrid != type.isArray();
-        int tag = isHybrid ? (objectElements ? ARRAY_TAG_HYBRID_OBJECT_VALUE : ARRAY_TAG_HYBRID_PRIMITIVE_VALUE)
-                        : (objectElements ? ARRAY_TAG_OBJECT_VALUE : ARRAY_TAG_PRIMITIVE_VALUE);
-        int encoding = (tag << ARRAY_TAG_SHIFT) | (arrayBaseOffset << ARRAY_BASE_SHIFT) | (arrayIndexShift << ARRAY_INDEX_SHIFT_SHIFT);
+        int encoding = forArrayLike(isHybrid, objectElements, arrayBaseOffset, arrayIndexShift);
 
         guaranteeEncoding(type, true, isArrayLike(encoding), "Array-like object encoding denotes an array-like object");
         guaranteeEncoding(type, !isHybrid, isArray(encoding), "Encoding denotes an array");
@@ -163,6 +170,12 @@ public class LayoutEncoding {
         guaranteeEncoding(type, true, getArrayIndexShift(encoding) == arrayIndexShift,
                         "Encoding denotes an index shift of " + arrayIndexShift + " (actual value: " + getArrayIndexShift(encoding) + ')');
         return encoding;
+    }
+
+    private static int forArrayLike(boolean isHybrid, boolean objectElements, int arrayBaseOffset, int arrayIndexShift) {
+        int tag = isHybrid ? (objectElements ? ARRAY_TAG_HYBRID_OBJECT_VALUE : ARRAY_TAG_HYBRID_PRIMITIVE_VALUE)
+                        : (objectElements ? ARRAY_TAG_OBJECT_VALUE : ARRAY_TAG_PRIMITIVE_VALUE);
+        return (tag << ARRAY_TAG_SHIFT) | (arrayBaseOffset << ARRAY_BASE_SHIFT) | (arrayIndexShift << ARRAY_INDEX_SHIFT_SHIFT);
     }
 
     public static boolean isPrimitive(int encoding) {

@@ -52,14 +52,20 @@ public abstract class EspressoResolvedJavaType implements ResolvedJavaType {
     public abstract boolean isDefinitelyResolvedWithRespectTo(ResolvedJavaType accessingClass);
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods() {
+    public final ResolvedJavaMethod[] getDeclaredMethods() {
         return getDeclaredMethods(true);
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredConstructors() {
+    public abstract ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink);
+
+    @Override
+    public final ResolvedJavaMethod[] getDeclaredConstructors() {
         return getDeclaredConstructors(true);
     }
+
+    @Override
+    public abstract ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink);
 
     @Override
     public String toString() {

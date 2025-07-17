@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.driver;
 
+import static com.oracle.svm.core.util.EnvVariableUtils.EnvironmentVariable;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -1979,19 +1981,9 @@ public class NativeImage {
     }
 
     private static void sanitizeJVMEnvironment(Map<String, String> environment, Map<String, String> imageBuilderEnvironment) {
-        Set<String> requiredKeys = new HashSet<>(List.of("PATH", "PWD", "HOME", "LANG", "LANGUAGE"));
-        Function<String, String> keyMapper;
-        if (OS.WINDOWS.isCurrent()) {
-            requiredKeys.addAll(List.of("TEMP", "INCLUDE", "LIB"));
-            keyMapper = s -> s.toUpperCase(Locale.ROOT);
-        } else {
-            keyMapper = Function.identity();
-        }
         Map<String, String> restrictedEnvironment = new HashMap<>();
         environment.forEach((key, val) -> {
-            String mappedKey = keyMapper.apply(key);
-            // LC_* are locale vars that override LANG for specific categories (or all, with LC_ALL)
-            if (requiredKeys.contains(mappedKey) || mappedKey.startsWith("LC_")) {
+            if (EnvironmentVariable.isKeyRequired(key)) {
                 restrictedEnvironment.put(key, val);
             }
         });
@@ -2000,8 +1992,9 @@ public class NativeImage {
             if (entry.getValue() != null) {
                 restrictedEnvironment.put(entry.getKey(), entry.getValue());
             } else {
+                EnvironmentVariable imageBuilderEnvironmentVariable = EnvironmentVariable.of(entry);
                 environment.forEach((key, val) -> {
-                    if (keyMapper.apply(key).equals(keyMapper.apply(entry.getKey()))) {
+                    if (imageBuilderEnvironmentVariable.keyEquals(key)) {
                         /*
                          * Record key as it was given by -E<key-name> (by using `entry.getKey()`
                          * instead of `key`) to allow creating bundles on Windows that will also

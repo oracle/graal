@@ -488,8 +488,10 @@ public final class EspressoResolvedInstanceType extends EspressoResolvedObjectTy
         if (forceLink) {
             link();
         }
-        throw JVMCIError.unimplemented();
+        return Arrays.asList(getAllMethods0());
     }
+
+    private native EspressoResolvedJavaMethod[] getAllMethods0();
 
     @Override
     public native EspressoResolvedJavaMethod getClassInitializer();

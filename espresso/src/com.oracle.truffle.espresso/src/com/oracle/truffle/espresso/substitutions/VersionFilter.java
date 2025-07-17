@@ -94,6 +94,18 @@ public interface VersionFilter extends LanguageFilter {
         }
     }
 
+    final class Java11To21 implements VersionFilter {
+        public static final Java11To21 INSTANCE = new Java11To21();
+
+        private Java11To21() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.inRange(11, 21);
+        }
+    }
+
     final class Java13OrEarlier implements VersionFilter {
         public static final Java13OrEarlier INSTANCE = new Java13OrEarlier();
 
@@ -163,6 +175,18 @@ public interface VersionFilter extends LanguageFilter {
         @Override
         public boolean isValidFor(JavaVersion version) {
             return version.java21OrLater();
+        }
+    }
+
+    final class Java21 implements VersionFilter {
+        public static final Java21 INSTANCE = new Java21();
+
+        private Java21() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.inRange(21, 21);
         }
     }
 
