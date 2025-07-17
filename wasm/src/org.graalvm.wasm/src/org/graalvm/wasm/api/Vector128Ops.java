@@ -294,8 +294,53 @@ public class Vector128Ops {
         Vector<F> apply(Vector<F> leftOperand, Vector<F> rightOperand);
     }
 
-    public static ByteVector unary(ByteVector x, int vectorOpcode) {
-        return switch (vectorOpcode) {
+    public static Object v128_load8x8(long value, int vectorOpcode) {
+        ByteVector bytes = LongVector.zero(Vector128Ops.I64X2.species()).withLane(0, value).reinterpretAsBytes();
+        // Could this be faster?
+        // ByteVector bytes = Vector128Ops.I64X2.broadcast(value).reinterpretAsBytes();
+        VectorOperators.Conversion<Byte, Short> conversion = switch (vectorOpcode) {
+            case Bytecode.VECTOR_V128_LOAD8X8_S -> VectorOperators.B2S;
+            case Bytecode.VECTOR_V128_LOAD8X8_U -> VectorOperators.ZERO_EXTEND_B2S;
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return castByte128(bytes.convert(conversion, 0).reinterpretAsBytes());
+    }
+
+    public static Object v128_load16x4(long value, int vectorOpcode) {
+        ShortVector shorts = LongVector.zero(Vector128Ops.I64X2.species()).withLane(0, value).reinterpretAsShorts();
+        // Could this be faster?
+        // ShortVector shorts = Vector128Ops.I64X2.broadcast(value).reinterpretAsShorts();
+        VectorOperators.Conversion<Short, Integer> conversion = switch (vectorOpcode) {
+            case Bytecode.VECTOR_V128_LOAD16X4_S -> VectorOperators.S2I;
+            case Bytecode.VECTOR_V128_LOAD16X4_U -> VectorOperators.ZERO_EXTEND_S2I;
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return castByte128(shorts.convert(conversion, 0).reinterpretAsBytes());
+    }
+
+    public static Object v128_load32x2(long value, int vectorOpcode) {
+        IntVector ints = LongVector.zero(Vector128Ops.I64X2.species()).withLane(0, value).reinterpretAsInts();
+        // Could this be faster?
+        // IntVector ints = Vector128Ops.I64X2.broadcast(value).reinterpretAsInts();
+        VectorOperators.Conversion<Integer, Long> conversion = switch (vectorOpcode) {
+            case Bytecode.VECTOR_V128_LOAD32X2_S -> VectorOperators.I2L;
+            case Bytecode.VECTOR_V128_LOAD32X2_U -> VectorOperators.ZERO_EXTEND_I2L;
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return castByte128(ints.convert(conversion, 0).reinterpretAsBytes());
+    }
+
+    public static Object v128_load32_zero(int value) {
+        return castByte128(I32X4.zero().withLane(0, value).reinterpretAsBytes());
+    }
+
+    public static Object v128_load64_zero(long value) {
+        return castByte128(I64X2.zero().withLane(0, value).reinterpretAsBytes());
+    }
+
+    public static Object unary(Object xVec, int vectorOpcode) {
+        ByteVector x = castByte128(xVec);
+        return castByte128(switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_NOT -> unop(x, I8X16, VectorOperators.NOT);
             case Bytecode.VECTOR_I8X16_ABS -> unop(x, I8X16, VectorOperators.ABS);
             case Bytecode.VECTOR_I8X16_NEG -> unop(x, I8X16, VectorOperators.NEG);
@@ -353,11 +398,13 @@ public class Vector128Ops {
             case Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO -> convert(x, F64X2, VectorOperators.D2F);
             case Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4 -> convert(x, F32X4, VectorOperators.F2D);
             default -> throw CompilerDirectives.shouldNotReachHere();
-        };
+        });
     }
 
-    public static ByteVector binary(ByteVector x, ByteVector y, int vectorOpcode) {
-        return switch (vectorOpcode) {
+    public static Object binary(Object xVec, Object yVec, int vectorOpcode) {
+        ByteVector x = castByte128(xVec);
+        ByteVector y = castByte128(yVec);
+        return castByte128(switch (vectorOpcode) {
             case Bytecode.VECTOR_I8X16_SWIZZLE, Bytecode.VECTOR_I8X16_RELAXED_SWIZZLE -> i8x16_swizzle(x, y);
             case Bytecode.VECTOR_V128_AND -> binop(x, y, I8X16, VectorOperators.AND);
             case Bytecode.VECTOR_V128_ANDNOT -> binop(x, y, I8X16, VectorOperators.AND_NOT);
@@ -480,11 +527,14 @@ public class Vector128Ops {
             case Bytecode.VECTOR_F64X2_PMAX -> pmax(x, y, F64X2);
             case Bytecode.VECTOR_I16X8_RELAXED_DOT_I8X16_I7X16_S -> i16x8_relaxed_dot_i8x16_i7x16_s(x, y);
             default -> throw CompilerDirectives.shouldNotReachHere();
-        };
+        });
     }
 
-    public static ByteVector ternary(ByteVector x, ByteVector y, ByteVector z, int vectorOpcode) {
-        return switch (vectorOpcode) {
+    public static Object ternary(Object xVec, Object yVec, Object zVec, int vectorOpcode) {
+        ByteVector x = castByte128(xVec);
+        ByteVector y = castByte128(yVec);
+        ByteVector z = castByte128(zVec);
+        return castByte128(switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_BITSELECT, Bytecode.VECTOR_I8X16_RELAXED_LANESELECT, Bytecode.VECTOR_I16X8_RELAXED_LANESELECT, Bytecode.VECTOR_I32X4_RELAXED_LANESELECT,
                             Bytecode.VECTOR_I64X2_RELAXED_LANESELECT ->
                 bitselect(x, y, z);
@@ -492,10 +542,11 @@ public class Vector128Ops {
             case Bytecode.VECTOR_F64X2_RELAXED_MADD, Bytecode.VECTOR_F64X2_RELAXED_NMADD -> f64x2_ternop(x, y, z, vectorOpcode);
             case Bytecode.VECTOR_I32X4_RELAXED_DOT_I8X16_I7X16_ADD_S -> i32x4_relaxed_dot_i8x16_i7x16_add_s(x, y, z);
             default -> throw CompilerDirectives.shouldNotReachHere();
-        };
+        });
     }
 
-    public static int vectorToInt(ByteVector x, int vectorOpcode) {
+    public static int vectorToInt(Object xVec, int vectorOpcode) {
+        ByteVector x = castByte128(xVec);
         return switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_ANY_TRUE -> v128_any_true(x);
             case Bytecode.VECTOR_I8X16_ALL_TRUE -> all_true(x, I8X16);
@@ -510,8 +561,9 @@ public class Vector128Ops {
         };
     }
 
-    public static ByteVector shift(ByteVector x, int shift, int vectorOpcode) {
-        return switch (vectorOpcode) {
+    public static Object shift(Object xVec, int shift, int vectorOpcode) {
+        ByteVector x = castByte128(xVec);
+        return castByte128(switch (vectorOpcode) {
             case Bytecode.VECTOR_I8X16_SHL -> shiftop(x, (byte) shift, I8X16, VectorOperators.LSHL);
             case Bytecode.VECTOR_I8X16_SHR_S -> shiftop(x, (byte) shift, I8X16, VectorOperators.ASHR);
             case Bytecode.VECTOR_I8X16_SHR_U -> shiftop(x, (byte) shift, I8X16, VectorOperators.LSHR);
@@ -525,30 +577,66 @@ public class Vector128Ops {
             case Bytecode.VECTOR_I64X2_SHR_S -> shiftop(x, shift, I64X2, VectorOperators.ASHR);
             case Bytecode.VECTOR_I64X2_SHR_U -> shiftop(x, shift, I64X2, VectorOperators.LSHR);
             default -> throw CompilerDirectives.shouldNotReachHere();
-        };
+        });
     }
 
     // Checkstyle: stop method name check
 
-    public static ByteVector i8x16_shuffle(ByteVector x, ByteVector y, ByteVector indices) {
-        VectorShuffle<Byte> shuffle = indices.add((byte) (-2 * BYTES), indices.lt((byte) BYTES).not()).toShuffle();
-        return x.rearrange(shuffle, y);
+    public static Object i8x16_splat(byte value) {
+        return I8X16.broadcast(value);
     }
 
-    public static int i8x16_extract_lane(ByteVector vec, int laneIndex, int vectorOpcode) {
+    public static Object i16x8_splat(short value) {
+        return I16X8.broadcast(value).reinterpretAsBytes();
+    }
+
+    public static Object i32x4_splat(int value) {
+        return I32X4.broadcast(value).reinterpretAsBytes();
+    }
+
+    public static Object i64x2_splat(long value) {
+        return I64X2.broadcast(value).reinterpretAsBytes();
+    }
+
+    public static Object f32x4_splat(float value) {
+        return F32X4.broadcast(value).reinterpretAsBytes();
+    }
+
+    public static Object f64x2_splat(double value) {
+        return F64X2.broadcast(value).reinterpretAsBytes();
+    }
+
+    public static Object i8x16_shuffle(Object xVec, Object yVec, Object indicesVec) {
+        ByteVector x = castByte128(xVec);
+        ByteVector y = castByte128(yVec);
+        ByteVector indices = castByte128(indicesVec);
+        VectorShuffle<Byte> shuffle = indices.add((byte) (-2 * BYTES), indices.lt((byte) BYTES).not()).toShuffle();
+        return castByte128(x.rearrange(shuffle, y));
+    }
+
+    public static byte i8x16_extract_lane_s(Object vec, int laneIndex) {
+        return castByte128(vec).lane(laneIndex);
+    }
+
+    public static int i8x16_extract_lane(Object vec, int laneIndex, int vectorOpcode) {
+        ByteVector v = castByte128(vec);
         return switch (vectorOpcode) {
-            case Bytecode.VECTOR_I8X16_EXTRACT_LANE_S -> vec.lane(laneIndex);
-            case Bytecode.VECTOR_I8X16_EXTRACT_LANE_U -> Byte.toUnsignedInt(vec.lane(laneIndex));
+            case Bytecode.VECTOR_I8X16_EXTRACT_LANE_S -> v.lane(laneIndex);
+            case Bytecode.VECTOR_I8X16_EXTRACT_LANE_U -> Byte.toUnsignedInt(v.lane(laneIndex));
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
     }
 
-    public static ByteVector i8x16_replace_lane(ByteVector vec, int laneIndex, byte value) {
-        return vec.withLane(laneIndex, value);
+    public static Object i8x16_replace_lane(Object vec, int laneIndex, byte value) {
+        return castByte128(castByte128(vec).withLane(laneIndex, value));
     }
 
-    public static int i16x8_extract_lane(ByteVector vecBytes, int laneIndex, int vectorOpcode) {
-        ShortVector vec = vecBytes.reinterpretAsShorts();
+    public static short i16x8_extract_lane_s(Object vecBytes, int laneIndex) {
+        return castByte128(vecBytes).reinterpretAsShorts().lane(laneIndex);
+    }
+
+    public static int i16x8_extract_lane(Object vecBytes, int laneIndex, int vectorOpcode) {
+        ShortVector vec = castByte128(vecBytes).reinterpretAsShorts();
         return switch (vectorOpcode) {
             case Bytecode.VECTOR_I16X8_EXTRACT_LANE_S -> vec.lane(laneIndex);
             case Bytecode.VECTOR_I16X8_EXTRACT_LANE_U -> Short.toUnsignedInt(vec.lane(laneIndex));
@@ -556,49 +644,49 @@ public class Vector128Ops {
         };
     }
 
-    public static ByteVector i16x8_replace_lane(ByteVector vecBytes, int laneIndex, short value) {
-        ShortVector vec = vecBytes.reinterpretAsShorts();
-        return vec.withLane(laneIndex, value).reinterpretAsBytes();
+    public static Object i16x8_replace_lane(Object vecBytes, int laneIndex, short value) {
+        ShortVector vec = castByte128(vecBytes).reinterpretAsShorts();
+        return castByte128(vec.withLane(laneIndex, value).reinterpretAsBytes());
     }
 
-    public static int i32x4_extract_lane(ByteVector vecBytes, int laneIndex) {
-        IntVector vec = vecBytes.reinterpretAsInts();
+    public static int i32x4_extract_lane(Object vecBytes, int laneIndex) {
+        IntVector vec = castByte128(vecBytes).reinterpretAsInts();
         return vec.lane(laneIndex);
     }
 
-    public static ByteVector i32x4_replace_lane(ByteVector vecBytes, int laneIndex, int value) {
-        IntVector vec = vecBytes.reinterpretAsInts();
-        return vec.withLane(laneIndex, value).reinterpretAsBytes();
+    public static Object i32x4_replace_lane(Object vecBytes, int laneIndex, int value) {
+        IntVector vec = castByte128(vecBytes).reinterpretAsInts();
+        return castByte128(vec.withLane(laneIndex, value).reinterpretAsBytes());
     }
 
-    public static long i64x2_extract_lane(ByteVector vecBytes, int laneIndex) {
-        LongVector vec = vecBytes.reinterpretAsLongs();
+    public static long i64x2_extract_lane(Object vecBytes, int laneIndex) {
+        LongVector vec = castByte128(vecBytes).reinterpretAsLongs();
         return vec.lane(laneIndex);
     }
 
-    public static ByteVector i64x2_replace_lane(ByteVector vecBytes, int laneIndex, long value) {
-        LongVector vec = vecBytes.reinterpretAsLongs();
-        return vec.withLane(laneIndex, value).reinterpretAsBytes();
+    public static Object i64x2_replace_lane(Object vecBytes, int laneIndex, long value) {
+        LongVector vec = castByte128(vecBytes).reinterpretAsLongs();
+        return castByte128(vec.withLane(laneIndex, value).reinterpretAsBytes());
     }
 
-    public static float f32x4_extract_lane(ByteVector vecBytes, int laneIndex) {
-        FloatVector vec = vecBytes.reinterpretAsFloats();
+    public static float f32x4_extract_lane(Object vecBytes, int laneIndex) {
+        FloatVector vec = castByte128(vecBytes).reinterpretAsFloats();
         return vec.lane(laneIndex);
     }
 
-    public static ByteVector f32x4_replace_lane(ByteVector vecBytes, int laneIndex, float value) {
-        FloatVector vec = vecBytes.reinterpretAsFloats();
-        return vec.withLane(laneIndex, value).reinterpretAsBytes();
+    public static Object f32x4_replace_lane(Object vecBytes, int laneIndex, float value) {
+        FloatVector vec = castByte128(vecBytes).reinterpretAsFloats();
+        return castByte128(vec.withLane(laneIndex, value).reinterpretAsBytes());
     }
 
-    public static double f64x2_extract_lane(ByteVector vecBytes, int laneIndex) {
-        DoubleVector vec = vecBytes.reinterpretAsDoubles();
+    public static double f64x2_extract_lane(Object vecBytes, int laneIndex) {
+        DoubleVector vec = castByte128(vecBytes).reinterpretAsDoubles();
         return vec.lane(laneIndex);
     }
 
-    public static ByteVector f64x2_replace_lane(ByteVector vecBytes, int laneIndex, double value) {
-        DoubleVector vec = vecBytes.reinterpretAsDoubles();
-        return vec.withLane(laneIndex, value).reinterpretAsBytes();
+    public static Object f64x2_replace_lane(Object vecBytes, int laneIndex, double value) {
+        DoubleVector vec = castByte128(vecBytes).reinterpretAsDoubles();
+        return castByte128(vec.withLane(laneIndex, value).reinterpretAsBytes());
     }
 
     private static <E> ByteVector unop(ByteVector xBytes, Shape<E> shape, VectorOperators.Unary op) {
@@ -975,35 +1063,35 @@ public class Vector128Ops {
         return (Class<? extends E>) Class.forName(Vector.class.getModule(), className);
     }
 
-    public static final ByteVector castByte128(Vector<Byte> vec) {
+    private static final ByteVector castByte128(Object vec) {
         return BYTE_128_CLASS.cast(vec);
     }
 
-    private static ShortVector castShort128(Vector<Short> vec) {
+    private static ShortVector castShort128(Object vec) {
         return SHORT_128_CLASS.cast(vec);
     }
 
-    private static IntVector castInt128(Vector<Integer> vec) {
+    private static IntVector castInt128(Object vec) {
         return INT_128_CLASS.cast(vec);
     }
 
-    private static LongVector castLong128(Vector<Long> vec) {
+    private static LongVector castLong128(Object vec) {
         return LONG_128_CLASS.cast(vec);
     }
 
-    private static FloatVector castFloat128(Vector<Float> vec) {
+    private static FloatVector castFloat128(Object vec) {
         return FLOAT_128_CLASS.cast(vec);
     }
 
-    private static DoubleVector castDouble128(Vector<Double> vec) {
+    private static DoubleVector castDouble128(Object vec) {
         return DOUBLE_128_CLASS.cast(vec);
     }
 
-    private static VectorMask<Byte> castByte128Mask(VectorMask<Byte> mask) {
+    private static VectorMask<Byte> castByte128Mask(Object mask) {
         return BYTE_128_MASK_CLASS.cast(mask);
     }
 
-    private static VectorMask<Short> castShort128Mask(VectorMask<Short> mask) {
+    private static VectorMask<Short> castShort128Mask(Object mask) {
         return SHORT_128_MASK_CLASS.cast(mask);
     }
 
@@ -1084,11 +1172,11 @@ public class Vector128Ops {
         return x.blend(y, mask.cast(x.species()));
     }
 
-    public static ByteVector fromArray(byte[] bytes) {
+    public static Object fromArray(byte[] bytes) {
         return fromArray(bytes, 0);
     }
 
-    public static ByteVector fromArray(byte[] bytes, int offset) {
+    public static Object fromArray(byte[] bytes, int offset) {
         return ByteVector.fromArray(I8X16.species(), bytes, offset);
     }
 
@@ -1112,35 +1200,19 @@ public class Vector128Ops {
         return DoubleVector.fromArray(F64X2.species(), doubles, 0).reinterpretAsBytes();
     }
 
-    public static ByteVector broadcast(byte value) {
-        return I8X16.broadcast(value);
+    public static byte[] toArray(Object vec) {
+        return castByte128(vec).toArray();
     }
 
-    public static ByteVector broadcast(short value) {
-        return I16X8.broadcast(value).reinterpretAsBytes();
+    public static void intoArray(Object vec, byte[] array, int offset) {
+        castByte128(vec).intoArray(array, offset);
     }
 
-    public static ByteVector broadcast(int value) {
-        return I32X4.broadcast(value).reinterpretAsBytes();
+    public static Vector128 toVector128(Object vec) {
+        return new Vector128(castByte128(vec).toArray());
     }
 
-    public static ByteVector broadcast(long value) {
-        return I64X2.broadcast(value).reinterpretAsBytes();
-    }
-
-    public static ByteVector broadcast(float value) {
-        return F32X4.broadcast(value).reinterpretAsBytes();
-    }
-
-    public static ByteVector broadcast(double value) {
-        return F64X2.broadcast(value).reinterpretAsBytes();
-    }
-
-    public static byte[] toArray(ByteVector vec) {
-        return vec.toArray();
-    }
-
-    public static void intoArray(ByteVector vec, byte[] array, int offset) {
-        vec.intoArray(array, offset);
+    public static Object fromVector128(Vector128 vector128) {
+        return fromArray(vector128.getBytes());
     }
 }

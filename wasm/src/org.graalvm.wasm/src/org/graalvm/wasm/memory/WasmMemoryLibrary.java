@@ -44,7 +44,6 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.Node;
-import jdk.incubator.vector.ByteVector;
 import org.graalvm.wasm.constants.Sizes;
 
 import java.io.IOException;
@@ -178,7 +177,7 @@ public abstract class WasmMemoryLibrary extends Library {
 
     public abstract long load_i64_32u(WasmMemory memory, Node node, long address);
 
-    public abstract ByteVector load_i128(WasmMemory memory, Node node, long address);
+    public abstract Object load_i128(WasmMemory memory, Node node, long address);
 
     public abstract void store_i32(WasmMemory memory, Node node, long address, int value);
 
@@ -198,7 +197,7 @@ public abstract class WasmMemoryLibrary extends Library {
 
     public abstract void store_i64_32(WasmMemory memory, Node node, long address, int value);
 
-    public abstract void store_i128(WasmMemory memory, Node node, long address, ByteVector value);
+    public abstract void store_i128(WasmMemory memory, Node node, long address, Object value);
 
     public abstract int atomic_load_i32(WasmMemory memory, Node node, long address);
 

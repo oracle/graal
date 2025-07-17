@@ -49,7 +49,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 
-import jdk.incubator.vector.ByteVector;
 import org.graalvm.wasm.MemoryContext;
 import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.api.Vector128;
@@ -285,7 +284,7 @@ public final class NativeWasmMemory extends WasmMemory {
     }
 
     @ExportMessage
-    public ByteVector load_i128(Node node, long address) {
+    public Object load_i128(Node node, long address) {
         validateAddress(node, address, Vector128.BYTES);
         byte[] bytes = new byte[Vector128.BYTES];
         unsafe.copyMemory(null, startAddress + address, bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET, Vector128.BYTES);
@@ -348,7 +347,7 @@ public final class NativeWasmMemory extends WasmMemory {
     }
 
     @ExportMessage
-    public void store_i128(Node node, long address, ByteVector value) {
+    public void store_i128(Node node, long address, Object value) {
         validateAddress(node, address, 16);
         // Use intoMemorySegment after adopting the FFM API
         unsafe.copyMemory(Vector128Ops.toArray(value), Unsafe.ARRAY_BYTE_BASE_OFFSET, null, startAddress + address, 16);
