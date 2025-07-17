@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import static com.oracle.svm.core.util.EnvVariableUtils.EnvironmentVariable;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
@@ -37,6 +39,7 @@ import java.util.Objects;
 import java.util.Properties;
 
 import com.oracle.svm.core.OS;
+import com.oracle.svm.core.SharedConstants;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
@@ -49,6 +52,7 @@ public class LayerArchiveSupport {
     private static final int LAYER_FILE_FORMAT_VERSION_MINOR = 1;
 
     private static final String BUILDER_ARGUMENTS_FILE_NAME = "builder-arguments.txt";
+    private static final String ENV_VARIABLES_FILE_NAME = "env-variables.txt";
     private static final String SNAPSHOT_FILE_NAME = "layer-snapshot.lsb";
     private static final String SNAPSHOT_GRAPHS_FILE_NAME = "layer-snapshot-graphs.big";
     private static final String LAYER_INFO_MESSAGE_PREFIX = "Native Image Layers";
@@ -119,6 +123,18 @@ public class LayerArchiveSupport {
 
     protected Path getBuilderArgumentsFilePath() {
         return layerDir.resolve(BUILDER_ARGUMENTS_FILE_NAME);
+    }
+
+    protected Path getEnvVariablesFilePath() {
+        return layerDir.resolve(ENV_VARIABLES_FILE_NAME);
+    }
+
+    protected List<EnvironmentVariable> parseEnvVariables() {
+        return System.getenv().entrySet().stream()
+                        .map(EnvironmentVariable::of)
+                        .filter(envVar -> !envVar.isKeyRequired())
+                        .filter(envVar -> !envVar.keyEquals(SharedConstants.DRIVER_TEMP_DIR_ENV_VARIABLE))
+                        .toList();
     }
 
     public final class LayerProperties {
