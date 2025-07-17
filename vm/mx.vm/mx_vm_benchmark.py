@@ -186,6 +186,8 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                 self._benchmarks = ['CompileTheWorld']
             for group in ["interpreter", "compiler", "warmup", "nfi", "wasm-simd"]:
                 dir_path = os.path.join(self._get_benchmark_root(), group)
+                if not os.path.exists(dir_path):
+                    continue
                 for f in os.listdir(dir_path):
                     f_path = os.path.join(dir_path, f)
                     if os.path.isfile(f_path) and os.path.splitext(f_path)[1] in self._extensions:
