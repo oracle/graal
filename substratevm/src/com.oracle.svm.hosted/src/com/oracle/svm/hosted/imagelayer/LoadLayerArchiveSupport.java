@@ -39,6 +39,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.nativeimage.Platform;
+
 import com.oracle.svm.core.option.LayerVerifiedOption;
 import com.oracle.svm.core.option.LayerVerifiedOption.Kind;
 import com.oracle.svm.core.option.LayerVerifiedOption.Severity;
@@ -58,10 +60,10 @@ import com.oracle.svm.util.LogUtils;
 public class LoadLayerArchiveSupport extends LayerArchiveSupport {
 
     @SuppressWarnings("this-escape")
-    public LoadLayerArchiveSupport(String layerName, Path layerFile, Path tempDir, ArchiveSupport archiveSupport) {
+    public LoadLayerArchiveSupport(String layerName, Path layerFile, Path tempDir, ArchiveSupport archiveSupport, Platform current) {
         super(layerName, layerFile, tempDir.resolve(LAYER_TEMP_DIR_PREFIX + "load"), archiveSupport);
         this.archiveSupport.expandJarToDir(layerFile, layerDir);
-        layerProperties.loadAndVerify();
+        layerProperties.loadAndVerify(current);
         loadBuilderArgumentsFile();
     }
 

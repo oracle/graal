@@ -31,6 +31,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.jar.JarOutputStream;
 
+import org.graalvm.nativeimage.Platform;
+
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.SubstrateOptions;
@@ -86,7 +88,7 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
         }
     }
 
-    public void write() {
+    public void write(Platform current) {
         try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(layerFile), archiveSupport.createManifest())) {
             // disable compression for significant (un)archiving speedup at the cost of file size
             jarOutStream.setLevel(0);
@@ -103,7 +105,7 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
             Path sharedLibFile = BuildArtifacts.singleton().get(BuildArtifacts.ArtifactType.IMAGE_LAYER).getFirst();
             archiveSupport.addFileToJar(NativeImageGenerator.getOutputDirectory(), sharedLibFile, layerFile, jarOutStream);
             // write properties file and add to jar
-            layerProperties.write();
+            layerProperties.write(current);
             archiveSupport.addFileToJar(layerDir, getLayerPropertiesFile(), layerFile, jarOutStream);
             BuildArtifacts.singleton().add(ArtifactType.IMAGE_LAYER_BUNDLE, layerFile);
         } catch (IOException e) {

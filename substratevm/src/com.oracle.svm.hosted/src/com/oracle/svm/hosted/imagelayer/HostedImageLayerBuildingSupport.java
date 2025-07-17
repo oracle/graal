@@ -135,7 +135,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
 
     public void archiveLayer() {
         writer.dumpFiles();
-        writeLayerArchiveSupport.write();
+        writeLayerArchiveSupport.write(imageClassLoader.platform);
     }
 
     public SharedLayerSnapshot.Reader getSnapshot() {
@@ -311,7 +311,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         List<FileChannel> graphs = List.of();
         if (buildingExtensionLayer) {
             Path layerFileName = getLayerUseValue(values);
-            loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerName, layerFileName, builderTempDir, archiveSupport);
+            loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerName, layerFileName, builderTempDir, archiveSupport, imageClassLoader.platform);
             boolean strict = SubstrateOptions.LayerOptionVerification.getValue(values);
             boolean verbose = SubstrateOptions.LayerOptionVerificationVerbose.getValue(values);
             loadLayerArchiveSupport.verifyCompatibility(imageClassLoader.classLoaderSupport, collectLayerVerifications(imageClassLoader), strict, verbose);
