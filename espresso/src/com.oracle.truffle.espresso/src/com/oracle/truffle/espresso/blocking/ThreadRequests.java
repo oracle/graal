@@ -36,6 +36,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -46,7 +47,6 @@ import com.oracle.truffle.espresso.vm.VM;
 
 public final class ThreadRequests {
     private static final Thread[] EMPTY_THREAD_ARRAY = new Thread[0];
-    private static final long GRACE_PERIOD_MILLIS = 100;
 
     public abstract static class Request<T> extends ThreadLocalAction {
         private final Map<Thread, T> result = new ConcurrentHashMap<>();
@@ -158,11 +158,14 @@ public final class ThreadRequests {
                 }
             }, runningFuture);
 
+            // Give the 'unresponsive' threads some grace period to complete the TLA.
             long elapsed = submitTime - System.currentTimeMillis();
-            if (!unresponsiveFuture.isDone() && elapsed < GRACE_PERIOD_MILLIS) {
+            int gracePeriod = ctx.getEnv().getOptions().get(EspressoOptions.ThreadRequestGracePeriod);
+
+            if (!unresponsiveFuture.isDone() && elapsed < gracePeriod) {
                 TruffleSafepoint.setBlockedThreadInterruptible(location, f -> {
                     try {
-                        unresponsiveFuture.get(GRACE_PERIOD_MILLIS - elapsed, TimeUnit.MILLISECONDS);
+                        unresponsiveFuture.get(gracePeriod - elapsed, TimeUnit.MILLISECONDS);
                     } catch (ExecutionException e) {
                         throw EspressoError.shouldNotReachHere(e);
                     } catch (TimeoutException e) {
