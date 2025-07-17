@@ -94,6 +94,23 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "UPL",
+    },
+
+    "org.graalvm.wasm.jdk25" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.wasm",
+      ],
+      "requires": [
+        "jdk.incubator.vector", # Vector API
+      ],
+      "overlayTarget" : "org.graalvm.wasm",
+      "multiReleaseJarVersion" : "25",
+      "checkstyle" : "org.graalvm.wasm",
+      "javaCompliance" : "21+",
+      "workingSets" : "WebAssembly",
+      "license" : "UPL",
       "javac.lint.overrides" : "-incubating",
     },
 
