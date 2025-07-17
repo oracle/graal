@@ -25,6 +25,7 @@
 package com.oracle.svm.core.graal.amd64;
 
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import static jdk.vm.ci.amd64.AMD64.k0;
 import static jdk.vm.ci.amd64.AMD64.k1;
 import static jdk.vm.ci.amd64.AMD64.k2;
 import static jdk.vm.ci.amd64.AMD64.k3;
@@ -129,14 +130,14 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
         boolean haveAVX512 = ((AMD64) target.arch).getFeatures().contains(AMD64.CPUFeature.AVX512F);
         ArrayList<Register> regs;
         if (haveAVX512) {
-            /*
-             * GR-40969: We would like to use valueRegistersAVX512. However, we emit a mix of VEX
-             * and EVEX encoded instructions, and the VEX variants cannot address the extended
-             * AVX-512 registers (XMM16-31). For now, limit ourselves to XMM0-15.
-             */
             regs = new ArrayList<>();
             regs.addAll(valueRegistersAVX512);
-            regs.addAll(MASK_REGISTERS);
+            /*
+             * valueRegistersAVX512 contains all mask registers, including k0. k0 is not a general
+             * allocatable register, most instructions that read it interpret it as "no opmask"
+             * rather than as a real opmask register.
+             */
+            regs.remove(k0);
         } else {
             regs = new ArrayList<>();
             regs.addAll(valueRegistersSSE);
@@ -146,6 +147,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                 regs.addAll(MASK_REGISTERS);
             }
         }
+        VMError.guarantee(!regs.contains(k0), "We must never treat k0 as a general allocatable register.");
 
         if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
             // This is the Windows 64-bit ABI for parameters.
