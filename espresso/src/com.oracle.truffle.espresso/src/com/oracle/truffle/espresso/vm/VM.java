@@ -92,7 +92,6 @@ import com.oracle.truffle.espresso.classfile.ClasspathEntry;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.JavaKind;
-import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
@@ -1402,7 +1401,7 @@ public final class VM extends NativeEnv {
         profiler.profile(2);
         // For primitives, return latest (Same as HotSpot).
         // We do the same for arrays. HotSpot just crashes in that case.
-        return JavaVersion.LATEST_SUPPORTED_CLASSFILE;
+        return getJavaVersion().classFileVersion();
     }
 
     @VmImpl(isJni = true)
