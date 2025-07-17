@@ -2598,13 +2598,27 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
+    private static void generateStringRangeCheck(GraphBuilderContext b, InvocationPluginHelper helper, ValueNode array, ValueNode off, ValueNode len) {
+        helper.intrinsicRangeCheck(off, Condition.LT, ConstantNode.forInt(0));
+        helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
+
+        ValueNode arrayLength = b.add(new ArrayLengthNode(array));
+        ValueNode limit = b.add(AddNode.create(off, len, NodeView.DEFAULT));
+        helper.intrinsicRangeCheck(arrayLength, Condition.LT, limit);
+    }
+
     private static void registerStringCodingPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "java.lang.StringCoding", replacements);
-        r.register(new InvocationPlugin("implEncodeISOArray", byte[].class, int.class, byte[].class, int.class, int.class) {
+        r.register(new InvocationPlugin("encodeISOArray0", byte[].class, int.class, byte[].class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
                             ValueNode da, ValueNode dp, ValueNode len) {
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    if (b.getPlatformConfigurationProvider().shouldVerifyIntrinsicChecks()) {
+                        generateStringRangeCheck(b, helper, sa, sp, len);
+                        generateStringRangeCheck(b, helper, da, dp, len);
+                    }
+
                     int charElementShift = CodeUtil.log2(b.getMetaAccess().getArrayIndexScale(JavaKind.Char));
                     ValueNode src = helper.arrayElementPointer(sa, JavaKind.Byte, LeftShiftNode.create(sp, ConstantNode.forInt(charElementShift), NodeView.DEFAULT));
                     ValueNode dst = helper.arrayElementPointer(da, JavaKind.Byte, dp);
@@ -2613,11 +2627,16 @@ public class StandardGraphBuilderPlugins {
                 }
             }
         });
-        r.register(new InvocationPlugin("implEncodeAsciiArray", char[].class, int.class, byte[].class, int.class, int.class) {
+        r.register(new InvocationPlugin("encodeAsciiArray0", char[].class, int.class, byte[].class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
                             ValueNode da, ValueNode dp, ValueNode len) {
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    if (b.getPlatformConfigurationProvider().shouldVerifyIntrinsicChecks()) {
+                        generateStringRangeCheck(b, helper, sa, sp, len);
+                        generateStringRangeCheck(b, helper, da, dp, len);
+                    }
+
                     ValueNode src = helper.arrayElementPointer(sa, JavaKind.Char, sp);
                     ValueNode dst = helper.arrayElementPointer(da, JavaKind.Byte, dp);
                     b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ASCII, JavaKind.Char));
@@ -2625,16 +2644,13 @@ public class StandardGraphBuilderPlugins {
                 }
             }
         });
-        r.register(new InvocationPlugin("countPositives", byte[].class, int.class, int.class) {
+        r.register(new InvocationPlugin("countPositives0", byte[].class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode ba, ValueNode off, ValueNode len) {
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    helper.intrinsicRangeCheck(off, Condition.LT, ConstantNode.forInt(0));
-                    helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
-
-                    ValueNode arrayLength = b.add(new ArrayLengthNode(ba));
-                    ValueNode limit = b.add(AddNode.create(off, len, NodeView.DEFAULT));
-                    helper.intrinsicRangeCheck(arrayLength, Condition.LT, limit);
+                    if (b.getPlatformConfigurationProvider().shouldVerifyIntrinsicChecks()) {
+                        generateStringRangeCheck(b, helper, ba, off, len);
+                    }
 
                     ValueNode array = helper.arrayElementPointer(ba, JavaKind.Byte, off);
                     b.addPush(JavaKind.Int, new CountPositivesNode(array, len));

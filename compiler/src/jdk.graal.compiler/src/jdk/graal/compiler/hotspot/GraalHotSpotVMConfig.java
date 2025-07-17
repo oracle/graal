@@ -692,6 +692,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean deoptimizationSupportLargeAccessByteArrayVirtualization = //
                     getConstant("Deoptimization::_support_large_access_byte_array_virtualization", Boolean.class);
 
+    public final boolean verifyIntrinsicChecks = getFlag("VerifyIntrinsicChecks", Boolean.class);
+
     public final int l1LineSize = getFieldValue("CompilerToVM::Data::L1_line_size", Integer.class, "int", 0, "amd64".equals(osArch));
     public final boolean supportsAvx512SimdSort = getFieldValue("CompilerToVM::Data::supports_avx512_simd_sort", Boolean.class, "bool", false, "amd64".equals(osArch));
 

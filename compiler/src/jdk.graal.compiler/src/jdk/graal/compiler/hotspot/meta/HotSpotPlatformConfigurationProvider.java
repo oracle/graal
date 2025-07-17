@@ -32,10 +32,12 @@ public class HotSpotPlatformConfigurationProvider implements PlatformConfigurati
     private final BarrierSet barrierSet;
 
     private final boolean canVirtualizeLargeByteArrayAccess;
+    private final boolean shouldVerifyIntrinsicChecks;
 
     public HotSpotPlatformConfigurationProvider(GraalHotSpotVMConfig config, BarrierSet barrierSet) {
         this.barrierSet = barrierSet;
         this.canVirtualizeLargeByteArrayAccess = config.deoptimizationSupportLargeAccessByteArrayVirtualization;
+        this.shouldVerifyIntrinsicChecks = config.verifyIntrinsicChecks;
     }
 
     @Override
@@ -61,5 +63,10 @@ public class HotSpotPlatformConfigurationProvider implements PlatformConfigurati
     @Override
     public BarrierSet getBarrierSet() {
         return barrierSet;
+    }
+
+    @Override
+    public boolean shouldVerifyIntrinsicChecks() {
+        return shouldVerifyIntrinsicChecks;
     }
 }
