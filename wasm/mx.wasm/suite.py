@@ -87,11 +87,28 @@ suite = {
       ],
       "requires": [
         "jdk.unsupported", # sun.misc.Unsafe
-        "jdk.incubator.vector", # Vector API
       ],
       "checkstyleVersion" : "10.21.0",
       "javaCompliance" : "21+",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "WebAssembly",
+      "license" : "UPL",
+      "javac.lint.overrides" : "-incubating",
+    },
+
+    "org.graalvm.wasm.jdk25" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.wasm",
+      ],
+      "requires": [
+        "jdk.incubator.vector", # Vector API
+      ],
+      "overlayTarget" : "org.graalvm.wasm",
+      "multiReleaseJarVersion" : "25",
+      "checkstyle" : "org.graalvm.wasm",
+      "javaCompliance" : "21+",
       "workingSets" : "WebAssembly",
       "license" : "UPL",
       "javac.lint.overrides" : "-incubating",
@@ -275,6 +292,7 @@ suite = {
         "name" : "org.graalvm.wasm",
         "requires": [
           "org.graalvm.collections",
+          "static jdk.incubator.vector", # Vector API
         ],
         "exports" : [
           "* to org.graalvm.wasm.test",
