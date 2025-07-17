@@ -389,7 +389,14 @@ public class IsolateArgumentParser {
             arguments.setIsCompilationIsolate(false);
         }
 
-        writeLong(arguments, getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize), parameters.reservedSpaceSize().rawValue());
+        /*
+         * If a value for ReservedAddressSpaceSize is set in the isolate parameters, then this value
+         * has a higher priority than a default value that was set at build-time.
+         */
+        UnsignedWord reservedAddressSpaceSize = parameters.reservedSpaceSize();
+        if (reservedAddressSpaceSize.notEqual(0)) {
+            writeLong(arguments, getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize), reservedAddressSpaceSize.rawValue());
+        }
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
