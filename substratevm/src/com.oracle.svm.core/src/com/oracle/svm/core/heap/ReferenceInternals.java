@@ -216,13 +216,7 @@ public final class ReferenceInternals {
                 Target_java_lang_ref_Reference<?> ref = pendingList;
                 pendingList = ref.discovered;
                 ref.discovered = null;
-
-                @SuppressWarnings("unchecked")
-                Target_java_lang_ref_ReferenceQueue<? super Object> queue = SubstrateUtil.cast(ref.queue, Target_java_lang_ref_ReferenceQueue.class);
-                if (queue != Target_java_lang_ref_ReferenceQueue.NULL_QUEUE) {
-                    // Enqueues, avoiding the potentially overridden Reference.enqueue().
-                    queue.enqueue(ref);
-                }
+                ref.enqueueFromPending();
             }
 
             synchronized (processPendingLock) {
