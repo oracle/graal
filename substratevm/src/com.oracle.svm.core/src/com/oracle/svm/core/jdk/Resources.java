@@ -341,6 +341,7 @@ public final class Resources implements MultiLayeredImageSingleton {
 
     private void addResource(ModuleResourceKey key, ConditionalRuntimeValue<ResourceStorageEntryBase> entry) {
         Boolean previousLayerData = ImageLayerBuildingSupport.buildingImageLayer() ? previousLayerResources.get(key.toString()) : null;
+        /* GR-66387: The runtime condition should be combined across layers. */
         if (previousLayerData == null || (!previousLayerData && entry.getValueUnconditionally() != NEGATIVE_QUERY_MARKER)) {
             resources.put(key, entry);
         }
