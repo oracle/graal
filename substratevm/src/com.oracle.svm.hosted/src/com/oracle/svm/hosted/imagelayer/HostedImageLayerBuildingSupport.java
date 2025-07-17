@@ -187,6 +187,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
      */
     public static void processLayerOptions(EconomicMap<OptionKey<?>, Object> values, NativeImageClassLoaderSupport classLoaderSupport) {
         OptionValues hostedOptions = new OptionValues(values);
+        Path digestIgnorePath = null;
 
         if (isLayerCreateOptionEnabled(hostedOptions)) {
             ValueWithOrigin<String> valueWithOrigin = getLayerCreateValueWithOrigin(hostedOptions);
@@ -205,7 +206,12 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             classLoaderSupport.setLayerFile(layerFile);
 
             NativeImageClassLoaderSupport.IncludeSelectors layerSelectors = classLoaderSupport.getLayerSelectors();
+            IncludeOptionsSupport.ExtendedOption digestIgnoreExtendedOption = new IncludeOptionsSupport.ExtendedOption("digest-ignore", null);
             for (IncludeOptionsSupport.ExtendedOption option : layerOption.extendedOptions()) {
+                if (option.equals(digestIgnoreExtendedOption)) {
+                    digestIgnorePath = valueWithOrigin.origin().location();
+                    continue;
+                }
                 IncludeOptionsSupport.parseIncludeSelector(layerCreateArg, valueWithOrigin, layerSelectors, option, layerCreatePossibleOptions());
             }
 
@@ -237,6 +243,10 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             enableConservativeUnsafeAccess(values);
             SubstrateOptions.ApplicationLayerInitializedClasses.update(values, Module.class.getName());
             setOptionIfHasNotBeenSet(values, SubstrateOptions.ConcealedOptions.RelativeCodePointers, true);
+        }
+
+        if (isLayerCreateOptionEnabled(hostedOptions) || isLayerUseOptionEnabled(hostedOptions)) {
+            classLoaderSupport.initializePathDigests(digestIgnorePath);
         }
     }
 
@@ -285,7 +295,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return String.join(",", OptionUtils.resolveOptionValuesRedirection(SubstrateOptions.LayerCreate, valueWithOrigin));
     }
 
-    private static boolean isLayerUseOptionEnabled(OptionValues values) {
+    public static boolean isLayerUseOptionEnabled(OptionValues values) {
         if (SubstrateOptions.LayerUse.hasBeenSet(values)) {
             return !getLayerUseValue(values).toString().isEmpty();
         }

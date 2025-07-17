@@ -53,6 +53,7 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
                             "' needs to start with '" + SHARED_LIB_NAME_PREFIX + "'");
         }
         builderArguments.addAll(classLoaderSupport.getHostedOptionParser().getArguments());
+        buildPathDigests.addAll(PathDigestEntry.getPathDigestEntries(classLoaderSupport));
     }
 
     @Override
@@ -88,6 +89,14 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
         }
     }
 
+    private void writeBuildPathDigestsFile() {
+        try {
+            Files.write(getBuildPathDigestsFilePath(), buildPathDigests.stream().map(PathDigestEntry::toString).toList());
+        } catch (IOException e) {
+            throw UserError.abort("Unable to write build path digests to file " + getBuildPathDigestsFilePath());
+        }
+    }
+
     public void write(Platform current) {
         try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(layerFile), archiveSupport.createManifest())) {
             // disable compression for significant (un)archiving speedup at the cost of file size
@@ -98,6 +107,9 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
             // write environment variables file and add to jar
             writeEnvVariablesFile();
             archiveSupport.addFileToJar(layerDir, getEnvVariablesFilePath(), layerFile, jarOutStream);
+            // write image class and module paths file and add to jar
+            writeBuildPathDigestsFile();
+            archiveSupport.addFileToJar(layerDir, getBuildPathDigestsFilePath(), layerFile, jarOutStream);
             // copy the layer snapshot file and its graphs file to the jar
             archiveSupport.addFileToJar(layerDir, getSnapshotPath(), layerFile, jarOutStream);
             archiveSupport.addFileToJar(layerDir, getSnapshotGraphsPath(), layerFile, jarOutStream);

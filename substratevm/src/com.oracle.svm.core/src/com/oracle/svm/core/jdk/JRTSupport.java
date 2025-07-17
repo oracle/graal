@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.ByteBuffer;
+import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -179,6 +180,13 @@ final class Target_sun_net_www_protocol_jrt_Handler_JRTDisabled {
 @TargetClass(className = "jdk.internal.jrtfs.JrtFileSystemProvider", onlyWith = JRTDisabled.class)
 @Delete
 final class Target_jdk_internal_jrtfs_JrtFileSystemProvider_JRTDisabled {
+}
+
+@TargetClass(className = "jdk.internal.jrtfs.JrtFileSystemProvider", onlyWith = JRTEnabled.class)
+final class Target_jdk_internal_jrtfs_JrtFileSystemProvider_BuildTime {
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    @Alias//
+    volatile FileSystem theFileSystem;
 }
 
 // endregion Disable jimage/jrtfs

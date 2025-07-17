@@ -25,9 +25,12 @@
 package com.oracle.svm.hosted.imagelayer;
 
 import static com.oracle.svm.core.util.EnvVariableUtils.EnvironmentVariable;
+import static jdk.graal.compiler.util.Digest.DigestBuilder;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -36,14 +39,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.SharedConstants;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
 import com.oracle.svm.util.LogUtils;
 
 public class LayerArchiveSupport {
@@ -55,6 +61,7 @@ public class LayerArchiveSupport {
     private static final String ENV_VARIABLES_FILE_NAME = "env-variables.txt";
     private static final String SNAPSHOT_FILE_NAME = "layer-snapshot.lsb";
     private static final String SNAPSHOT_GRAPHS_FILE_NAME = "layer-snapshot-graphs.big";
+    private static final String BUILD_PATH_DIGESTS_FILE_NAME = "build-path-digests.txt";
     private static final String LAYER_INFO_MESSAGE_PREFIX = "Native Image Layers";
     protected static final String LAYER_TEMP_DIR_PREFIX = "layerRoot_";
     protected static final String SHARED_LIB_NAME_PREFIX = "lib";
@@ -62,6 +69,7 @@ public class LayerArchiveSupport {
     public static final String LAYER_FILE_EXTENSION = ".nil";
 
     protected final List<String> builderArguments;
+    protected final List<PathDigestEntry> buildPathDigests;
 
     protected final LayerProperties layerProperties;
     protected final Path layerFile;
@@ -86,6 +94,7 @@ public class LayerArchiveSupport {
 
         this.layerProperties = new LayerArchiveSupport.LayerProperties(layerName);
         this.builderArguments = new ArrayList<>();
+        this.buildPathDigests = new ArrayList<>();
     }
 
     protected void validateLayerFile() {
@@ -127,6 +136,10 @@ public class LayerArchiveSupport {
 
     protected Path getEnvVariablesFilePath() {
         return layerDir.resolve(ENV_VARIABLES_FILE_NAME);
+    }
+
+    protected Path getBuildPathDigestsFilePath() {
+        return layerDir.resolve(BUILD_PATH_DIGESTS_FILE_NAME);
     }
 
     protected List<EnvironmentVariable> parseEnvVariables() {
@@ -260,6 +273,58 @@ public class LayerArchiveSupport {
         public String layerName() {
             return properties.get(PROPERTY_KEY_IMAGE_LAYER_NAME);
         }
+    }
+
+    protected record PathDigestEntry(PathType type, String digest, String path) {
+
+        protected static List<PathDigestEntry> getPathDigestEntries(NativeImageClassLoaderSupport classLoaderSupport) {
+            Optional<NativeImageClassLoaderSupport.PathDigests> buildPathDigestsOpt = classLoaderSupport.getPathDigests(true);
+            assert buildPathDigestsOpt.isPresent() : "NativeImageClassLoaderSupport#pathDigests should not be empty for a layered build.";
+            return aggregatePathDigests(buildPathDigestsOpt.get());
+        }
+
+        private static List<PathDigestEntry> aggregatePathDigests(NativeImageClassLoaderSupport.PathDigests pathDigests) {
+            List<PathDigestEntry> aggregatedDigests = new ArrayList<>();
+            aggregatedDigests.addAll(aggregatePathDigests(pathDigests.getCpDigests(), PathType.cp));
+            aggregatedDigests.addAll(aggregatePathDigests(pathDigests.getMpDigests(), PathType.mp));
+            return aggregatedDigests;
+        }
+
+        private static List<PathDigestEntry> aggregatePathDigests(EconomicMap<URI, List<String>> pathDigests, PathType type) {
+            List<PathDigestEntry> aggregatedDigests = new ArrayList<>();
+            var cursor = pathDigests.getEntries();
+            while (cursor.advance()) {
+                aggregatedDigests.add(PathDigestEntry.of(type, cursor.getKey().getPath(), cursor.getValue()));
+            }
+            return aggregatedDigests;
+        }
+
+        private static PathDigestEntry of(PathType type, String path, List<String> digests) {
+            DigestBuilder db = new DigestBuilder();
+            digests.stream()
+                            .sorted()
+                            .map(d -> d.getBytes(StandardCharsets.UTF_8))
+                            .forEach(db::update);
+
+            String aggregatedDigest = new String(db.digest(), StandardCharsets.UTF_8);
+            return new PathDigestEntry(type, aggregatedDigest, path);
+        }
+
+        protected static PathDigestEntry of(String digestEntry) {
+            String[] envVarArr = digestEntry.split(":", 3);
+            return new PathDigestEntry(PathType.valueOf(envVarArr[0]), envVarArr[1], envVarArr[2]);
+        }
+
+        @Override
+        public String toString() {
+            return type + ":" + digest + ":" + path;
+        }
+
+        protected enum PathType {
+            cp,
+            mp
+        }
+
     }
 
     private static String asString(Platform val) {
