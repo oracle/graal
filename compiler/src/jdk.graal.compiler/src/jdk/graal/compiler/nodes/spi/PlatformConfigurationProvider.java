@@ -82,13 +82,4 @@ public interface PlatformConfigurationProvider {
     default boolean areLocksSideEffectFree() {
         return true;
     }
-
-    /**
-     * Callers of the intrinsics (e.g., StringCoding.countPositives) are responsible for intrinsic
-     * input validation. Enabling this option enforces additional checks within the intrinsic
-     * implementation.
-     */
-    default boolean shouldVerifyIntrinsicChecks() {
-        return false;
-    }
 }
