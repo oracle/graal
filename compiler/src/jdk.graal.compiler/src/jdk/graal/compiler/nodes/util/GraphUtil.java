@@ -1190,15 +1190,6 @@ public class GraphUtil {
         }
 
         @Override
-        public boolean supportsRounding() {
-            if (getLowerer() != null) {
-                return getLowerer().supportsRounding();
-            } else {
-                return false;
-            }
-        }
-
-        @Override
         public boolean divisionOverflowIsJVMSCompliant() {
             if (getLowerer() != null) {
                 return getLowerer().divisionOverflowIsJVMSCompliant();

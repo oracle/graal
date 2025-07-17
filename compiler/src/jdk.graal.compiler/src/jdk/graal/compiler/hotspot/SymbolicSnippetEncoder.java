@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,6 @@ import java.util.Set;
 import java.util.function.BiFunction;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -88,6 +87,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.ConditionalInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.nodes.java.AccessFieldNode;
@@ -206,8 +206,6 @@ public class SymbolicSnippetEncoder {
 
     private final EconomicMap<String, SnippetParameterInfo> snippetParameterInfos = EconomicMap.create();
 
-    private final EconomicSet<InvocationPlugin> conditionalPlugins = EconomicSet.create();
-
     /**
      * The invocation plugins which were delayed during graph preparation.
      */
@@ -264,10 +262,6 @@ public class SymbolicSnippetEncoder {
 
     SymbolicSnippetEncoder(HotSpotReplacementsImpl replacements) {
         this.originalReplacements = replacements;
-    }
-
-    synchronized void registerConditionalPlugin(InvocationPlugin plugin) {
-        conditionalPlugins.add(plugin);
     }
 
     @SuppressWarnings("try")
@@ -1053,7 +1047,7 @@ public class SymbolicSnippetEncoder {
             }
 
             InvocationPlugin plugin = graphBuilderConfig.getPlugins().getInvocationPlugins().lookupInvocation(targetMethod, options);
-            if (plugin != null && conditionalPlugins.contains(plugin)) {
+            if (plugin instanceof ConditionalInvocationPlugin) {
                 // Because supporting arbitrary plugins in the context of encoded graphs is complex
                 // we disallow it. This limitation can be worked around through the use of method
                 // substitutions.
