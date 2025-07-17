@@ -94,7 +94,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedInstanceType_init.getCallTarget())") DirectCallNode objectTypeConstructor,
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedArrayType_init.getCallTarget())") DirectCallNode arrayTypeConstructor,
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedPrimitiveType_forBasicType.getCallTarget())") DirectCallNode forBasicType,
-                        @Cached("create(context.getMeta().jvmci.UnresolvedJavaType_init.getCallTarget())") DirectCallNode unresolvedTypeConstructor,
+                        @Cached("create(context.getMeta().jvmci.UnresolvedJavaType_create.getCallTarget())") DirectCallNode createUnresolved,
                         @Cached InitCheck initCheck) {
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
@@ -104,38 +104,38 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
             String type = meta.toHostString(guestTypeString);
             LOGGER.finer(() -> "lookupType " + type + " resolved:" + resolve);
             ObjectKlass accessingKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(accessingClass);
-            return lookupType(type, accessingKlass, resolve, objectTypeConstructor, arrayTypeConstructor, forBasicType, initCheck, unresolvedTypeConstructor, context, meta);
+            return lookupType(type, accessingKlass, resolve, objectTypeConstructor, arrayTypeConstructor, forBasicType, initCheck, createUnresolved, context, meta);
         }
     }
 
     static StaticObject lookupType(String type, ObjectKlass accessingKlass, boolean resolve, DirectCallNode objectTypeConstructor, DirectCallNode arrayTypeConstructor, DirectCallNode forBasicType,
-                    InitCheck initCheck, DirectCallNode unresolvedTypeConstructor, EspressoContext context, Meta meta) {
+                    InitCheck initCheck, DirectCallNode createUnresolved, EspressoContext context, Meta meta) {
         ByteSequence typeDescriptor = ByteSequence.create(type);
         if (type.length() == 1) {
             JavaKind kind = JavaKind.fromPrimitiveOrVoidTypeCharOrNull(type.charAt(0));
             if (kind == null) {
-                return toJVMCIUnresolvedType(typeDescriptor, unresolvedTypeConstructor, context, meta);
+                return toJVMCIUnresolvedType(typeDescriptor, createUnresolved, meta);
             }
             return toJVMCIPrimitiveType(kind, forBasicType, initCheck, meta);
         }
-        return lookupNonPrimitiveType(typeDescriptor, accessingKlass, resolve, objectTypeConstructor, arrayTypeConstructor, forBasicType, initCheck, unresolvedTypeConstructor, context, meta);
+        return lookupNonPrimitiveType(typeDescriptor, accessingKlass, resolve, objectTypeConstructor, arrayTypeConstructor, forBasicType, initCheck, createUnresolved, context, meta);
     }
 
     static StaticObject lookupNonPrimitiveType(ByteSequence typeDescriptor, ObjectKlass accessingKlass, boolean resolve, DirectCallNode objectTypeConstructor, DirectCallNode arrayTypeConstructor,
-                    DirectCallNode forBasicType, InitCheck initCheck, DirectCallNode unresolvedTypeConstructor, EspressoContext context, Meta meta) {
+                    DirectCallNode forBasicType, InitCheck initCheck, DirectCallNode createUnresolved, EspressoContext context, Meta meta) {
         Symbol<Type> symbol = meta.getTypes().lookupValidType(typeDescriptor);
         if (symbol == null) {
             if (resolve) {
                 symbol = meta.getTypes().getOrCreateValidType(typeDescriptor);
             }
             if (symbol == null) {
-                return toJVMCIUnresolvedType(typeDescriptor, unresolvedTypeConstructor, context, meta);
+                return toJVMCIUnresolvedType(typeDescriptor, createUnresolved, meta);
             }
         }
         Klass result = findObjectType(symbol, accessingKlass, resolve, meta);
         if (result == null) {
             assert !resolve;
-            return toJVMCIUnresolvedType(symbol, unresolvedTypeConstructor, context, meta);
+            return toJVMCIUnresolvedType(symbol, createUnresolved, meta);
         } else {
             return toJVMCIObjectType(result, objectTypeConstructor, arrayTypeConstructor, forBasicType, initCheck, context, meta);
         }

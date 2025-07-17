@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.graal;
 
 import java.util.BitSet;
+import java.util.Map;
 
 import jdk.graal.compiler.api.replacements.SnippetTemplateCache;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
@@ -40,6 +41,7 @@ import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.spi.SnippetParameterInfo;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -67,6 +69,11 @@ public final class DummyReplacements implements Replacements {
 
     @Override
     public GraphBuilderConfiguration.Plugins getGraphBuilderPlugins() {
+        throw GraalError.unimplementedOverride();
+    }
+
+    @Override
+    public Map<SnippetTemplate.CacheKey, SnippetTemplate> getTemplatesCache() {
         throw GraalError.unimplementedOverride();
     }
 

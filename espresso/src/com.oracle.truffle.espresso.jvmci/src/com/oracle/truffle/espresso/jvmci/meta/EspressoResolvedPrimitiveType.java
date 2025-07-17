@@ -251,6 +251,11 @@ public final class EspressoResolvedPrimitiveType extends EspressoResolvedJavaTyp
     }
 
     @Override
+    public ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
+        return NO_METHODS;
+    }
+
+    @Override
     public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
         return Collections.emptyList();
     }
