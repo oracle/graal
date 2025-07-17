@@ -709,13 +709,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     }
 
                     if (!hasNodeParameter) {
-                        String nodeParameter;
-                        if (mode == ParseMode.EXPORTED_MESSAGE) {
-                            nodeParameter = String.format("@%s(\"$node\") Node node", getSimpleName(types.Bind));
-                        } else {
-                            nodeParameter = String.format("@%s(\"this\") Node node", getSimpleName(types.Bind));
-                        }
-
+                        String nodeParameter = String.format("@%s Node node", getSimpleName(types.Bind));
                         String message = String.format(
                                         "For this specialization with inlined cache parameters a '%s' parameter must be declared. " + //
                                                         "This parameter must be passed along to inlined cached values. " +

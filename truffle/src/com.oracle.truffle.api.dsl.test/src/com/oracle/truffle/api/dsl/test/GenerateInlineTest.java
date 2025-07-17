@@ -1745,7 +1745,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         abstract Object execute(Object arg);
 
-        @ExpectError("For this specialization with inlined cache parameters a '@Bind(\"this\") Node node' parameter must be declared. %")
+        @ExpectError("For this specialization with inlined cache parameters a '@Bind Node node' parameter must be declared. %")
         @Specialization(guards = "arg == cachedArg", limit = "3")
         static Object doInt(int arg,
                         @Cached(inline = true) SimpleNode simpleNode,
@@ -2327,7 +2327,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
             return false;
         }
 
-        @ExpectError("For this specialization with inlined cache parameters a '@Bind(\"$node\") Node node' parameter must be declared.%")
+        @ExpectError("For this specialization with inlined cache parameters a '@Bind Node node' parameter must be declared.%")
         @ExportMessage
         long asPointer(@Cached InlinedBranchProfile profile) {
             return 0L;
@@ -2346,7 +2346,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @ExportMessage
         static class AsPointer {
-            @ExpectError("For this specialization with inlined cache parameters a '@Bind(\"$node\") Node node' parameter must be declared.%")
+            @ExpectError("For this specialization with inlined cache parameters a '@Bind Node node' parameter must be declared.%")
             @Specialization
             static long asPointer(ErrorUseBindParamterInLibraryExport2 receiver, @Cached InlinedBranchProfile profile) {
                 return 0L;
