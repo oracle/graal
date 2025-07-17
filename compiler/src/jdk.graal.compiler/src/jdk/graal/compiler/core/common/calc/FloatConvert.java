@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.core.common.calc;
 
+import jdk.graal.compiler.core.common.NumUtil.Signedness;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
@@ -130,5 +131,29 @@ public enum FloatConvert {
             }
         }
         return null;
+    }
+
+    public Signedness signedness() {
+        return switch (this) {
+            case D2F -> Signedness.SIGNED;
+            case D2I -> Signedness.SIGNED;
+            case D2L -> Signedness.SIGNED;
+            case F2D -> Signedness.SIGNED;
+            case F2I -> Signedness.SIGNED;
+            case F2L -> Signedness.SIGNED;
+            case I2D -> Signedness.SIGNED;
+            case I2F -> Signedness.SIGNED;
+            case L2D -> Signedness.SIGNED;
+            case L2F -> Signedness.SIGNED;
+            case F2UI -> Signedness.UNSIGNED;
+            case D2UI -> Signedness.UNSIGNED;
+            case F2UL -> Signedness.UNSIGNED;
+            case D2UL -> Signedness.UNSIGNED;
+            case UI2F -> Signedness.UNSIGNED;
+            case UL2F -> Signedness.UNSIGNED;
+            case UI2D -> Signedness.UNSIGNED;
+            case UL2D -> Signedness.UNSIGNED;
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(this); // ExcludeFromJacocoGeneratedReport
+        };
     }
 }

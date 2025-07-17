@@ -90,7 +90,12 @@ public interface AArch64LoweringProviderMixin extends LoweringProvider {
     }
 
     @Override
-    default boolean supportsUnsignedFloatConvert() {
+    default boolean supportsFloatToUnsignedConvert() {
+        return true;
+    }
+
+    @Override
+    default boolean supportsUnsignedToFloatConvert() {
         return true;
     }
 }

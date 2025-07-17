@@ -679,7 +679,7 @@ public class TruffleInvocationPlugins {
 
         for (JavaKind floatKind : new JavaKind[]{JavaKind.Float, JavaKind.Double}) {
             for (JavaKind integerKind : new JavaKind[]{JavaKind.Int, JavaKind.Long}) {
-                r.registerConditional(lowerer.supportsUnsignedFloatConvert(), new OptionalInvocationPlugin(
+                r.registerConditional(lowerer.supportsFloatToUnsignedConvert(), new OptionalInvocationPlugin(
                                 integerKind == JavaKind.Long ? "truncateToUnsignedLong" : "truncateToUnsignedInt",
                                 floatKind.toJavaClass()) {
                     @Override
@@ -697,7 +697,7 @@ public class TruffleInvocationPlugins {
                 });
             }
 
-            r.registerConditional(lowerer.supportsUnsignedFloatConvert(), new OptionalInvocationPlugin(
+            r.registerConditional(lowerer.supportsUnsignedToFloatConvert(), new OptionalInvocationPlugin(
                             floatKind == JavaKind.Double ? "unsignedToDouble" : "unsignedToFloat",
                             long.class) {
                 @Override
