@@ -245,7 +245,9 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         });
 
         for (String className : classLoaderSupport.getClassNamesToPreserve()) {
-            reflection.registerClassLookup(always, className);
+            if (!classesOrPackagesToIgnore.contains(className)) {
+                reflection.registerClassLookup(always, className);
+            }
         }
     }
 
