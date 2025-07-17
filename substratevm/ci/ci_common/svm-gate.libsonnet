@@ -87,7 +87,7 @@
       mxgate_config+::["musl-dynamic"],
       mxgate_extra_args+: ["--extra-image-builder-arguments=--libc=musl -H:+UnlockExperimentalVMOptions -H:-StaticExecutable -H:-UnlockExperimentalVMOptions"],
       environment+: {
-        MX_SVMTEST_RUN_PREFIX: "$MUSL_TOOLCHAIN/lib/libc.so ", # see GR-53484, launching the ELF file with the right interpreter
+        MX_SVMTEST_RUN_PREFIX: "$MUSL_TOOLCHAIN/x86_64-linux-musl/lib/libc.so ", # see GR-53484, launching the ELF file with the right interpreter. If the path is incorrect, some svm tests fail with "FAILED image construction: java.lang.AssertionError: internal error"
       },
   } +
     # The galahad gates run with oracle JDK, which do not offer a musl build
