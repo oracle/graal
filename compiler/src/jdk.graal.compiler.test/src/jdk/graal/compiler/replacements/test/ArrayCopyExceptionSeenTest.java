@@ -88,7 +88,7 @@ public class ArrayCopyExceptionSeenTest extends GraalCompilerTest {
     public void testFailingCopy() throws InvalidInstalledCodeException {
         var method = getResolvedJavaMethod("copyWithHandler");
         Assert.assertEquals("No recorded deopt expected before first invocation.", 0, method.getProfilingInfo().getDeoptimizationCount(DeoptimizationReason.BoundsCheckException));
-        test(getInitialOptions(), method, true, null, new Object[]{new Object[3], -1, new Object[3], 0, 1});
+        test(method, null, new Object[3], -1, new Object[3], 0, 1);
         Assert.assertEquals("Single deopt expected after first invocation.", 1, method.getProfilingInfo().getDeoptimizationCount(DeoptimizationReason.BoundsCheckException));
         /*
          * Force a recompile which should create an explicit exception edge for the System.arraycopy

@@ -159,7 +159,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         CompilationResult compResult = compile(method, graph);
         CodeCacheProvider codeCache = getCodeCache();
         HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, method, null, compResult, getInitialOptions());
-        codeCache.addCode(method, compiledCode, null, null);
+        codeCache.addCode(method, compiledCode, null, null, true);
     }
 
     @Test(expected = Error.class)

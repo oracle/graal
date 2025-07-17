@@ -155,6 +155,9 @@ public final class Target_java_lang_ref_Reference<T> {
     native boolean enqueue();
 
     @KeepOriginal
+    native void enqueueFromPending();
+
+    @KeepOriginal
     native boolean isEnqueued();
 
     /** May be used by {@code JavaLangRefAccess} via {@code SharedSecrets}. */
