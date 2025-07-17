@@ -5192,7 +5192,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class LayeredRuntimeMetadataSingleton {
-    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)0,(short)2);
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)0,(short)4);
     public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -5231,17 +5231,41 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Builder initMethods(int size) {
         return _initPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 0, size);
       }
-      public final boolean hasFields() {
+      public final boolean hasMethodStates() {
         return !_pointerFieldIsNull(1);
       }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Boolean.Builder getMethodStates() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Boolean.factory, 1, null, 0);
+      }
+      public final void setMethodStates(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Boolean.Reader value) {
+        _setPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Boolean.factory, 1, value);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Boolean.Builder initMethodStates(int size) {
+        return _initPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Boolean.factory, 1, size);
+      }
+      public final boolean hasFields() {
+        return !_pointerFieldIsNull(2);
+      }
       public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Builder getFields() {
-        return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 1, null, 0);
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 2, null, 0);
       }
       public final void setFields(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Reader value) {
-        _setPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 1, value);
+        _setPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 2, value);
       }
       public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Builder initFields(int size) {
-        return _initPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 1, size);
+        return _initPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 2, size);
+      }
+      public final boolean hasFieldStates() {
+        return !_pointerFieldIsNull(3);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Boolean.Builder getFieldStates() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Boolean.factory, 3, null, 0);
+      }
+      public final void setFieldStates(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Boolean.Reader value) {
+        _setPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Boolean.factory, 3, value);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Boolean.Builder initFieldStates(int size) {
+        return _initPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Boolean.factory, 3, size);
       }
     }
 
@@ -5257,11 +5281,25 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 0, null, 0);
       }
 
-      public final boolean hasFields() {
+      public final boolean hasMethodStates() {
         return !_pointerFieldIsNull(1);
       }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Boolean.Reader getMethodStates() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Boolean.factory, 1, null, 0);
+      }
+
+      public final boolean hasFields() {
+        return !_pointerFieldIsNull(2);
+      }
       public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Reader getFields() {
-        return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 1, null, 0);
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 2, null, 0);
+      }
+
+      public final boolean hasFieldStates() {
+        return !_pointerFieldIsNull(3);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Boolean.Reader getFieldStates() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Boolean.factory, 3, null, 0);
       }
 
     }
