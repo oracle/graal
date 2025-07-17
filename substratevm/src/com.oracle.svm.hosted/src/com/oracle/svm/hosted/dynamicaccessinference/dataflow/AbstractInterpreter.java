@@ -618,7 +618,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
         }
     }
 
-    private List<T> popOperands(AbstractFrame<T>.OperandStack stack, int n) {
+    private List<T> popOperands(AbstractFrame.OperandStack<T> stack, int n) {
         return IntStream.range(0, n).mapToObj(i -> stack.pop()).toList().reversed();
     }
 
@@ -634,7 +634,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
             if (value instanceof Constant constant) {
                 stack.push(loadConstant(context, constant), needsTwoSlots);
             } else if (value instanceof JavaType type) {
-                assert !needsTwoSlots;
+                assert !needsTwoSlots : "Type references occupy a single stack slot";
                 stack.push(loadType(context, type), false);
             }
         }

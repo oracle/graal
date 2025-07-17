@@ -194,7 +194,7 @@ public final class ConstantExpressionRegistry {
     }
 
     void seal() {
-        assert !sealed;
+        assert !sealed : "Registry has already been sealed";
         sealed = true;
         registry = null;
     }
