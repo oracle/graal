@@ -24,10 +24,8 @@
  */
 package jdk.graal.compiler.truffle;
 
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.lir.phases.LIRSuites;
-import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.truffle.phases.TruffleCompilerPhases;
@@ -39,19 +37,13 @@ public final class TruffleTierConfiguration {
     private final Suites suites;
     private final LIRSuites lirSuites;
 
-    public TruffleTierConfiguration(PartialEvaluatorConfiguration configuration, Backend backend, OptionValues options, KnownTruffleTypes knownTruffleTypes) {
-        this(configuration, backend, backend.getProviders(), backend.getSuites().getDefaultSuites(options, backend.getTarget().arch), backend.getSuites().getDefaultLIRSuites(options),
-                        knownTruffleTypes, null);
-    }
-
-    public TruffleTierConfiguration(PartialEvaluatorConfiguration configuration, Backend backend, Providers providers, Suites suites, LIRSuites lirSuites, KnownTruffleTypes knownTruffleTypes,
-                    ForeignCallDescriptor deoptimizeCallDescriptor) {
+    public TruffleTierConfiguration(PartialEvaluatorConfiguration configuration, Backend backend, Providers providers, Suites suites, LIRSuites lirSuites, KnownTruffleTypes knownTruffleTypes) {
         this.configuration = configuration;
         this.backend = backend;
         this.providers = providers.copyWith(new TruffleStringConstantFieldProvider(providers, knownTruffleTypes));
         this.suites = suites;
         this.lirSuites = lirSuites;
-        TruffleCompilerPhases.register(knownTruffleTypes, providers, suites, deoptimizeCallDescriptor);
+        TruffleCompilerPhases.register(knownTruffleTypes, providers, suites);
         this.suites.setImmutable();
     }
 
