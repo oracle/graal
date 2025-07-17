@@ -25,15 +25,23 @@
 package com.oracle.svm.hosted.image;
 
 import static com.oracle.graal.pointsto.api.PointstoOptions.UseConservativeUnsafeAccess;
+import static com.oracle.svm.core.SubstrateOptions.EnableURLProtocols;
 import static com.oracle.svm.core.SubstrateOptions.Preserve;
+import static com.oracle.svm.core.jdk.JRTSupport.Options.AllowJRTFileSystem;
+import static com.oracle.svm.hosted.SecurityServicesFeature.Options.AdditionalSecurityProviders;
+import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.AddAllCharsets;
+import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.IncludeAllLocales;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.security.Provider;
+import java.security.Security;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
@@ -139,7 +147,23 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
                                 SubstrateOptionsParser.commandArgument(UseConservativeUnsafeAccess, "-"));
             }
             UseConservativeUnsafeAccess.update(hostedValues, true);
+
+            AddAllCharsets.update(hostedValues, true);
+            IncludeAllLocales.update(hostedValues, true);
+            AllowJRTFileSystem.update(hostedValues, true);
+            EnableURLProtocols.update(hostedValues, "http,https,ftp,jar,file,mailto,jrt,jmod");
+            AdditionalSecurityProviders.update(hostedValues, getSecurityProvidersCSV());
         }
+    }
+
+    private static String getSecurityProvidersCSV() {
+        StringJoiner joiner = new StringJoiner(",");
+        for (Provider provider : Security.getProviders()) {
+            Class<? extends Provider> aClass = provider.getClass();
+            String typeName = aClass.getTypeName();
+            joiner.add(typeName);
+        }
+        return joiner.toString();
     }
 
     public static void registerPreservedClasses(NativeImageClassLoaderSupport classLoaderSupport) {
