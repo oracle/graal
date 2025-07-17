@@ -41,7 +41,7 @@ public class ExactMathTest extends TruffleCompilerImplTest {
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        TruffleGraphBuilderPlugins.registerExactMathPlugins(invocationPlugins, getTypes(), getReplacements(), getLowerer());
+        TruffleGraphBuilderPlugins.registerExactMathPlugins(invocationPlugins, getTypes());
         super.registerInvocationPlugins(invocationPlugins);
     }
 

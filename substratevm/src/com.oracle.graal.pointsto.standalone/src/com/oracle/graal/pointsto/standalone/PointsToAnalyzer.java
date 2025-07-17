@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -212,8 +212,7 @@ public final class PointsToAnalyzer {
             NoClassInitializationPlugin classInitializationPlugin = new NoClassInitializationPlugin();
             plugins.setClassInitializationPlugin(classInitializationPlugin);
             aProviders.setGraphBuilderPlugins(plugins);
-            registerInvocationPlugins(originalProviders.getSnippetReflection(), plugins.getInvocationPlugins(), originalProviders.getReplacements(),
-                            false, true, false, originalProviders.getLowerer());
+            registerInvocationPlugins(originalProviders.getSnippetReflection(), plugins.getInvocationPlugins(), false, true, false);
         }
     }
 
