@@ -52,6 +52,7 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -214,6 +215,9 @@ public final class VM extends NativeEnv {
     private final Object zipLoadLock = new Object() {
     };
     private volatile @Pointer TruffleObject zipLibrary;
+
+    // The initial system properties
+    private Map<String, String> systemProperties;
 
     public void attachThread(Thread hostThread) {
         if (hostThread != Thread.currentThread()) {
@@ -2502,6 +2506,13 @@ public final class VM extends NativeEnv {
         }
     }
 
+    public synchronized Map<String, String> getSystemProperties() {
+        if (systemProperties == null) {
+            systemProperties = Collections.unmodifiableMap(buildPropertiesMap().map);
+        }
+        return systemProperties;
+    }
+
     private PropertiesMap buildPropertiesMap() {
         PropertiesMap map = new PropertiesMap();
         OptionValues options = getContext().getEnv().getOptions();
@@ -2587,7 +2598,7 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     @TruffleBoundary
     public @JavaType(Properties.class) StaticObject JVM_InitProperties(@JavaType(Properties.class) StaticObject properties) {
-        Map<String, String> props = buildPropertiesMap().map;
+        Map<String, String> props = getSystemProperties();
         Method setProperty = properties.getKlass().lookupMethod(Names.setProperty, Signatures.Object_String_String);
         for (Map.Entry<String, String> entry : props.entrySet()) {
             setProperty.invokeWithConversions(properties, entry.getKey(), entry.getValue());
@@ -2598,7 +2609,7 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     @TruffleBoundary
     public @JavaType(String[].class) StaticObject JVM_GetProperties(@Inject EspressoLanguage language) {
-        Map<String, String> props = buildPropertiesMap().map;
+        Map<String, String> props = getSystemProperties();
         StaticObject array = getMeta().java_lang_String.allocateReferenceArray(props.size() * 2);
         int index = 0;
         for (Map.Entry<String, String> entry : props.entrySet()) {

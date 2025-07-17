@@ -155,19 +155,15 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProv
         return jvmciMirror;
     }
 
-    static StaticObject toJVMCIUnresolvedType(ByteSequence symbol, DirectCallNode unresolvedTypeConstructor, EspressoContext context, Meta meta) {
+    static StaticObject toJVMCIUnresolvedType(ByteSequence symbol, DirectCallNode createUnresolved, Meta meta) {
         assert Validation.validTypeDescriptor(symbol, true);
         assert (symbol.byteAt(0) == 'L' && symbol.byteAt(symbol.length() - 1) == ';') || symbol.byteAt(0) == '[' : symbol;
-        StaticObject result = meta.jvmci.UnresolvedJavaType.allocateInstance(context);
-        unresolvedTypeConstructor.call(result, meta.toGuestString(symbol));
-        return result;
+        return (StaticObject) createUnresolved.call(meta.toGuestString(symbol));
     }
 
     static StaticObject toJVMCIUnresolvedType(ByteSequence symbol, Meta meta) {
         assert (symbol.byteAt(0) == 'L' && symbol.byteAt(symbol.length() - 1) == ';') || symbol.byteAt(0) == '[';
-        StaticObject result = meta.jvmci.UnresolvedJavaType.allocateInstance(meta.getContext());
-        meta.jvmci.UnresolvedJavaType_init.invokeDirectSpecial(result, meta.toGuestString(symbol));
-        return result;
+        return (StaticObject) meta.jvmci.UnresolvedJavaType_create.invokeDirectStatic(meta.toGuestString(symbol));
     }
 
     @Substitution(hasReceiver = true)

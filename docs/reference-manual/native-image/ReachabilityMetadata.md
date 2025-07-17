@@ -612,7 +612,8 @@ To request a bundle from a specific module:
 {
   "resources": [
     {
-      "bundle": "app.module:module.pkg.Bundle"
+      "module": "app.module"
+      "bundle": "your.pkg.Bundle"
     }
   ]
 }

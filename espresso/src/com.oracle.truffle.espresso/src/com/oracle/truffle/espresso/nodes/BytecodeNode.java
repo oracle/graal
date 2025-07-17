@@ -1463,6 +1463,13 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         int targetBCI = bs.nextBCI(curBCI);
                         livenessAnalysis.performOnEdge(frame, curBCI, targetBCI, skipLivenessActions);
+                        if (instrument != null) {
+                            int nextStatementIndex = instrument.getNextStatementIndex(statementIndex, targetBCI);
+                            if (nextStatementIndex != statementIndex) {
+                                instrument.notifyStatementChange(frame, statementIndex, nextStatementIndex, targetBCI);
+                                statementIndex = nextStatementIndex;
+                            }
+                        }
                         top += Bytecodes.stackEffectOf(wideOpcode);
                         curBCI = targetBCI;
                         continue loop;
