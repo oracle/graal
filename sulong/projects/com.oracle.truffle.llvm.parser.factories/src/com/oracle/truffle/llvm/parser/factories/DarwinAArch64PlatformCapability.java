@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,7 +45,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 final class DarwinAArch64PlatformCapability extends BasicAarch64PlatformCapability<DarwinSyscall> {
 
     public static final int RTLD_GLOBAL_DARWIN = 8;
-    public static final int RTLD_FIRST_DARWIN = 100;
+    public static final int RTLD_FIRST_DARWIN = 256;
     public static final long RTLD_DEFAULT_DARWIN = -2;
 
     DarwinAArch64PlatformCapability(boolean loadCxxLibraries) {
