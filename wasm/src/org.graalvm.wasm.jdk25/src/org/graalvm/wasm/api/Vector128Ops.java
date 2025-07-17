@@ -63,7 +63,7 @@ import static org.graalvm.wasm.api.Vector128.BYTES;
 
 public class Vector128Ops {
 
-    public interface Shape<E> {
+    private interface Shape<E> {
 
         Vector<E> reinterpret(ByteVector bytes);
 
@@ -86,7 +86,7 @@ public class Vector128Ops {
         }
     }
 
-    public static final class I8X16Shape implements Shape<Byte> {
+    private static final class I8X16Shape implements Shape<Byte> {
 
         private I8X16Shape() {
         }
@@ -116,9 +116,9 @@ public class Vector128Ops {
         }
     }
 
-    public static final I8X16Shape I8X16 = new I8X16Shape();
+    private static final I8X16Shape I8X16 = new I8X16Shape();
 
-    public static final class I16X8Shape implements Shape<Short> {
+    private static final class I16X8Shape implements Shape<Short> {
 
         private I16X8Shape() {
         }
@@ -148,9 +148,9 @@ public class Vector128Ops {
         }
     }
 
-    public static final I16X8Shape I16X8 = new I16X8Shape();
+    private static final I16X8Shape I16X8 = new I16X8Shape();
 
-    public static final class I32X4Shape implements Shape<Integer> {
+    private static final class I32X4Shape implements Shape<Integer> {
 
         private I32X4Shape() {
         }
@@ -180,9 +180,9 @@ public class Vector128Ops {
         }
     }
 
-    public static final I32X4Shape I32X4 = new I32X4Shape();
+    private static final I32X4Shape I32X4 = new I32X4Shape();
 
-    public static final class I64X2Shape implements Shape<Long> {
+    private static final class I64X2Shape implements Shape<Long> {
 
         private I64X2Shape() {
         }
@@ -208,9 +208,9 @@ public class Vector128Ops {
         }
     }
 
-    public static final I64X2Shape I64X2 = new I64X2Shape();
+    private static final I64X2Shape I64X2 = new I64X2Shape();
 
-    public static final class F32X4Shape implements Shape<Float> {
+    private static final class F32X4Shape implements Shape<Float> {
 
         private F32X4Shape() {
         }
@@ -249,9 +249,9 @@ public class Vector128Ops {
         }
     }
 
-    public static final F32X4Shape F32X4 = new F32X4Shape();
+    private static final F32X4Shape F32X4 = new F32X4Shape();
 
-    public static final class F64X2Shape implements Shape<Double> {
+    private static final class F64X2Shape implements Shape<Double> {
 
         private F64X2Shape() {
         }
@@ -282,7 +282,7 @@ public class Vector128Ops {
         }
     }
 
-    public static final F64X2Shape F64X2 = new F64X2Shape();
+    private static final F64X2Shape F64X2 = new F64X2Shape();
 
     @FunctionalInterface
     private interface UnaryVectorOp<E, F> {
@@ -292,50 +292,6 @@ public class Vector128Ops {
     @FunctionalInterface
     private interface BinaryVectorOp<F> {
         Vector<F> apply(Vector<F> leftOperand, Vector<F> rightOperand);
-    }
-
-    public static Object v128_load8x8(long value, int vectorOpcode) {
-        ByteVector bytes = LongVector.zero(Vector128Ops.I64X2.species()).withLane(0, value).reinterpretAsBytes();
-        // Could this be faster?
-        // ByteVector bytes = Vector128Ops.I64X2.broadcast(value).reinterpretAsBytes();
-        VectorOperators.Conversion<Byte, Short> conversion = switch (vectorOpcode) {
-            case Bytecode.VECTOR_V128_LOAD8X8_S -> VectorOperators.B2S;
-            case Bytecode.VECTOR_V128_LOAD8X8_U -> VectorOperators.ZERO_EXTEND_B2S;
-            default -> throw CompilerDirectives.shouldNotReachHere();
-        };
-        return castByte128(bytes.convert(conversion, 0).reinterpretAsBytes());
-    }
-
-    public static Object v128_load16x4(long value, int vectorOpcode) {
-        ShortVector shorts = LongVector.zero(Vector128Ops.I64X2.species()).withLane(0, value).reinterpretAsShorts();
-        // Could this be faster?
-        // ShortVector shorts = Vector128Ops.I64X2.broadcast(value).reinterpretAsShorts();
-        VectorOperators.Conversion<Short, Integer> conversion = switch (vectorOpcode) {
-            case Bytecode.VECTOR_V128_LOAD16X4_S -> VectorOperators.S2I;
-            case Bytecode.VECTOR_V128_LOAD16X4_U -> VectorOperators.ZERO_EXTEND_S2I;
-            default -> throw CompilerDirectives.shouldNotReachHere();
-        };
-        return castByte128(shorts.convert(conversion, 0).reinterpretAsBytes());
-    }
-
-    public static Object v128_load32x2(long value, int vectorOpcode) {
-        IntVector ints = LongVector.zero(Vector128Ops.I64X2.species()).withLane(0, value).reinterpretAsInts();
-        // Could this be faster?
-        // IntVector ints = Vector128Ops.I64X2.broadcast(value).reinterpretAsInts();
-        VectorOperators.Conversion<Integer, Long> conversion = switch (vectorOpcode) {
-            case Bytecode.VECTOR_V128_LOAD32X2_S -> VectorOperators.I2L;
-            case Bytecode.VECTOR_V128_LOAD32X2_U -> VectorOperators.ZERO_EXTEND_I2L;
-            default -> throw CompilerDirectives.shouldNotReachHere();
-        };
-        return castByte128(ints.convert(conversion, 0).reinterpretAsBytes());
-    }
-
-    public static Object v128_load32_zero(int value) {
-        return castByte128(I32X4.zero().withLane(0, value).reinterpretAsBytes());
-    }
-
-    public static Object v128_load64_zero(long value) {
-        return castByte128(I64X2.zero().withLane(0, value).reinterpretAsBytes());
     }
 
     public static Object unary(Object xVec, int vectorOpcode) {
@@ -582,6 +538,50 @@ public class Vector128Ops {
 
     // Checkstyle: stop method name check
 
+    public static Object v128_load8x8(long value, int vectorOpcode) {
+        ByteVector bytes = LongVector.zero(org.graalvm.wasm.api.Vector128Ops.I64X2.species()).withLane(0, value).reinterpretAsBytes();
+        // Could this be faster?
+        // ByteVector bytes = Vector128Ops.I64X2.broadcast(value).reinterpretAsBytes();
+        VectorOperators.Conversion<Byte, Short> conversion = switch (vectorOpcode) {
+            case Bytecode.VECTOR_V128_LOAD8X8_S -> VectorOperators.B2S;
+            case Bytecode.VECTOR_V128_LOAD8X8_U -> VectorOperators.ZERO_EXTEND_B2S;
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return castByte128(bytes.convert(conversion, 0).reinterpretAsBytes());
+    }
+
+    public static Object v128_load16x4(long value, int vectorOpcode) {
+        ShortVector shorts = LongVector.zero(org.graalvm.wasm.api.Vector128Ops.I64X2.species()).withLane(0, value).reinterpretAsShorts();
+        // Could this be faster?
+        // ShortVector shorts = Vector128Ops.I64X2.broadcast(value).reinterpretAsShorts();
+        VectorOperators.Conversion<Short, Integer> conversion = switch (vectorOpcode) {
+            case Bytecode.VECTOR_V128_LOAD16X4_S -> VectorOperators.S2I;
+            case Bytecode.VECTOR_V128_LOAD16X4_U -> VectorOperators.ZERO_EXTEND_S2I;
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return castByte128(shorts.convert(conversion, 0).reinterpretAsBytes());
+    }
+
+    public static Object v128_load32x2(long value, int vectorOpcode) {
+        IntVector ints = LongVector.zero(org.graalvm.wasm.api.Vector128Ops.I64X2.species()).withLane(0, value).reinterpretAsInts();
+        // Could this be faster?
+        // IntVector ints = Vector128Ops.I64X2.broadcast(value).reinterpretAsInts();
+        VectorOperators.Conversion<Integer, Long> conversion = switch (vectorOpcode) {
+            case Bytecode.VECTOR_V128_LOAD32X2_S -> VectorOperators.I2L;
+            case Bytecode.VECTOR_V128_LOAD32X2_U -> VectorOperators.ZERO_EXTEND_I2L;
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return castByte128(ints.convert(conversion, 0).reinterpretAsBytes());
+    }
+
+    public static Object v128_load32_zero(int value) {
+        return castByte128(I32X4.zero().withLane(0, value).reinterpretAsBytes());
+    }
+
+    public static Object v128_load64_zero(long value) {
+        return castByte128(I64X2.zero().withLane(0, value).reinterpretAsBytes());
+    }
+    
     public static Object i8x16_splat(byte value) {
         return I8X16.broadcast(value);
     }
@@ -1180,23 +1180,23 @@ public class Vector128Ops {
         return ByteVector.fromArray(I8X16.species(), bytes, offset);
     }
 
-    public static ByteVector fromArray(short[] shorts) {
+    public static Object fromArray(short[] shorts) {
         return ShortVector.fromArray(I16X8.species(), shorts, 0).reinterpretAsBytes();
     }
 
-    public static ByteVector fromArray(int[] ints) {
+    public static Object fromArray(int[] ints) {
         return IntVector.fromArray(I32X4.species(), ints, 0).reinterpretAsBytes();
     }
 
-    public static ByteVector fromArray(long[] longs) {
+    public static Object fromArray(long[] longs) {
         return LongVector.fromArray(I64X2.species(), longs, 0).reinterpretAsBytes();
     }
 
-    public static ByteVector fromArray(float[] floats) {
+    public static Object fromArray(float[] floats) {
         return FloatVector.fromArray(F32X4.species(), floats, 0).reinterpretAsBytes();
     }
 
-    public static ByteVector fromArray(double[] doubles) {
+    public static Object fromArray(double[] doubles) {
         return DoubleVector.fromArray(F64X2.species(), doubles, 0).reinterpretAsBytes();
     }
 
