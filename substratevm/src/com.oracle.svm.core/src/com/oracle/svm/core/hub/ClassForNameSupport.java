@@ -244,6 +244,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
 
     private void addKnownClass(String name, Consumer<EconomicMap<String, ConditionalRuntimeValue<Object>>> callback, ConditionalRuntimeValue<Object> cond) {
         Boolean previousLayerData = previousLayerClasses.get(name);
+        /* GR-66387: The runtime condition should be combined across layers. */
         if (previousLayerData == null || (!previousLayerData && cond.getValueUnconditionally() != NEGATIVE_QUERY)) {
             callback.accept(knownClasses);
         }
