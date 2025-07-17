@@ -65,6 +65,7 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
         this.archiveSupport.expandJarToDir(layerFile, layerDir);
         layerProperties.loadAndVerify(current);
         loadBuilderArgumentsFile();
+        loadBuildPathDigestsFile();
     }
 
     private void loadBuilderArgumentsFile() {
@@ -85,6 +86,14 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
         }
     }
 
+    private void loadBuildPathDigestsFile() {
+        try (Stream<String> lines = Files.lines(getBuildPathDigestsFilePath())) {
+            lines.map(PathDigestEntry::of).forEach(buildPathDigests::add);
+        } catch (IOException e) {
+            throw UserError.abort("Unable to load build path digests from file " + getBuildPathDigestsFilePath());
+        }
+    }
+
     @Override
     protected void validateLayerFile() {
         super.validateLayerFile();
@@ -100,6 +109,7 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
         violationsFound |= verifyBuilderArgumentsCompatibility(builderArguments, classLoaderSupport.getHostedOptionParser().getArguments(), filterFunction, allRequests, strict, verbose, true);
         violationsFound |= verifyBuilderArgumentsCompatibility(builderArguments, classLoaderSupport.getHostedOptionParser().getArguments(), filterFunction, allRequests, strict, verbose, false);
         violationsFound |= verifyEnvironmentVariablesCompatibility(loadEnvironmentVariablesFile(), parseEnvVariables(), strict, verbose);
+        violationsFound |= verifyBuildPathDigestsCompatibility(buildPathDigests, PathDigestEntry.getPathDigestEntries(classLoaderSupport), strict, verbose);
         if (violationsFound && verbose) {
             UserError.abort("Verbose LayerOptionVerification failed.");
         }
@@ -253,6 +263,39 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
         }
 
         return violationsFound;
+    }
+
+    private static boolean verifyBuildPathDigestsCompatibility(List<PathDigestEntry> previousPathDigests, List<PathDigestEntry> currentPathDigests, boolean strict, boolean verbose) {
+        Set<String> currentDigests = new HashSet<>(currentPathDigests.size());
+        currentPathDigests.forEach(pathEntry -> currentDigests.add(pathEntry.digest()));
+        List<PathDigestEntry> previousRemainingPathDigests = previousPathDigests.stream()
+                        .filter(pathEntry -> !currentDigests.contains(pathEntry.digest()))
+                        .toList();
+
+        if (previousRemainingPathDigests.isEmpty()) {
+            return false;
+        }
+
+        Set<String> currentPaths = new HashSet<>(currentPathDigests.size());
+        currentPathDigests.forEach(pathEntry -> currentPaths.add(pathEntry.path()));
+        for (var remainingDigest : previousRemainingPathDigests) {
+            boolean pathNotFound = !currentPaths.contains(remainingDigest.path());
+            String pathType = remainingDigest.type().equals(PathDigestEntry.PathType.cp) ? "classpath" : "modulepath";
+
+            String message = "The entry " + remainingDigest.path() + " included in the " + pathType + " of the previous layered build was" +
+                            (pathNotFound ? " not" : "") + " found in the " + pathType + " of the current layered build" + (pathNotFound ? "." : ", but its contents have been modified.");
+
+            if (verbose) {
+                LogUtils.info("Error: ", message);
+            } else {
+                if (strict) {
+                    throw UserError.abort(message);
+                } else {
+                    LogUtils.warning(message);
+                }
+            }
+        }
+        return true;
     }
 
     record ArgumentOrigin(boolean booleanOption, String argument, String origin) {

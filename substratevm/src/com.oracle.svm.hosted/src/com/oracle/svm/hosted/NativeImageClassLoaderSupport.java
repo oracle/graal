@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
+import static jdk.graal.compiler.util.Digest.DigestBuilder;
+
 import java.io.File;
 import java.io.IOException;
 import java.lang.module.Configuration;
@@ -36,9 +38,12 @@ import java.lang.module.ResolvedModule;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.channels.ClosedByInterruptException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
+import java.nio.file.FileVisitOption;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
@@ -52,6 +57,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.EnumSet;
+import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -67,9 +74,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.BiConsumer;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.zip.ZipFile;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -116,6 +126,7 @@ public final class NativeImageClassLoaderSupport {
     private final List<Path> buildmp;
 
     private final Set<Path> imageProvidedJars;
+    private PathDigests pathDigests;
 
     private final EconomicMap<URI, EconomicSet<String>> classes;
     private final EconomicMap<URI, EconomicSet<String>> packages;
@@ -298,6 +309,47 @@ public final class NativeImageClassLoaderSupport {
 
     public NativeImageClassLoader getClassLoader() {
         return classLoader;
+    }
+
+    public Optional<PathDigests> getPathDigests(boolean free) {
+        Optional<PathDigests> res = Optional.ofNullable(pathDigests);
+        if (free) {
+            pathDigests = null;
+        }
+        return res;
+    }
+
+    public void initializePathDigests(Path digestIgnoreRelativePath) {
+        List<Path> digestIgnorePaths = new ArrayList<>();
+        if (digestIgnoreRelativePath != null) {
+            try {
+                Enumeration<URL> urls = classLoader.getResources(digestIgnoreRelativePath.toString());
+                while (urls.hasMoreElements()) {
+                    URI uri = urls.nextElement().toURI();
+                    if ("jar".equalsIgnoreCase(uri.getScheme())) {
+                        String uriString = uri.toString();
+                        String fileUriString = uriString.substring("jar:".length(), uriString.indexOf("!/"));
+                        uri = URI.create(fileUriString);
+                    }
+                    digestIgnorePaths.add(Path.of(uri));
+                }
+            } catch (URISyntaxException | IOException e) {
+                throw UserError.abort("Error while looking for %s in %s", digestIgnoreRelativePath, classLoader);
+            }
+        }
+
+        pathDigests = new PathDigests(filterIgnoredPathEntries(imagecp, digestIgnorePaths), filterIgnoredPathEntries(imagemp, digestIgnorePaths));
+    }
+
+    private List<Path> filterIgnoredPathEntries(List<Path> pathEntries, List<Path> digestIgnorePaths) {
+        return pathEntries.stream().filter(pathEntry -> {
+            for (Path p : digestIgnorePaths) {
+                if (p.startsWith(pathEntry)) {
+                    return false;
+                }
+            }
+            return true;
+        }).toList();
     }
 
     public LibGraalLoader getLibGraalLoader() {
@@ -932,12 +984,17 @@ public final class NativeImageClassLoaderSupport {
                 if (ModuleLayer.boot().equals(module.getLayer())) {
                     builderURILocations.add(container);
                 }
+                final boolean isInImageModulePathOfLayeredBuild = pathDigests != null && pathDigests.mpDigests.containsKey(container);
+                final boolean isJar = ClasspathUtils.isJar(Path.of(container));
                 moduleReader.list().forEach(moduleResource -> {
                     char fileSystemSeparatorChar = '/';
                     String className = extractClassName(moduleResource, fileSystemSeparatorChar);
                     if (className != null) {
                         currentlyProcessedEntry = moduleReferenceLocation + fileSystemSeparatorChar + moduleResource;
                         executor.execute(() -> handleClassFileName(container, module, className, includeUnconditionally, moduleRequiresInit, preserveModule));
+                    }
+                    if (isInImageModulePathOfLayeredBuild) {
+                        executor.execute(() -> PathDigests.storePathFileDigest(container, moduleResource, isJar, pathDigests.mpDigests));
                     }
                     entriesProcessed.increment();
                 });
@@ -962,7 +1019,7 @@ public final class NativeImageClassLoaderSupport {
                     }
                     if (probeJarFileSystem != null) {
                         try (FileSystem jarFileSystem = probeJarFileSystem) {
-                            loadClassesFromPath(container, jarFileSystem.getPath("/"), null, Collections.emptySet(), includeUnconditionally, includeAllMetadata);
+                            loadClassesFromPath(container, jarFileSystem.getPath("/"), null, Collections.emptySet(), includeUnconditionally, includeAllMetadata, true);
                         }
                     }
                 } catch (ClosedByInterruptException ignored) {
@@ -973,13 +1030,13 @@ public final class NativeImageClassLoaderSupport {
             } else {
                 URI container = path.toUri();
                 loadClassesFromPath(container, path, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES, includeUnconditionally,
-                                includeAllMetadata);
+                                includeAllMetadata, false);
             }
         }
 
         private static final String CLASS_EXTENSION = ".class";
 
-        private void loadClassesFromPath(URI container, Path root, Path excludeRoot, Set<Path> excludes, boolean includeUnconditionally, boolean includeAllMetadata) {
+        private void loadClassesFromPath(URI container, Path root, Path excludeRoot, Set<Path> excludes, boolean includeUnconditionally, boolean includeAllMetadata, boolean isJar) {
             boolean useFilter = root.equals(excludeRoot);
             if (useFilter) {
                 String excludesStr = excludes.stream().map(Path::toString).collect(Collectors.joining(", "));
@@ -987,6 +1044,7 @@ public final class NativeImageClassLoaderSupport {
             }
             FileVisitor<Path> visitor = new SimpleFileVisitor<>() {
                 private final char fileSystemSeparatorChar = root.getFileSystem().getSeparator().charAt(0);
+                private final boolean isInImageClassPathOfLayeredBuild = pathDigests != null && pathDigests.getCpDigests().containsKey(container);
 
                 @Override
                 public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
@@ -1007,6 +1065,9 @@ public final class NativeImageClassLoaderSupport {
                         currentlyProcessedEntry = file.toUri().toString();
                         executor.execute(() -> handleClassFileName(container, null, className, includeUnconditionally, true, includeAllMetadata));
                     }
+                    if (isInImageClassPathOfLayeredBuild) {
+                        executor.execute(() -> PathDigests.storePathFileDigest(container, fileName, isJar, pathDigests.cpDigests));
+                    }
                     entriesProcessed.increment();
                     return FileVisitResult.CONTINUE;
                 }
@@ -1019,7 +1080,7 @@ public final class NativeImageClassLoaderSupport {
             };
 
             try {
-                Files.walkFileTree(root, visitor);
+                Files.walkFileTree(root, EnumSet.of(FileVisitOption.FOLLOW_LINKS), Integer.MAX_VALUE, visitor);
             } catch (IOException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }
@@ -1370,6 +1431,56 @@ public final class NativeImageClassLoaderSupport {
 
         public Set<IncludeOptionsSupport.PackageOptionValue> packages() {
             return packages.keySet();
+        }
+    }
+
+    public static final class PathDigests {
+        private final EconomicMap<URI, List<String>> cpDigests = EconomicMap.create();
+        private final EconomicMap<URI, List<String>> mpDigests = EconomicMap.create();
+
+        private PathDigests(List<Path> imagecp, List<Path> imagemp) {
+            imagecp.stream()
+                            .map(Path::toUri)
+                            .forEach(path -> cpDigests.put(path, new ArrayList<>()));
+            imagemp.stream()
+                            .map(Path::toUri)
+                            .forEach(path -> mpDigests.put(path, new ArrayList<>()));
+        }
+
+        private static void storePathFileDigest(URI container, String resource, boolean isJar, EconomicMap<URI, List<String>> digests) {
+            byte[] fileContent;
+            try {
+                if (isJar) {
+                    try (JarFile jarFile = new JarFile(new File(container), true, ZipFile.OPEN_READ, JarFile.runtimeVersion())) {
+                        JarEntry jarEntry = jarFile.getJarEntry(resource);
+                        fileContent = jarFile.getInputStream(jarEntry).readAllBytes();
+                    }
+                } else {
+                    Path resourcePath = Path.of(container).resolve(resource);
+                    if (!resourcePath.toFile().isFile()) {
+                        return;
+                    }
+                    fileContent = Files.readAllBytes(resourcePath);
+                }
+            } catch (IOException e) {
+                throw UserError.abort("Image builder cannot read file: " + resource);
+            }
+
+            DigestBuilder db = new DigestBuilder();
+            db.update(fileContent);
+            db.update(resource.getBytes(StandardCharsets.UTF_8));
+            List<String> containerDigests = digests.get(container);
+            synchronized (containerDigests) {
+                containerDigests.add(new String(db.digest(), StandardCharsets.UTF_8));
+            }
+        }
+
+        public EconomicMap<URI, List<String>> getCpDigests() {
+            return cpDigests;
+        }
+
+        public EconomicMap<URI, List<String>> getMpDigests() {
+            return mpDigests;
         }
     }
 }
