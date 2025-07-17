@@ -68,6 +68,18 @@
     targets: [t],
   }),
 
+  // Split gate into multiple batches
+  partial(num):: run_spec.add_multiply(
+    [
+      task_spec({
+        local batch = "%d/%d" % [i, num],
+        mxgate_batch:: batch,
+        mxgate_extra_args+: ["--partial=" + batch],
+        })
+      for i in std.range(1, num)
+    ]
+  ),
+
   gate:: $.target("gate"),
   tier1:: $.target("tier1"),
   tier2:: $.target("tier2"),
