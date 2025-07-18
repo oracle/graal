@@ -405,38 +405,37 @@ public final class EspressoOptions {
             final String[] options = s.split(",");
             String transport = null;
             String host = null;
-            String port = null;
+            int port = 0;
             boolean server = false;
             boolean suspend = true;
 
             for (String keyValue : options) {
-                String[] parts = keyValue.split("=");
-                if (parts.length != 2) {
+                int equalsIndex = keyValue.indexOf('=');
+                if (equalsIndex <= 0) {
                     throw new IllegalArgumentException("JDWP options must be a comma separated list of key=value pairs.");
                 }
-                String key = parts[0];
-                String value = parts[1];
+                String key = keyValue.substring(0, equalsIndex);
+                String value = keyValue.substring(equalsIndex + 1);
                 switch (key) {
                     case "address":
-                        parts = value.split(":");
                         String inputHost = null;
-                        String inputPort;
-                        if (parts.length == 1) {
-                            inputPort = parts[0];
-                        } else if (parts.length == 2) {
-                            inputHost = parts[0];
-                            inputPort = parts[1];
-                        } else {
-                            throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Not a 'host:port' pair.");
-                        }
-                        long realValue;
-                        try {
-                            realValue = Long.valueOf(inputPort);
-                            if (realValue < 0 || realValue > 65535) {
-                                throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Must be in the 0 - 65535 range.");
+                        int inputPort = 0;
+                        if (!value.isEmpty()) {
+                            int colonIndex = value.indexOf(':');
+                            if (colonIndex > 0) {
+                                inputHost = value.substring(0, colonIndex);
                             }
-                        } catch (NumberFormatException ex) {
-                            throw new IllegalArgumentException("Invalid JDWP option, address is not a number. Must be a number in the 0 - 65535 range.");
+                            String portStr = value.substring(colonIndex + 1);
+                            long realValue;
+                            try {
+                                realValue = Long.valueOf(portStr);
+                                if (realValue < 0 || realValue > 65535) {
+                                    throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Must be in the 0 - 65535 range.");
+                                }
+                            } catch (NumberFormatException ex) {
+                                throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Port is not a number. Must be a number in the 0 - 65535 range.");
+                            }
+                            inputPort = (int) realValue;
                         }
                         host = inputHost;
                         port = inputPort;
