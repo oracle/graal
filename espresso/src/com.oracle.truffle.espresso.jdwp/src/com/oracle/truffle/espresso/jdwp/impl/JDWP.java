@@ -2093,7 +2093,7 @@ public final class JDWP {
                     if ((masked & JVMTI_THREAD_STATE_RUNNABLE) != 0) {
                         return ThreadStatusConstants.RUNNING;
                     } else if ((masked & JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER) != 0) {
-                        return ThreadStatusConstants.WAIT;
+                        return ThreadStatusConstants.MONITOR;
                     }
                     return ThreadStatusConstants.RUNNING;
                 } else if ((masked & JVMTI_THREAD_STATE_WAITING) != 0) {

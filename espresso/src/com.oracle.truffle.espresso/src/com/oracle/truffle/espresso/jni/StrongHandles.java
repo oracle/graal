@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,43 +22,18 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-import java.lang.ref.WeakReference;
-import java.util.Objects;
-import java.util.WeakHashMap;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
-/**
- * Manages a collection of weak references associated to handles.
- */
-public final class WeakHandles<T> extends HandleStorage<T, WeakReference<T>> {
-    private final WeakHashMap<T, Integer> map;
-
-    @Override
-    WeakReference<T> toREF(T object) {
-        return new WeakReference<>(object);
+public final class StrongHandles<T> extends HandleStorage<T, T> {
+    public StrongHandles() {
+        super(false);
     }
 
     @Override
-    T deREF(WeakReference<T> ref) {
-        return ref != null ? ref.get() : null;
+    T toREF(T object) {
+        return object;
     }
 
-    public WeakHandles() {
-        super(true);
-        map = new WeakHashMap<>(DEFAULT_INITIAL_CAPACITY);
-    }
-
-    @TruffleBoundary
     @Override
-    public synchronized long handlify(T object) {
-        Objects.requireNonNull(object);
-        Integer handle = map.get(object);
-        if (handle != null) {
-            return handle;
-        }
-        handle = (int) super.handlify(object);
-        map.put(object, handle);
-        return handle;
+    T deREF(T ref) {
+        return ref;
     }
 }
