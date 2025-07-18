@@ -743,6 +743,12 @@ public final class EspressoOptions {
                     usageSyntax = "<path>") //
     public static final OptionKey<Path> SharedArchiveFile = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
 
+    @Option(help = "Sets the amount of time, in ms, various thread requests (such as 'Thread.getStackTrace()') will wait for when the requested thread is considered unresponsive w.r.t. espresso.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "<duration in ms>") //
+    public static final OptionKey<Integer> ThreadRequestGracePeriod = new OptionKey<>(100);
+
     /**
      * Property used to force liveness analysis to also be applied by the interpreter. For testing
      * purpose only. Use a host property rather than an option. An option would slow interpreter
