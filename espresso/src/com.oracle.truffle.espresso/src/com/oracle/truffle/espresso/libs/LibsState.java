@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.libs;
 import java.util.zip.Inflater;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.jni.StrongHandles;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -32,12 +33,12 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 public class LibsState {
     private final StrongHandles<Inflater> handle2Inflater = new StrongHandles<>();
 
-    public int handlifyInflater(Inflater i) {
+    public long handlifyInflater(Inflater i) {
         return handle2Inflater.handlify(i);
     }
 
     public void cleanInflater(long handle) {
-        handle2Inflater.cleanIndex(handle);
+        handle2Inflater.freeHandle(handle);
     }
 
     public Inflater getInflater(long handle) {
