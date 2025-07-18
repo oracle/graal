@@ -73,12 +73,12 @@ public enum DwarfLineOpcode {
     /*
      * Increment address 1 ushort arg.
      */
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused")//
     DW_LNS_set_prologue_end((byte) 10),
     /*
      * Increment address 1 ushort arg.
      */
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused")//
     DW_LNS_set_epilogue_begin((byte) 11),
     /*
      * Extended line section opcodes defined by DWARF 2.
@@ -86,7 +86,7 @@ public enum DwarfLineOpcode {
     /*
      * There is no extended opcode 0.
      */
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused")//
     DW_LNE_undefined((byte) 0),
     /*
      * End sequence of addresses.

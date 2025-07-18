@@ -27,7 +27,6 @@ package com.oracle.svm.core.code;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -42,6 +41,7 @@ import com.oracle.svm.core.nmt.NmtCategory;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredImageSingleton
 public final class InstalledCodeObserverSupport {
@@ -103,6 +103,7 @@ public final class InstalledCodeObserverSupport {
 
     public static void removeObservers(NonmovableArray<InstalledCodeObserverHandle> observerHandles) {
         forEach(observerHandles, ACTION_RELEASE);
+        clearObserverHandles(observerHandles);
     }
 
     private interface InstalledCodeObserverHandleAction {
@@ -116,6 +117,18 @@ public final class InstalledCodeObserverSupport {
                 InstalledCodeObserverHandle handle = NonmovableArrays.getWord(array, i);
                 if (handle.isNonNull()) {
                     action.invoke(handle);
+                }
+            }
+        }
+    }
+
+    private static void clearObserverHandles(NonmovableArray<InstalledCodeObserverHandle> array) {
+        if (array.isNonNull()) {
+            int length = NonmovableArrays.lengthOf(array);
+            for (int i = 0; i < length; i++) {
+                InstalledCodeObserverHandle handle = NonmovableArrays.getWord(array, i);
+                if (handle.isNonNull()) {
+                    NonmovableArrays.setWord(array, i, Word.nullPointer());
                 }
             }
         }

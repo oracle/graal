@@ -26,12 +26,11 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import com.oracle.objectfile.debugentry.FileEntry;
-import com.oracle.objectfile.debugentry.CompiledMethodEntry;
-import com.oracle.objectfile.debugentry.range.Range;
-import com.oracle.objectfile.debugentry.range.SubRange;
-
 import java.util.Iterator;
+
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.FileEntry;
+import com.oracle.objectfile.debugentry.range.Range;
 
 /*
  * In CV4, the line table consists of a series of file headers followed by line number entries.
@@ -60,16 +59,16 @@ public class CVLineRecordBuilder {
      */
     CVLineRecord build(CompiledMethodEntry entry) {
         this.compiledEntry = entry;
-        Range primaryRange = compiledEntry.getPrimary();
+        Range primaryRange = compiledEntry.primary();
 
         debug("DEBUG_S_LINES linerecord for 0x%05x file: %s:%d", primaryRange.getLo(), primaryRange.getFileName(), primaryRange.getLine());
         this.lineRecord = new CVLineRecord(cvDebugInfo, primaryRange.getSymbolName());
         debug("CVLineRecord.computeContents: processing primary range %s", primaryRange);
 
         processRange(primaryRange);
-        Iterator<SubRange> iterator = compiledEntry.leafRangeIterator();
+        Iterator<Range> iterator = compiledEntry.leafRangeStream().iterator();
         while (iterator.hasNext()) {
-            SubRange subRange = iterator.next();
+            Range subRange = iterator.next();
             debug("CVLineRecord.computeContents: processing range %s", subRange);
             processRange(subRange);
         }
@@ -102,9 +101,9 @@ public class CVLineRecordBuilder {
         }
 
         /* Add line record. */
-        int lineLoAddr = range.getLo() - compiledEntry.getPrimary().getLo();
+        int lineLoAddr = (int) (range.getLo() - compiledEntry.primary().getLo());
         int line = Math.max(range.getLine(), 1);
-        debug("  processRange:   addNewLine: 0x%05x-0x%05x %s", lineLoAddr, range.getHi() - compiledEntry.getPrimary().getLo(), line);
+        debug("  processRange:   addNewLine: 0x%05x-0x%05x %s", lineLoAddr, range.getHi() - compiledEntry.primary().getLo(), line);
         lineRecord.addNewLine(lineLoAddr, line);
     }
 }

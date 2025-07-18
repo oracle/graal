@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,40 +26,22 @@
 
 package com.oracle.objectfile.debugentry;
 
-import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Stream;
+import java.util.Map;
+import java.util.concurrent.ConcurrentSkipListSet;
 
-import org.graalvm.collections.EconomicMap;
-
-import com.oracle.objectfile.debugentry.range.PrimaryRange;
 import com.oracle.objectfile.debugentry.range.Range;
-import com.oracle.objectfile.debugentry.range.SubRange;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInstanceTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugRangeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Track debug info associated with a Java class.
  */
-public class ClassEntry extends StructureTypeEntry {
+public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry, InterfaceClassEntry {
     /**
      * Details of this class's superclass.
      */
-    protected ClassEntry superClass;
-    /**
-     * Details of this class's interfaces.
-     */
-    protected final List<InterfaceClassEntry> interfaces = new ArrayList<>();
+    private final ClassEntry superClass;
     /**
      * Details of the associated file.
      */
@@ -67,116 +49,94 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Details of the associated loader.
      */
-    private LoaderEntry loader;
+    private final LoaderEntry loader;
     /**
      * Details of methods located in this instance.
      */
-    protected final List<MethodEntry> methods = new ArrayList<>();
-    /**
-     * An index of all currently known methods keyed by the unique, associated, identifying
-     * ResolvedJavaMethod.
-     */
-    private final EconomicMap<ResolvedJavaMethod, MethodEntry> methodsIndex = EconomicMap.create();
+    private final ConcurrentSkipListSet<MethodEntry> methods;
     /**
      * A list recording details of all normal compiled methods included in this class sorted by
      * ascending address range. Note that the associated address ranges are disjoint and contiguous.
      */
-    private final List<CompiledMethodEntry> compiledEntries = new ArrayList<>();
-    /**
-     * An index identifying ranges for compiled method which have already been encountered.
-     */
-    private final EconomicMap<Range, CompiledMethodEntry> compiledMethodIndex = EconomicMap.create();
+    private final ConcurrentSkipListSet<CompiledMethodEntry> compiledMethods;
 
     /**
      * A list of all files referenced from info associated with this class, including info detailing
      * inline method ranges.
      */
-    private final ArrayList<FileEntry> files;
+    private final ConcurrentSkipListSet<FileEntry> files;
+    private final Map<FileEntry, Integer> indexedFiles = new HashMap<>();
+
     /**
      * A list of all directories referenced from info associated with this class, including info
      * detailing inline method ranges.
      */
-    private final ArrayList<DirEntry> dirs;
-    /**
-     * An index identifying the file table position of every file referenced from info associated
-     * with this class, including info detailing inline method ranges.
-     */
-    private EconomicMap<FileEntry, Integer> fileIndex;
-    /**
-     * An index identifying the dir table position of every directory referenced from info
-     * associated with this class, including info detailing inline method ranges.
-     */
-    private EconomicMap<DirEntry, Integer> dirIndex;
+    private final ConcurrentSkipListSet<DirEntry> dirs;
+    private final Map<DirEntry, Integer> indexedDirs = new HashMap<>();
 
-    public ClassEntry(String className, FileEntry fileEntry, int size) {
-        super(className, size);
+    public ClassEntry(String typeName, int size, long classOffset, long typeSignature,
+                    long compressedTypeSignature, long layoutTypeSignature,
+                    ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader) {
+        super(typeName, size, classOffset, typeSignature, compressedTypeSignature, layoutTypeSignature);
+        this.superClass = superClass;
         this.fileEntry = fileEntry;
-        this.loader = null;
-        // file and dir lists/indexes are populated after all DebugInfo API input has
-        // been received and are only created on demand
-        files = new ArrayList<>();
-        dirs = new ArrayList<>();
-        // create these on demand using the size of the file and dir lists
-        this.fileIndex = null;
-        this.dirIndex = null;
+        this.loader = loader;
+        this.methods = new ConcurrentSkipListSet<>(Comparator.comparingInt(MethodEntry::getModifiers).thenComparingInt(MethodEntry::getLine).thenComparing(MethodEntry::getSymbolName));
+        this.compiledMethods = new ConcurrentSkipListSet<>(Comparator.comparing(CompiledMethodEntry::primary));
+        this.files = new ConcurrentSkipListSet<>(Comparator.comparing(FileEntry::fileName).thenComparing(file -> file.dirEntry().path()));
+        this.dirs = new ConcurrentSkipListSet<>(Comparator.comparing(DirEntry::path));
+
+        addFile(fileEntry);
     }
 
+    private void addFile(FileEntry addFileEntry) {
+        if (addFileEntry != null && !addFileEntry.fileName().isEmpty()) {
+            files.add(addFileEntry);
+            DirEntry addDirEntry = addFileEntry.dirEntry();
+            if (addDirEntry != null && !addDirEntry.getPathString().isEmpty()) {
+                dirs.add(addDirEntry);
+            }
+        }
+    }
+
+    /**
+     * Add a field to the class entry and store its file entry.
+     * 
+     * @param field the {@code FieldEntry} to add
+     */
     @Override
-    public DebugTypeKind typeKind() {
-        return DebugTypeKind.INSTANCE;
+    public void addField(FieldEntry field) {
+        addFile(field.getFileEntry());
+        super.addField(field);
     }
 
-    @Override
-    public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
-        super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
-        assert debugTypeInfo.typeName().equals(typeName);
-        DebugInstanceTypeInfo debugInstanceTypeInfo = (DebugInstanceTypeInfo) debugTypeInfo;
-        /* Add details of super and interface classes */
-        ResolvedJavaType superType = debugInstanceTypeInfo.superClass();
-        if (debugContext.isLogEnabled()) {
-            debugContext.log("typename %s adding super %s%n", typeName, superType != null ? superType.toJavaName() : "");
-        }
-        if (superType != null) {
-            this.superClass = debugInfoBase.lookupClassEntry(superType);
-        }
-        String loaderName = debugInstanceTypeInfo.loaderName();
-        if (!loaderName.isEmpty()) {
-            this.loader = debugInfoBase.ensureLoaderEntry(loaderName);
-        }
-        debugInstanceTypeInfo.interfaces().forEach(interfaceType -> processInterface(interfaceType, debugInfoBase, debugContext));
-        /* Add details of fields and field types */
-        debugInstanceTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
-        /* Add details of methods and method types */
-        debugInstanceTypeInfo.methodInfoProvider().forEach(debugMethodInfo -> this.processMethod(debugMethodInfo, debugInfoBase, debugContext));
-    }
-
-    public CompiledMethodEntry indexPrimary(PrimaryRange primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
-        assert compiledMethodIndex.get(primary) == null : "repeat of primary range [0x%x, 0x%x]!".formatted(primary.getLo(), primary.getHi());
-        CompiledMethodEntry compiledEntry = new CompiledMethodEntry(primary, frameSizeInfos, frameSize, this);
-        compiledMethodIndex.put(primary, compiledEntry);
-        compiledEntries.add(compiledEntry);
-        return compiledEntry;
-    }
-
-    public void indexSubRange(SubRange subrange) {
-        Range primary = subrange.getPrimary();
-        /* The subrange should belong to a primary range. */
-        assert primary != null;
-        CompiledMethodEntry compiledEntry = compiledMethodIndex.get(primary);
-        /* We should already have seen the primary range. */
-        assert compiledEntry != null;
-        assert compiledEntry.getClassEntry() == this;
-    }
-
-    private void indexMethodEntry(MethodEntry methodEntry, ResolvedJavaMethod idMethod) {
-        assert methodsIndex.get(idMethod) == null : methodEntry.getSymbolName();
+    /**
+     * Add a method to the class entry and store its file entry.
+     *
+     * @param methodEntry the {@code MethodEntry} to add
+     */
+    public void addMethod(MethodEntry methodEntry) {
+        addFile(methodEntry.getFileEntry());
         methods.add(methodEntry);
-        methodsIndex.put(idMethod, methodEntry);
+    }
+
+    /**
+     * Add a compiled method to the class entry and store its file entry and the file entries of
+     * inlined methods.
+     *
+     * @param compiledMethodEntry the {@code CompiledMethodEntry} to add
+     */
+    public void addCompiledMethod(CompiledMethodEntry compiledMethodEntry) {
+        addFile(compiledMethodEntry.primary().getFileEntry());
+        for (Range range : compiledMethodEntry.topDownRangeStream().toList()) {
+            addFile(range.getFileEntry());
+        }
+        compiledMethods.add(compiledMethodEntry);
     }
 
     public String getFileName() {
         if (fileEntry != null) {
-            return fileEntry.getFileName();
+            return fileEntry.fileName();
         } else {
             return "";
         }
@@ -207,18 +167,44 @@ public class ClassEntry extends StructureTypeEntry {
         return getFileIdx(this.getFileEntry());
     }
 
-    public int getFileIdx(FileEntry file) {
-        if (file == null || fileIndex == null) {
-            return 0;
-        }
-        return fileIndex.get(file);
+    public int getDirIdx() {
+        return getDirIdx(this.getFileEntry());
     }
 
-    public DirEntry getDirEntry(FileEntry file) {
+    /**
+     * Returns the file index of a given file entry within this class entry.
+     *
+     * <p>
+     * The first time a file entry is fetched, this produces a file index that is used for further
+     * index lookups. The file index is only created once. Therefore, this method must be used only
+     * after debug info generation is finished and no more file entries can be added to this class
+     * entry.
+     * 
+     * @param file the given file entry
+     * @return the index of the file entry
+     */
+    public int getFileIdx(FileEntry file) {
+        if (file == null || files.isEmpty() || !files.contains(file)) {
+            return 0;
+        }
+
+        // Create a file index for all files in this class entry
+        if (indexedFiles.isEmpty()) {
+            int index = 1;
+            for (FileEntry f : getFiles()) {
+                indexedFiles.put(f, index);
+                index++;
+            }
+        }
+
+        return indexedFiles.get(file);
+    }
+
+    private static DirEntry getDirEntry(FileEntry file) {
         if (file == null) {
             return null;
         }
-        return file.getDirEntry();
+        return file.dirEntry();
     }
 
     public int getDirIdx(FileEntry file) {
@@ -226,126 +212,59 @@ public class ClassEntry extends StructureTypeEntry {
         return getDirIdx(dirEntry);
     }
 
+    /**
+     * Returns the dir index of a given dir entry within this class entry.
+     *
+     * <p>
+     * The first time a dir entry is fetched, this produces a dir index that is used for further
+     * index lookups. The dir index is only created once. Therefore, this method must be used only
+     * after debug info generation is finished and no more dir entries can be added to this class
+     * entry.
+     *
+     * @param dir the given dir entry
+     * @return the index of the dir entry
+     */
     public int getDirIdx(DirEntry dir) {
-        if (dir == null || dir.getPathString().isEmpty() || dirIndex == null) {
+        if (dir == null || dir.getPathString().isEmpty() || dirs.isEmpty() || !dirs.contains(dir)) {
             return 0;
         }
-        return dirIndex.get(dir);
+
+        // Create a dir index for all dirs in this class entry
+        if (indexedDirs.isEmpty()) {
+            int index = 1;
+            for (DirEntry d : getDirs()) {
+                indexedDirs.put(d, index);
+                index++;
+            }
+        }
+
+        return indexedDirs.get(dir);
     }
 
     public String getLoaderId() {
-        return (loader != null ? loader.getLoaderId() : "");
+        return loader.loaderId();
     }
 
     /**
-     * Retrieve a stream of all compiled method entries for this class.
+     * Retrieve a list of all compiled method entries for this class.
      *
-     * @return a stream of all compiled method entries for this class.
+     * @return a list of all compiled method entries for this class.
      */
-    public Stream<CompiledMethodEntry> compiledEntries() {
-        return compiledEntries.stream();
+    public List<CompiledMethodEntry> compiledMethods() {
+        return List.copyOf(compiledMethods);
     }
 
-    protected void processInterface(ResolvedJavaType interfaceType, DebugInfoBase debugInfoBase, DebugContext debugContext) {
-        if (debugContext.isLogEnabled()) {
-            debugContext.log("typename %s adding interface %s%n", typeName, interfaceType.toJavaName());
-        }
-        ClassEntry entry = debugInfoBase.lookupClassEntry(interfaceType);
-        assert entry instanceof InterfaceClassEntry || (entry instanceof ForeignTypeEntry && this instanceof ForeignTypeEntry);
-        InterfaceClassEntry interfaceClassEntry = (InterfaceClassEntry) entry;
-        interfaces.add(interfaceClassEntry);
-        interfaceClassEntry.addImplementor(this, debugContext);
-    }
-
-    protected MethodEntry processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
-        String methodName = debugMethodInfo.name();
-        int line = debugMethodInfo.line();
-        ResolvedJavaType resultType = debugMethodInfo.valueType();
-        int modifiers = debugMethodInfo.modifiers();
-        DebugLocalInfo[] paramInfos = debugMethodInfo.getParamInfo();
-        DebugLocalInfo thisParam = debugMethodInfo.getThisParamInfo();
-        int paramCount = paramInfos.length;
-        if (debugContext.isLogEnabled()) {
-            String resultTypeName = resultType.toJavaName();
-            debugContext.log("typename %s adding %s method %s %s(%s)%n",
-                            typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramInfos));
-        }
-        TypeEntry resultTypeEntry = debugInfoBase.lookupTypeEntry(resultType);
-        TypeEntry[] typeEntries = new TypeEntry[paramCount];
-        for (int i = 0; i < paramCount; i++) {
-            typeEntries[i] = debugInfoBase.lookupTypeEntry(paramInfos[i].valueType());
-        }
-        /*
-         * n.b. the method file may differ from the owning class file when the method is a
-         * substitution
-         */
-        FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(debugMethodInfo);
-        MethodEntry methodEntry = new MethodEntry(debugInfoBase, debugMethodInfo, methodFileEntry, line, methodName,
-                        this, resultTypeEntry, typeEntries, paramInfos, thisParam);
-        indexMethodEntry(methodEntry, debugMethodInfo.idMethod());
-
-        return methodEntry;
-    }
-
-    @Override
-    protected FieldEntry createField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
-        FieldEntry fieldEntry = super.createField(debugFieldInfo, debugInfoBase, debugContext);
-        return fieldEntry;
-    }
-
-    private static String formatParams(DebugLocalInfo[] paramInfo) {
-        if (paramInfo.length == 0) {
-            return "";
-        }
-        StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < paramInfo.length; i++) {
-            if (i > 0) {
-                builder.append(", ");
-            }
-            builder.append(paramInfo[i].typeName());
-            builder.append(' ');
-            builder.append(paramInfo[i].name());
-        }
-
-        return builder.toString();
-    }
-
-    public int compiledEntryCount() {
-        return compiledEntries.size();
-    }
-
-    public boolean hasCompiledEntries() {
-        return compiledEntryCount() != 0;
-    }
-
-    public int compiledEntriesBase() {
-        assert hasCompiledEntries();
-        return compiledEntries.get(0).getPrimary().getLo();
+    public boolean hasCompiledMethods() {
+        return !compiledMethods.isEmpty();
     }
 
     public ClassEntry getSuperClass() {
         return superClass;
     }
 
-    public MethodEntry ensureMethodEntryForDebugRangeInfo(DebugRangeInfo debugRangeInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
-
-        MethodEntry methodEntry = methodsIndex.get(debugRangeInfo.idMethod());
-        if (methodEntry == null) {
-            methodEntry = processMethod(debugRangeInfo, debugInfoBase, debugContext);
-        } else {
-            methodEntry.updateRangeInfo(debugInfoBase, debugRangeInfo);
-        }
-        return methodEntry;
-    }
-
     public List<MethodEntry> getMethods() {
-        return methods;
+        return List.copyOf(methods);
     }
-
-    /*
-     * Accessors for lo and hi bounds of this class's compiled method code ranges. See comments in
-     * class DebugInfoBase for an explanation of the layout of compiled method code.
-     */
 
     /**
      * Retrieve the lowest code section offset for compiled method code belonging to this class. It
@@ -353,9 +272,9 @@ public class ClassEntry extends StructureTypeEntry {
      *
      * @return the lowest code section offset for compiled method code belonging to this class
      */
-    public int lowpc() {
-        assert hasCompiledEntries();
-        return compiledEntries.get(0).getPrimary().getLo();
+    public long lowpc() {
+        assert hasCompiledMethods();
+        return compiledMethods.first().primary().getLo();
     }
 
     /**
@@ -365,84 +284,28 @@ public class ClassEntry extends StructureTypeEntry {
      *
      * @return the highest code section offset for compiled method code belonging to this class
      */
-    public int hipc() {
-        assert hasCompiledEntries();
-        return compiledEntries.get(compiledEntries.size() - 1).getPrimary().getHi();
+    public long hipc() {
+        assert hasCompiledMethods();
+        return compiledMethods.last().primary().getHi();
     }
 
     /**
-     * Add a file to the list of files referenced from info associated with this class.
-     * 
-     * @param file The file to be added.
-     */
-    public void includeFile(FileEntry file) {
-        assert !files.contains(file) : "caller should ensure file is only included once";
-        assert fileIndex == null : "cannot include files after index has been created";
-        files.add(file);
-    }
-
-    /**
-     * Add a directory to the list of firectories referenced from info associated with this class.
-     * 
-     * @param dirEntry The directory to be added.
-     */
-    public void includeDir(DirEntry dirEntry) {
-        assert !dirs.contains(dirEntry) : "caller should ensure dir is only included once";
-        assert dirIndex == null : "cannot include dirs after index has been created";
-        dirs.add(dirEntry);
-    }
-
-    /**
-     * Populate the file and directory indexes that track positions in the file and dir tables for
-     * this class's line info section.
-     */
-    public void buildFileAndDirIndexes() {
-        // this is a one-off operation
-        assert fileIndex == null && dirIndex == null : "file and indexes can only be generated once";
-        if (files.isEmpty()) {
-            assert dirs.isEmpty() : "should not have included any dirs if we have no files";
-        }
-        int idx = 1;
-        fileIndex = EconomicMap.create(files.size());
-        for (FileEntry file : files) {
-            fileIndex.put(file, idx++);
-        }
-        dirIndex = EconomicMap.create(dirs.size());
-        idx = 1;
-        for (DirEntry dir : dirs) {
-            if (!dir.getPathString().isEmpty()) {
-                dirIndex.put(dir, idx++);
-            } else {
-                assert idx == 1;
-            }
-        }
-    }
-
-    /**
-     * Retrieve a stream of all files referenced from debug info for this class in line info file
+     * Retrieve a list of all files referenced from debug info for this class in line info file
      * table order, starting with the file at index 1.
-     * 
-     * @return a stream of all referenced files
+     *
+     * @return a list of all referenced files
      */
-    public Stream<FileEntry> fileStream() {
-        if (!files.isEmpty()) {
-            return files.stream();
-        } else {
-            return Stream.empty();
-        }
+    public List<FileEntry> getFiles() {
+        return List.copyOf(files);
     }
 
     /**
-     * Retrieve a stream of all directories referenced from debug info for this class in line info
+     * Retrieve a list of all directories referenced from debug info for this class in line info
      * directory table order, starting with the directory at index 1.
      *
-     * @return a stream of all referenced directories
+     * @return a list of all referenced directories
      */
-    public Stream<DirEntry> dirStream() {
-        if (!dirs.isEmpty()) {
-            return dirs.stream();
-        } else {
-            return Stream.empty();
-        }
+    public List<DirEntry> getDirs() {
+        return List.copyOf(dirs);
     }
 }

@@ -40,16 +40,15 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
-import com.oracle.objectfile.debugentry.DirEntry;
-import com.oracle.objectfile.debugentry.FileEntry;
+import com.oracle.objectfile.debugentry.ForeignStructTypeEntry;
 import com.oracle.objectfile.debugentry.HeaderTypeEntry;
+import com.oracle.objectfile.debugentry.LocalEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.PointerToTypeEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debugentry.range.Range;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.AbbrevCode;
@@ -63,14 +62,13 @@ import com.oracle.objectfile.elf.dwarf.constants.DwarfUnitHeader;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
 
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A class from which all DWARF debug sections inherit providing common behaviours.
  */
 public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     // auxiliary class used to track byte array positions
-    protected class Cursor {
+    protected static class Cursor {
         private int pos;
 
         public Cursor() {
@@ -100,9 +98,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     protected final DwarfDebugInfo dwarfSections;
     protected boolean debug = false;
-    protected long debugTextBase = 0;
     protected long debugAddress = 0;
-    protected int debugBase = 0;
 
     /**
      * The name of this section.
@@ -188,7 +184,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return "dwarf" + getSectionName();
     }
 
-    protected void enableLog(DebugContext context, int pos) {
+    protected void enableLog(DebugContext context) {
         /*
          * Debug output is disabled during the first pass where we size the buffer. this is called
          * to enable it during the second pass where the buffer gets written, but only if the scope
@@ -196,10 +192,8 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
          */
         assert contentByteArrayCreated();
 
-        if (context.areScopesEnabled()) {
+        if (context.areScopesEnabled() && context.isLogEnabled()) {
             debug = true;
-            debugBase = pos;
-            debugAddress = debugTextBase;
         }
     }
 
@@ -281,33 +275,45 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return pos;
     }
 
-    protected int putRelocatableCodeOffset(long l, byte[] buffer, int p) {
+    protected int putCodeOffset(long l, byte[] buffer, int p) {
         int pos = p;
-        /*
-         * Mark address so it is relocated relative to the start of the text segment.
-         */
-        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfSectionName.TEXT_SECTION.value(), l);
-        pos = writeLong(0, buffer, pos);
+        if (dwarfSections.isRuntimeCompilation()) {
+            pos = writeLong(l, buffer, p);
+        } else {
+            /*
+             * Mark address so it is relocated relative to the start of the text segment.
+             */
+            markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfSectionName.TEXT_SECTION.value(), l);
+            pos = writeLong(0, buffer, pos);
+        }
         return pos;
     }
 
-    protected int putRelocatableHeapOffset(long l, byte[] buffer, int p) {
+    protected int putHeapOffset(long l, byte[] buffer, int p) {
         int pos = p;
-        /*
-         * Mark address so it is relocated relative to the start of the heap.
-         */
-        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfo.HEAP_BEGIN_NAME, l);
-        pos = writeLong(0, buffer, pos);
+        if (dwarfSections.isRuntimeCompilation()) {
+            pos = writeLong(l, buffer, pos);
+        } else {
+            /*
+             * Mark address so it is relocated relative to the start of the heap.
+             */
+            markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfo.HEAP_BEGIN_NAME, l);
+            pos = writeLong(0, buffer, pos);
+        }
         return pos;
     }
 
-    protected int putRelocatableDwarfSectionOffset(int offset, byte[] buffer, String referencedSectionName, int p) {
+    protected int putDwarfSectionOffset(int offset, byte[] buffer, String referencedSectionName, int p) {
         int pos = p;
-        /*
-         * Mark address so it is relocated relative to the start of the desired section.
-         */
-        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_4, referencedSectionName, offset);
-        pos = writeInt(0, buffer, pos);
+        if (dwarfSections.isRuntimeCompilation()) {
+            pos = writeInt(offset, buffer, pos);
+        } else {
+            /*
+             * Mark address so it is relocated relative to the start of the desired section.
+             */
+            markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_4, referencedSectionName, offset);
+            pos = writeInt(0, buffer, pos);
+        }
         return pos;
     }
 
@@ -402,17 +408,17 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
-    protected int writeRelocatableCodeOffset(long l, byte[] buffer, int p) {
+    protected int writeCodeOffset(long l, byte[] buffer, int p) {
         if (buffer != null) {
-            return putRelocatableCodeOffset(l, buffer, p);
+            return putCodeOffset(l, buffer, p);
         } else {
             return p + 8;
         }
     }
 
-    protected int writeRelocatableHeapOffset(long l, byte[] buffer, int p) {
+    protected int writeHeapOffset(long l, byte[] buffer, int p) {
         if (buffer != null) {
-            return putRelocatableHeapOffset(l, buffer, p);
+            return putHeapOffset(l, buffer, p);
         } else {
             return p + 8;
         }
@@ -446,7 +452,8 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         if (buffer != null) {
             return putUTF8StringBytes(s, startChar, buffer, p);
         } else {
-            return s.substring(startChar).getBytes(StandardCharsets.UTF_8).length;
+            // +1 for null termination
+            return p + s.substring(startChar).getBytes(StandardCharsets.UTF_8).length + 1;
         }
     }
 
@@ -522,7 +529,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     protected int writeAttrAddress(long address, byte[] buffer, int pos) {
-        return writeRelocatableCodeOffset(address, buffer, pos);
+        return writeCodeOffset(address, buffer, pos);
     }
 
     @SuppressWarnings("unused")
@@ -559,13 +566,21 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     protected int writeStrSectionOffset(String value, byte[] buffer, int p) {
-        int pos = p;
         int idx = debugStringIndex(value);
-        return writeStrSectionOffset(idx, buffer, pos);
+        return writeStrSectionOffset(idx, buffer, p);
     }
 
     private int writeStrSectionOffset(int offset, byte[] buffer, int pos) {
         return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_STR_SECTION, pos);
+    }
+
+    protected int writeLineStrSectionOffset(String value, byte[] buffer, int p) {
+        int idx = debugLineStringIndex(value);
+        return writeLineStrSectionOffset(idx, buffer, p);
+    }
+
+    private int writeLineStrSectionOffset(int offset, byte[] buffer, int pos) {
+        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_LINE_STR_SECTION, pos);
     }
 
     protected int writeLocSectionOffset(int offset, byte[] buffer, int pos) {
@@ -576,7 +591,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         // offsets to abbrev section DIEs need a relocation
         // the linker uses this to update the offset when info sections are merged
         if (buffer != null) {
-            return putRelocatableDwarfSectionOffset(offset, buffer, referencedSectionName.value(), pos);
+            return putDwarfSectionOffset(offset, buffer, referencedSectionName.value(), pos);
         } else {
             return pos + 4;
         }
@@ -639,7 +654,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         if (dwarfSections.useHeapBase()) {
             return writeHeapLocationBaseRelative(offset, buffer, p);
         } else {
-            return writeHeapLocationRelocatable(offset, buffer, p);
+            return writeHeapLocationOffset(offset, buffer, p);
         }
     }
 
@@ -650,25 +665,11 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return writeSLEB(offset, buffer, pos);
     }
 
-    private int writeHeapLocationRelocatable(long offset, byte[] buffer, int p) {
+    private int writeHeapLocationOffset(long offset, byte[] buffer, int p) {
         int pos = p;
         /* Write a relocatable address relative to the heap section start. */
         pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_addr, buffer, pos);
-        return writeRelocatableHeapOffset(offset, buffer, pos);
-    }
-
-    protected static String formatValue(DebugLocalValueInfo value) {
-        switch (value.localKind()) {
-            case REGISTER:
-                return "REG:" + value.regIndex();
-            case STACKSLOT:
-                return "STACK:" + value.stackSlot();
-            case CONSTANT:
-                return "CONST:" + value.constantValue() + "[" + Long.toHexString(value.heapOffset()) + "]";
-            case UNDEFINED:
-            default:
-                return "-";
-        }
+        return writeHeapOffset(offset, buffer, pos);
     }
 
     /**
@@ -763,7 +764,25 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      * @return a stream of all primitive types notified via the DebugTypeInfo API.
      */
     protected Stream<PrimitiveTypeEntry> primitiveTypeStream() {
-        return typeStream().filter(TypeEntry::isPrimitive).map(entry -> ((PrimitiveTypeEntry) entry));
+        return dwarfSections.getPrimitiveTypes().stream();
+    }
+
+    /**
+     * Retrieve a stream of all pointer types notified via the DebugTypeInfo API.
+     *
+     * @return a stream of all pointer types notified via the DebugTypeInfo API.
+     */
+    protected Stream<PointerToTypeEntry> pointerTypeStream() {
+        return dwarfSections.getPointerTypes().stream();
+    }
+
+    /**
+     * Retrieve a stream of all pointer types notified via the DebugTypeInfo API.
+     *
+     * @return a stream of all pointer types notified via the DebugTypeInfo API.
+     */
+    protected Stream<ForeignStructTypeEntry> foreignStructTypeStream() {
+        return dwarfSections.getForeignStructTypes().stream();
     }
 
     /**
@@ -772,7 +791,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      * @return a stream of all array types notified via the DebugTypeInfo API.
      */
     protected Stream<ArrayTypeEntry> arrayTypeStream() {
-        return typeStream().filter(TypeEntry::isArray).map(entry -> ((ArrayTypeEntry) entry));
+        return dwarfSections.getArrayTypes().stream();
     }
 
     /**
@@ -803,6 +822,10 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return dwarfSections.getInstanceClasses().stream();
     }
 
+    protected Stream<ClassEntry> instanceClassWithCompilationStream() {
+        return dwarfSections.getInstanceClassesWithCompilation().stream();
+    }
+
     /**
      * Retrieve a stream of all compiled methods notified via the DebugTypeInfo API.
      *
@@ -810,26 +833,6 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      */
     protected Stream<CompiledMethodEntry> compiledMethodsStream() {
         return dwarfSections.getCompiledMethods().stream();
-    }
-
-    protected int compiledMethodsCount() {
-        return dwarfSections.getCompiledMethods().size();
-    }
-
-    protected Stream<FileEntry> fileStream() {
-        return dwarfSections.getFiles().stream();
-    }
-
-    protected int fileCount() {
-        return dwarfSections.getFiles().size();
-    }
-
-    protected Stream<DirEntry> dirStream() {
-        return dwarfSections.getDirs().stream();
-    }
-
-    protected int dirCount() {
-        return dwarfSections.getDirs().size();
     }
 
     /**
@@ -849,12 +852,19 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return dwarfSections.debugStringIndex(str);
     }
 
+    protected int debugLineStringIndex(String str) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.debugLineStringIndex(str);
+    }
+
     protected String uniqueDebugString(String str) {
         return dwarfSections.uniqueDebugString(str);
     }
 
-    protected TypeEntry lookupType(ResolvedJavaType type) {
-        return dwarfSections.lookupTypeEntry(type);
+    protected String uniqueDebugLineString(String str) {
+        return dwarfSections.uniqueDebugLineString(str);
     }
 
     protected ClassEntry lookupObjectClass() {
@@ -955,7 +965,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      * @param localInfo the local or param whose index is to be recorded.
      * @param index the info section offset to be recorded.
      */
-    protected void setMethodLocalIndex(ClassEntry classEntry, MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {
+    protected void setMethodLocalIndex(ClassEntry classEntry, MethodEntry methodEntry, LocalEntry localInfo, int index) {
         dwarfSections.setMethodLocalIndex(classEntry, methodEntry, localInfo, index);
     }
 
@@ -968,7 +978,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      * @param localInfo the local or param whose index is to be retrieved.
      * @return the associated info section offset.
      */
-    protected int getMethodLocalIndex(ClassEntry classEntry, MethodEntry methodEntry, DebugLocalInfo localInfo) {
+    protected int getMethodLocalIndex(ClassEntry classEntry, MethodEntry methodEntry, LocalEntry localInfo) {
         if (!contentByteArrayCreated()) {
             return 0;
         }
@@ -984,7 +994,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      * @param localInfo the local or param whose index is to be recorded.
      * @param index the info section offset index to be recorded.
      */
-    protected void setRangeLocalIndex(Range range, DebugLocalInfo localInfo, int index) {
+    protected void setRangeLocalIndex(Range range, LocalEntry localInfo, int index) {
         dwarfSections.setRangeLocalIndex(range, localInfo, index);
     }
 
@@ -997,7 +1007,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      * @param localInfo the local or param whose index is to be retrieved.
      * @return the associated info section offset.
      */
-    protected int getRangeLocalIndex(Range range, DebugLocalInfo localInfo) {
+    protected int getRangeLocalIndex(Range range, LocalEntry localInfo) {
         return dwarfSections.getRangeLocalIndex(range, localInfo);
     }
 }

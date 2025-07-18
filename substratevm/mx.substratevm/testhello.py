@@ -147,25 +147,25 @@ def test():
 
     # check incoming parameters are bound to sensible values
     exec_string = execute("info args")
-    rexp = [fr"__0 = {digits_pattern}",
-            fr"__1 = 0x{hex_digits_pattern}"]
+    rexp = [fr"__int0 = {digits_pattern}",
+            fr"__long1 = 0x{hex_digits_pattern}"]
     checker = Checker(f"info args : {method_name}", rexp)
     checker.check(exec_string)
 
-    exec_string = execute("p __0")
+    exec_string = execute("p __int0")
     rexp = [fr"\${digits_pattern} = 1"]
-    checker = Checker("p __0", rexp)
+    checker = Checker("p __int0", rexp)
     checker.check(exec_string)
 
-    exec_string = execute("p __1")
+    exec_string = execute("p __long1")
     rexp = [fr"\${digits_pattern} = \(org\.graalvm\.nativeimage\.c\.type\.CCharPointerPointer\) 0x{hex_digits_pattern}"]
-    checker = Checker("p __1", rexp)
+    checker = Checker("p __long1", rexp)
     checker.check(exec_string)
 
-    exec_string = execute("p __1[0]")
+    exec_string = execute("p __long1[0]")
     rexp = [
         fr'\${digits_pattern} = \(org\.graalvm\.nativeimage\.c\.type\.CCharPointer\) 0x{hex_digits_pattern} "{wildcard_pattern}/hello_image"']
-    checker = Checker("p __1[0]", rexp)
+    checker = Checker("p __long1[0]", rexp)
     checker.check(exec_string)
 
     # set a break point at hello.Hello::main
@@ -971,7 +971,7 @@ def test():
     exec_string = execute("info types com.oracle.svm.test.debug.CStructTests\$")
     rexp = [
         fr"{spaces_pattern}typedef composite_struct \* com\.oracle\.svm\.test\.debug\.CStructTests\$CompositeStruct;",
-        fr"{spaces_pattern}typedef int32_t \* com\.oracle\.svm\.test\.debug\.CStructTests\$MyCIntPointer;",
+        fr"{spaces_pattern}typedef int \* com\.oracle\.svm\.test\.debug\.CStructTests\$MyCIntPointer;",
         fr"{spaces_pattern}typedef simple_struct \* com\.oracle\.svm\.test\.debug\.CStructTests\$SimpleStruct;",
         fr"{spaces_pattern}typedef simple_struct2 \* com\.oracle\.svm\.test\.debug\.CStructTests\$SimpleStruct2;",
         fr"{spaces_pattern}typedef weird \* com\.oracle\.svm\.test\.debug\.CStructTests\$Weird;"]
@@ -1012,8 +1012,8 @@ def test():
             fr"/\*{spaces_pattern}24{spaces_pattern}\|{spaces_pattern}4{spaces_pattern}\*/{spaces_pattern}float f_float;",
             fr"/\*{spaces_pattern}XXX{spaces_pattern}4-byte hole{spaces_pattern}\*/",
             fr"/\*{spaces_pattern}32{spaces_pattern}\|{spaces_pattern}8{spaces_pattern}\*/{spaces_pattern}double f_double;",
-            fr"/\*{spaces_pattern}40{spaces_pattern}\|{spaces_pattern}32{spaces_pattern}\*/{spaces_pattern}int32_t a_int\[8\];",
-            fr"/\*{spaces_pattern}72{spaces_pattern}\|{spaces_pattern}12{spaces_pattern}\*/{spaces_pattern}(u)?int8_t a_char\[12\];",
+            fr"/\*{spaces_pattern}40{spaces_pattern}\|{spaces_pattern}32{spaces_pattern}\*/{spaces_pattern}int a_int\[8\];",
+            fr"/\*{spaces_pattern}72{spaces_pattern}\|{spaces_pattern}12{spaces_pattern}\*/{spaces_pattern}char a_char\[12\];",
             fr"/\*{spaces_pattern}XXX{spaces_pattern}4-byte padding{spaces_pattern}\*/",
             fr"{spaces_pattern}/\* total size \(bytes\):{spaces_pattern}88 \*/",
             fr"{spaces_pattern}}} \*"]

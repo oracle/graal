@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -28,6 +28,7 @@ package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.debugentry.StringEntry;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
+
 import jdk.graal.compiler.debug.DebugContext;
 
 /**
@@ -45,11 +46,9 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
 
         int pos = 0;
         for (StringEntry stringEntry : dwarfSections.getStringTable()) {
-            if (stringEntry.isAddToStrSection()) {
-                stringEntry.setOffset(pos);
-                String string = stringEntry.getString();
-                pos += countUTF8Bytes(string) + 1;
-            }
+            stringEntry.setOffset(pos);
+            String string = stringEntry.getString();
+            pos = writeUTF8StringBytes(string, null, pos);
         }
         byte[] buffer = new byte[pos];
         super.setContent(buffer);
@@ -63,16 +62,14 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
         int size = buffer.length;
         int pos = 0;
 
-        enableLog(context, pos);
+        enableLog(context);
 
         verboseLog(context, " [0x%08x] DEBUG_STR", pos);
         for (StringEntry stringEntry : dwarfSections.getStringTable()) {
-            if (stringEntry.isAddToStrSection()) {
-                assert stringEntry.getOffset() == pos;
-                String string = stringEntry.getString();
-                pos = writeUTF8StringBytes(string, buffer, pos);
-                verboseLog(context, " [0x%08x] string = %s", pos, string);
-            }
+            assert stringEntry.getOffset() == pos;
+            String string = stringEntry.getString();
+            pos = writeUTF8StringBytes(string, buffer, pos);
+            verboseLog(context, " [0x%08x] string = %s", pos, string);
         }
         assert pos == size;
     }

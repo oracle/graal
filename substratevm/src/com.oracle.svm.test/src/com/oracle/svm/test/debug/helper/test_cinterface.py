@@ -53,6 +53,10 @@ class TestLoadPrettyPrinter(unittest.TestCase):
         self.assertIn("SubstrateVM", exec_string, 'pretty-printer was not loaded')
         # assume that there are no other pretty-printers were attached to an objfile
         self.assertIn("objfile", exec_string, 'pretty-printer was not attached to an objfile')
+        # check frame filter
+        exec_string = gdb_execute('info frame-filter')
+        self.assertIn('libcinterfacetutorial.so.debug frame-filters:', exec_string)
+        self.assertIn('SubstrateVM FrameFilter', exec_string)
 
     def test_manual_load(self):
         backup_auto_load_param = gdb_get_param("auto-load python-scripts")
@@ -65,6 +69,10 @@ class TestLoadPrettyPrinter(unittest.TestCase):
             exec_string = gdb_execute('info pretty-printer')
             self.assertIn("objfile", exec_string)  # check if any objfile has a pretty-printer
             self.assertIn("SubstrateVM", exec_string)
+            # check frame filter
+            exec_string = gdb_execute('info frame-filter')
+            self.assertIn('libcinterfacetutorial.so.debug frame-filters:', exec_string)
+            self.assertIn('SubstrateVM FrameFilter', exec_string)
         finally:
             # make sure auto-loading is re-enabled for other tests
             gdb_set_param("auto-load python-scripts", backup_auto_load_param)
@@ -80,10 +88,16 @@ class TestLoadPrettyPrinter(unittest.TestCase):
 
     def test_auto_reload(self):
         gdb_start()
-        gdb_start()  # all loaded shared libraries get freed (their pretty printers are removed) and newly attached
+        # all loaded shared libraries get freed and newly attached
+        # pretty printers, frame filters and frame unwinders should also be reattached
+        gdb_start()
         exec_string = gdb_execute('info pretty-printer')
         self.assertIn("SubstrateVM", exec_string, 'pretty-printer was not loaded')
         self.assertIn("objfile", exec_string, 'pretty-printer was not attached to an objfile')
+        # check frame filter
+        exec_string = gdb_execute('info frame-filter')
+        self.assertIn('libcinterfacetutorial.so.debug frame-filters:', exec_string)
+        self.assertIn('SubstrateVM FrameFilter', exec_string)
 
 
 class TestCInterface(unittest.TestCase):
@@ -114,7 +128,7 @@ class TestCInterface(unittest.TestCase):
         exec_string = gdb_output("data")
         self.assertTrue(exec_string.startswith('my_data = {'), f"GDB output: '{exec_string}'")
         self.assertIn('f_primitive = 42', exec_string)
-        self.assertIn('f_array = int32_t [4] = {...}', exec_string)
+        self.assertIn('f_array = int [4] = {...}', exec_string)
         self.assertRegex(exec_string, f'f_cstr = 0x{hex_rexp.pattern} "Hello World"')
         self.assertRegex(exec_string, f'f_java_object_handle = 0x{hex_rexp.pattern}')
         self.assertRegex(exec_string, f'f_print_function = 0x{hex_rexp.pattern} <c_print>')

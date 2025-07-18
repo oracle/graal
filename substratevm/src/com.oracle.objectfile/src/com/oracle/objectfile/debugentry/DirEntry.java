@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -30,21 +30,12 @@ import java.nio.file.Path;
 
 /**
  * Tracks the directory associated with one or more source files.
- *
+ * <p>
  * This is identified separately from each FileEntry identifying files that reside in the directory.
  * That is necessary because the line info generator needs to collect and write out directory names
  * into directory tables once only rather than once per file.
  */
-public class DirEntry {
-    private final Path path;
-
-    public DirEntry(Path path) {
-        this.path = path;
-    }
-
-    public Path getPath() {
-        return path;
-    }
+public record DirEntry(Path path) {
 
     public String getPathString() {
         return path.toString();
