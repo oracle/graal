@@ -736,7 +736,7 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "auto|on|off|dump") //
-    public static final OptionKey<XShareOption> CDS = new OptionKey<>(XShareOption.auto);
+    public static final OptionKey<XShareOption> CDS = new OptionKey<>(XShareOption.off);
 
     @Option(help = "Overrides the default path to the (static) CDS archive.", //
                     category = OptionCategory.EXPERT, //
