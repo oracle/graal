@@ -30,7 +30,6 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.AlignedChunk;
@@ -96,7 +95,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         this.partitions[WRITABLE_PATCHED] = new ChunkedImageHeapPartition("writablePatched", true, false, alignment, alignment);
         this.partitions[WRITABLE_REGULAR] = new ChunkedImageHeapPartition("writable", true, false, alignment, alignment);
         this.partitions[WRITABLE_HUGE] = new ChunkedImageHeapPartition("writableHuge", true, true, alignment, alignment);
-        this.partitions[READ_ONLY_HUGE] = new ChunkedImageHeapPartition("readOnlyHuge", false, true, alignment, SubstrateOptions.getPageSize());
+        this.partitions[READ_ONLY_HUGE] = new ChunkedImageHeapPartition("readOnlyHuge", false, true, alignment, alignment);
 
         this.heapInfo = heapInfo;
         this.startOffset = startOffset;
@@ -219,7 +218,9 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
 
         long writableEnd = getWritableHuge().getStartOffset() + getWritableHuge().getSize();
         long writableSize = writableEnd - offsetOfFirstWritableAlignedChunk;
-        long imageHeapSize = getReadOnlyHuge().getStartOffset() + getReadOnlyHuge().getSize() - startOffset;
+        /* Aligning the end to the page size can be required for mapping into memory. */
+        long imageHeapEnd = NumUtil.roundUp(getReadOnlyHuge().getStartOffset() + getReadOnlyHuge().getSize(), pageSize);
+        long imageHeapSize = imageHeapEnd - startOffset;
         return new ImageHeapLayoutInfo(startOffset, imageHeapSize, offsetOfFirstWritableAlignedChunk, writableSize, getReadOnlyRelocatable().getStartOffset(), getReadOnlyRelocatable().getSize(),
                         getWritablePatched().getStartOffset(), getWritablePatched().getSize());
     }
