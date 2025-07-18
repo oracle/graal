@@ -157,7 +157,7 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
     }
 
     private static void report(MissingReflectionRegistrationError exception) {
-        StackTraceElement responsibleClass = getResponsibleClass(exception);
+        StackTraceElement responsibleClass = getResponsibleClass(exception, reflectionEntryPoints);
         MissingRegistrationUtils.report(exception, responsibleClass);
     }
 
@@ -197,22 +197,4 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
                     "sun.misc.Unsafe", Set.of("allocateInstance"),
                     /* For jdk.internal.misc.Unsafe.allocateInstance(), which is intrinsified */
                     SubstrateAllocationSnippets.class.getName(), Set.of("slowPathHubOrUnsafeInstantiationError"));
-
-    private static StackTraceElement getResponsibleClass(Throwable t) {
-        StackTraceElement[] stackTrace = t.getStackTrace();
-        boolean returnNext = false;
-        for (StackTraceElement stackTraceElement : stackTrace) {
-            if (reflectionEntryPoints.getOrDefault(stackTraceElement.getClassName(), Set.of()).contains(stackTraceElement.getMethodName())) {
-                /*
-                 * Multiple functions with the same name can be called in succession, like the
-                 * Class.forName caller-sensitive adapters. We skip those until we find a method
-                 * that is not a monitored reflection entry point.
-                 */
-                returnNext = true;
-            } else if (returnNext) {
-                return stackTraceElement;
-            }
-        }
-        return null;
-    }
 }
