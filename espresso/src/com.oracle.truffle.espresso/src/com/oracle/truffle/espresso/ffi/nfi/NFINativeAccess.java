@@ -31,6 +31,7 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
@@ -53,12 +54,14 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
 import com.oracle.truffle.espresso.ffi.Buffer;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.SignatureCallNode;
 import com.oracle.truffle.espresso.ffi.TruffleByteBuffer;
+import com.oracle.truffle.espresso.ffi.memory.UnsafeNativeMemory;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Collect;
@@ -81,6 +84,8 @@ public class NFINativeAccess implements NativeAccess {
 
     private final Map<Object, Object> signatureCache;
     protected final TruffleLanguage.Env env;
+
+    @CompilationFinal protected NativeMemory nativeMemory;
 
     protected static String nfiType(NativeType nativeType) {
         // @formatter:off
@@ -147,7 +152,12 @@ public class NFINativeAccess implements NativeAccess {
     }
 
     NFINativeAccess(TruffleLanguage.Env env) {
+        this(env, new UnsafeNativeMemory());
+    }
+
+    NFINativeAccess(TruffleLanguage.Env env, NativeMemory nativeMemory) {
         this.env = env;
+        this.nativeMemory = nativeMemory;
         signatureCache = CACHE_SIGNATURES
                         ? new ConcurrentHashMap<>()
                         : null;
@@ -526,4 +536,8 @@ public class NFINativeAccess implements NativeAccess {
         }
     }
 
+    @Override
+    public NativeMemory nativeMemory() {
+        return nativeMemory;
+    }
 }
