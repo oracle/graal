@@ -35,12 +35,13 @@
     ]
   },
 
-  local gate_lite = truffle_common + {
-    name: 'gate-truffle-lite-oraclejdk-' + self.jdk_name + '-' + self.os + '-' + self.arch,
+  local gate_lite(target) = truffle_common + {
+    name: target + '-truffle-lite-oraclejdk-' + self.jdk_name + '-' + self.os + '-' + self.arch,
     run: [
       ["mx", "build"],
       ["mx", "unittest", "--verbose"],
     ],
+    targets: [target],
   },
 
   local sigtest = truffle_common + {
@@ -150,8 +151,8 @@
   local _builds = std.flattenArrays([
       [
         linux_amd64  + jdk + sigtest + guard,
-        darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
-        darwin_aarch64 + jdk + truffle_weekly + gate_lite + guard,
+        darwin_amd64 + jdk + truffle_weekly + gate_lite("daily") + guard,
+        darwin_aarch64 + jdk + truffle_weekly + gate_lite("gate") + guard,
       ] for jdk in [common.oraclejdk21, common.oraclejdkLatest]
     ]) +
   [
