@@ -3,14 +3,11 @@ layout: ni-docs-landing
 toc_group: how-to-guides
 link_title: Guides
 permalink: /guides/
-redirect_from:
-    - /native-image/guides/
-    - /reference-manual/native-image/guides/
 ---
 
 # Guides
 
-These guides help developers get started with GraalVM Native Image, acquaint them with available features, and describe potential usage scenarios. 
+These guides help developers get started with GraalVM Native Image, acquaint them with available features, and describe potential usage scenarios.
 Here you will learn how to:
 
 - [Access Environment Variables](access-environment-variables.md)
@@ -33,7 +30,7 @@ Here you will learn how to:
 - [Include Resources in a Native Executable](include-resources.md)
 - [Optimize a Native Executable with Profile-Guided Optimization](optimize-native-executable-with-pgo.md)
 - [Optimize a Native Executable for File Size](optimize-file-size.md)
-- [Optimize Size of a Native Executable using Build Reports](optimize-native-executable-size-using-build-report.md)
+- [Optimize Size of a Native Executable Using Build Reports](optimize-native-executable-size-using-build-report.md)
 - [Optimize Memory Footprint of a Native Executable](optimize-memory-footprint.md)
 - [Specify Class Initialization Explicitly](specify-class-initialization.md)
 - [Use Gradle to Build a Native Executable from a Java Application](https://graalvm.github.io/native-build-tools/latest/gradle-plugin-quickstart.html)

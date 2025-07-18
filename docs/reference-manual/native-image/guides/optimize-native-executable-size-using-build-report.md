@@ -1,11 +1,11 @@
 ---
 layout: ni-docs
 toc_group: how-to-guides
-link_title: Optimize Size of a Native Executable using Build Reports
+link_title: Optimize Size of a Native Executable Using Build Reports
 permalink: /reference-manual/native-image/guides/optimize-native-executable-size-using-build-report/
 ---
 
-# Optimize Size of a Native Executable using Build Reports
+# Optimize Size of a Native Executable Using Build Reports
 
 You can optimize your native executable by taking advantage of different tools provided with Native Image.
 The guide demonstrates how to use the [*Build Report*](../BuildReport.md) tool to better understand the contents of a produced native executable, and how a small alteration in an application, without any semantic change, can influence the final binary size.
@@ -117,7 +117,7 @@ The words are delimited by commas and may be enclosed by an arbitrary number of 
 9.  Next drill-down to the `time` package:
 
     ![Initial Code Breakdown - Drill-Down To Time Package](img/build-report-initial-code-breakdown-time.png)
-    
+
     Almost half of the package size comes from its `format` subpackage (similar to the situation in the `java.text` package).
     So, `System.out.printf` is your first opportunity for improving the binary size.
 
