@@ -150,7 +150,7 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
 
     @Override
     public Stream<DebugDataInfo> dataInfoProvider() {
-        return heap.getObjects().stream().filter(this::acceptObjectInfo).map(this::createDebugDataInfo);
+        return heap.getObjects().stream().map(this::createDebugDataInfo);
     }
 
     private abstract class NativeImageDebugFileInfo implements DebugFileInfo {
@@ -2656,11 +2656,6 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         public long getSize() {
             return objectInfo.getSize();
         }
-    }
-
-    private boolean acceptObjectInfo(ObjectInfo objectInfo) {
-        /* This condition rejects filler partition objects. */
-        return !objectInfo.getPartition().isFiller();
     }
 
     private DebugDataInfo createDebugDataInfo(ObjectInfo objectInfo) {

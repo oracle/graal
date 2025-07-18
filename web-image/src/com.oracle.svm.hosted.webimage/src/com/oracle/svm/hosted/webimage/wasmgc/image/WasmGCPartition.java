@@ -100,9 +100,4 @@ public class WasmGCPartition implements ImageHeapPartition {
         objects.add(obj);
         obj.setHeapPartition(this);
     }
-
-    @Override
-    public boolean isFiller() {
-        return false;
-    }
 }
