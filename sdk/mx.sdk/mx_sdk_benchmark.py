@@ -388,7 +388,7 @@ class NativeImageBenchmarkConfig:
 
         if vm.is_quickbuild:
             base_image_build_args += ['-Ob']
-        if vm.graalos:
+        if vm.graalos or vm.graalhost_graalos:
             base_image_build_args += ['-H:+GraalOS']
         if vm.use_string_inlining:
             base_image_build_args += ['-H:+UseStringInlining']
@@ -728,8 +728,10 @@ class NativeImageVM(GraalVm):
         self.pgo_perf_invoke_profile_collection_strategy: Optional[PerfInvokeProfileCollectionStrategy] = None
         self.is_gate = False
         self.is_quickbuild = False
-        self.layered = False
         self.graalos = False
+        self.graalhost_graalos = False
+        self.pie = False
+        self.layered = False
         self.use_string_inlining = False
         self.is_llvm = False
         self.gc = None
@@ -785,6 +787,14 @@ class NativeImageVM(GraalVm):
             config += ["preserve-all"]
         if self.preserve_classpath is True:
             config += ["preserve-classpath"]
+        if self.graalos is True:
+            config += ["graalos"]
+        if self.graalhost_graalos is True:
+            config += ["graalhost-graalos"]
+        if self.pie is True:
+            config += ["pie"]
+        if self.layered is True:
+            config += ["layered"]
         if self.future_defaults_all is True:
             config += ["future-defaults-all"]
         if self.is_gate is True:
@@ -793,10 +803,6 @@ class NativeImageVM(GraalVm):
             config += ["upx"]
         if self.is_quickbuild is True:
             config += ["quickbuild"]
-        if self.layered is True:
-            config += ["layered"]
-        if self.graalos is True:
-            config += ["graalos"]
         if self.gc == "G1":
             config += ["g1gc"]
         if self.is_llvm is True:
@@ -862,7 +868,8 @@ class NativeImageVM(GraalVm):
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         # Note: the order of entries here must match the order of statements in NativeImageVM.config_name()
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<compacting_gc>compacting-gc-)?(?P<preserve_all>preserve-all-)?(?P<preserve_classpath>preserve-classpath-)?' \
-               r'(?P<future_defaults_all>future-defaults-all-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<layered>layered-)?(?P<graalos>graalos-)?(?P<gc>g1gc-)?' \
+               r'(?P<graalos>graalos-)?(?P<graalhost_graalos>graalhost-graalos-)?(?P<pie>pie-)?(?P<layered>layered-)?' \
+               r'(?P<future_defaults_all>future-defaults-all-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?' \
                r'(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-sampler-|pgo-perf-sampler-invoke-multiple-|pgo-perf-sampler-invoke-|pgo-perf-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
                r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-call-count-|profile-inference-pgo-|profile-inference-debug-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(default-)?(?P<edition>ce-|ee-)?$'
@@ -884,6 +891,22 @@ class NativeImageVM(GraalVm):
         if matching.group("preserve_classpath") is not None:
             mx.logv(f"'preserve-classpath' is enabled for {config_name}")
             self.preserve_classpath = True
+
+        if matching.group("graalos") is not None:
+            mx.logv(f"'graalos' is enabled for {config_name}")
+            self.graalos = True
+
+        if matching.group("graalhost_graalos") is not None:
+            mx.logv(f"'graalhost-graalos' is enabled for {config_name}")
+            self.graalhost_graalos = True
+
+        if matching.group("pie") is not None:
+            mx.logv(f"'pie' is enabled for {config_name}")
+            self.pie = True
+
+        if matching.group("layered") is not None:
+            mx.logv(f"'layered' is enabled for {config_name}")
+            self.layered = True
 
         if matching.group("future_defaults_all") is not None:
             mx.logv(f"'future-defaults-all' is enabled for {config_name}")
@@ -912,14 +935,6 @@ class NativeImageVM(GraalVm):
         if matching.group("quickbuild") is not None:
             mx.logv(f"'quickbuild' is enabled for {config_name}")
             self.is_quickbuild = True
-
-        if matching.group("layered") is not None:
-            mx.logv(f"'layered' is enabled for {config_name}")
-            self.layered = True
-
-        if matching.group("graalos") is not None:
-            mx.logv(f"'graalos' is enabled for {config_name}")
-            self.graalos = True
 
         if matching.group("gc") is not None:
             gc = matching.group("gc")[:-1]
@@ -1571,42 +1586,45 @@ class NativeImageVM(GraalVm):
                 print(
                     f"Profile file {self.config.profile_path} not dumped. Instrument run failed with exit code {exit_code}")
 
-    def get_layered_build_args(self) -> List[str]:
-        """Return extra options that are necessary when building a layered image."""
+    def get_layer_aware_build_args(self) -> List[str]:
+        """Return extra build options that are dependent on layer information."""
         current_stage = self.stages_info.current_stage
-        if not self.layered or current_stage.layer_info.is_shared_library:
-            # No extra options are necessary if we are not building a layered image
-            # No extra options are necessary when building shared layers
-            return []
+        layer_aware_build_args = []
 
-        # Set LinkerRPath to point to the directories containing the shared objects of underlying layers
-        shared_library_stages = [stage for stage in self.stages_info.complete_stage_list
-                                 if current_stage.stage_name == stage.stage_name and stage.is_layered() and stage.layer_info.is_shared_library]
-        if len(shared_library_stages) == 0:
-            mx.abort("Failed to find any shared library layer image stages!")
-        layer_output_dirs = []
-        for stage in shared_library_stages:
-            _, stage_output_dir = self.config.get_executable_name_and_output_dir_for_stage(stage, self)
-            layer_output_dirs.append(stage_output_dir.absolute().as_posix())
-        linker_r_path = ",".join(layer_output_dirs)
-        layer_build_args = [f"-H:LinkerRPath={linker_r_path}"]
+        if self.pie and (not self.layered or not current_stage.layer_info.is_shared_library):
+            # This option should not be applied to base layers
+            layer_aware_build_args += ["-H:NativeLinkerOption=-pie"]
 
-        # Set LayerUse to point to the .nil archive of the preceeding layer
-        last_shared_library_stage_output_dir = Path(layer_output_dirs[-1])
-        nil_archives = list(last_shared_library_stage_output_dir.glob("*.nil"))
-        if len(nil_archives) == 0:
-            mx.abort(
-                f"Could not determine the .nil archive of the preceding shared library layer!"
-                f" No .nil archives located in '{last_shared_library_stage_output_dir}' directory!"
-            )
-        if len(nil_archives) > 1:
-            mx.abort(
-                f"Could not determine the .nil archive of the preceding shared library layer!"
-                f" Multiple files found: {nil_archives}"
-            )
-        layer_build_args.append(f"-H:LayerUse={nil_archives[0]}")
+        if self.layered and not current_stage.layer_info.is_shared_library:
+            # Set LinkerRPath to point to the directories containing the shared objects of underlying layers
+            shared_library_stages = [stage for stage in self.stages_info.complete_stage_list
+                                     if current_stage.stage_name == stage.stage_name and stage.is_layered() and stage.layer_info.is_shared_library]
+            if len(shared_library_stages) == 0:
+                mx.abort("Failed to find any shared library layer image stages!")
+            layer_output_dirs = []
+            for stage in shared_library_stages:
+                _, stage_output_dir = self.config.get_executable_name_and_output_dir_for_stage(stage, self)
+                layer_output_dirs.append(stage_output_dir.absolute().as_posix())
+            linker_r_path = ",".join(layer_output_dirs)
+            app_layer_build_args = [f"-H:LinkerRPath={linker_r_path}"]
 
-        return layer_build_args
+            # Set LayerUse to point to the .nil archive of the preceeding layer
+            last_shared_library_stage_output_dir = Path(layer_output_dirs[-1])
+            nil_archives = list(last_shared_library_stage_output_dir.glob("*.nil"))
+            if len(nil_archives) == 0:
+                mx.abort(
+                    f"Could not determine the .nil archive of the preceding shared library layer!"
+                    f" No .nil archives located in '{last_shared_library_stage_output_dir}' directory!"
+                )
+            if len(nil_archives) > 1:
+                mx.abort(
+                    f"Could not determine the .nil archive of the preceding shared library layer!"
+                    f" Multiple files found: {nil_archives}"
+                )
+            app_layer_build_args.append(f"-H:LayerUse={nil_archives[0]}")
+            layer_aware_build_args += app_layer_build_args
+
+        return layer_aware_build_args
 
     def run_stage_image(self):
         executable_name_args = ['-o', self.config.final_image_name]
@@ -1653,7 +1671,7 @@ class NativeImageVM(GraalVm):
             [f"-H:BuildOutputJSONFile={self.config.get_build_output_json_file(StageName.IMAGE)}"])
         final_image_command = (self.config.base_image_build_args + executable_name_args
             + (pgo_args if self.pgo_instrumentation else []) + jdk_profiles_args + ml_args + ml_debug_args
-            + collection_args + self.get_layered_build_args())
+            + collection_args + self.get_layer_aware_build_args())
         with self.get_stage_runner() as s:
             exit_code = s.execute_command(self, final_image_command)
             NativeImageVM.move_bundle_output(self.config, self.config.image_path)
