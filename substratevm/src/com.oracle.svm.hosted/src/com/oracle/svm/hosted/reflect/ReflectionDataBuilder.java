@@ -119,7 +119,6 @@ import sun.reflect.annotation.ExceptionProxy;
 
 public class ReflectionDataBuilder extends ConditionalConfigurationRegistry implements RuntimeReflectionSupport, ReflectionHostedSupport {
     private AnalysisMetaAccess metaAccess;
-    private AnalysisUniverse universe;
     private final SubstrateAnnotationExtractor annotationExtractor;
     private BeforeAnalysisAccessImpl analysisAccess;
     private final ClassForNameSupport classForNameSupport;
@@ -163,11 +162,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private Map<Type, Set<Integer>> processedTypes = new ConcurrentHashMap<>();
     private Map<Class<?>, Set<Method>> pendingRecordClasses;
 
-    record ConditionalTask(ConfigurationCondition condition, Consumer<ConfigurationCondition> task) {
-    }
-
-    private final Set<ConditionalTask> pendingConditionalTasks = ConcurrentHashMap.newKeySet();
-
     // Annotations handling
     private final Map<AnnotatedElement, AnnotationValue[]> filteredAnnotations = new ConcurrentHashMap<>();
     private final Map<AnalysisMethod, AnnotationValue[][]> filteredParameterAnnotations = new ConcurrentHashMap<>();
@@ -181,11 +175,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     public void duringSetup(AnalysisMetaAccess analysisMetaAccess, AnalysisUniverse analysisUniverse) {
         this.metaAccess = analysisMetaAccess;
-        this.universe = analysisUniverse;
-        for (var conditionalTask : pendingConditionalTasks) {
-            registerConditionalConfiguration(conditionalTask.condition, (cnd) -> universe.getBigbang().postTask(debug -> conditionalTask.task.accept(cnd)));
-        }
-        pendingConditionalTasks.clear();
+        setUniverse(analysisUniverse);
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
             layeredReflectionDataBuilder = LayeredReflectionDataBuilder.singleton();
         }
@@ -199,13 +189,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (sealed) {
             throw new UnsupportedFeatureException("Too late to add classes, methods, and fields for reflective access. Registration must happen in a Feature before the analysis has finished.");
         }
-
-        if (universe != null) {
-            registerConditionalConfiguration(condition, (cnd) -> universe.getBigbang().postTask(debug -> task.accept(cnd)));
-        } else {
-            pendingConditionalTasks.add(new ConditionalTask(condition, task));
-            VMError.guarantee(universe == null, "There shouldn't be a race condition on Feature.duringSetup.");
-        }
+        runConditionalTask(condition, task);
     }
 
     private void setQueryFlag(Class<?> clazz, int flag) {
