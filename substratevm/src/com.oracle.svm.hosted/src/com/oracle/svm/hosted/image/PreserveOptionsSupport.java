@@ -46,7 +46,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
@@ -175,10 +175,10 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
                         .toList();
 
         final RuntimeReflectionSupport reflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
-        final RuntimeResourceSupport<ConfigurationCondition> resources = RuntimeResourceSupport.singleton();
+        final RuntimeResourceSupport<AccessCondition> resources = RuntimeResourceSupport.singleton();
         final RuntimeProxyCreationSupport proxy = ImageSingletons.lookup(RuntimeProxyCreationSupport.class);
-        final RuntimeSerializationSupport<ConfigurationCondition> serialization = RuntimeSerializationSupport.singleton();
-        final ConfigurationCondition always = ConfigurationCondition.alwaysTrue();
+        final RuntimeSerializationSupport<AccessCondition> serialization = RuntimeSerializationSupport.singleton();
+        final AccessCondition always = AccessCondition.unconditional();
 
         /*
          * Sort descending by class hierarchy depth to avoid complexity related to field
@@ -225,7 +225,9 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
 
             // if we register as unsafe allocated earlier there are build-time
             // initialization errors
-            reflection.register(always, !(c.isArray() || c.isInterface() || c.isPrimitive() || Modifier.isAbstract(c.getModifiers())), c);
+            if (!(c.isArray() || c.isInterface() || c.isPrimitive() || Modifier.isAbstract(c.getModifiers()))) {
+                reflection.registerUnsafeAllocation(always, c);
+            }
 
             /* Register resource bundles */
             if (BundleContentSubstitutedLocalizationSupport.isBundleSupported(c)) {
@@ -252,8 +254,8 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
     }
 
     private static void registerType(RuntimeReflectionSupport reflection, Class<?> c) {
-        ConfigurationCondition always = ConfigurationCondition.alwaysTrue();
-        reflection.register(always, false, c);
+        AccessCondition always = AccessCondition.unconditional();
+        reflection.register(always, c);
 
         reflection.registerAllDeclaredFields(always, c);
         reflection.registerAllDeclaredMethodsQuery(always, false, c);
