@@ -82,6 +82,17 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
     }
 
     private void layoutInUnalignedChunks(ChunkedImageHeapAllocator allocator, ImageHeapLayouterControl control) {
+        if (objects.isEmpty()) {
+            /*
+             * Without objects, don't force finishing the current chunk and therefore committing
+             * space for the rest of it. Another partition might be able to continue filling it, or,
+             * if no more objects follow, we don't need to dedicate space in the image at all.
+             */
+            startOffset = allocator.getPosition();
+            endOffset = startOffset;
+            return;
+        }
+
         allocator.finishAlignedChunk();
         allocator.alignBetweenChunks(getStartAlignment());
         startOffset = allocator.getPosition();
