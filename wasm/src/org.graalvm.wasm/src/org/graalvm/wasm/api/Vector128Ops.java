@@ -260,14 +260,14 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    public static byte[] i8x16_splat(byte value) {
+    public static Object i8x16_splat(byte value) {
         byte[] result = new byte[BYTES];
         Arrays.fill(result, value);
         return result;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    public static byte[] i16x8_splat(short value) {
+    public static Object i16x8_splat(short value) {
         byte[] result = new byte[BYTES];
         for (int i = 0; i < SHORT_LENGTH; i++) {
             byteArraySupport.putShort(result, i * Short.BYTES, value);
@@ -276,7 +276,7 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    public static byte[] i32x4_splat(int value) {
+    public static Object i32x4_splat(int value) {
         byte[] result = new byte[BYTES];
         for (int i = 0; i < INT_LENGTH; i++) {
             byteArraySupport.putInt(result, i * Integer.BYTES, value);
@@ -285,7 +285,7 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    public static byte[] i64x2_splat(long value) {
+    public static Object i64x2_splat(long value) {
         byte[] result = new byte[BYTES];
         for (int i = 0; i < LONG_LENGTH; i++) {
             byteArraySupport.putLong(result, i * Long.BYTES, value);
@@ -294,7 +294,7 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    public static byte[] f32x4_splat(float value) {
+    public static Object f32x4_splat(float value) {
         byte[] result = new byte[BYTES];
         for (int i = 0; i < FLOAT_LENGTH; i++) {
             byteArraySupport.putFloat(result, i * Float.BYTES, value);
@@ -303,7 +303,7 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    public static byte[] f64x2_splat(double value) {
+    public static Object f64x2_splat(double value) {
         byte[] result = new byte[BYTES];
         for (int i = 0; i < DOUBLE_LENGTH; i++) {
             byteArraySupport.putDouble(result, i * Double.BYTES, value);
