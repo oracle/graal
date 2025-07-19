@@ -59,6 +59,8 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.Stubs;
+import com.oracle.svm.core.deopt.DeoptimizationRuntime;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.code.AssignedLocation;
@@ -753,7 +755,13 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Override
         public void emitDeoptimize(Value actionAndReason, Value failedSpeculation, LIRFrameState state) {
-            throw shouldNotReachHere("Substrate VM does not use deoptimization");
+            if (!SubstrateUtil.HOSTED && DeoptimizationSupport.enabled()) {
+                ForeignCallLinkage linkage = getForeignCalls().lookupForeignCall(DeoptimizationRuntime.DEOPTIMIZE);
+                emitForeignCall(linkage, state, actionAndReason, failedSpeculation);
+                append(new DeadEndOp());
+            } else {
+                throw shouldNotReachHere("Substrate VM does not use deoptimization");
+            }
         }
 
         @Override
