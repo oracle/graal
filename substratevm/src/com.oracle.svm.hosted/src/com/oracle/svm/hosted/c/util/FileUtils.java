@@ -35,16 +35,16 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import jdk.graal.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
+
+import jdk.graal.compiler.debug.DebugContext;
 
 public class FileUtils {
 
@@ -64,20 +64,7 @@ public class FileUtils {
     }
 
     public static List<String> readAllLines(InputStream source) {
-        try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(source));
-            List<String> result = new ArrayList<>();
-            while (true) {
-                String line = reader.readLine();
-                if (line == null) {
-                    break;
-                }
-                result.add(line);
-            }
-            return result;
-        } catch (IOException ex) {
-            throw shouldNotReachHere(ex);
-        }
+        return new BufferedReader(new InputStreamReader(source)).lines().toList();
     }
 
     public static int executeCommand(String... args) throws IOException, InterruptedException {
