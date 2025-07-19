@@ -644,7 +644,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                         LanguageFilter filter,
                         byte flags,
                         InlinedMethodPredicate guard,
-                        Constructor<? extends JavaSubstitution> constructor);
+                        Supplier<? extends JavaSubstitution> factory);
         }
          */
         SubstitutorHelper h = (SubstitutorHelper) helper;
@@ -663,7 +663,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         declaration.addContent(h.languageFilter, '.', INSTANCE, ',').addLine();
         declaration.addContent("(byte) ", h.flags, ',').addLine();
         declaration.addContent(h.guardValue != null ? (h.guardValue + "." + INSTANCE) : "null", ',').addLine();
-        declaration.addContent(generateLookupConstructor(substitutorName, substitutorType)).addLine();
+        declaration.addContent(substitutorName + "::new").addLine();
         declaration.lowerIndent().addContent(")");
         factoryBuilder.withDeclaration(declaration);
 
