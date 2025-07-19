@@ -313,7 +313,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                     ListIterator<BasePhase<? super LowTierContext>> lowTierPhasesIterator = suites.getLowTier().findPhase(SchedulePhase.FinalSchedulePhase.class);
                     if (lowTierPhasesIterator != null) {
                         lowTierPhasesIterator.previous();
-                        lowTierPhasesIterator.add(new ForceDeoptSpeculationPhase(decompileCount, null));
+                        lowTierPhasesIterator.add(new ForceDeoptSpeculationPhase(decompileCount));
                     }
                 }
                 result = compiler.compile(graph, shouldRetainLocalVariables, shouldUsePreciseUnresolvedDeopts, eagerResolving, compilationId, debug, suites);

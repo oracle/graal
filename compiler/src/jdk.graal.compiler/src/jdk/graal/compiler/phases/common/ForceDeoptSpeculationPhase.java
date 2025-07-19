@@ -28,17 +28,14 @@ import static jdk.vm.ci.meta.SpeculationLog.NO_SPECULATION;
 
 import java.util.Optional;
 
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.DynamicDeoptimizeNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.ImplicitNullCheckNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.util.GraphSignature;
@@ -63,33 +60,8 @@ public class ForceDeoptSpeculationPhase extends BasePhase<CoreProviders> {
      */
     final int recompileCount;
 
-    /**
-     * Specifies the descriptor of deoptimize calls that have a speculation as an argument. Those
-     * speculation arguments also have to be replaced if they are not proper speculations.
-     */
-    final ForeignCallDescriptor deoptimizeCallDescriptor;
-    final int deoptimizeCallSpeculationReasonArgumentIndex;
-
-    public ForceDeoptSpeculationPhase(int recompileCount, ForeignCallDescriptor deoptimizeCallDescriptor) {
+    public ForceDeoptSpeculationPhase(int recompileCount) {
         this.recompileCount = recompileCount;
-        int speculationReasonArgumentIndex = -1;
-        if (deoptimizeCallDescriptor != null) {
-            Class<?>[] argumentTypes = deoptimizeCallDescriptor.getArgumentTypes();
-            for (int i = 0; i < argumentTypes.length; i++) {
-                if (SpeculationLog.SpeculationReason.class.equals(argumentTypes[i])) {
-                    speculationReasonArgumentIndex = i;
-                    break;
-                }
-            }
-        }
-        if (speculationReasonArgumentIndex >= 0) {
-            this.deoptimizeCallDescriptor = deoptimizeCallDescriptor;
-            this.deoptimizeCallSpeculationReasonArgumentIndex = speculationReasonArgumentIndex;
-        } else {
-            this.deoptimizeCallDescriptor = null;
-            this.deoptimizeCallSpeculationReasonArgumentIndex = -1;
-        }
-
     }
 
     public static class TooManyDeoptimizationsError extends GraalError {
@@ -119,20 +91,6 @@ public class ForceDeoptSpeculationPhase extends BasePhase<CoreProviders> {
                 if (deopt.getSpeculation().equals(NO_SPECULATION)) {
                     SpeculationLog.Speculation speculation = createSpeculation(graph, signature, deopt);
                     deopt.setSpeculation(speculation);
-                }
-            }
-            if (deoptimizeCallDescriptor != null) {
-                if (node instanceof ForeignCallNode foreignCallNode && deoptimizeCallDescriptor.equals(foreignCallNode.getDescriptor())) {
-                    ValueNode speculationReasonArgument = foreignCallNode.getArguments().get(deoptimizeCallSpeculationReasonArgumentIndex);
-                    assert speculationReasonArgument.isJavaConstant() : "Speculation reason argument node is not a JavaConstant";
-                    SpeculationLog.Speculation originalSpeculation = context.getMetaAccess().decodeSpeculation((JavaConstant) ((ConstantNode) speculationReasonArgument).getValue(),
-                                    graph.getSpeculationLog());
-                    if (NO_SPECULATION.equals(originalSpeculation)) {
-                        SpeculationLog.Speculation newSpeculation = createSpeculation(graph, signature, foreignCallNode);
-                        JavaConstant speculationConstant = context.getMetaAccess().encodeSpeculation(newSpeculation);
-                        ConstantNode speculationNode = graph.addOrUnique(ConstantNode.forConstant(speculationConstant, context.getMetaAccess(), graph));
-                        ((ConstantNode) speculationReasonArgument).replace(graph, speculationNode);
-                    }
                 }
             }
             if (node instanceof ImplicitNullCheckNode implicitNullCheck) {

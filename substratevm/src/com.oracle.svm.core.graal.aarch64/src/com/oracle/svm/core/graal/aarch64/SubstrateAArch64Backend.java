@@ -49,6 +49,8 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.deopt.DeoptimizationRuntime;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
@@ -607,7 +609,13 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
         @Override
         public void emitDeoptimize(Value actionAndReason, Value failedSpeculation, LIRFrameState state) {
-            throw shouldNotReachHere("Substrate VM does not use deoptimization");
+            if (!SubstrateUtil.HOSTED && DeoptimizationSupport.enabled()) {
+                ForeignCallLinkage linkage = getForeignCalls().lookupForeignCall(DeoptimizationRuntime.DEOPTIMIZE);
+                emitForeignCall(linkage, state, actionAndReason, failedSpeculation);
+                append(new DeadEndOp());
+            } else {
+                throw shouldNotReachHere("Substrate VM does not use deoptimization");
+            }
         }
 
         @Override

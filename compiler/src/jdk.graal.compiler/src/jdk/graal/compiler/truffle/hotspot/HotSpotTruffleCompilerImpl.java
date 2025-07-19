@@ -198,7 +198,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         Backend backend = createTruffleBackend(hotspotGraalRuntime, options, knownTruffleTypes, forceConfigName);
         Suites suites = backend.getSuites().getDefaultSuites(options, backend.getTarget().arch);
         LIRSuites lirSuites = backend.getSuites().getDefaultLIRSuites(options);
-        return new TruffleTierConfiguration(peConfig, backend, backend.getProviders(), suites, lirSuites, knownTruffleTypes, null);
+        return new TruffleTierConfiguration(peConfig, backend, backend.getProviders(), suites, lirSuites, knownTruffleTypes);
     }
 
     private static String resolveConfigurationName(HotSpotGraalRuntimeProvider hotspotGraalRuntime, OptionValues options, String forceConfigName) {
