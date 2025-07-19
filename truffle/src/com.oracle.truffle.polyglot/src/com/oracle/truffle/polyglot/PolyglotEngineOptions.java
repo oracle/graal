@@ -78,7 +78,7 @@ final class PolyglotEngineOptions {
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Enables conservative context references. " +
                     "This allows invalid sharing between contexts. " +
-                    "For testing purposes only.", deprecated = true, deprecationMessage = "Has no longer any effect. Scheduled for removal in in 22.1.")//
+                    "For testing purposes only.", deprecated = true, deprecationMessage = "Has no longer any effect. Scheduled for removal in in 22.1")//
     static final OptionKey<Boolean> UseConservativeContextReferences = new OptionKey<>(false);
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Enables specialization statistics for nodes generated with Truffle DSL and prints the result on exit. " +
