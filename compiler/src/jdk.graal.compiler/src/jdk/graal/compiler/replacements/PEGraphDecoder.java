@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import jdk.vm.ci.code.BytecodePosition;
 import org.graalvm.collections.Pair;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -410,6 +411,18 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         @Override
         public int getDepth() {
             return methodScope.inliningDepth;
+        }
+
+        @Override
+        public BytecodePosition getInliningChain() {
+            BytecodePosition inliningContext = null;
+            int bci = methodScope.invokeData == null ? 0 : methodScope.invokeData.invoke.bci();
+            for (PEMethodScope cur = methodScope.caller; cur != null; cur = cur.caller) {
+                BytecodePosition caller = new BytecodePosition(null, cur.method, bci);
+                inliningContext = inliningContext == null ? caller : inliningContext.addCaller(caller);
+                bci = cur.invokeData == null ? 0 : cur.invokeData.invoke.bci();
+            }
+            return inliningContext;
         }
 
         @Override
