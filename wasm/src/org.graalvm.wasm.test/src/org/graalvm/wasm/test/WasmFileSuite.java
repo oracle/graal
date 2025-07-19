@@ -591,7 +591,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     }
 
     protected Collection<? extends WasmCase> collectTestCases() throws IOException {
-        return Stream.concat(collectStringTestCases().stream(), WasmCase.collectFileCases("test", testResource()).stream()).collect(Collectors.toList());
+        return Stream.concat(collectStringTestCases().stream(), WasmCase.collectFileCases(this.getClass(), "test", testResource()).stream()).collect(Collectors.toList());
     }
 
     protected Collection<? extends WasmCase> collectStringTestCases() {

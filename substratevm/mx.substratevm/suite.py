@@ -443,6 +443,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.core.genscavenge": {
@@ -477,6 +478,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.core.graal.amd64": {
@@ -501,6 +503,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
         "com.oracle.svm.core.graal.aarch64": {
             "subDir": "src",
@@ -524,6 +527,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
         "com.oracle.svm.core.graal.riscv64": {
             "subDir": "src",
@@ -546,6 +550,7 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "graalCompilerSourceEdition": "ignore",
         },
         "com.oracle.svm.core.graal.llvm": {
             "subDir": "src",
@@ -574,6 +579,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.core.posix": {
@@ -605,6 +611,7 @@ suite = {
             "workingSets": "SVM",
             "spotbugs": "false",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.core.windows": {
@@ -629,6 +636,7 @@ suite = {
             "workingSets": "SVM",
             "spotbugs": "false",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.graal.pointsto": {
@@ -808,6 +816,7 @@ suite = {
             "jacocoExcludePackage": [
                 "com.oracle.svm.hosted.dashboard",
             ],
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.core.foreign": {
@@ -851,6 +860,7 @@ suite = {
             "jacoco" : "exclude",
             # disable SpotBugs as long JDK 22 is unsupported [GR-49566]
             "spotbugs" : "false",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.hosted.foreign": {
@@ -895,6 +905,7 @@ suite = {
             "jacoco" : "exclude",
             # disable SpotBugs as long JDK 22 is unsupported [GR-49566]
             "spotbugs" : "false",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         # Native libraries below explicitly set _FORTIFY_SOURCE to 0. This constant controls how glibc handles some
@@ -1091,6 +1102,7 @@ suite = {
             "javaCompliance" : "21+",
             "spotbugs": "false",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.driver.launcher": {
@@ -1129,6 +1141,7 @@ suite = {
             "javaCompliance" : "21+",
             "spotbugs": "false",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.test": {
@@ -1297,6 +1310,7 @@ suite = {
                 "com.oracle.svm.graal.meta",
                 "com.oracle.svm.graal.substitutions",
             ],
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.graal.test": {
@@ -1322,6 +1336,7 @@ suite = {
             "spotbugs": "false",
             "testProject": True,
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.thirdparty": {
@@ -1383,6 +1398,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.truffle.nfi.none": {
@@ -1408,6 +1424,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.truffle.nfi.posix": {
@@ -1426,6 +1443,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.truffle.nfi.windows": {
@@ -1444,6 +1462,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.polyglot": {
@@ -1466,6 +1485,7 @@ suite = {
             "workingSets": "SVM",
             "spotbugs": "false",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.configure": {
@@ -1511,6 +1531,7 @@ suite = {
             "javaCompliance" : "21+",
             "spotbugs": "false",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.agent": {
@@ -1538,6 +1559,7 @@ suite = {
             "javaCompliance" : "21+",
             "spotbugs": "false",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.diagnosticsagent": {
@@ -1608,6 +1630,7 @@ suite = {
             "javaCompliance": "21+",
             "workingSets": "SVM",
             "jacoco": "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         "com.oracle.svm.interpreter": {
@@ -1638,6 +1661,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco": "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         # Common project both jdwp.server and jdwp.resident.
@@ -1660,6 +1684,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco": "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         # JDWP server, should run on HotSpot and as a shared library e.g. libsvmjdwp.so
@@ -1685,6 +1710,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco": "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         # JDWP implementation bits that are included in the application.
@@ -1711,6 +1737,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco": "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
     },
 

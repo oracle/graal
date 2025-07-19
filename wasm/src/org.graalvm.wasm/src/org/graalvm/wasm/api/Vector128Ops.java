@@ -61,7 +61,8 @@ public class Vector128Ops {
 
     private static final ByteArraySupport byteArraySupport = ByteArraySupport.littleEndian();
 
-    public static byte[] unary(byte[] x, int vectorOpcode) {
+    public static Object unary(Object xVec, int vectorOpcode) {
+        byte[] x = (byte[]) xVec;
         return switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_NOT -> v128_not(x);
             case Bytecode.VECTOR_I8X16_ABS, Bytecode.VECTOR_I8X16_NEG, Bytecode.VECTOR_I8X16_POPCNT -> i8x16_unop(x, vectorOpcode);
@@ -95,7 +96,9 @@ public class Vector128Ops {
         };
     }
 
-    public static byte[] binary(byte[] x, byte[] y, int vectorOpcode) {
+    public static Object binary(Object xVec, Object yVec, int vectorOpcode) {
+        byte[] x = (byte[]) xVec;
+        byte[] y = (byte[]) yVec;
         return switch (vectorOpcode) {
             case Bytecode.VECTOR_I8X16_SWIZZLE, Bytecode.VECTOR_I8X16_RELAXED_SWIZZLE -> i8x16_swizzle(x, y, vectorOpcode);
             case Bytecode.VECTOR_V128_AND, Bytecode.VECTOR_V128_ANDNOT, Bytecode.VECTOR_V128_OR, Bytecode.VECTOR_V128_XOR -> v128_binop(x, y, vectorOpcode);
@@ -146,7 +149,10 @@ public class Vector128Ops {
         };
     }
 
-    public static byte[] ternary(byte[] x, byte[] y, byte[] z, int vectorOpcode) {
+    public static Object ternary(Object xVec, Object yVec, Object zVec, int vectorOpcode) {
+        byte[] x = (byte[]) xVec;
+        byte[] y = (byte[]) yVec;
+        byte[] z = (byte[]) zVec;
         return switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_BITSELECT, Bytecode.VECTOR_I8X16_RELAXED_LANESELECT, Bytecode.VECTOR_I16X8_RELAXED_LANESELECT, Bytecode.VECTOR_I32X4_RELAXED_LANESELECT,
                             Bytecode.VECTOR_I64X2_RELAXED_LANESELECT ->
@@ -158,7 +164,8 @@ public class Vector128Ops {
         };
     }
 
-    public static int vectorToInt(byte[] x, int vectorOpcode) {
+    public static int vectorToInt(Object xVec, int vectorOpcode) {
+        byte[] x = (byte[]) xVec;
         return switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_ANY_TRUE -> v128_any_true(x);
             case Bytecode.VECTOR_I8X16_ALL_TRUE -> i8x16_all_true(x);
@@ -173,7 +180,8 @@ public class Vector128Ops {
         };
     }
 
-    public static byte[] shift(byte[] x, int shift, int vectorOpcode) {
+    public static Object shift(Object xVec, int shift, int vectorOpcode) {
+        byte[] x = (byte[]) xVec;
         return switch (vectorOpcode) {
             case Bytecode.VECTOR_I8X16_SHL, Bytecode.VECTOR_I8X16_SHR_S, Bytecode.VECTOR_I8X16_SHR_U -> i8x16_shiftop(x, shift, vectorOpcode);
             case Bytecode.VECTOR_I16X8_SHL, Bytecode.VECTOR_I16X8_SHR_S, Bytecode.VECTOR_I16X8_SHR_U -> i16x8_shiftop(x, shift, vectorOpcode);
@@ -185,12 +193,129 @@ public class Vector128Ops {
 
     // Checkstyle: stop method name check
 
-    public static byte[] v128_const(byte[] vec) {
-        return vec;
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static Object v128_load8x8(long value, int vectorOpcode) {
+        byte[] bytes = new byte[8];
+        CompilerDirectives.ensureVirtualized(bytes);
+        byteArraySupport.putLong(bytes, 0, value);
+        byte[] resultBytes = new byte[Vector128.BYTES];
+        for (int i = 0; i < 8; i++) {
+            byte x = bytes[i];
+            short result = (short) switch (vectorOpcode) {
+                case Bytecode.VECTOR_V128_LOAD8X8_S -> x;
+                case Bytecode.VECTOR_V128_LOAD8X8_U -> Byte.toUnsignedInt(x);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+            byteArraySupport.putShort(resultBytes, i * Short.BYTES, result);
+        }
+        return resultBytes;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    public static byte[] i8x16_shuffle(byte[] x, byte[] y, byte[] indices) {
+    public static Object v128_load16x4(long value, int vectorOpcode) {
+        byte[] bytes = new byte[8];
+        CompilerDirectives.ensureVirtualized(bytes);
+        byteArraySupport.putLong(bytes, 0, value);
+        byte[] resultBytes = new byte[Vector128.BYTES];
+        for (int i = 0; i < 4; i++) {
+            short x = byteArraySupport.getShort(bytes, i * Short.BYTES);
+            int result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_V128_LOAD16X4_S -> x;
+                case Bytecode.VECTOR_V128_LOAD16X4_U -> Short.toUnsignedInt(x);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+            byteArraySupport.putInt(resultBytes, i * Integer.BYTES, result);
+        }
+        return resultBytes;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static Object v128_load32x2(long value, int vectorOpcode) {
+        byte[] bytes = new byte[8];
+        CompilerDirectives.ensureVirtualized(bytes);
+        byteArraySupport.putLong(bytes, 0, value);
+        byte[] resultBytes = new byte[Vector128.BYTES];
+        for (int i = 0; i < 2; i++) {
+            int x = byteArraySupport.getInt(bytes, i * Integer.BYTES);
+            long result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_V128_LOAD32X2_S -> x;
+                case Bytecode.VECTOR_V128_LOAD32X2_U -> Integer.toUnsignedLong(x);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+            byteArraySupport.putLong(resultBytes, i * Long.BYTES, result);
+        }
+        return resultBytes;
+    }
+
+    public static Object v128_load32_zero(int value) {
+        byte[] resultBytes = new byte[Vector128.BYTES];
+        byteArraySupport.putInt(resultBytes, 0, value);
+        return resultBytes;
+    }
+
+    public static Object v128_load64_zero(long value) {
+        byte[] resultBytes = new byte[Vector128.BYTES];
+        byteArraySupport.putLong(resultBytes, 0, value);
+        return resultBytes;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static Object i8x16_splat(byte value) {
+        byte[] result = new byte[BYTES];
+        Arrays.fill(result, value);
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static Object i16x8_splat(short value) {
+        byte[] result = new byte[BYTES];
+        for (int i = 0; i < SHORT_LENGTH; i++) {
+            byteArraySupport.putShort(result, i * Short.BYTES, value);
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static Object i32x4_splat(int value) {
+        byte[] result = new byte[BYTES];
+        for (int i = 0; i < INT_LENGTH; i++) {
+            byteArraySupport.putInt(result, i * Integer.BYTES, value);
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static Object i64x2_splat(long value) {
+        byte[] result = new byte[BYTES];
+        for (int i = 0; i < LONG_LENGTH; i++) {
+            byteArraySupport.putLong(result, i * Long.BYTES, value);
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static Object f32x4_splat(float value) {
+        byte[] result = new byte[BYTES];
+        for (int i = 0; i < FLOAT_LENGTH; i++) {
+            byteArraySupport.putFloat(result, i * Float.BYTES, value);
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static Object f64x2_splat(double value) {
+        byte[] result = new byte[BYTES];
+        for (int i = 0; i < DOUBLE_LENGTH; i++) {
+            byteArraySupport.putDouble(result, i * Double.BYTES, value);
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static Object i8x16_shuffle(Object xVec, Object yVec, Object indicesVec) {
+        byte[] x = (byte[]) xVec;
+        byte[] y = (byte[]) yVec;
+        byte[] indices = (byte[]) indicesVec;
         byte[] result = new byte[BYTES];
         for (int i = 0; i < BYTE_LENGTH; i++) {
             result[i] = indices[i] < BYTE_LENGTH ? x[indices[i]] : y[indices[i] - BYTE_LENGTH];
@@ -198,7 +323,13 @@ public class Vector128Ops {
         return result;
     }
 
-    public static int i8x16_extract_lane(byte[] bytes, int laneIndex, int vectorOpcode) {
+    public static byte i8x16_extract_lane_s(Object vec, int laneIndex) {
+        byte[] bytes = (byte[]) vec;
+        return bytes[laneIndex];
+    }
+
+    public static int i8x16_extract_lane(Object vec, int laneIndex, int vectorOpcode) {
+        byte[] bytes = (byte[]) vec;
         return switch (vectorOpcode) {
             case Bytecode.VECTOR_I8X16_EXTRACT_LANE_S -> bytes[laneIndex];
             case Bytecode.VECTOR_I8X16_EXTRACT_LANE_U -> Byte.toUnsignedInt(bytes[laneIndex]);
@@ -206,13 +337,20 @@ public class Vector128Ops {
         };
     }
 
-    public static byte[] i8x16_replace_lane(byte[] bytes, int laneIndex, byte value) {
+    public static Object i8x16_replace_lane(Object vec, int laneIndex, byte value) {
+        byte[] bytes = (byte[]) vec;
         byte[] result = Arrays.copyOf(bytes, BYTES);
         result[laneIndex] = value;
         return result;
     }
 
-    public static int i16x8_extract_lane(byte[] vec, int laneIndex, int vectorOpcode) {
+    public static short i16x8_extract_lane_s(Object vecBytes, int laneIndex) {
+        byte[] vec = (byte[]) vecBytes;
+        return byteArraySupport.getShort(vec, laneIndex * Short.BYTES);
+    }
+
+    public static int i16x8_extract_lane(Object vecBytes, int laneIndex, int vectorOpcode) {
+        byte[] vec = (byte[]) vecBytes;
         short x = byteArraySupport.getShort(vec, laneIndex * Short.BYTES);
         return switch (vectorOpcode) {
             case Bytecode.VECTOR_I16X8_EXTRACT_LANE_S -> x;
@@ -221,47 +359,56 @@ public class Vector128Ops {
         };
     }
 
-    public static byte[] i16x8_replace_lane(byte[] vec, int laneIndex, short value) {
+    public static Object i16x8_replace_lane(Object vecBytes, int laneIndex, short value) {
+        byte[] vec = (byte[]) vecBytes;
         byte[] result = Arrays.copyOf(vec, BYTES);
         byteArraySupport.putShort(result, laneIndex * Short.BYTES, value);
         return result;
     }
 
-    public static int i32x4_extract_lane(byte[] vec, int laneIndex) {
+    public static int i32x4_extract_lane(Object vecBytes, int laneIndex) {
+        byte[] vec = (byte[]) vecBytes;
         return byteArraySupport.getInt(vec, laneIndex * Integer.BYTES);
     }
 
-    public static byte[] i32x4_replace_lane(byte[] vec, int laneIndex, int value) {
+    public static Object i32x4_replace_lane(Object vecBytes, int laneIndex, int value) {
+        byte[] vec = (byte[]) vecBytes;
         byte[] result = Arrays.copyOf(vec, BYTES);
         byteArraySupport.putInt(result, laneIndex * Integer.BYTES, value);
         return result;
     }
 
-    public static long i64x2_extract_lane(byte[] vec, int laneIndex) {
+    public static long i64x2_extract_lane(Object vecBytes, int laneIndex) {
+        byte[] vec = (byte[]) vecBytes;
         return byteArraySupport.getLong(vec, laneIndex * Long.BYTES);
     }
 
-    public static byte[] i64x2_replace_lane(byte[] vec, int laneIndex, long value) {
+    public static Object i64x2_replace_lane(Object vecBytes, int laneIndex, long value) {
+        byte[] vec = (byte[]) vecBytes;
         byte[] result = Arrays.copyOf(vec, BYTES);
         byteArraySupport.putLong(result, laneIndex * Long.BYTES, value);
         return result;
     }
 
-    public static float f32x4_extract_lane(byte[] vec, int laneIndex) {
+    public static float f32x4_extract_lane(Object vecBytes, int laneIndex) {
+        byte[] vec = (byte[]) vecBytes;
         return byteArraySupport.getFloat(vec, laneIndex * Float.BYTES);
     }
 
-    public static byte[] f32x4_replace_lane(byte[] vec, int laneIndex, float value) {
+    public static Object f32x4_replace_lane(Object vecBytes, int laneIndex, float value) {
+        byte[] vec = (byte[]) vecBytes;
         byte[] result = Arrays.copyOf(vec, BYTES);
         byteArraySupport.putFloat(result, laneIndex * Float.BYTES, value);
         return result;
     }
 
-    public static double f64x2_extract_lane(byte[] vec, int laneIndex) {
+    public static double f64x2_extract_lane(Object vecBytes, int laneIndex) {
+        byte[] vec = (byte[]) vecBytes;
         return byteArraySupport.getDouble(vec, laneIndex * Double.BYTES);
     }
 
-    public static byte[] f64x2_replace_lane(byte[] vec, int laneIndex, double value) {
+    public static Object f64x2_replace_lane(Object vecBytes, int laneIndex, double value) {
+        byte[] vec = (byte[]) vecBytes;
         byte[] result = Arrays.copyOf(vec, BYTES);
         byteArraySupport.putDouble(result, laneIndex * Double.BYTES, value);
         return result;
@@ -273,52 +420,6 @@ public class Vector128Ops {
         for (int i = 0; i < BYTE_LENGTH; i++) {
             int index = Byte.toUnsignedInt(indices[i]);
             result[i] = index < BYTE_LENGTH ? values[index] : 0;
-        }
-        return result;
-    }
-
-    public static byte[] i8x16_splat(byte x) {
-        byte[] result = new byte[BYTES];
-        Arrays.fill(result, x);
-        return result;
-    }
-
-    public static byte[] i16x8_splat(short x) {
-        byte[] result = new byte[BYTES];
-        for (int i = 0; i < SHORT_LENGTH; i++) {
-            byteArraySupport.putShort(result, i * Short.BYTES, x);
-        }
-        return result;
-    }
-
-    public static byte[] i32x4_splat(int x) {
-        byte[] result = new byte[BYTES];
-        for (int i = 0; i < INT_LENGTH; i++) {
-            byteArraySupport.putInt(result, i * Integer.BYTES, x);
-        }
-        return result;
-    }
-
-    public static byte[] i64x2_splat(long x) {
-        byte[] result = new byte[BYTES];
-        for (int i = 0; i < LONG_LENGTH; i++) {
-            byteArraySupport.putLong(result, i * Long.BYTES, x);
-        }
-        return result;
-    }
-
-    public static byte[] f32x4_splat(float x) {
-        byte[] result = new byte[BYTES];
-        for (int i = 0; i < FLOAT_LENGTH; i++) {
-            byteArraySupport.putFloat(result, i * Float.BYTES, x);
-        }
-        return result;
-    }
-
-    public static byte[] f64x2_splat(double x) {
-        byte[] result = new byte[BYTES];
-        for (int i = 0; i < DOUBLE_LENGTH; i++) {
-            byteArraySupport.putDouble(result, i * Double.BYTES, x);
         }
         return result;
     }
@@ -766,6 +867,7 @@ public class Vector128Ops {
         return vecResult;
     }
 
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i16x8_relaxed_dot_i8x16_i7x16_s(byte[] vecX, byte[] vecY) {
         byte[] vecResult = new byte[BYTES];
         for (int i = 0; i < SHORT_LENGTH; i++) {
@@ -948,6 +1050,7 @@ public class Vector128Ops {
         return vecResult;
     }
 
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i32x4_relaxed_dot_i8x16_i7x16_add_s(byte[] vecX, byte[] vecY, byte[] vecZ) {
         byte[] vecResult = new byte[BYTES];
         for (int i = 0; i < INT_LENGTH; i++) {
@@ -1355,5 +1458,51 @@ public class Vector128Ops {
         } else {
             return (int) (long) ExactMath.truncate(x);
         }
+    }
+
+    public static Object fromArray(byte[] bytes) {
+        return fromArray(bytes, 0);
+    }
+
+    public static Object fromArray(byte[] bytes, int offset) {
+        return Arrays.copyOfRange(bytes, offset, BYTES);
+    }
+
+    public static Object fromArray(short[] shorts) {
+        return Vector128.fromShortsToBytes(shorts);
+    }
+
+    public static Object fromArray(int[] ints) {
+        return Vector128.fromIntsToBytes(ints);
+    }
+
+    public static Object fromArray(long[] longs) {
+        return Vector128.fromLongsToBytes(longs);
+    }
+
+    public static Object fromArray(float[] floats) {
+        return Vector128.fromFloatsToBytes(floats);
+    }
+
+    public static Object fromArray(double[] doubles) {
+        return Vector128.fromDoublesToBytes(doubles);
+    }
+
+    public static byte[] toArray(Object vec) {
+        return (byte[]) vec;
+    }
+
+    public static void intoArray(Object vec, byte[] array, int offset) {
+        byte[] v = (byte[]) vec;
+        System.arraycopy(v, 0, array, offset, BYTES);
+    }
+
+    public static Vector128 toVector128(Object vec) {
+        byte[] v = (byte[]) vec;
+        return new Vector128(v);
+    }
+
+    public static Object fromVector128(Vector128 vector128) {
+        return vector128.getBytes();
     }
 }

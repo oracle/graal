@@ -99,7 +99,7 @@ public class MemoryFootprintBenchmarkRunner {
 
     public static void main(String[] args) throws IOException, InterruptedException {
         if (args[0].equals("--list")) {
-            System.out.println(WasmResource.getResourceIndex(String.format("/%s/%s", BENCHCASES_TYPE, BENCHCASES_RESOURCE)));
+            System.out.println(WasmResource.getResourceIndex(MemoryFootprintBenchmarkRunner.class, String.format("/%s/%s", BENCHCASES_TYPE, BENCHCASES_RESOURCE)));
             return;
         }
 
@@ -117,7 +117,7 @@ public class MemoryFootprintBenchmarkRunner {
         }
 
         for (final String caseSpec : Arrays.copyOfRange(args, offset, args.length)) {
-            final WasmCase benchmarkCase = collectFileCase(BENCHCASES_TYPE, BENCHCASES_RESOURCE, caseSpec);
+            final WasmCase benchmarkCase = collectFileCase(MemoryFootprintBenchmarkRunner.class, BENCHCASES_TYPE, BENCHCASES_RESOURCE, caseSpec);
             assert benchmarkCase != null : String.format("Test case %s/%s not found.", BENCHCASES_RESOURCE, caseSpec);
 
             final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);

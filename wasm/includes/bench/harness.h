@@ -98,23 +98,23 @@ int main(int argc, char* argv[]) {
 
   functionSetupOnce();
 
+  struct timeval start, end;
+  gettimeofday(&start, NULL);
+  long start_t = start.tv_sec * 1000000 + start.tv_usec;
+
+  int result;
+
   for (int i = 0; i != iterations; ++i) {
     functionSetupEach();
-    struct timeval start, end;
-    gettimeofday(&start, NULL);
-
-    int result = functionRun();
-
-    gettimeofday(&end, NULL);
-
-    long start_t = start.tv_sec * 1000000 + start.tv_usec;
-    long end_t = end.tv_sec * 1000000 + end.tv_usec;
-    double time = (end_t - start_t) / 1000000.0;
-
-    printf("Iteration %d, result = %d, sec = %.3f, ops / sec = %.3f\n", i, result, time, 1.0 / time);
-
+    result = functionRun();
     functionTeardownEach(outputFile);
   }
+
+  gettimeofday(&end, NULL);
+  long end_t = end.tv_sec * 1000000 + end.tv_usec;
+  double time = (end_t - start_t) / 1000000.0;
+
+  printf("Result = %d, sec = %.3f, ops / sec = %.3f\n", result, time, iterations / time);
 
   return 0;
 }
