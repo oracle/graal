@@ -729,6 +729,11 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
      */
     private static void replaceComponentNodes(StructuredGraph graph, HighTierContext context, ConnectedComponent component, NodeMap<ValueNode> expanded, VectorArchitecture vectorArch) {
         for (ValueNode node : component.simdStamps.getKeys()) {
+            if (!node.isAlive()) {
+                // As we kill CFGs while replacing each element of the component, it may be the case
+                // that an element is killed because its control dies, simply skip those elements
+                continue;
+            }
             ValueNode replacement = expanded.get(node);
             GraalError.guarantee(replacement != null, "node was not expanded: %s", node);
             graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "before replacing %s -> %s", node, replacement);
