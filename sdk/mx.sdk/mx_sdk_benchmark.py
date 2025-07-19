@@ -1970,6 +1970,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
         otherArgs = ["-s", self.workloadSize(), "--preserve"] + remaining
 
+        if benchname == "pmd":
+            # GR-61626: known transient which is a benchmark bug (dacapobench/dacapobench#310)
+            otherArgs += ["--no-validation"]
+
         if args.iterations:
             if args.iterations.isdigit():
                 return ["-n", str(int(args.sf * int(args.iterations)))] + otherArgs
@@ -2219,7 +2223,7 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
                 re.MULTILINE),
             re.compile(
                 r"^java.lang.Exception: TradeDirect:Login failure for user:",
-                re.MULTILINE),
+                re.MULTILINE)
         ]
 
     def vmArgs(self, bmSuiteArgs):

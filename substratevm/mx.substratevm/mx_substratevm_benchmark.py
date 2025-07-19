@@ -1092,7 +1092,6 @@ _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
 }
 
 _DACAPO_EXTRA_IMAGE_RUN_ARGS = {
-    'pmd':         ['--no-validation'],
     # JDK21 ForeignAPISupport is broken --- disable `enableMemorySegments` for now
     'lusearch':    ['-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false', '--no-validation'],
     'luindex':     ['-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false', '--no-validation'],
