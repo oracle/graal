@@ -266,6 +266,7 @@ suite = {
         # Configure launcher
         "-Dorg.graalvm.launcher.class=org.graalvm.wasm.launcher.WasmLauncher",
       ],
+      "dynamicBuildArgs": "libwasmvm_build_args",
     },
   },
 

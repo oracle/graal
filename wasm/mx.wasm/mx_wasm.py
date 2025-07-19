@@ -48,6 +48,7 @@ from collections import defaultdict
 import mx
 import mx_benchmark
 import mx_sdk_vm
+import mx_sdk_vm_ng
 import mx_truffle
 import mx_unittest
 import mx_util
@@ -91,6 +92,18 @@ def get_jdk(forBuild=False):
 def graalwasm_standalone_deps():
     include_truffle_runtime = not mx.env_var_to_bool("EXCLUDE_TRUFFLE_RUNTIME")
     return mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=include_truffle_runtime)
+
+def libwasmvm_build_args():
+    image_build_args = []
+    if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25"):
+        image_build_args.extend([
+            '--exclude-config',
+            r'wasm\.jar',
+            r'META-INF/native-image/org\.graalvm\.wasm/wasm-language/native-image\.properties',
+            '--initialize-at-build-time=org.graalvm.wasm',
+            '-H:MaxRuntimeCompileMethods=2000',
+        ])
+    return image_build_args
 
 #
 # Gate runners.
