@@ -296,9 +296,15 @@ public final class Target_jdk_jfr_internal_JVM {
         SubstrateJVM.get().setMethodSamplingInterval(type, intervalMillis);
     }
 
-    /** See {@code JVM#setCPUThrottle}. */
+    /** See {@code JVM#setCPURate}. */
     @Substitute
-    public static void setCPUThrottle(double rate, boolean autoAdapt) {
+    public static void setCPURate(double rate) {
+        // JFR CPUTimeSample is not supported.
+    }
+
+    /** See {@code JVM#setCPUPeriod}. */
+    @Substitute
+    public static void setCPUPeriod(long periodNanos) {
         // JFR CPUTimeSample is not supported.
     }
 
