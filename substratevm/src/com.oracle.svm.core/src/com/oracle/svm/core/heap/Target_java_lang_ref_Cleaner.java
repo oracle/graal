@@ -41,29 +41,16 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.misc.InnocuousThread;
 
-@TargetClass(className = "jdk.internal.ref.Cleaner")
-public final class Target_jdk_internal_ref_Cleaner {
-
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    static Target_jdk_internal_ref_Cleaner first;
-
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
-    static ReferenceQueue<Object> dummyQueue = new ReferenceQueue<>();
-
-    @Alias
-    native void clean();
+@TargetClass(className = "java.lang.ref.Cleaner")
+public final class Target_java_lang_ref_Cleaner {
+    @Alias//
+    public Target_jdk_internal_ref_CleanerImpl impl;
 }
 
 @TargetClass(className = "jdk.internal.ref.CleanerFactory")
 final class Target_jdk_internal_ref_CleanerFactory {
     @Alias
     public static native Target_java_lang_ref_Cleaner cleaner();
-}
-
-@TargetClass(className = "java.lang.ref.Cleaner")
-final class Target_java_lang_ref_Cleaner {
-    @Alias//
-    public Target_jdk_internal_ref_CleanerImpl impl;
 }
 
 @TargetClass(className = "java.lang.ref.Cleaner$Cleanable")

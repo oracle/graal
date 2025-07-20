@@ -1089,6 +1089,7 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
         theLicense = ['GFTC' if is_enterprise() else 'UPL']
         super().__init__(suite, name=dist_name, deps=[], layout=layout, path=None, theLicense=theLicense, platformDependent=True, path_substitutions=path_substitutions, string_substitutions=string_substitutions, maven=maven, defaultBuild=defaultBuild)
         self.buildDependencies.append(standalone_dir_dist)
+        self.reset_user_group = True
 
     def resolveDeps(self):
         super().resolveDeps()

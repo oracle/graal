@@ -25,15 +25,23 @@
 package com.oracle.svm.hosted.image;
 
 import static com.oracle.graal.pointsto.api.PointstoOptions.UseConservativeUnsafeAccess;
+import static com.oracle.svm.core.SubstrateOptions.EnableURLProtocols;
 import static com.oracle.svm.core.SubstrateOptions.Preserve;
+import static com.oracle.svm.core.jdk.JRTSupport.Options.AllowJRTFileSystem;
+import static com.oracle.svm.hosted.SecurityServicesFeature.Options.AdditionalSecurityProviders;
+import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.AddAllCharsets;
+import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.IncludeAllLocales;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.security.Provider;
+import java.security.Security;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
@@ -139,7 +147,23 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
                                 SubstrateOptionsParser.commandArgument(UseConservativeUnsafeAccess, "-"));
             }
             UseConservativeUnsafeAccess.update(hostedValues, true);
+
+            AddAllCharsets.update(hostedValues, true);
+            IncludeAllLocales.update(hostedValues, true);
+            AllowJRTFileSystem.update(hostedValues, true);
+            EnableURLProtocols.update(hostedValues, "http,https,ftp,jar,file,mailto,jrt,jmod");
+            AdditionalSecurityProviders.update(hostedValues, getSecurityProvidersCSV());
         }
+    }
+
+    private static String getSecurityProvidersCSV() {
+        StringJoiner joiner = new StringJoiner(",");
+        for (Provider provider : Security.getProviders()) {
+            Class<? extends Provider> aClass = provider.getClass();
+            String typeName = aClass.getTypeName();
+            joiner.add(typeName);
+        }
+        return joiner.toString();
     }
 
     public static void registerPreservedClasses(NativeImageClassLoaderSupport classLoaderSupport) {
@@ -161,18 +185,12 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
          * registration.
          */
         classesToPreserve.forEach(c -> {
-            reflection.register(always, false, c);
+            registerType(reflection, c);
 
-            reflection.registerAllDeclaredFields(always, c);
-            reflection.registerAllDeclaredMethodsQuery(always, false, c);
-            reflection.registerAllDeclaredConstructorsQuery(always, false, c);
-            reflection.registerAllConstructorsQuery(always, false, c);
-            reflection.registerAllClassesQuery(always, c);
-            reflection.registerAllDeclaredClassesQuery(always, c);
-            reflection.registerAllNestMembersQuery(always, c);
-            reflection.registerAllPermittedSubclassesQuery(always, c);
-            reflection.registerAllRecordComponentsQuery(always, c);
-            reflection.registerAllSignersQuery(always, c);
+            /* Register array types for each type up to dimension 2 */
+            Class<?> arrayType = c.arrayType();
+            registerType(reflection, arrayType);
+            registerType(reflection, arrayType.arrayType());
 
             /* Register every single-interface proxy */
             // GR-62293 can't register proxies from jdk modules.
@@ -227,7 +245,25 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         });
 
         for (String className : classLoaderSupport.getClassNamesToPreserve()) {
-            reflection.registerClassLookup(always, className);
+            if (!classesOrPackagesToIgnore.contains(className)) {
+                reflection.registerClassLookup(always, className);
+            }
         }
+    }
+
+    private static void registerType(RuntimeReflectionSupport reflection, Class<?> c) {
+        ConfigurationCondition always = ConfigurationCondition.alwaysTrue();
+        reflection.register(always, false, c);
+
+        reflection.registerAllDeclaredFields(always, c);
+        reflection.registerAllDeclaredMethodsQuery(always, false, c);
+        reflection.registerAllDeclaredConstructorsQuery(always, false, c);
+        reflection.registerAllConstructorsQuery(always, false, c);
+        reflection.registerAllClassesQuery(always, c);
+        reflection.registerAllDeclaredClassesQuery(always, c);
+        reflection.registerAllNestMembersQuery(always, c);
+        reflection.registerAllPermittedSubclassesQuery(always, c);
+        reflection.registerAllRecordComponentsQuery(always, c);
+        reflection.registerAllSignersQuery(always, c);
     }
 }

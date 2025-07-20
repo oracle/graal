@@ -54,6 +54,7 @@ import json
 import argparse
 import zipfile
 from dataclasses import dataclass
+from enum import Enum
 from os import PathLike
 from os.path import exists, basename
 from pathlib import Path
@@ -302,9 +303,9 @@ class NativeImageBenchmarkConfig:
         for option in self.extra_agentlib_options:
             if option.startswith('config-output-dir'):
                 mx.abort("config-output-dir must not be set in the extra_agentlib_options.")
-        # Do not strip the run arguments if safepoint-sampler or pgo_sampler_only configuration is active
+        # Do not strip the run arguments if safepoint-sampler configuration is active or we want pgo samples (either from instrumentation or perf)
         self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, list(image_run_args),
-                                                                     not (vm.safepoint_sampler or vm.pgo_sampler_only))
+                                                                     not (vm.safepoint_sampler or vm.pgo_sampler_only or vm.pgo_use_perf))
         self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args,
                                                                                  list(image_run_args))
         self.params = ['extra-image-build-argument', 'extra-jvm-arg', 'extra-run-arg', 'extra-agent-run-arg',
@@ -320,10 +321,16 @@ class NativeImageBenchmarkConfig:
         self.output_dir: Path = output_dir
         self.final_image_name = self.executable_name + '-' + vm.config_name()
         self.profile_path: Path = self.output_dir / f"{self.executable_name}.iprof"
+        self.source_mappings_path: Path = self.output_dir / f"{self.executable_name}.sourceMappings.json"
+        self.perf_script_path: Path = self.output_dir / f"{self.executable_name}.perf.script.out"
+        self.perf_data_path: Path = self.output_dir / f"{self.executable_name}.perf.data"
         self.config_dir: Path = self.output_dir / "config"
         self.log_dir: Path = self.output_dir
         self.ml_log_dump_path: Path = self.output_dir / f"{self.executable_name}.ml.log.csv"
-        base_image_build_args = ['--no-fallback', '-g']
+        base_image_build_args = ['--no-fallback']
+        if not vm.pgo_use_perf:
+            # Can only have debug info when not using perf, [GR-66850]
+            base_image_build_args.append('-g')
         base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases',
                                   '--diagnostics-mode'] if vm.is_gate else []
         base_image_build_args += ['-H:+ReportExceptionStackTraces']
@@ -712,9 +719,13 @@ class NativeImageVM(GraalVm):
     def __init__(self, name, config_name, extra_java_args=None, extra_launcher_args=None):
         super().__init__(name, config_name, extra_java_args, extra_launcher_args)
         self.vm_args = None
+        # When this is set, run the instrumentation-image and instrumentation-run stages.
+        # Does not necessarily do instrumentation.
         self.pgo_instrumentation = False
         self.pgo_exclude_conditional = False
         self.pgo_sampler_only = False
+        self.pgo_use_perf = False
+        self.pgo_perf_invoke_profile_collection_strategy: Optional[PerfInvokeProfileCollectionStrategy] = None
         self.is_gate = False
         self.is_quickbuild = False
         self.layered = False
@@ -803,6 +814,10 @@ class NativeImageVM(GraalVm):
                 and self.force_profile_inference is False \
                 and self.profile_inference_feature_extraction is False:
             config += ["pgo"]
+        if self.pgo_use_perf:
+            config += ["perf-sampler"]
+            if self.pgo_perf_invoke_profile_collection_strategy is not None:
+                config += [str(self.pgo_perf_invoke_profile_collection_strategy)]
         if self.analysis_context_sensitivity is not None:
             sensitivity = self.analysis_context_sensitivity
             if sensitivity.startswith("_"):
@@ -848,7 +863,7 @@ class NativeImageVM(GraalVm):
         # Note: the order of entries here must match the order of statements in NativeImageVM.config_name()
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<compacting_gc>compacting-gc-)?(?P<preserve_all>preserve-all-)?(?P<preserve_classpath>preserve-classpath-)?' \
                r'(?P<future_defaults_all>future-defaults-all-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<layered>layered-)?(?P<graalos>graalos-)?(?P<gc>g1gc-)?' \
-               r'(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-sampler-)?(?P<inliner>inline-)?' \
+               r'(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-sampler-|pgo-perf-sampler-invoke-multiple-|pgo-perf-sampler-invoke-|pgo-perf-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
                r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-call-count-|profile-inference-pgo-|profile-inference-debug-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(default-)?(?P<edition>ce-|ee-)?$'
 
@@ -926,6 +941,17 @@ class NativeImageVM(GraalVm):
             elif pgo_mode == "pgo-sampler":
                 self.pgo_instrumentation = True
                 self.pgo_sampler_only = True
+            elif pgo_mode == "pgo-perf-sampler":
+                self.pgo_instrumentation = True
+                self.pgo_use_perf = True
+            elif pgo_mode == "pgo-perf-sampler-invoke":
+                self.pgo_instrumentation = True
+                self.pgo_use_perf = True
+                self.pgo_perf_invoke_profile_collection_strategy = PerfInvokeProfileCollectionStrategy.ALL
+            elif pgo_mode == "pgo-perf-sampler-invoke-multiple":
+                self.pgo_instrumentation = True
+                self.pgo_use_perf = True
+                self.pgo_perf_invoke_profile_collection_strategy = PerfInvokeProfileCollectionStrategy.MULTIPLE_CALLEES
             else:
                 mx.abort(f"Unknown pgo mode: {pgo_mode}")
 
@@ -1330,8 +1356,11 @@ class NativeImageVM(GraalVm):
         return rules
 
     def image_build_timers_rules(self, benchmarks):
-        measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', 'layout', 'dbginfo',
+        measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', 'layout',
                            'image', 'write']
+        if not self.pgo_use_perf:
+            # No debug info with perf, [GR-66850]
+            measured_phases.append('dbginfo')
         rules = []
         for i in range(0, len(measured_phases)):
             phase = measured_phases[i]
@@ -1434,8 +1463,12 @@ class NativeImageVM(GraalVm):
 
     def run_stage_instrument_image(self):
         executable_name_args = ['-o', str(self.config.instrumented_image_path)]
-        instrument_args = ['--pgo-sampling'] if self.pgo_sampler_only else ['--pgo-instrument']
-        instrument_args += [f"-R:ProfilesDumpFile={self.config.profile_path}"]
+        instrument_args = []
+        if self.pgo_use_perf:
+            instrument_args += svm_experimental_options([f'-H:PGOPerfSourceMappings={self.config.source_mappings_path}'])
+        else:
+            instrument_args += ['--pgo-sampling' if self.pgo_sampler_only else '--pgo-instrument', f"-R:ProfilesDumpFile={self.config.profile_path}"]
+
         if self.jdk_profiles_collect:
             instrument_args += svm_experimental_options(['-H:+AOTPriorityInline', '-H:-SamplingCollect',
                                                          f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}'])
@@ -1484,13 +1517,48 @@ class NativeImageVM(GraalVm):
                     assert sample["records"][
                                0] > 0, f"Sampling profiles seem to have a 0 in records in file {profile_path}"
 
+    def _collect_perf_results_into_iprof(self):
+        with open(self.config.perf_script_path, 'w') as outfile:
+            mx.log(f"Started perf script at {self.get_stage_runner().get_timestamp()}")
+            exit_code = mx.run(['perf', 'script', f'--input={self.config.perf_data_path}', '--max-stack=2048'], out=outfile)
+            if exit_code == 0:
+                mx.log(f"Finished perf script at {self.get_stage_runner().get_timestamp()}")
+                mx.log(f"Perf compressed data file size: {os.path.getsize(self.config.perf_data_path)} bytes")
+                mx.log(f"Perf script file size: {os.path.getsize(self.config.perf_script_path)} bytes")
+            else:
+                mx.abort(f"Perf script failed with exit code: {exit_code}")
+        mx.log(f"Started generating iprof at {self.get_stage_runner().get_timestamp()}")
+        nic_command = [os.path.join(self.home(), 'bin', 'native-image-configure'), 'generate-iprof-from-perf', f'--perf={self.config.perf_script_path}', f'--source-mappings={self.config.source_mappings_path}', f'--output-file={self.config.profile_path}']
+        if self.pgo_perf_invoke_profile_collection_strategy == PerfInvokeProfileCollectionStrategy.ALL:
+            nic_command += ["--enable-experimental-option=SampledVirtualInvokeProfilesAll"]
+        elif self.pgo_perf_invoke_profile_collection_strategy == PerfInvokeProfileCollectionStrategy.MULTIPLE_CALLEES:
+            nic_command += ["--enable-experimental-option=SampledVirtualInvokeProfilesMultipleCallees"]
+
+        mx.run(nic_command)
+        mx.log(f"Finished generating iprof at {self.get_stage_runner().get_timestamp()}")
+        os.remove(self.config.perf_script_path)
+        os.remove(self.config.perf_data_path)
+        os.remove(self.config.source_mappings_path)
+
     def run_stage_instrument_run(self):
         image_run_cmd = [str(self.config.instrumented_image_path)]
         image_run_cmd += self.config.extra_jvm_args
         image_run_cmd += self.config.extra_profile_run_args
+        if self.pgo_use_perf:
+            image_run_cmd = ['perf', 'record', '-o', f'{self.config.perf_data_path}', '--call-graph', 'fp,2048', '--freq=999'] + image_run_cmd
+
         with self.get_stage_runner() as s:
-            exit_code = s.execute_command(self, image_run_cmd)
+            if self.pgo_use_perf:
+                mx.log(f"Started perf record at {self.get_stage_runner().get_timestamp()}")
+                exit_code = s.execute_command(self, image_run_cmd)
+                mx.log(f"Finished perf record at {self.get_stage_runner().get_timestamp()}")
+            else:
+                exit_code = s.execute_command(self, image_run_cmd)
+
             if exit_code == 0:
+                if self.pgo_use_perf:
+                    self._collect_perf_results_into_iprof()
+
                 if not self.config.profile_path.exists():
                     # The shutdown hook does not trigger for certain apps (GR-60456)
                     mx.abort(
@@ -1543,6 +1611,13 @@ class NativeImageVM(GraalVm):
     def run_stage_image(self):
         executable_name_args = ['-o', self.config.final_image_name]
         pgo_args = [f"--pgo={self.config.profile_path}"]
+        if self.pgo_use_perf:
+            # -g is already set in base_image_build_args if we're not using perf. When using perf, if debug symbols
+            # are present they will interfere with sample decoding using source mappings.
+            # We still set -g for the optimized build to stay consistent with the other configs.
+            # [GR-66850] would allow enabling -g during instrument-image even with perf.
+            executable_name_args = ['-g'] + executable_name_args
+            pgo_args += svm_experimental_options(['-H:+PGOPrintProfileQuality', '-H:+PGOIgnoreVersionCheck'])
         if self.adopted_jdk_pgo:
             # choose appropriate profiles
             jdk_version = mx_sdk_vm.get_jdk_version_for_profiles()
@@ -1895,6 +1970,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
         otherArgs = ["-s", self.workloadSize(), "--preserve"] + remaining
 
+        if benchname == "pmd":
+            # GR-61626: known transient which is a benchmark bug (dacapobench/dacapobench#310)
+            otherArgs += ["--no-validation"]
+
         if args.iterations:
             if args.iterations.isdigit():
                 return ["-n", str(int(args.sf * int(args.iterations)))] + otherArgs
@@ -2144,7 +2223,7 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
                 re.MULTILINE),
             re.compile(
                 r"^java.lang.Exception: TradeDirect:Login failure for user:",
-                re.MULTILINE),
+                re.MULTILINE)
         ]
 
     def vmArgs(self, bmSuiteArgs):
@@ -2815,7 +2894,7 @@ _baristaConfig = {
     # Should currently only contain round numbers due to the field incorrectly being indexed as integer in the DB (GR-57487)
     "latency_percentiles": [50.0, 75.0, 90.0, 99.0, 100.0],
     "rss_percentiles": [100, 99, 98, 97, 96, 95, 90, 75, 50, 25],
-    "disable_trackers": [mx_benchmark.RssTracker, mx_benchmark.PsrecordTracker, mx_benchmark.PsrecordMaxrssTracker, mx_benchmark.RssPercentilesTracker, mx_benchmark.RssPercentilesAndMaxTracker],
+    "supported_trackers": [mx_benchmark.EnergyConsumptionTracker],
 }
 
 class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
@@ -2828,9 +2907,8 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
     def __init__(self, custom_harness_command: mx_benchmark.CustomHarnessCommand = None):
         if custom_harness_command is None:
             custom_harness_command = BaristaBenchmarkSuite.BaristaCommand()
-        super().__init__(custom_harness_command)
+        super().__init__(custom_harness_command, supported_trackers=_baristaConfig["supported_trackers"])
         self._version = None
-        self._extra_run_options = []
 
     def readBaristaVersionFromPyproject(self):
         # tomllib was included in python standard library with version 3.11
@@ -2915,25 +2993,6 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
     def new_execution_context(self, vm: Vm, benchmarks: List[str], bmSuiteArgs: List[str]) -> SingleBenchmarkExecutionContext:
         return SingleBenchmarkExecutionContext(self, vm, benchmarks, bmSuiteArgs)
-
-    def register_tracker(self, name, tracker_type):
-        if tracker_type in _baristaConfig["disable_trackers"]:
-            mx.log(f"Ignoring the registration of '{name}' tracker as it was disabled for {self.__class__.__name__}.")
-            return
-        if name == "energy":
-            if self.version() < "0.4.1":
-                mx.abort(
-                    "The 'energy' tracker is not supported for barista benchmarks before Barista version '0.4.1'."
-                    " Please update your Barista repository in order to use the 'energy' tracker! Aborting!"
-                )
-            # Allow for the baseline measurement before looking up the app process
-            self._extra_run_options += ["--cmd-app-prefix-init-timelimit", f"{tracker_type(self).baseline_duration + 5}"]
-            # Ensure that the workload is independent from the performance of the VM
-            # We want to track the energy needed for a set amount of work
-            self._extra_run_options += ["--startup-iteration-count", "0"]
-            self._extra_run_options += ["--warmup-iteration-count", "0"]
-            self._extra_run_options += ["--throughput-iteration-count", "0"]
-        super().register_tracker(name, tracker_type)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         # Pass the VM options, BaristaCommand will form the final command.
@@ -3149,6 +3208,29 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
                 new_value = f"{new_value} {existing_option_match.group(1)}"
             cmd.append(f"{option_name}={new_value}")
 
+        def _energyTrackerExtraOptions(self, suite: BaristaBenchmarkSuite):
+            """Returns extra options necessary for correct benchmark results when using the 'energy' tracker."""
+            if not isinstance(suite._tracker, mx_benchmark.EnergyConsumptionTracker):
+                return []
+
+            required_barista_version = "0.4.5"
+            if mx.VersionSpec(suite.version()) < mx.VersionSpec(required_barista_version):
+                mx.abort(
+                    f"The 'energy' tracker is not supported for barista benchmarks before Barista version '{required_barista_version}'."
+                    " Please update your Barista repository in order to use the 'energy' tracker! Aborting!"
+                )
+
+            extra_options = []
+            # If baseline has to be measured, wait for the measurement duration before looking up the app process
+            if suite._tracker.baseline_power is None:
+                extra_options += ["--cmd-app-prefix-init-sleep", f"{suite._tracker.baseline_duration}"]
+            # Ensure that the workload is independent from the performance of the VM
+            # We want to track the energy needed for a set amount of work
+            extra_options += ["--startup-iteration-count", "0"]
+            extra_options += ["--warmup-iteration-count", "0"]
+            extra_options += ["--throughput-iteration-count", "0"]
+            return extra_options
+
         def produceHarnessCommand(self, cmd, suite):
             """Maps a JVM command into a command tailored for the Barista harness.
 
@@ -3173,7 +3255,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             jvm_vm_options = jvm_cmd[index_of_java_exe + 1:]
 
             # Verify that the run arguments don't already contain a "--mode" option
-            run_args = suite.runArgs(suite.execution_context.bmSuiteArgs) + suite._extra_run_options
+            run_args = suite.runArgs(suite.execution_context.bmSuiteArgs) + self._energyTrackerExtraOptions(suite)
             mode_pattern = r"^(?:-m|--mode)(=.*)?$"
             mode_match = self._regexFindInCommand(run_args, mode_pattern)
             if mode_match:
@@ -3277,6 +3359,13 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             del benchmarks["gauss-mix"]
             del benchmarks["page-rank"]
             del benchmarks["movie-lens"]
+            if mx.get_jdk().javaCompliance >= '26':
+                # JDK-8361426 removes jdk.internal.ref.Cleaner and causes the following to fail
+                del benchmarks["als"]
+                del benchmarks["db-shootout"]
+                del benchmarks["dec-tree"]
+                del benchmarks["log-regression"]
+                del benchmarks["naive-bayes"]
 
         return benchmarks
 
@@ -3626,6 +3715,17 @@ def strip_args_with_number(strip_args, args):
         result = _strip_arg_with_number_gen(strip_arg, result)
     return list(result)
 
+class PerfInvokeProfileCollectionStrategy(Enum):
+    """
+    The strategy for extracting virtual invoke method profiles from perf sampling data.
+    ALL: Generate a profile for each callsite.
+    MULTIPLE_CALLEES: Only generate profiles for callsites with at least 2 different sampled targets.
+    """
+    ALL = "invoke"
+    MULTIPLE_CALLEES = "invoke-multiple"
+
+    def __str__(self):
+        return self.value
 
 class StagesInfo:
     """

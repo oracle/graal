@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
+import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
@@ -80,7 +80,7 @@ public abstract class JavaSubstitution extends SubstitutionProfiler {
         private final byte flags;
         private final InlinedMethodPredicate guard;
 
-        private final Constructor<? extends JavaSubstitution> constructor;
+        private final Supplier<? extends JavaSubstitution> factory;
 
         public Factory(Object methodName,
                         Object substitutionClassName,
@@ -90,7 +90,7 @@ public abstract class JavaSubstitution extends SubstitutionProfiler {
                         LanguageFilter filter,
                         byte flags,
                         InlinedMethodPredicate guard,
-                        Constructor<? extends JavaSubstitution> constructor) {
+                        Supplier<? extends JavaSubstitution> factory) {
             this.methodName = methodName;
             this.substitutionClassName = substitutionClassName;
             this.returnType = returnType;
@@ -99,7 +99,7 @@ public abstract class JavaSubstitution extends SubstitutionProfiler {
             this.filter = filter;
             this.flags = flags;
             this.guard = guard;
-            this.constructor = constructor;
+            this.factory = factory;
         }
 
         public String[] getMethodNames() {
@@ -143,12 +143,7 @@ public abstract class JavaSubstitution extends SubstitutionProfiler {
         }
 
         public JavaSubstitution create() {
-            try {
-                return constructor.newInstance();
-            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere("Failed substitution creation: ", e);
-            }
+            return factory.get();
         }
 
         private boolean isFlag(byte flag) {

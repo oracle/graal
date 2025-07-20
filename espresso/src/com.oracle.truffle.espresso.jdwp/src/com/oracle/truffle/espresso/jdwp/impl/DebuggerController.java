@@ -333,7 +333,7 @@ public final class DebuggerController implements ContextsListener {
     }
 
     public int getListeningPort() {
-        return Integer.parseInt(options.port);
+        return options.port;
     }
 
     public String getHost() {

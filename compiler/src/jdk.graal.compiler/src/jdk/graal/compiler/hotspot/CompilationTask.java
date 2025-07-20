@@ -313,7 +313,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                     ListIterator<BasePhase<? super LowTierContext>> lowTierPhasesIterator = suites.getLowTier().findPhase(SchedulePhase.FinalSchedulePhase.class);
                     if (lowTierPhasesIterator != null) {
                         lowTierPhasesIterator.previous();
-                        lowTierPhasesIterator.add(new ForceDeoptSpeculationPhase(decompileCount, null));
+                        lowTierPhasesIterator.add(new ForceDeoptSpeculationPhase(decompileCount));
                     }
                 }
                 result = compiler.compile(graph, shouldRetainLocalVariables, shouldUsePreciseUnresolvedDeopts, eagerResolving, compilationId, debug, suites);
@@ -636,11 +636,14 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         Object[] context = {new DebugDumpScope(getIdString(), true), codeCache, getMethod(), compResult};
         try (DebugContext.Scope s = debug.scope("CodeInstall", context, graph)) {
             HotSpotCompilationRequest request = getRequest();
+            // By default, we only profile deoptimizations for compiled methods installed as
+            // default.
             installedCode = (HotSpotInstalledCode) backend.createInstalledCode(debug,
                             request.getMethod(),
                             request,
                             compResult,
                             null,
+                            installAsDefault,
                             installAsDefault,
                             context);
         } catch (Throwable e) {

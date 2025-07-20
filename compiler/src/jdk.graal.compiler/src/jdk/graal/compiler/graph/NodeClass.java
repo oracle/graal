@@ -953,8 +953,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
         private Node forward() {
             while (mask != 0) {
-                Node next = getInput();
-                mask = advanceInput();
+                Node next = getAndAdvanceInput();
                 if (next != null) {
                     return next;
                 }
@@ -978,47 +977,45 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             }
         }
 
-        public final long advanceInput() {
-            int state = (int) mask & 0x03;
+        private Node getAndAdvanceInput() {
+            long state = mask & 0x03;
+            Node result;
             if (state == 0) {
-                // Skip normal field.
-                return mask >>> NEXT_EDGE;
+                result = Edges.getNodeUnsafe(node, mask & 0xFC);
+                mask = mask >>> NEXT_EDGE;
             } else if (state == 1) {
                 // We are iterating a node list.
+                NodeList<?> nodeList = Edges.getNodeListUnsafe(node, mask & 0xFC);
+                result = nodeList.nodes[nodeList.size() - 1 - (int) ((mask >>> NEXT_EDGE) & 0xFFFF)];
                 if ((mask & 0xFFFF00) != 0) {
                     // Node list count is non-zero, decrease by 1.
-                    return mask - 0x100;
+                    mask = mask - 0x100;
                 } else {
                     // Node list is finished => go to next input.
-                    return mask >>> 24;
+                    mask = mask >>> 24;
                 }
-            } else {
-                // Need to expand node list.
-                NodeList<?> nodeList = Edges.getNodeListUnsafe(node, mask & 0xFC);
-                if (nodeList != null) {
-                    int size = nodeList.size();
-                    if (size != 0) {
-                        // Set pointer to upper most index of node list.
-                        return ((mask >>> NEXT_EDGE) << 24) | (mask & 0xFD) | ((long) (size - 1) << NEXT_EDGE);
-                    }
-                }
-                // Node list is empty or null => skip.
-                return mask >>> NEXT_EDGE;
-            }
-        }
-
-        public Node getInput() {
-            int state = (int) mask & 0x03;
-            if (state == 0) {
-                return Edges.getNodeUnsafe(node, mask & 0xFC);
-            } else if (state == 1) {
-                // We are iterating a node list.
-                NodeList<?> nodeList = Edges.getNodeListUnsafe(node, mask & 0xFC);
-                return nodeList.nodes[nodeList.size() - 1 - (int) ((mask >>> NEXT_EDGE) & 0xFFFF)];
             } else {
                 // Node list needs to expand first.
-                return null;
+                result = null;
+                NodeList<?> nodeList = Edges.getNodeListUnsafe(node, mask & 0xFC);
+                int size;
+                if (nodeList != null && ((size = nodeList.size()) != 0)) {
+                    // Set pointer to upper most index of node list.
+                    mask = ((mask >>> NEXT_EDGE) << 24) | (mask & 0xFD) | ((long) (size - 1) << NEXT_EDGE);
+                    result = nodeList.nodes[size - 1 - (int) ((mask >>> NEXT_EDGE) & 0xFFFF)];
+                    if ((mask & 0xFFFF00) != 0) {
+                        // Node list count is non-zero, decrease by 1.
+                        mask = mask - 0x100;
+                    } else {
+                        // Node list is finished => go to next input.
+                        mask = mask >>> 24;
+                    }
+                } else {
+                    // Node list is empty or null => skip.
+                    mask = mask >>> NEXT_EDGE;
+                }
             }
+            return result;
         }
 
         @Override

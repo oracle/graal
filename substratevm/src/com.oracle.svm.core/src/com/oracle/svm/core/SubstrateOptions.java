@@ -396,9 +396,9 @@ public class SubstrateOptions {
         ConcealedOptions.CodeAlignment.update(values, 1);
         GraalOptions.LoopHeaderAlignment.update(values, 0);
         GraalOptions.IsolatedLoopHeaderAlignment.update(values, 0);
-        if (ConfigurationValues.getTarget().arch instanceof AMD64) {
-            disable(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
-        }
+        // We cannot check for architecture at the moment because ImageSingletons has not been
+        // initialized yet
+        disable(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
 
         /*
          * Do not run PEA - it can fan out allocations too much.
@@ -656,7 +656,7 @@ public class SubstrateOptions {
     }
 
     /* Same option name and specification as the Java HotSpot VM. */
-    @Option(help = "Maximum total size of NIO direct-buffer allocations")//
+    @Option(help = "Maximum total size of NIO direct-buffer allocations", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Long> MaxDirectMemorySize = new RuntimeOptionKey<>(0L);
 
     @Option(help = "Verify naming conventions during image construction.")//
@@ -1441,8 +1441,8 @@ public class SubstrateOptions {
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> Preserve = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Ignore classes or packages (comma separated) from the ones included with '-H:Preserve'. This can be used to workaround potential issues related to '-H:Preserve'.", type = OptionType.Debug) //
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IgnorePreserveForClasses = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
-
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IgnorePreserveForClasses = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
     @Option(help = "Force include include all public types and methods that can be reached using normal Java access rules.")//
     public static final HostedOptionKey<Boolean> UseBaseLayerInclusionPolicy = new HostedOptionKey<>(false);
 

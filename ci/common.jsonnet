@@ -366,6 +366,15 @@ local common_json = import "../common.json";
   # Job frequencies
   # ***************
   frequencies: {
+    tier1: {
+      targets+: ["tier1"],
+    },
+    tier2: {
+      targets+: ["tier2"],
+    },
+    tier3: {
+      targets+: ["tier3"],
+    },
     gate: {
       targets+: ["gate"],
     },

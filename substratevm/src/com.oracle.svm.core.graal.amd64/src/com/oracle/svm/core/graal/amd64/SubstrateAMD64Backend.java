@@ -59,6 +59,8 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.Stubs;
+import com.oracle.svm.core.deopt.DeoptimizationRuntime;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.code.AssignedLocation;
@@ -753,7 +755,13 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Override
         public void emitDeoptimize(Value actionAndReason, Value failedSpeculation, LIRFrameState state) {
-            throw shouldNotReachHere("Substrate VM does not use deoptimization");
+            if (!SubstrateUtil.HOSTED && DeoptimizationSupport.enabled()) {
+                ForeignCallLinkage linkage = getForeignCalls().lookupForeignCall(DeoptimizationRuntime.DEOPTIMIZE);
+                emitForeignCall(linkage, state, actionAndReason, failedSpeculation);
+                append(new DeadEndOp());
+            } else {
+                throw shouldNotReachHere("Substrate VM does not use deoptimization");
+            }
         }
 
         @Override
@@ -1151,12 +1159,9 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
      * If a method doesn't need a frame pointer, we use the following forms:
      *
      * <pre>
-     *          |        needsFramePointer        |
+     *          |    needsFramePointer = false    |
      *          +---------------------------------+
-     *          |              false              |
-     *          +---------------------------------+
-     *          |      preserveFramePointer       |
-     *          +----------------+----------------+
+     *          |   preserveFramePointer = ...    |
      *          |     false      |      true      |
      *  --------+----------------+----------------+
      *          |  ; prologue    |  ; prologue    |
@@ -1187,12 +1192,9 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
      * If a method does need a frame pointer, we use the following forms:
      *
      * <pre>
-     *          |                 needsFramePointer                 |
+     *          |             needsFramePointer = true              |
      *          +---------------------------------------------------+
-     *          |                       true                        |
-     *          +---------------------------------------------------+
-     *          |               preserveFramePointer                |
-     *          +-------------------------+-------------------------+
+     *          |            preserveFramePointer = ...             |
      *          |          false          |          true           |
      *  --------+-------------------------+-------------------------+
      *          |  ; prologue             |  ; prologue             |
@@ -1675,7 +1677,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         private boolean needsFramePointer;
 
         /** The offset at which the frame pointer save area is located. */
-        private int framePointerSaveAreaOffset;
+        private int framePointerSaveAreaOffset = -1;
 
         SubstrateAMD64FrameMap(CodeCacheProvider codeCache, SubstrateAMD64RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, SharedMethod method) {
             super(codeCache, registerConfig, referenceMapFactory, registerConfig.shouldUseBasePointer());
@@ -1704,6 +1706,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
          * return address.
          */
         private void allocateFramePointerSaveArea() {
+            assert framePointerSaveAreaOffset == -1;
             int framePointerSaveAreaSize = getTarget().wordSize;
             if (preserveFramePointer()) {
                 framePointerSaveAreaSize += returnAddressSize();
@@ -1724,6 +1727,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         int getFramePointerSaveAreaOffset() {
             assert needsFramePointer() : "no frame pointer save area";
+            assert framePointerSaveAreaOffset != -1;
             return framePointerSaveAreaOffset;
         }
     }

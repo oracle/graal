@@ -28,12 +28,11 @@ import java.lang.ref.WeakReference;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.test.GCUtils;
 
@@ -87,6 +86,10 @@ public abstract class EnginesGCedTest {
                         }
                         if (t.getName().toLowerCase().contains("libgraal")) {
                             // A libgraal thread
+                            continue;
+                        }
+                        if (t.getClass().getName().equals("java.nio.BufferCleaner$CleaningThread")) {
+                            // BufferCleaner::CleaningThread JDK-8344332 (JDK 26+6) [GR-67693]
                             continue;
                         }
                         Assert.fail("An extra thread " + t + " is found after test finished.");
