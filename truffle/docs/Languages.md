@@ -38,6 +38,7 @@ The following language implementations exist already (in alphabetical order):
 * [Heap Language](https://github.com/jaroslavtulach/heapdump), a tutorial showing the embedding of Truffle languages via interoperability.
 * [hextruffe](https://bitbucket.org/hexafraction/truffles), an implementation of Hex.
 * [islisp-truffle](https://github.com/arvyy/islisp-truffle), an implemention of the ISLISP 2007 standard.
+* [Juicemacs](https://codeberg.org/gudzpoz/Juicemacs/), an Emacs Lisp (AST and bytecode) interpreter.
 * [LuaTruffle](https://github.com/lucasallan/LuaTruffle), an implementation of the Lua language.
 * [Mozart-Graal](https://github.com/eregon/mozart-graal), an implementation of the Oz programming language.
 * [Mumbler](https://github.com/cesquivias/mumbler), an experimental Lisp programming language.
