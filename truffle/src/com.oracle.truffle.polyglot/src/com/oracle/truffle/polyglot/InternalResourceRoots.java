@@ -320,20 +320,19 @@ final class InternalResourceRoots {
                 ResolvedCacheFolder userCacheDir = null;
                 String xdgCacheValue = System.getenv("XDG_CACHE_HOME");
                 if (xdgCacheValue == null) {
-                    xdgCacheValue = System.getProperty("XDG_CACHE_HOME");
+                    xdgCacheValue = System.getProperty("xdg.cache.home");
                 }
                 try {
-                        Path xdgCacheDir = Path.of(xdgCacheValue);
-                        // Do not fail when XDG_CACHE_HOME value is invalid. Fall back to
-                        // $HOME/.cache.
-                        if (xdgCacheDir.isAbsolute()) {
-                            userCacheDir = new ResolvedCacheFolder(xdgCacheDir, "XDG_CACHE_HOME env variable", xdgCacheDir);
-                        } else {
-                            emitWarning("The value of the environment variable 'XDG_CACHE_HOME' is not an absolute path. Using the default cache folder '%s'.", userHome.resolve(".cache"));
-                        }
-                    } catch (InvalidPathException notPath) {
-                        emitWarning("The value of the environment variable 'XDG_CACHE_HOME' is not a valid path. Using the default cache folder '%s'.", userHome.resolve(".cache"));
+                    Path xdgCacheDir = Path.of(xdgCacheValue);
+                    // Do not fail when XDG_CACHE_HOME value is invalid. Fall back to
+                    // $HOME/.cache.
+                    if (xdgCacheDir.isAbsolute()) {
+                        userCacheDir = new ResolvedCacheFolder(xdgCacheDir, "XDG_CACHE_HOME env/property variable", xdgCacheDir);
+                    } else {
+                        emitWarning("The value of the environment/property variable 'XDG_CACHE_HOME' is not an absolute path. Using the default cache folder '%s'.", userHome.resolve(".cache"));
                     }
+                } catch (InvalidPathException notPath) {
+                    emitWarning("The value of the environment/property variable 'XDG_CACHE_HOME' is not a valid path. Using the default cache folder '%s'.", userHome.resolve(".cache"));
                 }
                 if (userCacheDir == null) {
                     userCacheDir = new ResolvedCacheFolder(userHome.resolve(".cache"), "user home", userHome);
