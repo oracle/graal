@@ -231,7 +231,7 @@ public class BinaryParser extends BinaryStreamParser {
             module.checkDataSegmentCount(0);
         }
         module.setBytecode(bytecode.toArray());
-        module.removeFunctionReferences();
+        module.finishSymbolTable();
         module.setCustomData(customData.toArray());
         if (module.hasDebugInfo()) {
             functionDebugData.add(codeSectionLength);
@@ -2828,15 +2828,6 @@ public class BinaryParser extends BinaryStreamParser {
             final boolean isInitialized = initBytecode == null;
 
             module.symbolTable().declareGlobal(globalIndex, type, mutability, isInitialized, initBytecode, initValue);
-            final int currentGlobalIndex = globalIndex;
-            module.addLinkAction((context, store, instance, imports) -> {
-                if (isInitialized) {
-                    store.globals().store(type, instance.globalAddress(currentGlobalIndex), initValue);
-                    store.linker().resolveGlobalInitialization(instance, currentGlobalIndex);
-                } else {
-                    store.linker().resolveGlobalInitialization(store, instance, currentGlobalIndex, initBytecode);
-                }
-            });
         }
     }
 

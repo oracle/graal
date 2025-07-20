@@ -116,27 +116,13 @@ public class WasmInstantiator {
             if (importedGlobals.containsKey(globalIndex)) {
                 final ImportDescriptor globalDescriptor = importedGlobals.get(globalIndex);
                 linkActions.add((context, store, instance, imports) -> {
-                    instance.setGlobalAddress(globalIndex, SymbolTable.UNINITIALIZED_ADDRESS);
-                });
-                linkActions.add((context, store, instance, imports) -> {
                     store.linker().resolveGlobalImport(store, instance, globalDescriptor, globalIndex, globalValueType, globalMutability, imports);
                 });
             } else {
-                final boolean initialized = module.globalInitialized(globalIndex);
                 final byte[] initBytecode = module.globalInitializerBytecode(globalIndex);
                 final Object initialValue = module.globalInitialValue(globalIndex);
                 linkActions.add((context, store, instance, imports) -> {
-                    final GlobalRegistry registry = store.globals();
-                    final int address = registry.allocateGlobal();
-                    instance.setGlobalAddress(globalIndex, address);
-                });
-                linkActions.add((context, store, instance, imports) -> {
-                    if (initialized) {
-                        store.globals().store(globalValueType, instance.globalAddress(globalIndex), initialValue);
-                        store.linker().resolveGlobalInitialization(instance, globalIndex);
-                    } else {
-                        store.linker().resolveGlobalInitialization(store, instance, globalIndex, initBytecode);
-                    }
+                    store.linker().resolveGlobalInitialization(instance, globalIndex, initBytecode, initialValue);
                 });
             }
         }
@@ -158,8 +144,6 @@ public class WasmInstantiator {
             if (tableDescriptor != null) {
                 linkActions.add((context, store, instance, imports) -> {
                     instance.setTableAddress(tableIndex, SymbolTable.UNINITIALIZED_ADDRESS);
-                });
-                linkActions.add((context, store, instance, imports) -> {
                     store.linker().resolveTableImport(store, instance, tableDescriptor, tableIndex, tableMinSize, tableMaxSize, tableElemType, imports);
                 });
             } else {
