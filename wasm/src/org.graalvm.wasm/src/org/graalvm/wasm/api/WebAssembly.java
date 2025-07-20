@@ -68,7 +68,6 @@ import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
-import org.graalvm.wasm.globals.DefaultWasmGlobal;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryFactory;
@@ -792,23 +791,23 @@ public class WebAssembly extends Dictionary {
         try {
             switch (valueType) {
                 case i32:
-                    return new DefaultWasmGlobal(valueType, mutable, valueInterop.asInt(value));
+                    return new WasmGlobal(valueType, mutable, valueInterop.asInt(value));
                 case i64:
-                    return new DefaultWasmGlobal(valueType, mutable, valueInterop.asLong(value));
+                    return new WasmGlobal(valueType, mutable, valueInterop.asLong(value));
                 case f32:
-                    return new DefaultWasmGlobal(valueType, mutable, Float.floatToRawIntBits(valueInterop.asFloat(value)));
+                    return new WasmGlobal(valueType, mutable, Float.floatToRawIntBits(valueInterop.asFloat(value)));
                 case f64:
-                    return new DefaultWasmGlobal(valueType, mutable, Double.doubleToRawLongBits(valueInterop.asDouble(value)));
+                    return new WasmGlobal(valueType, mutable, Double.doubleToRawLongBits(valueInterop.asDouble(value)));
                 case anyfunc:
                     if (!refTypes || !(value == WasmConstant.NULL || value instanceof WasmFunctionInstance)) {
                         throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
                     }
-                    return new DefaultWasmGlobal(valueType, mutable, value);
+                    return new WasmGlobal(valueType, mutable, value);
                 case externref:
                     if (!refTypes) {
                         throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
                     }
-                    return new DefaultWasmGlobal(valueType, mutable, value);
+                    return new WasmGlobal(valueType, mutable, value);
                 default:
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
             }
