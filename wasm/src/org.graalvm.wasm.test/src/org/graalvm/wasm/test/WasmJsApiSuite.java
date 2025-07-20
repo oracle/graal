@@ -79,7 +79,6 @@ import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
-import org.graalvm.wasm.globals.DefaultWasmGlobal;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
@@ -504,7 +503,7 @@ public class WasmJsApiSuite {
     public void testGlobalWriteAnyfuncRefTypesDisabled() throws IOException {
         runTest(WasmJsApiSuite::disableRefTypes, context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmGlobal global = new DefaultWasmGlobal(ValueType.anyfunc, true, WasmConstant.NULL);
+            final WasmGlobal global = new WasmGlobal(ValueType.anyfunc, true, WasmConstant.NULL);
             try {
                 wasm.globalWrite(global, WasmConstant.NULL);
                 Assert.fail("Should have failed - ref types not enabled");
@@ -518,7 +517,7 @@ public class WasmJsApiSuite {
     public void testGlobalWriteExternrefRefTypesDisabled() throws IOException {
         runTest(WasmJsApiSuite::disableRefTypes, context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmGlobal global = new DefaultWasmGlobal(ValueType.externref, true, WasmConstant.NULL);
+            final WasmGlobal global = new WasmGlobal(ValueType.externref, true, WasmConstant.NULL);
             try {
                 wasm.globalWrite(global, WasmConstant.NULL);
                 Assert.fail("Should have failed - ref types not enabled");
