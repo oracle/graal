@@ -44,6 +44,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
+import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CallTarget;
@@ -57,7 +58,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  */
 @SuppressWarnings("static-method")
 public abstract class RuntimeState {
-    private static final int INITIAL_GLOBALS_SIZE = 64;
     private static final int INITIAL_TABLES_SIZE = 1;
     private static final int INITIAL_MEMORIES_SIZE = 1;
 
@@ -70,16 +70,7 @@ public abstract class RuntimeState {
     private final CallTarget[] targets;
     private final WasmFunctionInstance[] functionInstances;
 
-    /**
-     * This array is monotonically populated from the left. An index i denotes the i-th global in
-     * this module. The value at index i denotes the address of the global in the memory space for
-     * all the globals from all the modules (see {@link GlobalRegistry}).
-     * <p>
-     * This separation of global indices is done because the index spaces of the globals are
-     * module-specific, and the globals can be imported across modules. Thus, the address-space of
-     * the globals is not the same as the module-specific index-space.
-     */
-    @CompilationFinal(dimensions = 1) private int[] globalAddresses;
+    private final GlobalRegistry globals;
 
     /**
      * This array is monotonically populated from the left. An index i denotes the i-th table in
@@ -126,14 +117,6 @@ public abstract class RuntimeState {
         }
     }
 
-    private void ensureGlobalsCapacity(int index) {
-        while (index >= globalAddresses.length) {
-            final int[] nGlobalAddresses = new int[globalAddresses.length * 2];
-            System.arraycopy(globalAddresses, 0, nGlobalAddresses, 0, globalAddresses.length);
-            globalAddresses = nGlobalAddresses;
-        }
-    }
-
     private void ensureTablesCapacity(int index) {
         if (index >= tableAddresses.length) {
             final int[] nTableAddresses = new int[Math.max(Integer.highestOneBit(index) << 1, 2 * tableAddresses.length)];
@@ -153,7 +136,7 @@ public abstract class RuntimeState {
     public RuntimeState(WasmStore store, WasmModule module, int numberOfFunctions, int droppedDataInstanceOffset) {
         this.store = store;
         this.module = module;
-        this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
+        this.globals = new GlobalRegistry(module.numInternalGlobals(), module.numExternalGlobals());
         this.tableAddresses = new int[INITIAL_TABLES_SIZE];
         this.memories = new WasmMemory[INITIAL_MEMORIES_SIZE];
         this.targets = new CallTarget[numberOfFunctions];
@@ -256,16 +239,18 @@ public abstract class RuntimeState {
         targets[index] = target;
     }
 
-    public int globalAddress(int index) {
-        final int result = globalAddresses[index];
-        assert result != SymbolTable.UNINITIALIZED_ADDRESS : "Uninitialized global at index: " + index;
-        return result;
+    public final GlobalRegistry globals() {
+        return globals;
     }
 
-    public void setGlobalAddress(int globalIndex, int address) {
-        ensureGlobalsCapacity(globalIndex);
-        checkNotLinked();
-        globalAddresses[globalIndex] = address;
+    public WasmGlobal externalGlobal(int globalIndex) {
+        assert symbolTable().globalExternal(globalIndex) : globalIndex;
+        return globals.externalGlobal(symbolTable().globalAddress(globalIndex));
+    }
+
+    public void setExternalGlobal(int globalIndex, WasmGlobal global) {
+        assert symbolTable().globalExternal(globalIndex) : globalIndex;
+        globals.setExternalGlobal(symbolTable().globalAddress(globalIndex), global);
     }
 
     public int tableAddress(int index) {
