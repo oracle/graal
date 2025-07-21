@@ -89,13 +89,13 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.EspressoOptions.MemoryAccessOption;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.cds.CDSSupport;
 import com.oracle.truffle.espresso.classfile.ClasspathEntry;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.JavaKind;
-import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
@@ -1409,7 +1409,7 @@ public final class VM extends NativeEnv {
         profiler.profile(2);
         // For primitives, return latest (Same as HotSpot).
         // We do the same for arrays. HotSpot just crashes in that case.
-        return JavaVersion.LATEST_SUPPORTED_CLASSFILE;
+        return getJavaVersion().classFileVersion();
     }
 
     @VmImpl(isJni = true)
@@ -2545,6 +2545,13 @@ public final class VM extends NativeEnv {
             map.setPropertyIfExists("jdk.module.illegal.native.access", options.get(EspressoOptions.IllegalNativeAccess), "IllegalNativeAccess");
         }
 
+        if (getJavaVersion().java23OrLater()) {
+            MemoryAccessOption memoryAccessOption = options.get(EspressoOptions.SunMiscUnsafeMemoryAccess);
+            if (memoryAccessOption != MemoryAccessOption.defaultValue) {
+                map.set("sun.misc.unsafe.memory.access", memoryAccessOption.name(), "SunMiscUnsafeMemoryAccess");
+            }
+        }
+
         // Applications expect different formats e.g. 1.8 vs. 11
         String specVersion = getJavaVersion().java8OrEarlier()
                         ? "1." + getJavaVersion()
@@ -3511,6 +3518,12 @@ public final class VM extends NativeEnv {
             threads = Arrays.copyOf(threads, numThreads);
         }
         return getMeta().getAllocator().wrapArrayAs(getMeta().java_lang_Thread.getArrayKlass(), threads);
+    }
+
+    @VmImpl(isJni = true)
+    public static @JavaType(internalName = "Ljdk/internal/vm/ThreadSnapshot;") StaticObject JVM_CreateThreadSnapshot(@SuppressWarnings("unused") @JavaType(Thread.class) StaticObject thread,
+                    @Inject Meta meta) {
+        throw meta.throwException(meta.java_lang_UnsupportedOperationException);
     }
 
     // endregion threads

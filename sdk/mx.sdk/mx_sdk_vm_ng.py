@@ -751,6 +751,7 @@ class JavaHomeDependency(mx.BaseLibrary):
         self.is_ee_implementor = release_dict.get('IMPLEMENTOR') == 'Oracle Corporation'
         self.version = mx.VersionSpec(release_dict.get('JAVA_VERSION'))
         self.major_version = self.version.parts[1] if self.version.parts[0] == 1 else self.version.parts[0]
+        name = name.replace('<version>', str(self.major_version))
         if self.is_ee_implementor:
             the_license = "Oracle Proprietary"
         else:

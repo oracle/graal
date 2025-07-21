@@ -328,11 +328,13 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     } else if (arg.startsWith("-Xshare:")) {
                         String value = arg.substring("-Xshare:".length());
                         espressoOptions.put("java.CDS", value);
+                    } else if (arg.startsWith("--sun-misc-unsafe-memory-access")) {
+                        String value = args.getValue(arg, "sun.misc.Unsafe memory access");
+                        espressoOptions.put("java.SunMiscUnsafeMemoryAccess", value);
                     } else if (arg.startsWith("-XX:")) {
                         handleXXArg(arg, unrecognized);
-                    } else
-                    // -Dsystem.property=value
-                    if (arg.startsWith("-D")) {
+                    } else if (arg.startsWith("-D")) {
+                        // -Dsystem.property=value
                         String key = arg.substring("-D".length());
                         int splitAt = key.indexOf("=");
                         String value = "";

@@ -1754,8 +1754,8 @@ JNIEXPORT jboolean JNICALL JVM_PrintWarningAtDynamicAgentLoad(void) {
 }
 
 JNIEXPORT jobject JNICALL JVM_CreateThreadSnapshot(JNIEnv* env, jobject thread) {
-    UNIMPLEMENTED(JVM_CreateThreadSnapshot);
-    return NULL;
+  IMPLEMENTED(JVM_CreateThreadSnapshot);
+  return (*getEnv())->JVM_CreateThreadSnapshot(env, thread);
 }
 
 

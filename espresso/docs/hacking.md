@@ -84,6 +84,34 @@ $ mx --dy /espresso,/sulong maven-deploy --tags=public --all-suites --all-distri
 
 You can now depend on the jars using a version like `24.2.1-SNAPSHOT`.
 
+For embedding, there is a jar containing all the necessary JDK resources (classes, libraries, config files, etc.).
+This jar is made available to espresso through the truffle [resource API](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getInternalResource(java.lang.String)).
+It is the mx distribution called `ESPRESSO_RUNTIME_RESOURCES` and is published on maven as `org.graalvm.espresso:espresso-runtime-resources-$RuntimeResourceId` where `$RuntimeResourceId` identifies the type and version of the included JDK.
+For example `org.graalvm.espresso:espresso-runtime-resources-jdk21` contain Oracle JDK 21.
+`ESPRESSO_RUNTIME_RESOURCES` contains the JDK specified through `ESPRESSO_JAVA_HOME` as well as the optional llvm bits specified in `ESPRESSO_LLVM_JAVA_HOME`.
+
+Since we might want to distribute these resources for multiple JDK version, it is possible to produce additional runtime resource jars.
+This is done by setting `EXTRA_ESPRESSO_JAVA_HOMES` and optionally `EXTRA_ESPRESSO_LLVM_JAVA_HOMES`.
+Those are lists of java homes separated by a path separator.
+If `EXTRA_ESPRESSO_LLVM_JAVA_HOMES` is specified it should contain the same number of entries and in the same order as `EXTRA_ESPRESSO_JAVA_HOMES`.
+The JDKs set in `ESPRESSO_JAVA_HOME` and `EXTRA_ESPRESSO_JAVA_HOMES` should all have different versions.
+
+For example to produce jdk21 and jk25 resource in addition to the version of `ESPRESSO_JAVA_HOME`:
+```bash
+$ export ESPRESSO_JAVA_HOME=/path/to/jdk26
+$ export ESPRESSO_LLVM_JAVA_HOME=/path/to/jdk26-llvm
+$ export EXTRA_ESPRESSO_JAVA_HOMES=/path/to/jdk21:/path/to/jdk25
+$ export EXTRA_ESPRESSO_LLVM_JAVA_HOMES=/path/to/jdk21-llvm:/path/to/jdk25-llvm
+# subsequent build and maven-deploy operation will now publish
+# * org.graalvm.espresso:espresso-runtime-resources-jdk21
+# * org.graalvm.espresso:espresso-runtime-resources-jdk25
+# * org.graalvm.espresso:espresso-runtime-resources-jdk26
+```
+
+The `org.graalvm.espresso:java` maven dependency automatically depends on the "main" runtime resource (the one from `ESPRESSO_JAVA_HOME`).
+In order to use a different version in an embedding, an explicit dependency to `org.graalvm.espresso:espresso-runtime-resources-$RuntimeResourceId` should be added.
+The context should also be created with `java.RuntimeResourceId` set to the desired version (e.g., `"jdk21"`).
+
 ## `mx espresso-embedded ...`
 
 To run Espresso on a vanilla JDK and/or not within a standalone use `mx espresso-embedded ...`, it mimics the `java` command. The launcher adds all jars and properties required to run Espresso on any vanilla JDK.
