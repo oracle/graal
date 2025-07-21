@@ -55,7 +55,7 @@ public class DFABQTrackingStateNode extends DFAStateNode {
                     Matchers matchers,
                     long[][] unAnchoredFinalConstraints,
                     long[][] anchoredFinalConstraints) {
-        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers);
+        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, (short) -1);
         this.unAnchoredFinalConstraints = unAnchoredFinalConstraints;
         this.anchoredFinalConstraints = anchoredFinalConstraints;
     }
@@ -82,16 +82,16 @@ public class DFABQTrackingStateNode extends DFAStateNode {
 
     @ExplodeLoop
     @Override
-    int atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+    void atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean inputAtEnd) {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(executor);
-        super.atEnd(locals, executor);
-        boolean guardedAnchored = isGuardedAnchoredFinalState() && executor.inputAtEnd(locals);
+        super.atEnd(locals, executor, inputAtEnd);
+        boolean guardedAnchored = isGuardedAnchoredFinalState() && inputAtEnd;
         if (isGuardedFinalState()) {
             for (long[] cs : unAnchoredFinalConstraints) {
                 if (constraintsAreSatisfied(locals, executor, cs)) {
                     storeResult(locals, executor, false);
-                    return -1;
+                    return;
                 }
             }
         }
@@ -99,11 +99,10 @@ public class DFABQTrackingStateNode extends DFAStateNode {
             for (long[] cs : anchoredFinalConstraints) {
                 if (constraintsAreSatisfied(locals, executor, cs)) {
                     storeResult(locals, executor, true);
-                    return -1;
+                    return;
                 }
             }
         }
-        return -1;
     }
 
     @ExplodeLoop
