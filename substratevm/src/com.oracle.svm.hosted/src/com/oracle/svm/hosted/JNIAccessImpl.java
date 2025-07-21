@@ -22,55 +22,48 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package com.oracle.svm.hosted.webimage;
+package com.oracle.svm.hosted;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.util.Arrays;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
+import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
 
-/**
- * No-op implementation of {@link RuntimeJNIAccessSupport}.
- * <p>
- * Web Image does not support JNI and thus does not need any special support for handling
- * JNI-accessed types, fields, etc. The {@link RuntimeJNIAccessSupport} image singleton may be
- * accessed occasionally, so an implementation is still required.
- */
-public class WebImageRuntimeJNIAccessSupport implements RuntimeJNIAccessSupport {
-    @Override
-    public void register(AccessCondition condition, Class<?> clazz) {
-        // Do nothing.
+public final class JNIAccessImpl implements JNIAccess {
+
+    private final RuntimeJNIAccessSupport jniInstance;
+    private static JNIAccessImpl instance;
+
+    private JNIAccessImpl() {
+        jniInstance = ImageSingletons.lookup(RuntimeJNIAccessSupport.class);
+    }
+
+    public static JNIAccessImpl getJNIAccessImpl() {
+        if (instance == null) {
+            instance = new JNIAccessImpl();
+        }
+        return instance;
     }
 
     @Override
-    public void register(AccessCondition condition, boolean queriedOnly, Executable... methods) {
-        // Do nothing.
+    public void register(AccessCondition condition, Class<?>... classes) {
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, "following classes for JNI access: " + Arrays.toString(classes));
+        jniInstance.register(condition, classes);
     }
 
     @Override
-    public void register(AccessCondition condition, boolean finalIsWritable, Field... fields) {
-        // Do nothing.
+    public void register(AccessCondition condition, Executable... methods) {
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, "following methods for JNI access: " + Arrays.toString(methods));
+        jniInstance.register(condition, false, methods);
     }
 
     @Override
-    public void registerClassLookup(AccessCondition condition, String typeName) {
-        // Do nothing.
-    }
-
-    @Override
-    public void registerFieldLookup(AccessCondition condition, Class<?> declaringClass, String fieldName) {
-        // Do nothing.
-    }
-
-    @Override
-    public void registerMethodLookup(AccessCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
-        // Do nothing.
-    }
-
-    @Override
-    public void registerConstructorLookup(AccessCondition condition, Class<?> declaringClass, Class<?>... parameterTypes) {
-        // Do nothing.
+    public void register(AccessCondition condition, Field... fields) {
+        DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, "following fields for JNI access: " + Arrays.toString(fields));
+        jniInstance.register(condition, false, fields);
     }
 }
