@@ -50,7 +50,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.nodes.memory.address.IndexAddressNode;
-import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.BigIntegerSnippets;
 import jdk.graal.compiler.replacements.SnippetSubstitutionInvocationPlugin;
@@ -58,7 +57,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.StringUTF16Snippets;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
 import jdk.graal.compiler.word.Word;
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -71,21 +69,21 @@ public class JSGraphBuilderPlugins implements TargetGraphBuilderPlugins {
     private static final Word SINGLE_THREAD_SENTINEL = Word.unsigned(0x150_150_150_150_777L);
 
     @Override
-    public void register(GraphBuilderConfiguration.Plugins plugins, Replacements replacements, Architecture arch, boolean registerForeignCallMath, OptionValues options) {
+    public void registerPlugins(GraphBuilderConfiguration.Plugins plugins, OptionValues options) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(() -> {
             registerCharacterPlugins(invocationPlugins);
             registerShortPlugins(invocationPlugins);
             registerIntegerLongPlugins(invocationPlugins, JavaKind.Int);
             registerIntegerLongPlugins(invocationPlugins, JavaKind.Long);
-            registerStringPlugins(invocationPlugins, replacements);
+            registerStringPlugins(invocationPlugins);
             registerJSCopyOfPlugins(invocationPlugins);
             registerMathPlugins(invocationPlugins);
-            registerBigIntegerPlugins(invocationPlugins, replacements);
-            registerThreadPlugins(invocationPlugins, replacements);
-            registerCurrentIsolatePlugins(invocationPlugins, replacements);
+            registerBigIntegerPlugins(invocationPlugins);
+            registerThreadPlugins(invocationPlugins);
+            registerCurrentIsolatePlugins(invocationPlugins);
             // TODO GR-61725 Support ArrayFillNodes
-            WasmLMGraphBuilderPlugins.unregisterArrayFillPlugins(invocationPlugins, replacements);
+            WasmLMGraphBuilderPlugins.unregisterArrayFillPlugins(invocationPlugins);
         });
     }
 
@@ -164,7 +162,7 @@ public class JSGraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    public static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements) {
+    public static void registerStringPlugins(InvocationPlugins plugins) {
         /*
          * Disable getChar and putChar substitutions from StandardGraphBuilderPlugins. The
          * substitution there would generate raw memory accesses which is only partially supported.
@@ -190,7 +188,7 @@ public class JSGraphBuilderPlugins implements TargetGraphBuilderPlugins {
             }
         });
 
-        Registration r2 = new Registration(plugins, StringUTF16Snippets.class, replacements);
+        Registration r2 = new Registration(plugins, StringUTF16Snippets.class);
         r2.register(new InvocationPlugin("getChar", byte[].class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
@@ -356,8 +354,8 @@ public class JSGraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    private static void registerBigIntegerPlugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, BigInteger.class, replacements).setAllowOverwrite(true);
+    private static void registerBigIntegerPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, BigInteger.class).setAllowOverwrite(true);
         // the upstream plugin introduces a ComputeObjectAddressNode that is not supported (yet)
         r.register(new SnippetSubstitutionInvocationPlugin<>(BigIntegerSnippets.Templates.class,
                         "implMultiplyToLen", int[].class, int.class, int[].class, int.class, int[].class) {
@@ -373,8 +371,8 @@ public class JSGraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    public static void registerThreadPlugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, Thread.class, replacements).setAllowOverwrite(true);
+    public static void registerThreadPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Thread.class).setAllowOverwrite(true);
         r.register(new InvocationPlugin("onSpinWait") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -389,8 +387,8 @@ public class JSGraphBuilderPlugins implements TargetGraphBuilderPlugins {
      * <p>
      * This is called for all Web Image backends.
      */
-    public static void registerCurrentIsolatePlugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, CurrentIsolate.class, replacements).setAllowOverwrite(true);
+    public static void registerCurrentIsolatePlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, CurrentIsolate.class).setAllowOverwrite(true);
         r.register(new InvocationPlugin.RequiredInvocationPlugin("getCurrentThread") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
