@@ -45,7 +45,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 
 public final class CGTrackingDFAStateNode extends DFAStateNode {
 
-    private final short anchoredFinalStateTransition;
     private final DFACaptureGroupLazyTransition preUnAnchoredFinalStateTransition;
     private final DFACaptureGroupPartialTransition unAnchoredFinalStateTransition;
     private final DFACaptureGroupPartialTransition cgLoopToSelf;
@@ -58,13 +57,12 @@ public final class CGTrackingDFAStateNode extends DFAStateNode {
                     byte indexOfIsFast,
                     short[] successors,
                     Matchers matchers,
-                    short anchoredFinalStateTransition,
+                    short anchoredFinalSuccessor,
                     DFACaptureGroupLazyTransition preUnAnchoredFinalStateTransition,
                     DFACaptureGroupPartialTransition unAnchoredFinalStateTransition,
                     DFACaptureGroupPartialTransition cgLoopToSelf,
                     boolean cgLoopToSelfHasDependency) {
-        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers);
-        this.anchoredFinalStateTransition = anchoredFinalStateTransition;
+        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, anchoredFinalSuccessor);
         this.unAnchoredFinalStateTransition = unAnchoredFinalStateTransition;
         this.preUnAnchoredFinalStateTransition = preUnAnchoredFinalStateTransition;
         this.cgLoopToSelf = cgLoopToSelf;
@@ -130,14 +128,11 @@ public final class CGTrackingDFAStateNode extends DFAStateNode {
     }
 
     @Override
-    int atEnd(TRegexDFAExecutorLocals frame, TRegexDFAExecutorNode executor) {
+    void atEnd(TRegexDFAExecutorLocals frame, TRegexDFAExecutorNode executor, boolean inputAtEnd) {
         CompilerAsserts.partialEvaluationConstant(this);
-        if (isAnchoredFinalState() && executor.inputAtEnd(frame)) {
-            return anchoredFinalStateTransition;
-        } else {
+        if (!isAnchoredFinalState() || !inputAtEnd) {
             checkFinalStateCG(frame, executor);
         }
-        return -1;
     }
 
     private void checkFinalStateCG(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {

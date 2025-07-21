@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import java.util.Collections;
 import java.util.Map;
 
 import org.junit.Test;
@@ -1686,5 +1687,17 @@ public class OracleDBTests extends RegexTestBase {
         expectUnsupported("(a*)b\\1", "", OPT_FORCE_LINEAR_EXECUTION);
         test(".*a{1,65534}.*", "", "_aabaaa_", 0, true, 0, 8);
         expectUnsupported(".*a{1,65534}.*", "", OPT_FORCE_LINEAR_EXECUTION);
+    }
+
+    @Test
+    public void orcl38190286() {
+        test("[[:alpha:]]", "", "\ufffd", 0, true, 0, 3);
+        test("[[:alpha:]]", "", "\uD839", 0, false);
+        test("[[:alpha:]]", "", "\uDDF2", 0, false);
+        test("[[:alpha:]]", "", "\uD839\uDDF2", 0, false);
+        test("[[:alpha:]]", "", Collections.emptyMap(), Encodings.UTF_16, "\ufffd", 0, true, 0, 1);
+        test("[[:alpha:]]", "", Collections.emptyMap(), Encodings.UTF_16, "\uD839", 0, false);
+        test("[[:alpha:]]", "", Collections.emptyMap(), Encodings.UTF_16, "\uDDF2", 0, false);
+        test("[[:alpha:]]", "", Collections.emptyMap(), Encodings.UTF_16, "\uD839\uDDF2", 0, false);
     }
 }
