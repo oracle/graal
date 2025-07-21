@@ -26,15 +26,14 @@ package jdk.graal.compiler.vector.replacements.vectorapi;
 
 import org.graalvm.collections.EconomicMap;
 
-import jdk.graal.compiler.vector.architecture.VectorArchitecture;
-import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
-
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.vector.architecture.VectorArchitecture;
+import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -112,11 +111,12 @@ public final class VectorAPIType {
     public static final String VECTOR_PACKAGE_NAME = "jdk.incubator.vector";
 
     /**
-     * Lookup table for Java Vector API types. An unmodifiable singleton instance of this table is
-     * built lazily on the first lookup request. Users of {@link VectorAPIType} should not interact
-     * with this class directly, only through {@link #ofType}.
+     * Lookup table for Java Vector API types. An unmodifiable instance of this table is built
+     * lazily on the first lookup request for each {@link VectorArchitecture} instance. The vector
+     * architecture is the owner of its associated table. Users of {@link VectorAPIType} should not
+     * interact with this class directly, only through {@link #ofType}.
      */
-    private static final class Table {
+    public static final class Table {
 
         /** The element types for which the Vector API provides vector types. */
         private static final JavaKind[] KINDS = new JavaKind[]{JavaKind.Byte, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double};
@@ -132,17 +132,14 @@ public final class VectorAPIType {
         /** The vector architecture for which this table was built. */
         private final VectorArchitecture vectorArch;
 
-        /** Singleton instance lazily initialized via double-checked locking. */
-        private static volatile Table instance;
-
         private static Table instance(VectorArchitecture vectorArch) {
-            Table result = instance;
+            Table result = vectorArch.getVectorAPITypeTable();
             if (result == null) {
-                synchronized (Table.class) {
-                    result = instance;
+                synchronized (vectorArch) {
+                    result = vectorArch.getVectorAPITypeTable();
                     if (result == null) {
                         result = buildLookupTable(vectorArch);
-                        instance = result;
+                        vectorArch.setVectorAPITypeTable(result);
                     }
                 }
             }
@@ -191,18 +188,6 @@ public final class VectorAPIType {
             table.put(maskName, buildVectorAPIType(maskName, vectorLength, elementKind, true, false, vectorArch));
             String shuffleName = name + "$" + elementKind.name() + size + "Shuffle";
             table.put(shuffleName, buildVectorAPIType(shuffleName, vectorLength, elementKind, false, true, vectorArch));
-        }
-    }
-
-    /**
-     * Reset the singleton {@link Table} instance to {@code null}. The next lookup in the table will
-     * reinitialize it. This method is for testing only: Native image tests can build multiple
-     * images in the same process with different vector architectures, so we need to forget the type
-     * table between builds.
-     */
-    public static void resetTableForTestingOnly() {
-        synchronized (Table.class) {
-            Table.instance = null;
         }
     }
 

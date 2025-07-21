@@ -50,6 +50,7 @@ import jdk.graal.compiler.nodes.type.NarrowOopStamp;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.vector.nodes.simd.LogicValueStamp;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIType;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -68,6 +69,9 @@ public abstract class VectorArchitecture {
      */
     protected final Stamp oopMaskStamp;
     protected int cachedMaxVectorLength;
+
+    /** The table of Vector API types associated with this vector architecture. */
+    protected VectorAPIType.Table vectorAPITypeTable;
 
     @Override
     public boolean equals(Object o) {
@@ -462,5 +466,14 @@ public abstract class VectorArchitecture {
         } else {
             return LogicValueStamp.UNRESTRICTED;
         }
+    }
+
+    public VectorAPIType.Table getVectorAPITypeTable() {
+        return vectorAPITypeTable;
+    }
+
+    public void setVectorAPITypeTable(VectorAPIType.Table table) {
+        GraalError.guarantee(this.vectorAPITypeTable == null, "Vector API type table must only be set once per vector architecture");
+        this.vectorAPITypeTable = table;
     }
 }
