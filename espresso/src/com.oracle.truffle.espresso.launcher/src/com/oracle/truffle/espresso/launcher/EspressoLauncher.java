@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -183,6 +184,9 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         ArrayList<String> unrecognized = new ArrayList<>();
         boolean isRelaxStaticObjectSafetyChecksSet = false;
         int javaAgentIndex = 0;
+        boolean heapDumpOnOutOfMemoryError = false;
+        String heapDumpPath = null;
+        boolean ignoreUnrecognized = false;
 
         List<String> expandedArguments = expandAtFiles(arguments);
 
@@ -230,6 +234,9 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     mainClassName = args.getValue(arg, "module path");
                     espressoOptions.put("java.Module", mainClassName);
                     launchMode = LaunchMode.LM_MODULE;
+                    break;
+                case "--limit-modules":
+                    espressoOptions.put("java.Properties.jdk.module.limitmods", args.getValue(arg, "limit-modules"));
                     break;
                 case "-jar":
                     jarFileName = args.getValue(arg, "jar file");
@@ -285,6 +292,18 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 case "-XX:+PauseOnExit":
                     pauseOnExit = true;
                     break;
+                case "-XX:+HeapDumpOnOutOfMemoryError":
+                    heapDumpOnOutOfMemoryError = true;
+                    break;
+                case "-XX:-HeapDumpOnOutOfMemoryError":
+                    heapDumpOnOutOfMemoryError = false;
+                    break;
+                case "-XX:+IgnoreUnrecognizedVMOptions":
+                    ignoreUnrecognized = true;
+                    break;
+                case "-XX:-IgnoreUnrecognizedVMOptions":
+                    ignoreUnrecognized = false;
+                    break;
 
                 case "--engine.RelaxStaticObjectSafetyChecks":
                     isRelaxStaticObjectSafetyChecksSet = true;
@@ -331,6 +350,8 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     } else if (arg.startsWith("--sun-misc-unsafe-memory-access")) {
                         String value = args.getValue(arg, "sun.misc.Unsafe memory access");
                         espressoOptions.put("java.SunMiscUnsafeMemoryAccess", value);
+                    } else if (arg.startsWith("-XX:HeapDumpPath=")) {
+                        heapDumpPath = arg.substring("-XX:HeapDumpPath=".length());
                     } else if (arg.startsWith("-XX:")) {
                         handleXXArg(arg, unrecognized);
                     } else if (arg.startsWith("-D")) {
@@ -408,6 +429,23 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             espressoOptions.put("engine.RelaxStaticObjectSafetyChecks", "true");
         }
 
+        if (heapDumpOnOutOfMemoryError) {
+            unrecognized.add("--vm.XX:+HeapDumpOnOutOfMemoryError");
+        }
+        if (heapDumpPath != null) {
+            unrecognized.add("--vm.XX:HeapDumpPath=" + heapDumpPath);
+        }
+
+        if (ignoreUnrecognized) {
+            // We remove the unrecognized -XX options from the list to ignore them:
+            Iterator<String> unrecognizedIt = unrecognized.iterator();
+            while (unrecognizedIt.hasNext()) {
+                String option = unrecognizedIt.next();
+                if (option.startsWith("-XX")) {
+                    unrecognizedIt.remove();
+                }
+            }
+        }
         return unrecognized;
     }
 
