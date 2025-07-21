@@ -229,7 +229,7 @@ suite = {
             "requires": [
                 "java.logging",
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
