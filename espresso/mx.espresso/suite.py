@@ -548,7 +548,7 @@ suite = {
             "layout": {
                 "./": [{
                         "source_type": "dependency",
-                        "dependency": "espresso:JAVA_HOME",
+                        "dependency": "espresso:ESPRESSO_JAVA_HOME",
                         "path": "*",
                         "exclude": [
                             "lib/jfr",
@@ -610,7 +610,7 @@ suite = {
                 ],
                 "./": [{
                         "source_type": "dependency",
-                        "dependency": "espresso:JAVA_HOME",
+                        "dependency": "espresso:ESPRESSO_JAVA_HOME",
                         "path": "*",
                         "exclude": [
                             "bin",  # those can't run without <jdk_lib_dir>/server

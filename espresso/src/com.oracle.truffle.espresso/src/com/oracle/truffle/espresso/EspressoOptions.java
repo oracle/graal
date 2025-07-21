@@ -749,6 +749,20 @@ public final class EspressoOptions {
                     usageSyntax = "<duration in ms>") //
     public static final OptionKey<Integer> ThreadRequestGracePeriod = new OptionKey<>(100);
 
+    public enum MemoryAccessOption {
+        allow,
+        warn,
+        debug,
+        deny,
+        defaultValue // undocumented sentinel value
+    }
+
+    @Option(help = "Allow or deny usage of unsupported API sun.misc.Unsafe", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "allow|warn|debug|deny") //
+    public static final OptionKey<MemoryAccessOption> SunMiscUnsafeMemoryAccess = new OptionKey<>(MemoryAccessOption.defaultValue);
+
     /**
      * Property used to force liveness analysis to also be applied by the interpreter. For testing
      * purpose only. Use a host property rather than an option. An option would slow interpreter

@@ -1378,6 +1378,7 @@ public class EspressoSymbols {
                         Types.java_lang_Object);
         public static final Symbol<Signature> UnknownKeyException_Object_Throwable = SYMBOLS.putSignature(Types.com_oracle_truffle_espresso_polyglot_UnknownKeyException,
                         Types.java_lang_Object, Types.java_lang_Throwable);
+        public static final Symbol<Signature> String_String = SYMBOLS.putSignature(Types.java_lang_String, Types.java_lang_String);
 
         // JVMCI
         public static final Symbol<Signature> EspressoJVMCIRuntime = SYMBOLS.putSignature(Types.com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime);

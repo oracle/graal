@@ -113,6 +113,10 @@ common + common.frequencies + {
   labsjdk21LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-21-llvm"],
   graalvmee21::          self["graalvm-ee-21"],
 
+  labsjdk25::            self["labsjdk-" + repo_config.graalvm_edition + "-25"],
+  labsjdk25Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-25Debug"],
+  labsjdk25LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-25-llvm"],
+
   labsjdkLatest::            self["labsjdk-" + repo_config.graalvm_edition + "-latest"],
   labsjdkLatestDebug::       self["labsjdk-" + repo_config.graalvm_edition + "-latestDebug"],
   labsjdkLatestLLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-latest-llvm"],
