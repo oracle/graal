@@ -103,17 +103,13 @@ public final class JavaAgents extends ContextAccessImpl {
 
     private void onLoad(String javaAgentName, String agentOptions, List<JavaAgent> addedAgents) {
         Path jarPath = Paths.get(javaAgentName);
-        if (jarPath.isAbsolute()) {
-            try {
-                JavaAgent javaAgent = addAgent(jarPath, agentOptions);
-                if (javaAgent != null) {
-                    addedAgents.add(javaAgent);
-                }
-            } catch (IOException e) {
-                throw getContext().abort("Error opening zip file or JAR manifest missing : " + jarPath + " due to: " + e.getMessage());
+        try {
+            JavaAgent javaAgent = addAgent(jarPath, agentOptions);
+            if (javaAgent != null) {
+                addedAgents.add(javaAgent);
             }
-        } else {
-            throw getContext().abort("Please use an absolute path for java agent: " + jarPath);
+        } catch (IOException e) {
+            throw getContext().abort("Error opening zip file or JAR manifest missing : " + jarPath + " due to: " + e.getMessage());
         }
     }
 
