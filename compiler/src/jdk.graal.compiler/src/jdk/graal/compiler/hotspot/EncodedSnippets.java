@@ -24,20 +24,24 @@
  */
 package jdk.graal.compiler.hotspot;
 
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 import static jdk.graal.compiler.hotspot.HotSpotReplacementsImpl.isGraalClass;
+import static jdk.graal.compiler.hotspot.HotSpotReplacementsImpl.snippetsAreEncoded;
+import static jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport.isReplayingLibgraalInJargraal;
 import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
-import jdk.graal.compiler.nodes.NodeClassMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
+import jdk.graal.compiler.core.CompilationWrapper;
+import jdk.graal.compiler.core.GraalCompilerOptions;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.SymbolicJVMCIReference;
@@ -47,6 +51,7 @@ import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
+import jdk.graal.compiler.nodes.NodeClassMap;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
@@ -70,6 +75,29 @@ import jdk.vm.ci.meta.UnresolvedJavaMethod;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public class EncodedSnippets {
+    /**
+     * Returns true if the current runtime or current compilation thread uses encoded snippets
+     * rather than parsing them directly. This is always true when executing in libgraal, and it is
+     * also true when the current thread is replaying a libgraal compilation in jargraal.
+     *
+     * @return true if encoded snippets are currently in use
+     */
+    public static boolean isUsingEncodedSnippets() {
+        return inRuntimeCode() || isReplayingLibgraalInJargraal();
+    }
+
+    /**
+     * Returns true if the current runtime or current compilation thread uses encoded snippets and
+     * the snippets are already encoded. This is always true when executing in libgraal. If the
+     * current thread is replaying a libgraal compilation in jargraal, the method returns true after
+     * the snippets are encoded.
+     *
+     * @return true if encoded snippets are in use and already encoded
+     */
+    public static boolean isAfterSnippetEncoding() {
+        return inRuntimeCode() || (isReplayingLibgraalInJargraal() && snippetsAreEncoded());
+    }
+
     /**
      * Metadata about a graph encoded in {@link EncodedSnippets#snippetEncoding}.
      */
@@ -212,7 +240,7 @@ public class EncodedSnippets {
             data = graphDatas.get(methodKey(method));
         }
         if (data == null) {
-            if (LibGraalSupport.inLibGraalRuntime()) {
+            if (isUsingEncodedSnippets()) {
                 throw GraalError.shouldNotReachHere("snippet not found: " + method.format("%H.%n(%p)")); // ExcludeFromJacocoGeneratedReport
             } else {
                 return null;
@@ -229,8 +257,16 @@ public class EncodedSnippets {
         if (declaringClass instanceof SnippetResolvedJavaType) {
             declaringClass = replacements.getProviders().getMetaAccess().lookupJavaType(Object.class);
         }
-        SymbolicEncodedGraph encodedGraph = new SymbolicEncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, data.originalMethod, declaringClass);
-        return decodeSnippetGraph(encodedGraph, method, original, replacements, args, allowAssumptions, options, LibGraalSupport.inLibGraalRuntime());
+        /*
+         * If this is a recorded/replayed compilation, we must not mutate the snippet objects. This
+         * ensures we record all relevant operations during recording and no proxies are stored in
+         * the snippet objects during replay.
+         */
+        boolean allowCacheReplacements = LibGraalSupport.inLibGraalRuntime() && replacements.getProviders().getReplayCompilationSupport() == null &&
+                        GraalCompilerOptions.CompilationFailureAction.getValue(options) != CompilationWrapper.ExceptionAction.Diagnose;
+        SymbolicEncodedGraph encodedGraph = new SymbolicEncodedGraph(snippetEncoding, startOffset, snippetObjects, allowCacheReplacements,
+                        snippetNodeClasses, data.originalMethod, declaringClass);
+        return decodeSnippetGraph(encodedGraph, method, original, replacements, args, allowAssumptions, options, isUsingEncodedSnippets());
     }
 
     public SnippetParameterInfo getSnippetParameterInfo(ResolvedJavaMethod method) {
@@ -306,7 +342,7 @@ public class EncodedSnippets {
         if (args != null) {
             MetaAccessProvider meta = HotSpotReplacementsImpl.noticeTypes(providers.getMetaAccess());
             SnippetReflectionProvider snippetReflection = replacements.getProviders().getSnippetReflection();
-            if (LibGraalSupport.inLibGraalRuntime()) {
+            if (isUsingEncodedSnippets()) {
                 snippetReflection = new LibGraalSnippetReflectionProvider(snippetReflection);
             }
             parameterPlugin = new ConstantBindingParameterPlugin(args, meta, snippetReflection);
@@ -397,15 +433,17 @@ public class EncodedSnippets {
 
         private final ResolvedJavaType[] accessingClasses;
         private final String originalMethod;
+        private final boolean allowCacheReplacements;
 
-        SymbolicEncodedGraph(byte[] encoding, int startOffset, Object[] objects, NodeClassMap nodeClasses, String originalMethod, ResolvedJavaType... accessingClasses) {
+        SymbolicEncodedGraph(byte[] encoding, int startOffset, Object[] objects, boolean allowObjectsMutations, NodeClassMap nodeClasses, String originalMethod, ResolvedJavaType... accessingClasses) {
             super(encoding, startOffset, objects, nodeClasses, null, null, false, false);
             this.accessingClasses = accessingClasses;
             this.originalMethod = originalMethod;
+            this.allowCacheReplacements = allowObjectsMutations;
         }
 
-        SymbolicEncodedGraph(EncodedGraph encodedGraph, ResolvedJavaType declaringClass, String originalMethod) {
-            this(encodedGraph.getEncoding(), encodedGraph.getStartOffset(), encodedGraph.getObjects(), encodedGraph.getNodeClasses(),
+        SymbolicEncodedGraph(EncodedGraph encodedGraph, ResolvedJavaType declaringClass, String originalMethod, boolean allowCacheReplacements) {
+            this(encodedGraph.getEncoding(), encodedGraph.getStartOffset(), encodedGraph.getObjects(), allowCacheReplacements, encodedGraph.getNodeClasses(),
                             originalMethod, declaringClass);
         }
 
@@ -453,7 +491,10 @@ public class EncodedSnippets {
                 return o;
             }
             if (replacement != null) {
-                objects[i] = o = replacement;
+                o = replacement;
+                if (allowCacheReplacements) {
+                    objects[i] = replacement;
+                }
             } else {
                 throw new GraalError(error, "Can't resolve %s", o);
             }

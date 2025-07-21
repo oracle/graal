@@ -30,11 +30,9 @@ import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import jdk.graal.compiler.debug.Assertions;
-import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
@@ -51,56 +49,27 @@ public class GraalHotSpotVMConfigAccess {
     private final Map<String, Long> vmConstants;
     private final Map<String, VMField> vmFields;
 
-    GraalHotSpotVMConfigAccess(HotSpotVMConfigStore store) {
-        this.access = new HotSpotVMConfigAccess(store);
+    GraalHotSpotVMConfigAccess(HotSpotVMConfigAccess access, Platform platform) {
+        this.access = access;
+        HotSpotVMConfigStore store = access.getStore();
         this.vmAddresses = store.getAddresses();
         this.vmConstants = store.getConstants();
         this.vmFields = store.getFields();
-
-        String value = getSavedProperty("os.name");
-        switch (value) {
-            case "Linux":
-                value = "linux";
-                break;
-            case "SunOS":
-                value = "solaris";
-                break;
-            case "Mac OS X":
-                value = "darwin";
-                break;
-            default:
-                // Of course Windows is different...
-                if (value.startsWith("Windows")) {
-                    value = "windows";
-                } else {
-                    throw new JVMCIError("Unexpected OS name: " + value);
-                }
-        }
-        assert KNOWN_OS_NAMES.contains(value);
-        this.osName = value;
-
-        String arch = getSavedProperty("os.arch");
-        if (arch.equals("x86_64")) {
-            arch = "amd64";
-        }
-        osArch = arch;
-        assert KNOWN_ARCHITECTURES.contains(arch) : arch;
+        this.osName = platform.osName();
+        this.osArch = platform.archName();
     }
 
     public HotSpotVMConfigStore getStore() {
         return access.getStore();
     }
 
-    public static final Set<String> KNOWN_ARCHITECTURES = CollectionsUtil.setOf("amd64", "aarch64", "riscv64");
-    public static final Set<String> KNOWN_OS_NAMES = CollectionsUtil.setOf("windows", "linux", "darwin");
-
     /**
-     * Name for current OS. Will be a value in {@link #KNOWN_OS_NAMES}.
+     * Name for current OS. Will be a value in {@link Platform#KNOWN_OS_NAMES}.
      */
     public final String osName;
 
     /**
-     * Name for current CPU architecture. Will be a value in {@link #KNOWN_ARCHITECTURES}.
+     * Name for current CPU architecture. Will be a value in {@link Platform#KNOWN_ARCHITECTURES}.
      */
     public final String osArch;
 

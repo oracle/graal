@@ -31,6 +31,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.JNI.JNIEnv;
@@ -45,12 +46,15 @@ import org.graalvm.word.PointerBase;
 
 import jdk.graal.compiler.debug.GlobalMetrics;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.hotspot.CompilationContext;
 import jdk.graal.compiler.hotspot.CompilationTask;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.graal.compiler.hotspot.ProfileReplaySupport;
+import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationRunner;
+import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
@@ -286,6 +290,46 @@ final class LibGraalEntryPoints {
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(jniEnv, t);
             return 0;
+        }
+    }
+
+    /**
+     * Runs the replay compilation launcher in libgraal with the provided command-line arguments.
+     *
+     * @param argBuffer a native buffer containing a zero-terminated UTF-8 string of
+     *            {@code '\n'}-separated arguments for the replay compilation launcher
+     * @return the exit status of the replay compilation launcher
+     */
+    @SuppressWarnings({"unused", "try"})
+    @CEntryPoint(name = "Java_jdk_graal_compiler_hotspot_replaycomp_test_ReplayCompilationLauncher_runInLibgraal", include = LibGraalReplayLauncherEnabled.class)
+    private static int replayCompilation(JNIEnv jniEnv,
+                    PointerBase jclass,
+                    @IsolateThreadContext long isolateThread,
+                    long argBuffer) {
+        try (JNIMethodScope scope = new JNIMethodScope("replayCompilation", jniEnv)) {
+            String argString = CTypeConversion.utf8ToJavaString(Word.pointer(argBuffer));
+            String[] args;
+            if (argString.isEmpty()) {
+                args = new String[0];
+            } else {
+                args = argString.split("\n");
+            }
+            return ReplayCompilationRunner.run(args, TTY.out().out()).getStatus();
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(jniEnv, t);
+            return ReplayCompilationRunner.ExitStatus.Failure.getStatus();
+        } finally {
+            LibGraalSupportImpl.doReferenceHandling();
+        }
+    }
+
+    /**
+     * Controls whether the replay launcher entry point should be included in libgraal.
+     */
+    private static final class LibGraalReplayLauncherEnabled implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return new LibGraalFeature.IsEnabled().getAsBoolean() && ReplayCompilationSupport.ENABLE_REPLAY_LAUNCHER;
         }
     }
 }

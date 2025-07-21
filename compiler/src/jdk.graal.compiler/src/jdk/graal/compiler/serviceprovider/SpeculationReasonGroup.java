@@ -26,7 +26,8 @@ package jdk.graal.compiler.serviceprovider;
 
 import java.util.Arrays;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
+
+import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.code.BytecodePosition;
@@ -43,24 +44,34 @@ public final class SpeculationReasonGroup {
     private final String name;
     private final Class<?>[] signature;
 
-    private static final AtomicInteger nextId = new AtomicInteger(1);
-
     /**
      * Creates a speculation group whose context will always match {@code signature}.
-     *
-     * This constructor is deleted in libgraal to ensure group ids are allocated during build time.
-     * Without this invariant, it would possible for 2 different groups to have the same id if the
-     * groups are allocated in different libgraal isolates (since static variables are
-     * isolate-local).
+     * <p>
+     * The group ID is {@code name.hashCode()}, which ensures the IDs are stable regardless the
+     * order in which these objects are constructed.
      */
     public SpeculationReasonGroup(String name, Class<?>... signature) {
-        this.id = nextId.getAndIncrement();
+        this.id = name.hashCode();
         this.name = name;
         this.signature = signature;
         for (Class<?> c : signature) {
             if (!isOfSupportedType(c)) {
                 throw new IllegalArgumentException("Unsupported speculation context type: " + c.getName());
             }
+        }
+        assert UniqueGroupIDVerification.checkUniqueGroupID(this.id, name) : "each created group must have a unique ID";
+    }
+
+    private static final class UniqueGroupIDVerification {
+        private static final EconomicMap<Integer, String> groupNamesByID = EconomicMap.create();
+
+        private static synchronized boolean checkUniqueGroupID(int groupID, String groupName) {
+            String previousName = groupNamesByID.put(groupID, groupName);
+            if (previousName != null) {
+                throw new AssertionError("The speculation reason groups " + groupName + " and " + previousName +
+                                " have the exact same hash of group names, which is used as the group ID. Changing either name should resolve the collision.");
+            }
+            return true;
         }
     }
 
