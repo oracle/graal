@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.logging.Handler;
 
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -421,5 +422,21 @@ public class ArgumentsHandler {
         if (user) {
             printer.accept(OptionCategory.USER);
         }
+    }
+
+    public void setLogFile(String logFileName) {
+        polyglotAccess.setLogFile(logFileName);
+    }
+
+    public void setDisplayVMOutput(boolean value) {
+        polyglotAccess.setDisplayVMOutput(value);
+    }
+
+    public void setLogVMOutput(boolean value) {
+        polyglotAccess.setLogVMOutput(value);
+    }
+
+    public Handler getLogHandler() {
+        return polyglotAccess.getLogHandler();
     }
 }
