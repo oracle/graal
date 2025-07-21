@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -609,6 +609,7 @@ public final class GraphState {
         /* Stages applied by high tier. */
         LOOP_OVERFLOWS_CHECKED,
         FINAL_PARTIAL_ESCAPE,
+        VECTOR_API_EXPANSION,
         HIGH_TIER_LOWERING,
         /* Stages applied by mid tier. */
         FLOATING_READS,

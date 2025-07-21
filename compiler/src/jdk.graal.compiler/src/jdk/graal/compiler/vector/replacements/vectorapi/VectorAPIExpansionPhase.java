@@ -211,9 +211,18 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
+        graph.getGraphState().setDuringStage(GraphState.StageFlag.VECTOR_API_EXPANSION);
         if (!graph.hasNode(VectorAPIMacroNode.TYPE)) {
             return;
         }
+
+        /*
+         * Canonicalize first. Needed for computing SIMD stamps, since we delay their computation to
+         * compile time. We can't generally compute SIMD stamps at the time we build the macro nodes
+         * because the target architecture for SVM runtime compilations is not known at that time.
+         */
+        canonicalizer.applyIncremental(graph, context, graph.getNodes(VectorAPIMacroNode.TYPE));
+        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "after Vector API macro canonicalization");
 
         VectorArchitecture vectorArch = ((VectorLoweringProvider) context.getLowerer()).getVectorArchitecture();
         /*

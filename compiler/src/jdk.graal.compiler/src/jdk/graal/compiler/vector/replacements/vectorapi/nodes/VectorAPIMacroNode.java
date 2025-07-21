@@ -47,9 +47,11 @@ import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.extended.GetClassNode;
@@ -264,6 +266,16 @@ public abstract class VectorAPIMacroNode extends MacroWithExceptionNode implemen
         ValueNode vmClass = arguments[vmClassIndex];
         ValueNode eClass = arguments[elementClassIndex];
         ValueNode length = arguments[lengthIndex];
+        StructuredGraph graph = vmClass.graph();
+        if (graph == null || graph.isBeforeStage(GraphState.StageFlag.VECTOR_API_EXPANSION)) {
+            /*
+             * Don't compute SIMD stamps before we actually start a compilation. The reason we want
+             * to delay until actual compilation time is that the stamp may differ between native
+             * image build time and runtime compilation time since the native image target
+             * architecture may have different CPU features from the runtime target architecture.
+             */
+            return null;
+        }
         return VectorAPIUtils.stampForVectorClass(vmClass, eClass, length, providers);
     }
 
