@@ -295,13 +295,6 @@ suite = {
           "org.graalvm.collections",
           "static jdk.incubator.vector", # Vector API
         ],
-        "exports" : [
-          "* to org.graalvm.wasm.test",
-          # Export internals to official test runner
-          "* to com.oracle.truffle.wasm.closedtestcases",
-          # Export internals to debug tests
-          "* to com.oracle.truffle.wasm.debugtests",
-        ]
       },
       "subDir" : "src",
       "dependencies" : [
