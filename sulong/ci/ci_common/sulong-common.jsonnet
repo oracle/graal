@@ -89,13 +89,9 @@ local sulong_deps = common.deps.sulong;
     notify_groups:: ["sulong"],
   },
 
-  daily:: $.sulong_notifications {
-    targets+: ["daily"],
-  },
-
-  weekly:: $.sulong_notifications {
-    targets+: ["weekly"],
-  },
+  post_merge:: $.sulong_notifications + common.frequencies.post_merge,
+  daily:: $.sulong_notifications + common.frequencies.daily,
+  weekly:: $.sulong_notifications + common.frequencies.weekly,
 
   mxCommand:: {
     extra_mx_args+:: [],
