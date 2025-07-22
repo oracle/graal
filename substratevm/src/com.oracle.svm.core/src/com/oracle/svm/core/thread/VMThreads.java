@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 
 import java.util.EnumSet;
@@ -272,6 +273,8 @@ public abstract class VMThreads implements InitialLayerOnlyImageSingleton {
 
         IsolateThread isolateThread = (IsolateThread) UnsignedUtils.roundUp(memory, alignment);
         unalignedIsolateThreadMemoryTL.set(isolateThread, memory);
+        /* Set to the sentinel value denoting the thread is detached. */
+        nextTL.set(isolateThread, isolateThread);
         return isolateThread;
     }
 
@@ -518,6 +521,39 @@ public abstract class VMThreads implements InitialLayerOnlyImageSingleton {
         PlatformThreads.afterThreadExit(CurrentIsolate.getCurrentThread());
     }
 
+    /**
+     * Waits in native code until the given thread is detached and therefore no longer executing any
+     * Java code.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void waitInNativeUntilDetached(IsolateThread thread) {
+        assert thread.isNonNull();
+        assert thread != CurrentIsolate.getCurrentThread();
+        waitInNativeUntilDetached0(thread);
+    }
+
+    @Uninterruptible(reason = "Must not stop while in native.")
+    @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode.")
+    private static void waitInNativeUntilDetached0(IsolateThread thread) {
+        CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
+        waitInNativeUntilDetached1(thread);
+        CFunctionEpilogueNode.cFunctionEpilogue(StatusSupport.STATUS_IN_NATIVE);
+    }
+
+    @Uninterruptible(reason = "Must not stop while in native.")
+    @NeverInline("Provide a return address for the Java frame anchor.")
+    private static void waitInNativeUntilDetached1(IsolateThread thread) {
+        // this method may only access data in the image heap
+        VMThreads.THREAD_MUTEX.lockNoTransition();
+        try {
+            while (isAttached(thread)) {
+                VMThreads.THREAD_LIST_CONDITION.blockNoTransition();
+            }
+        } finally {
+            VMThreads.THREAD_MUTEX.unlock();
+        }
+    }
+
     @Uninterruptible(reason = "Only uninterruptible code may be executed after VMThreads#threadExit.")
     public void waitUntilDetachedThreadsExitedOnOSLevel() {
         cleanupExitedOsThreads();
@@ -586,7 +622,8 @@ public abstract class VMThreads implements InitialLayerOnlyImageSingleton {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean verifyThreadIsAttached(IsolateThread thread) {
+    public static boolean isAttached(IsolateThread thread) {
+        /* For a detached thread, next points to itself. */
         return nextThread(thread) != thread;
     }
 

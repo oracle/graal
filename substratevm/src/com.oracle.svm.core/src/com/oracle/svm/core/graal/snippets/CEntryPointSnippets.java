@@ -678,7 +678,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             /* After threadExit(), only uninterruptible code may be executed. */
             RecurringCallbackSupport.suspendCallbackTimer("Execution of arbitrary code is prohibited during the last teardown steps.");
 
-            /* Shut down VM thread. */
+            /* Wait until the reference handler thread detaches (it was already stopped earlier). */
+            if (ReferenceHandler.useDedicatedThread()) {
+                ReferenceHandlerThread.waitUntilDetached();
+            }
+
+            /* Shut down VM operation thread. */
             if (VMOperationControl.useDedicatedVMOperationThread()) {
                 VMOperationControl.shutdownAndDetachVMOperationThread();
             }
@@ -724,7 +729,16 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return false;
         }
 
+        /*
+         * At this point, only the current thread, the VM operation thread, and the reference
+         * handler thread are still running.
+         */
+        if (ReferenceHandler.useDedicatedThread()) {
+            ReferenceHandlerThread.initiateShutdown();
+        }
+
         VMThreads.singleton().threadExit();
+        /* After threadExit(), only uninterruptible code may be executed. */
         return true;
     }
 
@@ -802,7 +816,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static int verifyIsolateThread(IsolateThread thread) {
         VMError.guarantee(CurrentIsolate.getCurrentThread() == thread, "Threads must match for the call below");
-        if (!VMThreads.singleton().verifyIsCurrentThread(thread) || !VMThreads.singleton().verifyThreadIsAttached(thread)) {
+        if (!VMThreads.singleton().verifyIsCurrentThread(thread) || !VMThreads.isAttached(thread)) {
             throw VMError.shouldNotReachHere("A call from native code to Java code provided the wrong JNI environment or the wrong IsolateThread. " +
                             "The JNI environment / IsolateThread is a thread-local data structure and must not be shared between threads.");
 

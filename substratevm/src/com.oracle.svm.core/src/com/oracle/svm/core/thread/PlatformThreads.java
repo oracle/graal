@@ -47,7 +47,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -89,6 +88,7 @@ import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.memory.NativeMemory;
@@ -109,6 +109,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -544,7 +545,11 @@ public abstract class PlatformThreads {
         FORK_JOIN_POOL_TRY_TERMINATE_METHOD = ReflectionUtil.lookupMethod(ForkJoinPool.class, "tryTerminate", boolean.class, boolean.class);
     }
 
-    /** Have each thread, except this one, tear itself down. */
+    /**
+     * Interrupts all threads except for the current thread and any threads that require custom
+     * teardown logic (see {@link #isVMInternalThread(IsolateThread)}). Waits until the interrupted
+     * threads detach.
+     */
     public static boolean tearDownOtherThreads() {
         final Log trace = Log.noopLog().string("[PlatformThreads.tearDownPlatformThreads:").newline().flush();
 
@@ -557,9 +562,9 @@ public abstract class PlatformThreads {
          */
         VMThreads.setTearingDown();
 
-        /* Fetch all running application threads and interrupt them. */
+        /* Fetch threads and interrupt them. */
         ArrayList<Thread> threads = new ArrayList<>();
-        FetchApplicationThreadsOperation operation = new FetchApplicationThreadsOperation(threads);
+        FetchThreadsForTeardownOperation operation = new FetchThreadsForTeardownOperation(threads);
         operation.enqueue();
 
         Set<ExecutorService> pools = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -626,9 +631,9 @@ public abstract class PlatformThreads {
         return result;
     }
 
-    /** Wait (im)patiently for the VMThreads list to drain. */
+    /** Wait (im)patiently for the thread list to drain. */
     private static boolean waitForTearDown() {
-        assert isApplicationThread(CurrentIsolate.getCurrentThread()) : "we count the application threads until only the current one remains";
+        assert !isVMInternalThread(CurrentIsolate.getCurrentThread()) : "we count the threads until only the current one remains";
 
         final Log trace = Log.noopLog().string("[PlatformThreads.waitForTearDown:").newline();
         final long warningNanos = SubstrateOptions.getTearDownWarningNanos();
@@ -666,8 +671,8 @@ public abstract class PlatformThreads {
         }
     }
 
-    private static boolean isApplicationThread(IsolateThread isolateThread) {
-        return !VMOperationControl.isDedicatedVMOperationThread(isolateThread);
+    public static boolean isVMInternalThread(IsolateThread thread) {
+        return VMOperationControl.isDedicatedVMOperationThread(thread) || ReferenceHandlerThread.isReferenceHandlerThread(thread);
     }
 
     @SuppressFBWarnings(value = "NN", justification = "notifyAll is necessary for Java semantics, no shared state needs to be modified beforehand")
@@ -762,7 +767,10 @@ public abstract class PlatformThreads {
         assert numThreads > 0;
     }
 
-    /** A caller must call THREAD_LIST_CONDITION.broadcast() manually. */
+    /**
+     * Callers must manually invoke {@link VMCondition#broadcast()} on
+     * {@link VMThreads#THREAD_LIST_CONDITION} to notify any threads waiting for changes.
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void decrementNonDaemonThreads() {
         int numThreads = nonDaemonThreads.decrementAndGet();
@@ -1127,14 +1135,15 @@ public abstract class PlatformThreads {
     }
 
     /**
-     * Builds a list of all application threads. This must be done in a VM operation because only
-     * there we are allowed to allocate Java memory while holding the {@link VMThreads#THREAD_MUTEX}
+     * Builds a list of all threads that don't need any custom teardown logic. This must be done in
+     * a VM operation because only there we are allowed to allocate Java memory while holding the
+     * {@link VMThreads#THREAD_MUTEX}.
      */
-    private static class FetchApplicationThreadsOperation extends JavaVMOperation {
+    private static class FetchThreadsForTeardownOperation extends JavaVMOperation {
         private final List<Thread> list;
 
-        FetchApplicationThreadsOperation(List<Thread> list) {
-            super(VMOperationInfos.get(FetchApplicationThreadsOperation.class, "Fetch application threads", SystemEffect.NONE));
+        FetchThreadsForTeardownOperation(List<Thread> list) {
+            super(VMOperationInfos.get(FetchThreadsForTeardownOperation.class, "Fetch threads for teardown", SystemEffect.NONE));
             this.list = list;
         }
 
@@ -1144,11 +1153,13 @@ public abstract class PlatformThreads {
             VMMutex lock = VMThreads.THREAD_MUTEX.lock();
             try {
                 for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
-                    if (isApplicationThread(isolateThread)) {
-                        final Thread thread = PlatformThreads.fromVMThread(isolateThread);
-                        if (thread != null) {
-                            list.add(thread);
-                        }
+                    if (isVMInternalThread(isolateThread)) {
+                        continue;
+                    }
+
+                    Thread thread = PlatformThreads.fromVMThread(isolateThread);
+                    if (thread != null) {
+                        list.add(thread);
                     }
                 }
             } finally {
@@ -1185,24 +1196,26 @@ public abstract class PlatformThreads {
             VMMutex lock = VMThreads.THREAD_MUTEX.lock();
             try {
                 for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
-                    if (isApplicationThread(isolateThread)) {
-                        attachedCount++;
-                        if (printLaggards.get() && trace.isEnabled() && isolateThread != queuingThread) {
-                            trace.string("  laggard isolateThread: ").hex(isolateThread);
-                            final Thread thread = PlatformThreads.fromVMThread(isolateThread);
-                            if (thread != null) {
-                                final String name = thread.getName();
-                                final Thread.State status = thread.getState();
-                                final boolean interruptedStatus = JavaThreads.isInterrupted(thread);
-                                trace.string("  thread.getName(): ").string(name)
-                                                .string("  interruptedStatus: ").bool(interruptedStatus)
-                                                .string("  getState(): ").string(status.name()).newline();
-                                for (StackTraceElement e : thread.getStackTrace()) {
-                                    trace.string(e.toString()).newline();
-                                }
+                    if (isVMInternalThread(isolateThread)) {
+                        continue;
+                    }
+
+                    attachedCount++;
+                    if (printLaggards.get() && trace.isEnabled() && isolateThread != queuingThread) {
+                        trace.string("  laggard isolateThread: ").hex(isolateThread);
+                        final Thread thread = PlatformThreads.fromVMThread(isolateThread);
+                        if (thread != null) {
+                            final String name = thread.getName();
+                            final Thread.State status = thread.getState();
+                            final boolean interruptedStatus = JavaThreads.isInterrupted(thread);
+                            trace.string("  thread.getName(): ").string(name)
+                                            .string("  interruptedStatus: ").bool(interruptedStatus)
+                                            .string("  getState(): ").string(status.name()).newline();
+                            for (StackTraceElement e : thread.getStackTrace()) {
+                                trace.string(e.toString()).newline();
                             }
-                            trace.newline().flush();
                         }
+                        trace.newline().flush();
                     }
                 }
 
