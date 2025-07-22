@@ -45,6 +45,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -166,7 +167,7 @@ public abstract class NativeImageCodeCache {
         this.imageHeap = imageHeap;
         this.dataSection = new DataSection();
         this.targetPlatform = targetPlatform;
-        this.orderedCompilations = computeCompilationOrder(compilations);
+        this.orderedCompilations = computeCompilationOrder(compilations, imageHeap.hMetaAccess);
     }
 
     public abstract int getCodeCacheSize();
@@ -188,11 +189,27 @@ public abstract class NativeImageCodeCache {
         return orderedCompilations.getLast();
     }
 
-    protected List<Pair<HostedMethod, CompilationResult>> computeCompilationOrder(Map<HostedMethod, CompilationResult> compilationMap) {
+    private static List<Pair<HostedMethod, CompilationResult>> computeCompilationOrder(Map<HostedMethod, CompilationResult> compilationMap, HostedMetaAccess metaAccess) {
         var orderedMethods = ImageSingletons.lookup(CodeSectionLayouter.class).layout(compilationMap);
-        return orderedMethods.stream()
-                        .map(hm -> Pair.create(hm, compilations.get(hm)))
-                        .collect(Collectors.toList());
+
+        /* We force this method to be at code offset 0 to make that offset and address invalid. */
+        HostedMethod invalidMethod = getInvalidCodeAddressHandler(metaAccess);
+
+        var orderedCompilations = new ArrayList<Pair<HostedMethod, CompilationResult>>();
+        if (invalidMethod != null) {
+            orderedCompilations.add(Pair.create(invalidMethod, compilationMap.get(invalidMethod)));
+        }
+        for (HostedMethod method : orderedMethods) {
+            if (!Objects.equals(invalidMethod, method)) {
+                orderedCompilations.add(Pair.create(method, compilationMap.get(method)));
+            }
+        }
+        return orderedCompilations;
+    }
+
+    private static HostedMethod getInvalidCodeAddressHandler(HostedMetaAccess metaAccess) {
+        Method invalidCodeMethod = MethodPointerInvalidHandlerFeature.getInvalidCodeAddressHandler();
+        return (invalidCodeMethod == null) ? null : metaAccess.lookupJavaMethod(invalidCodeMethod);
     }
 
     public List<Pair<HostedMethod, CompilationResult>> getOrderedCompilations() {

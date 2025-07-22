@@ -1252,6 +1252,10 @@ public class SubstrateOptions {
                 throw UserError.invalidOptionValue(key, key.getValue(), "Dumping runtime compiled code is not supported on Windows.");
             }
         });
+
+        @Option(help = "Avoid linker relocations for code and instead emit address computations.", type = OptionType.Expert) //
+        @LayerVerifiedOption(severity = Severity.Error, kind = Kind.Changed, positional = false) //
+        public static final HostedOptionKey<Boolean> RelativeCodePointers = new HostedOptionKey<>(false, SubstrateOptions::validateRelativeCodePointers);
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
@@ -1547,13 +1551,9 @@ public class SubstrateOptions {
         return PrintClosedArenaUponThrow.getValue();
     }
 
-    @Option(help = "Avoid linker relocations for code and instead emit address computations.", type = OptionType.Expert) //
-    @LayerVerifiedOption(severity = Severity.Error, kind = Kind.Changed, positional = false) //
-    public static final HostedOptionKey<Boolean> RelativeCodePointers = new HostedOptionKey<>(false, SubstrateOptions::validateRelativeCodePointers);
-
     @Fold
     public static boolean useRelativeCodePointers() {
-        return RelativeCodePointers.getValue();
+        return ConcealedOptions.RelativeCodePointers.getValue();
     }
 
     private static void validateRelativeCodePointers(HostedOptionKey<Boolean> optionKey) {

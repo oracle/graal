@@ -108,6 +108,7 @@ import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyWrapper;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.util.VMError;
@@ -959,16 +960,13 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     private static boolean delegateProcessing(ConstantReference.Builder builder, Object constant) {
         if (constant instanceof PatchedWordConstant patchedWordConstant) {
             WordBase word = patchedWordConstant.getWord();
-            if (word instanceof MethodOffset) {
-                /*
-                 * Such constants are not supposed to be used in another layer. Any method code
-                 * offsets should be accessed via PersistedHostedMethod.
-                 */
-                builder.setMethodOffset(Void.VOID);
-                return true;
-            } else if (word instanceof MethodPointer methodPointer) {
-                AnalysisMethod method = getRelocatableConstantMethod(methodPointer);
-                builder.initMethodPointer().setMethodId(method.getId());
+            if (word instanceof MethodRef methodRef) {
+                AnalysisMethod method = getRelocatableConstantMethod(methodRef);
+                switch (methodRef) {
+                    case MethodOffset mo -> builder.initMethodOffset().setMethodId(method.getId());
+                    case MethodPointer mp -> builder.initMethodPointer().setMethodId(method.getId());
+                    default -> throw VMError.shouldNotReachHere("Unsupported method ref: " + methodRef);
+                }
                 return true;
             } else if (word instanceof CEntryPointLiteralCodePointer cp) {
                 CEntryPointLiteralReference.Builder b = builder.initCEntryPointLiteralCodePointer();
@@ -1010,14 +1008,14 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
                 discoveredConstants.add(con);
                 constantsMap.put(con, parent);
-            } else if (obj instanceof MethodPointer mp) {
-                getRelocatableConstantMethod(mp).registerAsTrackedAcrossLayers("In method pointer");
+            } else if (obj instanceof MethodRef mr) {
+                getRelocatableConstantMethod(mr).registerAsTrackedAcrossLayers("In method ref");
             }
         }
     }
 
-    private static AnalysisMethod getRelocatableConstantMethod(MethodPointer methodPointer) {
-        ResolvedJavaMethod method = methodPointer.getMethod();
+    private static AnalysisMethod getRelocatableConstantMethod(MethodRef methodRef) {
+        ResolvedJavaMethod method = methodRef.getMethod();
         if (method instanceof HostedMethod hostedMethod) {
             return hostedMethod.wrapped;
         } else {
