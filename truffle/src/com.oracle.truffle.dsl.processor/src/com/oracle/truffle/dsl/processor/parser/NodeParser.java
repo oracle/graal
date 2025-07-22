@@ -3765,7 +3765,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                 getSimpleName(types.GenerateInline),
                                 getSimpleName(types.GenerateInline),
                                 getSimpleName(types.Cached));
-            } else if (node.isGenerateInline() && !isGenerateInlineFalse(cache)) {
+            } else if (node.isGenerateInline() && NodeCodeGenerator.isSpecializedNode(cache.getParameter().getType()) && !isGenerateInlineFalse(cache)) {
                 cache.addSuppressableWarning(TruffleSuppressedWarnings.INLINING_RECOMMENDATION,
                                 "The cached node type does not support object inlining." + //
                                                 " Add @%s or @%s(false) on the node type or disable inlining using @%s(inline=false) to resolve this.",
