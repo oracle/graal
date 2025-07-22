@@ -3154,18 +3154,18 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(loopCount, infinite, cond, children));
         }
 
-        Integer getLoopIndex() {
+        Integer getLoopIndex(VirtualFrame frame) {
             if (loopIndexSlot == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                loopIndexSlot = getRootNode().getFrameDescriptor().findOrAddAuxiliarySlot("loopIndex" + getLoopDepth());
+                loopIndexSlot = frame.getFrameDescriptor().findOrAddAuxiliarySlot("loopIndex" + getLoopDepth());
             }
             return loopIndexSlot;
         }
 
-        Integer getResult() {
+        Integer getResult(VirtualFrame frame) {
             if (loopResultSlot == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                loopResultSlot = getRootNode().getFrameDescriptor().findOrAddAuxiliarySlot("loopResult" + getLoopDepth());
+                loopResultSlot = frame.getFrameDescriptor().findOrAddAuxiliarySlot("loopResult" + getLoopDepth());
             }
             return loopResultSlot;
         }
@@ -3184,8 +3184,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Override
         public Object execute(VirtualFrame frame) {
-            frame.setAuxiliarySlot(getResult(), Null.INSTANCE);
-            frame.setAuxiliarySlot(getLoopIndex(), 0);
+            frame.setAuxiliarySlot(getResult(frame), Null.INSTANCE);
+            frame.setAuxiliarySlot(getLoopIndex(frame), 0);
             loop.execute(frame);
             try {
                 return frame.getAuxiliarySlot(loopResultSlot);
