@@ -181,6 +181,10 @@ class WasmUnittestConfig(mx_unittest.MxUnittestConfig):
         # limit heap memory to 4G, unless otherwise specified
         if not any(a.startswith('-Xm') for a in vmArgs):
             vmArgs += ['-Xmx4g']
+        # Export GraalWasm implementation to JUnit test runner
+        mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.wasm/*=org.graalvm.wasm.test']
+        mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.wasm/*=com.oracle.truffle.wasm.closedtestcases']
+        mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.wasm/*=com.oracle.truffle.wasm.debugtests']
         return (vmArgs, mainClass, mainClassArgs)
 
 
