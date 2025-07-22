@@ -213,6 +213,8 @@ intf java.lang.AutoCloseable
 meth public !varargs static boolean copyResources(java.nio.file.Path,java.lang.String[]) throws java.io.IOException
 meth public !varargs static org.graalvm.polyglot.Engine create(java.lang.String[])
 meth public !varargs static org.graalvm.polyglot.Engine$Builder newBuilder(java.lang.String[])
+meth public boolean storeCache(java.nio.file.Path)
+meth public boolean storeCache(java.nio.file.Path,org.graalvm.nativeimage.c.type.WordPointer)
 meth public java.lang.String getImplementationName()
 meth public java.lang.String getVersion()
 meth public java.util.Map<java.lang.String,org.graalvm.polyglot.Instrument> getInstruments()

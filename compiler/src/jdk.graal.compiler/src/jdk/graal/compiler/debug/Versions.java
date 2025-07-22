@@ -29,10 +29,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.util.EconomicHashMap;
 
 /** Avoid using directly. Only public for the needs of unit testing. */
 public final class Versions {
@@ -45,7 +45,7 @@ public final class Versions {
     private final Map<Object, Object> versions;
 
     public Versions(String home) {
-        Map<Object, Object> map = new HashMap<>();
+        Map<Object, Object> map = new EconomicHashMap<>();
         ASSIGN: try {
             String info = findReleaseInfo(home);
             if (info == null) {

@@ -48,6 +48,8 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.automaton.TransitionConstraint;
+import com.oracle.truffle.regex.tregex.automaton.TransitionOp;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
@@ -298,7 +300,10 @@ public final class NFATraceFinderGenerator {
     private NFAStateTransition createTransition(NFAState source, NFAState target, NFAStateTransition originalTransition,
                     PreCalculatedResultFactory preCalcResult, int preCalcResultIndex) {
         originalTransition.getGroupBoundaries().applyToResultFactory(preCalcResult, preCalcResultIndex, trackLastGroup);
-        NFAStateTransition copy = new NFAStateTransition((short) transitionID.inc(), source, target, originalTransition.getCodePointSet(), originalTransition.getGroupBoundaries());
+        // The trace finder does not work with bounded quantifiers, therefore it is sound to put no
+        // constraints and no op.
+        NFAStateTransition copy = new NFAStateTransition((short) transitionID.inc(), source, target, originalTransition.getCodePointSet(), originalTransition.getGroupBoundaries(),
+                        TransitionConstraint.NO_CONSTRAINTS, TransitionOp.NO_OP);
         source.setSuccessors(new NFAStateTransition[]{copy}, true);
         return copy;
     }
@@ -309,7 +314,7 @@ public final class NFATraceFinderGenerator {
 
     private NFAStateTransition copyEntry(NFAState dummyInitialState, NFAStateTransition originalReverseEntry) {
         return new NFAStateTransition((short) transitionID.inc(), copy(originalReverseEntry.getSource()), dummyInitialState, originalReverseEntry.getCodePointSet(),
-                        GroupBoundaries.getEmptyInstance(originalNFA.getAst().getLanguage()));
+                        GroupBoundaries.getEmptyInstance(originalNFA.getAst().getLanguage()), TransitionConstraint.NO_CONSTRAINTS, TransitionOp.NO_OP);
     }
 
     private NFAState copy(NFAState s) {

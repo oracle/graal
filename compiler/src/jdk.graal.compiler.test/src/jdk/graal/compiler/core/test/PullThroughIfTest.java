@@ -24,14 +24,15 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-import org.junit.Test;
 
-public class PushThroughIfTest extends GraalCompilerTest {
+public class PullThroughIfTest extends GraalCompilerTest {
 
     public int field1;
     public int field2;

@@ -36,6 +36,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
+import com.oracle.svm.core.util.ImageHeapMap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -75,9 +76,10 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
     }
 
     private final AbiUtils.TrampolineTemplate trampolineTemplate;
-    private final EconomicMap<NativeEntryPointInfo, FunctionPointerHolder> downcallStubs = EconomicMap.create();
-    private final EconomicMap<Pair<DirectMethodHandleDesc, JavaEntryPointInfo>, FunctionPointerHolder> directUpcallStubs = EconomicMap.create();
-    private final EconomicMap<JavaEntryPointInfo, FunctionPointerHolder> upcallStubs = EconomicMap.create();
+
+    private final EconomicMap<NativeEntryPointInfo, FunctionPointerHolder> downcallStubs = ImageHeapMap.create("downcallStubs");
+    private final EconomicMap<Pair<DirectMethodHandleDesc, JavaEntryPointInfo>, FunctionPointerHolder> directUpcallStubs = ImageHeapMap.create("directUpcallStubs");
+    private final EconomicMap<JavaEntryPointInfo, FunctionPointerHolder> upcallStubs = ImageHeapMap.create("upcallStubs");
 
     private final Map<Long, TrampolineSet> trampolines = new HashMap<>();
     private TrampolineSet currentTrampolineSet;
@@ -104,22 +106,49 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addDowncallStubPointer(NativeEntryPointInfo nep, CFunctionPointer ptr) {
-        VMError.guarantee(!downcallStubs.containsKey(nep), "Seems like multiple stubs were generated for %s", nep);
-        VMError.guarantee(downcallStubs.put(nep, new FunctionPointerHolder(ptr)) == null);
+    public boolean downcallStubExists(NativeEntryPointInfo nep) {
+        return downcallStubs.containsKey(nep);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addUpcallStubPointer(JavaEntryPointInfo jep, CFunctionPointer ptr) {
-        VMError.guarantee(!upcallStubs.containsKey(jep), "Seems like multiple stubs were generated for %s", jep);
-        VMError.guarantee(upcallStubs.put(jep, new FunctionPointerHolder(ptr)) == null);
+    public int getDowncallStubsCount() {
+        return downcallStubs.size();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addDirectUpcallStubPointer(DirectMethodHandleDesc desc, JavaEntryPointInfo jep, CFunctionPointer ptr) {
+    public boolean upcallStubExists(JavaEntryPointInfo jep) {
+        return upcallStubs.containsKey(jep);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public int getUpcallStubsCount() {
+        return upcallStubs.size();
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean directUpcallStubExists(DirectMethodHandleDesc desc, JavaEntryPointInfo jep) {
+        return directUpcallStubs.containsKey(Pair.create(desc, jep));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public int getDirectUpcallStubsCount() {
+        return directUpcallStubs.size();
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean addDowncallStubPointer(NativeEntryPointInfo nep, CFunctionPointer ptr) {
+        return downcallStubs.putIfAbsent(nep, new FunctionPointerHolder(ptr)) == null;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean addUpcallStubPointer(JavaEntryPointInfo jep, CFunctionPointer ptr) {
+        return upcallStubs.putIfAbsent(jep, new FunctionPointerHolder(ptr)) == null;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean addDirectUpcallStubPointer(DirectMethodHandleDesc desc, JavaEntryPointInfo jep, CFunctionPointer ptr) {
         var key = Pair.create(desc, jep);
-        VMError.guarantee(!directUpcallStubs.containsKey(key), "Seems like multiple stubs were generated for %s", desc);
-        VMError.guarantee(directUpcallStubs.put(key, new FunctionPointerHolder(ptr)) == null);
+        return directUpcallStubs.putIfAbsent(key, new FunctionPointerHolder(ptr)) == null;
     }
 
     /**

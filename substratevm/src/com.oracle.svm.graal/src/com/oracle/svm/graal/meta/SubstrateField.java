@@ -89,7 +89,7 @@ public class SubstrateField implements SharedField {
         this.declaringClass = declaringClass;
     }
 
-    public void setSubstrateData(int location, boolean isAccessed, boolean isWritten, JavaConstant constantValue) {
+    public void setSubstrateDataAfterCompilation(int location, boolean isAccessed, boolean isWritten, JavaConstant constantValue) {
         this.location = location;
         this.isAccessed = isAccessed;
         this.isWritten = isWritten;

@@ -25,17 +25,18 @@
  */
 package jdk.graal.compiler.core.aarch64.test;
 
+import java.util.ArrayDeque;
+import java.util.Set;
+import java.util.function.Predicate;
+
+import jdk.graal.compiler.util.EconomicHashSet;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp.ExtendedAddSubShiftOp;
 import jdk.graal.compiler.options.OptionValues;
-import org.junit.Test;
-
-import java.util.ArrayDeque;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.function.Predicate;
 
 public class AArch64ArrayAddressTest extends AArch64MatchRuleTest {
     private static final Predicate<LIRInstruction> predicate = op -> (op instanceof ExtendedAddSubShiftOp);
@@ -210,8 +211,8 @@ public class AArch64ArrayAddressTest extends AArch64MatchRuleTest {
         checkLIRforAll("getFrameIndex", predicate, 1);
     }
 
-    static Set<Long> allBarcodes = new HashSet<>();
-    static Set<Long> localBarcodes = new HashSet<>();
+    static Set<Long> allBarcodes = new EconomicHashSet<>();
+    static Set<Long> localBarcodes = new EconomicHashSet<>();
 
     public static long useConstReferenceAsBase(long l) {
         localBarcodes.add(l);

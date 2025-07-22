@@ -73,7 +73,7 @@ public final class Arguments {
 
     private static final Set<String> IGNORED_XX_OPTIONS = Set.of(
                     "ReservedCodeCacheSize",
-                    // `TieredStopAtLevel=0` is handled separately, other values are ignored
+                    // `TieredStopAtLevel=0|1` is handled separately, other values are ignored
                     "TieredStopAtLevel",
                     "MaxMetaspaceSize",
                     "HeapDumpOnOutOfMemoryError",
@@ -218,6 +218,8 @@ public final class Arguments {
                         builder.option("engine.CompileImmediately", "true");
                     } else if (optionString.startsWith("-Xint") || "-XX:TieredStopAtLevel=0".equals(optionString)) {
                         builder.option("engine.Compilation", "false");
+                    } else if ("-XX:TieredStopAtLevel=1".equals(optionString)) {
+                        builder.option("engine.Mode", "latency");
                     } else if (optionString.startsWith("-Xshare:")) {
                         String value = optionString.substring("-Xshare:".length());
                         builder.option("java.CDS", value);

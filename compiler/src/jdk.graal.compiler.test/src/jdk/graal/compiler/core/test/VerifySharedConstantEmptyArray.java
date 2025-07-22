@@ -36,6 +36,7 @@ import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -49,7 +50,7 @@ public class VerifySharedConstantEmptyArray extends VerifyStringFormatterUsage {
     /**
      * Names of static final fields in the Graal code base that defined shared 0-length arrays.
      */
-    private static final Set<String> NAMES = Set.of(
+    private static final Set<String> NAMES = CollectionsUtil.setOf(
                     "EMPTY_ARRAY",
                     "EMPTY_PATTERNS",
                     "NO_NODES");

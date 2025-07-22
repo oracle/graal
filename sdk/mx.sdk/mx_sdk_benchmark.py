@@ -54,7 +54,6 @@ import json
 import argparse
 import zipfile
 from dataclasses import dataclass
-from enum import Enum
 from os import PathLike
 from os.path import exists, basename
 from pathlib import Path
@@ -71,6 +70,7 @@ import urllib.request
 import mx_sdk_vm
 import mx_sdk_vm_impl
 import mx_util
+from mx_util import Stage, StageName, Layer
 from mx_benchmark import DataPoints, DataPoint, BenchmarkSuite, Vm, SingleBenchmarkExecutionContext
 from mx_sdk_vm_impl import svm_experimental_options
 
@@ -2815,7 +2815,7 @@ _baristaConfig = {
     # Should currently only contain round numbers due to the field incorrectly being indexed as integer in the DB (GR-57487)
     "latency_percentiles": [50.0, 75.0, 90.0, 99.0, 100.0],
     "rss_percentiles": [100, 99, 98, 97, 96, 95, 90, 75, 50, 25],
-    "disable_trackers": [mx_benchmark.RssTracker, mx_benchmark.PsrecordTracker, mx_benchmark.PsrecordMaxrssTracker, mx_benchmark.RssPercentilesTracker, mx_benchmark.RssPercentilesAndMaxTracker],
+    "supported_trackers": [mx_benchmark.EnergyConsumptionTracker],
 }
 
 class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
@@ -2828,9 +2828,8 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
     def __init__(self, custom_harness_command: mx_benchmark.CustomHarnessCommand = None):
         if custom_harness_command is None:
             custom_harness_command = BaristaBenchmarkSuite.BaristaCommand()
-        super().__init__(custom_harness_command)
+        super().__init__(custom_harness_command, supported_trackers=_baristaConfig["supported_trackers"])
         self._version = None
-        self._extra_run_options = []
 
     def readBaristaVersionFromPyproject(self):
         # tomllib was included in python standard library with version 3.11
@@ -2915,25 +2914,6 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
     def new_execution_context(self, vm: Vm, benchmarks: List[str], bmSuiteArgs: List[str]) -> SingleBenchmarkExecutionContext:
         return SingleBenchmarkExecutionContext(self, vm, benchmarks, bmSuiteArgs)
-
-    def register_tracker(self, name, tracker_type):
-        if tracker_type in _baristaConfig["disable_trackers"]:
-            mx.log(f"Ignoring the registration of '{name}' tracker as it was disabled for {self.__class__.__name__}.")
-            return
-        if name == "energy":
-            if self.version() < "0.4.1":
-                mx.abort(
-                    "The 'energy' tracker is not supported for barista benchmarks before Barista version '0.4.1'."
-                    " Please update your Barista repository in order to use the 'energy' tracker! Aborting!"
-                )
-            # Allow for the baseline measurement before looking up the app process
-            self._extra_run_options += ["--cmd-app-prefix-init-timelimit", f"{tracker_type(self).baseline_duration + 5}"]
-            # Ensure that the workload is independent from the performance of the VM
-            # We want to track the energy needed for a set amount of work
-            self._extra_run_options += ["--startup-iteration-count", "0"]
-            self._extra_run_options += ["--warmup-iteration-count", "0"]
-            self._extra_run_options += ["--throughput-iteration-count", "0"]
-        super().register_tracker(name, tracker_type)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         # Pass the VM options, BaristaCommand will form the final command.
@@ -3149,6 +3129,29 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
                 new_value = f"{new_value} {existing_option_match.group(1)}"
             cmd.append(f"{option_name}={new_value}")
 
+        def _energyTrackerExtraOptions(self, suite: BaristaBenchmarkSuite):
+            """Returns extra options necessary for correct benchmark results when using the 'energy' tracker."""
+            if not isinstance(suite._tracker, mx_benchmark.EnergyConsumptionTracker):
+                return []
+
+            required_barista_version = "0.4.5"
+            if mx.VersionSpec(suite.version()) < mx.VersionSpec(required_barista_version):
+                mx.abort(
+                    f"The 'energy' tracker is not supported for barista benchmarks before Barista version '{required_barista_version}'."
+                    " Please update your Barista repository in order to use the 'energy' tracker! Aborting!"
+                )
+
+            extra_options = []
+            # If baseline has to be measured, wait for the measurement duration before looking up the app process
+            if suite._tracker.baseline_power is None:
+                extra_options += ["--cmd-app-prefix-init-sleep", f"{suite._tracker.baseline_duration}"]
+            # Ensure that the workload is independent from the performance of the VM
+            # We want to track the energy needed for a set amount of work
+            extra_options += ["--startup-iteration-count", "0"]
+            extra_options += ["--warmup-iteration-count", "0"]
+            extra_options += ["--throughput-iteration-count", "0"]
+            return extra_options
+
         def produceHarnessCommand(self, cmd, suite):
             """Maps a JVM command into a command tailored for the Barista harness.
 
@@ -3173,7 +3176,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             jvm_vm_options = jvm_cmd[index_of_java_exe + 1:]
 
             # Verify that the run arguments don't already contain a "--mode" option
-            run_args = suite.runArgs(suite.execution_context.bmSuiteArgs) + suite._extra_run_options
+            run_args = suite.runArgs(suite.execution_context.bmSuiteArgs) + self._energyTrackerExtraOptions(suite)
             mode_pattern = r"^(?:-m|--mode)(=.*)?$"
             mode_match = self._regexFindInCommand(run_args, mode_pattern)
             if mode_match:
@@ -3627,73 +3630,6 @@ def strip_args_with_number(strip_args, args):
     return list(result)
 
 
-@dataclass(frozen = True)
-class Stage:
-    stage_name: StageName
-    layer_info: Layer = None
-
-    @staticmethod
-    def from_string(s: str) -> Stage:
-        return Stage(StageName(s))
-
-    def is_image(self) -> bool:
-        return self.stage_name.is_image()
-
-    def is_instrument(self) -> bool:
-        return self.stage_name.is_instrument()
-
-    def is_agent(self) -> bool:
-        return self.stage_name.is_agent()
-
-    def is_final(self) -> bool:
-        return self.stage_name.is_final()
-
-    def is_layered(self) -> bool:
-        return self.layer_info is not None
-
-    def is_requested(self, request: str):
-        """Whether the 'request' is equal to either the full name of the stage or it's name without layer info."""
-        return str(self) == request or str(self.stage_name) == request
-
-    def __str__(self):
-        if not self.is_layered():
-            return str(self.stage_name)
-        return f"{self.stage_name}-{self.layer_info}"
-
-
-class StageName(Enum):
-    AGENT = "agent"
-    INSTRUMENT_IMAGE = "instrument-image"
-    INSTRUMENT_RUN = "instrument-run"
-    IMAGE = "image"
-    RUN = "run"
-
-    def __str__(self):
-        return self.value
-
-    def is_image(self) -> bool:
-        """Whether this is an image stage (a stage that performs an image build)"""
-        return self in [StageName.INSTRUMENT_IMAGE, StageName.IMAGE]
-
-    def is_instrument(self) -> bool:
-        """Whether this is an image stage (a stage that performs an image build)"""
-        return self in [StageName.INSTRUMENT_IMAGE, StageName.INSTRUMENT_RUN]
-
-    def is_agent(self) -> bool:
-        return self == StageName.AGENT
-
-    def is_final(self) -> bool:
-        return self in [StageName.IMAGE, StageName.RUN]
-
-@dataclass(frozen = True)
-class Layer:
-    index: int
-    is_shared_library: bool
-
-    def __str__(self):
-        return f"layer{self.index}"
-
-
 class StagesInfo:
     """
     Holds information about benchmark stages that should be persisted across multiple stages in the same
@@ -3999,10 +3935,13 @@ class NativeImageBenchmarkMixin(object):
     def run_stage(self, vm, stage: Stage, command, out, err, cwd, nonZeroIsFatal):
         final_command = command
         # Apply command mapper hooks (e.g. trackers) for all stages that run benchmark workloads
-        # We cannot apply them for the image stages because the datapoints are indistinguishable from datapoints
-        # produced in the corresponding run stages.
-        if not stage.is_image() and self.stages_info.should_produce_datapoints(stage.stage_name):
-            final_command = self.apply_command_mapper_hooks(command, vm)
+        if self.stages_info.should_produce_datapoints(stage.stage_name):
+            hooks_compatible_with_stage = [
+                (name, hook, suite)
+                for name, hook, suite in vm.command_mapper_hooks
+                if hook.should_apply(stage)
+            ]
+            final_command = mx.apply_command_mapper_hooks(command, hooks_compatible_with_stage)
         return mx.run(final_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, env=self.get_stage_env())
 
     def is_native_mode(self, bm_suite_args: List[str]):

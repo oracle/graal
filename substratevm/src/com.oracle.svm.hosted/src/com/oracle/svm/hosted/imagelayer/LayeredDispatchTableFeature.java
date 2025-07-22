@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.imagelayer;
 
 import java.lang.reflect.Array;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -41,6 +42,7 @@ import java.util.stream.StreamSupport;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
@@ -49,12 +51,14 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -100,15 +104,33 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
         public static final HostedOptionKey<Boolean> ErrorOnLayeredDispatchTableDiscrepancies = new HostedOptionKey<>(false);
     }
 
-    final Map<HostedType, PriorDispatchTable> priorDispatchTableCache = ImageLayerBuildingSupport.buildingExtensionLayer() ? new ConcurrentHashMap<>() : null;
-    final Map<Integer, PriorDispatchMethod> priorDispatchMethodCache = ImageLayerBuildingSupport.buildingExtensionLayer() ? new ConcurrentHashMap<>() : null;
+    private final boolean buildingSharedLayer = ImageLayerBuildingSupport.buildingSharedLayer();
+    private final boolean buildingInitialLayer = buildingSharedLayer && ImageLayerBuildingSupport.buildingInitialLayer();
+    private final boolean buildingExtensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
 
-    final Set<HostedMethod> virtualCallTargets = ImageLayerBuildingSupport.buildingSharedLayer() ? ConcurrentHashMap.newKeySet() : null;
-    final boolean generateUnresolvedSymbolNames = ImageLayerBuildingSupport.buildingSharedLayer();
-    Map<HostedMethod, Integer> persistedHostedMethodIndexMap = ImageLayerBuildingSupport.buildingSharedLayer() ? new ConcurrentHashMap<>() : null;
+    final Map<HostedType, PriorDispatchTable> priorDispatchTableCache = buildingExtensionLayer ? new ConcurrentHashMap<>() : null;
+    final Map<Integer, PriorDispatchMethod> priorDispatchMethodCache = buildingExtensionLayer ? new ConcurrentHashMap<>() : null;
 
-    final Map<MethodPointer, HostedDispatchSlot> methodPointerToDispatchSlot = new IdentityHashMap<>();
+    final Set<HostedMethod> virtualCallTargets = buildingSharedLayer ? ConcurrentHashMap.newKeySet() : null;
+    final boolean generateUnresolvedSymbolNames = buildingSharedLayer;
+    Map<HostedMethod, Integer> persistedHostedMethodIndexMap = buildingSharedLayer ? new ConcurrentHashMap<>() : null;
+
+    final Map<WordBase, HostedDispatchSlot> vtableWordToDispatchSlot = new IdentityHashMap<>();
     final Map<HostedType, HostedDispatchTable> typeToDispatchTable = new HashMap<>();
+    /**
+     * Bitmap relative to the start of the current layer's image heap relocatables partition where
+     * each 1-bit indicates one word that needs to be patched. Each such word initially contains an
+     * offset relative to the current layer's code section that will be patched so it becomes
+     * relative to the global code base, taking into account the displacement between the code base
+     * and the current layer's code section at runtime.
+     */
+    final BitSet offsetsToPatchInHeapRelocs = new BitSet();
+    /**
+     * Bitmap like {@link #offsetsToPatchInHeapRelocs}, but each 1-bit indicates one word that
+     * initially contains an absolute address in memory (e.g., for a symbol resolved by the runtime
+     * linker) that will be patched so it becomes an offset relative to the global code base.
+     */
+    final BitSet addressesToPatchInHeapRelocs = new BitSet();
 
     /**
      * Cache of builderModules. Set in {@link #beforeCompilation}.
@@ -414,10 +436,39 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
 
         assert dispatchTable.slots.length == vtableLength : Assertions.errorMessage(vTable, dispatchTable.slots);
 
+        int wordSize = ConfigurationValues.getTarget().wordSize;
         for (int i = 0; i < vtableLength; i++) {
-            MethodPointer methodPointer = (MethodPointer) Array.get(vTable, i);
+            WordBase methodRef = (WordBase) Array.get(vTable, i);
             var slot = dispatchTable.slots[i];
-            var prev = methodPointerToDispatchSlot.put(methodPointer, slot);
+            if (methodRef instanceof MethodOffset methodOffset) {
+                int slotBit = hubInfo.vTableOffsetInHeapRelocs() / wordSize + i;
+                HostedMethod target = (HostedMethod) methodOffset.getMethod();
+                if (target.isCompiledInPriorLayer()) {
+                    /*
+                     * Method compiled in the initial layer: we can use its offset without patching
+                     * because it is relative to the initial layer's text section, which becomes the
+                     * global code base.
+                     */
+                    assert DynamicImageLayerInfo.getCurrentLayerNumber() == 1 : "Currently cannot patch references to code in a middle layer";
+                } else if (target.isCompiled()) {
+                    if (!buildingInitialLayer) {
+                        /*
+                         * Method compiled in the current (non-base) layer: the offset is relative
+                         * to the current layer's text section and must be patched to account for
+                         * its displacement from the global code base at runtime.
+                         */
+                        offsetsToPatchInHeapRelocs.set(slotBit);
+                    }
+                } else {
+                    /*
+                     * Method compiled in a future layer, so the target will be resolved to an
+                     * address via a symbol reference by the runtime linker and we must subsequently
+                     * patch the word to turn the address into an offset relative to the code base.
+                     */
+                    addressesToPatchInHeapRelocs.set(slotBit);
+                }
+            }
+            var prev = vtableWordToDispatchSlot.put(methodRef, slot);
             assert prev == null : prev;
         }
     }
@@ -464,7 +515,7 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
         /*
          * First calculate symbols for all slots
          */
-        for (var slotInfo : methodPointerToDispatchSlot.values()) {
+        for (var slotInfo : vtableWordToDispatchSlot.values()) {
             assert slotInfo.dispatchTable.status == HubStatus.INSTALLED_CURRENT_LAYER;
 
             if (slotInfo.status == SlotResolutionStatus.COMPUTED) {
@@ -543,8 +594,8 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
     }
 
     // GR-58588 use injectedNotCompiled to track status of all MethodPointers
-    public String getSymbolName(MethodPointer methodPointer, HostedMethod target, @SuppressWarnings("unused") boolean injectedNotCompiled) {
-        var slotInfo = methodPointerToDispatchSlot.get(methodPointer);
+    public String getSymbolName(WordBase methodRef, HostedMethod target, @SuppressWarnings("unused") boolean injectedNotCompiled) {
+        var slotInfo = vtableWordToDispatchSlot.get(methodRef);
         String symbol = NativeImage.localSymbolNameForMethod(target);
         if (slotInfo != null) {
             if (!slotInfo.status.isCompiled()) {

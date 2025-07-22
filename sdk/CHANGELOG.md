@@ -4,6 +4,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 
 ## Version 26.0.0
 * GR-65048: GR-65048: Introduced the `-Dpolyglot.engine.allowUnsupportedPlatform=true` system property to enable Truffle to run on unsupported platforms. If this property is enabled then the failure will be suppressed. Please see follow-up errors and warnings for instructions on how to continue. Note that using an unsupported platform will also force the fallback runtime without runtime optimization.
+* GR-66515 If neither a log handler nor the `log.file` option is set on the `Engine.Builder` or `Context.Builder`, Truffle and language log messages will be written to the Context’s error output stream by default. The `log.file` option is now also supported on `Context.Builder`.
 
 ## Version 25.0.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.
@@ -21,6 +22,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-55996 Added the options `engine.SourceCacheStatistics` and `engine.SourceCacheStatisticDetails` to print polyglot source cache statistics on engine close.
 
 * GR-65561 Added `Context.Builder#apply`, `ContextBuilder#extendIO`, and `ContextBuilder#extendHostAccess` to enable composable Context configuration
+* GR-64947 Added `Engine.storeCache(Path)` to manually store [auxiliary engine caches](https://github.com/oracle/graal/blob/master/truffle/docs/AuxiliaryEngineCachingEnterprise.md) when needed.
 
 ## Version 24.2.0
 * GR-54905 When using Truffle NFI with the Panama backend, native access must now be granted to the Truffle module instead of the NFI Panama module. Use the `--enable-native-access=org.graalvm.truffle` Java command line option to enable the native access for the NFI Panama backend.

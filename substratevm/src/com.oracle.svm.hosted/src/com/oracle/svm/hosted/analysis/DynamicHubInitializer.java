@@ -29,6 +29,8 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.encoder.IdentitySymbolEncoder;
+import com.oracle.svm.core.encoder.SymbolEncoder;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -70,6 +72,7 @@ public class DynamicHubInitializer {
     private final SVMHost hostVM;
     private final AnalysisMetaAccess metaAccess;
     private final ConstantReflectionProvider constantReflection;
+    private final SymbolEncoder symbolEncoder;
 
     private final Map<InterfacesEncodingKey, DynamicHub[]> interfacesEncodings;
 
@@ -84,6 +87,7 @@ public class DynamicHubInitializer {
         this.metaAccess = bb.getMetaAccess();
         this.hostVM = (SVMHost) bb.getHostVM();
         this.constantReflection = bb.getConstantReflectionProvider();
+        this.symbolEncoder = SymbolEncoder.singleton();
 
         this.interfacesEncodings = new ConcurrentHashMap<>();
 
@@ -154,7 +158,7 @@ public class DynamicHubInitializer {
             ResolvedJavaType interpreterType = RuntimeClassLoading.createInterpreterType(hub, type);
             hub.setInterpreterType(interpreterType);
             heapScanner.rescanField(hub.getCompanion(), hubCompanionInterpreterType);
-            heapScanner.rescanObject(interpreterType.getDeclaredMethods());
+            heapScanner.rescanObject(interpreterType.getDeclaredMethods(false));
         }
     }
 
@@ -175,7 +179,7 @@ public class DynamicHubInitializer {
     /**
      * For reachable classes, register class's package in appropriate class loader.
      */
-    private static void registerPackage(ImageHeapScanner heapScanner, Class<?> javaClass, DynamicHub hub) {
+    private void registerPackage(ImageHeapScanner heapScanner, Class<?> javaClass, DynamicHub hub) {
         /*
          * Due to using {@link NativeImageSystemClassLoader}, a class's ClassLoader during runtime
          * may be different from the class used to load it during native-image generation.
@@ -190,7 +194,9 @@ public class DynamicHubInitializer {
             ClassLoader runtimeClassLoader = ClassLoaderFeature.getRuntimeClassLoader(classloader);
             VMError.guarantee(runtimeClassLoader != null, "Class loader missing for class %s", hub.getName());
             String packageName = hub.getPackageName();
-            assert packageName.equals(packageValue.getName()) : Assertions.errorMessage("Package name mismatch:", packageName, packageValue.getName());
+            if (symbolEncoder instanceof IdentitySymbolEncoder) {
+                assert packageName.equals(packageValue.getName()) : Assertions.errorMessage("Package name mismatch:", packageName, packageValue.getName());
+            }
             HostedClassLoaderPackageManagement.singleton().registerPackage(runtimeClassLoader, packageName, packageValue, heapScanner::rescanObject);
         }
     }

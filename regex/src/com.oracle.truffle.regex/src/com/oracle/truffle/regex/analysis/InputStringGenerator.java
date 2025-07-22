@@ -77,7 +77,8 @@ public final class InputStringGenerator {
 
         private static final String PROP_INPUT = "input";
         private static final String PROP_FROM_INDEX = "fromIndex";
-        private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_INPUT, PROP_FROM_INDEX);
+        private static final String PROP_MATCH_START = "matchStart";
+        private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_INPUT, PROP_FROM_INDEX, PROP_MATCH_START);
 
         private final TruffleString input;
         private final int fromIndex;
@@ -111,6 +112,7 @@ public final class InputStringGenerator {
             switch (symbol) {
                 case PROP_INPUT:
                 case PROP_FROM_INDEX:
+                case PROP_MATCH_START:
                     return true;
                 default:
                     return false;
@@ -124,6 +126,8 @@ public final class InputStringGenerator {
                     return input;
                 case PROP_FROM_INDEX:
                     return fromIndex;
+                case PROP_MATCH_START:
+                    return matchStart;
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw UnknownIdentifierException.create(symbol);

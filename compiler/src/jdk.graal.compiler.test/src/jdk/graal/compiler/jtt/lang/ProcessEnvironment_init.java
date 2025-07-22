@@ -27,22 +27,23 @@
 package jdk.graal.compiler.jtt.lang;
 
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.junit.Test;
 
 import jdk.graal.compiler.jtt.JTTTest;
+import jdk.graal.compiler.util.EconomicHashMap;
 
 public final class ProcessEnvironment_init extends JTTTest {
 
-    private static HashMap<Object, Object> theEnvironment;
+    private static Map<Object, Object> theEnvironment;
     public static Map<Object, Object> theUnmodifiableEnvironment;
 
     public static int test(int v) {
 
         byte[][] environ = environ();
-        theEnvironment = new HashMap<>(environ.length / 2 + 3);
+        theEnvironment = new EconomicHashMap<>(environ.length / 2 + 3);
 
         for (int i = environ.length - 1; i > 0; i -= 2) {
             theEnvironment.put(Variable.valueOf(environ[i - 1]), Value.valueOf(environ[i]));
@@ -54,10 +55,10 @@ public final class ProcessEnvironment_init extends JTTTest {
     }
 
     @SuppressWarnings("serial")
-    private static final class StringEnvironment extends HashMap<Object, Object> {
+    private static final class StringEnvironment extends LinkedHashMap<Object, Object> {
 
         @SuppressWarnings("unused")
-        StringEnvironment(HashMap<Object, Object> theenvironment) {
+        StringEnvironment(Map<Object, Object> theenvironment) {
         }
     }
 

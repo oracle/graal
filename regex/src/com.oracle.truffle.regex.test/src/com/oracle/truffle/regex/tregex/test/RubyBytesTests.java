@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,25 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.nodes.dfa;
+package com.oracle.truffle.regex.tregex.test;
 
-public class BackwardDFAStateNode extends DFAStateNode {
+import org.junit.Ignore;
+import org.junit.Test;
 
-    public BackwardDFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, Matchers matchers, DFASimpleCG simpleCG) {
-        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, simpleCG);
-    }
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
-    protected BackwardDFAStateNode(BackwardDFAStateNode copy, short copyID) {
-        super(copy, copyID);
+import java.util.Map;
+
+public class RubyBytesTests extends RegexTestBase {
+
+    private static final Map<String, String> ENGINE_OPTIONS = Map.of("regexDummyLang.Flavor", "Ruby");
+
+    @Override
+    Map<String, String> getEngineOptions() {
+        return ENGINE_OPTIONS;
     }
 
     @Override
-    public DFAStateNode createNodeSplitCopy(short copyID) {
-        return new BackwardDFAStateNode(this, copyID);
+    Encodings.Encoding getTRegexEncoding() {
+        return Encodings.BYTES;
     }
 
-    int getBackwardPrefixStateIndex() {
-        assert hasBackwardPrefixState();
-        return getSuccessors().length - 1;
+    @Ignore
+    @Test
+    public void nonAscii() {
+        test("[\\x80-\\xff\\r\\n]", "", "\u0080", 0, true, 0, 1);
     }
 }

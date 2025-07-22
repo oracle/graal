@@ -71,8 +71,12 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.EVCVTTPS2DQ;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.EVCVTTPS2QQ;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.EVCVTTSD2SI;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.EVCVTTSD2SQ;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.EVCVTTSD2USI;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.EVCVTTSD2USQ;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.EVCVTTSS2SI;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.EVCVTTSS2SQ;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.EVCVTTSS2USI;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.EVCVTTSS2USQ;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.EVMOVDDUP;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.EVPABSB;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.EVPABSD;
@@ -112,6 +116,8 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp.EVCVTS
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp.EVCVTSQ2SD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp.EVCVTSQ2SS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp.EVCVTSS2SD;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp.EVCVTUSQ2SD;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp.EVCVTUSQ2SS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.EVPCMPUB;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.EVPCMPUD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.EVPCMPUQ;
@@ -705,43 +711,67 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
                 case D2F:
                     assert kind == AMD64Kind.DOUBLE : kind;
                     // stores into vector register
-                    return emitConvertOp(AMD64Kind.SINGLE, EVCVTSD2SS, inputVal);
+                    return emitConvertOp(AMD64Kind.SINGLE, EVCVTSD2SS, inputVal, op.signedness());
                 case D2I:
                     assert kind == AMD64Kind.DOUBLE : kind;
                     // extract into normal register
-                    return emitFloatConvertWithFixup(AMD64Kind.DWORD, EVCVTTSD2SI, inputVal, canBeNaN, canOverflow, narrow);
+                    return emitFloatConvertWithFixup(AMD64Kind.DWORD, EVCVTTSD2SI, inputVal, canBeNaN, canOverflow, narrow, op.signedness());
+                case D2UI:
+                    assert kind == AMD64Kind.DOUBLE : kind;
+                    // extract into normal register
+                    return emitFloatConvertWithFixup(AMD64Kind.DWORD, EVCVTTSD2USI, inputVal, canBeNaN, canOverflow, narrow, op.signedness());
                 case D2L:
                     assert kind == AMD64Kind.DOUBLE : kind;
                     // extract into normal register
-                    return emitFloatConvertWithFixup(AMD64Kind.QWORD, EVCVTTSD2SQ, inputVal, canBeNaN, canOverflow, narrow);
+                    return emitFloatConvertWithFixup(AMD64Kind.QWORD, EVCVTTSD2SQ, inputVal, canBeNaN, canOverflow, narrow, op.signedness());
+                case D2UL:
+                    assert kind == AMD64Kind.DOUBLE : kind;
+                    // extract into normal register
+                    return emitFloatConvertWithFixup(AMD64Kind.QWORD, EVCVTTSD2USQ, inputVal, canBeNaN, canOverflow, narrow, op.signedness());
                 case F2D:
                     assert kind == AMD64Kind.SINGLE : kind;
                     // stores into vector register
-                    return emitConvertOp(AMD64Kind.DOUBLE, EVCVTSS2SD, inputVal);
+                    return emitConvertOp(AMD64Kind.DOUBLE, EVCVTSS2SD, inputVal, op.signedness());
                 case F2I:
                     assert kind == AMD64Kind.SINGLE : kind;
                     // extract into normal register
-                    return emitFloatConvertWithFixup(AMD64Kind.DWORD, EVCVTTSS2SI, inputVal, canBeNaN, canOverflow, narrow);
+                    return emitFloatConvertWithFixup(AMD64Kind.DWORD, EVCVTTSS2SI, inputVal, canBeNaN, canOverflow, narrow, op.signedness());
+                case F2UI:
+                    assert kind == AMD64Kind.SINGLE : kind;
+                    // extract into normal register
+                    return emitFloatConvertWithFixup(AMD64Kind.DWORD, EVCVTTSS2USI, inputVal, canBeNaN, canOverflow, narrow, op.signedness());
                 case F2L:
                     assert kind == AMD64Kind.SINGLE : kind;
                     // extract into normal register
-                    return emitFloatConvertWithFixup(AMD64Kind.QWORD, EVCVTTSS2SQ, inputVal, canBeNaN, canOverflow, narrow);
+                    return emitFloatConvertWithFixup(AMD64Kind.QWORD, EVCVTTSS2SQ, inputVal, canBeNaN, canOverflow, narrow, op.signedness());
+                case F2UL:
+                    assert kind == AMD64Kind.SINGLE : kind;
+                    // extract into normal register
+                    return emitFloatConvertWithFixup(AMD64Kind.QWORD, EVCVTTSS2USQ, inputVal, canBeNaN, canOverflow, narrow, op.signedness());
                 case I2D:
                     assert kind == AMD64Kind.DWORD : kind;
                     // stores into vector register
-                    return emitConvertOp(AMD64Kind.DOUBLE, EVCVTSI2SD, inputVal);
+                    return emitConvertOp(AMD64Kind.DOUBLE, EVCVTSI2SD, inputVal, op.signedness());
                 case I2F:
                     assert kind == AMD64Kind.DWORD : kind;
                     // stores into vector register
-                    return emitConvertOp(AMD64Kind.SINGLE, EVCVTSI2SS, inputVal);
+                    return emitConvertOp(AMD64Kind.SINGLE, EVCVTSI2SS, inputVal, op.signedness());
                 case L2D:
                     assert kind == AMD64Kind.QWORD : kind;
                     // stores into vector register
-                    return emitConvertOp(AMD64Kind.DOUBLE, EVCVTSQ2SD, inputVal);
+                    return emitConvertOp(AMD64Kind.DOUBLE, EVCVTSQ2SD, inputVal, op.signedness());
                 case L2F:
                     assert kind == AMD64Kind.QWORD : kind;
                     // stores into vector register
-                    return emitConvertOp(AMD64Kind.SINGLE, EVCVTSQ2SS, inputVal);
+                    return emitConvertOp(AMD64Kind.SINGLE, EVCVTSQ2SS, inputVal, op.signedness());
+                case UL2D:
+                    assert kind == AMD64Kind.QWORD : kind;
+                    // stores into vector register
+                    return emitConvertOp(AMD64Kind.DOUBLE, EVCVTUSQ2SD, inputVal, op.signedness());
+                case UL2F:
+                    assert kind == AMD64Kind.QWORD : kind;
+                    // stores into vector register
+                    return emitConvertOp(AMD64Kind.SINGLE, EVCVTUSQ2SS, inputVal, op.signedness());
                 default:
                     throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
             }

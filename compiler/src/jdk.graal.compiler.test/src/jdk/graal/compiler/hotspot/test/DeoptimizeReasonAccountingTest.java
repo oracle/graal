@@ -124,7 +124,7 @@ public class DeoptimizeReasonAccountingTest extends GraalCompilerTest {
             for (boolean osr : new boolean[]{false}) {
                 this.reason = r;
                 this.isOSR = osr;
-                test("deoptimizeSnippet");
+                test(getInitialOptions(), getResolvedJavaMethod("deoptimizeSnippet"), true, null, new Object[0]);
                 ProfilingInfo info = lastCompiledGraph.method().getProfilingInfo(!isOSR, isOSR);
                 int count = info.getDeoptimizationCount(reason);
                 Assert.assertEquals(String.format("reason:%s, osr:%s", r, osr), 1, count);

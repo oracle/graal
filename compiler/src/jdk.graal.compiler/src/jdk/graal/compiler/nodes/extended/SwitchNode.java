@@ -53,7 +53,9 @@ import jdk.graal.compiler.nodes.ProfileData;
 import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
 import jdk.graal.compiler.nodes.ProfileData.SwitchProbabilityData;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.vm.ci.meta.Constant;
 
 /**
@@ -67,7 +69,7 @@ import jdk.vm.ci.meta.Constant;
           sizeRationale = "We cannot estimate the code size of a switch statement without knowing the number" +
                           "of case statements.")
 // @formatter:on
-public abstract class SwitchNode extends ControlSplitNode {
+public abstract class SwitchNode extends ControlSplitNode implements Simplifiable {
 
     public static final NodeClass<SwitchNode> TYPE = NodeClass.create(SwitchNode.class);
     @Successor protected NodeSuccessorList<AbstractBeginNode> successors;
@@ -391,5 +393,14 @@ public abstract class SwitchNode extends ControlSplitNode {
 
     public int[] getKeySuccessors() {
         return keySuccessors.clone();
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        tryPullThroughSwitch(tool);
+    }
+
+    private void tryPullThroughSwitch(SimplifierTool tool) {
+        GraphUtil.tryDeDuplicateSplitSuccessors(this, tool);
     }
 }

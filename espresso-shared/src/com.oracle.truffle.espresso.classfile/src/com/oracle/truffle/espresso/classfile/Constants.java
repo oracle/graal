@@ -53,7 +53,6 @@ public final class Constants {
 
     // Not part of the spec, used internally by the VM.
     // Methods
-    public static final int ACC_FINALIZER            = 0x00010000;
     public static final int ACC_FORCE_INLINE         = 0x00020000;
     public static final int ACC_LAMBDA_FORM_COMPILED = 0x00040000;
     public static final int ACC_CALLER_SENSITIVE     = 0x00080000;
@@ -61,7 +60,9 @@ public final class Constants {
     public static final int ACC_SCOPED               = 0x00200000;
     public static final int ACC_DONT_INLINE          = 0x00400000;
     // Classes
+    public static final int ACC_FINALIZER            = 0x00010000;
     public static final int ACC_IS_HIDDEN_CLASS      = 0x04000000; // synchronized with JVM_ACC_IS_HIDDEN_CLASS
+    public static final int ACC_VALUE_BASED          = 0x00020000;
     // Fields
     public static final int ACC_STABLE               = 0x00010000;
 

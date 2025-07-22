@@ -331,7 +331,8 @@ class UnitTestRun:
 
     def run(self, suites, tasks, extraVMarguments=None, extraUnitTestArguments=None):
         for suite in suites:
-            with Task(self.name + ': hosted-product ' + suite, tasks, tags=self.tags) as t:
+            newtags = self.tags + ["unittest-" + suite]
+            with Task(self.name + ': hosted-product ' + suite, tasks, tags=newtags) as t:
                 if mx_gate.Task.verbose:
                     extra_args = ['--verbose', '--enable-timing']
                 else:
@@ -584,10 +585,10 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     # A few iterations to increase the chance of catching compilation errors
     default_iterations = 2
     daily_weekly_jobs_ratio = 2
-    scala_daily_scaling_factor = 4
+    dacapo_daily_scaling_factor = 4
     scala_dacapo_daily_scaling_factor = 10
     default_iterations_reduction = 0.5
-    scala_weekly_scaling_factor = scala_daily_scaling_factor * daily_weekly_jobs_ratio
+    dacapo_weekly_scaling_factor = dacapo_daily_scaling_factor * daily_weekly_jobs_ratio
     scala_dacapo_weekly_scaling_factor = scala_dacapo_daily_scaling_factor * daily_weekly_jobs_ratio
 
     bmSuiteArgs = ["--jvm", "server"]
@@ -607,25 +608,25 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
         if t:
             for name in dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
-                for _ in range(default_iterations * scala_daily_scaling_factor):
+                for _ in range(default_iterations * dacapo_daily_scaling_factor):
                     _gate_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('Dacapo benchmark weekly workload', tasks, tags=['dacapo_weekly'], report=task_report_component) as t:
         if t:
             for name in dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
-                for _ in range(default_iterations * scala_weekly_scaling_factor):
+                for _ in range(default_iterations * dacapo_weekly_scaling_factor):
                     _gate_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     # ensure we can also run on C2
-    with Task(prefix + 'DaCapo_C2:fop', tasks, tags=GraalTags.test, report=task_report_component) as t:
+    with Task(prefix + 'DaCapo_C2:fop', tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
         if t:
             # Strip JVMCI args from C2 execution which uses -XX:-EnableJVMCI
             c2BenchVmArgs = [a for a in benchVmArgs if 'JVMCI' not in a]
             _gate_dacapo('fop', 1, ['--jvm-config', 'default'] + c2BenchVmArgs)
 
     # ensure we can run with --enable-preview
-    with Task(prefix + 'DaCapo_enable-preview:fop', tasks, tags=GraalTags.test, report=task_report_component) as t:
+    with Task(prefix + 'DaCapo_enable-preview:fop', tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
         if t:
             _gate_dacapo('fop', 8, benchVmArgs + ['--enable-preview', '-Djdk.graal.CompilationFailureAction=ExitVM'])
 
@@ -693,7 +694,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     out = mx.OutputCapture()
     mx.run([jdk.java, '-version'], err=subprocess.STDOUT, out=out)
     if 'fastdebug' not in out.data and '-XX:+UseJVMCINativeLibrary' not in (extraVMarguments or []):
-        with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test, report=task_report_component) as t:
+        with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
             if t:
                 fd, logFile = tempfile.mkstemp()
                 os.close(fd) # Don't leak file descriptors
@@ -714,11 +715,11 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
                     os.remove(logFile)
 
     # ensure -XX:+PreserveFramePointer  still works
-    with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test, report=task_report_component) as t:
+    with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
         if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False)
 
     # stress entry barrier deopt
-    with Task(prefix + 'DaCapo_pmd:DeoptimizeNMethodBarriersALot', tasks, tags=GraalTags.test, report=task_report_component) as t:
+    with Task(prefix + 'DaCapo_pmd:DeoptimizeNMethodBarriersALot', tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
         if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+UnlockDiagnosticVMOptions', '-XX:+DeoptimizeNMethodBarriersALot'], threads=4, force_serial_gc=False)
 
 graal_unit_test_runs = [

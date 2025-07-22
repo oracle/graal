@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "7.55.2",
+  "mxversion": "7.58.9",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -551,7 +551,7 @@ suite = {
         "truffle:TRUFFLE_COMPILER",
       ],
       "allowsJavadocWarnings": True,
-      "description": "The GraalVM compiler. This can be used to speed up Graal Languages on OpenJDK distributions that do not ship the Graal compiler. To enable it, -XX:+EnableJVMCI is required and the GraalVM compiler JAR and its dependencies need to be on the --upgrade-module-path.",
+      "description": "The JAR build of the Graal compiler. This is intended to be used to speed up Graal Languages on OpenJDK distributions that do not ship the Graal compiler. To enable it, \'-XX:+EnableJVMCI\' is required and this Graal compiler JAR and its dependencies need to be on the \'--upgrade-module-path\'.", # pylint: disable=line-too-long
       "maven" : {
         "artifactId" : "compiler",
         "tag": ["default", "public"],

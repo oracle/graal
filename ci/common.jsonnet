@@ -58,6 +58,9 @@ local common_json = import "../common.json";
   } + {
     'oraclejdk24': jdk_base + common_json.jdks["oraclejdk24"] + { jdk_version:: 24 },
   } + {
+    [name]: jdk_base + common_json.jdks[name] + { jdk_version:: 25 }
+    for name in ["oraclejdk25"] + variants("labsjdk-ce-25") + variants("labsjdk-ee-25")
+  } + {
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self), jdk_name:: "jdk-latest"}
     for name in ["oraclejdk-latest"] + variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
   } + {

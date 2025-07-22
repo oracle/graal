@@ -295,6 +295,12 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         reflectionData = new ReflectionDataBuilder((SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class));
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
         ImageSingletons.add(ReflectionHostedSupport.class, reflectionData);
+
+        /*
+         * Querying Object members is allowed to enable these accesses on array classes, since those
+         * don't define any additional members.
+         */
+        reflectionData.registerClassMetadata(ConfigurationCondition.alwaysTrue(), Object.class);
     }
 
     @Override
@@ -529,9 +535,10 @@ final class ComputeInterfaceTypeID implements FieldValueTransformerWithAvailabil
             return SubstrateMethodAccessor.INTERFACE_TYPEID_UNNEEDED;
         }
 
-        HostedMethod member = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
-        if (member.getDeclaringClass().isInterface()) {
-            return member.getDeclaringClass().getTypeID();
+        HostedMethod method = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
+        HostedMethod indirectCallTarget = method.getIndirectCallTarget();
+        if (indirectCallTarget.getDeclaringClass().isInterface()) {
+            return indirectCallTarget.getDeclaringClass().getTypeID();
         }
         return SubstrateMethodAccessor.INTERFACE_TYPEID_CLASS_TABLE;
     }

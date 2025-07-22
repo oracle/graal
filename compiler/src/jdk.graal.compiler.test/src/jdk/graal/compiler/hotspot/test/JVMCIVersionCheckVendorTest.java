@@ -24,14 +24,16 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
-import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
-import org.junit.Assert;
-import org.junit.Test;
+import static jdk.graal.compiler.hotspot.JVMCIVersionCheck.DEFAULT_VENDOR_ENTRY;
 
 import java.util.Map;
 
-import static jdk.graal.compiler.hotspot.JVMCIVersionCheck.DEFAULT_VENDOR_ENTRY;
+import org.junit.Assert;
+import org.junit.Test;
+
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
+import jdk.graal.compiler.util.CollectionsUtil;
 
 /**
  * Tests that {@link JVMCIVersionCheck} can have multiple minimum versions for a given
@@ -40,9 +42,10 @@ import static jdk.graal.compiler.hotspot.JVMCIVersionCheck.DEFAULT_VENDOR_ENTRY;
  */
 public class JVMCIVersionCheckVendorTest extends GraalCompilerTest {
 
-    private static final Map<String, Map<String, JVMCIVersionCheck.Version>> VERSION_MAP = Map.of("99", Map.of(
-                    DEFAULT_VENDOR_ENTRY, JVMCIVersionCheck.createLabsJDKVersion("99+99", 1),
-                    "Vendor Specific", JVMCIVersionCheck.createLabsJDKVersion("99.0.1", 1)));
+    private static final Map<String, Map<String, JVMCIVersionCheck.Version>> VERSION_MAP = CollectionsUtil.mapOf("99",
+                    CollectionsUtil.mapOf(
+                                    DEFAULT_VENDOR_ENTRY, JVMCIVersionCheck.createLabsJDKVersion("99+99", 1),
+                                    "Vendor Specific", JVMCIVersionCheck.createLabsJDKVersion("99.0.1", 1)));
 
     private static void expect(String javaVmVendor, String expected) {
         var props = JVMCIVersionCheckTest.createTestProperties("99", null, javaVmVendor);

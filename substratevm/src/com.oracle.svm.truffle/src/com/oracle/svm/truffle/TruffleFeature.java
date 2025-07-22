@@ -868,10 +868,17 @@ public class TruffleFeature implements InternalFeature {
                                     Frame.class.getTypeName(), SubstrateOptionsParser.commandArgument(Options.TruffleCheckFrameImplementation, "-"),
                                     StringUtil.joinSingleQuoted(implementations.stream().map(m -> m.toJavaName(true)).toArray(String[]::new)));
                 } else {
-                    assert implementations.size() == 0 || implementations.iterator().next().equals(frameType.getSingleImplementor());
+                    assert implementations.isEmpty() || implementations.iterator().next().equals(frameType.getSingleImplementor()) : formatSingleImplementorError(implementations,
+                                    frameType.getSingleImplementor());
                 }
             }
         }
+    }
+
+    private static String formatSingleImplementorError(Collection<HostedType> implementations, HostedType singleImplementor) {
+        String implementationName = implementations.isEmpty() ? "null" : implementations.iterator().next().toJavaName();
+        String singleImplementorName = singleImplementor == null ? "null" : singleImplementor.toJavaName();
+        return String.format("Non-abstract Frame implementation: %s, Frame single implementor: %s", implementationName, singleImplementorName);
     }
 
     /**

@@ -55,8 +55,7 @@ public class LayeredImageHooks implements InternalFeature, FeatureSingleton {
         return ImageSingletons.lookup(LayeredImageHooks.class);
     }
 
-    public record WrittenDynamicHubInfo(DynamicHub hub, AnalysisUniverse aUniverse, HostedUniverse hUniverse, Object vTable) {
-
+    public record WrittenDynamicHubInfo(DynamicHub hub, AnalysisUniverse aUniverse, HostedUniverse hUniverse, Object vTable, int vTableOffsetInHeapRelocs) {
     }
 
     /**

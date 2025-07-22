@@ -25,7 +25,6 @@
 package jdk.graal.compiler.truffle;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,9 +34,10 @@ import jdk.graal.compiler.debug.DebugHandler;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.DebugOptions.PrintGraphTarget;
+import jdk.graal.compiler.graphio.GraphOutput;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
-import jdk.graal.compiler.graphio.GraphOutput;
+import jdk.graal.compiler.util.EconomicHashMap;
 
 @ServiceProvider(DebugHandlersFactory.class)
 public class TruffleDebugHandlersFactory implements DebugHandlersFactory {
@@ -57,7 +57,7 @@ public class TruffleDebugHandlersFactory implements DebugHandlersFactory {
             if (object instanceof TruffleAST ast && DebugOptions.PrintGraph.getValue(debug.getOptions()) != PrintGraphTarget.Disable) {
                 try {
                     var output = debug.buildOutput(GraphOutput.newBuilder(TruffleAST.AST_DUMP_STRUCTURE).blocks(TruffleAST.AST_DUMP_STRUCTURE));
-                    Map<Object, Object> properties = new HashMap<>();
+                    Map<Object, Object> properties = new EconomicHashMap<>();
                     output.beginGroup(ast, "AST", "AST", null, 0, null);
                     output.print((TruffleAST) object, properties, 0, format, arguments);
                     output.endGroup();

@@ -125,10 +125,18 @@ public interface LoweringProvider {
     boolean supportsFoldingExtendIntoAccess(ExtendableMemoryAccess access, MemoryExtendKind extendKind);
 
     /**
-     * Indicates whether this target platform supports lowering floating point conversions to and
-     * from unsigned integer.
+     * Indicates whether this target platform supports lowering floating point conversions to
+     * unsigned integer.
      */
-    default boolean supportsUnsignedFloatConvert() {
+    default boolean supportsFloatToUnsignedConvert() {
+        return false;
+    }
+
+    /**
+     * Indicates whether this target platform supports lowering conversions from unsigned integers
+     * to floating point.
+     */
+    default boolean supportsUnsignedToFloatConvert() {
         return false;
     }
 }

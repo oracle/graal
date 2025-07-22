@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,11 +38,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.nodesplitter;
 
-import com.oracle.truffle.api.nodes.SlowPathException;
+package org.graalvm.wasm.exception;
 
-public final class DFANodeSplitBailoutException extends SlowPathException {
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 
-    private static final long serialVersionUID = 29374928364982L;
+public interface ExceptionProvider {
+    AbstractTruffleException createTypeError(Failure failure, String message);
+
+    AbstractTruffleException formatTypeError(Failure failure, String format, Object... args);
+
+    AbstractTruffleException createLinkError(Failure failure, String message);
+
+    AbstractTruffleException formatLinkError(Failure failure, String format, Object... args);
 }

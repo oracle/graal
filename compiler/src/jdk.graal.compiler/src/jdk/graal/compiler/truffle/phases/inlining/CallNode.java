@@ -25,7 +25,6 @@
 package jdk.graal.compiler.truffle.phases.inlining;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -56,6 +55,7 @@ import jdk.graal.compiler.phases.contract.NodeCostUtil;
 import jdk.graal.compiler.truffle.PerformanceInformationHandler;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions.PerformanceWarningKind;
 import jdk.graal.compiler.truffle.TruffleTierContext;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.JavaConstant;
 
 @NodeInfo(nameTemplate = "{p#directCallTarget}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
@@ -417,10 +417,10 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         return debugProperties;
     }
 
-    HashMap<String, Object> getStringProperties() {
-        HashMap<Object, Object> properties = new HashMap<>();
+    Map<String, Object> getStringProperties() {
+        Map<Object, Object> properties = new EconomicHashMap<>();
         putProperties(properties);
-        HashMap<String, Object> stringProperties = new HashMap<>();
+        Map<String, Object> stringProperties = new EconomicHashMap<>();
         for (Object key : properties.keySet()) {
             stringProperties.put(key.toString(), properties.get(key));
         }

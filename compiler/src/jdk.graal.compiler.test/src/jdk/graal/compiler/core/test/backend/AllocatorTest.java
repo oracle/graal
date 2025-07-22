@@ -26,8 +26,9 @@ package jdk.graal.compiler.core.test.backend;
 
 import static jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph.INVALID_BLOCK_ID;
 
-import java.util.HashSet;
+import java.util.Set;
 
+import jdk.graal.compiler.util.EconomicHashSet;
 import org.junit.Assert;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
@@ -65,7 +66,7 @@ public class AllocatorTest extends BackendTest {
     private class RegisterStats {
 
         public final LIR lir;
-        public HashSet<Register> registers = new HashSet<>();
+        public Set<Register> registers = new EconomicHashSet<>();
         public int regRegMoves;
         public int spillMoves;
 

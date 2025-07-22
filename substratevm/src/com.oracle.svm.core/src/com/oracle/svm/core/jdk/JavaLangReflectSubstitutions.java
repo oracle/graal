@@ -387,7 +387,7 @@ final class Target_java_lang_reflect_Array {
     @Substitute
     private static Object newArray(Class<?> componentType, int length)
                     throws NegativeArraySizeException {
-        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+        if (MetadataTracer.enabled()) {
             MetadataTracer.singleton().traceReflectionType(componentType.arrayType().getName());
         }
         return KnownIntrinsics.unvalidatedNewArray(componentType, length);
@@ -418,7 +418,7 @@ final class Target_java_lang_reflect_Array {
         for (int i = 0; i < dimensions.length; i++) {
             arrayHub = arrayHub.getArrayHub();
             if (arrayHub == null) {
-                throw MissingReflectionRegistrationUtils.errorForArray(componentType, dimensions.length);
+                throw MissingReflectionRegistrationUtils.reportArrayInstantiation(componentType, dimensions.length);
             }
         }
 

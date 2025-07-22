@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.annotate.Alias;
@@ -439,7 +440,7 @@ final class Target_java_io_FileSystem_BuildTime {
 class UserDirAccessors {
     @SuppressWarnings("unused")
     static String getUserDir(Target_java_io_FileSystem_BuildTime that) {
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
+        if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
             /*
              * Note that on Windows, we normalize the property value (JDK-8198997) and do not use
              * the `StaticProperty.userDir()` like the rest (JDK-8066709).

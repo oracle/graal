@@ -34,7 +34,6 @@ import java.util.EnumSet;
 import java.util.Formattable;
 import java.util.FormattableFlags;
 import java.util.Formatter;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -60,6 +59,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -1697,7 +1697,7 @@ public abstract class Node implements Cloneable, Formattable {
      * the ideal graph visualizer).
      */
     public final Map<Object, Object> getDebugProperties() {
-        return getDebugProperties(new HashMap<>());
+        return getDebugProperties(new EconomicHashMap<>());
     }
 
     /**

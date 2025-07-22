@@ -191,7 +191,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
 
     @Override
     public Class<?> getProxyClass(ClassLoader loader, Class<?>... interfaces) {
-        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+        if (MetadataTracer.enabled()) {
             List<String> interfaceNames = new ArrayList<>(interfaces.length);
             for (Class<?> iface : interfaces) {
                 interfaceNames.add(iface.getName());
@@ -203,7 +203,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
         ConditionalRuntimeValue<Object> clazzOrError = proxyCache.get(key);
 
         if (clazzOrError == null || !clazzOrError.getConditions().satisfied()) {
-            throw MissingReflectionRegistrationUtils.errorForProxy(interfaces);
+            throw MissingReflectionRegistrationUtils.reportProxyAccess(interfaces);
         }
         if (clazzOrError.getValue() instanceof Throwable) {
             throw new GraalError((Throwable) clazzOrError.getValue());

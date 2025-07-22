@@ -44,6 +44,7 @@ import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.ConfigurationType;
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -56,7 +57,6 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
 
@@ -97,15 +97,32 @@ public final class MetadataTracer {
      */
     private volatile ConfigurationSet config;
 
-    @Fold
+    /**
+     * Returns the singleton object, which is only available if tracing is enabled at build time.
+     * <p>
+     * We use {@code @AlwaysInline} and not {@code @Fold} because the latter eagerly evaluates the
+     * method, which fails when the singleton is unavailable.
+     */
+    @AlwaysInline("avoid null check on singleton")
     public static MetadataTracer singleton() {
         return ImageSingletons.lookup(MetadataTracer.class);
     }
 
     /**
+     * Returns whether tracing is enabled. Tracing code should be guarded by this condition.
+     * <p>
+     * This condition is force-inlined so that when tracing support is not included at build time
+     * the condition folds to false and the tracing code itself will fold away.
+     */
+    @AlwaysInline("tracing should fold away when disabled")
+    public static boolean enabled() {
+        return Options.MetadataTracingSupport.getValue() && singleton().enabledAtRunTime();
+    }
+
+    /**
      * Returns whether tracing is enabled at run time (using {@code -XX:RecordMetadata}).
      */
-    public boolean enabled() {
+    private boolean enabledAtRunTime() {
         VMError.guarantee(Options.MetadataTracingSupport.getValue());
         return options != null;
     }
@@ -140,7 +157,7 @@ public final class MetadataTracer {
     }
 
     private ConfigurationType traceReflectionTypeImpl(ConfigurationTypeDescriptor typeDescriptor) {
-        assert enabled();
+        assert enabledAtRunTime();
         ConfigurationSet configurationSet = getConfigurationSetForTracing();
         if (configurationSet != null) {
             return configurationSet.getReflectionConfiguration().getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), typeDescriptor);
@@ -155,7 +172,7 @@ public final class MetadataTracer {
      *         (e.g., during shutdown).
      */
     public ConfigurationType traceJNIType(String className) {
-        assert enabled();
+        assert enabledAtRunTime();
         ConfigurationType result = traceReflectionType(className);
         if (result != null) {
             result.setJniAccessible();
@@ -164,10 +181,11 @@ public final class MetadataTracer {
     }
 
     /**
-     * Marks the given resource within the given (optional) module as reachable.
+     * Marks the given resource within the given (optional) module as reachable. Use this method to
+     * trace resource lookups covered by image metadata (including negative queries).
      */
     public void traceResource(String resourceName, String moduleName) {
-        assert enabled();
+        assert enabledAtRunTime();
         ConfigurationSet configurationSet = getConfigurationSetForTracing();
         if (configurationSet != null) {
             configurationSet.getResourceConfiguration().addGlobPattern(UnresolvedConfigurationCondition.alwaysTrue(), resourceName, moduleName);
@@ -178,7 +196,7 @@ public final class MetadataTracer {
      * Marks the given resource bundle within the given locale as reachable.
      */
     public void traceResourceBundle(String baseName) {
-        assert enabled();
+        assert enabledAtRunTime();
         ConfigurationSet configurationSet = getConfigurationSetForTracing();
         if (configurationSet != null) {
             configurationSet.getResourceConfiguration().addBundle(UnresolvedConfigurationCondition.alwaysTrue(), baseName, List.of());
@@ -189,7 +207,7 @@ public final class MetadataTracer {
      * Marks the given type as serializable.
      */
     public void traceSerializationType(String className) {
-        assert enabled();
+        assert enabledAtRunTime();
         ConfigurationType result = traceReflectionType(className);
         if (result != null) {
             result.setSerializable();

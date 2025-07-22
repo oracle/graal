@@ -40,6 +40,7 @@ import java.util.function.Function;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
+import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler.PrefetchMode;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
@@ -481,6 +482,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             case "nop" -> AArch64MacroAssembler::nop;
             case "isb" -> AArch64MacroAssembler::isb;
             case "yield" -> AArch64MacroAssembler::pause;
+            case "sb" -> AArch64Assembler::sb;
             default -> throw GraalError.shouldNotReachHere("Unknown OnSpinWaitInst " + config.onSpinWaitInst);
         };
     }

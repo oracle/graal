@@ -97,6 +97,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.OpenTypeWorldFeature;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
@@ -180,6 +181,16 @@ public class UniverseBuilder {
                 assert origHMethod != null;
                 HostedMethod previous = hUniverse.methods.put(aMethod, origHMethod);
                 assert previous == null : "Overwriting analysis key";
+            }
+
+            // see SharedMethod#getIndirectCallTarget for more information
+            if (!SubstrateOptions.useClosedTypeWorldHubLayout()) {
+                OpenTypeWorldFeature.computeIndirectCallTargets(hUniverse, hUniverse.methods);
+            } else {
+                hUniverse.methods.forEach((aMethod, hMethod) -> {
+                    assert aMethod.isOriginalMethod();
+                    hMethod.setIndirectCallTarget(hMethod);
+                });
             }
 
             HostedConfiguration.initializeDynamicHubLayout(hMetaAccess);
@@ -597,8 +608,10 @@ public class UniverseBuilder {
 
         // Reserve "synthetic" fields in this class (but not subclasses) below.
 
-        // A reference to a {@link java.util.concurrent.locks.ReentrantLock for "synchronized" or
-        // Object.wait() and Object.notify() and friends.
+        /*
+         * A reference to a JavaMonitor instance for "synchronized" or Object.wait() and
+         * Object.notify() and friends.
+         */
         if (clazz.needMonitorField()) {
             int size = layout.getReferenceSize();
             int endOffset = usedBytes.length();
@@ -912,6 +925,7 @@ public class UniverseBuilder {
         for (HostedType type : hUniverse.getTypes()) {
             hUniverse.hostVM().recordActivity();
 
+            // See also similar logic in DynamicHub.allocate
             int layoutHelper;
             int monitorOffset = 0;
             int identityHashOffset = 0;

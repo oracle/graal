@@ -29,7 +29,6 @@ import static com.oracle.svm.core.graal.nodes.WriteCodeBaseNode.writeCurrentVMCo
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
-import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_BEGIN;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
@@ -73,7 +72,6 @@ import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
 import com.oracle.svm.core.c.locale.LocaleSupport;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.ImageCodeInfo;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
@@ -117,7 +115,6 @@ import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
-import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.PauseNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
@@ -213,8 +210,16 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     @NeverInline("Heap base register is set in caller, prevent reads from floating before that.")
     private static void initCodeBase() {
-        ImageCodeInfo imageCodeInfo = MultiLayeredImageSingleton.getForLayer(ImageCodeInfo.class, MultiLayeredImageSingleton.INITIAL_LAYER_NUMBER);
-        CodePointer codeBase = imageCodeInfo.getCodeStart();
+        CodePointer codeBase;
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            /* Layered ImageSingleton handling is not ready yet at this point. */
+            Pointer initialLayerSection = ImageLayerSection.getInitialLayerSection().get();
+            int codeStartEntry = ImageLayerSection.getEntryOffset(ImageLayerSection.SectionEntries.CODE_START);
+            codeBase = initialLayerSection.readWord(codeStartEntry);
+        } else {
+            ImageCodeInfo imageCodeInfo = MultiLayeredImageSingleton.getForLayer(ImageCodeInfo.class, MultiLayeredImageSingleton.INITIAL_LAYER_NUMBER);
+            codeBase = imageCodeInfo.getCodeStart();
+        }
         writeCurrentVMCodeBase(codeBase);
     }
 
@@ -260,57 +265,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         return runtimeCallInitializeIsolate(INITIALIZE_ISOLATE, parameters);
     }
 
-    private static final CGlobalData<Word> IMAGE_HEAP_PATCHING_STATE = CGlobalDataFactory.createWord();
-
-    private static final class ImageHeapPatchingState {
-        static final Word UNINITIALIZED = Word.zero();
-        static final Word IN_PROGRESS = Word.unsigned(1);
-        static final Word SUCCESSFUL = Word.unsigned(2);
-    }
-
-    @Uninterruptible(reason = "Thread state not yet set up.")
-    private static void layeredPatchHeapRelativeRelocations() {
-        Word heapPatchStateAddr = IMAGE_HEAP_PATCHING_STATE.get();
-        boolean firstIsolate = heapPatchStateAddr.logicCompareAndSwapWord(0, ImageHeapPatchingState.UNINITIALIZED, ImageHeapPatchingState.IN_PROGRESS, NamedLocationIdentity.OFF_HEAP_LOCATION);
-
-        if (!firstIsolate) {
-            // spin-wait for first isolate
-            Word state = heapPatchStateAddr.readWordVolatile(0, LocationIdentity.ANY_LOCATION);
-            while (state.equal(ImageHeapPatchingState.IN_PROGRESS)) {
-                PauseNode.pause();
-                state = heapPatchStateAddr.readWordVolatile(0, LocationIdentity.ANY_LOCATION);
-            }
-
-            /*
-             * Patching has already been successfully completed, nothing needs to be done.
-             */
-            return;
-        }
-
-        Pointer currentSection = ImageLayerSection.getInitialLayerSection().get();
-        Word heapBegin = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_BEGIN));
-
-        Word patches = ImageLayerSection.getHeapRelativeRelocationsStart().get();
-        int endOffset = Integer.BYTES + (patches.readInt(0) * Integer.BYTES);
-
-        int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
-        int offset = Integer.BYTES;
-        while (offset < endOffset) {
-            int heapOffset = patches.readInt(offset);
-            int referenceEncoding = patches.readInt(offset + Integer.BYTES);
-
-            if (referenceSize == 4) {
-                heapBegin.writeInt(heapOffset, referenceEncoding);
-            } else {
-                heapBegin.writeLong(heapOffset, referenceEncoding);
-            }
-
-            offset += 2 * Integer.BYTES;
-        }
-
-        heapPatchStateAddr.writeWordVolatile(0, ImageHeapPatchingState.SUCCESSFUL);
-    }
-
     /**
      * After parsing the isolate arguments in
      * {@link IsolateArgumentParser#parse(CEntryPointCreateIsolateParameters, IsolateArguments)} the
@@ -330,10 +284,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         boolean validPageSize = UnsignedUtils.isAMultiple(imagePageSize, runtimePageSize);
         if (!validPageSize) {
             return CEntryPointErrors.PAGE_SIZE_CHECK_FAILED;
-        }
-
-        if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            layeredPatchHeapRelativeRelocations();
         }
 
         LocaleSupport.initialize();

@@ -121,12 +121,15 @@ final class ProcessIsolateThreadSupport {
     private static final int INITIAL_REQUEST_CACHE_SIZE = 1 << 10;
     private static final int MAX_REQUEST_CACHE_SIZE = 1 << 20;
 
+    private static final int MAX_INTERRUPTED_ATTACH_RETRIES = 10;
+
     private final DispatchSupport dispatchSupport;
     private final ServerSocketChannel local;
     private UnixDomainSocketAddress peer;
     private Thread listenThread;
     private final Set<ThreadChannel> workerThreads = ConcurrentHashMap.newKeySet();
     private final Set<ThreadChannel> attachedThreads = ConcurrentHashMap.newKeySet();
+    private final boolean initiator;
     private volatile State state;
 
     private ProcessIsolateThreadSupport(DispatchSupport dispatchSupport,
@@ -135,6 +138,7 @@ final class ProcessIsolateThreadSupport {
         this.dispatchSupport = Objects.requireNonNull(dispatchSupport);
         this.local = Objects.requireNonNull(local);
         this.peer = peer;
+        this.initiator = peer == null;
         this.state = State.NEW;
     }
 
@@ -157,6 +161,10 @@ final class ProcessIsolateThreadSupport {
              */
         }
         return true;
+    }
+
+    boolean isInitiator() {
+        return initiator;
     }
 
     /**
@@ -316,15 +324,29 @@ final class ProcessIsolateThreadSupport {
      * and {@code Context.interrupt()} interrupt threads.
      */
     private SocketChannel connectPeer() throws IOException {
-        while (true) {
-            SocketChannel c = SocketChannel.open(StandardProtocolFamily.UNIX);
-            try {
-                c.connect(peer);
-                return c;
-            } catch (ClosedByInterruptException closed) {
-                // Retry on interrupt to avoid leaking cancellation semantics into
-                // IsolateDeathHandler.
-                // Closing or interrupting contexts may interrupt this thread.
+        int interruptCount = 0;
+        try {
+            while (true) {
+                SocketChannel c = SocketChannel.open(StandardProtocolFamily.UNIX);
+                try {
+                    c.connect(peer);
+                    return c;
+                } catch (ClosedByInterruptException closed) {
+                    if (interruptCount++ < MAX_INTERRUPTED_ATTACH_RETRIES) {
+                        // Clear the thread interrupt status before retry
+                        Thread.interrupted();
+                        // Retry on interrupt to avoid leaking cancellation semantics into
+                        // IsolateDeathHandler. Closing or interrupting contexts may interrupt this
+                        // thread.
+                    } else {
+                        // Fail with IsolateDeathException on repeated interrupts to avoid livelock.
+                        throw closed;
+                    }
+                }
+            }
+        } finally {
+            if (interruptCount > 0 && !Thread.currentThread().isInterrupted()) {
+                Thread.currentThread().interrupt();
             }
         }
     }
@@ -609,7 +631,7 @@ final class ProcessIsolateThreadSupport {
                  * retrieve it, we would need to use a native library that calls
                  * pthread_get_stacksize_np(pthread_self()).
                  */
-                Thread workerThread = new Thread(null, createDispatchRunnable(peerThreadChannel), info.name(), 2097152);
+                Thread workerThread = new Thread(null, new DispatchRunnable(peerThreadChannel), info.name(), 2097152);
                 workerThread.setPriority(info.priority);
                 workerThread.setDaemon(info.daemon);
                 workerThread.start();
@@ -667,27 +689,6 @@ final class ProcessIsolateThreadSupport {
             worker.workerThread.interrupt();
             worker.workerThread.join();
         }
-    }
-
-    private Runnable createDispatchRunnable(SocketChannel peerThreadChannel) {
-        return () -> {
-            Thread currentThread = Thread.currentThread();
-            try (ThreadChannel threadChannel = new ThreadChannel(this, peerThreadChannel, currentThread)) {
-                workerThreads.add(threadChannel);
-                try {
-                    dispatchSupport.onWorkerThreadStarted(currentThread, threadChannel);
-                    try {
-                        threadChannel.dispatch();
-                    } finally {
-                        dispatchSupport.onWorkerThreadTerminated(currentThread, threadChannel);
-                    }
-                } finally {
-                    workerThreads.remove(threadChannel);
-                }
-            } catch (IOException ioe) {
-                // Closes peerThreadChannel to notify client
-            }
-        };
     }
 
     private static void writeCloseRequest(SocketChannel channel) throws IOException {
@@ -834,5 +835,34 @@ final class ProcessIsolateThreadSupport {
 
     @SuppressWarnings("serial")
     private static final class CloseException extends IOException {
+    }
+
+    final class DispatchRunnable implements Runnable {
+
+        private final SocketChannel peerThreadChannel;
+
+        private DispatchRunnable(SocketChannel peerThreadChannel) {
+            this.peerThreadChannel = peerThreadChannel;
+        }
+
+        @Override
+        public void run() {
+            Thread currentThread = Thread.currentThread();
+            try (ThreadChannel threadChannel = new ThreadChannel(ProcessIsolateThreadSupport.this, peerThreadChannel, currentThread)) {
+                workerThreads.add(threadChannel);
+                try {
+                    dispatchSupport.onWorkerThreadStarted(currentThread, threadChannel);
+                    try {
+                        threadChannel.dispatch();
+                    } finally {
+                        dispatchSupport.onWorkerThreadTerminated(currentThread, threadChannel);
+                    }
+                } finally {
+                    workerThreads.remove(threadChannel);
+                }
+            } catch (IOException ioe) {
+                // Closes peerThreadChannel to notify client
+            }
+        }
     }
 }

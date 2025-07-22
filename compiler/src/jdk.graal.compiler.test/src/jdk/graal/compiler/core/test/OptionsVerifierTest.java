@@ -49,7 +49,6 @@ import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.classfile.instruction.LineNumber;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDescs;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -61,6 +60,7 @@ import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.util.EconomicHashSet;
 
 /**
  * Verifies a class declaring one or more {@linkplain OptionKey options} has a class initializer
@@ -74,7 +74,7 @@ public class OptionsVerifierTest {
 
     @Test
     public void verifyOptions() throws IOException, ReflectiveOperationException {
-        HashSet<Class<?>> checked = new HashSet<>();
+        Set<Class<?>> checked = new EconomicHashSet<>();
         for (OptionDescriptors opts : OptionsParser.getOptionsLoader()) {
             for (OptionDescriptor desc : opts) {
                 Class<?> descDeclaringClass = desc.getDeclaringClass();

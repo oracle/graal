@@ -29,9 +29,9 @@ import java.lang.management.MonitorInfo;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.junit.Assert;
@@ -48,6 +48,7 @@ import jdk.graal.compiler.hotspot.phases.OnStackReplacementPhase;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -194,7 +195,7 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
         }
     }
 
-    HashMap<String, HashSet<A>> listeners = new HashMap<>();
+    Map<String, HashSet<A>> listeners = new EconomicHashMap<>();
 
     public synchronized ReturnValue synchronizedSnippet() {
         /*

@@ -41,7 +41,8 @@ import mx_benchmark
 import mx_sdk_benchmark
 from mx_benchmark import BenchmarkSuite, DataPoints, Rule, Vm, SingleBenchmarkExecutionContext
 from mx._impl.mx_codeowners import _load_toml_from_fd
-from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS, Layer, StageName, parse_prefixed_args
+from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS, parse_prefixed_args
+from mx_util import StageName, Layer
 
 _suite = mx.suite("substratevm")
 
@@ -378,7 +379,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
 
     def build_assertions(self, benchmark: str, is_gate: bool) -> List[str]:
         # We cannot enable assertions along with emitting a build report for layered images, due to GR-65751
-        if self.stages_info.current_stage.is_layered:
+        if self.stages_info.current_stage.is_layered():
             return []
         return super().build_assertions(benchmark, is_gate)
 
@@ -465,7 +466,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
                 # Make agent run short
                 cmd += self._short_load_testing_phases()
                 # Add explicit agent stage args
-                cmd += suite._extra_run_options
+                cmd += self._energyTrackerExtraOptions(suite)
                 cmd += parse_prefixed_args("-Dnative-image.benchmark.extra-jvm-arg=", suite.execution_context.bmSuiteArgs)
                 cmd += parse_prefixed_args("-Dnative-image.benchmark.extra-agent-run-arg=", suite.execution_context.bmSuiteArgs)
                 return cmd
@@ -488,7 +489,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             ni_barista_cmd = [suite.baristaHarnessPath(), "--mode", "native", "--app-executable", app_image]
             if barista_workload is not None:
                 ni_barista_cmd.append(f"--config={barista_workload}")
-            ni_barista_cmd += suite.runArgs(suite.execution_context.bmSuiteArgs) + suite._extra_run_options
+            ni_barista_cmd += suite.runArgs(suite.execution_context.bmSuiteArgs) + self._energyTrackerExtraOptions(suite)
             ni_barista_cmd += parse_prefixed_args("-Dnative-image.benchmark.extra-jvm-arg=", suite.execution_context.bmSuiteArgs)
             if stage.is_instrument():
                 # Make instrument run short
@@ -629,12 +630,13 @@ class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
 
     def _read_gos_scenario_version(self):
         """
-        Dynamically gets the version of the graalos-load-tester based on git tags,
-        or reverts to default 'unknown' otherwise.
+        Dynamically gets the version of the graalos-load-tester based on the pyproject.toml file,
+        falls back to 'unknown' if unsuccessful.
         """
-        # Revisit this method once we rework versioning for graalos-load-tester (GR-59986)
         try:
-            return mx.GitConfig().git_command(self.gos_scenario_home, ["describe", "--tags", "--abbrev=0"]).strip()
+            out = mx.OutputCapture()
+            mx.run([self._gos_scenario_command(), "--version"], out=out, env=self.get_stage_env())
+            return out.data.strip()
         except:
             return self.defaultSuiteVersion()
 
@@ -731,9 +733,6 @@ class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
 
     def default_stages(self) -> List[str]:
         return ["instrument-image", "instrument-run", "image", "run"]
-
-    def register_tracker(self, name, tracker_type):
-        mx.log(f"Ignoring the registration of '{name}' tracker as it was disabled for {self.__class__.__name__}.")
 
     def all_command_line_args_are_vm_args(self):
         return True
@@ -850,7 +849,7 @@ class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
 
     def build_assertions(self, benchmark: str, is_gate: bool) -> List[str]:
         # We cannot enable assertions along with emitting a build report for layered images, due to GR-65751
-        if self.stages_info.current_stage.is_layered:
+        if self.stages_info.current_stage.is_layered():
             return []
         return super().build_assertions(benchmark, is_gate)
 

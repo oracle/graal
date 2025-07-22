@@ -58,8 +58,6 @@ import org.graalvm.wasm.predefined.spectest.SpectestModule;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.predefined.wasi.WasiModule;
 
-import com.oracle.truffle.api.CompilerAsserts;
-
 public abstract class BuiltinModule {
     private static final Map<String, BuiltinModule> predefinedModules = Map.of(
                     "emscripten", new EmscriptenModule(),
@@ -68,13 +66,12 @@ public abstract class BuiltinModule {
                     "spectest", new SpectestModule(),
                     "go", new GoModule());
 
-    public static WasmInstance createBuiltinInstance(WasmLanguage language, WasmStore store, String name, String predefinedModuleName) {
-        CompilerAsserts.neverPartOfCompilation();
+    public static BuiltinModule requireBuiltinModule(String predefinedModuleName) {
         final BuiltinModule builtinModule = predefinedModules.get(predefinedModuleName);
         if (builtinModule == null) {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Unknown predefined module: " + predefinedModuleName);
         }
-        return builtinModule.createInstance(language, store, name);
+        return builtinModule;
     }
 
     protected BuiltinModule() {
@@ -82,7 +79,7 @@ public abstract class BuiltinModule {
 
     protected abstract WasmModule createModule(WasmLanguage language, WasmContext context, String name);
 
-    protected WasmInstance createInstance(WasmLanguage language, WasmStore store, String name) {
+    public WasmInstance createInstance(WasmLanguage language, WasmStore store, String name) {
         final WasmModule module = language.getOrCreateBuiltinModule(this, bm -> createModule(language, store.context(), name));
 
         final WasmInstance instance = new WasmInstance(store, module);

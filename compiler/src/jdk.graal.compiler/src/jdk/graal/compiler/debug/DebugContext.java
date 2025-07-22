@@ -39,7 +39,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Formatter;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -57,6 +56,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -2452,7 +2452,7 @@ public final class DebugContext implements AutoCloseable {
     }
 
     public Map<MetricKey, Long> getMetricsSnapshot() {
-        Map<MetricKey, Long> res = new HashMap<>();
+        Map<MetricKey, Long> res = new EconomicHashMap<>();
         for (MetricKey key : KeyRegistry.getKeys()) {
             int index = ((AbstractKey) key).getIndex();
             if (index < metricValues.length && metricValues[index] != 0) {

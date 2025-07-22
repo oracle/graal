@@ -65,6 +65,7 @@ public final class WasmContextOptions {
     @CompilationFinal private boolean constantRandomGet;
     @CompilationFinal private boolean directByteBufferMemoryAccess;
     @CompilationFinal private boolean debugTestMode;
+    @CompilationFinal private boolean evalReturnsInstance;
 
     private final OptionValues optionValues;
 
@@ -94,6 +95,7 @@ public final class WasmContextOptions {
         this.constantRandomGet = readBooleanOption(WasmOptions.WasiConstantRandomGet);
         this.directByteBufferMemoryAccess = readBooleanOption(WasmOptions.DirectByteBufferMemoryAccess);
         this.debugTestMode = readBooleanOption(WasmOptions.DebugTestMode);
+        this.evalReturnsInstance = readBooleanOption(WasmOptions.EvalReturnsInstance);
     }
 
     private void checkOptionDependencies() {
@@ -173,6 +175,10 @@ public final class WasmContextOptions {
         return debugTestMode;
     }
 
+    public boolean evalReturnsInstance() {
+        return evalReturnsInstance;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -190,6 +196,7 @@ public final class WasmContextOptions {
         hash = 53 * hash + (this.constantRandomGet ? 1 : 0);
         hash = 53 * hash + (this.directByteBufferMemoryAccess ? 1 : 0);
         hash = 53 * hash + (this.debugTestMode ? 1 : 0);
+        hash = 53 * hash + (this.evalReturnsInstance ? 1 : 0);
         return hash;
     }
 
@@ -244,6 +251,9 @@ public final class WasmContextOptions {
             return false;
         }
         if (this.debugTestMode != other.debugTestMode) {
+            return false;
+        }
+        if (this.evalReturnsInstance != other.evalReturnsInstance) {
             return false;
         }
         return true;

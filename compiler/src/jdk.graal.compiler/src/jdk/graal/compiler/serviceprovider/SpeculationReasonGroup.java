@@ -25,10 +25,10 @@
 package jdk.graal.compiler.serviceprovider;
 
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -79,14 +79,14 @@ public final class SpeculationReasonGroup {
         return GraalServices.createSpeculationReason(id, name, context);
     }
 
-    private static final Set<Class<?>> SUPPORTED_EXACT_TYPES = new HashSet<>(Arrays.asList(
+    private static final Set<Class<?>> SUPPORTED_EXACT_TYPES = CollectionsUtil.setOf(
                     String.class,
                     int.class,
                     long.class,
                     float.class,
                     double.class,
                     byte[].class,
-                    BytecodePosition.class));
+                    BytecodePosition.class);
 
     private static boolean isOfSupportedType(Class<?> c) {
         if (SUPPORTED_EXACT_TYPES.contains(c)) {
