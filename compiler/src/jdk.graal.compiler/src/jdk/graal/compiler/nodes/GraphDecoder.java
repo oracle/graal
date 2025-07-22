@@ -64,7 +64,6 @@ import jdk.graal.compiler.graph.NodeSuccessorList;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.GraphDecoder.MethodScope;
-import jdk.graal.compiler.nodes.GraphDecoder.ProxyPlaceholder;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.nodes.extended.SwitchNode;
@@ -546,9 +545,6 @@ public class GraphDecoder {
             for (ValueNode value : state.values()) {
                 if (value == null) {
                     h = h * 31 + 1234;
-                } else if (value instanceof ProxyPlaceholder p) {
-                    // Use the valueHashCode to avoid unwrapping the proxy placeholder
-                    h = h * 31 + p.valueHashCode;
                 } else {
                     h = h * 31 + value.hashCode();
                 }
@@ -583,18 +579,8 @@ public class GraphDecoder {
                 final ValueNode thisValue = thisValues.get(i);
                 final ValueNode otherValue = otherValues.get(i);
 
-                if (thisValue instanceof ProxyPlaceholder thisP && otherValue instanceof ProxyPlaceholder otherP) {
-                    // Use the equalsHashCode to avoid unwrapping the proxy placeholders
-                    if (thisP.equalsHashCode != otherP.equalsHashCode) {
-                        return false;
-                    }
-                    if (ProxyPlaceholder.unwrap(thisP.value) != ProxyPlaceholder.unwrap(otherP.value)) {
-                        return false;
-                    }
-                } else {
-                    if (ProxyPlaceholder.unwrap(thisValue) != ProxyPlaceholder.unwrap(otherValue)) {
-                        return false;
-                    }
+                if (thisValue != otherValue) {
+                    return false;
                 }
             }
 
@@ -652,118 +638,6 @@ public class GraphDecoder {
             super(invoke, contextType, invokeOrderId, stateAfterOrderId, nextOrderId, exceptionOrderId, exceptionStateOrderId, exceptionNextOrderId);
             this.callTargetOrderId = callTargetOrderId;
             this.intrinsifiedMethodHandle = intrinsifiedMethodHandle;
-        }
-    }
-
-    protected static final class ProxyPlaceholderOrderIdCache {
-        protected static final ProxyPlaceholderOrderIdCache INVALID = new ProxyPlaceholderOrderIdCache();
-
-        /**
-         * The latest node orderIds of this proxy placeholder in the created nodes of a
-         * {@link LoopScope}. Since the node orderIds in the created nodes rarely change, this array
-         * allows for faster replacement of proxy placeholders during merge explode.
-         */
-        protected final int[] nodeOrderIds;
-
-        /**
-         * The latest node orderIds of this proxy placeholder in the initial nodes of a
-         * {@link LoopScope}. Since the node orderIDs in the initial nodes rarely change, this array
-         * allows for faster replacement of proxy placeholders during merge explode.
-         */
-        protected final int[] initialNodeOrderIds;
-
-        /**
-         * Whether {@link ProxyPlaceholderOrderIdCache#nodeOrderIds} and
-         * {@link ProxyPlaceholderOrderIdCache#initialNodeOrderIds} still represent the latest node
-         * orderIds of a {@link ProxyPlaceholder}. This flag needs to be invalided, if the
-         * {@link ProxyPlaceholder} is added to a new node orderId or removed from an existing one.
-         */
-        protected boolean valid;
-
-        protected ProxyPlaceholderOrderIdCache(int[] nodeOrderIds, int[] initialNodeOrderIds) {
-            this.nodeOrderIds = nodeOrderIds;
-            this.initialNodeOrderIds = initialNodeOrderIds;
-            this.valid = nodeOrderIds != null && initialNodeOrderIds != null;
-        }
-
-        private ProxyPlaceholderOrderIdCache() {
-            this.nodeOrderIds = null;
-            this.initialNodeOrderIds = null;
-            this.valid = false;
-        }
-
-        void invalidate() {
-            this.valid = false;
-        }
-    }
-
-    /**
-     * A node that is created during
-     * {@link jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind#MERGE_EXPLODE
-     * loop explosion} that can later be replaced by a ProxyNode if {@link LoopDetector loop
-     * detection} finds out that the value is defined in the loop, but used outside the loop.
-     */
-    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
-    protected static final class ProxyPlaceholder extends FloatingNode implements Canonicalizable {
-        public static final NodeClass<ProxyPlaceholder> TYPE = NodeClass.create(ProxyPlaceholder.class);
-
-        @Input ValueNode value;
-        @Input(InputType.Association) Node proxyPoint;
-
-        /**
-         * Cached version of the noder orderIds of this node.
-         */
-        protected final ProxyPlaceholderOrderIdCache nodeOrderIdCache;
-
-        /**
-         * Cached version of the hash code of the original value (the node returned by
-         * {@link ProxyPlaceholder#unwrap(ValueNode)} when creating this proxy placeholder) intended
-         * to speed up hash lookups.
-         */
-        protected final int valueHashCode;
-
-        /**
-         * Cached version of the hash code of the current value (the node returned by
-         * {@link ProxyPlaceholder#unwrap(ValueNode)}) intended to speed up comparisons.
-         */
-        protected int equalsHashCode;
-
-        public ProxyPlaceholder(ValueNode value, MergeNode proxyPoint) {
-            this(value, proxyPoint, ProxyPlaceholderOrderIdCache.INVALID);
-        }
-
-        public ProxyPlaceholder(ValueNode value, MergeNode proxyPoint, ProxyPlaceholderOrderIdCache nodeOrderIdCache) {
-            super(TYPE, value.stamp(NodeView.DEFAULT));
-            this.value = value;
-            this.proxyPoint = proxyPoint;
-            this.nodeOrderIdCache = nodeOrderIdCache;
-            this.valueHashCode = value instanceof ProxyPlaceholder p ? p.valueHashCode : value.hashCode();
-            this.equalsHashCode = valueHashCode;
-
-        }
-
-        void setValue(ValueNode value) {
-            updateUsages(this.value, value);
-            this.value = value;
-            this.equalsHashCode = value instanceof ProxyPlaceholder p ? p.equalsHashCode : value.hashCode();
-        }
-
-        @Override
-        public Node canonical(CanonicalizerTool tool) {
-            if (tool.allUsagesAvailable()) {
-                /* The node is always unnecessary after graph decoding. */
-                return value;
-            } else {
-                return this;
-            }
-        }
-
-        public static ValueNode unwrap(ValueNode value) {
-            ValueNode result = value;
-            while (result instanceof ProxyPlaceholder) {
-                result = ((ProxyPlaceholder) result).value;
-            }
-            return result;
         }
     }
 
@@ -1277,6 +1151,11 @@ public class GraphDecoder {
             }
         }
 
+        /*
+         * Merge explosion: When doing merge-explode PE loops are detected after partial evaluation
+         * in a dedicated steps. Therefore, we create merge nodes instead of loop begins and loop
+         * exits and later replace them with the detected loop begin and loop exit nodes.
+         */
         MergeNode merge = graph.add(new MergeNode());
         methodScope.loopExplosionMerges.add(merge);
 
@@ -1288,47 +1167,6 @@ public class GraphDecoder {
                 }
                 methodScope.loopExplosionHead = merge;
             }
-
-            /*
-             * Proxy generation and merge explosion: When doing merge-explode PE loops are detected
-             * after partial evaluation in a dedicated steps. Therefore, we create merge nodes
-             * instead of loop begins and loop exits and later replace them with the detected loop
-             * begin and loop exit nodes.
-             *
-             * However, in order to create the correct loop proxies, all values alive at a merge
-             * created for a loop begin/loop exit replacement merge, we create so called proxy
-             * placeholder nodes. These nodes are attached to a merge and proxy the corresponding
-             * node. Later, when we replace a merge with a loop exit, we visit all live nodes at
-             * that loop exit and replace the proxy placeholders with real value proxy nodes.
-             *
-             * Since we cannot (this would explode immediately) proxy all nodes for every merge
-             * during explosion, we only create nodes at the loop explosion begins for nodes that
-             * are alive at the framestate of the respective loop begin. This is fine as long as all
-             * values proxied out of a loop are alive at the loop header. However, this is not true
-             * for all values (imagine do-while loops). Thus, we may create, in very specific
-             * patterns, unschedulable graphs since we miss the creation of proxy nodes.
-             *
-             * There is currently no straight forward solution to this problem, thus we shift the
-             * work to the implementor side where such patterns can typically be easily fixed by
-             * creating loop phis and assigning them correctly.
-             */
-            FrameState.ValueFunction valueFunction = new FrameState.ValueFunction() {
-
-                @Override
-                public ValueNode apply(int index, ValueNode frameStateValue) {
-                    if (frameStateValue == null || frameStateValue.isConstant() || !graph.isNew(methodScope.methodStartMark, frameStateValue)) {
-                        return frameStateValue;
-                    } else {
-                        final ProxyPlaceholder proxyPlaceholder = createProxyPlaceholderForFrameStateValue(loopScope, merge, frameStateValue);
-                        addProxyPlaceholderToLoopScope(loopScope, proxyPlaceholder);
-                        return proxyPlaceholder;
-                    }
-                }
-            };
-            FrameState newFrameState = graph.add(frameState.duplicate(valueFunction));
-
-            frameState.replaceAtUsagesAndDelete(newFrameState);
-            frameState = newFrameState;
         }
 
         loopBegin.replaceAtUsagesAndDelete(merge);
@@ -1344,67 +1182,7 @@ public class GraphDecoder {
         }
     }
 
-    /**
-     * Creates a new {@link ProxyPlaceholder} for the given merge and frame-state value. If the
-     * given frame-state value already is a proxy placeholder, the new proxy placeholder reuses its
-     * node orderId cache, if it is still valid. Otherwise, it creates a new node orderId cache for
-     * the new proxy placeholder.
-     *
-     * @param loopScope The current loop scope
-     * @param merge The current merge node
-     * @param frameStateValue The frame-state value to create a proxy placeholder for
-     * @return A new proxy placeholder referencing the given frame-state value.
-     */
-    private ProxyPlaceholder createProxyPlaceholderForFrameStateValue(LoopScope loopScope, MergeNode merge, ValueNode frameStateValue) {
-        final ProxyPlaceholderOrderIdCache cache;
-        if (frameStateValue instanceof ProxyPlaceholder p && p.nodeOrderIdCache.valid) {
-            /*
-             * If the node orderId cache of the proxy placeholder is still valid, we do not have to
-             * search the complete list and instead reuse the cached ids.
-             */
-            cache = p.nodeOrderIdCache;
-        } else {
-            final IntArrayBuilder initialNodeOrderIds = new IntArrayBuilder();
-            final IntArrayBuilder nodeOrderIds = new IntArrayBuilder();
-            /*
-             * We do not have the orderId of the value, so we need to search through the complete
-             * list of nodes to find matches and populate the node orderId cache.
-             */
-            if (loopScope.initialCreatedNodes != null) {
-                for (int i = 0; i < loopScope.initialCreatedNodes.length; i++) {
-                    if (loopScope.initialCreatedNodes[i] == frameStateValue) {
-                        initialNodeOrderIds.add(i);
-                    }
-                }
-            }
-            for (int i = 0; i < loopScope.createdNodes.length; i++) {
-                if (loopScope.getNode(i) == frameStateValue) {
-                    nodeOrderIds.add(i);
-                }
-            }
-            cache = new ProxyPlaceholderOrderIdCache(nodeOrderIds.toArray(), initialNodeOrderIds.toArray());
-        }
-        return graph.unique(new ProxyPlaceholder(frameStateValue, merge, cache));
-    }
-
-    /**
-     * Iterates over all entries in the node orderId cache of a {@link ProxyPlaceholder} and inserts
-     * the proxy placeholder at the given node orderIds in the initial and created nodes of the loop
-     * scope.
-     *
-     * @param loopScope The loop scope to update
-     * @param proxyPlaceholder The proxy placeholder to insert
-     */
-    private static void addProxyPlaceholderToLoopScope(LoopScope loopScope, ProxyPlaceholder proxyPlaceholder) {
-        if (loopScope.initialCreatedNodes != null) {
-            for (int orderId : proxyPlaceholder.nodeOrderIdCache.initialNodeOrderIds) {
-                loopScope.clearNode(orderId, proxyPlaceholder);
-            }
-        }
-        for (int orderId : proxyPlaceholder.nodeOrderIdCache.nodeOrderIds) {
-            loopScope.setNode(orderId, proxyPlaceholder);
-        }
-    }
+   
 
     /**
      * Hook for subclasses.
@@ -1439,8 +1217,7 @@ public class GraphDecoder {
             trigger = LoopScopeTrigger.LOOP_BEGIN_UNROLLING;
             nextIterations = loopScope.nextIterationsFromUnrolling;
         }
-        if (trigger != null) {
-
+        if (trigger != null) { 
             final LoopScope nextIterationScope = createNextLoopIterationScope(methodScope, loopScope, trigger, nextIterations);
             checkLoopExplosionIteration(methodScope, nextIterationScope);
             nextIterations.addLast(nextIterationScope);
@@ -1503,7 +1280,7 @@ public class GraphDecoder {
      * Hook for subclasses for early canonicalization of IfNodes and IntegerSwitchNodes.
      *
      * "Early" means that this is called before successor stubs creation. Therefore, all successors
-     * are null a this point, and calling any method using them without prior manual initialization
+     * are null at this point, and calling any method using them without prior manual initialization
      * will fail.
      *
      * @param methodScope The current method.
@@ -1614,9 +1391,6 @@ public class GraphDecoder {
             ValueNode phiInput = proxy.value();
 
             if (loopExitPlaceholder != null) {
-                if (!phiInput.isConstant()) {
-                    phiInput = graph.unique(new ProxyPlaceholder(phiInput, loopExitPlaceholder));
-                }
                 registerNode(loopScope, proxyOrderId, phiInput, true, false);
             }
 
@@ -2118,19 +1892,6 @@ public class GraphDecoder {
         assert allowNull || node != null;
         assert allowOverwrite || lookupNode(loopScope, nodeOrderId) == null;
 
-        /*
-         * Check for proxy placeholder node orderId invalidations. If the proxy placeholder gets
-         * assigned to or is removed from a node orderId, we invalidate its node order id cache.
-         * Since this cache can be shared among proxy placeholders referencing the same value, a
-         * single call to invalidate deals with all proxy placeholders of the same chain.
-         */
-        if (lookupNode(loopScope, nodeOrderId) instanceof ProxyPlaceholder p) {
-            p.nodeOrderIdCache.invalidate();
-        }
-        if (node instanceof ProxyPlaceholder p) {
-            p.nodeOrderIdCache.invalidate();
-        }
-
         loopScope.setNode(nodeOrderId, node);
         if (loopScope.methodScope.inliningLogDecoder != null) {
             loopScope.methodScope.inliningLogDecoder.registerNode(loopScope.methodScope.inliningLog, node, nodeOrderId);
@@ -2159,11 +1920,6 @@ public class GraphDecoder {
      * @param rootMethodScope The current method.
      */
     protected void cleanupGraph(MethodScope rootMethodScope) {
-        for (MergeNode merge : graph.getNodes(MergeNode.TYPE)) {
-            for (ProxyPlaceholder placeholder : merge.usages().filter(ProxyPlaceholder.class).snapshot()) {
-                placeholder.replaceAndDelete(placeholder.value);
-            }
-        }
         assert verifyEdges();
     }
 
@@ -2626,72 +2382,32 @@ class LoopDetector implements Runnable {
 
     /**
      * During graph decoding, we create a FrameState for every exploded loop iteration. This is
-     * mostly the state that we want, we only need to tweak it a little bit: we need to insert the
-     * appropriate ProxyNodes for all values that are created inside the loop and that flow out of
-     * the loop.
+     * mostly the state that we want, we only need to tweak it a little bit to account for phis.
      */
     private void assignLoopExitState(LoopExitNode loopExit, AbstractMergeNode loopExplosionMerge, AbstractEndNode loopExplosionEnd) {
         FrameState oldState = loopExplosionMerge.stateAfter();
 
-        /* Collect all nodes that are in the FrameState at the LoopBegin. */
-        EconomicSet<Node> loopBeginValues = EconomicSet.create(Equivalence.IDENTITY);
-        for (FrameState state = loopExit.loopBegin().stateAfter(); state != null; state = state.outerFrameState()) {
-            for (ValueNode value : state.values()) {
-                if (value != null && !value.isConstant() && !loopExit.loopBegin().isPhiAtMerge(value)) {
-                    loopBeginValues.add(ProxyPlaceholder.unwrap(value));
-                }
-            }
-        }
-
-        /* The framestate may contain a value multiple times */
-        EconomicMap<ValueNode, ValueNode> old2NewValues = EconomicMap.create();
         FrameState.ValueFunction valueFunction = new FrameState.ValueFunction() {
-
             @Override
-            public ValueNode apply(int index, ValueNode v) {
-                if (v != null && old2NewValues.containsKey(v)) {
-                    return old2NewValues.get(v);
-                }
-
-                ValueNode value = v;
-                ValueNode realValue = ProxyPlaceholder.unwrap(value);
-
+            public ValueNode apply(int index, ValueNode value) {
                 /*
                  * The LoopExit is inserted before the existing merge, i.e., separately for every
                  * branch that leads to the merge. So for phi functions of the merge, we need to
                  * take the input that corresponds to our branch.
                  */
-                if (realValue instanceof PhiNode && loopExplosionMerge.isPhiAtMerge(realValue)) {
-                    value = ((PhiNode) realValue).valueAt(loopExplosionEnd);
-                    realValue = ProxyPlaceholder.unwrap(value);
+                if (loopExplosionMerge.isPhiAtMerge(value)) {
+                    assert value instanceof PhiNode : "isPhiAtMerge should guarantee that value is a PhiNode";
+                    return ((PhiNode) value).valueAt(loopExplosionEnd);
                 }
-
-                if (realValue == null || realValue.isConstant() || loopBeginValues.contains(realValue) || !graph.isNew(methodScope.methodStartMark, realValue)) {
-                    /*
-                     * value v, input to the old state, can already be a proxy placeholder node to
-                     * another, dominating loop exit, we must not take the unwrapped value in this
-                     * case but the properly proxied one
-                     */
-                    if (v != null) {
-                        old2NewValues.put(v, v);
-                    }
-                    return v;
-                } else {
-                    /*
-                     * The node is not in the FrameState of the LoopBegin, i.e., it is a value
-                     * computed inside the loop.
-                     */
-                    GraalError.guarantee(value instanceof ProxyPlaceholder && ((ProxyPlaceholder) value).proxyPoint == loopExplosionMerge,
-                                    "Value flowing out of loop, but we are not prepared to insert a ProxyNode");
-
-                    ProxyPlaceholder proxyPlaceholder = (ProxyPlaceholder) value;
-                    ValueProxyNode proxy = ProxyNode.forValue(proxyPlaceholder.value, loopExit);
-                    proxyPlaceholder.setValue(proxy);
-                    old2NewValues.put(v, proxy);
-                    return proxy;
-                }
+                return value;
             }
         };
+
+        FrameState newState = oldState.duplicate(valueFunction);
+
+        assert loopExit.stateAfter() == null;
+        loopExit.setStateAfter(graph.add(newState));
+    }
 
         FrameState newState = oldState.duplicate(valueFunction);
 
@@ -2744,7 +2460,7 @@ class LoopDetector implements Runnable {
             ValueNode curLoopValue = loopValues.get(i);
             ValueNode curExplosionHeadValue = explosionHeadValues.get(i);
 
-            if (ProxyPlaceholder.unwrap(curLoopValue) != ProxyPlaceholder.unwrap(curExplosionHeadValue)) {
+            if (curLoopValue != curExplosionHeadValue) {
                 if (loopVariableIndex != -1) {
                     throw bailout("must have only one variable that is changed in loop. " + loopValue + " != " + explosionHeadValue + " and " + curLoopValue + " != " + curExplosionHeadValue);
                 }
