@@ -608,7 +608,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         if (recommendInline && !node.isGenerateInline() && mode == ParseMode.DEFAULT && node.isGenerateCached()) {
 
-            AnnotationMirror annotation = getGenerateInlineAnnotation(node.getTemplateType());
+            AnnotationMirror annotation = getGenerateInlineAnnotation(node.getTemplateType().asType());
             if (annotation == null) {
 
                 NodeSizeEstimate estimate = computeInlinedSizeEstimate(FlatNodeGenFactory.createInlinedFields(node));
@@ -948,7 +948,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         VariableElement instanceField = getNodeFirstInstanceField(node.getTemplateType());
         if (instanceField != null) {
             if (emitErrors) {
-                node.addError(getGenerateInlineAnnotation(node.getTemplateType()), null, "Failed to generate code for @%s: The node must not declare any instance variables. " +
+                node.addError(getGenerateInlineAnnotation(node.getTemplateType().asType()), null, "Failed to generate code for @%s: The node must not declare any instance variables. " +
                                 "Found instance variable %s.%s. Remove instance variable to resolve this.",
                                 getSimpleName(types.GenerateInline),
                                 getSimpleName(instanceField.getEnclosingElement().asType()), instanceField.getSimpleName().toString());
@@ -1018,7 +1018,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     static boolean isGenerateInline(TypeElement templateType) {
-        AnnotationMirror annotation = getGenerateInlineAnnotation(templateType);
+        AnnotationMirror annotation = getGenerateInlineAnnotation(templateType.asType());
         Boolean value = Boolean.FALSE;
         if (annotation != null) {
             value = ElementUtils.getAnnotationValue(Boolean.class, annotation, "value");
@@ -1026,8 +1026,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return value;
     }
 
-    static AnnotationMirror getGenerateInlineAnnotation(TypeElement templateType) {
-        return findGenerateAnnotation(templateType.asType(), ProcessorContext.getInstance().getTypes().GenerateInline);
+    static AnnotationMirror getGenerateInlineAnnotation(TypeMirror type) {
+        return findGenerateAnnotation(type, ProcessorContext.getInstance().getTypes().GenerateInline);
     }
 
     public static AnnotationMirror findGenerateAnnotation(TypeMirror nodeType, DeclaredType annotationType) {
@@ -4155,7 +4155,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return hasInlineMethod(cache);
         }
         if (ElementUtils.isAssignable(parameterType.asType(), types.Node)) {
-            AnnotationMirror inlineAnnotation = getGenerateInlineAnnotation(parameterType);
+            AnnotationMirror inlineAnnotation = getGenerateInlineAnnotation(parameterType.asType());
             if (inlineAnnotation != null) {
                 return getAnnotationValue(Boolean.class, inlineAnnotation, "value") &&
                                 getAnnotationValue(Boolean.class, inlineAnnotation, "inlineByDefault");
@@ -4164,16 +4164,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return false;
     }
 
-    private boolean isGenerateInlineFalse(CacheExpression cache) {
-        TypeElement parameterType = ElementUtils.castTypeElement(cache.getParameter().getType());
-        if (parameterType == null) {
+    private static boolean isGenerateInlineFalse(CacheExpression cache) {
+        TypeMirror type = cache.getParameter().getType();
+        if (!NodeCodeGenerator.isSpecializedNode(type)) {
             return false;
         }
-        if (ElementUtils.isAssignable(parameterType.asType(), types.Node)) {
-            AnnotationMirror inlineAnnotation = getGenerateInlineAnnotation(parameterType);
-            if (inlineAnnotation != null && getAnnotationValue(Boolean.class, inlineAnnotation, "value") == false) {
-                return true;
-            }
+        AnnotationMirror inlineAnnotation = getGenerateInlineAnnotation(type);
+        if (inlineAnnotation != null && getAnnotationValue(Boolean.class, inlineAnnotation, "value") == false) {
+            return true;
         }
         return false;
     }
