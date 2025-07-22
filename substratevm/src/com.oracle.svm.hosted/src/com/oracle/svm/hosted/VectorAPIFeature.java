@@ -116,9 +116,16 @@ public class VectorAPIFeature implements InternalFeature {
         int maxVectorBits = Math.max(VectorAPISupport.singleton().getMaxVectorBytes() * Byte.SIZE, 64);
 
         Class<?>[] vectorElements = new Class<?>[]{float.class, double.class, byte.class, short.class, int.class, long.class};
-        String[] vectorElementNames = new String[]{"Float", "Double", "Byte", "Short", "Int", "Long"};
-        int[] elementSizes = new int[]{32, 64, 8, 16, 32, 64};
+        LaneType[] laneTypes = new LaneType[vectorElements.length];
+        for (int i = 0; i < vectorElements.length; i++) {
+            laneTypes[i] = LaneType.fromVectorElement(vectorElements[i], i + 1);
+        }
+
         String[] vectorSizes = new String[]{"64", "128", "256", "512", "Max"};
+        Shape[] shapes = new Shape[vectorSizes.length];
+        for (int i = 0; i < vectorSizes.length; i++) {
+            shapes[i] = new Shape(vectorSizes[i], i + 1);
+        }
 
         Object maxBitShape = ReflectionUtil.readStaticField(vectorShapeClass, "S_Max_BIT");
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(vectorShapeClass, "vectorBitSize"),
@@ -131,7 +138,7 @@ public class VectorAPIFeature implements InternalFeature {
          * named using an explicit bit size, e.g., S_256_BIT rather than S_Max_BIT.
          */
         int maxSizeIndex = Math.min(Integer.numberOfTrailingZeros(maxVectorBits / 64), vectorSizes.length - 1);
-        String maxSizeName = vectorSizes[maxSizeIndex];
+        String maxSizeName = shapes[maxSizeIndex].shapeName();
         Object preferredShape = ReflectionUtil.readStaticField(vectorShapeClass, "S_" + maxSizeName + "_BIT");
 
         /*
@@ -141,67 +148,53 @@ public class VectorAPIFeature implements InternalFeature {
          */
         EconomicMap<Object, AbstractSpeciesStableFields> speciesStableFields = EconomicMap.create();
 
+        Class<?> laneTypeClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".LaneType");
+        UNSAFE.ensureClassInitialized(laneTypeClass);
+
         Class<?> speciesClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".AbstractSpecies");
-        Object speciesCache = Array.newInstance(speciesClass, 7, 6);
+        Object speciesCache = Array.newInstance(speciesClass, ReflectionUtil.readStaticField(laneTypeClass, "SK_LIMIT"), ReflectionUtil.readStaticField(vectorShapeClass, "SK_LIMIT"));
         UNSAFE.ensureClassInitialized(speciesClass);
 
-        for (Class<?> vectorElement : vectorElements) {
-            String elementName = vectorElement.getName().substring(0, 1).toUpperCase(Locale.ROOT) + vectorElement.getName().substring(1);
-
-            String generalVectorName = VECTOR_API_PACKAGE_NAME + "." + elementName + "Vector";
-            Class<?> vectorClass = ReflectionUtil.lookupClass(generalVectorName);
-            UNSAFE.ensureClassInitialized(vectorClass);
-            Method species = ReflectionUtil.lookupMethod(vectorClass, "species", vectorShapeClass);
-            access.registerFieldValueTransformer(ReflectionUtil.lookupField(vectorClass, "SPECIES_PREFERRED"),
+        for (LaneType laneType : laneTypes) {
+            Method species = ReflectionUtil.lookupMethod(laneType.vectorClass(), "species", vectorShapeClass);
+            access.registerFieldValueTransformer(ReflectionUtil.lookupField(laneType.vectorClass(), "SPECIES_PREFERRED"),
                             (receiver, originalValue) -> ReflectionUtil.invokeMethod(species, null, preferredShape));
 
-            String maxVectorName = VECTOR_API_PACKAGE_NAME + "." + elementName + "MaxVector";
-            Class<?> maxVectorClass = ReflectionUtil.lookupClass(maxVectorName);
-            int laneCount = VectorAPISupport.singleton().getMaxLaneCount(vectorElement);
+            Class<?> maxVectorClass = vectorClass(laneType, shapes[shapes.length - 1]);
+            int laneCount = VectorAPISupport.singleton().getMaxLaneCount(laneType.elementClass());
             access.registerFieldValueTransformer(ReflectionUtil.lookupField(maxVectorClass, "VSIZE"),
                             (receiver, originalValue) -> maxVectorBits);
             access.registerFieldValueTransformer(ReflectionUtil.lookupField(maxVectorClass, "VLENGTH"),
                             (receiver, originalValue) -> laneCount);
             access.registerFieldValueTransformer(ReflectionUtil.lookupField(maxVectorClass, "ZERO"),
-                            (receiver, originalValue) -> makeZeroVector(maxVectorClass, vectorElement, laneCount));
+                            (receiver, originalValue) -> makeZeroVector(maxVectorClass, laneType.elementClass(), laneCount));
             access.registerFieldValueTransformer(ReflectionUtil.lookupField(maxVectorClass, "IOTA"),
-                            (receiver, originalValue) -> makeIotaVector(maxVectorClass, vectorElement, laneCount));
+                            (receiver, originalValue) -> makeIotaVector(maxVectorClass, laneType.elementClass(), laneCount));
         }
-
-        Class<?> laneTypeClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".LaneType");
-        UNSAFE.ensureClassInitialized(laneTypeClass);
 
         Class<?> valueLayoutClass = ReflectionUtil.lookupClass("java.lang.foreign.ValueLayout");
         Method valueLayoutVarHandle = ReflectionUtil.lookupMethod(valueLayoutClass, "varHandle");
 
-        for (int laneTypeIndex = 0; laneTypeIndex < vectorElementNames.length; laneTypeIndex++) {
-            String elementName = vectorElementNames[laneTypeIndex];
-            Class<?> vectorElement = vectorElements[laneTypeIndex];
-            int laneTypeSwitchKey = laneTypeIndex + 1;
-            String vectorClassName = VECTOR_API_PACKAGE_NAME + "." + elementName + "Vector";
-            Class<?> vectorClass = ReflectionUtil.lookupClass(vectorClassName);
-
+        for (LaneType laneType : laneTypes) {
             // Ensure VarHandle used by memorySegmentGet/Set is initialized.
             // Java 22+: ValueLayout valueLayout = (...); valueLayout.varHandle();
-            Object valueLayout = ReflectionUtil.readStaticField(vectorClass, "ELEMENT_LAYOUT");
+            Object valueLayout = ReflectionUtil.readStaticField(laneType.vectorClass(), "ELEMENT_LAYOUT");
             ReflectionUtil.invokeMethod(valueLayoutVarHandle, valueLayout);
 
-            for (int vectorShapeIndex = 0; vectorShapeIndex < vectorSizes.length; vectorShapeIndex++) {
-                String size = vectorSizes[vectorShapeIndex];
-                int vectorShapeSwitchKey = vectorShapeIndex + 1;
-                String fieldName = "SPECIES_" + size.toUpperCase(Locale.ROOT);
-                Object species = ReflectionUtil.readStaticField(vectorClass, fieldName);
+            for (Shape shape : shapes) {
+                String fieldName = "SPECIES_" + shape.shapeName().toUpperCase(Locale.ROOT);
+                Object species = ReflectionUtil.readStaticField(laneType.vectorClass(), fieldName);
 
-                int vectorBitSize = vectorShapeIndex == vectorSizes.length - 1 ? maxVectorBits : Integer.parseInt(size);
+                int vectorBitSize = shape.shapeName().equals("Max") ? maxVectorBits : Integer.parseInt(shape.shapeName());
                 int vectorByteSize = vectorBitSize / Byte.SIZE;
-                int laneCount = vectorShapeIndex == vectorSizes.length - 1 ? VectorAPISupport.singleton().getMaxLaneCount(vectorElement) : vectorBitSize / elementSizes[laneTypeIndex];
+                int laneCount = shape.shapeName().equals("Max") ? VectorAPISupport.singleton().getMaxLaneCount(laneType.elementClass()) : vectorBitSize / laneType.elementBits();
                 int laneCountLog2P1 = Integer.numberOfTrailingZeros(laneCount) + 1;
                 Method makeDummyVector = ReflectionUtil.lookupMethod(speciesClass, "makeDummyVector");
                 Object dummyVector = ReflectionUtil.invokeMethod(makeDummyVector, species);
-                Object laneType = ReflectionUtil.readStaticField(laneTypeClass, elementName.toUpperCase(Locale.ROOT));
-                speciesStableFields.put(species, new AbstractSpeciesStableFields(laneCount, laneCountLog2P1, vectorBitSize, vectorByteSize, dummyVector, laneType));
+                Object laneTypeObject = ReflectionUtil.readStaticField(laneTypeClass, laneType.elementName().toUpperCase(Locale.ROOT));
+                speciesStableFields.put(species, new AbstractSpeciesStableFields(laneCount, laneCountLog2P1, vectorBitSize, vectorByteSize, dummyVector, laneTypeObject));
 
-                Array.set(Array.get(speciesCache, laneTypeSwitchKey), vectorShapeSwitchKey, species);
+                Array.set(Array.get(speciesCache, laneType.switchKey()), shape.switchKey(), species);
             }
         }
 
@@ -218,20 +211,15 @@ public class VectorAPIFeature implements InternalFeature {
          * intrinsify operations, we may need to access information about a type before the analysis
          * has seen it.
          */
-        for (Class<?> vectorElement : vectorElements) {
-            String elementName = vectorElement.getName().substring(0, 1).toUpperCase(Locale.ROOT) + vectorElement.getName().substring(1);
-            for (String size : vectorSizes) {
-                String baseName = elementName + size;
-                String vectorClassName = VECTOR_API_PACKAGE_NAME + "." + baseName + "Vector";
-                Class<?> shuffleClass = ReflectionUtil.lookupClass(vectorClassName + "$" + baseName + "Shuffle");
-                UNSAFE.ensureClassInitialized(shuffleClass);
+        for (LaneType laneType : laneTypes) {
+            for (Shape shape : shapes) {
+                Class<?> shuffleClass = vectorShuffleClass(laneType, shape);
+                Class<?> maskClass = vectorMaskClass(laneType, shape);
                 access.registerAsUsed(shuffleClass);
-                Class<?> maskClass = ReflectionUtil.lookupClass(vectorClassName + "$" + baseName + "Mask");
-                UNSAFE.ensureClassInitialized(maskClass);
                 access.registerAsUsed(maskClass);
-                if (size.equals("Max")) {
-                    int laneCount = VectorAPISupport.singleton().getMaxLaneCount(vectorElement);
-                    Class<?> shuffleElement = (vectorElement == float.class ? int.class : vectorElement == double.class ? long.class : vectorElement);
+                if (shape.shapeName().equals("Max")) {
+                    int laneCount = VectorAPISupport.singleton().getMaxLaneCount(laneType.elementClass());
+                    Class<?> shuffleElement = (laneType.elementClass() == float.class ? int.class : laneType.elementClass() == double.class ? long.class : laneType.elementClass());
                     access.registerFieldValueTransformer(ReflectionUtil.lookupField(shuffleClass, "VLENGTH"),
                                     (receiver, originalValue) -> laneCount);
                     access.registerFieldValueTransformer(ReflectionUtil.lookupField(shuffleClass, "IOTA"),
@@ -247,32 +235,26 @@ public class VectorAPIFeature implements InternalFeature {
         /* Warm up caches of arithmetic and conversion operations. */
         WarmupData warmupData = new WarmupData();
 
-        for (String elementName : vectorElementNames) {
-            String vectorClassName = VECTOR_API_PACKAGE_NAME + "." + elementName + "Vector";
-            Class<?> vectorClass = ReflectionUtil.lookupClass(vectorClassName);
-            UNSAFE.ensureClassInitialized(vectorClass);
-            warmupImplCache(vectorClass, "UN_IMPL", "unaryOperations", warmupData);
-            warmupImplCache(vectorClass, "BIN_IMPL", "binaryOperations", warmupData);
-            warmupImplCache(vectorClass, "TERN_IMPL", "ternaryOperations", warmupData);
-            warmupImplCache(vectorClass, "REDUCE_IMPL", "reductionOperations", warmupData);
-            if (!elementName.equals("Float") && !elementName.equals("Double")) {
-                warmupImplCache(vectorClass, "BIN_INT_IMPL", "broadcastIntOperations", warmupData);
+        for (LaneType laneType : laneTypes) {
+            warmupImplCache(laneType.vectorClass(), "UN_IMPL", "unaryOperations", warmupData);
+            warmupImplCache(laneType.vectorClass(), "BIN_IMPL", "binaryOperations", warmupData);
+            warmupImplCache(laneType.vectorClass(), "TERN_IMPL", "ternaryOperations", warmupData);
+            warmupImplCache(laneType.vectorClass(), "REDUCE_IMPL", "reductionOperations", warmupData);
+            if (!laneType.elementName().equals("Float") && !laneType.elementName().equals("Double")) {
+                warmupImplCache(laneType.vectorClass(), "BIN_INT_IMPL", "broadcastIntOperations", warmupData);
             }
         }
 
         /* Warm up caches for mapping between lane types, used by shuffles. */
         Method asIntegral = ReflectionUtil.lookupMethod(speciesClass, "asIntegral");
         Method asFloating = ReflectionUtil.lookupMethod(speciesClass, "asFloating");
-        for (String elementName : vectorElementNames) {
-            String vectorClassName = VECTOR_API_PACKAGE_NAME + "." + elementName + "Vector";
-            Class<?> vectorClass = ReflectionUtil.lookupClass(vectorClassName);
-            UNSAFE.ensureClassInitialized(vectorClass);
-            for (String size : vectorSizes) {
-                String fieldName = "SPECIES_" + size.toUpperCase(Locale.ROOT);
-                Object species = ReflectionUtil.readStaticField(vectorClass, fieldName);
+        for (LaneType laneType : laneTypes) {
+            for (Shape shape : shapes) {
+                String fieldName = "SPECIES_" + shape.shapeName().toUpperCase(Locale.ROOT);
+                Object species = ReflectionUtil.readStaticField(laneType.vectorClass(), fieldName);
                 try {
                     asIntegral.invoke(species);
-                    if (elementName.equals("Int") || elementName.equals("Long")) {
+                    if (laneType.elementName().equals("Int") || laneType.elementName().equals("Long")) {
                         asFloating.invoke(species);
                     }
                 } catch (IllegalAccessException | InvocationTargetException ex) {
@@ -288,29 +270,65 @@ public class VectorAPIFeature implements InternalFeature {
         if (DeoptimizationSupport.enabled()) {
             /* Build a table of payload type descriptors for deoptimization. */
             VectorAPIDeoptimizationSupport deoptSupport = new VectorAPIDeoptimizationSupport();
-            for (Class<?> vectorElement : vectorElements) {
-                int elementBytes = JavaKind.fromJavaClass(vectorElement).getByteCount();
-                String elementName = vectorElement.getName().substring(0, 1).toUpperCase(Locale.ROOT) + vectorElement.getName().substring(1);
-                for (String size : vectorSizes) {
-                    int vectorLength = size.equals("Max")
-                                    ? VectorAPISupport.singleton().getMaxLaneCount(vectorElement)
-                                    : (Integer.parseInt(size) / Byte.SIZE) / elementBytes;
-                    String baseName = elementName + size;
-                    String vectorClassName = VECTOR_API_PACKAGE_NAME + "." + baseName + "Vector";
+            for (LaneType laneType : laneTypes) {
+                int elementBytes = laneType.elementBits() >> 3;
+                for (Shape shape : shapes) {
+                    int vectorLength = shape.shapeName().equals("Max")
+                                    ? VectorAPISupport.singleton().getMaxLaneCount(laneType.elementClass())
+                                    : (Integer.parseInt(shape.shapeName()) / Byte.SIZE) / elementBytes;
+                    Class<?> vectorClass = vectorClass(laneType, shape);
+                    deoptSupport.putLayout(vectorClass, new VectorAPIDeoptimizationSupport.PayloadLayout(laneType.elementClass(), vectorLength));
 
-                    Class<?> vectorClass = ReflectionUtil.lookupClass(vectorClassName);
-                    deoptSupport.putLayout(vectorClass, new VectorAPIDeoptimizationSupport.PayloadLayout(vectorElement, vectorLength));
-
-                    Class<?> shuffleClass = ReflectionUtil.lookupClass(vectorClassName + "$" + baseName + "Shuffle");
-                    Class<?> shuffleElement = (vectorElement == float.class ? int.class : vectorElement == double.class ? long.class : vectorElement);
+                    Class<?> shuffleClass = vectorShuffleClass(laneType, shape);
+                    Class<?> shuffleElement = (laneType.elementClass() == float.class ? int.class : laneType.elementClass() == double.class ? long.class : laneType.elementClass());
                     deoptSupport.putLayout(shuffleClass, new VectorAPIDeoptimizationSupport.PayloadLayout(shuffleElement, vectorLength));
 
-                    Class<?> maskClass = ReflectionUtil.lookupClass(vectorClassName + "$" + baseName + "Mask");
+                    Class<?> maskClass = vectorMaskClass(laneType, shape);
                     deoptSupport.putLayout(maskClass, new VectorAPIDeoptimizationSupport.PayloadLayout(boolean.class, vectorLength));
                 }
             }
             ImageSingletons.add(VectorAPIDeoptimizationSupport.class, deoptSupport);
         }
+    }
+
+    private static Class<?> vectorClass(LaneType laneType, Shape shape) {
+        String baseName = laneType.elementName() + shape.shapeName();
+        String vectorClassName = VECTOR_API_PACKAGE_NAME + "." + baseName + "Vector";
+        Class<?> vectorClass = ReflectionUtil.lookupClass(vectorClassName);
+        UNSAFE.ensureClassInitialized(vectorClass);
+        return vectorClass;
+    }
+
+    private static Class<?> vectorShuffleClass(LaneType laneType, Shape shape) {
+        String baseName = laneType.elementName() + shape.shapeName();
+        String vectorClassName = VECTOR_API_PACKAGE_NAME + "." + baseName + "Vector";
+        Class<?> shuffleClass = ReflectionUtil.lookupClass(vectorClassName + "$" + baseName + "Shuffle");
+        UNSAFE.ensureClassInitialized(shuffleClass);
+        return shuffleClass;
+    }
+
+    private static Class<?> vectorMaskClass(LaneType laneType, Shape shape) {
+        String baseName = laneType.elementName() + shape.shapeName();
+        String vectorClassName = VECTOR_API_PACKAGE_NAME + "." + baseName + "Vector";
+        Class<?> maskClass = ReflectionUtil.lookupClass(vectorClassName + "$" + baseName + "Mask");
+        UNSAFE.ensureClassInitialized(maskClass);
+        return maskClass;
+    }
+
+    private record LaneType(Class<?> elementClass, Class<?> vectorClass, String elementName, int elementBits, int switchKey) {
+
+        private static LaneType fromVectorElement(Class<?> elementClass, int switchKey) {
+            String elementName = elementClass.getName().substring(0, 1).toUpperCase(Locale.ROOT) + elementClass.getName().substring(1);
+            String generalVectorName = VECTOR_API_PACKAGE_NAME + "." + elementName + "Vector";
+            Class<?> vectorClass = ReflectionUtil.lookupClass(generalVectorName);
+            UNSAFE.ensureClassInitialized(vectorClass);
+            int elementBits = JavaKind.fromJavaClass(elementClass).getBitCount();
+            return new LaneType(elementClass, vectorClass, elementName, elementBits, switchKey);
+        }
+    }
+
+    private record Shape(String shapeName, int switchKey) {
+
     }
 
     private record AbstractSpeciesStableFields(int laneCount, int laneCountLog2P1, int vectorBitSize, int vectorByteSize, Object dummyVector, Object laneType) {

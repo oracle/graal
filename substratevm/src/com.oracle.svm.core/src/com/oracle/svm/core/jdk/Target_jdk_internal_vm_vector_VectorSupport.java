@@ -29,7 +29,6 @@ import java.lang.foreign.ValueLayout;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
-import jdk.internal.vm.annotation.ForceInline;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.AlwaysInline;
@@ -123,8 +122,13 @@ final class Target_jdk_incubator_vector_VectorOperators {
 
         @Alias Object[] cache;
 
+        /*
+         * We substitute ImplCache#find to remove the call to isNonCapturingLambda. In the process,
+         * we simplify the cache lookup by removing lazy cache initialization as we precompute the
+         * cache.
+         */
         @Substitute
-        @ForceInline
+        @AlwaysInline("Vector API fast-path")
         @SuppressWarnings({"unchecked", "unused"})
         public T find(OP op, int opc, IntFunction<T> supplier) {
             T fn = (T) cache[opc];
@@ -142,8 +146,10 @@ final class Target_jdk_incubator_vector_AbstractSpecies {
 
     @Alias private Target_jdk_incubator_vector_AbstractVector dummyVector;
 
-    // We initialize the `dummyVector` fields during image build-time using VectorAPIFeature. We
-    // can have the getter method return the precomputed dummy vector directly.
+    /*
+     * We initialize the `dummyVector` fields during image build-time using VectorAPIFeature. We can
+     * have the getter method return the precomputed dummy vector directly.
+     */
     @Substitute
     Target_jdk_incubator_vector_AbstractVector dummyVector() {
         return dummyVector;
