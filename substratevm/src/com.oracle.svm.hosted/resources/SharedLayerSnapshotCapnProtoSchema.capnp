@@ -169,9 +169,11 @@ struct ConstantReference {
     methodPointer :group {
       methodId @4 :MethodId;
     }
-    cEntryPointLiteralCodePointer @5 :CEntryPointLiteralReference;
-    cGlobalDataBasePointer @6 :Void;
-    methodOffset @7 :Void;
+    methodOffset :group {
+      methodId @5 :MethodId;
+    }
+    cEntryPointLiteralCodePointer @6 :CEntryPointLiteralReference;
+    cGlobalDataBasePointer @7 :Void;
   }
 }
 

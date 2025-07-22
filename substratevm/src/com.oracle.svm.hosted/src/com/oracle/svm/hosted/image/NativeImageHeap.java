@@ -288,12 +288,18 @@ public final class NativeImageHeap implements ImageHeap {
      * Bypass shadow heap reading for inlined fields. These fields are not actually present in the
      * image (their value is inlined) and are not present in the shadow heap either.
      */
-    public Object readInlinedField(HostedField field, JavaConstant receiver) {
+    public JavaConstant readInlinedFieldAsConstant(HostedField field, JavaConstant receiver) {
         VMError.guarantee(HostedConfiguration.isInlinedField(field), "Expected an inlined field, found %s", field);
         JavaConstant hostedReceiver = ((ImageHeapInstance) receiver).getHostedObject();
         /* Use the HostedValuesProvider to get direct access to hosted values. */
         HostedValuesProvider hostedValuesProvider = aUniverse.getHostedValuesProvider();
-        return hUniverse.getSnippetReflection().asObject(Object.class, hostedValuesProvider.readFieldValueWithReplacement(field.getWrapped(), hostedReceiver));
+        return hostedValuesProvider.readFieldValueWithReplacement(field.getWrapped(), hostedReceiver);
+    }
+
+    /** {@link #readInlinedFieldAsConstant}, extracting the object from the {@link JavaConstant}. */
+    public Object readInlinedField(HostedField field, JavaConstant receiver) {
+        JavaConstant constant = readInlinedFieldAsConstant(field, receiver);
+        return hUniverse.getSnippetReflection().asObject(Object.class, constant);
     }
 
     private JavaConstant readConstantField(HostedField field, JavaConstant receiver) {

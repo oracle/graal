@@ -2453,9 +2453,9 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           case 2 : return Which.NOT_MATERIALIZED;
           case 3 : return Which.PRIMITIVE_VALUE;
           case 4 : return Which.METHOD_POINTER;
-          case 5 : return Which.C_ENTRY_POINT_LITERAL_CODE_POINTER;
-          case 6 : return Which.C_GLOBAL_DATA_BASE_POINTER;
-          case 7 : return Which.METHOD_OFFSET;
+          case 5 : return Which.METHOD_OFFSET;
+          case 6 : return Which.C_ENTRY_POINT_LITERAL_CODE_POINTER;
+          case 7 : return Which.C_GLOBAL_DATA_BASE_POINTER;
           default: return Which._NOT_IN_SCHEMA;
         }
       }
@@ -2526,6 +2526,18 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
   return new ConstantReference.MethodPointer.Builder(segment, data, pointers, dataSize, pointerCount);
       }
 
+      public final boolean isMethodOffset() {
+        return which() == ConstantReference.Which.METHOD_OFFSET;
+      }
+      public final MethodOffset.Builder getMethodOffset() {
+        return new ConstantReference.MethodOffset.Builder(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final MethodOffset.Builder initMethodOffset() {
+        _setShortField(2, (short)ConstantReference.Which.METHOD_OFFSET.ordinal());
+        _setIntField(0,0);
+  return new ConstantReference.MethodOffset.Builder(segment, data, pointers, dataSize, pointerCount);
+      }
+
       public final boolean isCEntryPointLiteralCodePointer() {
         return which() == ConstantReference.Which.C_ENTRY_POINT_LITERAL_CODE_POINTER;
       }
@@ -2554,18 +2566,6 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setShortField(2, (short)ConstantReference.Which.C_GLOBAL_DATA_BASE_POINTER.ordinal());
       }
 
-      public final boolean isMethodOffset() {
-        return which() == ConstantReference.Which.METHOD_OFFSET;
-      }
-      public final com.oracle.svm.shaded.org.capnproto.Void getMethodOffset() {
-        assert which() == ConstantReference.Which.METHOD_OFFSET:
-                    "Must check which() before get()ing a union member.";
-        return com.oracle.svm.shaded.org.capnproto.Void.VOID;
-      }
-      public final void setMethodOffset(com.oracle.svm.shaded.org.capnproto.Void value) {
-        _setShortField(2, (short)ConstantReference.Which.METHOD_OFFSET.ordinal());
-      }
-
     }
 
     public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -2580,9 +2580,9 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           case 2 : return Which.NOT_MATERIALIZED;
           case 3 : return Which.PRIMITIVE_VALUE;
           case 4 : return Which.METHOD_POINTER;
-          case 5 : return Which.C_ENTRY_POINT_LITERAL_CODE_POINTER;
-          case 6 : return Which.C_GLOBAL_DATA_BASE_POINTER;
-          case 7 : return Which.METHOD_OFFSET;
+          case 5 : return Which.METHOD_OFFSET;
+          case 6 : return Which.C_ENTRY_POINT_LITERAL_CODE_POINTER;
+          case 7 : return Which.C_GLOBAL_DATA_BASE_POINTER;
           default: return Which._NOT_IN_SCHEMA;
         }
       }
@@ -2630,6 +2630,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return new ConstantReference.MethodPointer.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
       }
 
+      public final boolean isMethodOffset() {
+        return which() == ConstantReference.Which.METHOD_OFFSET;
+      }
+      public MethodOffset.Reader getMethodOffset() {
+        return new ConstantReference.MethodOffset.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+      }
+
       public final boolean isCEntryPointLiteralCodePointer() {
         return which() == ConstantReference.Which.C_ENTRY_POINT_LITERAL_CODE_POINTER;
       }
@@ -2651,15 +2658,6 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return com.oracle.svm.shaded.org.capnproto.Void.VOID;
       }
 
-      public final boolean isMethodOffset() {
-        return which() == ConstantReference.Which.METHOD_OFFSET;
-      }
-      public final com.oracle.svm.shaded.org.capnproto.Void getMethodOffset() {
-        assert which() == ConstantReference.Which.METHOD_OFFSET:
-                    "Must check which() before get()ing a union member.";
-        return com.oracle.svm.shaded.org.capnproto.Void.VOID;
-      }
-
     }
 
     public enum Which {
@@ -2668,9 +2666,9 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       NOT_MATERIALIZED,
       PRIMITIVE_VALUE,
       METHOD_POINTER,
+      METHOD_OFFSET,
       C_ENTRY_POINT_LITERAL_CODE_POINTER,
       C_GLOBAL_DATA_BASE_POINTER,
-      METHOD_OFFSET,
       _NOT_IN_SCHEMA,
     }
     public static class ObjectConstant {
@@ -2737,6 +2735,57 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         }
         public final com.oracle.svm.shaded.org.capnproto.StructSize structSize() {
           return ConstantReference.MethodPointer.STRUCT_SIZE;
+        }
+        public final Reader asReader(Builder builder) {
+          return builder.asReader();
+        }
+      }
+      public static final Factory factory = new Factory();
+      public static final com.oracle.svm.shaded.org.capnproto.StructList.Factory<Builder,Reader> listFactory =
+        new com.oracle.svm.shaded.org.capnproto.StructList.Factory<Builder, Reader>(factory);
+      public static final class Builder extends com.oracle.svm.shaded.org.capnproto.StructBuilder {
+        Builder(com.oracle.svm.shaded.org.capnproto.SegmentBuilder segment, int data, int pointers,int dataSize, short pointerCount){
+          super(segment, data, pointers, dataSize, pointerCount);
+        }
+        public final Reader asReader() {
+          return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
+        }
+        public final int getMethodId() {
+          return _getIntField(0);
+        }
+        public final void setMethodId(int value) {
+          _setIntField(0, value);
+        }
+
+      }
+
+      public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
+        Reader(com.oracle.svm.shaded.org.capnproto.SegmentReader segment, int data, int pointers,int dataSize, short pointerCount, int nestingLimit){
+          super(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+        }
+
+        public final int getMethodId() {
+          return _getIntField(0);
+        }
+
+      }
+
+    }
+
+
+    public static class MethodOffset {
+      public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)1,(short)1);
+      public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
+        public Factory() {
+        }
+        public final Reader constructReader(com.oracle.svm.shaded.org.capnproto.SegmentReader segment, int data,int pointers, int dataSize, short pointerCount, int nestingLimit) {
+          return new Reader(segment,data,pointers,dataSize,pointerCount,nestingLimit);
+        }
+        public final Builder constructBuilder(com.oracle.svm.shaded.org.capnproto.SegmentBuilder segment, int data,int pointers, int dataSize, short pointerCount) {
+          return new Builder(segment, data, pointers, dataSize, pointerCount);
+        }
+        public final com.oracle.svm.shaded.org.capnproto.StructSize structSize() {
+          return ConstantReference.MethodOffset.STRUCT_SIZE;
         }
         public final Reader asReader(Builder builder) {
           return builder.asReader();
