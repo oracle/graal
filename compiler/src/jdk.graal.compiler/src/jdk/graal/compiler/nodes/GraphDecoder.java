@@ -65,7 +65,6 @@ import jdk.graal.compiler.graph.NodeSuccessorList;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.GraphDecoder.MethodScope;
-import jdk.graal.compiler.nodes.GraphDecoder.ProxyPlaceholder;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.nodes.extended.SwitchNode;
@@ -420,7 +419,7 @@ public class GraphDecoder {
                 if (value == null) {
                     h = h * 31 + 1234;
                 } else {
-                    h = h * 31 + ProxyPlaceholder.unwrap(value).hashCode();
+                    h = h * 31 + value.hashCode();
                 }
             }
             this.hashCode = h;
@@ -436,11 +435,18 @@ public class GraphDecoder {
             FrameState thisState = state;
             assert thisState.outerFrameState() == otherState.outerFrameState() : Assertions.errorMessage(thisState, thisState.outerFrameState(), otherState, otherState.outerFrameState());
 
-            Iterator<ValueNode> thisIter = thisState.values().iterator();
-            Iterator<ValueNode> otherIter = otherState.values().iterator();
-            while (thisIter.hasNext() && otherIter.hasNext()) {
-                ValueNode thisValue = ProxyPlaceholder.unwrap(thisIter.next());
-                ValueNode otherValue = ProxyPlaceholder.unwrap(otherIter.next());
+            final NodeInputList<ValueNode> thisValues = thisState.values();
+            final NodeInputList<ValueNode> otherValues = otherState.values();
+
+            final int size = thisValues.size();
+            if (size != otherValues.size()) {
+                return false;
+            }
+
+            for (int i = 0; i < size; i++) {
+                final ValueNode thisValue = thisValues.get(i);
+                final ValueNode otherValue = otherValues.get(i);
+
                 if (thisValue != otherValue) {
                     return false;
                 }
@@ -499,49 +505,6 @@ public class GraphDecoder {
             super(invoke, contextType, invokeOrderId, stateAfterOrderId, nextOrderId, exceptionOrderId, exceptionStateOrderId, exceptionNextOrderId);
             this.callTargetOrderId = callTargetOrderId;
             this.intrinsifiedMethodHandle = intrinsifiedMethodHandle;
-        }
-    }
-
-    /**
-     * A node that is created during
-     * {@link jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind#MERGE_EXPLODE
-     * loop explosion} that can later be replaced by a ProxyNode if {@link LoopDetector loop
-     * detection} finds out that the value is defined in the loop, but used outside the loop.
-     */
-    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
-    protected static final class ProxyPlaceholder extends FloatingNode implements Canonicalizable {
-        public static final NodeClass<ProxyPlaceholder> TYPE = NodeClass.create(ProxyPlaceholder.class);
-
-        @Input ValueNode value;
-        @Input(InputType.Association) Node proxyPoint;
-
-        public ProxyPlaceholder(ValueNode value, MergeNode proxyPoint) {
-            super(TYPE, value.stamp(NodeView.DEFAULT));
-            this.value = value;
-            this.proxyPoint = proxyPoint;
-        }
-
-        void setValue(ValueNode value) {
-            updateUsages(this.value, value);
-            this.value = value;
-        }
-
-        @Override
-        public Node canonical(CanonicalizerTool tool) {
-            if (tool.allUsagesAvailable()) {
-                /* The node is always unnecessary after graph decoding. */
-                return value;
-            } else {
-                return this;
-            }
-        }
-
-        public static ValueNode unwrap(ValueNode value) {
-            ValueNode result = value;
-            while (result instanceof ProxyPlaceholder) {
-                result = ((ProxyPlaceholder) result).value;
-            }
-            return result;
         }
     }
 
@@ -1042,6 +1005,11 @@ public class GraphDecoder {
             }
         }
 
+        /*
+         * Merge explosion: When doing merge-explode PE loops are detected after partial evaluation
+         * in a dedicated steps. Therefore, we create merge nodes instead of loop begins and loop
+         * exits and later replace them with the detected loop begin and loop exit nodes.
+         */
         MergeNode merge = graph.add(new MergeNode());
         methodScope.loopExplosionMerges.add(merge);
 
@@ -1053,65 +1021,6 @@ public class GraphDecoder {
                 }
                 methodScope.loopExplosionHead = merge;
             }
-
-            /*
-             * Proxy generation and merge explosion: When doing merge-explode PE loops are detected
-             * after partial evaluation in a dedicated steps. Therefore, we create merge nodes
-             * instead of loop begins and loop exits and later replace them with the detected loop
-             * begin and loop exit nodes.
-             *
-             * However, in order to create the correct loop proxies, all values alive at a merge
-             * created for a loop begin/loop exit replacement merge, we create so called proxy
-             * placeholder nodes. These nodes are attached to a merge and proxy the corresponding
-             * node. Later, when we replace a merge with a loop exit, we visit all live nodes at
-             * that loop exit and replace the proxy placeholders with real value proxy nodes.
-             *
-             * Since we cannot (this would explode immediately) proxy all nodes for every merge
-             * during explosion, we only create nodes at the loop explosion begins for nodes that
-             * are alive at the framestate of the respective loop begin. This is fine as long as all
-             * values proxied out of a loop are alive at the loop header. However, this is not true
-             * for all values (imagine do-while loops). Thus, we may create, in very specific
-             * patterns, unschedulable graphs since we miss the creation of proxy nodes.
-             *
-             * There is currently no straight forward solution to this problem, thus we shift the
-             * work to the implementor side where such patterns can typically be easily fixed by
-             * creating loop phis and assigning them correctly.
-             */
-            FrameState.ValueFunction valueFunction = new FrameState.ValueFunction() {
-
-                @Override
-                public ValueNode apply(int index, ValueNode frameStateValue) {
-                    if (frameStateValue == null || frameStateValue.isConstant() || !graph.isNew(methodScope.methodStartMark, frameStateValue)) {
-                        return frameStateValue;
-
-                    } else {
-                        ProxyPlaceholder newFrameStateValue = graph.unique(new ProxyPlaceholder(frameStateValue, merge));
-
-                        /*
-                         * We do not have the orderID of the value anymore, so we need to search
-                         * through the complete list of nodes to find a match.
-                         */
-                        for (int i = 0; i < loopScope.createdNodes.length; i++) {
-                            if (loopScope.createdNodes[i] == frameStateValue) {
-                                loopScope.createdNodes[i] = newFrameStateValue;
-                            }
-                        }
-
-                        if (loopScope.initialCreatedNodes != null) {
-                            for (int i = 0; i < loopScope.initialCreatedNodes.length; i++) {
-                                if (loopScope.initialCreatedNodes[i] == frameStateValue) {
-                                    loopScope.initialCreatedNodes[i] = newFrameStateValue;
-                                }
-                            }
-                        }
-                        return newFrameStateValue;
-                    }
-                }
-            };
-            FrameState newFrameState = graph.add(frameState.duplicate(valueFunction));
-
-            frameState.replaceAtUsagesAndDelete(newFrameState);
-            frameState = newFrameState;
         }
 
         loopBegin.replaceAtUsagesAndDelete(merge);
@@ -1192,7 +1101,7 @@ public class GraphDecoder {
      * Hook for subclasses for early canonicalization of IfNodes and IntegerSwitchNodes.
      *
      * "Early" means that this is called before successor stubs creation. Therefore, all successors
-     * are null a this point, and calling any method using them without prior manual initialization
+     * are null at this point, and calling any method using them without prior manual initialization
      * will fail.
      *
      * @param methodScope The current method.
@@ -1303,9 +1212,6 @@ public class GraphDecoder {
             ValueNode phiInput = proxy.value();
 
             if (loopExitPlaceholder != null) {
-                if (!phiInput.isConstant()) {
-                    phiInput = graph.unique(new ProxyPlaceholder(phiInput, loopExitPlaceholder));
-                }
                 registerNode(loopScope, proxyOrderId, phiInput, true, false);
             }
 
@@ -1776,6 +1682,7 @@ public class GraphDecoder {
         assert node == null || node.isAlive();
         assert allowNull || node != null;
         assert allowOverwrite || lookupNode(loopScope, nodeOrderId) == null;
+
         loopScope.createdNodes[nodeOrderId] = node;
         if (loopScope.methodScope.inliningLogDecoder != null) {
             loopScope.methodScope.inliningLogDecoder.registerNode(loopScope.methodScope.inliningLog, node, nodeOrderId);
@@ -1804,11 +1711,6 @@ public class GraphDecoder {
      * @param methodScope The current method.
      */
     protected void cleanupGraph(MethodScope methodScope) {
-        for (MergeNode merge : graph.getNodes(MergeNode.TYPE)) {
-            for (ProxyPlaceholder placeholder : merge.usages().filter(ProxyPlaceholder.class).snapshot()) {
-                placeholder.replaceAndDelete(placeholder.value);
-            }
-        }
         assert verifyEdges();
     }
 
@@ -2271,72 +2173,32 @@ class LoopDetector implements Runnable {
 
     /**
      * During graph decoding, we create a FrameState for every exploded loop iteration. This is
-     * mostly the state that we want, we only need to tweak it a little bit: we need to insert the
-     * appropriate ProxyNodes for all values that are created inside the loop and that flow out of
-     * the loop.
+     * mostly the state that we want, we only need to tweak it a little bit to account for phis.
      */
     private void assignLoopExitState(LoopExitNode loopExit, AbstractMergeNode loopExplosionMerge, AbstractEndNode loopExplosionEnd) {
         FrameState oldState = loopExplosionMerge.stateAfter();
 
-        /* Collect all nodes that are in the FrameState at the LoopBegin. */
-        EconomicSet<Node> loopBeginValues = EconomicSet.create(Equivalence.IDENTITY);
-        for (FrameState state = loopExit.loopBegin().stateAfter(); state != null; state = state.outerFrameState()) {
-            for (ValueNode value : state.values()) {
-                if (value != null && !value.isConstant() && !loopExit.loopBegin().isPhiAtMerge(value)) {
-                    loopBeginValues.add(ProxyPlaceholder.unwrap(value));
-                }
-            }
-        }
-
-        /* The framestate may contain a value multiple times */
-        EconomicMap<ValueNode, ValueNode> old2NewValues = EconomicMap.create();
         FrameState.ValueFunction valueFunction = new FrameState.ValueFunction() {
-
             @Override
-            public ValueNode apply(int index, ValueNode v) {
-                if (v != null && old2NewValues.containsKey(v)) {
-                    return old2NewValues.get(v);
-                }
-
-                ValueNode value = v;
-                ValueNode realValue = ProxyPlaceholder.unwrap(value);
-
+            public ValueNode apply(int index, ValueNode value) {
                 /*
                  * The LoopExit is inserted before the existing merge, i.e., separately for every
                  * branch that leads to the merge. So for phi functions of the merge, we need to
                  * take the input that corresponds to our branch.
                  */
-                if (realValue instanceof PhiNode && loopExplosionMerge.isPhiAtMerge(realValue)) {
-                    value = ((PhiNode) realValue).valueAt(loopExplosionEnd);
-                    realValue = ProxyPlaceholder.unwrap(value);
+                if (loopExplosionMerge.isPhiAtMerge(value)) {
+                    assert value instanceof PhiNode : "isPhiAtMerge should guarantee that value is a PhiNode";
+                    return ((PhiNode) value).valueAt(loopExplosionEnd);
                 }
-
-                if (realValue == null || realValue.isConstant() || loopBeginValues.contains(realValue) || !graph.isNew(methodScope.methodStartMark, realValue)) {
-                    /*
-                     * value v, input to the old state, can already be a proxy placeholder node to
-                     * another, dominating loop exit, we must not take the unwrapped value in this
-                     * case but the properly proxied one
-                     */
-                    if (v != null) {
-                        old2NewValues.put(v, v);
-                    }
-                    return v;
-                } else {
-                    /*
-                     * The node is not in the FrameState of the LoopBegin, i.e., it is a value
-                     * computed inside the loop.
-                     */
-                    GraalError.guarantee(value instanceof ProxyPlaceholder && ((ProxyPlaceholder) value).proxyPoint == loopExplosionMerge,
-                                    "Value flowing out of loop, but we are not prepared to insert a ProxyNode");
-
-                    ProxyPlaceholder proxyPlaceholder = (ProxyPlaceholder) value;
-                    ValueProxyNode proxy = ProxyNode.forValue(proxyPlaceholder.value, loopExit);
-                    proxyPlaceholder.setValue(proxy);
-                    old2NewValues.put(v, proxy);
-                    return proxy;
-                }
+                return value;
             }
         };
+
+        FrameState newState = oldState.duplicate(valueFunction);
+
+        assert loopExit.stateAfter() == null;
+        loopExit.setStateAfter(graph.add(newState));
+    }
 
         FrameState newState = oldState.duplicate(valueFunction);
 
@@ -2389,7 +2251,7 @@ class LoopDetector implements Runnable {
             ValueNode curLoopValue = loopValues.get(i);
             ValueNode curExplosionHeadValue = explosionHeadValues.get(i);
 
-            if (ProxyPlaceholder.unwrap(curLoopValue) != ProxyPlaceholder.unwrap(curExplosionHeadValue)) {
+            if (curLoopValue != curExplosionHeadValue) {
                 if (loopVariableIndex != -1) {
                     throw bailout("must have only one variable that is changed in loop. " + loopValue + " != " + explosionHeadValue + " and " + curLoopValue + " != " + curExplosionHeadValue);
                 }
