@@ -1224,6 +1224,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             analysisField.registerAsWritten(PERSISTED);
         });
         registerFlag(fieldData.getIsFolded(), debug -> analysisField.registerAsFolded(PERSISTED));
+        registerFlag(fieldData.getIsUnsafeAccessed(), debug -> analysisField.registerAsUnsafeAccessed(PERSISTED));
     }
 
     private PersistedAnalysisField.Reader getFieldData(AnalysisField analysisField) {
