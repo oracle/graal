@@ -51,7 +51,7 @@ import jdk.internal.reflect.Reflection;
 
 /**
  * Information about the runtime class initialization state of a {@link DynamicHub class}, and
- * {@link #slowPath(ClassInitializationInfo, DynamicHub)} implementation} of class initialization
+ * {@link #slowPath(ClassInitializationInfo, DynamicHub) implementation} of class initialization
  * according to the Java VM specification.
  * <p>
  * The information is not directly stored in {@link DynamicHub} because 1) the class initialization
