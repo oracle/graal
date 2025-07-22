@@ -1018,7 +1018,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     public DynamicHubInfo.Reader getDynamicHubInfo(AnalysisType aType) {
-        DynamicHubInfo.Reader result = CapnProtoAdapters.binarySearchUnique(aType.getId(), snapshot.getDynamicHubInfos(), DynamicHubInfo.Reader::getTypeId);
+        DynamicHubInfo.Reader result = CapnProtoAdapters.binarySearchUnique(getBaseLayerTypeId(aType), snapshot.getDynamicHubInfos(), DynamicHubInfo.Reader::getTypeId);
         assert result != null : aType;
         return result;
     }
@@ -1794,8 +1794,8 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         instance.readFieldValue(metaAccess.lookupJavaField(dynamicHubCompanionField));
     }
 
-    public ClassInitializationInfo getClassInitializationInfo(AnalysisType type) {
-        PersistedAnalysisType.Reader typeData = findType(type.getId());
+    public ClassInitializationInfo getClassInitializationInfo(AnalysisType aType) {
+        PersistedAnalysisType.Reader typeData = findType(getBaseLayerTypeId(aType));
         var initInfo = typeData.getClassInitializationInfo();
         if (initInfo.getIsNoInitializerNoTracking()) {
             return ClassInitializationInfo.forNoInitializerInfo(false);
