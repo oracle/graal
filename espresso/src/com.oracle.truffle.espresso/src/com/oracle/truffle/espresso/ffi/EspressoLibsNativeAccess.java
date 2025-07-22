@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.ffi;
 import java.nio.file.Path;
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.ArityException;
@@ -32,6 +33,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
+import com.oracle.truffle.espresso.ffi.memory.ProtoChunkedMemoryImpl;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.libs.Lib;
 import com.oracle.truffle.espresso.libs.Libs;
@@ -49,6 +52,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  * @see com.oracle.truffle.espresso.libs.Libs
  */
 public class EspressoLibsNativeAccess extends ContextAccessImpl implements NativeAccess {
+    @CompilerDirectives.CompilationFinal protected NativeMemory nativeMemory = new ProtoChunkedMemoryImpl();
 
     private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, EspressoLibsNativeAccess.class);
 
@@ -170,21 +174,6 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
     }
 
     @Override
-    public @Buffer TruffleObject allocateMemory(long size) {
-        return delegate.allocateMemory(size);
-    }
-
-    @Override
-    public @Buffer TruffleObject reallocateMemory(@Pointer TruffleObject buffer, long newSize) {
-        return delegate.reallocateMemory(buffer, newSize);
-    }
-
-    @Override
-    public void freeMemory(@Pointer TruffleObject buffer) {
-        delegate.freeMemory(buffer);
-    }
-
-    @Override
     public @Pointer TruffleObject createNativeClosure(TruffleObject executable, NativeSignature nativeSignature) {
         return delegate.createNativeClosure(executable, nativeSignature);
     }
@@ -192,6 +181,11 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
     @Override
     public void prepareThread() {
         delegate.prepareThread();
+    }
+
+    @Override
+    public NativeMemory nativeMemory() {
+        return nativeMemory;
     }
 
     @TruffleBoundary

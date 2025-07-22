@@ -46,7 +46,6 @@ import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.TruffleByteBuffer;
-import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.ffi.memory.UnsafeNativeMemory;
 import com.oracle.truffle.espresso.impl.EmptyKeysArray;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -100,7 +99,8 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
             @Override
             public long allocateMemory(long bytes) {
                 try {
-                    @Pointer TruffleObject address = (TruffleObject) UNCACHED_INTEROP.execute(malloc, bytes);
+                    @Pointer
+                    TruffleObject address = (TruffleObject) UNCACHED_INTEROP.execute(malloc, bytes);
                     if (UNCACHED_INTEROP.isNull(address)) {
                         // malloc returned NULL
                         return 0L;

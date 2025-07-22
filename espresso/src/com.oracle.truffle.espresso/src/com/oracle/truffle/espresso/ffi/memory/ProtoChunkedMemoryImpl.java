@@ -1,18 +1,38 @@
+/*
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package com.oracle.truffle.espresso.ffi.memory;
 
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.memory.ByteArraySupport;
-import com.oracle.truffle.espresso.vm.UnsafeAccess;
-
-import sun.misc.Unsafe;
 
 public class ProtoChunkedMemoryImpl extends ChunkedNativeMemory<byte[]> {
 
     private static final ByteArraySupport BYTES = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN
-            ? ByteArraySupport.littleEndian()
-            : ByteArraySupport.bigEndian();
+                    ? ByteArraySupport.littleEndian()
+                    : ByteArraySupport.bigEndian();
 
     private static void validateAccess(int length, int byteIndex, int accessByteSize) {
         if (byteIndex < 0 || byteIndex > length - accessByteSize) {
@@ -21,9 +41,18 @@ public class ProtoChunkedMemoryImpl extends ChunkedNativeMemory<byte[]> {
     }
 
     @Override
+    public void copyMemory(long srcBase,
+                    long destBase,
+                    long bytes, MemoryAccessMode accessMode) {
+        copyBytes(srcBase, destBase, bytes);
+    }
+
+    @Override
     public void setMemory(long address, long bytes, byte value) {
         byte[] chunk = getChunk(address);
-        validateAccess(chunk.length, Math.toIntExact(bytes), Byte.BYTES);
+        // I think the accessByteSize should be 0 instead of 1 as we access exactly bytes many bytes
+        // in chunk
+        validateAccess(chunk.length, Math.toIntExact(bytes), 0);
         Arrays.fill(chunk, 0, Math.toIntExact(bytes), value);
     }
 
@@ -34,7 +63,7 @@ public class ProtoChunkedMemoryImpl extends ChunkedNativeMemory<byte[]> {
         switch (accessMode) {
             case PLAIN -> BYTES.putByte(chunk, chunkOffset, value ? (byte) 1 : (byte) 0);
             case OPAQUE, RELEASE_ACQUIRE, VOLATILE ->
-                    BYTES.putByteVolatile(chunk, chunkOffset, value ? (byte) 1 : (byte) 0);
+                BYTES.putByteVolatile(chunk, chunkOffset, value ? (byte) 1 : (byte) 0);
         }
     }
 
@@ -228,6 +257,33 @@ public class ProtoChunkedMemoryImpl extends ChunkedNativeMemory<byte[]> {
     }
 
     @Override
+    public ByteBuffer getDirectBuffer(long address, long bytes) {
+        int intByteSize = Math.toIntExact(bytes);
+        byte[] fromChunk = getChunk(address);
+        int fromOffset = Math.toIntExact(getChunkOffset(address));
+        validateAccess(fromChunk.length, fromOffset, intByteSize);
+        return ByteBuffer.wrap(fromChunk, fromOffset, intByteSize);
+    }
+
+    @Override
+    public void writeMemory(long address, long bytes, ByteBuffer buf) {
+        int intByteSize = Math.toIntExact(bytes);
+        int fromOffset = Math.toIntExact(getChunkOffset(address));
+        byte[] fromChunk = getChunk(address);
+        validateAccess(fromChunk.length, fromOffset, intByteSize);
+        buf.get(fromChunk, fromOffset, intByteSize);
+    }
+
+    @Override
+    public void readMemory(long address, long bytes, ByteBuffer buf) {
+        int intByteSize = Math.toIntExact(bytes);
+        int fromOffset = Math.toIntExact(getChunkOffset(address));
+        byte[] fromChunk = getChunk(address);
+        validateAccess(fromChunk.length, fromOffset, intByteSize);
+        buf.put(fromChunk, fromOffset, intByteSize);
+    }
+
+    @Override
     protected void copyBytes(long fromAddress, long toAddress, long byteSize) {
         int intByteSize = Math.toIntExact(byteSize);
 
@@ -240,5 +296,10 @@ public class ProtoChunkedMemoryImpl extends ChunkedNativeMemory<byte[]> {
         validateAccess(toChunk.length, toOffset, intByteSize);
 
         System.arraycopy(fromChunk, fromOffset, toChunk, toOffset, intByteSize);
+    }
+
+    @Override
+    public boolean isDirectBufferSupported() {
+        return true;
     }
 }

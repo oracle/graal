@@ -22,16 +22,17 @@
  */
 package com.oracle.truffle.espresso.libs.libzip.impl;
 
-import java.nio.ByteBuffer;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
+import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.libs.LibsMeta;
 import com.oracle.truffle.espresso.libs.LibsState;
 import com.oracle.truffle.espresso.libs.libzip.LibZip;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
@@ -73,9 +74,16 @@ public final class Target_java_util_zip_Inflater {
     }
 
     @Substitution
-    public static void setDictionaryBuffer(long addr, long bufAddress, int len, @Inject LibsState libsState) {
-        ByteBuffer dst = NativeUtils.directByteBuffer(bufAddress, len);
-        libsState.getInflater(addr).setDictionary(dst);
+    @TruffleBoundary
+    public static void setDictionaryBuffer(long addr, long bufAddress, int len, @Inject LibsState libsState, @Inject EspressoContext ctx) {
+        NativeMemory nativeMemory = ctx.getNativeAccess().nativeMemory();
+        if (nativeMemory.isDirectBufferSupported()) {
+            libsState.getInflater(addr).setDictionary(nativeMemory.getDirectBuffer(bufAddress, len));
+        } else {
+            byte[] buff = new byte[len];
+            nativeMemory.readMemory(bufAddress, len, buff);
+            libsState.getInflater(addr).setDictionary(buff, 0, len);
+        }
     }
 
     @Substitution(hasReceiver = true)
@@ -94,6 +102,8 @@ public final class Target_java_util_zip_Inflater {
         long bytesReadOld = hostInflater.getBytesRead();
         long bytesWrittenOld = hostInflater.getBytesWritten();
         try {
+            // do inflate and encode result
+            outputByteArray = outputArray.unwrap(language);
             int written = hostInflater.inflate(outputByteArray, outputOff, outputLen);
             int read = Math.toIntExact(hostInflater.getBytesRead() - bytesReadOld);
             return encodeResult(read, written, hostInflater);
@@ -106,10 +116,11 @@ public final class Target_java_util_zip_Inflater {
     @Substitution(hasReceiver = true)
     public static long inflateBytesBuffer(@JavaType(Inflater.class) StaticObject guestInflater, long addr,
                     @JavaType(byte[].class) StaticObject inputArray, int inputOff, int inputLen,
-                    long outputAddress, int outputLen, @Inject LibsState libsState, @Inject LibsMeta libsMeta, @Inject EspressoLanguage lang) {
+                    long outputAddress, int outputLen,
+                                          @Inject LibsState libsState, @Inject LibsMeta libsMeta,
+                                          @Inject EspressoLanguage language, @Inject EspressoContext ctx) {
         // get Input/Output Array/Buffer
-        byte[] inputByteArray = inputArray.unwrap(lang);
-        ByteBuffer outputByteBuffer = NativeUtils.directByteBuffer(outputAddress, outputLen);
+        byte[] inputByteArray = inputArray.unwrap(language);
         // get host Inflater and set Input
         Inflater hostInflater = libsState.getInflater(addr);
         hostInflater.setInput(inputByteArray, inputOff, inputLen);
@@ -117,7 +128,8 @@ public final class Target_java_util_zip_Inflater {
         long bytesReadOld = hostInflater.getBytesRead();
         long bytesWrittenOld = hostInflater.getBytesWritten();
         try {
-            int written = hostInflater.inflate(outputByteBuffer);
+            // do inflate and encode result
+            int written = inflateFromAddress(outputAddress, outputLen, hostInflater, ctx);
             int read = Math.toIntExact(hostInflater.getBytesRead() - bytesReadOld);
             return encodeResult(read, written, hostInflater);
         } catch (DataFormatException e) {
@@ -130,19 +142,18 @@ public final class Target_java_util_zip_Inflater {
     public static long inflateBufferBytes(@JavaType(Inflater.class) StaticObject guestInflater, long addr,
                     long inputAddress, int inputLen,
                     @JavaType(byte[].class) StaticObject outputArray, int outputOff, int outputLen,
-                    @Inject LibsState libsState, @Inject LibsMeta libsMeta,
-                    @Inject EspressoLanguage lang) {
+                    @Inject LibsState libsState, @Inject LibsMeta libsMeta, @Inject EspressoLanguage language,
+                    @Inject EspressoContext ctx) {
 
-        // get Input/Output Array/Buffer
-        ByteBuffer inputByteBuffer = NativeUtils.directByteBuffer(inputAddress, inputLen);
-        byte[] outputByteArray = outputArray.unwrap(lang);
         // get host Inflater and set Input
         Inflater hostInflater = libsState.getInflater(addr);
-        hostInflater.setInput(inputByteBuffer);
+        setInputFromAddress(inputAddress, inputLen, hostInflater, ctx);
         // cache bytes/read/written for the exception case
         long bytesReadOld = hostInflater.getBytesRead();
         long bytesWrittenOld = hostInflater.getBytesWritten();
         try {
+            // do inflate and encode result
+            byte[] outputByteArray = outputArray.unwrap(language);
             int written = hostInflater.inflate(outputByteArray, outputOff, outputLen);
             int read = Math.toIntExact(hostInflater.getBytesRead() - bytesReadOld);
             return encodeResult(read, written, hostInflater);
@@ -157,19 +168,17 @@ public final class Target_java_util_zip_Inflater {
     public static long inflateBufferBuffer(@JavaType(Inflater.class) StaticObject guestInflater, long addr,
                     long inputAddress, int inputLen,
                     long outputAddress, int outputLen,
-                    @Inject LibsState libsState, @Inject LibsMeta libsMeta,
-                    @Inject EspressoLanguage lang) {
-        // get Input/Output Array/Buffer
-        ByteBuffer inputByteBuffer = NativeUtils.directByteBuffer(inputAddress, inputLen);
-        ByteBuffer outputByteBuffer = NativeUtils.directByteBuffer(outputAddress, outputLen);
+                    @Inject LibsState libsState, @Inject LibsMeta libsMeta, @Inject EspressoLanguage language,
+                    @Inject EspressoContext ctx) {
         // get host Inflater and set Input
         Inflater hostInflater = libsState.getInflater(addr);
-        hostInflater.setInput(inputByteBuffer);
+        setInputFromAddress(inputAddress, inputLen, hostInflater, ctx);
         // cache bytes/read/written for the exception case
         long bytesReadOld = hostInflater.getBytesRead();
         long bytesWrittenOld = hostInflater.getBytesWritten();
         try {
-            int written = hostInflater.inflate(outputByteBuffer);
+            // do inflate and encode result
+            int written = inflateFromAddress(outputAddress, outputLen, hostInflater, ctx);
             int read = Math.toIntExact(hostInflater.getBytesRead() - bytesReadOld);
             return encodeResult(read, written, hostInflater);
         } catch (DataFormatException e) {
@@ -226,5 +235,29 @@ public final class Target_java_util_zip_Inflater {
         result |= read & 0x7fff_ffffL;
 
         return result;
+    }
+
+    private static void setInputFromAddress(long addr, int len, Inflater hostInflater, EspressoContext ctx) {
+        NativeMemory nativeMemory = ctx.getNativeAccess().nativeMemory();
+        if (nativeMemory.isDirectBufferSupported()) {
+            hostInflater.setInput(nativeMemory.getDirectBuffer(addr, len));
+        } else {
+            byte[] buff = new byte[len];
+            nativeMemory.readMemory(addr, len, buff);
+            hostInflater.setInput(buff);
+        }
+    }
+
+    private static int inflateFromAddress(long addr, int len, Inflater hostInflater, EspressoContext ctx) throws DataFormatException {
+        NativeMemory nativeMemory = ctx.getNativeAccess().nativeMemory();
+        int written = 0;
+        if (nativeMemory.isDirectBufferSupported()) {
+            written = hostInflater.inflate(nativeMemory.getDirectBuffer(addr, len));
+        } else {
+            byte[] outputBuff = new byte[len];
+            written = hostInflater.inflate(outputBuff);
+            nativeMemory.writeMemory(addr, len, outputBuff);
+        }
+        return written;
     }
 }

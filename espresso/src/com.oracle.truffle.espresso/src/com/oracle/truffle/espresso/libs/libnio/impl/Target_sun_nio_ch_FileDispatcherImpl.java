@@ -24,21 +24,14 @@ package com.oracle.truffle.espresso.libs.libnio.impl;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.espresso.ffi.Buffer;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.RawPointer;
-import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.io.FDAccess;
 import com.oracle.truffle.espresso.io.Throw;
 import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.libs.libnio.LibNio;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -73,25 +66,14 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
             // sun.nio.ch.FileChannelImpl.toProt
             throw Throw.throwUnsupported("mmap for public writes is not supported at the moment", ctx);
         }
-        @Buffer
-        TruffleObject buffer = ctx.getNativeAccess().allocateMemory(length);
-        long addr;
-        try {
-            addr = InteropLibrary.getUncached().asPointer(buffer);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere(e);
-        }
+        NativeMemory nativeMemory = ctx.getNativeAccess().nativeMemory();
+        long addr = nativeMemory.allocateMemory(length);
         long oldPosition = io.position(fd, FDAccess.forFileDescriptor());
         assert oldPosition >= 0;
         try {
-            // creates a byteBuffer that can hold up to length
-            ByteBuffer byteBuffer = NativeUtils.directByteBuffer((addr), length);
-            // adjust the position of the underlying Channel and read
             io.seek(fd, FDAccess.forFileDescriptor(), position);
-            io.readBytes(fd, FDAccess.forFileDescriptor(), byteBuffer);
+            io.readAddress(fd, FDAccess.forFileDescriptor(), addr, Math.toIntExact(length));
         } finally {
-            // always reset the position
             io.seek(fd, FDAccess.forFileDescriptor(), oldPosition);
         }
         return addr;
@@ -170,8 +152,7 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
     @Throws(IOException.class)
     public static int read0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len,
                     @Inject TruffleIO io) {
-        ByteBuffer dst = NativeUtils.directByteBuffer(address, len);
-        return io.readBytes(fd, FDAccess.forFileDescriptor(), dst);
+        return io.readAddress(fd, FDAccess.forFileDescriptor(), address, len);
 
     }
 
@@ -185,8 +166,7 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
     @Substitution
     @Throws(IOException.class)
     public static int write0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len, @Inject TruffleIO io) {
-        ByteBuffer dst = NativeUtils.directByteBuffer(address, len);
-        return io.writeBytes(fd, FDAccess.forFileDescriptor(), dst);
+        return io.writeAddress(fd, FDAccess.forFileDescriptor(), address, len);
     }
 
     @Substitution
@@ -208,11 +188,10 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
     public static int pread0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len, long position,
                     @Inject TruffleIO io) {
         // Currently, this is not thread safe as we temporarily update the position of the file.
-        ByteBuffer dst = NativeUtils.directByteBuffer(address, len);
         long oldPos = io.position(fd, FDAccess.forFileDescriptor());
         try {
             io.seek(fd, FDAccess.forFileDescriptor(), position);
-            return io.readBytes(fd, FDAccess.forFileDescriptor(), dst);
+            return io.readAddress(fd, FDAccess.forFileDescriptor(), address, len);
         } finally {
             io.seek(fd, FDAccess.forFileDescriptor(), oldPos);
         }

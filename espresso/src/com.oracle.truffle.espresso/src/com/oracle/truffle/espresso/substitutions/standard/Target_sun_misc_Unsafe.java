@@ -26,7 +26,6 @@ import static com.oracle.truffle.espresso.substitutions.SubstitutionFlag.IsTrivi
 import static com.oracle.truffle.espresso.threads.ThreadState.PARKED;
 import static com.oracle.truffle.espresso.threads.ThreadState.TIMED_PARKED;
 
-import java.lang.invoke.VarHandle;
 import java.lang.reflect.Array;
 import java.nio.ByteOrder;
 import java.security.ProtectionDomain;
@@ -41,9 +40,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -53,8 +49,6 @@ import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.ffi.Buffer;
-import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAccessMode;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
@@ -90,7 +84,9 @@ import sun.misc.Unsafe;
 @EspressoSubstitutions(nameProvider = Target_sun_misc_Unsafe.SharedUnsafe.class)
 public final class Target_sun_misc_Unsafe {
 
-    /** The value of {@code addressSize()}. */
+    /**
+     * The value of {@code addressSize()}.
+     */
     public static final int ADDRESS_SIZE;
 
     private static final int SAFETY_FIELD_OFFSET = 123456789;
@@ -444,9 +440,7 @@ public final class Target_sun_misc_Unsafe {
      *
      * @throws IllegalArgumentException if the size is negative or too large for the native size_t
      *             type
-     *
      * @throws OutOfMemoryError if the allocation is refused by the system
-     *
      * @see GetByte
      * @see PutByte
      */
@@ -475,9 +469,7 @@ public final class Target_sun_misc_Unsafe {
      *
      * @throws IllegalArgumentException if the size is negative or too large for the native size_t
      *             type
-     *
      * @throws OutOfMemoryError if the allocation is refused by the system
-     *
      * @see #allocateMemory
      */
     @TruffleBoundary
@@ -529,11 +521,33 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static void copyMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject srcBase, long srcOffset,
-                    @JavaType(Object.class) StaticObject destBase, long destOffset, long bytes, @Inject EspressoLanguage language, @Inject Meta meta) {
+                    @JavaType(Object.class) StaticObject destBase, long destOffset, long bytes, @Inject EspressoLanguage language, @Inject Meta meta, @Inject EspressoContext context) {
         if (bytes == 0) {
             return;
         }
-        UnsafeAccess.getIfAllowed(meta).copyMemory(MetaUtil.unwrapArrayOrNull(language, srcBase), srcOffset, MetaUtil.unwrapArrayOrNull(language, destBase), destOffset, bytes);
+        // If we are doing off-heap accesses use nativeMemory
+        Object src = MetaUtil.unwrapArrayOrNull(language, srcBase);
+        Object dest = MetaUtil.unwrapArrayOrNull(language, destBase);
+        NativeMemory nativeMemory = context.getNativeAccess().nativeMemory();
+        if (src == null && dest == null) {
+            nativeMemory.copyMemory(srcOffset, destOffset, bytes, MemoryAccessMode.VOLATILE);
+            return;
+        }
+        Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
+        int byteArrayBaseOffset = unsafe.arrayBaseOffset(byte[].class);
+        if (src == null) {
+            byte[] srcArray = new byte[Math.toIntExact(bytes)];
+            nativeMemory.readMemory(srcOffset, bytes, srcArray);
+            unsafe.copyMemory(srcArray, byteArrayBaseOffset, dest, destOffset, bytes);
+            return;
+        }
+        if (dest == null) {
+            byte[] buff = new byte[Math.toIntExact(bytes)];
+            unsafe.copyMemory(src, srcOffset, buff, byteArrayBaseOffset, bytes);
+            nativeMemory.writeMemory(destOffset, bytes, buff);
+            return;
+        }
+        unsafe.copyMemory(src, srcOffset, dest, destOffset, bytes);
     }
 
     @Substitution(hasReceiver = true)
@@ -578,17 +592,19 @@ public final class Target_sun_misc_Unsafe {
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static void setMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject o, long offset, long bytes, byte value,
-                    @Inject Meta meta, @Inject EspressoLanguage language) {
+                    @Inject Meta meta, @Inject EspressoLanguage language, @Inject EspressoContext ctx) {
+        // If we are doing off-heap accesses use nativeMemory
         Object hostObject;
         if (StaticObject.isNull(o)) {
-            hostObject = null;
+            ctx.getNativeAccess().nativeMemory().setMemory(offset, bytes, value);
         } else if (o.getKlass().isArray()) {
+
             hostObject = o.unwrap(language);
+            UnsafeAccess.getIfAllowed(meta).setMemory(hostObject, offset, bytes, value);
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
         }
-        UnsafeAccess.getIfAllowed(meta).setMemory(hostObject, offset, bytes, value);
     }
 
     /**
@@ -756,7 +772,6 @@ public final class Target_sun_misc_Unsafe {
      * calling from native code.
      *
      * @param thread the thread to unpark.
-     *
      */
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
@@ -853,7 +868,6 @@ public final class Target_sun_misc_Unsafe {
      *
      * @param loadavg an array of double of size nelems
      * @param nelems the number of samples to be retrieved and must be 1 to 3.
-     *
      * @return the number of samples actually retrieved; or -1 if the load average is unobtainable.
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
@@ -999,7 +1013,9 @@ public final class Target_sun_misc_Unsafe {
         }
     }
 
-    /** @see GetByteWithBase */
+    /**
+     * @see GetByteWithBase
+     */
     @GenerateInline(false) // not available in substitutions
     @Substitution(hasReceiver = true)
     abstract static class PutInt extends UnsafeAccessNode {
@@ -1560,7 +1576,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "isArray(holder)")
         void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                           @JavaType(Object.class) StaticObject value) {
+                        @JavaType(Object.class) StaticObject value) {
             UnsafeAccess.getIfAllowed(getMeta()).putOrderedObject(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
@@ -1666,7 +1682,7 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "isArray(holder)")
         @JavaType(Object.class)
         StaticObject doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
-                                   long offset) {
+                        long offset) {
             return (StaticObject) UnsafeAccess.getIfAllowed(getMeta()).getObject(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
@@ -1810,7 +1826,6 @@ public final class Target_sun_misc_Unsafe {
         short doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getShort(unwrapArray(getLanguage(), holder), offset);
         }
-
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static short doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
@@ -2098,7 +2113,7 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "isArray(holder)")
         @JavaType(Object.class)
         StaticObject doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
-                                   long offset) {
+                        long offset) {
             return (StaticObject) UnsafeAccess.getIfAllowed(getMeta()).getObjectVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
@@ -2290,7 +2305,6 @@ public final class Target_sun_misc_Unsafe {
         int doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getIntVolatile(unwrapArray(getLanguage(), holder), offset);
         }
-
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static int doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
@@ -2504,7 +2518,9 @@ public final class Target_sun_misc_Unsafe {
         }
     }
 
-    /** @see GetByteWithBase */
+    /**
+     * @see GetByteWithBase
+     */
     @GenerateInline(false) // not available in substitutions
     @Substitution(hasReceiver = true)
     abstract static class GetInt extends UnsafeAccessNode {
@@ -2616,7 +2632,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "isArray(holder)")
         void doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                           @JavaType(Object.class) StaticObject value) {
+                        @JavaType(Object.class) StaticObject value) {
             UnsafeAccess.getIfAllowed(getMeta()).putObjectVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
@@ -2976,7 +2992,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "isArray(holder)")
         boolean doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                              @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after) {
+                        @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after) {
             return UnsafeAccess.getIfAllowed(getMeta()).compareAndSwapObject(unwrapArray(getLanguage(), holder), offset, before, after);
         }
 
@@ -3024,7 +3040,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "isArray(holder)")
         boolean doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                              int before, int after) {
+                        int before, int after) {
             return UnsafeAccess.getIfAllowed(getMeta()).compareAndSwapInt(unwrapArray(getLanguage(), holder), offset, before, after);
         }
 
@@ -3074,7 +3090,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "isNull(holder)")
         boolean doNull(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                              long before, long after) {
+                        long before, long after) {
             return getNativeAccess().nativeMemory().compareAndSetLong(offset, before, after);
         }
 
@@ -3154,8 +3170,8 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "isArray(holder)")
         @JavaType(Object.class)
         StaticObject doArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
-                                   long offset,
-                                   @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after) {
+                        long offset,
+                        @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after) {
             UnsafeAccess.checkAllowed(getMeta());
             return (StaticObject) UnsafeSupport.compareAndExchangeObject(unwrapArray(getLanguage(), holder), offset, before, after);
         }
@@ -3209,7 +3225,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "isArray(holder)")
         int doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                          int before, int after) {
+                        int before, int after) {
             return UnsafeSupport.compareAndExchangeInt(unwrapArray(getLanguage(), holder), offset, before, after);
         }
 

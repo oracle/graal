@@ -24,9 +24,7 @@ package com.oracle.truffle.espresso.libs.libnio.impl;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
-import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.io.FDAccess;
 import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.libs.libnio.LibNio;
@@ -44,31 +42,26 @@ public final class Target_sun_nio_ch_TruffleDispatcher {
     @Throws(IOException.class)
     public static int read0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len,
                     @Inject TruffleIO io) {
-        ByteBuffer dst = NativeUtils.directByteBuffer(address, len);
-        return io.readBytes(fd, FDAccess.forFileDescriptor(), dst);
+        return io.readAddress(fd, FDAccess.forFileDescriptor(), address, len);
     }
 
     @Substitution
     @Throws(IOException.class)
     public static int readv0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len, @Inject TruffleIO io) {
-        ByteBuffer[] buffers = NativeUtils.getByteBuffersFromIOVec(address, len);
-        return Math.toIntExact(io.readByteBuffers(fd, FDAccess.forFileDescriptor(), buffers));
-
+        return Math.toIntExact(io.readv(fd, FDAccess.forFileDescriptor(), address, len));
     }
 
     @Substitution
     @Throws(IOException.class)
     public static int write0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len, @Inject TruffleIO io) {
-        ByteBuffer dst = NativeUtils.directByteBuffer(address, len);
-        return io.writeBytes(fd, FDAccess.forFileDescriptor(), dst);
+        return io.writeAddress(fd, FDAccess.forFileDescriptor(), address, len);
     }
 
     @Substitution
     @Throws(IOException.class)
     public static int writev0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len, @Inject TruffleIO io) {
         // len is length of IOV
-        ByteBuffer[] buffers = NativeUtils.getByteBuffersFromIOVec(address, len);
-        return Math.toIntExact(io.writeByteBuffers(fd, FDAccess.forFileDescriptor(), buffers));
+        return Math.toIntExact(io.writev(fd, FDAccess.forFileDescriptor(), address, len));
     }
 
     @Substitution

@@ -26,7 +26,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
-import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -39,6 +38,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 
@@ -230,7 +230,7 @@ public interface NativeAccess {
 
     /**
      * Similar to realloc. The result of allocating a 0-sized buffer is an implementation detail.
-     *
+     * 
      * @return <code>null</code> if the memory cannot be re-allocated. Otherwise, a
      *         {@link InteropLibrary#hasBufferElements(Object) buffer}.
      * @throws IllegalArgumentException if the size is negative

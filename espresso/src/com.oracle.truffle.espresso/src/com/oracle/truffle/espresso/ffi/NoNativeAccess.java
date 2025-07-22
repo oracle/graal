@@ -32,10 +32,12 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.substitutions.Collect;
 
 public class NoNativeAccess implements NativeAccess {
+
     private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, NoNativeAccess.class);
 
     @Override
@@ -125,6 +127,11 @@ public class NoNativeAccess implements NativeAccess {
 
     @Override
     public void prepareThread() {
+    }
+
+    @Override
+    public NativeMemory nativeMemory() {
+        return null;
     }
 
     private static TruffleLogger getLogger() {

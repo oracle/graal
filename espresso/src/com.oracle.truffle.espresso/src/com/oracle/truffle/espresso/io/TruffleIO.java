@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.io;
 
 import static com.oracle.truffle.espresso.libs.libnio.impl.Target_sun_nio_ch_IOUtil.FD_LIMIT;
+import static com.oracle.truffle.espresso.substitutions.standard.Target_sun_misc_Unsafe.ADDRESS_SIZE;
 
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -78,6 +79,7 @@ import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
@@ -656,7 +658,7 @@ public final class TruffleIO implements ContextAccess {
 
     /**
      * Obtains the length of the file associated with the given file descriptor holder.
-     * 
+     *
      * @see RandomAccessFile#length()
      */
     @TruffleBoundary
@@ -698,6 +700,31 @@ public final class TruffleIO implements ContextAccess {
     }
 
     /**
+     * Writes bytes from the address specified to the file associated with the given file descriptor
+     * holder.
+     *
+     * @param self The file descriptor holder.
+     * @param fdAccess How to get the file descriptor from the holder.
+     * @param address The address containing the bytes to write.
+     * @param length the number of bytes to write.
+     * @return The number of bytes written, possibly zero.
+     * @see java.io.FileOutputStream#write(byte[])
+     */
+    @TruffleBoundary
+    public int writeAddress(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess,
+                    long address, int length) {
+        NativeMemory nativeMemory = context.getNativeAccess().nativeMemory();
+        if (nativeMemory.isDirectBufferSupported()) {
+            return writeBytes(self, fdAccess, nativeMemory.getDirectBuffer(address, length));
+        } else {
+            byte[] buf = new byte[length];
+            nativeMemory.readMemory(address, length, buf);
+            return writeBytes(self, fdAccess, buf, 0, length);
+        }
+    }
+
+    /**
      * Writes buffered bytes to the file associated with the given file descriptor holder.
      *
      * @param self The file descriptor holder.
@@ -727,66 +754,65 @@ public final class TruffleIO implements ContextAccess {
     }
 
     /**
-     * Writes the content of the ByteBuffers to the file associated with the given file descriptor
-     * holder in the exact order of the ByteBuffers array.
+     * Writes the content of the underlying "native" ByteBuffers to the file associated with the
+     * given file descriptor holder in the exact order of the ByteBuffers array.
      *
      * @param self The file descriptor holder.
      * @param fdAccess How to get the file descriptor from the holder.
-     * @param buffers The ByteBuffer containing the bytes to write.
+     * @param address The base address of the continuous memory region, which contains addresses and
+     *            lengths for the ByteBuffers we write from.
+     * @param length the number of ByteBuffers to extract from address.
      * @return The number of bytes written, possibly zero.
      * @see java.nio.channels.GatheringByteChannel#write(ByteBuffer[])
      */
     @TruffleBoundary
-    public long writeByteBuffers(@JavaType(Object.class) StaticObject self,
+    public long writev(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess,
-                    ByteBuffer[] buffers) {
-        Channel channel = Checks.ensureOpen(getChannel(getFD(self, fdAccess)), getContext());
-        if (channel instanceof GatheringByteChannel gatheringByteChannel) {
-            try {
-                return gatheringByteChannel.write(buffers);
-            } catch (IOException e) {
-                throw Throw.throwIOException(e, context);
+                    long address, int length) {
+        if (context.getNativeAccess().nativeMemory().isDirectBufferSupported()) {
+            // Extracting all the buffers comes at a cost. In my opinions it is only worth it if we
+            // have direct memory access. Otherwise, we need to copy alot between buffers and memory
+            StaticObject fileDesc = getFileDesc(self, fdAccess);
+            Channel channel = Checks.ensureOpen(getChannel(getFD(fileDesc)), getContext());
+            if (channel instanceof GatheringByteChannel gatheringByteChannel) {
+                try {
+                    return gatheringByteChannel.write(getByteBuffersFromIOVec(address, length, context.getNativeAccess().nativeMemory()));
+                } catch (IOException e) {
+                    throw Throw.throwIOException(e, context);
+                }
             }
-        } else {
-            context.getLogger().warning(() -> "No GatheringByteChannel for writev operation!" + channel.getClass());
-            long ret = 0;
-            for (ByteBuffer buf : buffers) {
-                ret += writeBytes(self, fdAccess, buf);
-            }
-            return ret;
         }
+        return sequentialWritev(self, fdAccess, address, length);
     }
 
     /**
-     * Reads the content of the file associated with the given file descriptor into the provided
-     * ByteBuffers sequentially.
+     * Reads the content of the file associated with the given file descriptor into the underlying
+     * "native" ByteBuffers.
      *
      * @param self The file descriptor holder.
      * @param fdAccess How to get the file descriptor from the holder.
-     * @param buffers The ByteBuffers we read data into.
+     * @param address The base address of the continuous memory region, which contains addresses and
+     *            lengths for the ByteBuffers we read into.
+     * @param length the number of ByteBuffers to extract from address.
      * @return The number of bytes written, possibly zero.
      * @see java.nio.channels.ScatteringByteChannel#read(ByteBuffer)
      */
     @TruffleBoundary
-    public long readByteBuffers(@JavaType(Object.class) StaticObject self,
+    public long readv(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess,
-                    ByteBuffer[] buffers) {
-        StaticObject fileDesc = getFileDesc(self, fdAccess);
-        Channel channel = Checks.ensureOpen(getChannel(getFD(fileDesc)), getContext());
-        if (channel instanceof ScatteringByteChannel scatteringByteChannel) {
-            try {
-                return scatteringByteChannel.read(buffers);
-            } catch (IOException e) {
-                throw Throw.throwIOException(e, context);
+                    long address, int length) {
+        if (context.getNativeAccess().nativeMemory().isDirectBufferSupported()) {
+            StaticObject fileDesc = getFileDesc(self, fdAccess);
+            Channel channel = Checks.ensureOpen(getChannel(getFD(fileDesc)), getContext());
+            if (channel instanceof ScatteringByteChannel scatteringByteChannel) {
+                try {
+                    return scatteringByteChannel.read(getByteBuffersFromIOVec(address, length, context.getNativeAccess().nativeMemory()));
+                } catch (IOException e) {
+                    throw Throw.throwIOException(e, context);
+                }
             }
-        } else {
-            context.getLogger().warning(() -> "No ScatteringByteChannel for readv operation!" + channel.getClass());
-            long ret = 0;
-            for (ByteBuffer buf : buffers) {
-                ret += readBytes(self, fdAccess, buf);
-            }
-            return ret;
         }
+        return sequentialReadv(self, fdAccess, address, length);
     }
 
     /**
@@ -883,6 +909,28 @@ public final class TruffleIO implements ContextAccess {
                     byte[] bytes,
                     int off, int len) {
         return readBytesImpl(getReadableChannel(fd), bytes, off, len, context);
+    }
+
+    /**
+     * Reads a byte sequence from the file associated with the given file descriptor.
+     *
+     * @param addr the address to read into
+     * @param length how many bytes to read
+     * @see #readBytes(StaticObject, FDAccess, byte[], int, int)
+     */
+    @TruffleBoundary
+    public int readAddress(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, long addr,
+                    int length) {
+        NativeMemory nativeMemory = context.getNativeAccess().nativeMemory();
+        if (nativeMemory.isDirectBufferSupported()) {
+            return readBytes(self, fdAccess, nativeMemory.getDirectBuffer(addr, length));
+        } else {
+            byte[] buf = new byte[length];
+            int ret = readBytes(self, fdAccess, buf, 0, length);
+            nativeMemory.writeMemory(addr, length, buf);
+            return ret;
+        }
     }
 
     /**
@@ -1296,6 +1344,77 @@ public final class TruffleIO implements ContextAccess {
             Meta meta = context.getMeta();
             throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
         }
+    }
+
+    private long sequentialWritev(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, long address, int len) {
+        // constants
+        int lenOffset = ADDRESS_SIZE;
+        int sizeOfIOVec = (short) (ADDRESS_SIZE * 2);
+        long curIOVecAddr = address;
+        long nextAddr;
+        long nextLen;
+        long ret = 0;
+        NativeMemory nativeMemory = context.getNativeAccess().nativeMemory();
+        for (int i = 0; i < len; i++) {
+            if (ADDRESS_SIZE == 4) {
+                nextAddr = nativeMemory.getInt(curIOVecAddr, NativeMemory.MemoryAccessMode.PLAIN);
+                nextLen = nativeMemory.getInt(curIOVecAddr + lenOffset, NativeMemory.MemoryAccessMode.PLAIN);
+            } else {
+                nextAddr = nativeMemory.getLong(curIOVecAddr, NativeMemory.MemoryAccessMode.PLAIN);
+                nextLen = nativeMemory.getLong(curIOVecAddr + lenOffset, NativeMemory.MemoryAccessMode.PLAIN);
+            }
+            ret += writeAddress(self, fdAccess, nextAddr, Math.toIntExact(nextLen));
+            curIOVecAddr += sizeOfIOVec;
+        }
+        return ret;
+    }
+
+    @TruffleBoundary
+    private static ByteBuffer[] getByteBuffersFromIOVec(long address, int len, NativeMemory nativeMemory) {
+        // constants
+        int lenOffset = ADDRESS_SIZE;
+        int sizeOfIOVec = (short) (ADDRESS_SIZE * 2);
+        long curIOVecAddr = address;
+        long nextAddr;
+        long nextLen;
+        ByteBuffer[] buffs = new ByteBuffer[len];
+        for (int i = 0; i < len; i++) {
+            if (ADDRESS_SIZE == 4) {
+                nextAddr = nativeMemory.getInt(curIOVecAddr, NativeMemory.MemoryAccessMode.PLAIN);
+                nextLen = nativeMemory.getInt(curIOVecAddr + lenOffset, NativeMemory.MemoryAccessMode.PLAIN);
+            } else {
+                nextAddr = nativeMemory.getLong(curIOVecAddr, NativeMemory.MemoryAccessMode.PLAIN);
+                nextLen = nativeMemory.getLong(curIOVecAddr + lenOffset, NativeMemory.MemoryAccessMode.PLAIN);
+            }
+            buffs[i] = nativeMemory.getDirectBuffer(nextAddr, nextLen);
+            curIOVecAddr += sizeOfIOVec;
+        }
+        return buffs;
+    }
+
+    private long sequentialReadv(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, long address, int length) {
+        // constants
+        int lenOffset = ADDRESS_SIZE;
+        int sizeOfIOVec = (short) (ADDRESS_SIZE * 2);
+        long curIOVecAddr = address;
+        long nextAddr;
+        long nextLen;
+        long ret = 0;
+        NativeMemory nativeMemory = context.getNativeAccess().nativeMemory();
+        for (int i = 0; i < length; i++) {
+            if (ADDRESS_SIZE == 4) {
+                nextAddr = nativeMemory.getInt(curIOVecAddr, NativeMemory.MemoryAccessMode.PLAIN);
+                nextLen = nativeMemory.getInt(curIOVecAddr + lenOffset, NativeMemory.MemoryAccessMode.PLAIN);
+            } else {
+                nextAddr = nativeMemory.getLong(curIOVecAddr, NativeMemory.MemoryAccessMode.PLAIN);
+                nextLen = nativeMemory.getLong(curIOVecAddr + lenOffset, NativeMemory.MemoryAccessMode.PLAIN);
+            }
+            ret += readAddress(self, fdAccess, nextAddr, Math.toIntExact(nextLen));
+            curIOVecAddr += sizeOfIOVec;
+        }
+        return ret;
     }
 
     private ReadableByteChannel getReadableChannel(@JavaType(Object.class) StaticObject self,

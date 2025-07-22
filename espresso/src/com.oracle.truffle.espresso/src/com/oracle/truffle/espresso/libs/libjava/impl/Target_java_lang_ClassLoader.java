@@ -159,16 +159,15 @@ public final class Target_java_lang_ClassLoader {
         // retrieve the GuestBuffer as Array
         @Pointer
         TruffleObject dataAddrPointer = ctx.getJNI().GetDirectBufferAddress(data);
-        ByteBuffer dataBuffer = NativeUtils.directByteBuffer(dataAddrPointer, len + off);
+        long rawDataPtr = NativeUtils.interopAsPointer(dataAddrPointer);
+        byte[] buf = new byte[len];
+        // reads the memory in the buffer
+        ctx.getNativeAccess().nativeMemory().readMemory(rawDataPtr + off, len, buf);
 
         Symbol<Type> type = null;
         if (StaticObject.notNull(name)) {
             type = ctx.getVM().nameToInternal(toSlashName(ctx.getMeta().toHostString(name)));
         }
-
-        // read into array
-        byte[] buf = new byte[len];
-        dataBuffer.get(off, buf);
 
         return ctx.getVM().defineClass(type, loader, pd, buf);
 
