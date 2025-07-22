@@ -95,6 +95,7 @@ public final class Arguments {
 
         boolean ignoreUnrecognized = args.getIgnoreUnrecognized();
         boolean printFlagsFinal = false;
+        String argumentError = null;
         List<String> xOptions = new ArrayList<>();
 
         for (int i = 0; i < count; i++) {
@@ -243,12 +244,16 @@ public final class Arguments {
                     }
                 }
             } catch (ArgumentException e) {
-                if (!ignoreUnrecognized) {
-                    // Failed to parse
-                    warn(e.getMessage());
-                    return JNI_ERR();
+                // Failed to parse
+                if (argumentError == null) {
+                    argumentError = e.getMessage();
                 }
             }
+        }
+
+        if (argumentError != null && !ignoreUnrecognized) {
+            warn(argumentError);
+            return JNI_ERR();
         }
 
         for (String xOption : xOptions) {
