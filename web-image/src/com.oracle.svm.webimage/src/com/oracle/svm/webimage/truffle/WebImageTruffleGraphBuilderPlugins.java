@@ -31,9 +31,9 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.replacements.nodes.IntrinsicMethodNodeInterface;
 import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -47,13 +47,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class WebImageTruffleGraphBuilderPlugins {
 
-    public static void register(InvocationPlugins plugins, Replacements replacements) {
-        registerTStringPlugins(plugins, replacements);
-        registerArrayUtilsPlugins(plugins, replacements);
+    public static void register(InvocationPlugins plugins) {
+        registerTStringPlugins(plugins);
+        registerArrayUtilsPlugins(plugins);
+        registerExactMathPlugins(plugins);
     }
 
-    private static void registerTStringPlugins(InvocationPlugins plugins, Replacements replacements) {
-        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.strings.TStringOps", replacements).setAllowOverwrite(true);
+    private static void registerTStringPlugins(InvocationPlugins plugins) {
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.strings.TStringOps").setAllowOverwrite(true);
 
         InvocationPlugins.OptionalLazySymbol nodeType = new InvocationPlugins.OptionalLazySymbol("com.oracle.truffle.api.nodes.Node");
 
@@ -229,8 +230,8 @@ public class WebImageTruffleGraphBuilderPlugins {
         });
     }
 
-    private static void registerArrayUtilsPlugins(InvocationPlugins plugins, Replacements replacements) {
-        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.ArrayUtils", replacements).setAllowOverwrite(true);
+    private static void registerArrayUtilsPlugins(InvocationPlugins plugins) {
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.ArrayUtils").setAllowOverwrite(true);
         for (Stride stride : new Stride[]{Stride.S1, Stride.S2}) {
             r.register(new InlineOnlyInvocationPlugin("stubIndexOfB1" + stride.name(), byte[].class, int.class, int.class, int.class) {
                 @Override
@@ -332,5 +333,33 @@ public class WebImageTruffleGraphBuilderPlugins {
                 return false;
             }
         });
+    }
+
+    public static void registerExactMathPlugins(InvocationPlugins plugins) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/ExactMath;"));
+        var r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.ExactMath").setAllowOverwrite(true);
+
+        // TODO GR-65897 Remove this once we support unsigned float conversions in Wasm backend
+        for (JavaKind floatKind : new JavaKind[]{JavaKind.Float, JavaKind.Double}) {
+            for (JavaKind integerKind : new JavaKind[]{JavaKind.Int, JavaKind.Long}) {
+                r.register(new InvocationPlugin.OptionalInvocationPlugin(
+                                integerKind == JavaKind.Long ? "truncateToUnsignedLong" : "truncateToUnsignedInt",
+                                floatKind.toJavaClass()) {
+                    @Override
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x) {
+                        return false;
+                    }
+                });
+            }
+
+            r.register(new InvocationPlugin.OptionalInvocationPlugin(
+                            floatKind == JavaKind.Double ? "unsignedToDouble" : "unsignedToFloat",
+                            long.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x) {
+                    return false;
+                }
+            });
+        }
     }
 }

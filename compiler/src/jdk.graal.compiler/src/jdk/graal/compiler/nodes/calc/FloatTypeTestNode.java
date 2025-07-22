@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,11 @@ import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
+
+import java.util.Objects;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
 public final class FloatTypeTestNode extends UnaryNode implements ArithmeticLIRLowerable {
@@ -64,22 +68,18 @@ public final class FloatTypeTestNode extends UnaryNode implements ArithmeticLIRL
         switch (forValue.getStackKind()) {
             case Float:
                 if (forValue.isJavaConstant()) {
-                    switch (op) {
-                        case IS_FINITE:
-                            return ConstantNode.forBoolean(Float.isFinite(forValue.asJavaConstant().asFloat()));
-                        case IS_INFINITE:
-                            return ConstantNode.forBoolean(Float.isInfinite(forValue.asJavaConstant().asFloat()));
-                    }
+                    return switch (op) {
+                        case IS_FINITE -> ConstantNode.forBoolean(Float.isFinite(forValue.asJavaConstant().asFloat()));
+                        case IS_INFINITE -> ConstantNode.forBoolean(Float.isInfinite(forValue.asJavaConstant().asFloat()));
+                    };
                 }
                 break;
             case Double:
                 if (forValue.isJavaConstant()) {
-                    switch (op) {
-                        case IS_FINITE:
-                            return ConstantNode.forBoolean(Double.isFinite(forValue.asJavaConstant().asDouble()));
-                        case IS_INFINITE:
-                            return ConstantNode.forBoolean(Double.isInfinite(forValue.asJavaConstant().asDouble()));
-                    }
+                    return switch (op) {
+                        case IS_FINITE -> ConstantNode.forBoolean(Double.isFinite(forValue.asJavaConstant().asDouble()));
+                        case IS_INFINITE -> ConstantNode.forBoolean(Double.isInfinite(forValue.asJavaConstant().asDouble()));
+                    };
                 }
                 break;
             default:
@@ -90,12 +90,18 @@ public final class FloatTypeTestNode extends UnaryNode implements ArithmeticLIRL
 
     @Override
     public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
-        switch (op) {
-            case IS_INFINITE:
-                nodeValueMap.setResult(this, gen.emitFloatIsInfinite(nodeValueMap.operand(getValue())));
-                break;
-            default:
-                throw GraalError.shouldNotReachHere("unimplemented float type test op " + op);
+        if (Objects.requireNonNull(op) == FloatTypeTestOp.IS_INFINITE) {
+            nodeValueMap.setResult(this, gen.emitFloatIsInfinite(nodeValueMap.operand(getValue())));
+        } else {
+            throw GraalError.shouldNotReachHere("unimplemented float type test op " + op);
         }
+    }
+
+    @SuppressWarnings("unlikely-arg-type")
+    public static boolean isSupported(Architecture arch) {
+        if (arch instanceof AMD64 amd64) {
+            return amd64.getFeatures().contains(AMD64.CPUFeature.AVX512DQ);
+        }
+        return false;
     }
 }

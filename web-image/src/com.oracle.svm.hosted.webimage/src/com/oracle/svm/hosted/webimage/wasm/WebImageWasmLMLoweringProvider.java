@@ -155,16 +155,6 @@ public class WebImageWasmLMLoweringProvider extends WebImageLoweringProvider {
     }
 
     /**
-     * WASM has instructions to model all rounding modes except for
-     * {@link jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool.RoundingMode#TRUNCATE}, which is
-     * not used by Graal.
-     */
-    @Override
-    public boolean supportsRounding() {
-        return true;
-    }
-
-    /**
      * WASM is single-threaded for now, but in the threading proposal, memory accesses are
      * sequentially consistent.
      */

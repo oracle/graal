@@ -472,14 +472,6 @@ public final class VectorAMD64 extends VectorArchitecture {
         return Math.min(getSupportedVectorLength(elementStamp, maxLength, elementSize), getSupportedVectorLength(offsetStamp, maxLength, offsetSize));
     }
 
-    public boolean supportsCPUFeature(String feature) {
-        try {
-            return arch.getFeatures().contains(CPUFeature.valueOf(feature));
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
-
     @Override
     public int getSupportedVectorPermuteLength(Stamp elementStamp, int maxLength) {
         if (!hasMinimumVectorizationRequirements(maxLength)) {

@@ -679,10 +679,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long jvmtiVThreadMount = getAddress("SharedRuntime::notify_jvmti_vthread_mount");
     public final long jvmtiVThreadUnmount = getAddress("SharedRuntime::notify_jvmti_vthread_unmount");
 
-    public boolean supportJVMTIVThreadNotification() {
-        return jvmtiVThreadStart != 0L && jvmtiVThreadEnd != 0L && jvmtiVThreadMount != 0L && jvmtiVThreadUnmount != 0L;
-    }
-
     // JDK-8322630
     public final int icSpeculatedKlassOffset = getFieldOffset("CompiledICData::_speculated_klass", Integer.class, "uintptr_t");
 

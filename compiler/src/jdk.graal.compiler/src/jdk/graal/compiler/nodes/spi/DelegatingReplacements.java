@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.vm.ci.meta.JavaKind;
@@ -102,11 +101,6 @@ public class DelegatingReplacements implements Replacements {
     @Override
     public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
         delegate.registerSnippet(method, original, receiver, trackNodeSourcePosition, options);
-    }
-
-    @Override
-    public void registerConditionalPlugin(InvocationPlugin plugin) {
-        delegate.registerConditionalPlugin(plugin);
     }
 
     @Override
