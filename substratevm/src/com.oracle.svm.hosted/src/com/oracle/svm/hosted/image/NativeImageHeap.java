@@ -1148,9 +1148,4 @@ final class BaseLayerPartition implements ImageHeapPartition {
     public long getSize() {
         throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
-
-    @Override
-    public boolean isFiller() {
-        return false;
-    }
 }
