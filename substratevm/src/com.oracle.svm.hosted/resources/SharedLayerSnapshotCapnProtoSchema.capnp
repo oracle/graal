@@ -144,12 +144,13 @@ struct PersistedAnalysisField {
   isRead @9 :Bool;
   isWritten @10 :Bool;
   isFolded @11 :Bool;
-  isStatic @12 :Bool;
-  isSynthetic @13 :Bool;
-  annotationList @14 :List(Annotation);
-  name @15 :Text;
-  priorInstalledLayerNum @16 :Int32;
-  assignmentStatus @17 :Int32;
+  isUnsafeAccessed @12 :Bool;
+  isStatic @13 :Bool;
+  isSynthetic @14 :Bool;
+  annotationList @15 :List(Annotation);
+  name @16 :Text;
+  priorInstalledLayerNum @17 :Int32;
+  assignmentStatus @18 :Int32;
 }
 
 struct CEntryPointLiteralReference {

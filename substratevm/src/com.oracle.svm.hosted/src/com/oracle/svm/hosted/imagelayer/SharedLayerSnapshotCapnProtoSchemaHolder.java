@@ -2170,18 +2170,25 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setBooleanField(196, value);
       }
 
-      public final boolean getIsStatic() {
+      public final boolean getIsUnsafeAccessed() {
         return _getBooleanField(197);
       }
-      public final void setIsStatic(boolean value) {
+      public final void setIsUnsafeAccessed(boolean value) {
         _setBooleanField(197, value);
       }
 
-      public final boolean getIsSynthetic() {
+      public final boolean getIsStatic() {
         return _getBooleanField(198);
       }
-      public final void setIsSynthetic(boolean value) {
+      public final void setIsStatic(boolean value) {
         _setBooleanField(198, value);
+      }
+
+      public final boolean getIsSynthetic() {
+        return _getBooleanField(199);
+      }
+      public final void setIsSynthetic(boolean value) {
+        _setBooleanField(199, value);
       }
 
       public final boolean hasAnnotationList() {
@@ -2283,12 +2290,16 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getBooleanField(196);
       }
 
-      public final boolean getIsStatic() {
+      public final boolean getIsUnsafeAccessed() {
         return _getBooleanField(197);
       }
 
-      public final boolean getIsSynthetic() {
+      public final boolean getIsStatic() {
         return _getBooleanField(198);
+      }
+
+      public final boolean getIsSynthetic() {
+        return _getBooleanField(199);
       }
 
       public final boolean hasAnnotationList() {
