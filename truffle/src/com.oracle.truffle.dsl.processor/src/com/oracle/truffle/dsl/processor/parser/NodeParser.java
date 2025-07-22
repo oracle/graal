@@ -4144,7 +4144,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
      * on. This enables that @Cached InlinedBranchProfile inlines by default even if a cached
      * version is generated and no warning is printed.
      */
-    private boolean forceInlineByDefault(CacheExpression cache) {
+    private static boolean forceInlineByDefault(CacheExpression cache) {
         AnnotationMirror cacheAnnotation = cache.getMessageAnnotation();
         TypeElement parameterType = ElementUtils.castTypeElement(cache.getParameter().getType());
         if (parameterType == null) {
@@ -4154,7 +4154,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         if (defaultCached && !hasDefaultCreateCacheMethod(parameterType.asType())) {
             return hasInlineMethod(cache);
         }
-        if (ElementUtils.isAssignable(parameterType.asType(), types.Node)) {
+        if (NodeCodeGenerator.isSpecializedNode(parameterType.asType())) {
             AnnotationMirror inlineAnnotation = getGenerateInlineAnnotation(parameterType.asType());
             if (inlineAnnotation != null) {
                 return getAnnotationValue(Boolean.class, inlineAnnotation, "value") &&
