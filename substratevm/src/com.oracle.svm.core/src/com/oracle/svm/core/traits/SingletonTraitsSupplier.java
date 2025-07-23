@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layeredimagesingleton;
-
-import java.util.EnumSet;
-
-import com.oracle.svm.core.util.VMError;
+package com.oracle.svm.core.traits;
 
 /**
- * Marker for singletons which currently cannot be part of layered images.
+ * Represents a supplier of {@link SingletonTrait}s. See {@link SingletonTraits} for more
+ * information.
  */
-public interface UnsupportedLayeredSingleton extends LayeredImageSingleton {
+public abstract class SingletonTraitsSupplier {
 
-    @Override
-    default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return EnumSet.of(LayeredImageSingletonBuilderFlags.UNSUPPORTED);
-    }
-
-    @Override
-    default PersistFlags preparePersist(ImageSingletonWriter writer) {
-        throw VMError.shouldNotReachHere("Unsupported feature singleton cannot be added to image");
-    }
+    public abstract SingletonTrait getTrait();
 }

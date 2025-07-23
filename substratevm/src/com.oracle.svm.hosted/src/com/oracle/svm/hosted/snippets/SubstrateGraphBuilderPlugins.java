@@ -1175,6 +1175,7 @@ public class SubstrateGraphBuilderPlugins {
                 Class<?> key = constantObjectParameter(b, targetMethod, 0, Class.class, classNode);
                 boolean result = ImageSingletons.contains(key);
                 if (!result && ImageLayerBuildingSupport.buildingImageLayer()) {
+                    // GR-66793 add detection for initial layer only image singleton
                     if (ApplicationLayerOnlyImageSingleton.isAssignableFrom(key) || MultiLayeredImageSingleton.class.isAssignableFrom(key)) {
                         /*
                          * ApplicationLayerOnlyImageSingletons and the array representation of a
