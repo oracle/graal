@@ -68,8 +68,9 @@ public class DFAStateNode extends DFAAbstractStateNode {
     private final short indexOfNodeId;
     private final byte indexOfIsFast;
     private final Matchers matchers;
+    private final short anchoredFinalSuccessor;
 
-    public DFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, Matchers matchers) {
+    public DFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, Matchers matchers, short anchoredFinalSuccessor) {
         super(id, successors);
         assert id > 0;
         this.flags = flags;
@@ -77,6 +78,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         this.indexOfNodeId = indexOfNodeId;
         this.indexOfIsFast = indexOfIsFast;
         this.matchers = matchers;
+        this.anchoredFinalSuccessor = anchoredFinalSuccessor;
     }
 
     public static byte buildFlags(boolean finalState, boolean anchoredFinalState, boolean hasBackwardPrefixState, boolean utf16MustDecode, boolean guardedFinalState,
@@ -169,6 +171,10 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return getSuccessors().length - 1;
     }
 
+    public short getAnchoredFinalSuccessor() {
+        return anchoredFinalSuccessor;
+    }
+
     /**
      * Returns {@code true} if this state has a {@code TruffleString.ByteIndexOfCodePointSetNode}.
      */
@@ -219,13 +225,12 @@ public class DFAStateNode extends DFAAbstractStateNode {
      * {@link DFAAbstractNode#getId() DFA node ID} if execution should immediately be continued at
      * that ID. Otherwise, returns {@code -1}.
      */
-    int atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+    void atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean inputAtEnd) {
         CompilerAsserts.partialEvaluationConstant(this);
-        boolean anchored = isAnchoredFinalState() && executor.inputAtEnd(locals);
+        boolean anchored = isAnchoredFinalState() && inputAtEnd;
         if (isFinalState() || anchored) {
             storeResult(locals, executor, anchored);
         }
-        return -1;
     }
 
     /**

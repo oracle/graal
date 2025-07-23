@@ -49,7 +49,7 @@ public class TraceFinderDFAStateNode extends DFAStateNode {
 
     public TraceFinderDFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, Matchers matchers,
                     byte preCalculatedUnAnchoredResult, byte preCalculatedAnchoredResult) {
-        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers);
+        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, (short) -1);
         this.preCalculatedUnAnchoredResult = preCalculatedUnAnchoredResult;
         this.preCalculatedAnchoredResult = initPreCalculatedAnchoredResult(preCalculatedUnAnchoredResult, preCalculatedAnchoredResult);
     }

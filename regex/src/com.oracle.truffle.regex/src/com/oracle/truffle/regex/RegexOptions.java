@@ -55,15 +55,15 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.regex.flavor.java.JavaFlavorProvider;
+import com.oracle.truffle.regex.flavor.js.JSFlavorProvider;
+import com.oracle.truffle.regex.flavor.oracledb.OracleDBFlavorProvider;
+import com.oracle.truffle.regex.flavor.python.PythonFlavorProvider;
+import com.oracle.truffle.regex.flavor.ruby.RubyFlavorProvider;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
-import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
-import com.oracle.truffle.regex.tregex.parser.flavors.MatchingMode;
-import com.oracle.truffle.regex.tregex.parser.flavors.OracleDBFlavor;
-import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
-import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
-import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
-import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlavor;
+import com.oracle.truffle.regex.tregex.parser.MatchingMode;
+import com.oracle.truffle.regex.tregex.parser.RegexFlavor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 /**
@@ -201,7 +201,17 @@ public final class RegexOptions {
     public static final String FLAVOR_ORACLE_DB = "OracleDB";
     public static final String FLAVOR_ECMASCRIPT = "ECMAScript";
     public static final String FLAVOR_JAVA = "JavaUtilPattern";
+
+    private static final RegexFlavor[] FLAVOR_CACHE = new RegexFlavor[FlavorOption.values().length];
     private static final String[] FLAVOR_OPTIONS = {FLAVOR_PYTHON, FLAVOR_RUBY, FLAVOR_ORACLE_DB, FLAVOR_ECMASCRIPT, FLAVOR_JAVA};
+
+    static {
+        FLAVOR_CACHE[FlavorOption.ECMAScript.ordinal()] = new JSFlavorProvider().get();
+        FLAVOR_CACHE[FlavorOption.Python.ordinal()] = new PythonFlavorProvider().get();
+        FLAVOR_CACHE[FlavorOption.Ruby.ordinal()] = new RubyFlavorProvider().get();
+        FLAVOR_CACHE[FlavorOption.OracleDB.ordinal()] = new OracleDBFlavorProvider().get();
+        FLAVOR_CACHE[FlavorOption.JavaUtilPattern.ordinal()] = new JavaFlavorProvider().get();
+    }
 
     public enum FlavorOption {
         ECMAScript,
@@ -211,14 +221,12 @@ public final class RegexOptions {
         JavaUtilPattern;
 
         RegexFlavor get() {
-            return switch (this) {
-                case ECMAScript -> ECMAScriptFlavor.INSTANCE;
-                case Python -> PythonFlavor.INSTANCE;
-                case Ruby -> RubyFlavor.INSTANCE;
-                case OracleDB -> OracleDBFlavor.INSTANCE;
-                case JavaUtilPattern -> JavaFlavor.INSTANCE;
-            };
+            return FLAVOR_CACHE[ordinal()];
         }
+    }
+
+    private static RegexFlavor getDefaultFlavor() {
+        return FlavorOption.ECMAScript.get();
     }
 
     @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Regex flavor to use.", usageSyntax = "ECMAScript|JavaUtilPattern|OracleDB|Python|Ruby") //
@@ -246,7 +254,7 @@ public final class RegexOptions {
                     "'search': Default. Search for a match anywhere in the input string. " +
                     "'match': Anchor match at starting index. " +
                     "'fullmatch': Anchor match at starting and end index.", usageSyntax = "search|match|fullmatch") //
-    public static final OptionKey<MatchingMode> MatchingMode = new OptionKey<>(com.oracle.truffle.regex.tregex.parser.flavors.MatchingMode.search);
+    public static final OptionKey<MatchingMode> MatchingMode = new OptionKey<>(com.oracle.truffle.regex.tregex.parser.MatchingMode.search);
 
     public static final String PYTHON_LOCALE_NAME = "PythonLocale";
 
@@ -286,7 +294,7 @@ public final class RegexOptions {
     public static final RegexOptions DEFAULT = new RegexOptions(0,
                     (short) TRegexOptions.TRegexMaxDFATransitions,
                     (short) TRegexOptions.TRegexMaxBackTrackerMergeExplodeSize,
-                    ECMAScriptFlavor.INSTANCE,
+                    getDefaultFlavor(),
                     Encodings.UTF_16_RAW, null, null, JAVA_JDK_VERSION_DEFAULT,
                     (short) TRegexOptions.TRegexQuantifierUnrollLimitSingleCC,
                     (short) TRegexOptions.TRegexQuantifierUnrollLimitGroup);
@@ -370,7 +378,7 @@ public final class RegexOptions {
     }
 
     public boolean isDumpAutomataWithSourceSections() {
-        return isDumpAutomata() && (getFlavor() == ECMAScriptFlavor.INSTANCE || getFlavor() == OracleDBFlavor.INSTANCE);
+        return isDumpAutomata() && (getFlavor().getName().equals(FLAVOR_ECMASCRIPT) || getFlavor().getName().equals(FLAVOR_ORACLE_DB));
     }
 
     /**
@@ -465,7 +473,7 @@ public final class RegexOptions {
     }
 
     /**
-     * JDK compatibility version for {@link JavaFlavor}.
+     * JDK compatibility version for {@code JavaFlavor}.
      */
     public int getJavaJDKVersion() {
         return javaJDKVersion;
@@ -560,15 +568,7 @@ public final class RegexOptions {
         if (isMustAdvance()) {
             sb.append(MUST_ADVANCE_NAME + "=true,");
         }
-        if (flavor == PythonFlavor.INSTANCE) {
-            sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON + ",");
-        } else if (flavor == RubyFlavor.INSTANCE) {
-            sb.append(FLAVOR_NAME + "=" + FLAVOR_RUBY + ",");
-        } else if (flavor == OracleDBFlavor.INSTANCE) {
-            sb.append(FLAVOR_NAME + "=" + FLAVOR_ORACLE_DB + ",");
-        } else if (flavor == JavaFlavor.INSTANCE) {
-            sb.append(FLAVOR_NAME + "=" + FLAVOR_JAVA + ",");
-        }
+        sb.append(FLAVOR_NAME).append('=').append(flavor.getName()).append(',');
         sb.append(ENCODING_NAME + "=").append(encoding.getName()).append(",");
         if (matchingMode != null) {
             sb.append(MATCHING_MODE_NAME).append('=').append(matchingMode).append(',');
@@ -611,7 +611,7 @@ public final class RegexOptions {
             this.src = sourceString;
             this.optionValues = optionValues;
             this.flags = 0;
-            this.flavor = ECMAScriptFlavor.INSTANCE;
+            this.flavor = getDefaultFlavor();
             quantifierUnrollThresholdSingleCC = DEFAULT.quantifierUnrollLimitSingleCC;
             quantifierUnrollThresholdGroup = DEFAULT.quantifierUnrollLimitGroup;
         }
@@ -841,15 +841,15 @@ public final class RegexOptions {
             }
             switch (src.charAt(i)) {
                 case 'E':
-                    return expectValue(ECMAScriptFlavor.INSTANCE, FLAVOR_ECMASCRIPT, FLAVOR_OPTIONS);
+                    return expectValue(FlavorOption.ECMAScript, FLAVOR_ECMASCRIPT, FLAVOR_OPTIONS).get();
                 case 'J':
-                    return expectValue(JavaFlavor.INSTANCE, FLAVOR_JAVA, FLAVOR_OPTIONS);
+                    return expectValue(FlavorOption.JavaUtilPattern, FLAVOR_JAVA, FLAVOR_OPTIONS).get();
                 case 'R':
-                    return expectValue(RubyFlavor.INSTANCE, FLAVOR_RUBY, FLAVOR_OPTIONS);
+                    return expectValue(FlavorOption.Ruby, FLAVOR_RUBY, FLAVOR_OPTIONS).get();
                 case 'O':
-                    return expectValue(OracleDBFlavor.INSTANCE, FLAVOR_ORACLE_DB, FLAVOR_OPTIONS);
+                    return expectValue(FlavorOption.OracleDB, FLAVOR_ORACLE_DB, FLAVOR_OPTIONS).get();
                 case 'P':
-                    return expectValue(PythonFlavor.INSTANCE, FLAVOR_PYTHON, FLAVOR_OPTIONS);
+                    return expectValue(FlavorOption.Python, FLAVOR_PYTHON, FLAVOR_OPTIONS).get();
                 default:
                     throw optionsSyntaxErrorUnexpectedValue(FLAVOR_OPTIONS);
             }
@@ -894,11 +894,11 @@ public final class RegexOptions {
             }
             switch (src.charAt(i)) {
                 case 's':
-                    return expectValue(com.oracle.truffle.regex.tregex.parser.flavors.MatchingMode.search, MATCHING_MODE_SEARCH, MATCHING_MODE_OPTIONS);
+                    return expectValue(com.oracle.truffle.regex.tregex.parser.MatchingMode.search, MATCHING_MODE_SEARCH, MATCHING_MODE_OPTIONS);
                 case 'm':
-                    return expectValue(com.oracle.truffle.regex.tregex.parser.flavors.MatchingMode.match, MATCHING_MODE_MATCH, MATCHING_MODE_OPTIONS);
+                    return expectValue(com.oracle.truffle.regex.tregex.parser.MatchingMode.match, MATCHING_MODE_MATCH, MATCHING_MODE_OPTIONS);
                 case 'f':
-                    return expectValue(com.oracle.truffle.regex.tregex.parser.flavors.MatchingMode.fullmatch, MATCHING_MODE_FULLMATCH, MATCHING_MODE_OPTIONS);
+                    return expectValue(com.oracle.truffle.regex.tregex.parser.MatchingMode.fullmatch, MATCHING_MODE_FULLMATCH, MATCHING_MODE_OPTIONS);
                 default:
                     throw optionsSyntaxErrorUnexpectedValue(MATCHING_MODE_OPTIONS);
             }
