@@ -30,6 +30,7 @@ import static jdk.graal.compiler.core.common.GraalOptions.EscapeAnalyzeOnly;
 import java.util.Optional;
 
 import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.GraphState;
@@ -130,6 +131,16 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
                         super.notApplicableTo(graphState),
                         NotApplicable.unlessRunBefore(this, StageFlag.HIGH_TIER_LOWERING, graphState),
                         cleanupPhase != null ? cleanupPhase.notApplicableTo(graphState) : ALWAYS_APPLICABLE);
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        // This may be set more than once but the goal is to record whether PartialEscapePhase has
+        // even been run.
+        if (!graphState.isAfterStage(StageFlag.PARTIAL_ESCAPE)) {
+            graphState.setAfterStage(StageFlag.PARTIAL_ESCAPE);
+        }
     }
 
     @Override
