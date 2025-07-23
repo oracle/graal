@@ -147,13 +147,13 @@ public final class NativeImageClassLoaderSupport {
     }
 
     public boolean isPreserveMode() {
-        return !preserveSelectors.classpathEntries.isEmpty() || !preserveSelectors.moduleNames.isEmpty() || !preserveSelectors.packages.isEmpty() || preserveAll();
+        return !preserveSelectors.classpathEntries.isEmpty() || !preserveSelectors.moduleNames.isEmpty() || !preserveSelectors.packages.isEmpty() || isPreserveAll();
     }
 
     /**
      * @return true if {@link PreserveOptionsSupport#PRESERVE_ALL preserve all} is enabled.
      */
-    private boolean preserveAll() {
+    public boolean isPreserveAll() {
         return preserveAllOrigin().isPresent();
     }
 
@@ -312,7 +312,7 @@ public final class NativeImageClassLoaderSupport {
     public void loadAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
         VMError.guarantee(!includeConfigSealed, "This method should be executed only once.");
 
-        if (preserveAll()) {
+        if (isPreserveAll()) {
             String msg = """
                             This image build includes all classes from the classpath and the JDK via the %s option. This will lead to noticeably bigger images and increased startup times.
                             If you notice '--initialize-at-build-time' related errors during the build, this is because unanticipated types ended up in the image heap.\
