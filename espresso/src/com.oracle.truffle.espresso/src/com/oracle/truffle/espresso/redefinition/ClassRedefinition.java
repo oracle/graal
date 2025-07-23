@@ -45,6 +45,7 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
+import com.oracle.truffle.espresso.classfile.ParserException;
 import com.oracle.truffle.espresso.classfile.ParserField;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.ParserMethod;
@@ -64,6 +65,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
@@ -73,10 +75,11 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.RedefineAddedField;
-import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.preinit.ParserKlassProvider;
+import com.oracle.truffle.espresso.redefinition.RedefinitionException.RedefinitionError;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -199,7 +202,7 @@ public final class ClassRedefinition {
         }
     }
 
-    public List<ChangePacket> detectClassChanges(HotSwapClassInfo[] classInfos, boolean jvmtiRestrictions) throws RedefinitionNotSupportedException {
+    public List<ChangePacket> detectClassChanges(HotSwapClassInfo[] classInfos, boolean jvmtiRestrictions) throws RedefinitionException {
         List<ChangePacket> result = new ArrayList<>(classInfos.length);
         EconomicMap<ObjectKlass, ChangePacket> temp = EconomicMap.create(1);
         EconomicSet<ObjectKlass> superClassChanges = EconomicSet.create(1);
@@ -217,13 +220,26 @@ public final class ClassRedefinition {
             DetectedChange detectedChange = new DetectedChange();
             StaticObject loader = klass.getDefiningClassLoader();
             TypeSymbols typeSymbols = klass.getContext().getTypes();
-            parserKlass = ParserKlassProvider.parseKlass(ClassRegistry.ClassDefinitionInfo.EMPTY, context.getClassLoadingEnv(), loader, typeSymbols.fromClassNameEntry(hotSwapInfo.getName()), bytes);
-            if (hotSwapInfo.isPatched()) {
-                byte[] patched = hotSwapInfo.getPatchedBytes();
-                newParserKlass = parserKlass;
-                // we detect changes against the patched bytecode
-                parserKlass = ParserKlassProvider.parseKlass(ClassRegistry.ClassDefinitionInfo.EMPTY, context.getClassLoadingEnv(), loader, typeSymbols.fromClassNameEntry(hotSwapInfo.getNewName()),
-                                patched);
+            try {
+                parserKlass = ParserKlassProvider.parseKlassWithHostErrors(ClassRegistry.ClassDefinitionInfo.EMPTY, context.getClassLoadingEnv(), loader,
+                                typeSymbols.fromClassNameEntry(hotSwapInfo.getName()), bytes);
+                if (hotSwapInfo.isPatched()) {
+                    byte[] patched = hotSwapInfo.getPatchedBytes();
+                    newParserKlass = parserKlass;
+                    // we detect changes against the patched bytecode
+                    parserKlass = ParserKlassProvider.parseKlassWithHostErrors(ClassRegistry.ClassDefinitionInfo.EMPTY, context.getClassLoadingEnv(), loader,
+                                    typeSymbols.fromClassNameEntry(hotSwapInfo.getNewName()),
+                                    patched);
+                }
+            } catch (ValidationException | ParserException.ClassFormatError validationOrBadFormat) {
+                throw new RedefinitionException(RedefinitionError.InvalidClassFormat, validationOrBadFormat.getMessage());
+            } catch (ParserException.UnsupportedClassVersionError unsupportedClassVersionError) {
+                throw new RedefinitionException(RedefinitionError.UnsupportedVersion, unsupportedClassVersionError.getMessage());
+            } catch (ParserException.NoClassDefFoundError noClassDefFoundError) {
+                // see HotSpot VM_RedefineClasses::load_new_class_versions
+                throw new RedefinitionException(RedefinitionError.NamesDontMatch, noClassDefFoundError.getMessage());
+            } catch (ParserException parserException) {
+                throw EspressoError.shouldNotReachHere("Not a validation nor parser exception", parserException);
             }
             classChange = detectClassChanges(parserKlass, klass, detectedChange, newParserKlass, jvmtiRestrictions);
             if (classChange == ClassChange.CLASS_HIERARCHY_CHANGED && detectedChange.getSuperKlass() != null) {
@@ -258,15 +274,15 @@ public final class ClassRedefinition {
     }
 
     @TruffleBoundary
-    public int redefineClasses(RedefineInfo[] redefineInfos, boolean applyTransformers) {
-        return redefineClasses(Arrays.asList(redefineInfos), applyTransformers);
+    public void redefineClasses(RedefineInfo[] redefineInfos, boolean applyTransformers) throws RedefinitionException {
+        redefineClasses(Arrays.asList(redefineInfos), applyTransformers);
     }
 
-    public int redefineClasses(List<RedefineInfo> redefineInfos, boolean applyTransformers) {
-        return redefineClasses(redefineInfos, !context.advancedRedefinitionEnabled(), applyTransformers);
+    public void redefineClasses(List<RedefineInfo> redefineInfos, boolean applyTransformers) throws RedefinitionException {
+        redefineClasses(redefineInfos, !context.advancedRedefinitionEnabled(), applyTransformers);
     }
 
-    private synchronized int redefineClasses(List<RedefineInfo> redefineInfos, boolean jvmtiRestrictions, boolean applyTransformers) {
+    private synchronized void redefineClasses(List<RedefineInfo> redefineInfos, boolean jvmtiRestrictions, boolean applyTransformers) throws RedefinitionException {
         List<RedefineInfo> resultingInfos = applyTransformers ? getTransformedInfos(redefineInfos) : redefineInfos;
 
         // make sure the modules of redefined classes can read injected agent classes
@@ -315,12 +331,9 @@ public final class ClassRedefinition {
             } catch (Throwable t) {
                 context.getLogger().severe(() -> JDWPContextImpl.class.getName() + ": redefineClasses: " + t.getMessage());
             }
-        } catch (RedefinitionNotSupportedException ex) {
-            return ex.getErrorCode();
         } finally {
             end();
         }
-        return 0;
     }
 
     @SuppressWarnings("try")
@@ -343,7 +356,7 @@ public final class ClassRedefinition {
         return transformedInfos;
     }
 
-    private void doRedefine(List<RedefineInfo> redefineInfos, List<ObjectKlass> changedKlasses, boolean jvmtiRestrictions) throws RedefinitionNotSupportedException {
+    private void doRedefine(List<RedefineInfo> redefineInfos, List<ObjectKlass> changedKlasses, boolean jvmtiRestrictions) throws RedefinitionException {
         // list to hold removed inner classes that must be marked removed
         List<ObjectKlass> removedInnerClasses = new ArrayList<>(0);
         // list of classes that need to refresh due to
@@ -364,10 +377,7 @@ public final class ClassRedefinition {
 
         for (ChangePacket packet : changePackets) {
             context.getLogger().fine(() -> "Redefining class " + packet.info.getNewName());
-            int result = redefineClass(packet, invalidatedClasses, redefinedClasses);
-            if (result != 0) {
-                throw new RedefinitionNotSupportedException(result);
-            }
+            redefineClass(packet, invalidatedClasses, redefinedClasses);
         }
 
         // refresh invalidated classes if not already redefined
@@ -397,7 +407,7 @@ public final class ClassRedefinition {
         }
     }
 
-    public int redefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, List<ObjectKlass> redefinedClasses) {
+    public void redefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, List<ObjectKlass> redefinedClasses) throws RedefinitionException {
         try {
             switch (packet.classChange) {
                 case METHOD_BODY_CHANGE:
@@ -407,11 +417,11 @@ public final class ClassRedefinition {
                 case REMOVE_METHOD:
                 case SCHEMA_CHANGE:
                     doRedefineClass(packet, invalidatedClasses, redefinedClasses);
-                    return 0;
+                    return;
                 case CLASS_HIERARCHY_CHANGED:
                     context.markChangedHierarchy();
                     doRedefineClass(packet, invalidatedClasses, redefinedClasses);
-                    return 0;
+                    return;
                 case NEW_CLASS:
                     ClassInfo classInfo = packet.info;
 
@@ -434,25 +444,24 @@ public final class ClassRedefinition {
                         // have a versioned name on disk, so let's define them directly
                         classRegistry.defineKlass(context, type, classInfo.getBytes());
                     }
-                    return 0;
-                default:
-                    return 0;
+                    return;
             }
         } catch (EspressoException ex) {
             // TODO(Gregersen) - return appropriate error code based on the exception type
             // we get from parsing the class file
-            return ErrorCodes.INVALID_CLASS_FORMAT;
+            throw new RedefinitionException(RedefinitionError.InvalidClassFormat);
+        } catch (EspressoClassLoadingException.ClassCircularityError e) {
+            throw new RedefinitionException(RedefinitionError.CircularClassDefinition);
         } catch (EspressoClassLoadingException e) {
-            throw e.asGuestException(context.getMeta());
+            throw new RedefinitionException(RedefinitionError.FailsVerification, e.getMessage());
         }
     }
 
     // detect all types of class changes, but return early when a change that require arbitrary
     // changes
     private static ClassChange detectClassChanges(ParserKlass newParserKlass, ObjectKlass oldKlass, DetectedChange collectedChanges, ParserKlass finalParserKlass, boolean jvmtiRestrictions)
-                    throws RedefinitionNotSupportedException {
-        Meta meta = oldKlass.getMeta();
-        if (oldKlass.getSuperKlass() == meta.java_lang_Enum) {
+                    throws RedefinitionException {
+        if (oldKlass.getSuperKlass() == oldKlass.getMeta().java_lang_Enum) {
             detectInvalidEnumConstantChanges(newParserKlass, oldKlass);
         }
         ConstantPool oldConstantPool = oldKlass.getConstantPool();
@@ -460,16 +469,16 @@ public final class ClassRedefinition {
         // detect invalid attribute changes for jvmti restrictions
         if (jvmtiRestrictions) {
             if (attrChanged(oldKlass.getAttribute(NestHostAttribute.NAME), newParserKlass.getAttribute(NestHostAttribute.NAME), oldConstantPool, newConstantPool)) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "attempted to redefine NestHost attribute");
+                throw new RedefinitionException(RedefinitionError.ClassAttributeChanged);
             }
             if (attrChanged(oldKlass.getAttribute(NestMembersAttribute.NAME), newParserKlass.getAttribute(NestMembersAttribute.NAME), oldConstantPool, newConstantPool)) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "attempted to redefine NestMembers attribute");
+                throw new RedefinitionException(RedefinitionError.ClassAttributeChanged);
             }
             if (attrChanged(oldKlass.getAttribute(RecordAttribute.NAME), newParserKlass.getAttribute(RecordAttribute.NAME), oldConstantPool, newConstantPool)) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "attempted to redefine record attribute");
+                throw new RedefinitionException(RedefinitionError.ClassAttributeChanged);
             }
             if (attrChanged(oldKlass.getAttribute(PermittedSubclassesAttribute.NAME), newParserKlass.getAttribute(PermittedSubclassesAttribute.NAME), oldConstantPool, newConstantPool)) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "attempted to redefine permitted subclasses attribute");
+                throw new RedefinitionException(RedefinitionError.ClassAttributeChanged);
             }
         }
 
@@ -564,12 +573,12 @@ public final class ClassRedefinition {
 
         if (!oldMethods.isEmpty()) {
             if (jvmtiRestrictions) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "class redefinition cannot remove a method");
+                throw new RedefinitionException(RedefinitionError.MethodDeleted);
             }
             result = ClassChange.REMOVE_METHOD;
         } else if (!newMethods.isEmpty()) {
             if (jvmtiRestrictions) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "class redefinition cannot add a method");
+                throw new RedefinitionException(RedefinitionError.MethodAdded);
             }
             result = ClassChange.ADD_METHOD;
         }
@@ -620,7 +629,7 @@ public final class ClassRedefinition {
                 // only restrict is there's actual new fields, not only fields with constant value
                 // attribute changes
                 if (newFieldsList.size() != acceptedChanges.numAcceptedFields) {
-                    throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "class redefinition cannot change the schema");
+                    throw new RedefinitionException(RedefinitionError.SchemaChanged);
                 }
             }
             if (isPatched) {
@@ -645,7 +654,7 @@ public final class ClassRedefinition {
                 // only restrict is there's actual removed fields, not only fields with constant
                 // value attribute changes
                 if (oldFieldsList.size() != acceptedChanges.numAcceptedFields) {
-                    throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "class redefinition cannot remove a field");
+                    throw new RedefinitionException(RedefinitionError.SchemaChanged);
                 }
             }
             collectedChanges.addRemovedFields(oldFieldsList);
@@ -655,7 +664,7 @@ public final class ClassRedefinition {
         // detect class-level changes
         if (newParserKlass.getFlags() != oldParserKlass.getFlags()) {
             if (jvmtiRestrictions) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "class redefinition cannot change the signature of a class");
+                throw new RedefinitionException(RedefinitionError.ClassModifiersChanged);
             }
             result = ClassChange.SCHEMA_CHANGE;
         }
@@ -666,7 +675,7 @@ public final class ClassRedefinition {
         Klass superKlass = oldKlass.getSuperKlass();
         if (!newParserKlass.getSuperKlass().equals(oldParserKlass.getSuperKlass())) {
             if (jvmtiRestrictions) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "class redefinition cannot change the superclass");
+                throw new RedefinitionException(RedefinitionError.HierarchyChanged);
             }
             result = ClassChange.CLASS_HIERARCHY_CHANGED;
             superKlass = getLoadedKlass(newParserKlass.getSuperKlass(), oldKlass);
@@ -676,7 +685,7 @@ public final class ClassRedefinition {
         ObjectKlass[] newSuperInterfaces = oldKlass.getSuperInterfaces();
         if (!Arrays.equals(newParserKlass.getSuperInterfaces(), oldParserKlass.getSuperInterfaces())) {
             if (jvmtiRestrictions) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "class redefinition cannot change the implemented interfaces");
+                throw new RedefinitionException(RedefinitionError.HierarchyChanged);
             }
             result = ClassChange.CLASS_HIERARCHY_CHANGED;
             newSuperInterfaces = new ObjectKlass[newParserKlass.getSuperInterfaces().length];
@@ -689,7 +698,7 @@ public final class ClassRedefinition {
         return result;
     }
 
-    private static void detectInvalidEnumConstantChanges(ParserKlass newParserKlass, ObjectKlass oldKlass) throws RedefinitionNotSupportedException {
+    private static void detectInvalidEnumConstantChanges(ParserKlass newParserKlass, ObjectKlass oldKlass) throws RedefinitionException {
         // detect invalid enum constant changes
         // currently, we only allow appending new enum constants
         Field[] oldEnumFields = oldKlass.getDeclaredFields();
@@ -708,18 +717,18 @@ public final class ClassRedefinition {
         }
         // we don't currently allow removing enum constants
         if (oldEnumConstants.size() > newEnumConstants.size()) {
-            throw new RedefinitionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
+            throw new RedefinitionException(RedefinitionError.SchemaChanged);
         }
 
         // compare ordered lists, we don't allow reordering enum constants
         for (int i = 0; i < oldEnumConstants.size(); i++) {
             if (oldEnumConstants.get(i) != newEnumConstants.get(i)) {
-                throw new RedefinitionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
+                throw new RedefinitionException(RedefinitionError.SchemaChanged);
             }
         }
     }
 
-    private static Klass getLoadedKlass(Symbol<Type> klassType, ObjectKlass oldKlass) throws RedefinitionNotSupportedException {
+    private static Klass getLoadedKlass(Symbol<Type> klassType, ObjectKlass oldKlass) throws RedefinitionException {
         Klass klass;
         klass = oldKlass.getContext().getRegistries().findLoadedClass(klassType, oldKlass.getDefiningClassLoader());
         if (klass == null) {
@@ -729,7 +738,7 @@ public final class ClassRedefinition {
                 StaticObject loadedClass = (StaticObject) oldKlass.getMeta().java_lang_ClassLoader_loadClass.invokeDirectVirtual(oldKlass.getDefiningClassLoader(), resourceGuestString);
                 klass = loadedClass.getMirrorKlass();
             } catch (Throwable t) {
-                throw new RedefinitionNotSupportedException(ErrorCodes.ABSENT_INFORMATION);
+                throw new RedefinitionException(RedefinitionError.NoSuperDefFound);
             }
         }
         return klass;

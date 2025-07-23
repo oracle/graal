@@ -76,6 +76,7 @@ import com.oracle.truffle.espresso.nodes.BciProvider;
 import com.oracle.truffle.espresso.nodes.EspressoInstrumentableRootNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
+import com.oracle.truffle.espresso.redefinition.RedefinitionException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.threads.ThreadState;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -828,7 +829,12 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     public synchronized int redefineClasses(List<RedefineInfo> redefineInfos) {
-        return context.getClassRedefinition().redefineClasses(redefineInfos, true);
+        try {
+            context.getClassRedefinition().redefineClasses(redefineInfos, true);
+            return 0;
+        } catch (RedefinitionException e) {
+            return e.getJDWPErrorCode();
+        }
     }
 
     @Override
