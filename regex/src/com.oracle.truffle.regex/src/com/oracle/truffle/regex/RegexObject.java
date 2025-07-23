@@ -68,10 +68,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.literal.LiteralRegexExecNode;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.TRegexCompilationRequest;
-import com.oracle.truffle.regex.tregex.parser.flavors.OracleDBFlags;
-import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlags;
-import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlags;
-import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlags;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 /**
@@ -84,10 +80,10 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  * compiler. The type differs based on the flavor of regular expressions used:
  * <ul>
  * <li>{@link RegexFlags} if the flavor was {@code ECMAScript}</li>
- * <li>{@link JavaFlags} if the flavor was {@code JavaUtilPattern}</li>
- * <li>{@link OracleDBFlags} if the flavor was {@code OracleDB}</li>
- * <li>{@link PythonFlags} if the flavor was {@code Python}</li>
- * <li>{@link RubyFlags} if the flavor was {@code Ruby}</li>
+ * <li>{@code JavaFlags} if the flavor was {@code JavaUtilPattern}</li>
+ * <li>{@code OracleDBFlags} if the flavor was {@code OracleDB}</li>
+ * <li>{@code PythonFlags} if the flavor was {@code Python}</li>
+ * <li>{@code RubyFlags} if the flavor was {@code Ruby}</li>
  * </ul>
  * </li>
  * <li>{@code int groupCount}: number of capture groups present in the regular expression, including

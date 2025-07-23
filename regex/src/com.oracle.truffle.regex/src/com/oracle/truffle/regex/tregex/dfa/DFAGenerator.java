@@ -1761,7 +1761,7 @@ public final class DFAGenerator implements JsonConvertible {
                                 createSimpleCGTransition((short) -1, (short) -1, s.getUnAnchoredFinalStateTransition()),
                                 createAndDedupSimpleCGTransition(nodes, (short) -1, s.getAnchoredFinalStateTransition()));
             } else {
-                stateNode = new DFAStateNode(id, flags, loopToSelf, indexOfNodeId, indexOfIsFast, successors, matchers);
+                stateNode = new DFAStateNode(id, flags, loopToSelf, indexOfNodeId, indexOfIsFast, successors, matchers, (short) -1);
             }
             nodes.set(id, stateNode);
         }

@@ -75,13 +75,13 @@ import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNo
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexLiteralLookAroundExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexNFAExecutorNode;
 import com.oracle.truffle.regex.tregex.parser.RegexASTPostProcessor;
+import com.oracle.truffle.regex.tregex.parser.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.ASTLaTexExportVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
-import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.util.DFAExport;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.Loggers;
