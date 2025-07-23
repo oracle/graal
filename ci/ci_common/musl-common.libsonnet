@@ -3,8 +3,8 @@
   musl_dependency:: {
     downloads+: {
       MUSL_TOOLCHAIN: {
-        name: 'toolchain-gcc-10.2.1-musl',
-        version: '1.2.2',
+        name: 'toolchain-gcc-10.3.0-zlib-1.2.13-musl',
+        version: '1.2.5.1',
         platformspecific: true,
       },
     },
