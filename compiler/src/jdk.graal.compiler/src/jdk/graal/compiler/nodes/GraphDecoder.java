@@ -25,8 +25,6 @@
 package jdk.graal.compiler.nodes;
 
 import static jdk.graal.compiler.debug.GraalError.shouldNotReachHere;
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
-import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -34,7 +32,6 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Deque;
 import java.util.EnumSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
@@ -62,15 +59,10 @@ import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.graph.NodeList;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.graph.NodeSuccessorList;
-import jdk.graal.compiler.nodeinfo.InputType;
-import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.GraphDecoder.MethodScope;
-import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
 import jdk.vm.ci.code.Architecture;
@@ -451,7 +443,7 @@ public class GraphDecoder {
                     return false;
                 }
             }
-            return thisIter.hasNext() == otherIter.hasNext();
+            return true;
         }
 
         @Override
@@ -2193,12 +2185,6 @@ class LoopDetector implements Runnable {
                 return value;
             }
         };
-
-        FrameState newState = oldState.duplicate(valueFunction);
-
-        assert loopExit.stateAfter() == null;
-        loopExit.setStateAfter(graph.add(newState));
-    }
 
         FrameState newState = oldState.duplicate(valueFunction);
 

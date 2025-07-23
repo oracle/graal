@@ -1934,11 +1934,12 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+
         r.register(new RequiredInlineOnlyInvocationPlugin("injectIterationCount", double.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode iterations, ValueNode condition) {
-                // This directive has an actual definition that only works well if the bytecode
-                // parser inlines it, so also provide this plugin equivalent to its definition:
+                // This directive is empty as it should never use a branch probability if it is root
+                // compiled. The code below resembles the following formula
                 // injectBranchProbability(1. - 1. / iterations, condition)
                 if (iterations.isJavaConstant()) {
                     double iterationsConstant;
