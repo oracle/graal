@@ -25,7 +25,6 @@
 package jdk.graal.compiler.truffle;
 
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
-import jdk.graal.compiler.truffle.phases.InsertProxyPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.options.OptionValues;
@@ -33,6 +32,7 @@ import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
+import jdk.graal.compiler.phases.common.InsertProxyPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.truffle.phases.FrameAccessVerificationPhase;
 import jdk.graal.compiler.truffle.phases.PhiTransformPhase;
@@ -43,7 +43,7 @@ public class PostPartialEvaluationSuite extends PhaseSuite<TruffleTierContext> {
     @SuppressWarnings("this-escape")
     public PostPartialEvaluationSuite(OptionValues optionValues, boolean iterativePartialEscape) {
         CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
-        appendPhase(new InsertProxyPhase(optionValues));
+        appendPhase(new InsertProxyPhase());
         appendPhase(new ConvertDeoptimizeToGuardPhase(canonicalizerPhase));
         appendPhase(new InlineReplacementsPhase());
         appendPhase(canonicalizerPhase);

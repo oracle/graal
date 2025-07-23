@@ -269,7 +269,8 @@ public final class GraalDirectives {
      * @param iterations the expected number of iterations that should be injected
      */
     public static boolean injectIterationCount(double iterations, boolean condition) {
-        return injectBranchProbability(1. - 1. / iterations, condition);
+        // the plugin handles the semantics
+        return condition;
     }
 
     /**
