@@ -169,10 +169,10 @@ public class WasmLauncher extends AbstractLanguageLauncher {
     }
 
     private Value detectEntryPoint(Value mainModule) {
-        if (customEntryPoint != null) {
-            return mainModule.getMember(customEntryPoint);
-        }
         Value exports = mainModule.getMember("exports");
+        if (customEntryPoint != null) {
+            return exports.getMember(customEntryPoint);
+        }
         Value candidate = exports.getMember("_start");
         if (candidate == null) {
             candidate = exports.getMember("_main");
