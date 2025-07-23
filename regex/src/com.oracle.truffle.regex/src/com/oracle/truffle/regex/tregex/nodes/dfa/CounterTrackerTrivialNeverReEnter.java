@@ -1,0 +1,130 @@
+/*
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+package com.oracle.truffle.regex.tregex.nodes.dfa;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.regex.tregex.automaton.TransitionOp;
+
+/**
+ * Counter Tracker for quantifiers is where no counting set unions are ever applied, i.e. the only
+ * operations done are overwriting {@link TransitionOp#set1} or {@link TransitionOp#maintain}
+ * operations, or {@link TransitionOp#inc}. In this case, the set will only ever contain a single
+ * value. Therefore, this tracker maintains a single value representing the current largest value in
+ * the set.
+ */
+public final class CounterTrackerTrivialNeverReEnter extends CounterTracker {
+    private final int min;
+    private final int max;
+    private final int fixedOffset;
+
+    public CounterTrackerTrivialNeverReEnter(int min, int max, int numberOfCells, CounterTrackerData.Builder dataBuilder) {
+        this.min = min;
+        this.max = max;
+        this.fixedOffset = dataBuilder.getFixedDataSize();
+        dataBuilder.requestFixedSize(numberOfCells);
+    }
+
+    @Override
+    @ExplodeLoop
+    public void apply(long op, long[] data, int[][] intArrays) {
+        CompilerAsserts.partialEvaluationConstant(op);
+        int dst = mapId(TransitionOp.getTarget(op));
+        int kind = TransitionOp.getKind(op);
+        assert TransitionOp.getModifier(op) == TransitionOp.overwrite || TransitionOp.getModifier(op) == TransitionOp.swap;
+        switch (kind) {
+            case TransitionOp.set1 -> {
+                data[dst] = 1;
+            }
+            case TransitionOp.inc -> {
+                data[dst] = data[mapId(TransitionOp.getSource(op))] + 1;
+            }
+            case TransitionOp.maintain -> {
+                int src = mapId(TransitionOp.getSource(op));
+                if (TransitionOp.getModifier(op) == TransitionOp.swap) {
+                    long tmp = data[dst];
+                    data[dst] = data[src];
+                    data[src] = tmp;
+                } else {
+                    data[dst] = data[src];
+                }
+            }
+        }
+    }
+
+    @Override
+    public void init(long[] fixedData, int[][] intArrays) {
+    }
+
+    @Override
+    public boolean support(long operation) {
+        return true;
+    }
+
+    private int mapId(int sId) {
+        return sId + fixedOffset;
+    }
+
+    @Override
+    protected boolean anyLtMax(int sId, long[] fixedData, int[][] intArrays) {
+        if (max == -1) {
+            return true;
+        }
+        return fixedData[mapId(sId)] < max;
+    }
+
+    @Override
+    protected boolean anyGeMin(int sId, long[] fixedData, int[][] intArrays) {
+        assert min != 0;
+        return fixedData[mapId(sId)] >= min;
+    }
+
+    @Override
+    protected boolean anyLtMin(int sId, long[] fixedData, int[][] intArrays) {
+        assert min != 0;
+        return fixedData[mapId(sId)] < min;
+    }
+
+    @Override
+    public String dumpState(int sId, long[] fixedData, int[][] intArrays) {
+        return "TrivialNeverReEnter, current value: " + fixedData[mapId(sId)];
+    }
+}

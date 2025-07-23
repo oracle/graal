@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex.string;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.charset.CodePointSet;
@@ -64,23 +63,15 @@ public final class Encodings {
     public static final String[] ALL_NAMES = {UTF_8.getName(), UTF_16.getName(), UTF_16_RAW.getName(), UTF_32.getName(), ASCII.getName(), LATIN_1.getName(), "BYTES"};
 
     public static Encoding getEncoding(String name) {
-        switch (name) {
-            case "UTF-8":
-                return UTF_8;
-            case "UTF-16":
-                return UTF_16;
-            case "UTF-32":
-                return UTF_32;
-            case "UTF-16-RAW":
-                return UTF_16_RAW;
-            case "BYTES":
-                return BYTES;
-            case "LATIN-1":
-                return LATIN_1;
-            default:
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw CompilerDirectives.shouldNotReachHere("Unknown Encoding \"" + name + "\"");
-        }
+        return switch (name) {
+            case "UTF-8" -> UTF_8;
+            case "UTF-16" -> UTF_16;
+            case "UTF-32" -> UTF_32;
+            case "UTF-16-RAW" -> UTF_16_RAW;
+            case "BYTES" -> BYTES;
+            case "LATIN-1" -> LATIN_1;
+            default -> null;
+        };
     }
 
     public abstract static class Encoding {
@@ -118,6 +109,11 @@ public final class Encodings {
         public abstract void createMatcher(Builder matchersBuilder, int i, CodePointSet cps, CompilationBuffer compilationBuffer);
 
         public abstract SequentialMatchers toMatchers(Builder matchersBuilder);
+
+        @Override
+        public String toString() {
+            return getName();
+        }
 
         public static final class UTF32 extends Encoding {
 

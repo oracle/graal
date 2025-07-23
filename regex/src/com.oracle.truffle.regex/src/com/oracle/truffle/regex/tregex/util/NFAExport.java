@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -349,11 +349,11 @@ public final class NFAExport {
             }
             return StateStyle.UN_ANCHORED_INITIAL;
         }
-        if (mergeFinalStates && state.hasTransitionToAnchoredFinalState(forward) && !state.hasTransitionToUnAnchoredFinalState(forward) ||
+        if (mergeFinalStates && state.hasUnGuardedTransitionToAnchoredFinalState(forward) && !state.hasUnGuardedTransitionToUnAnchoredFinalState(forward) ||
                         state.isAnchoredFinalState(forward)) {
             return StateStyle.ANCHORED_FINAL;
         }
-        if (state.isFinalState(forward) || mergeFinalStates && state.hasTransitionToUnAnchoredFinalState(forward)) {
+        if (state.isFinalState(forward) || mergeFinalStates && state.hasUnGuardedTransitionToUnAnchoredFinalState(forward)) {
             return StateStyle.UN_ANCHORED_FINAL;
         }
         return StateStyle.REGULAR;
