@@ -150,7 +150,9 @@ public class MissingRegistrationUtils {
     }
 
     protected static JsonWriter getJSONWriter(StringWriter json) throws IOException {
-        return new JsonPrettyWriter(json).indent().appendIndentation();
+        return new JsonPrettyWriter(json)
+                        .indent().indent() // match indentation of reachability-metadata.json
+                        .appendIndentation();
     }
 
     protected static String elementToJSON(JsonPrintable element) {
