@@ -2153,19 +2153,30 @@ def register_truffle_polybench_suites():
         mx_polybench.register_polybench_benchmark_suite(mx_suite=_suite, name="sl", languages=["sl"], benchmark_distribution="SL_BENCHMARKS", benchmark_file_filter=".*sl", runner=sl_polybench_runner, tags={"gate", "benchmark"})
 
     # NFI benchmarks use Graal.js to test upcalls/downcalls, so only register them if Graal.js is available.
-    # TODO (GR-64439): re-enable PMH after graaljs polybench migration
-    # if mx.dependency("PMH", fatalIfMissing=False) and mx.suite("graal-js", fatalIfMissing=False):
-    #     mx_polybench.register_polybench_language(mx_suite=_suite, language="pmh", distributions=["PMH"], native_distributions=["PMH_BENCHMARK_NATIVE"])
+    if mx.dependency("PMH", fatalIfMissing=False) and mx.suite("graal-js", fatalIfMissing=False):
+        mx_polybench.register_polybench_language(mx_suite=_suite, language="pmh", distributions=["PMH"], native_distributions=["PMH_BENCHMARK_NATIVE"])
 
+        def nfi_polybench_runner(polybench_run: mx_polybench.PolybenchRunFunction, tags) -> None:
+            if "gate" in tags:
+                polybench_run(["--jvm", "nfi/*.pmh", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
+                polybench_run(["--jvm", "nfi/panama/*.pmh", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
+                polybench_run(["--native", "nfi/*.pmh", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
+            if "benchmark" in tags:
+                polybench_run(["--jvm", "nfi/*.pmh", "--experimental-options", "--engine.Compilation=false"])
+                polybench_run(["--jvm", "nfi/panama/*.pmh", "--experimental-options", "--engine.Compilation=false"])
+                polybench_run(["--native", "nfi/*.pmh", "--experimental-options", "--engine.Compilation=false"])
+                polybench_run(["--jvm", "nfi/*.pmh"])
+                polybench_run(["--jvm", "nfi/panama/*.pmh"])
+                polybench_run(["--native", "nfi/*.pmh"])
+                polybench_run(["--jvm", "nfi/*.pmh", "--metric=metaspace-memory"])
+                polybench_run(["--jvm", "nfi/panama/*.pmh", "--metric=metaspace-memory"])
+                polybench_run(["--jvm", "nfi/*.pmh", "--metric=application-memory"])
+                polybench_run(["--jvm", "nfi/panama/*.pmh", "--metric=application-memory"])
+                polybench_run(["--jvm", "nfi/*.pmh", "--metric=allocated-bytes", "-w", "40", "-i", "10", "--experimental-options", "--engine.Compilation=false"])
+                polybench_run(["--jvm", "nfi/panama/*.pmh", "--metric=allocated-bytes", "-w", "40", "-i", "10", "--experimental-options", "--engine.Compilation=false"])
+                polybench_run(["--native", "nfi/*.pmh", "--metric=allocated-bytes", "-w", "40", "-i", "10", "--experimental-options", "--engine.Compilation=false"])
+                polybench_run(["--jvm", "nfi/*.pmh", "--metric=allocated-bytes", "-w", "40", "-i", "10"])
+                polybench_run(["--jvm", "nfi/panama/*.pmh", "--metric=allocated-bytes", "-w", "40", "-i", "10"])
+                polybench_run(["--native", "nfi/*.pmh", "--metric=allocated-bytes", "-w", "40", "-i", "10"])
 
-    #     def nfi_polybench_runner(polybench_run: mx_polybench.PolybenchRunFunction, tags) -> None:
-    #         if "gate" in tags:
-    #             polybench_run(["--jvm", "nfi/*.pmh", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
-    #             polybench_run(["--native", "nfi/*.pmh", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
-    #             polybench_run(["--jvm", "nfi/panama/*.pmh", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
-    #         if "benchmark" in tags:
-    #             polybench_run(["--jvm", "nfi/*.pmh"])
-    #             polybench_run(["--native", "nfi/*.pmh"])
-    #             polybench_run(["--jvm", "nfi/panama/*.pmh"])
-
-    #     mx_polybench.register_polybench_benchmark_suite(mx_suite=_suite, name="nfi", languages=["pmh", "js"], benchmark_distribution="NFI_POLYBENCH_BENCHMARKS", benchmark_file_filter=".*pmh", runner=nfi_polybench_runner, tags={"gate", "benchmark"})
+        mx_polybench.register_polybench_benchmark_suite(mx_suite=_suite, name="nfi", languages=["pmh", "js"], benchmark_distribution="NFI_POLYBENCH_BENCHMARKS", benchmark_file_filter=".*pmh", runner=nfi_polybench_runner, tags={"gate", "benchmark"})
