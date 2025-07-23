@@ -538,7 +538,7 @@ Take extra care if accessing source information in [compiled code](RuntimeCompil
 ### Instrumentation
 
 The behaviour of a Bytecode DSL interpreter can be non-intrusively observed (and modified) using instrumentation.
-For example, you can instrument your code to trace each guest language statement, or add instrumentation to log return values.
+For example, you can instrument your code to trace each guest language statement, or add instrumentation to log return values (see the [Instrumentation tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/InstrumentationTutorial.java) for more details).
 
 Instrumentations are specified during parsing, but disabled by default.
 They incur no overhead until they are enabled at a later time (see [Reparsing metadata](#reparsing)).
