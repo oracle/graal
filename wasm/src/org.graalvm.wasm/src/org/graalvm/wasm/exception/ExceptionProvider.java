@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,66 +39,16 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.globals;
+package org.graalvm.wasm.exception;
 
-import org.graalvm.wasm.api.ValueType;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 
-public class DefaultWasmGlobal extends WasmGlobal {
-    private long globalValue;
-    private Object globalObjectValue;
+public interface ExceptionProvider {
+    AbstractTruffleException createTypeError(Failure failure, String message);
 
-    @SuppressWarnings("this-escape")
-    public DefaultWasmGlobal(ValueType valueType, boolean mutable, int value) {
-        super(valueType, mutable);
-        storeInt(value);
-    }
+    AbstractTruffleException formatTypeError(Failure failure, String format, Object... args);
 
-    @SuppressWarnings("this-escape")
-    public DefaultWasmGlobal(ValueType valueType, boolean mutable, long value) {
-        super(valueType, mutable);
-        storeLong(value);
-    }
+    AbstractTruffleException createLinkError(Failure failure, String message);
 
-    @SuppressWarnings("this-escape")
-    public DefaultWasmGlobal(ValueType valueType, boolean mutable, Object value) {
-        super(valueType, mutable);
-        storeObject(value);
-    }
-
-    @Override
-    public int loadAsInt() {
-        assert ValueType.isNumberType(getValueType());
-        return (int) globalValue;
-    }
-
-    @Override
-    public long loadAsLong() {
-        assert ValueType.isNumberType(getValueType());
-        return globalValue;
-    }
-
-    @Override
-    public Object loadAsObject() {
-        assert globalObjectValue != null;
-        assert ValueType.isReferenceType(getValueType()) || ValueType.isVectorType(getValueType());
-        return globalObjectValue;
-    }
-
-    @Override
-    public void storeInt(int value) {
-        assert ValueType.isNumberType(getValueType());
-        this.globalValue = value;
-    }
-
-    @Override
-    public void storeLong(long value) {
-        assert ValueType.isNumberType(getValueType());
-        this.globalValue = value;
-    }
-
-    @Override
-    public void storeObject(Object value) {
-        assert ValueType.isReferenceType(getValueType()) || ValueType.isVectorType(getValueType());
-        this.globalObjectValue = value;
-    }
+    AbstractTruffleException formatLinkError(Failure failure, String format, Object... args);
 }

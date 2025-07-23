@@ -100,6 +100,10 @@ public final class WasmException extends AbstractTruffleException {
         return create(failure, location, String.format(Locale.ROOT, format, arg));
     }
 
+    public static ExceptionProvider provider() {
+        return ExceptionProviders.POLYGLOT_EXCEPTION_PROVIDER;
+    }
+
     @ExportMessage
     public boolean hasMembers() {
         return true;

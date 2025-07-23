@@ -349,16 +349,16 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     @TruffleBoundary
     public int loadI32FromGlobals(MaterializedFrame frame, int index) {
         WasmInstance instance = instance(frame);
-        final int address = instance.globalAddress(index);
-        return instance.store().globals().loadAsInt(address);
+        final int address = module.globalAddress(index);
+        return instance.globals().loadAsInt(address);
     }
 
     @Override
     public void storeI32IntoGlobals(MaterializedFrame frame, int index, int value) {
         WasmInstance instance = instance(frame);
-        if (instance.module().isGlobalMutable(index)) {
-            final int address = instance.globalAddress(index);
-            instance.store().globals().storeInt(address, value);
+        if (module.isGlobalMutable(index)) {
+            final int address = module.globalAddress(index);
+            instance.globals().storeInt(address, value);
         }
     }
 
@@ -366,16 +366,16 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     @TruffleBoundary
     public long loadI64FromGlobals(MaterializedFrame frame, int index) {
         WasmInstance instance = instance(frame);
-        final int address = instance.globalAddress(index);
-        return instance.store().globals().loadAsLong(address);
+        final int address = module.globalAddress(index);
+        return instance.globals().loadAsLong(address);
     }
 
     @Override
     public void storeI64IntoGlobals(MaterializedFrame frame, int index, long value) {
         WasmInstance instance = instance(frame);
-        if (instance.module().isGlobalMutable(index)) {
-            final int address = instance.globalAddress(index);
-            instance.store().globals().storeLong(address, value);
+        if (module.isGlobalMutable(index)) {
+            final int address = module.globalAddress(index);
+            instance.globals().storeLong(address, value);
         }
     }
 

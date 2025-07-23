@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,48 +38,51 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.globals;
 
-import org.graalvm.wasm.GlobalRegistry;
-import org.graalvm.wasm.api.ValueType;
+package org.graalvm.wasm;
 
-public class ExportedWasmGlobal extends WasmGlobal {
-    private final GlobalRegistry globals;
-    private final int address;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
-    public ExportedWasmGlobal(ValueType valueType, boolean mutable, GlobalRegistry globals, int address) {
-        super(valueType, mutable);
-        this.globals = globals;
-        this.address = address;
+@ExportLibrary(InteropLibrary.class)
+public final class WasmNamesObject implements TruffleObject {
+    private final String[] names;
+
+    public WasmNamesObject(String[] names) {
+        this.names = names;
     }
 
-    @Override
-    public int loadAsInt() {
-        return globals.loadAsInt(address);
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasArrayElements() {
+        return true;
     }
 
-    @Override
-    public long loadAsLong() {
-        return globals.loadAsLong(address);
+    @ExportMessage
+    boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < names.length;
     }
 
-    @Override
-    public Object loadAsObject() {
-        return globals.loadAsObject(address);
+    @ExportMessage
+    long getArraySize() {
+        return names.length;
     }
 
-    @Override
-    public void storeInt(int value) {
-        globals.storeInt(address, value);
-    }
-
-    @Override
-    public void storeLong(long value) {
-        globals.storeLong(address, value);
-    }
-
-    @Override
-    public void storeObject(Object value) {
-        globals.storeObject(address, value);
+    @ExportMessage
+    Object readArrayElement(long index,
+                    @Bind Node node,
+                    @Cached InlinedBranchProfile errorBranch) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(index)) {
+            errorBranch.enter(node);
+            throw InvalidArrayIndexException.create(index);
+        }
+        return names[(int) index];
     }
 }
