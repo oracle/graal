@@ -27,7 +27,6 @@ package com.oracle.svm.core.stack;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
@@ -38,6 +37,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -52,6 +52,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Maintains the linked list of {@link JavaFrameAnchor} for stack walking. Note that a thread may
@@ -140,14 +141,46 @@ public class JavaFrameAnchors {
         }
     }
 
+    /**
+     * Verifies that the top {@link JavaFrameAnchor} is in a part of the stack that is safe to
+     * access. This method should be called whenever code manipulates the Java stack significantly.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void verifyTopFrameAnchor(Pointer safeStackBegin) {
+        Pointer anchor = (Pointer) JavaFrameAnchors.getFrameAnchor();
+        if (anchor.isNonNull()) {
+            VMError.guarantee(anchor.aboveOrEqual(safeStackBegin), "The frame anchor struct is outside of the stack that is safe to use.");
+        }
+    }
+
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void verifyFrameAnchor(JavaFrameAnchor cur, boolean newAnchor) {
         VMError.guarantee(StatusSupport.getStatusVolatile() == StatusSupport.STATUS_IN_JAVA, "Invalid thread status.");
-        VMError.guarantee(((Pointer) cur).aboveOrEqual(KnownIntrinsics.readStackPointer()), "The frame anchor struct is outside of the used stack.");
-        VMError.guarantee(cur.getMagicBefore() == JavaFrameAnchor.MAGIC, "Corrupt frame anchor: magic before");
-        VMError.guarantee(cur.getMagicAfter() == JavaFrameAnchor.MAGIC, "Corrupt frame anchor: magic after");
-        VMError.guarantee(newAnchor == cur.getLastJavaIP().isNull(), "Corrupt frame anchor: invalid IP");
-        VMError.guarantee(newAnchor == cur.getLastJavaSP().isNull(), "Corrupt frame anchor: invalid SP");
+        if (((Pointer) cur).belowThan(KnownIntrinsics.readStackPointer())) {
+            throw verificationFailed(cur, "The frame anchor struct is outside of the used stack.");
+        }
+        if (cur.getMagicBefore() != JavaFrameAnchor.MAGIC) {
+            throw verificationFailed(cur, "Magic number at the start of the frame anchor is corrupt.");
+        }
+        if (cur.getMagicAfter() != JavaFrameAnchor.MAGIC) {
+            throw verificationFailed(cur, "Magic number at the end of the frame anchor is corrupt.");
+        }
+        if (newAnchor != cur.getLastJavaIP().isNull()) {
+            throw verificationFailed(cur, "Invalid IP");
+        }
+        if (newAnchor != cur.getLastJavaSP().isNull()) {
+            throw verificationFailed(cur, "Invalid SP");
+        }
+    }
+
+    @Uninterruptible(reason = "No need to be uninterruptible because we are terminating with a fatal error.", calleeMustBe = false)
+    private static RuntimeException verificationFailed(JavaFrameAnchor cur, String msg) {
+        Log log = Log.log();
+        log.string("Frame anchor verification failed: ").string(msg).newline();
+        log.string("Anchor ").zhex(cur).string(" MagicBefore ").zhex(cur.getMagicBefore()).string(" LastJavaSP ").zhex(cur.getLastJavaSP()).string(" LastJavaIP ").zhex(cur.getLastJavaIP())
+                        .string(" Previous ").zhex(cur.getPreviousAnchor()).string(" MagicAfter ").zhex(cur.getMagicAfter()).newline();
+
+        throw VMError.shouldNotReachHere(msg);
     }
 
     @Node.NodeIntrinsic(value = ForeignCallNode.class)
