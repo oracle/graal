@@ -195,10 +195,10 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     },
   } else {})),
 
-  local deploy_graalvm_espresso = svm_common + common_os_deploy + espresso_name + task_spec({
+  local deploy_graalvm_espresso(major_version) = svm_common + common_os_deploy + espresso_name + task_spec({
     notify_groups:: ['deploy'],
   }) + build_base_graalvm_image(with_profiles=false) + task_spec({
-    espresso_standalone_dist:: if vm.edition == 'ce' then 'GRAALVM_ESPRESSO_COMMUNITY_JAVA21' else 'GRAALVM_ESPRESSO_JAVA21',
+    espresso_standalone_dist:: if vm.edition == 'ce' then 'GRAALVM_ESPRESSO_COMMUNITY_JAVA' + major_version else 'GRAALVM_ESPRESSO_JAVA' + major_version,
     mx_vm_espresso:: vm.mx_cmd_base_no_env + ['--env', self.mx_env_espresso] + self.mx_vm_cmd_suffix,
     run +:[
       # $GRAALVM_HOME was built and set by build_base_graalvm_image
@@ -215,7 +215,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
       # Deploy it to the artifact server
       self.mx_vm_espresso + deploy_artifacts(self.os, suite='espresso', tags=['standalone']),
     ],
-  }) + timelimit('1:45:00'),
+  }) + timelimit('1:45:00') + notify_emails('gilles.m.duboscq@oracle.com'),
 
   local deploy_vm_base_task_dict = {
     #
@@ -235,7 +235,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     #
     # Deploy the GraalVM Espresso standalones
     #
-    "vm-espresso": mx_env + deploy_graalvm_espresso + espresso_java_home('Latest') + default_os_arch_jdk_mixin + platform_spec(no_jobs) + (
+    "vm-espresso": mx_env + deploy_graalvm_espresso(25) + espresso_java_home('Latest') + default_os_arch_jdk_mixin + platform_spec(no_jobs) + (
     if vm.deploy_espress_standalone then platform_spec({
       "linux:amd64:jdk-latest": post_merge,
       "linux:aarch64:jdk-latest": post_merge,
