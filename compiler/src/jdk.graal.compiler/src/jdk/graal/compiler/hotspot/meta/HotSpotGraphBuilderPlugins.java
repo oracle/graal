@@ -799,7 +799,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/c2d76f9844aadf77a0b213a9169a7c5c8c8f1ffb/src/hotspot/share/opto/library_call.cpp#L2986-L3040",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/016694bf74f6920f850330e353df9fd03458cca1/src/hotspot/share/opto/library_call.cpp#L3013-L3067",
               sha1 = "353e0d45b0f63ac58af86dcab5b19777950da7e2")
     // @formatter:on
     private static void inlineNativeNotifyJvmtiFunctions(GraalHotSpotVMConfig config, GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor,
@@ -848,7 +848,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/c2d76f9844aadf77a0b213a9169a7c5c8c8f1ffb/src/hotspot/share/opto/library_call.cpp#L3805-L3889",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/016694bf74f6920f850330e353df9fd03458cca1/src/hotspot/share/opto/library_call.cpp#L3832-L3916",
               sha1 = "3e9cfba4d9554f7cd9ab392f0826a31ae6396193")
     // @formatter:on
     private static class ContinuationPinningPlugin extends InvocationPlugin {
