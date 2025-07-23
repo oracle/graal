@@ -654,19 +654,21 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public int getNextBCI(RootNode callerRoot, Frame frame) {
-        if (callerRoot instanceof EspressoRootNode espressoRootNode) {
-            int bci = (int) readBCIFromFrame(callerRoot, frame);
-            if (bci >= 0) {
-                BytecodeStream bs = new BytecodeStream(espressoRootNode.getMethodVersion().getOriginalCode());
-                return bs.nextBCI(bci);
+    public int getNextBCI(MethodRef method, Node rawNode, Frame frame) {
+        int bci = getBCI(rawNode, frame);
+        if (bci >= 0) {
+            BytecodeStream bs = new BytecodeStream(method.getOriginalCode());
+            int nextBci = bs.nextBCI(bci);
+            if (nextBci <= bs.endBCI()) {
+                // Use the next only if it's in bounds.
+                bci = nextBci;
             }
         }
-        return -1;
+        return bci;
     }
 
     @Override
-    public long readBCIFromFrame(RootNode root, Frame frame) {
+    public int readBCIFromFrame(RootNode root, Frame frame) {
         if (root instanceof EspressoRootNode rootNode && frame != null) {
             return rootNode.readBCI(frame);
         }
@@ -792,7 +794,7 @@ public final class JDWPContextImpl implements JDWPContext {
         return null;
     }
 
-    public long getBCI(Node rawNode, Frame frame) {
+    public int getBCI(Node rawNode, Frame frame) {
         BciProvider bciProvider = getBciProviderNode(rawNode);
         if (bciProvider == null) {
             return -1;
