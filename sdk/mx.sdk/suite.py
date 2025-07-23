@@ -228,12 +228,12 @@ suite = {
       "os_arch": {
         "linux": {
           "amd64": {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/toolchain-gcc-musl/toolchain-gcc-10.2.1-musl-1.2.2-linux-amd64.tar.gz"],
-            "digest" : "sha512:8f49b04d4826c560c791e5223f504046fa0daa6b79e581ea1781a2d01f4efe2de4a0fb6771dc1b07318ab0109a61ea3b04255eadf36191a76687f873931eb283",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/toolchain-gcc-musl/toolchain-gcc-10.3.0-zlib-1.2.13-musl-1.2.5.1-linux-amd64.tar.gz"],
+            "digest" : "sha512:a4be5d7f0a0857e30992079b39b0b7a00b80b4f255a0dddf8e4208d53c0a2a79ad26dbcb3e7b4018bfc1ef5751cf2bf7180c64d6b13dd4c80ed2dd0335945736",
           },
           "aarch64": {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/toolchain-gcc-musl/toolchain-gcc-10.2.1-musl-1.2.2-linux-aarch64.tar.gz"],
-            "digest" : "sha512:f5545f6b36c2306861c026895d437a57357515e8dfefb0e8419413f61b146f42dc072f8a8a7a9f4885d6448396d656f59264e61e3f5eedd278486228aa58904e",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/toolchain-gcc-musl/toolchain-gcc-10.3.0-zlib-1.2.13-musl-1.2.5.1-linux-aarch64.tar.gz"],
+            "digest" : "sha512:7f645bceaad864e6a0cf3289ca234e76819f7bfc06abf0c82b59e51e152191235b65c3b7f4e9baa2f2c2982459ffec2c284d99cc28bf7923eb9022eef03ad72d",
           },
           "<others>": {
             "optional": True,
@@ -1626,9 +1626,9 @@ LDFLAGS=
                 "source_type": "string",
                 "value": '''
 include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
-CC=<path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/gcc
-CXX=<path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/g++
-AR=<path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/ar
+CC=<path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/x86_64-linux-musl-gcc
+CXX=<path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/x86_64-linux-musl-g++
+AR=<path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/x86_64-linux-musl-ar
 CFLAGS=
 CXXFLAGS=
 LDFLAGS=
@@ -1646,9 +1646,9 @@ LDFLAGS=
                 "source_type": "string",
                 "value": '''
 include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
-CC=<path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/gcc
-CXX=<path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/g++
-AR=<path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/ar
+CC=<path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/aarch64-linux-musl-gcc
+CXX=<path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/aarch64-linux-musl-g++
+AR=<path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/aarch64-linux-musl-ar
 CFLAGS=
 CXXFLAGS=
 LDFLAGS=
@@ -1688,9 +1688,9 @@ LDFLAGS=
               "toolchain.cmake" : {
                 "source_type": "string",
                 "value": '''
-set(CMAKE_C_COMPILER   <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/gcc)
-set(CMAKE_CXX_COMPILER <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/g++)
-set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/ar)
+set(CMAKE_C_COMPILER   <path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/x86_64-linux-musl-gcc)
+set(CMAKE_CXX_COMPILER <path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/x86_64-linux-musl-g++)
+set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/x86_64-linux-musl-ar)
 '''
               },
             },
@@ -1703,9 +1703,9 @@ set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/ar
               "toolchain.cmake" : {
                 "source_type": "string",
                 "value": '''
-set(CMAKE_C_COMPILER   <path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/gcc)
-set(CMAKE_CXX_COMPILER <path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/g++)
-set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/ar)
+set(CMAKE_C_COMPILER   <path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/aarch64-linux-musl-gcc)
+set(CMAKE_CXX_COMPILER <path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/aarch64-linux-musl-g++)
+set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/aarch64-linux-musl-ar)
 '''
               },
             },
