@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,20 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.threads;
+package com.oracle.truffle.espresso.substitutions.regex;
 
-public enum State {
-    NEW(0),
-    RUNNABLE(0x0004 /* JVMTI_THREAD_STATE_RUNNABLE */),
-    BLOCKED(0x0400 /* JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER */),
-    WAITING(0x0010 /* JVMTI_THREAD_STATE_WAITING_INDEFINITELY */),
-    TIMED_WAITING(0x0020 /* JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT */),
-    TERMINATED(0x0002 /* JVMTI_THREAD_STATE_TERMINATED */),
-    IN_NATIVE(0x400000 /* JVMTI_THREAD_STATE_IN_NATIVE */);
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.substitutions.LanguageFilter;
 
-    public final int value;
+public class UseTRegexFilter implements LanguageFilter {
+    public static final LanguageFilter INSTANCE = new UseTRegexFilter();
 
-    State(int value) {
-        this.value = value;
+    @Override
+    public boolean isValidFor(EspressoLanguage language) {
+        return language.useTRegex();
     }
 }

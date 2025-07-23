@@ -101,7 +101,6 @@ public final class EspressoEnv {
     public final boolean EnableNativeAgents;
     public final int TrivialMethodSize;
     public final boolean UseHostFinalReference;
-    public final boolean RegexSubstitutions;
     public final EspressoOptions.JImageMode JImageMode;
     private final PolyglotTypeMappings polyglotTypeMappings;
     private final boolean enableGenericTypeHints;
@@ -135,12 +134,6 @@ public final class EspressoEnv {
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableNativeAgents = env.getOptions().get(EspressoOptions.EnableNativeAgents);
         this.TrivialMethodSize = env.getOptions().get(EspressoOptions.TrivialMethodSize);
-        boolean regexSubstitutions = env.getOptions().get(EspressoOptions.UseTRegex);
-        if (regexSubstitutions && !env.getInternalLanguages().containsKey("regex")) {
-            context.getLogger().warning("UseTRegex is set to true but the 'regex' language is not available. Ignoring UseTRegex.");
-            regexSubstitutions = false;
-        }
-        this.RegexSubstitutions = regexSubstitutions;
         boolean useHostFinalReferenceOption = env.getOptions().get(EspressoOptions.UseHostFinalReference);
         this.UseHostFinalReference = useHostFinalReferenceOption && FinalizationSupport.canUseHostFinalReference();
         if (useHostFinalReferenceOption && !FinalizationSupport.canUseHostFinalReference()) {

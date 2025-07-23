@@ -104,6 +104,7 @@ public final class DebuggerConnection implements Commands {
 
     private static class JDWPReceiver implements Runnable {
 
+        private static final Object NOT_ENTERED_MARKER = new Object();
         private DebuggerController.SetupState setupState;
         private final DebuggerController controller;
         private RequestedJDWPEvents requestedJDWPEvents;
@@ -188,11 +189,17 @@ public final class DebuggerConnection implements Commands {
                 setupState = null;
                 latch.countDown();
             }
-            // Now, begin processing packets when they start to flow from the debugger
+            // Now, begin processing packets when they start to flow from the debugger.
+            // Make sure this thread is entered in the context
             try {
                 while (!Thread.currentThread().isInterrupted() && !controller.isClosing()) {
+                    Object previous = NOT_ENTERED_MARKER;
                     try {
-                        processPacket(Packet.fromByteArray(debuggerConnection.connection.readPacket()));
+                        // get the packet outside the Truffle context, because it's a blocking IO
+                        // operation
+                        Packet packet = Packet.fromByteArray(debuggerConnection.connection.readPacket());
+                        previous = controller.enterTruffleContext();
+                        processPacket(packet);
                     } catch (IOException e) {
                         if (!debuggerConnection.isOpen()) {
                             // when the socket is closed, we're done
@@ -203,6 +210,10 @@ public final class DebuggerConnection implements Commands {
                         }
                     } catch (ConnectionClosedException e) {
                         break;
+                    } finally {
+                        if (previous != NOT_ENTERED_MARKER) {
+                            controller.leaveTruffleContext(previous);
+                        }
                     }
                 }
             } finally {
@@ -225,7 +236,7 @@ public final class DebuggerConnection implements Commands {
                         case JDWP.VirtualMachine.ID: {
                             switch (packet.cmd) {
                                 case JDWP.VirtualMachine.VERSION.ID:
-                                    result = JDWP.VirtualMachine.VERSION.createReply(packet, controller.getVirtualMachine());
+                                    result = JDWP.VirtualMachine.VERSION.createReply(packet, context);
                                     break;
                                 case JDWP.VirtualMachine.CLASSES_BY_SIGNATURE.ID:
                                     result = JDWP.VirtualMachine.CLASSES_BY_SIGNATURE.createReply(packet, controller, context);
@@ -243,7 +254,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.VirtualMachine.DISPOSE.createReply(packet, controller);
                                     break;
                                 case JDWP.VirtualMachine.IDSIZES.ID:
-                                    result = JDWP.VirtualMachine.IDSIZES.createReply(packet, controller.getVirtualMachine());
+                                    result = JDWP.VirtualMachine.IDSIZES.createReply(packet);
                                     break;
                                 case JDWP.VirtualMachine.SUSPEND.ID:
                                     result = JDWP.VirtualMachine.SUSPEND.createReply(packet, controller);

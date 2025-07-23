@@ -93,7 +93,6 @@ public final class DebuggerController implements ContextsListener {
     private JDWPOptions options;
     private DebuggerSession debuggerSession;
     private Ids<Object> ids;
-    private final VirtualMachine vm;
     private Debugger debugger;
     private final GCPrevention gcPrevention;
     private final ThreadSuspension threadSuspension;
@@ -111,7 +110,6 @@ public final class DebuggerController implements ContextsListener {
     private volatile Throwable lateStartupError;
 
     public DebuggerController(TruffleLogger logger) {
-        this.vm = new VirtualMachineImpl();
         this.gcPrevention = new GCPrevention();
         this.threadSuspension = new ThreadSuspension();
         this.eventFilters = new EventFilters();
@@ -333,7 +331,7 @@ public final class DebuggerController implements ContextsListener {
     }
 
     public int getListeningPort() {
-        return Integer.parseInt(options.port);
+        return options.port;
     }
 
     public String getHost() {
@@ -658,10 +656,6 @@ public final class DebuggerController implements ContextsListener {
         methodBreakpointExpected.put(Thread.currentThread(), event);
     }
 
-    public VirtualMachine getVirtualMachine() {
-        return vm;
-    }
-
     public GCPrevention getGCPrevention() {
         return gcPrevention;
     }
@@ -679,17 +673,13 @@ public final class DebuggerController implements ContextsListener {
     }
 
     public Object enterTruffleContext() {
-        if (truffleContext != null) {
-            return truffleContext.enter(null);
-        }
-        return null;
+        assert truffleContext != null;
+        return truffleContext.enter(null);
     }
 
     public void leaveTruffleContext(Object previous) {
-        if (truffleContext != null) {
-            // pass null as previous since we know the jdwp thread only ever enters one context
-            truffleContext.leave(null, previous);
-        }
+        assert truffleContext != null;
+        truffleContext.leave(null, previous);
     }
 
     @Override

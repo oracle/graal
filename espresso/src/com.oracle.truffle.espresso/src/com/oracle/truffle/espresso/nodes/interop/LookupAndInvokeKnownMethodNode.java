@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
+import static com.oracle.truffle.espresso.threads.ThreadState.IN_ESPRESSO;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -35,6 +37,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.threads.Transition;
 
 /**
  * This node is a shortcut for implementing behaviors that require doing a virtual/interface lookup
@@ -98,7 +101,12 @@ public abstract class LookupAndInvokeKnownMethodNode extends EspressoNode {
                     @Cached("interfaceLookup(receiver, resolutionSeed)") Method m,
                     @Cached("create(m.getCallTarget())") DirectCallNode callNode) {
         assert 0 == arguments.length;
-        return callNode.call(receiver);
+        Transition transition = Transition.transition(IN_ESPRESSO, this);
+        try {
+            return callNode.call(receiver);
+        } finally {
+            transition.restore(this);
+        }
     }
 
     @Specialization(guards = {"resolutionSeed == cachedSeed", "cachedSeed.getParameterCount() == 0", "!cachedSeed.getDeclaringKlass().isInterface()",
@@ -109,7 +117,12 @@ public abstract class LookupAndInvokeKnownMethodNode extends EspressoNode {
                     @Cached("virtualLookup(receiver, resolutionSeed)") Method m,
                     @Cached("create(m.getCallTarget())") DirectCallNode callNode) {
         assert 0 == arguments.length;
-        return callNode.call(receiver);
+        Transition transition = Transition.transition(IN_ESPRESSO, this);
+        try {
+            return callNode.call(receiver);
+        } finally {
+            transition.restore(this);
+        }
     }
 
     @Specialization(guards = {"resolutionSeed == cachedSeed", "cachedSeed.getDeclaringKlass().isInterface()", "receiver.getKlass() == cachedKlass"}, limit = "LIMIT")

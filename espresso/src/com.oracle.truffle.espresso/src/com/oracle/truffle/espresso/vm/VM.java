@@ -37,6 +37,8 @@ import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lan
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.HIDDEN_CLASS;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.NESTMATE_CLASS;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.STRONG_LOADER_LINK;
+import static com.oracle.truffle.espresso.threads.ThreadState.OBJECT_WAIT;
+import static com.oracle.truffle.espresso.threads.ThreadState.TIMED_OBJECT_WAIT;
 
 import java.io.File;
 import java.lang.ref.Reference;
@@ -84,12 +86,12 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.EspressoOptions.MemoryAccessOption;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.classfile.ClasspathEntry;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.JavaKind;
-import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
@@ -160,8 +162,8 @@ import com.oracle.truffle.espresso.substitutions.continuations.Target_org_graalv
 import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_ref_Reference;
-import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.ThreadAccess;
+import com.oracle.truffle.espresso.threads.ThreadState;
 import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.npe.ExtendedNPEMessage;
 import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
@@ -867,8 +869,9 @@ public final class VM extends NativeEnv {
 
         EspressoContext context = getContext();
         StaticObject currentThread = context.getCurrentPlatformThread();
-        State state = timeout > 0 ? State.TIMED_WAITING : State.WAITING;
-        try (Transition transition = Transition.transition(context, state)) {
+        ThreadState state = timeout > 0 ? TIMED_OBJECT_WAIT : OBJECT_WAIT;
+        Transition transition = Transition.transition(state, profiler);
+        try {
             final boolean report = context.shouldReportVMEvents();
             if (report) {
                 context.reportMonitorWait(self, timeout);
@@ -888,13 +891,15 @@ public final class VM extends NativeEnv {
             if (getThreadAccess().isInterrupted(currentThread, true)) {
                 throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
             }
-            getThreadAccess().fullSafePoint(currentThread);
+            getThreadAccess().checkDeprecatedThreadStatus(currentThread);
         } catch (IllegalMonitorStateException e) {
             profiler.profile(1);
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalMonitorStateException, e.getMessage());
         } catch (IllegalArgumentException e) {
             profiler.profile(2);
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
+        } finally {
+            transition.restore(profiler);
         }
     }
 
@@ -1396,7 +1401,7 @@ public final class VM extends NativeEnv {
         profiler.profile(2);
         // For primitives, return latest (Same as HotSpot).
         // We do the same for arrays. HotSpot just crashes in that case.
-        return JavaVersion.LATEST_SUPPORTED_CLASSFILE;
+        return getJavaVersion().classFileVersion();
     }
 
     @VmImpl(isJni = true)
@@ -1778,6 +1783,14 @@ public final class VM extends NativeEnv {
             this.trace = new StackElement[size];
             this.capacity = size;
             this.size = 0;
+        }
+
+        public StaticObject toGuest(EspressoContext ctx) {
+            return ctx.getMeta().java_lang_StackTraceElement.allocateReferenceArray(size, i -> {
+                StaticObject ste = ctx.getMeta().java_lang_StackTraceElement.allocateInstance(ctx);
+                VM.fillInElement(ste, trace[i], ctx.getMeta());
+                return ste;
+            });
         }
 
         public StackElement top() {
@@ -2515,6 +2528,13 @@ public final class VM extends NativeEnv {
             addmodCount = map.setNumberedProperty("jdk.module.addmods.", options.get(EspressoOptions.AddModules), "AddModules");
             map.setNumberedProperty("jdk.module.enable.native.access.", options.get(EspressoOptions.EnableNativeAccess), "EnableNativeAccess");
             map.setPropertyIfExists("jdk.module.illegal.native.access", options.get(EspressoOptions.IllegalNativeAccess), "IllegalNativeAccess");
+        }
+
+        if (getJavaVersion().java23OrLater()) {
+            MemoryAccessOption memoryAccessOption = options.get(EspressoOptions.SunMiscUnsafeMemoryAccess);
+            if (memoryAccessOption != MemoryAccessOption.defaultValue) {
+                map.set("sun.misc.unsafe.memory.access", memoryAccessOption.name(), "SunMiscUnsafeMemoryAccess");
+            }
         }
 
         // Applications expect different formats e.g. 1.8 vs. 11
@@ -3483,6 +3503,12 @@ public final class VM extends NativeEnv {
             threads = Arrays.copyOf(threads, numThreads);
         }
         return getMeta().getAllocator().wrapArrayAs(getMeta().java_lang_Thread.getArrayKlass(), threads);
+    }
+
+    @VmImpl(isJni = true)
+    public static @JavaType(internalName = "Ljdk/internal/vm/ThreadSnapshot;") StaticObject JVM_CreateThreadSnapshot(@SuppressWarnings("unused") @JavaType(Thread.class) StaticObject thread,
+                    @Inject Meta meta) {
+        throw meta.throwException(meta.java_lang_UnsupportedOperationException);
     }
 
     // endregion threads

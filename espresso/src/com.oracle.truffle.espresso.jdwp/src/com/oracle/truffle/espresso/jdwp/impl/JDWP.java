@@ -36,6 +36,7 @@ import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
+import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.JDWPConstantPool;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
@@ -65,13 +66,36 @@ public final class JDWP {
         static class VERSION {
             public static final int ID = 1;
 
-            static CommandResult createReply(Packet packet, com.oracle.truffle.espresso.jdwp.impl.VirtualMachine vm) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                reply.writeString(vm.getVmDescription());
-                reply.writeInt(1);
-                reply.writeInt(8);
-                reply.writeString(vm.getVmVersion());
-                reply.writeString(vm.getVmName());
+                int majorVersion;
+                int minorVersion;
+                int featureVersion = context.getJavaFeatureVersion();
+                if (featureVersion < 9) {
+                    majorVersion = 1;
+                    minorVersion = featureVersion;
+                } else if (featureVersion < 11) {
+                    majorVersion = 9;
+                    minorVersion = 0;
+                } else if (featureVersion < 13) {
+                    majorVersion = 11;
+                    minorVersion = 0;
+                } else {
+                    majorVersion = featureVersion;
+                    minorVersion = 0;
+                }
+                String javaVersion = context.getSystemProperty("java.version");
+                String vmName = context.getSystemProperty("java.vm.name");
+                String vmInfo = context.getSystemProperty("java.vm.info");
+                reply.writeString(String.format("""
+                                Java Debug Wire Protocol version %d.%d
+                                JVM Debug Interface version %d.%d
+                                JVM version %s (%s, %s)""", majorVersion, minorVersion, majorVersion, minorVersion,
+                                javaVersion, vmName, vmInfo));
+                reply.writeInt(majorVersion);
+                reply.writeInt(minorVersion);
+                reply.writeString(javaVersion);
+                reply.writeString(vmName);
                 return new CommandResult(reply);
             }
         }
@@ -173,13 +197,13 @@ public final class JDWP {
         static class IDSIZES {
             public static final int ID = 7;
 
-            static CommandResult createReply(Packet packet, com.oracle.truffle.espresso.jdwp.impl.VirtualMachine vm) {
+            static CommandResult createReply(Packet packet) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                reply.writeInt(vm.getSizeOfFieldRef());
-                reply.writeInt(vm.getSizeOfMethodRef());
-                reply.writeInt(vm.getSizeofObjectRef());
-                reply.writeInt(vm.getSizeOfClassRef());
-                reply.writeInt(vm.getSizeOfFrameRef());
+                reply.writeInt(Ids.ID_SIZE);
+                reply.writeInt(Ids.ID_SIZE);
+                reply.writeInt(Ids.ID_SIZE);
+                reply.writeInt(Ids.ID_SIZE);
+                reply.writeInt(Ids.ID_SIZE);
                 return new CommandResult(reply);
             }
         }
@@ -404,9 +428,7 @@ public final class JDWP {
                 // ensure redefinition atomicity by suspending all
                 // guest threads during the redefine transaction
                 Object[] allGuestThreads = controller.getVisibleGuestThreads();
-                Object prev = null;
                 try {
-                    prev = controller.enterTruffleContext();
                     for (Object guestThread : allGuestThreads) {
                         controller.suspend(guestThread);
                     }
@@ -421,7 +443,6 @@ public final class JDWP {
                     for (Object guestThread : allGuestThreads) {
                         controller.resume(guestThread);
                     }
-                    controller.leaveTruffleContext(prev);
                 }
                 return new CommandResult(reply);
             }
@@ -2096,7 +2117,7 @@ public final class JDWP {
                     if ((masked & JVMTI_THREAD_STATE_RUNNABLE) != 0) {
                         return ThreadStatusConstants.RUNNING;
                     } else if ((masked & JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER) != 0) {
-                        return ThreadStatusConstants.WAIT;
+                        return ThreadStatusConstants.MONITOR;
                     }
                     return ThreadStatusConstants.RUNNING;
                 } else if ((masked & JVMTI_THREAD_STATE_WAITING) != 0) {

@@ -245,7 +245,7 @@ public final class DowncallStubs {
 
     public static final class Shuffle {
         private static final int POINTER_ARG_FLAG = 1 << 31;
-        private static final int INDEX_ARG_MASK = 0x8FFF_FFFF;
+        private static final int INDEX_ARG_MASK = 0x7FFF_FFFF;
 
         private static int encode(int idx, NativeType type) {
             int res = idx;
