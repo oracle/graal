@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -175,7 +176,7 @@ public class SubstrateDiagnostics {
             log.string(obj.getClass().getName());
 
             if (obj instanceof String s) {
-                log.string(": ").string(s, 60);
+                log.string(": \"").string(s, 60).string("\"");
             } else {
                 int layoutEncoding = DynamicHub.fromClass(obj.getClass()).getLayoutEncoding();
 
@@ -1306,12 +1307,14 @@ public class SubstrateDiagnostics {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         public synchronized void add(DiagnosticThunk thunk) {
+            assert !BuildPhaseProvider.isAnalysisStarted();
             thunks.add(thunk);
             resizeInitialInvocationCount();
         }
 
         @Platforms(Platform.HOSTED_ONLY.class)
         public synchronized void add(int insertPos, DiagnosticThunk... extraThunks) {
+            assert !BuildPhaseProvider.isAnalysisStarted();
             for (int i = 0; i < extraThunks.length; i++) {
                 thunks.add(insertPos + i, extraThunks[i]);
             }
@@ -1320,6 +1323,7 @@ public class SubstrateDiagnostics {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         public synchronized void addAfter(DiagnosticThunk thunk, Class<? extends DiagnosticThunk> before) {
+            assert !BuildPhaseProvider.isAnalysisStarted();
             int insertPos = indexOf(before) + 1;
             assert insertPos > 0;
             thunks.add(insertPos, thunk);
@@ -1370,13 +1374,13 @@ public class SubstrateDiagnostics {
 
                 /*
                  * Copy the value to a field in the image heap so that it is safe to access. During
-                 * image build, it can happen that the singleton does not exist yet. In that case,
-                 * the value will be copied to the image heap when executing the constructor of the
-                 * singleton. This is a bit cumbersome but necessary because we can't use a static
-                 * field. We also need to mark the option as used at run-time (see feature) as the
-                 * static analysis would otherwise remove the option from the image.
+                 * the image build, it can happen that the singleton does not exist yet. In that
+                 * case, the value will be copied to the image heap when executing the constructor
+                 * of the singleton. This is a bit cumbersome but necessary because we can't use a
+                 * static field. We also need to mark the option as used at run-time (see feature)
+                 * as the static analysis would otherwise remove the option from the image.
                  */
-                if (ImageSingletons.contains(Options.class)) {
+                if (wasConstructorExecuted()) {
                     Options.singleton().loopOnFatalError = newValue;
                 }
             }
@@ -1389,7 +1393,7 @@ public class SubstrateDiagnostics {
                 super.onValueUpdate(values, oldValue, newValue);
 
                 /* See comment above. */
-                if (ImageSingletons.contains(Options.class)) {
+                if (wasConstructorExecuted()) {
                     Options.singleton().implicitExceptionWithoutStacktraceIsFatal = newValue;
                 }
             }
@@ -1416,6 +1420,10 @@ public class SubstrateDiagnostics {
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public static boolean implicitExceptionWithoutStacktraceIsFatal() {
             return singleton().implicitExceptionWithoutStacktraceIsFatal;
+        }
+
+        private static boolean wasConstructorExecuted() {
+            return (!SubstrateUtil.HOSTED || ImageSingletonsSupport.isInstalled()) && ImageSingletons.contains(Options.class);
         }
     }
 }

@@ -112,8 +112,6 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
                     "Consider increasing the address space size (see option -XX:ReservedAddressSpaceSize).");
     private static final OutOfMemoryError UNALIGNED_OUT_OF_ADDRESS_SPACE = new OutOfMemoryError("Could not allocate an unaligned heap chunk because the heap address space is exhausted. " +
                     "Consider increasing the address space size (see option -XX:ReservedAddressSpaceSize).");
-    private static final OutOfMemoryError ALIGNED_COMMIT_FAILED = new OutOfMemoryError("Could not commit the memory for an aligned heap chunk, OS may be out of memory.");
-    private static final OutOfMemoryError UNALIGNED_COMMIT_FAILED = new OutOfMemoryError("Could not commit the memory for an unaligned heap chunk, OS may be out of memory.");
 
     /**
      * This mutex is used by the GC and the application. The application may hold this mutex only in
@@ -347,7 +345,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
         if (error == OUT_OF_ADDRESS_SPACE) {
             throw OutOfMemoryUtil.reportOutOfMemoryError(ALIGNED_OUT_OF_ADDRESS_SPACE);
         } else if (error == COMMIT_FAILED) {
-            throw OutOfMemoryUtil.reportOutOfMemoryError(ALIGNED_COMMIT_FAILED);
+            throw OutOfMemoryUtil.reportOutOfMemoryError(ALIGNED_CHUNK_COMMIT_FAILED);
         } else {
             throw VMError.shouldNotReachHereAtRuntime();
         }
@@ -372,7 +370,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
         if (error == OUT_OF_ADDRESS_SPACE) {
             throw OutOfMemoryUtil.reportOutOfMemoryError(UNALIGNED_OUT_OF_ADDRESS_SPACE);
         } else if (error == COMMIT_FAILED) {
-            throw OutOfMemoryUtil.reportOutOfMemoryError(UNALIGNED_COMMIT_FAILED);
+            throw OutOfMemoryUtil.reportOutOfMemoryError(UNALIGNED_CHUNK_COMMIT_FAILED);
         } else {
             throw VMError.shouldNotReachHereAtRuntime();
         }
