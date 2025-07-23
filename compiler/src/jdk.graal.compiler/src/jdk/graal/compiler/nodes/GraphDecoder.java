@@ -25,8 +25,6 @@
 package jdk.graal.compiler.nodes;
 
 import static jdk.graal.compiler.debug.GraalError.shouldNotReachHere;
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
-import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -61,18 +59,12 @@ import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.graph.NodeList;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.graph.NodeSuccessorList;
-import jdk.graal.compiler.nodeinfo.InputType;
-import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.GraphDecoder.MethodScope;
-import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
-import jdk.graal.compiler.util.IntArrayBuilder;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -1182,8 +1174,6 @@ public class GraphDecoder {
         }
     }
 
-   
-
     /**
      * Hook for subclasses.
      *
@@ -1217,7 +1207,7 @@ public class GraphDecoder {
             trigger = LoopScopeTrigger.LOOP_BEGIN_UNROLLING;
             nextIterations = loopScope.nextIterationsFromUnrolling;
         }
-        if (trigger != null) { 
+        if (trigger != null) {
             final LoopScope nextIterationScope = createNextLoopIterationScope(methodScope, loopScope, trigger, nextIterations);
             checkLoopExplosionIteration(methodScope, nextIterationScope);
             nextIterations.addLast(nextIterationScope);
@@ -2402,12 +2392,6 @@ class LoopDetector implements Runnable {
                 return value;
             }
         };
-
-        FrameState newState = oldState.duplicate(valueFunction);
-
-        assert loopExit.stateAfter() == null;
-        loopExit.setStateAfter(graph.add(newState));
-    }
 
         FrameState newState = oldState.duplicate(valueFunction);
 
