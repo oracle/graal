@@ -42,6 +42,7 @@ package com.oracle.truffle.api.dsl.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -65,6 +66,7 @@ import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GeneratePackagePrivate;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.InlineSupport;
 import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
 import com.oracle.truffle.api.dsl.InlineSupport.RequiredField;
 import com.oracle.truffle.api.dsl.InlineSupport.StateField;
@@ -93,6 +95,7 @@ import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.SharedAndNonSha
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.SharedAndNonSharedInlinedMultipleInstances2NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.SharedProfileInSpecializationClassNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.SpecializationClassAndInlinedNodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.TestGR67848NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.Use128BitsNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.Use2048BitsNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.Use32BitsNodeGen;
@@ -133,6 +136,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.CompactionLevel;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @SuppressWarnings({"truffle-neverdefault", "truffle-sharing", "truffle-interpreted-performance"})
 public class GenerateInlineTest extends AbstractPolyglotTest {
@@ -2639,4 +2643,70 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
         }
         assertTrue(String.format("Node %s did not throw when it used wrong inlineTarget. Is the UseInlinedByDefault really inlined?", testCaseName), thrown);
     }
+
+    @GenerateCached(false)
+    @GenerateInline(true)
+    public abstract static class TestGR67848 extends Node {
+
+        abstract Object execute(Node node, int arg);
+
+        @SuppressWarnings("unused")
+        // we use an inline cache to trigger a specialization data class
+        @Specialization(guards = "arg == cachedArg", limit = "5")
+        static String doInt(Node node, int arg,
+                        @Cached("arg") int cachedArg,
+                        @Cached InlinedBranchProfile inlinedProfile,
+                        @Cached InlineInlineCache inlineInlineCache) {
+            return null;
+        }
+    }
+
+    @Test
+    public void testGR67848() {
+        // needs reflection, no difference to HotSpot expected
+        TruffleTestAssumptions.assumeNotAOT();
+        TruffleTestAssumptions.assumeNoIsolateEncapsulation();
+
+        Class<?> inlinedClass = null;
+        for (Class<?> c : TestGR67848NodeGen.class.getDeclaredClasses()) {
+            if (c.getSimpleName().equals("Inlined")) {
+                inlinedClass = c;
+                break;
+            }
+        }
+        assertNotNull(inlinedClass);
+
+        int referenceFieldCount = 0;
+        int stateFieldCount = 0;
+        int allFieldCount = 0;
+        for (Field m : inlinedClass.getDeclaredFields()) {
+            if (Modifier.isStatic(m.getModifiers())) {
+                continue;
+            }
+            allFieldCount++;
+
+            if (m.getType().isAssignableFrom(InlineSupport.ReferenceField.class)) {
+                referenceFieldCount++;
+            }
+            if (m.getType().isAssignableFrom(InlineSupport.StateField.class)) {
+                stateFieldCount++;
+            }
+            /*
+             * Without the fix for GR-67848 we would have a field for an InlinedBranchProfile and
+             * InlineInlineCache as well.
+             */
+            if (m.getType().isAssignableFrom(InlinedBranchProfile.class)) {
+                throw new AssertionError("No InlinedBranchProfile field expected");
+            }
+            if (m.getType().isAssignableFrom(InlineInlineCache.class)) {
+                throw new AssertionError("No InlineInlineCache field expected");
+            }
+        }
+
+        assertEquals(1, referenceFieldCount);
+        assertEquals(1, stateFieldCount);
+        assertEquals(2, allFieldCount);
+
+    }
+
 }
