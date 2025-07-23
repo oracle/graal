@@ -100,7 +100,7 @@ The Bytecode DSL supports a variety of features, including:
 
 - **Serialization**: Bytecode DSL interpreters support serialization/deserialization, which enables a language to persist the bytecode for a guest program and reconstruct it without reprocessing the source program (see the [Serialization tutorial][serialization]).
 
-- **Instrumentation**: Bytecode DSL interpreters support special instrumentation operations and tag-based instrumentation.
+- **Instrumentation**: Bytecode DSL interpreters support special instrumentation operations and tag-based instrumentation (see the [Instrumentation tutorial][instrumentation]).
 
 - **Lazy source and instrumentation metadata**: Source and instrumentation metadata increase the footprint of the interpreter. By default, Bytecode DSL interpreters elide this metadata when building bytecode, so they have no footprint overhead when they are not used. The metadata is recomputed on demand by replaying the builder calls.
 
@@ -123,3 +123,4 @@ The Bytecode DSL implementation for [SimpleLanguage](https://github.com/oracle/g
 
 [serialization]: https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/SerializationTutorial.java
 [continuations]: https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/ContinuationsTutorial.java
+[instrumentation]: https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/InstrumentationTutorial.java
