@@ -275,6 +275,12 @@ public class WasmLMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return false;
             }
         });
+        r.register(new InvocationPlugin("reverse", type) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                return false;
+            }
+        });
     }
 
     public static void registerCharacterPlugins(InvocationPlugins plugins, Replacements replacements) {
