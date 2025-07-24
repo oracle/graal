@@ -54,6 +54,7 @@ public final class DummyLoweringProvider implements LoweringProvider {
 
     @Override
     public Integer smallestCompareWidth() {
+        SuspiciousHostAccessCollector.onSuspiciousHostAccess();
         // used at least by AutomaticUnsafeTransformationSupport.getStaticInitializerGraph
         return null;
     }
@@ -75,12 +76,14 @@ public final class DummyLoweringProvider implements LoweringProvider {
 
     @Override
     public boolean writesStronglyOrdered() {
+        SuspiciousHostAccessCollector.onSuspiciousHostAccess();
         // used at least by AutomaticUnsafeTransformationSupport.getStaticInitializerGraph
         return false;
     }
 
     @Override
     public TargetDescription getTarget() {
+        SuspiciousHostAccessCollector.onSuspiciousHostAccess();
         // used at least by AutomaticUnsafeTransformationSupport.getStaticInitializerGraph
         return target;
     }
@@ -92,6 +95,7 @@ public final class DummyLoweringProvider implements LoweringProvider {
 
     @Override
     public boolean divisionOverflowIsJVMSCompliant() {
+        SuspiciousHostAccessCollector.onSuspiciousHostAccess();
         // used at least by AutomaticUnsafeTransformationSupport.getStaticInitializerGraph
         return false;
     }
