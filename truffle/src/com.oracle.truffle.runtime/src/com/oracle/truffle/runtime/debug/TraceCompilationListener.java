@@ -102,7 +102,9 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     private static final String FAILED_FORMAT   = "opt failed " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Time %18s|Reason: %s|UTC %s|Src %s";
     private static final String PADDING         = "                                                                                                                              ";
     private static final String INV_FORMAT      = "opt inval. " + TARGET_FORMAT + " " + PADDING + "|UTC %s|Src %s|Reason %s";
-    private static final String DEOPT_FORMAT    = "opt deopt  " + TARGET_FORMAT + "|" + PADDING + "|UTC %s|Src %s";
+    private static final String DEOPT_FORMAT    = "opt deopt  " + TARGET_FORMAT + "|" + PADDING + "|UTC %s|Src %s|Reason %s";
+    private static final String REPROF_FORMAT   = "opt reprofile  " + TARGET_FORMAT + "|" + PADDING + "|UTC %s|Src %s";
+    private static final String ENABLED_FORMAT  = "opt enabled  " + TARGET_FORMAT + "|UTC %s|Src %s";
     // @formatter:on
 
     @Override
@@ -222,9 +224,22 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     }
 
     @Override
-    public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
+    public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame, String reason) {
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             log(target, String.format(DEOPT_FORMAT,
+                            target.engineId(),
+                            target.id,
+                            safeTargetName(target),
+                            TIME_FORMATTER.format(ZonedDateTime.now()),
+                            formatSourceSection(safeSourceSection(target)),
+                            reason != null ? reason : "unknown"));
+        }
+    }
+
+    @Override
+    public void onProfileReset(OptimizedCallTarget target) {
+        if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
+            log(target, String.format(REPROF_FORMAT,
                             target.engineId(),
                             target.id,
                             safeTargetName(target),
@@ -267,6 +282,17 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                         TIME_FORMATTER.format(ZonedDateTime.now()),
                         formatSourceSection(safeSourceSection(target))));
         currentCompilation.remove();
+    }
+
+    public void onCompilationReenabled(OptimizedCallTarget target) {
+        if (target.engine.traceCompilationDetails) {
+            log(target, String.format(ENABLED_FORMAT,
+                            target.engineId(),
+                            target.id,
+                            safeTargetName(target),
+                            TIME_FORMATTER.format(ZonedDateTime.now()),
+                            formatSourceSection(safeSourceSection(target))));
+        }
     }
 
     static String getCompilationId(CompilationResultInfo result) {
