@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.AccessFlag;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -50,6 +51,7 @@ import com.oracle.svm.core.jdk.VectorAPISupport;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.jdk.VarHandleFeature;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -179,7 +181,8 @@ public class VectorAPIFeature implements InternalFeature {
             // Ensure VarHandle used by memorySegmentGet/Set is initialized.
             // Java 22+: ValueLayout valueLayout = (...); valueLayout.varHandle();
             Object valueLayout = ReflectionUtil.readStaticField(laneType.vectorClass(), "ELEMENT_LAYOUT");
-            ReflectionUtil.invokeMethod(valueLayoutVarHandle, valueLayout);
+            VarHandle varHandle = ReflectionUtil.invokeMethod(valueLayoutVarHandle, valueLayout);
+            VarHandleFeature.eagerlyInitializeVarHandle(varHandle);
 
             for (Shape shape : shapes) {
                 String fieldName = "SPECIES_" + shape.shapeName().toUpperCase(Locale.ROOT);
