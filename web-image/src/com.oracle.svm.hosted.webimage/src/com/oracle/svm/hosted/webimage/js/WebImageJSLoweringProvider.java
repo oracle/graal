@@ -92,11 +92,6 @@ public class WebImageJSLoweringProvider extends WebImageLoweringProvider {
     }
 
     @Override
-    public boolean supportsRounding() {
-        return false;
-    }
-
-    @Override
     public boolean writesStronglyOrdered() {
         return true;
     }

@@ -34,7 +34,6 @@ import jdk.graal.compiler.nodes.ValueNodeInterface;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -69,14 +68,6 @@ public interface IntrinsicMethodNodeInterface extends ValueNodeInterface, LIRLow
         }
 
         emitIntrinsic(gen);
-    }
-
-    /**
-     * Returns true if the current architecture supports this stub.
-     */
-    @SuppressWarnings("unused")
-    default boolean canBeEmitted(Architecture arch) {
-        return true;
     }
 
     /**

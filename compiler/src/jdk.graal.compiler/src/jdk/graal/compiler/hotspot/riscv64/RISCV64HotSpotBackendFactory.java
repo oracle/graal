@@ -135,7 +135,7 @@ public class RISCV64HotSpotBackendFactory extends HotSpotBackendFactory {
 
     @Override
     protected HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins,
-                    HotSpotRegistersProvider registers, HotSpotReplacementsImpl replacements, OptionValues options) {
+                    HotSpotRegistersProvider registers, OptionValues options) {
         DefaultSuitesCreator suitesCreator = new RISCV64HotSpotSuitesCreator(compilerConfiguration, plugins);
         BasePhase<CoreProviders> addressLoweringPhase = new EmptyAddressLoweringPhase();
         return new AddressLoweringHotSpotSuitesProvider(suitesCreator, config, runtime, addressLoweringPhase);

@@ -418,11 +418,6 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
     }
 
     @Override
-    public boolean supportsRounding() {
-        return getLowerer().supportsRounding();
-    }
-
-    @Override
     public VirtualizerTool createSnapshot() {
         VirtualizerToolImpl snapshot = new VirtualizerToolImpl(getProviders(), closure, assumptions, options, debug);
         snapshot.current = this.current;
