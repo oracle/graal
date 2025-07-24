@@ -39,7 +39,7 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.JDKInitializedAtRunTime;
+import com.oracle.svm.core.jdk.FileSystemProvidersInitializedAtRunTime;
 import com.oracle.svm.core.jdk.buildtimeinit.FileSystemProviderBuildTimeInitSupport;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.core.util.BasedOnJDKFile;
@@ -48,8 +48,8 @@ import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * This file contains substitutions that are required for initializing {@link FileSystemProvider} at
- * image {@linkplain JDKInitializedAtRunTime run time}. Build-time initialization related
- * functionality can be found in {@link FileSystemProviderBuildTimeInitSupport}.
+ * image {@linkplain FileSystemProvidersInitializedAtRunTime run time}. Build-time initialization
+ * related functionality can be found in {@link FileSystemProviderBuildTimeInitSupport}.
  */
 public final class FileSystemProviderRunTimeInitSupport {
 }
@@ -59,12 +59,12 @@ final class FileSystemProviderRunTimeInitFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return FutureDefaultsOptions.isJDKInitializedAtRunTime();
+        return FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime();
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+        if (FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime()) {
             /*
              * Explicitly register NativeImageResourceFileSystemProvider for reflective
              * instantiation. Normally, the ServiceLoaderFeature does this as well, but in case it
@@ -79,11 +79,11 @@ final class FileSystemProviderRunTimeInitFeature implements InternalFeature {
 
 // java.io
 
-@TargetClass(className = "java.io.FileSystem", onlyWith = JDKInitializedAtRunTime.class)
+@TargetClass(className = "java.io.FileSystem", onlyWith = FileSystemProvidersInitializedAtRunTime.class)
 final class Target_java_io_FileSystem_RunTime {
 }
 
-@TargetClass(className = "java.io.File", onlyWith = JDKInitializedAtRunTime.class)
+@TargetClass(className = "java.io.File", onlyWith = FileSystemProvidersInitializedAtRunTime.class)
 @SuppressWarnings("unused")
 final class Target_java_io_File_RunTime {
     @Alias //
@@ -91,7 +91,7 @@ final class Target_java_io_File_RunTime {
     private static Target_java_io_FileSystem_RunTime FS;
 }
 
-@TargetClass(className = "java.io.DefaultFileSystem", onlyWith = JDKInitializedAtRunTime.class)
+@TargetClass(className = "java.io.DefaultFileSystem", onlyWith = FileSystemProvidersInitializedAtRunTime.class)
 final class Target_java_io_DefaultFileSystem_RunTime {
     @Alias
     static native Target_java_io_FileSystem_RunTime getFileSystem();
@@ -135,18 +135,18 @@ class DefaultFileSystemAccessor {
 
 // sun.nio.fs
 
-@TargetClass(className = "sun.nio.fs.DefaultFileSystemProvider", onlyWith = JDKInitializedAtRunTime.class)
+@TargetClass(className = "sun.nio.fs.DefaultFileSystemProvider", onlyWith = FileSystemProvidersInitializedAtRunTime.class)
 final class Target_sun_nio_fs_DefaultFileSystemProvider_RunTime {
     @Alias
     static native FileSystem theFileSystem();
 }
 
-@TargetClass(className = "sun.nio.fs.UnixFileSystem", onlyWith = JDKInitializedAtRunTime.class)
+@TargetClass(className = "sun.nio.fs.UnixFileSystem", onlyWith = FileSystemProvidersInitializedAtRunTime.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_nio_fs_UnixFileSystem_RunTime {
 }
 
-@TargetClass(className = "sun.nio.fs.UnixPath", onlyWith = JDKInitializedAtRunTime.class)
+@TargetClass(className = "sun.nio.fs.UnixPath", onlyWith = FileSystemProvidersInitializedAtRunTime.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_nio_fs_UnixPath_RunTime {
     @Alias //
@@ -170,12 +170,12 @@ class UnixFileSystemAccessor {
     }
 }
 
-@TargetClass(className = "sun.nio.fs.WindowsFileSystem", onlyWith = JDKInitializedAtRunTime.class)
+@TargetClass(className = "sun.nio.fs.WindowsFileSystem", onlyWith = FileSystemProvidersInitializedAtRunTime.class)
 @Platforms(Platform.WINDOWS.class)
 final class Target_sun_nio_fs_WindowsFileSystem_RunTime {
 }
 
-@TargetClass(className = "sun.nio.fs.WindowsPath", onlyWith = JDKInitializedAtRunTime.class)
+@TargetClass(className = "sun.nio.fs.WindowsPath", onlyWith = FileSystemProvidersInitializedAtRunTime.class)
 @Platforms(Platform.WINDOWS.class)
 final class Target_sun_nio_fs_WindowsPath_RunTime {
     @Alias //
