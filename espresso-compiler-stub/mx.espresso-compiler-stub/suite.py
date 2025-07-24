@@ -22,7 +22,7 @@
 #
 
 suite = {
-    "mxversion": "7.33.0",
+    "mxversion": "7.58.0",
     "name": "espresso-compiler-stub",
     "version": "24.2.0",
     "release": False,
