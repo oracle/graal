@@ -347,7 +347,7 @@ public final class CodeInfoDecoder {
     static final int FRAME_SIZE_ENTRY_POINT = 0b010;
     static final int FRAME_SIZE_HAS_CALLEE_SAVED_REGISTERS = 0b100;
 
-    static final int FRAME_SIZE_STATUS_MASK = FRAME_SIZE_METHOD_START | FRAME_SIZE_ENTRY_POINT | FRAME_SIZE_HAS_CALLEE_SAVED_REGISTERS;
+    public static final int FRAME_SIZE_STATUS_MASK = FRAME_SIZE_METHOD_START | FRAME_SIZE_ENTRY_POINT | FRAME_SIZE_HAS_CALLEE_SAVED_REGISTERS;
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean decodeIsEntryPoint(long sizeEncoding) {

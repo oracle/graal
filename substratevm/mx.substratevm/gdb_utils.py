@@ -110,6 +110,8 @@ class Checker:
         for i in range(0, num_rexps):
             rexp = rexps[i]
             match = None
+            if skip_fails:
+                line_idx = 0
             while line_idx < num_lines and match is None:
                 line = lines[line_idx]
                 match = rexp.match(line)

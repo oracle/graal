@@ -30,14 +30,14 @@ package com.oracle.objectfile.elf.dwarf.constants;
  * DW_AT_encoding attribute values.
  */
 public enum DwarfEncoding {
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused")//
     DW_ATE_address((byte) 0x1),
     DW_ATE_boolean((byte) 0x2),
     DW_ATE_float((byte) 0x4),
     DW_ATE_signed((byte) 0x5),
     DW_ATE_signed_char((byte) 0x6),
     DW_ATE_unsigned((byte) 0x7),
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused")//
     DW_ATE_unsigned_char((byte) 0x8);
 
     private final byte value;
