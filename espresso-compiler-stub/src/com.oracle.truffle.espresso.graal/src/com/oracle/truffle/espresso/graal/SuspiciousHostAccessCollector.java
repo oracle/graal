@@ -26,6 +26,16 @@ import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Helps collect stack traces of calls to some methods that probably shouldn't be called. For
+ * example when using {@link EspressoGraalRuntime} in the context of running native-image on top of
+ * espresso, we shouldn't expect any calls to methods that query machine-specific details.
+ * <p>
+ * Such methods should call {@link #onSuspiciousHostAccess}.
+ * <p>
+ * Setting {@code suspicious.host.access.collector.enabled} to {@code true} will enable collection
+ * of the call-sites of those methods and report the tree of stack traces reaching them on exit.
+ */
 final class SuspiciousHostAccessCollector {
     private static final boolean ENABLED = Boolean.getBoolean("suspicious.host.access.collector.enabled");
     private static final Node ROOT = new Node();
