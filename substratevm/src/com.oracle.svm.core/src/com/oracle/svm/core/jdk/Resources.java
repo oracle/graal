@@ -129,6 +129,7 @@ public final class Resources implements MultiLayeredImageSingleton {
      * {see com.oracle.svm.hosted.ModuleLayerFeature}.
      */
     private final EconomicMap<ModuleResourceKey, ConditionalRuntimeValue<ResourceStorageEntryBase>> resources = ImageHeapMap.createNonLayeredMap();
+    /** Regexp patterns used to match names of resources to be included in the image. */
     private final EconomicMap<RequestedPattern, RuntimeConditionSet> requestedPatterns = ImageHeapMap.createNonLayeredMap();
 
     /**
@@ -152,7 +153,7 @@ public final class Resources implements MultiLayeredImageSingleton {
     @Platforms(Platform.HOSTED_ONLY.class) //
     private final Set<String> previousLayerPatterns;
 
-    public record RequestedPattern(String module, String resource) {
+    public record RequestedPattern(String module, String pattern) {
     }
 
     public interface ModuleResourceKey {
@@ -437,6 +438,7 @@ public final class Resources implements MultiLayeredImageSingleton {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private void addPattern(RequestedPattern pattern, RuntimeConditionSet condition) {
         if (!previousLayerPatterns.contains(pattern.toString())) {
             requestedPatterns.put(pattern, condition);
@@ -451,7 +453,7 @@ public final class Resources implements MultiLayeredImageSingleton {
 
     /*
      * This handles generated include patterns which start and end with \Q and \E. The actual
-     * resource name is located inbetween those tags.
+     * resource name is located in between those tags.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     private static String handleEscapedCharacters(String pattern) {
@@ -574,7 +576,7 @@ public final class Resources implements MultiLayeredImageSingleton {
             MapCursor<RequestedPattern, RuntimeConditionSet> cursor = r.requestedPatterns.getEntries();
             while (cursor.advance()) {
                 RequestedPattern moduleResourcePair = cursor.getKey();
-                if (Objects.equals(moduleName, moduleResourcePair.module) && matchResource(moduleResourcePair.resource, resourceName) && cursor.getValue().satisfied()) {
+                if (Objects.equals(moduleName, moduleResourcePair.module) && matchResource(moduleResourcePair.pattern, resourceName) && cursor.getValue().satisfied()) {
                     return true;
                 }
             }

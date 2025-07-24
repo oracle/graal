@@ -38,12 +38,17 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 
 /**
  * A thread-safe map implementation that optimizes its run time representation for space efficiency.
- * 
- * At image build time the map is implemented as a {@link ConcurrentHashMap} wrapped into an
- * {@link EconomicMap}. The ImageHeapMapFeature intercepts each build time map and transforms it
- * into an actual memory-efficient {@link EconomicMap} backed by a flat object array during
- * analysis. The later image building stages see only the {@link EconomicMap}.
- * 
+ * <p>
+ * At image build time the map is implemented as a {@link ConcurrentHashMap} or
+ * {@link ConcurrentIdentityHashMap} wrapped into an {@link EconomicMapWrap}. The
+ * ImageHeapCollectionFeature intercepts each build time map and transforms it into an actual
+ * memory-efficient {@link EconomicMap} backed by a flat object array during analysis. The later
+ * image building stages see only the {@link EconomicMap}.
+ * <p>
+ * Additionally, in layered builds, at run time this map can be part of a
+ * {@link LayeredImageHeapMap} structure, i.e., conceptually a linked list of {@link EconomicMap}s
+ * that spans across multiple layers.
+ * <p>
  * This map implementation allows thread-safe collection of data at image build time and storing it
  * into a space efficient data structure at run time.
  */
@@ -54,20 +59,22 @@ public final class ImageHeapMap {
     }
 
     /**
-     * Create a hosted representation of an {@link ImageHeapMap}: a {@link ConcurrentHashMap}
-     * wrapped into an {@link EconomicMap}. At run time this will be an actual memory-efficient
-     * {@link EconomicMap} backed by a flat object array.
+     * In non-layered builds this creates a regular {@link ImageHeapMap} (see above).
+     * <p>
+     * In layered builds this creates a map that expands across layers. During the current layer
+     * build this is a {@link ConcurrentHashMap} wrapped by an {@link EconomicMapWrap}. At run time
+     * it is part of a {@link LayeredImageHeapMap} structure, i.e., conceptually a linked list of
+     * {@link EconomicMap}s that spans across multiple layers.
      */
     @Platforms(Platform.HOSTED_ONLY.class) //
     public static <K, V> EconomicMap<K, V> create(String key) {
         return create(Equivalence.DEFAULT, key);
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class) //
-    public static <K, V> EconomicMap<K, V> createNonLayeredMap() {
-        return createNonLayeredMap(Equivalence.DEFAULT);
-    }
-
+    /**
+     * Same as {@link #create(String)}, but if the {@code strategy} is {@link Equivalence#IDENTITY}
+     * the hosted map is a {@link ConcurrentIdentityHashMap}.
+     */
     @Platforms(Platform.HOSTED_ONLY.class) //
     public static <K, V> EconomicMap<K, V> create(Equivalence strategy, String key) {
         assert key != null : "The key should not be null if the map needs to be automatically layered";
@@ -75,6 +82,20 @@ public final class ImageHeapMap {
         return HostedImageHeapMap.create(strategy, key, true);
     }
 
+    /**
+     * Create an {@link ImageHeapMap}. At build time it is a {@link ConcurrentHashMap} wrapped into
+     * an {@link EconomicMapWrap}. At run time this will be an actual memory-efficient
+     * {@link EconomicMap} backed by a flat object array.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    public static <K, V> EconomicMap<K, V> createNonLayeredMap() {
+        return createNonLayeredMap(Equivalence.DEFAULT);
+    }
+
+    /**
+     * Same as {@link #createNonLayeredMap()}, but if the {@code strategy} is
+     * {@link Equivalence#IDENTITY} the hosted map is a {@link ConcurrentIdentityHashMap}.
+     */
     @Platforms(Platform.HOSTED_ONLY.class) //
     public static <K, V> EconomicMap<K, V> createNonLayeredMap(Equivalence strategy) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to create an ImageHeapMap after analysis.");
@@ -115,12 +136,10 @@ public final class ImageHeapMap {
             return runtimeMap;
         }
 
-        public static <K, V> HostedImageHeapMap<K, V> create(Equivalence strategy, String key, boolean needLayeredMap) {
+        public static <K, V> HostedImageHeapMap<K, V> create(Equivalence strategy, String key, boolean isLayeredMap) {
             Map<K, V> hostedMap = (strategy == Equivalence.IDENTITY) ? new ConcurrentIdentityHashMap<>() : new ConcurrentHashMap<>();
             EconomicMap<Object, Object> currentLayerMap = EconomicMap.create(strategy);
-            if (!needLayeredMap || !ImageLayerBuildingSupport.buildingImageLayer()) {
-                return new HostedImageHeapMap<>(hostedMap, currentLayerMap, currentLayerMap);
-            } else {
+            if (ImageLayerBuildingSupport.buildingImageLayer() && isLayeredMap) {
                 LayeredImageHeapMap<Object, Object> runtimeMap = new LayeredImageHeapMap<>(strategy, key);
                 var previousMap = LayeredImageHeapMapStore.currentLayer().getImageHeapMapStore().put(key, currentLayerMap);
                 if (previousMap != null) {
@@ -132,6 +151,8 @@ public final class ImageHeapMap {
                     singleton.registerPreviousLayerHostedImageHeapMap(hostedImageHeapMap);
                 }
                 return hostedImageHeapMap;
+            } else {
+                return new HostedImageHeapMap<>(hostedMap, currentLayerMap, currentLayerMap);
             }
         }
     }
