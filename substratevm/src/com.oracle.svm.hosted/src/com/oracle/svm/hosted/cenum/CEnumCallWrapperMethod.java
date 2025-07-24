@@ -101,7 +101,7 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
         if (method.getAnnotation(CEnumLookup.class) != null) {
             /* Call a method that converts the primitive value to a Java enum. */
             EnumInfo enumInfo = (EnumInfo) nativeLibraries.findElementInfo(returnType);
-            return CInterfaceEnumTool.singleton().createInvokeLookupEnum(kit, returnType, enumInfo, arg);
+            return CInterfaceEnumTool.singleton().createInvokeLookupEnum(kit, returnType, enumInfo, arg, true);
         } else if (method.getAnnotation(CEnumValue.class) != null) {
             /* Call a method that converts a Java enum to a primitive value. */
             ResolvedJavaType declaringType = method.getDeclaringClass();
