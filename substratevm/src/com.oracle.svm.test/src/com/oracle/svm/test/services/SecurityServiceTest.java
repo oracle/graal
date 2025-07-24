@@ -61,7 +61,7 @@ public class SecurityServiceTest {
 
         @Override
         public void duringSetup(final DuringSetupAccess access) {
-            if (!FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+            if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
                 // we use these (application) classes during Native image build
                 RuntimeClassInitialization.initializeAtBuildTime(NoOpService.class);
                 RuntimeClassInitialization.initializeAtBuildTime(NoOpProvider.class);
@@ -80,7 +80,7 @@ public class SecurityServiceTest {
      */
     @Test
     public void testSecurityProviderRuntimeRegistration() {
-        Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.isJDKInitializedAtRunTime());
+        Assume.assumeTrue("needs runtime initialization", FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
         Provider notRegistered = Security.getProvider("no-op-provider");
         Assert.assertNull("Provider is registered.", notRegistered);
 
@@ -99,7 +99,7 @@ public class SecurityServiceTest {
      */
     @Test
     public void testUnknownSecurityServices() throws Exception {
-        if (FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+        if (FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
             /* Register the provider at run time. */
             Security.addProvider(new NoOpProvider());
         }
@@ -113,7 +113,7 @@ public class SecurityServiceTest {
     @Test
     public void testAutomaticSecurityServiceRegistration() {
         try {
-            if (FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+            if (FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
                 /* Register the provider at run time. */
                 Security.addProvider(new NoOpProviderTwo());
             }
