@@ -1700,4 +1700,10 @@ public class OracleDBTests extends RegexTestBase {
         test("[[:alpha:]]", "", Collections.emptyMap(), Encodings.UTF_16, "\uDDF2", 0, false);
         test("[[:alpha:]]", "", Collections.emptyMap(), Encodings.UTF_16, "\uD839\uDDF2", 0, false);
     }
+
+    @Test
+    public void bqTransitionExplosion() {
+        test("(a(b(b(b(b(b(b(b(b(b(b(b(b(b(b(b(b(b(b(b|)|)|)|)|)|)|)|)|)|)|)|)|)|)|)|)|)|)|){2,2}c)de", "", Map.of("regexDummyLang.QuantifierUnrollLimitGroup", "1"),
+                        "abbbbbbbcdebbbbbbbf", 0, true, 0, 11, 0, 9, 8, 8, 2, 8, 3, 8, 4, 8, 5, 8, 6, 8, 7, 8, 8, 8);
+    }
 }
