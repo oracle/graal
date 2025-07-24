@@ -29,6 +29,6 @@ package com.oracle.svm.core.traits;
  * {@link SingletonTrait}. See {@link SingletonTraits} and
  * {@link SingletonTraitKind#LAYERED_INSTALLATION_KIND} for more information.
  */
-public abstract sealed class SingletonLayeredInstallationKindSupplier permits SingletonLayeredInstallationKind.Disallowed, SingletonLayeredInstallationKind.Independent {
+public abstract sealed class SingletonLayeredInstallationKindSupplier permits SingletonLayeredInstallationKind.Disallowed, SingletonLayeredInstallationKind.Independent, SingletonLayeredInstallationKind.InitialLayerOnly {
     public abstract SingletonTrait getLayeredInstallationKindTrait();
 }
