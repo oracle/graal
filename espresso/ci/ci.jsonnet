@@ -28,8 +28,8 @@
   },
 
   local _builds = common.builds + [
-    common.jdkLatest_gate_linux_amd64 + espresso_compiler_stub_gate,
-    common.jdkLatest_gate_linux_amd64 + espresso_shared_gate,
+    common.jdkLatest_tier1_linux_amd64 + espresso_compiler_stub_gate,
+    common.jdkLatest_tier1_linux_amd64 + espresso_shared_gate,
     // Benchmarks
     // AWFY peak perf. benchmarks
     common.jdk21_weekly_bench_linux    + common.espresso_benchmark('jvm-ce-llvm', 'awfy:*'                                        , extra_args=['--vm.Xmx1g', '--vm.Xms1g'])         + {name: 'weekly-bench-espresso-jvm-ce-awfy-jdk21onLatest-linux-amd64'},
