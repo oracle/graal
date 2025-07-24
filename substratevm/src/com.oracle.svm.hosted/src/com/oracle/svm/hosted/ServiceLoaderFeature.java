@@ -149,7 +149,7 @@ public class ServiceLoaderFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (!FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+        if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
             servicesToSkip.add(java.security.Provider.class.getName());
         }
         servicesToSkip.addAll(Options.ServiceLoaderFeatureExcludeServices.getValue().values());
