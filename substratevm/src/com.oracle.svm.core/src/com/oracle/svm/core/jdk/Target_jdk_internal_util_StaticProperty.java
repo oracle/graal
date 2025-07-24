@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -112,10 +112,6 @@ final class Target_jdk_internal_util_StaticProperty {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     private static String SUN_JNU_ENCODING;
 
-    @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    private static String JAVA_LOCALE_USE_OLD_ISO_CODES;
-
     @Delete//
     private static String OS_NAME;
 
@@ -210,7 +206,6 @@ final class Target_jdk_internal_util_StaticProperty {
             STDOUT_ENCODING = p.getInitialProperty("stdout.encoding");
 
             SUN_JNU_ENCODING = p.getInitialProperty("sun.jnu.encoding");
-            JAVA_LOCALE_USE_OLD_ISO_CODES = p.getInitialProperty("java.locale.useOldISOCodes", "");
 
             OS_ARCH = p.getInitialProperty("os.arch");
 
@@ -335,12 +330,6 @@ final class Target_jdk_internal_util_StaticProperty {
     public static String jnuEncoding() {
         assert Objects.equals(SUN_JNU_ENCODING, SystemPropertiesSupport.singleton().getInitialProperty("sun.jnu.encoding"));
         return SUN_JNU_ENCODING;
-    }
-
-    @Substitute
-    public static String javaLocaleUseOldISOCodes() {
-        assert Objects.equals(JAVA_LOCALE_USE_OLD_ISO_CODES, SystemPropertiesSupport.singleton().getInitialProperty("java.locale.useOldISOCodes", ""));
-        return JAVA_LOCALE_USE_OLD_ISO_CODES;
     }
 
     @Substitute
