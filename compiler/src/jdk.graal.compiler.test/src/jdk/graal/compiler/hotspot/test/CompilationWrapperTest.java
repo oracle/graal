@@ -44,6 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.graal.compiler.core.GraalCompilerOptions;
@@ -233,6 +234,8 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                     List<ZipProbe> initialZipProbes,
                     List<String> extraVmArgs,
                     String... mainClassAndArgs) throws IOException, InterruptedException {
+        boolean isWindows = System.getProperty("os.name", "").startsWith("Windows");
+        Assume.assumeFalse("JaCoCo on Windows found -> skipping (GR-65076)", isWindows && SubprocessUtil.isJaCoCoAttached());
         final Path dumpPath = getOutputDirectory().resolve(CompilationWrapperTest.class.getSimpleName() + "_" + nowAsFileName());
         List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
         vmArgs.removeIf(a -> a.startsWith("-Djdk.graal."));
