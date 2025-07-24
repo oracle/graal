@@ -763,6 +763,12 @@ public final class EspressoOptions {
                     usageSyntax = "allow|warn|debug|deny") //
     public static final OptionKey<MemoryAccessOption> SunMiscUnsafeMemoryAccess = new OptionKey<>(MemoryAccessOption.defaultValue);
 
+    @Option(help = "Enable advanced class redefinition.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> EnableAdvancedRedefinition = new OptionKey<>(false);
+
     /**
      * Property used to force liveness analysis to also be applied by the interpreter. For testing
      * purpose only. Use a host property rather than an option. An option would slow interpreter

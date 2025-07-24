@@ -37,6 +37,12 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 
+/**
+ * Per layer store for the {@link LayeredImageHeapMap}s. There exists one
+ * {@link LayeredImageHeapMapStore} per layer and each entry in the underlying
+ * {@link #imageHeapMapStore} corresponds to a specific {@link LayeredImageHeapMap}, identified by
+ * its {@link LayeredImageHeapMap#getMapKey()}.
+ */
 public class LayeredImageHeapMapStore implements MultiLayeredImageSingleton, UnsavedSingleton {
     private final Map<String, EconomicMap<Object, Object>> imageHeapMapStore = new HashMap<>();
 

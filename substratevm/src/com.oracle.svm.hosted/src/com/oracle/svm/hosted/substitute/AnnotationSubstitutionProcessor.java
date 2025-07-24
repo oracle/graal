@@ -48,7 +48,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import com.oracle.svm.hosted.SVMHost;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -58,6 +57,7 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -84,8 +84,10 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -94,6 +96,28 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * The main substitution processor for Native Image. The annotations supported by this processor
+ * are:
+ * <ul>
+ * <li>{@link TargetClass}</li>
+ * <li>{@link Substitute}</li>
+ * <li>{@link TargetElement}</li>
+ * <li>{@link Alias}</li>
+ * <li>{@link AnnotateOriginal}</li>
+ * <li>{@link Delete}</li>
+ * <li>{@link Inject}</li>
+ * <li>{@link InjectAccessors}</li>
+ * <li>{@link KeepOriginal}</li>
+ * <li>{@link RecomputeFieldValue}</li>
+ * </ul>
+ * Code tagged with these annotations is preprocessed during Native Image setup when the processor
+ * is {@link AnnotationSubstitutionProcessor#init(FieldValueInterceptionSupport) initialized}. Then,
+ * hosted code corresponding to the substitution code is intercepted and replaced without modifying
+ * the class files during {@link AnalysisUniverse} lookups. See each annotation's JavaDoc for more
+ * details, starting with {@link TargetClass}. See also {@link HostedUniverse} for a comprehensive
+ * description of the substitution layer.
+ */
 public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     /**
@@ -306,7 +330,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     public void init(FieldValueInterceptionSupport newFieldValueInterceptionSupport) {
-        /**
+        /*
          * Cannot set this field in the constructor due to cyclic dependencies between the two
          * classes.
          */
