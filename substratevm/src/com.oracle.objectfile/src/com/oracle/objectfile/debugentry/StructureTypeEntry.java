@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,27 +26,19 @@
 
 package com.oracle.objectfile.debugentry;
 
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Stream;
-
-import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
-import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
-
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
  * An intermediate type that provides behaviour for managing fields. This unifies code for handling
  * header structures and Java instance and array classes that both support data members.
  */
-public abstract class StructureTypeEntry extends TypeEntry {
+public abstract sealed class StructureTypeEntry extends TypeEntry permits ArrayTypeEntry, ClassEntry, ForeignStructTypeEntry, HeaderTypeEntry {
     /**
      * Details of fields located in this instance.
      */
-    protected final List<FieldEntry> fields;
+    private final ConcurrentSkipListSet<FieldEntry> fields;
 
     /**
      * The type signature of this types' layout. The layout of a type contains debug info of fields
@@ -55,92 +47,23 @@ public abstract class StructureTypeEntry extends TypeEntry {
      */
     protected long layoutTypeSignature;
 
-    public StructureTypeEntry(String typeName, int size) {
-        super(typeName, size);
-        this.fields = new ArrayList<>();
-        this.layoutTypeSignature = 0;
+    public StructureTypeEntry(String typeName, int size, long classOffset, long typeSignature,
+                    long compressedTypeSignature, long layoutTypeSignature) {
+        super(typeName, size, classOffset, typeSignature, compressedTypeSignature);
+        this.layoutTypeSignature = layoutTypeSignature;
+
+        this.fields = new ConcurrentSkipListSet<>(Comparator.comparingInt(FieldEntry::getOffset));
     }
 
     public long getLayoutTypeSignature() {
         return layoutTypeSignature;
     }
 
-    public Stream<FieldEntry> fields() {
-        return fields.stream();
+    public void addField(FieldEntry field) {
+        fields.add(field);
     }
 
-    public int fieldCount() {
-        return fields.size();
-    }
-
-    protected void processField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
-        /* Delegate this so superclasses can override this and inspect the computed FieldEntry. */
-        FieldEntry fieldEntry = createField(debugFieldInfo, debugInfoBase, debugContext);
-        fields.add(fieldEntry);
-    }
-
-    protected FieldEntry createField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
-        String fieldName = debugInfoBase.uniqueDebugString(debugFieldInfo.name());
-        ResolvedJavaType valueType = debugFieldInfo.valueType();
-        String valueTypeName = valueType.toJavaName();
-        int fieldSize = debugFieldInfo.size();
-        int fieldoffset = debugFieldInfo.offset();
-        boolean fieldIsEmbedded = debugFieldInfo.isEmbedded();
-        int fieldModifiers = debugFieldInfo.modifiers();
-        if (debugContext.isLogEnabled()) {
-            debugContext.log("typename %s adding %s field %s type %s%s size %s at offset 0x%x%n",
-                            typeName, memberModifiers(fieldModifiers), fieldName, valueTypeName, (fieldIsEmbedded ? "(embedded)" : ""), fieldSize, fieldoffset);
-        }
-        TypeEntry valueTypeEntry = debugInfoBase.lookupTypeEntry(valueType);
-        /*
-         * n.b. the field file may differ from the owning class file when the field is a
-         * substitution
-         */
-        FileEntry fileEntry = debugInfoBase.ensureFileEntry(debugFieldInfo);
-        return new FieldEntry(fileEntry, fieldName, this, valueTypeEntry, fieldSize, fieldoffset, fieldIsEmbedded, fieldModifiers);
-    }
-
-    String memberModifiers(int modifiers) {
-        StringBuilder builder = new StringBuilder();
-        if (Modifier.isPublic(modifiers)) {
-            builder.append("public ");
-        } else if (Modifier.isProtected(modifiers)) {
-            builder.append("protected ");
-        } else if (Modifier.isPrivate(modifiers)) {
-            builder.append("private ");
-        }
-        if (Modifier.isFinal(modifiers)) {
-            builder.append("final ");
-        }
-        if (Modifier.isAbstract(modifiers)) {
-            builder.append("abstract ");
-        } else if (Modifier.isVolatile(modifiers)) {
-            builder.append("volatile ");
-        } else if (Modifier.isTransient(modifiers)) {
-            builder.append("transient ");
-        } else if (Modifier.isSynchronized(modifiers)) {
-            builder.append("synchronized ");
-        }
-        if (Modifier.isNative(modifiers)) {
-            builder.append("native ");
-        }
-        if (Modifier.isStatic(modifiers)) {
-            builder.append("static");
-        } else {
-            builder.append("instance");
-        }
-
-        return builder.toString();
-    }
-
-    @Override
-    public void addDebugInfo(@SuppressWarnings("unused") DebugInfoBase debugInfoBase, DebugInfoProvider.DebugTypeInfo debugTypeInfo, @SuppressWarnings("unused") DebugContext debugContext) {
-        super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
-        // header type does not have a separate layout type
-        if (this instanceof HeaderTypeEntry) {
-            this.layoutTypeSignature = typeSignature;
-        } else {
-            this.layoutTypeSignature = debugTypeInfo.typeSignature(DwarfDebugInfo.LAYOUT_PREFIX);
-        }
+    public List<FieldEntry> getFields() {
+        return List.copyOf(fields);
     }
 }

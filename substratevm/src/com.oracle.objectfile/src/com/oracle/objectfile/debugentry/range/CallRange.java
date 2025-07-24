@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,48 +26,55 @@
 
 package com.oracle.objectfile.debugentry.range;
 
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Stream;
+
+import com.oracle.objectfile.debugentry.LocalEntry;
+import com.oracle.objectfile.debugentry.LocalValueEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 
-class CallRange extends SubRange {
-    /**
-     * The first direct callee whose range is wholly contained in this range or null if this is a
-     * leaf range.
-     */
-    protected SubRange firstCallee;
-    /**
-     * The last direct callee whose range is wholly contained in this range.
-     */
-    protected SubRange lastCallee;
+public class CallRange extends Range {
 
-    protected CallRange(MethodEntry methodEntry, int lo, int hi, int line, PrimaryRange primary, Range caller) {
-        super(methodEntry, lo, hi, line, primary, caller);
-        this.firstCallee = null;
-        this.lastCallee = null;
+    /**
+     * The direct callees whose ranges are wholly contained in this range. Empty if this is a leaf
+     * range.
+     */
+    private Set<Range> callees = Set.of();
+
+    protected CallRange(PrimaryRange primary, MethodEntry methodEntry, Map<LocalEntry, LocalValueEntry> localInfoList, int lo, int hi, int line, CallRange caller, int depth) {
+        super(primary, methodEntry, localInfoList, lo, hi, line, caller, depth);
     }
 
     @Override
-    protected void addCallee(SubRange callee) {
-        assert this.lo <= callee.lo;
-        assert this.hi >= callee.hi;
-        assert callee.caller == this;
-        assert callee.siblingCallee == null;
-        if (this.firstCallee == null) {
-            assert this.lastCallee == null;
-            this.firstCallee = this.lastCallee = callee;
-        } else {
-            this.lastCallee.siblingCallee = callee;
-            this.lastCallee = callee;
+    public List<Range> getCallees() {
+        return List.copyOf(callees);
+    }
+
+    @Override
+    public Stream<Range> rangeStream() {
+        return Stream.concat(super.rangeStream(), callees.stream().flatMap(Range::rangeStream));
+    }
+
+    protected void addCallee(Range callee) {
+        assert this.contains(callee);
+        assert callee.getCaller() == this;
+
+        if (callees.isEmpty()) {
+            callees = new TreeSet<>(Comparator.comparing(Range::getLoOffset));
         }
-    }
-
-    @Override
-    public SubRange getFirstCallee() {
-        return firstCallee;
+        callees.add(callee);
     }
 
     @Override
     public boolean isLeaf() {
-        assert firstCallee != null;
-        return false;
+        return callees.isEmpty();
+    }
+
+    public void removeCallee(Range callee) {
+        callees.remove(callee);
     }
 }

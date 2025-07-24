@@ -43,6 +43,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
@@ -70,6 +71,7 @@ import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -89,6 +91,8 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.Local;
+import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -276,10 +280,25 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
                 }, baseType.getJavaClass());
 
                 /*
+                 * With run-time debug info support enabled, ensure LocalVariableTables are
+                 * available in SubstrateMethods if possible.
+                 */
+                LocalVariableTable localVariableTable;
+                if (SubstrateOptions.RuntimeDebugInfo.getValue()) {
+                    try {
+                        localVariableTable = createLocalVariableTable(aMethod.getLocalVariableTable());
+                    } catch (IllegalStateException e) {
+                        LogUtils.warning("Omit invalid local variable table from method %s", sMethod.getName());
+                        localVariableTable = null;
+                    }
+                } else {
+                    localVariableTable = null;
+                }
+                /*
                  * The links to other meta objects must be set after adding to the methods to avoid
                  * infinite recursion.
                  */
-                sMethod.setLinks(createSignature(aMethod.getSignature()), createType(aMethod.getDeclaringClass()));
+                sMethod.setLinks(createSignature(aMethod.getSignature()), createType(aMethod.getDeclaringClass()), localVariableTable);
             }
         }
         return sMethod;
@@ -406,6 +425,31 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             }
         }
         return sSignature;
+    }
+
+    private synchronized LocalVariableTable createLocalVariableTable(LocalVariableTable original) {
+        if (original == null) {
+            return null;
+        }
+        try {
+            Local[] origLocals = original.getLocals();
+            Local[] newLocals = new Local[origLocals.length];
+            for (int i = 0; i < newLocals.length; ++i) {
+                Local origLocal = origLocals[i];
+                /*
+                 * Check if the local variable table is malformed. This throws an
+                 * IllegalStateException if the bci ranges of variables overlap and the malformed
+                 * local variable table is omitted from the image.
+                 */
+                original.getLocal(origLocal.getSlot(), origLocal.getStartBCI());
+                JavaType origType = origLocal.getType();
+                SubstrateType newType = createType(origType);
+                newLocals[i] = new Local(origLocal.getName(), newType, origLocal.getStartBCI(), origLocal.getEndBCI(), origLocal.getSlot());
+            }
+            return new LocalVariableTable(newLocals);
+        } catch (UnsupportedFeatureException e) {
+            return null;
+        }
     }
 
     /**
