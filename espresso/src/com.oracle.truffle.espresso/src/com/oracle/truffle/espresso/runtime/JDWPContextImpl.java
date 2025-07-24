@@ -125,6 +125,16 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
+    public Thread createSystemThread(Runnable runnable) {
+        return context.getEnv().createSystemThread(runnable);
+    }
+
+    @Override
+    public Thread createPolyglotThread(Runnable runnable) {
+        return context.getEnv().newTruffleThreadBuilder(runnable).build();
+    }
+
+    @Override
     public boolean isString(Object string) {
         return Meta.isString(string);
     }
