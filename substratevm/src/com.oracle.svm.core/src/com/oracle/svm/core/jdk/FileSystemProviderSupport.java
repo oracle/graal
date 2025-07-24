@@ -44,7 +44,7 @@ public final class FileSystemProviderSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void register(FileSystemProvider provider) {
-        VMError.guarantee(!FutureDefaultsOptions.isJDKInitializedAtRunTime(), "No need to register FileSystemProvider if the JDK is initialized at run time.");
+        VMError.guarantee(!FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime(), "No need to register FileSystemProvider if the JDK is initialized at run time.");
         FileSystemProviderBuildTimeInitSupport.register(provider);
     }
 
