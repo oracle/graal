@@ -129,10 +129,7 @@ import com.oracle.truffle.espresso.vm.VM;
 
 import sun.misc.SignalHandler;
 
-public final class EspressoContext
-                implements RuntimeAccess<Klass, Method, Field> {
-    // MaxJavaStackTraceDepth is 1024 by default
-    public static final int DEFAULT_STACK_SIZE = 32;
+public final class EspressoContext implements RuntimeAccess<Klass, Method, Field> {
 
     private static final DebugTimer SPAWN_VM = DebugTimer.create("spawnVM");
     private static final DebugTimer SYSTEM_INIT = DebugTimer.create("system init", SPAWN_VM);

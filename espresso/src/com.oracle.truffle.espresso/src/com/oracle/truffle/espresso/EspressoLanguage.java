@@ -147,6 +147,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     @CompilationFinal private boolean useEspressoLibs;
     @CompilationFinal private boolean continuum;
     @CompilationFinal private boolean useTRegex;
+    @CompilationFinal private int maxStackTraceDepth;
     // endregion Options
 
     // region Allocation
@@ -246,6 +247,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         whiteBoxEnabled = env.getOptions().get(EspressoOptions.WhiteBoxAPI);
         internalJvmciEnabled = env.getOptions().get(EspressoOptions.EnableJVMCI);
         continuum = env.getOptions().get(EspressoOptions.Continuum);
+        maxStackTraceDepth = env.getOptions().get(EspressoOptions.MaxJavaStackTraceDepth);
 
         useTRegex = env.getOptions().get(EspressoOptions.UseTRegex);
         if (useTRegex && !env.getInternalLanguages().containsKey("regex")) {
@@ -351,7 +353,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.Continuum) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseTRegex) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.GuestFieldOffsetStrategy) &&
-                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseEspressoLibs);
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseEspressoLibs) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.MaxJavaStackTraceDepth);
     }
 
     private static boolean isOptionCompatible(OptionValues oldOptions, OptionValues newOptions, OptionKey<?> option) {
@@ -746,6 +749,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     public DisableSingleStepping disableStepping() {
         return new DisableSingleStepping();
+    }
+
+    public int getMaxStackTraceDepth() {
+        return maxStackTraceDepth;
     }
 
     public final class DisableSingleStepping implements AutoCloseable {
