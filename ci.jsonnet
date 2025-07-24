@@ -55,6 +55,7 @@ local libgraal(builds, include=true) = [b for b in builds if (std.findSubstr("li
     tier1: "gate",
     tier2: "gate",
     tier3: "gate",
+    tier4: "post-merge",
   },
   builds: [common.add_excludes_guard(common.with_style_component(b)) for b in (
     common.with_components(compiler.builds + libgraal(vm.builds), ["compiler"]) +
