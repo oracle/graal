@@ -135,7 +135,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
 
         @Override
         public ShortVector reinterpret(ByteVector bytes) {
-            return castShort128(bytes.reinterpretAsShorts());
+            return castShort128(castByte128(bytes).reinterpretAsShorts());
         }
 
         @Override
@@ -167,7 +167,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
 
         @Override
         public IntVector reinterpret(ByteVector bytes) {
-            return castInt128(bytes.reinterpretAsInts());
+            return castInt128(castByte128(bytes).reinterpretAsInts());
         }
 
         @Override
@@ -199,7 +199,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
 
         @Override
         public LongVector reinterpret(ByteVector bytes) {
-            return castLong128(bytes.reinterpretAsLongs());
+            return castLong128(castByte128(bytes).reinterpretAsLongs());
         }
 
         @Override
@@ -227,7 +227,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
 
         @Override
         public FloatVector reinterpret(ByteVector bytes) {
-            return castFloat128(bytes.reinterpretAsFloats());
+            return castFloat128(castByte128(bytes).reinterpretAsFloats());
         }
 
         @Override
@@ -268,7 +268,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
 
         @Override
         public DoubleVector reinterpret(ByteVector bytes) {
-            return castDouble128(bytes.reinterpretAsDoubles());
+            return castDouble128(castByte128(bytes).reinterpretAsDoubles());
         }
 
         @Override
