@@ -95,7 +95,7 @@ local std_get = (import "../../ci/ci_common/common-utils.libsonnet").std_get;
            else
              // exclusion
              assert std.length(excluded) == std.length(_values) : "Cannot mix inclusion with exclusion (either all entries start with '!' or none): " + _values;
-             std.setDiff(std.objectFieldsAll(feature_map[self.feature]), excluded)
+             std.setDiff(std.set(std.objectFieldsAll(feature_map[self.feature])), std.set(excluded))
          }
        ;
     local is_feature_desc(key) = std.member(feature_order, get_feature_value_pair(key).feature);
