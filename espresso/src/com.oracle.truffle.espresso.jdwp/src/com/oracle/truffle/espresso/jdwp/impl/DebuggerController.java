@@ -87,6 +87,7 @@ public final class DebuggerController implements ContextsListener {
     private JDWPContext context;
     private Thread senderThread;
     private Thread receiverThread;
+    private Thread processorThread;
     private volatile HandshakeController hsController = null;
     private final Lock resetting = new ReentrantLock();
     private volatile boolean isClosing;
@@ -169,7 +170,7 @@ public final class DebuggerController implements ContextsListener {
         DebuggerConnection.establishDebuggerConnection(newController, newController.setupState, true, new CountDownLatch(1));
     }
 
-    public void reset(boolean prepareForReconnect) {
+    private void reset(boolean prepareForReconnect) {
         if (isClosing) {
             // already done closing, so don't attempt anything further
             return;
@@ -178,7 +179,6 @@ public final class DebuggerController implements ContextsListener {
             // mark that we're closing down the whole context
             isClosing = true;
         }
-        Thread currentReceiverThread = null;
         try {
             // begin section that needs to be synchronized with establishing a new connection and
             // starting the threads. The logic within the locked part, must be written in a way that
@@ -189,8 +189,6 @@ public final class DebuggerController implements ContextsListener {
             // end the current debugger session to avoid hitting any further breakpoints
             // when resuming all threads
             endSession();
-
-            currentReceiverThread = receiverThread;
 
             // Close the server socket used to listen for transport dt_socket.
             // This will unblock the accept call on a server socket.
@@ -225,9 +223,10 @@ public final class DebuggerController implements ContextsListener {
             resetting.unlock();
         }
 
-        // If we're not running in the receiver thread we should join
-        if (Thread.currentThread() != currentReceiverThread) {
-            joinThread(currentReceiverThread);
+        joinThread(receiverThread);
+        // If we're not running in the processor thread we should join
+        if (Thread.currentThread() != processorThread) {
+            joinThread(processorThread);
         }
 
         if (prepareForReconnect && !isClosing && isServer()) {
@@ -274,16 +273,23 @@ public final class DebuggerController implements ContextsListener {
     }
 
     public void addDebuggerReceiverThread(Thread thread) {
+        assert receiverThread == null;
         receiverThread = thread;
     }
 
+    public void addDebuggerProcessorThread(Thread thread) {
+        assert processorThread == null;
+        processorThread = thread;
+    }
+
     public void addDebuggerSenderThread(Thread thread) {
+        assert senderThread == null;
         senderThread = thread;
     }
 
     public boolean isDebuggerThread(Thread hostThread) {
-        // only the receiver thread enters the context
-        return hostThread == receiverThread;
+        // only the procesor thread enters the context
+        return hostThread == processorThread;
     }
 
     public void markLateStartupError(Throwable t) {
