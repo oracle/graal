@@ -281,7 +281,7 @@
                 "name" : "allocate",
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }, {
-                "name" : "grow",
+                "name" : "reallocate",
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }, {
                 "name" : "load_i32",
