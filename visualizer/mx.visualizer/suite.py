@@ -58,8 +58,8 @@ suite = {
       ],
       "layout" : {
         "./": [
-          "file:IdealGraphVisualizer/Data/build/classes/*",
-          "file:IdealGraphVisualizer/Settings/build/classes/*"
+          "file:IdealGraphVisualizer/Data/target/classes/*",
+          "file:IdealGraphVisualizer/Settings/target/classes/*"
           ],
       },
       "defaultBuild" : False,
