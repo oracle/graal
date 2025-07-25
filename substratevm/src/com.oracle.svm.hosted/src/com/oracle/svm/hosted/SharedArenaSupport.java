@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted;
 
 import java.lang.annotation.Annotation;
+import java.util.function.Function;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -37,6 +38,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public interface SharedArenaSupport {
 
@@ -54,9 +56,11 @@ public interface SharedArenaSupport {
         return ImageSingletons.lookup(SharedArenaSupport.class);
     }
 
-    BasePhase<MidTierContext> createOptimizeSharedArenaAccessPhase();
+    BasePhase<MidTierContext> createOptimizeSharedArenaAccessPhase(boolean hosted);
 
     void registerSafeArenaAccessorClass(AnalysisMetaAccess metaAccess, Class<?> klass);
+
+    void registerSafeArenaAccessorsForRuntimeCompilation(Function<ResolvedJavaMethod, ResolvedJavaMethod> createMethod, Function<ResolvedJavaType, ResolvedJavaType> createType);
 
     static boolean isScopedMethod(ResolvedJavaMethod method) {
         ResolvedJavaMethod originalMethod = OriginalMethodProvider.getOriginalMethod(method);
