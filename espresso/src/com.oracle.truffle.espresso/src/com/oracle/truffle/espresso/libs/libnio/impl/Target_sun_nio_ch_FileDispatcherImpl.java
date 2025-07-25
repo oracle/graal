@@ -122,7 +122,7 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
     @Throws(IOException.class)
     public static long seek0(@JavaType(FileDescriptor.class) StaticObject fd, long offset,
                     @Inject TruffleIO io) {
-        if (offset == -1) {
+        if (offset < 0) {
             return io.position(fd, FDAccess.forFileDescriptor());
         }
         io.seek(fd, FDAccess.forFileDescriptor(), offset);

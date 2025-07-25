@@ -29,6 +29,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -77,7 +78,7 @@ public final class Target_java_lang_System {
 
         @Substitution
         @TruffleBoundary
-        public static @JavaType(String[].class) StaticObject platformProperties(@Inject EspressoContext ctx) {
+        public static @JavaType(String[].class) StaticObject platformProperties(@Inject EspressoContext ctx, @Inject TruffleIO io) {
             // Import properties from host.
             Props props = new Props(ctx);
             String[] known = new String[props.fixedLength];
@@ -99,8 +100,8 @@ public final class Target_java_lang_System {
             known[props.osArchNdx] = java.lang.System.getProperty("os.arch");
             known[props.osVersionNdx] = java.lang.System.getProperty("os.version");
             known[props.lineSeparatorNdx] = java.lang.System.getProperty("line.separator");
-            known[props.fileSeparatorNdx] = java.lang.System.getProperty("file.separator");
-            known[props.pathSeparatorNdx] = java.lang.System.getProperty("path.separator");
+            known[props.fileSeparatorNdx] = String.valueOf(io.getFileSeparator());
+            known[props.pathSeparatorNdx] = String.valueOf(io.getPathSeparator());
 
             known[props.javaIoTmpdirNdx] = java.lang.System.getProperty("java.io.tmpdir");
             known[props.httpProxyHostNdx] = java.lang.System.getProperty("http.proxyHost");
