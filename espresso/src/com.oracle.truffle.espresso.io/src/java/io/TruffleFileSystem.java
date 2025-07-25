@@ -71,7 +71,13 @@ final class TruffleFileSystem extends FileSystem {
 
     @Override
     public String fromURIPath(String path) {
-        return fromURIPath0(path);
+        // copy pasted from UnixFileSystem
+        String p = path;
+        if (p.endsWith("/") && (p.length() > 1)) {
+            // "/foo/" --> "/foo", but "/" --> "/"
+            p = p.substring(0, p.length() - 1);
+        }
+        return p;
     }
 
     @Override
@@ -164,7 +170,7 @@ final class TruffleFileSystem extends FileSystem {
         return getSpace0(f, t);
     }
 
-    // @Override is defined in 11+
+    @Override
     public int getNameMax(String path) {
         return getNameMax0(path);
     }

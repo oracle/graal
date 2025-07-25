@@ -584,6 +584,7 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
             meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Names._init_, Signatures._void_String).invokeDirectSpecial(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
 
             meta.postSystemInit();
+            truffleIO.postSystemInit();
 
             // class redefinition will be enabled if debug mode or if any redefine or retransform
             // capable java agent is present

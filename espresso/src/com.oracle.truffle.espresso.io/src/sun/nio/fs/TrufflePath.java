@@ -264,7 +264,7 @@ final class TrufflePath implements Path {
 
     @Override
     public Iterator<Path> iterator() {
-        List<String> components = Arrays.asList(getPathComponents());
+        List<String> components = List.of(getPathComponents());
         return MapFilterIterator.map(components.iterator(), s -> new TrufflePath(getTruffleFileSystem(), s));
     }
 

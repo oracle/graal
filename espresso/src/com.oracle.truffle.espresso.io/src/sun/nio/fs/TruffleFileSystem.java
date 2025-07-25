@@ -183,8 +183,12 @@ final class TruffleFileSystem extends FileSystem {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * We cannot just throw {@link UnsupportedOperationException} since we implement the Default
+     * filesystem.
+     */
     @Override
     public WatchService newWatchService() throws IOException {
-        throw new UnsupportedOperationException();
+        return new DummyWatchService();
     }
 }
