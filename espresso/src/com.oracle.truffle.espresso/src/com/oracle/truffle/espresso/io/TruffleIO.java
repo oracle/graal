@@ -265,8 +265,7 @@ public final class TruffleIO implements ContextAccess {
     @TruffleBoundary
     public long length(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess) {
-        StaticObject fileDesc = getFileDesc(self, fdAccess);
-        return length(getFD(fileDesc));
+        return length(getFD(self, fdAccess));
     }
 
     /**
@@ -274,11 +273,7 @@ public final class TruffleIO implements ContextAccess {
      */
     @TruffleBoundary
     public long length(int fd) {
-        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
-        if (channel instanceof SeekableByteChannel seekableChannel) {
-            return sizeImpl(seekableChannel, context);
-        }
-        return 0; // unknown
+        return sizeImpl(getSeekableChannel(fd), context);
     }
 
     /**
@@ -294,22 +289,13 @@ public final class TruffleIO implements ContextAccess {
     public int writeBytes(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess,
                     ByteBuffer bytes) {
-        // is append already handled ?
-        StaticObject fileDesc = getFileDesc(self, fdAccess);
-        int fd = getFD(fileDesc);
-        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
-        if (channel instanceof WritableByteChannel writableChannel) {
-            try {
-                return writableChannel.write(bytes);
-            } catch (NonWritableChannelException e) {
-                throw Throw.throwNonWritable(context);
-            } catch (IOException e) {
-                throw Throw.throwIOException(e, context);
-            }
-        } else {
+        try {
+            return getWritableChannel(self, fdAccess).write(bytes);
+        } catch (NonWritableChannelException e) {
             throw Throw.throwNonWritable(context);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
         }
-
     }
 
     /**
@@ -326,8 +312,7 @@ public final class TruffleIO implements ContextAccess {
                     FDAccess fdAccess,
                     byte[] bytes,
                     int off, int len) {
-        StaticObject fileDesc = getFileDesc(self, fdAccess);
-        return writeBytes(getFD(fileDesc), bytes, off, len);
+        return writeBytes(getFD(self, fdAccess), bytes, off, len);
     }
 
     /**
@@ -339,12 +324,7 @@ public final class TruffleIO implements ContextAccess {
     public int writeBytes(int fd,
                     byte[] bytes,
                     int off, int len) {
-        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
-        if (channel instanceof WritableByteChannel) {
-            return writeBytesImpl((WritableByteChannel) channel, bytes, off, len, context);
-        } else {
-            throw Throw.throwNonWritable(context);
-        }
+        return writeBytesImpl(getWritableChannel(fd), bytes, off, len, context);
     }
 
     /**
@@ -358,8 +338,7 @@ public final class TruffleIO implements ContextAccess {
     @TruffleBoundary
     public int readSingle(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess) {
-        StaticObject fileDesc = getFileDesc(self, fdAccess);
-        return readSingle(getFD(fileDesc));
+        return readSingle(getFD(self, fdAccess));
     }
 
     /**
@@ -369,12 +348,7 @@ public final class TruffleIO implements ContextAccess {
      */
     @TruffleBoundary
     public int readSingle(int fd) {
-        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
-        if (channel instanceof ReadableByteChannel readableByteChannel) {
-            return readSingleImpl(readableByteChannel, context);
-        } else {
-            throw Throw.throwNonReadable(context);
-        }
+        return readSingleImpl(getReadableChannel(fd), context);
     }
 
     /**
@@ -394,8 +368,7 @@ public final class TruffleIO implements ContextAccess {
                     FDAccess fdAccess,
                     byte[] bytes,
                     int off, int len) {
-        StaticObject fileDesc = getFileDesc(self, fdAccess);
-        return readBytes(getFD(fileDesc), bytes, off, len);
+        return readBytes(getFD(self, fdAccess), bytes, off, len);
     }
 
     /**
@@ -412,21 +385,13 @@ public final class TruffleIO implements ContextAccess {
     public int readBytes(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess,
                     ByteBuffer buffer) {
-        StaticObject fileDesc = getFileDesc(self, fdAccess);
-        int fd = getFD(fileDesc);
-        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
-        if (channel instanceof ReadableByteChannel readableByteChannel) {
-            try {
-                return readableByteChannel.read(buffer);
-            } catch (NonReadableChannelException e) {
-                throw Throw.throwNonReadable(context);
-            } catch (IOException e) {
-                throw Throw.throwIOException(e, context);
-            }
-        } else {
+        try {
+            return getReadableChannel(self, fdAccess).read(buffer);
+        } catch (NonReadableChannelException e) {
             throw Throw.throwNonReadable(context);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
         }
-
     }
 
     /**
@@ -438,12 +403,7 @@ public final class TruffleIO implements ContextAccess {
     public int readBytes(int fd,
                     byte[] bytes,
                     int off, int len) {
-        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
-        if (channel instanceof ReadableByteChannel readableByteChannel) {
-            return readBytesImpl(readableByteChannel, bytes, off, len, context);
-        } else {
-            throw Throw.throwNonReadable(context);
-        }
+        return readBytesImpl(getReadableChannel(fd), bytes, off, len, context);
     }
 
     /**
@@ -457,8 +417,7 @@ public final class TruffleIO implements ContextAccess {
     @TruffleBoundary
     public boolean drain(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess) {
-        StaticObject fileDesc = getFileDesc(self, fdAccess);
-        return drain(getFD(fileDesc));
+        return drain(getFD(self, fdAccess));
     }
 
     /**
@@ -469,22 +428,18 @@ public final class TruffleIO implements ContextAccess {
      */
     @TruffleBoundary
     public boolean drain(int fd) {
-        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
-        if (channel instanceof ReadableByteChannel readableByteChannel) {
-            try {
-                ByteBuffer bytes = ByteBuffer.wrap(new byte[DRAIN_SEGMENT_COUNT]);
-                boolean discarded = false;
-                while ((readableByteChannel.read(bytes)) > 0) {
-                    discarded = true;
-                }
-                return discarded;
-            } catch (NonReadableChannelException e) {
-                throw Throw.throwNonReadable(context);
-            } catch (IOException e) {
-                throw Throw.throwIOException(e, context);
+        try {
+            ByteBuffer bytes = ByteBuffer.wrap(new byte[DRAIN_SEGMENT_COUNT]);
+            boolean discarded = false;
+            ReadableByteChannel readableByteChannel = getReadableChannel(fd);
+            while ((readableByteChannel.read(bytes)) > 0) {
+                discarded = true;
             }
-        } else {
+            return discarded;
+        } catch (NonReadableChannelException e) {
             throw Throw.throwNonReadable(context);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
         }
     }
 
@@ -499,18 +454,8 @@ public final class TruffleIO implements ContextAccess {
     @TruffleBoundary
     public long position(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess) {
-        StaticObject fileDesc = getFileDesc(self, fdAccess);
-        return position(getFD(fileDesc));
+        return position(getFD(self, fdAccess));
     }
-
-    /**
-     * Updates the current position of the file-pointer associated with the given file descriptor
-     * holder.
-     *
-     * @param self The file descriptor holder.
-     * @param fdAccess How to get the file descriptor from the holder.
-     * @param newPos the new Position
-     */
 
     /**
      * Returns the current position the file associated with the given file descriptor holder is
@@ -520,15 +465,11 @@ public final class TruffleIO implements ContextAccess {
      */
     @TruffleBoundary
     public long position(int fd) {
-        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
-        if (channel instanceof SeekableByteChannel seekableChannel) {
-            try {
-                return seekableChannel.position();
-            } catch (IOException e) {
-                throw Throw.throwIOException(e, context);
-            }
-        } else {
-            return 0; // unknown
+        SeekableByteChannel seekableChannel = getSeekableChannel(fd);
+        try {
+            return seekableChannel.position();
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
         }
     }
 
@@ -558,15 +499,11 @@ public final class TruffleIO implements ContextAccess {
     @TruffleBoundary
     public void seek(int fd,
                     long pos) {
-        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
-        if (channel instanceof SeekableByteChannel seekableChannel) {
-            try {
-                seekableChannel.position(pos);
-            } catch (IOException e) {
-                throw Throw.throwIOException(e, context);
-            }
-        } else {
-            Throw.throwNonSeekable(context);
+        SeekableByteChannel seekableChannel = getSeekableChannel(fd);
+        try {
+            seekableChannel.position(pos);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
         }
     }
 
@@ -595,6 +532,10 @@ public final class TruffleIO implements ContextAccess {
             return null;
         }
         return getFileChannel(fd);
+    }
+
+    private int getFD(StaticObject self, FDAccess fdAccess) {
+        return getFD(getFileDesc(self, fdAccess));
     }
 
     private int getFD(@JavaType(FileDescriptor.class) StaticObject fileDescriptor) {
@@ -855,6 +796,32 @@ public final class TruffleIO implements ContextAccess {
         }
     }
 
+    private ReadableByteChannel getReadableChannel(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess) {
+        return getReadableChannel(getFD(getFileDesc(self, fdAccess)));
+    }
+
+    private ReadableByteChannel getReadableChannel(int fd) {
+        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
+        if (channel instanceof ReadableByteChannel readableByteChannel) {
+            return readableByteChannel;
+        }
+        throw Throw.throwNonReadable(context);
+    }
+
+    private WritableByteChannel getWritableChannel(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess) {
+        return getWritableChannel(getFD(getFileDesc(self, fdAccess)));
+    }
+
+    private WritableByteChannel getWritableChannel(int fd) {
+        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
+        if (channel instanceof WritableByteChannel writableByteChannel) {
+            return writableByteChannel;
+        }
+        throw Throw.throwNonWritable(context);
+    }
+
     private static int writeBytesImpl(WritableByteChannel writableChannel, byte[] b, int off, int len,
                     EspressoContext context) {
         try {
@@ -875,6 +842,14 @@ public final class TruffleIO implements ContextAccess {
         } catch (IOException e) {
             throw Throw.throwIOException(e, context);
         }
+    }
+
+    private SeekableByteChannel getSeekableChannel(int fd) {
+        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
+        if (channel instanceof SeekableByteChannel seekableChannel) {
+            return seekableChannel;
+        }
+        throw Throw.throwNonSeekable(context);
     }
 
     private static int lookupSyncedValue(ObjectKlass klass, Symbol<Name> constant) {

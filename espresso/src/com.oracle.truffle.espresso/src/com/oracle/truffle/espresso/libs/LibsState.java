@@ -22,18 +22,30 @@
  */
 package com.oracle.truffle.espresso.libs;
 
+import java.io.FileDescriptor;
 import java.util.zip.Inflater;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.io.FDAccess;
+import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.jni.StrongHandles;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 
 public class LibsState {
     private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, LibsState.class);
+
+    public static final FDAccess FD = new FDAccess() {
+        @Override
+        public @JavaType(FileDescriptor.class) StaticObject get(@JavaType(Object.class) StaticObject objectWithFD, TruffleIO io) {
+            return objectWithFD;
+        }
+    };
 
     private final StrongHandles<Inflater> handle2Inflater = new StrongHandles<>();
 
