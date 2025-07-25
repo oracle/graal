@@ -89,9 +89,6 @@ import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.ffi.EspressoLibsNativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
-import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
-import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
-import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Field;
@@ -784,23 +781,7 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
     }
 
     private NativeAccess spawnNativeAccess() {
-        String nativeBackend;
-        if (getEnv().getOptions().hasBeenSet(EspressoOptions.NativeBackend)) {
-            nativeBackend = getEnv().getOptions().get(EspressoOptions.NativeBackend);
-        } else {
-            // Pick a sane "default" native backend depending on the platform.
-            boolean isInPreInit = (boolean) getEnv().getConfig().getOrDefault("preinit", false);
-            if (isInPreInit || !EspressoOptions.RUNNING_ON_SVM) {
-                if (OS.getCurrent() == OS.Linux) {
-                    nativeBackend = NFIIsolatedNativeAccess.Provider.ID;
-                } else {
-                    nativeBackend = NFISulongNativeAccess.Provider.ID;
-                }
-            } else {
-                nativeBackend = NFINativeAccess.Provider.ID;
-            }
-        }
-
+        String nativeBackend = language.nativeBackendId();
         List<String> available = new ArrayList<>();
         for (NativeAccess.Provider provider : NativeAccessCollector.getInstances(NativeAccess.Provider.class)) {
             available.add(provider.id());

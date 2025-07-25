@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,35 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.substitutions.standard;
+package com.oracle.truffle.espresso.libs.libjava.impl;
 
-import com.oracle.truffle.espresso.substitutions.DisableSignals;
+import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 
-@EspressoSubstitutions
-public final class Target_sun_nio_ch_NativeThread {
-    /*
-     * This doesn't exist on Windows, it just won't match
-     */
-
-    @Substitution(languageFilter = DisableSignals.StandardFilter.class)
-    public static void init() {
-    }
-
-    @Substitution(languageFilter = DisableSignals.Version21orLaterFilter.class)
-    @SuppressWarnings("unused")
-    public static boolean isNativeThread(long tid) {
+@EspressoSubstitutions(type = "Ljdk/internal/vm/ContinuationSupport;", group = LibJava.class)
+public final class Target_jdk_internal_vm_ContinuationSupport {
+    @Substitution
+    public static boolean isSupported0() {
+        // GR-54288 Currently virtual threads are just platform threads in Espresso
         return false;
-    }
-
-    @Substitution(languageFilter = DisableSignals.Version21orLaterFilter.class)
-    public static long current0() {
-        return 0;
-    }
-
-    @Substitution(languageFilter = DisableSignals.Version17orEarlierFilter.class)
-    @SuppressWarnings("unused")
-    public static void signal(long nt) {
     }
 }

@@ -146,7 +146,6 @@ public class EspressoSymbols {
         public static final Symbol<Type> sun_nio_fs_FileAttributeParser = SYMBOLS.putType("Lsun/nio/fs/FileAttributeParser;");
         public static final Symbol<Type> sun_nio_ch_FileChannelImpl = SYMBOLS.putType("Lsun/nio/ch/FileChannelImpl;");
         public static final Symbol<Type> sun_nio_fs_DefaultFileSystemProvider = SYMBOLS.putType("Lsun/nio/fs/DefaultFileSystemProvider;");
-        public static final Symbol<Type> sun_nio_ch_FileChannelImpl = SYMBOLS.putType("Lsun/nio/ch/FileChannelImpl;");
         public static final Symbol<Type> sun_nio_ch_NativeThread = SYMBOLS.putType("Lsun/nio/ch/NativeThread;");
 
         public static final Symbol<Type> jdk_internal_loader_ClassLoaders = SYMBOLS.putType("Ljdk/internal/loader/ClassLoaders;");

@@ -22,6 +22,12 @@
  */
 package com.oracle.truffle.espresso.libs.libjava.impl;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.TimeZone;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -30,28 +36,28 @@ import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
-import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(type = "Ljdk/internal/loader/BootLoader;", group = LibJava.class)
-public final class Target_jdk_internal_loader_BootLoader {
+@EspressoSubstitutions(value = TimeZone.class, group = LibJava.class)
+public final class Target_java_util_TimeZone {
     @Substitution
-    public static void setBootLoaderUnnamedModule0(@JavaType(Module.class) StaticObject module, @Inject EspressoContext ctx) {
-        ctx.getVM().JVM_SetBootLoaderUnnamedModule(module);
+    @TruffleBoundary
+    @SuppressWarnings("unused")
+    public static @JavaType(String.class) StaticObject getSystemTimeZoneID(@JavaType(String.class) StaticObject javaHome, @Inject Meta meta, @Inject EspressoContext context) {
+        return meta.toGuestString(context.getEnv().getTimeZone().getId());
     }
 
     @Substitution
-    public static @JavaType(String[].class) StaticObject getSystemPackageNames(@Inject VM vm, @Inject Meta meta) {
-        return vm.JVM_GetSystemPackages(meta);
-    }
+    @TruffleBoundary
+    public static @JavaType(String.class) StaticObject getSystemGMTOffsetID(@Inject Meta meta, @Inject EspressoContext context) {
+        ZoneId zone = context.getEnv().getTimeZone();
+        String offsetId;
+        if (zone instanceof ZoneOffset) {
+            offsetId = zone.getId();
+        } else {
+            ZoneOffset offset = zone.getRules().getOffset(Instant.now());
+            offsetId = offset.getId();
+        }
+        return meta.toGuestString(offsetId);
 
-    /**
-     * Returns the location of the package of the given name, if defined by the boot loader;
-     * otherwise {@code null} is returned. The location may be a module from the runtime image or
-     * exploded image, or from the boot class append path (i.e. -Xbootclasspath/a or BOOT-CLASS-PATH
-     * attribute specified in java agent).
-     */
-    @Substitution
-    public static @JavaType(String.class) StaticObject getSystemPackageLocation(@JavaType(String[].class) StaticObject name, @Inject VM vm, @Inject Meta meta) {
-        return vm.JVM_GetSystemPackage(name, meta);
     }
 }
