@@ -79,7 +79,7 @@ suite = {
                     "jdk.vm.ci.runtime",
                 ],
             },
-            "javaCompliance": "8+",
+            "javaCompliance": "21+",
             "checkstyle": "com.oracle.truffle.espresso",
         },
     },
