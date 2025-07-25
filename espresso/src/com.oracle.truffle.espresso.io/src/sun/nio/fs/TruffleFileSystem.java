@@ -183,8 +183,14 @@ final class TruffleFileSystem extends FileSystem {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * We cannot just throw {@link UnsupportedOperationException} since we implement the Default
+     * filesystem.
+     */
     @Override
     public WatchService newWatchService() throws IOException {
-        throw new UnsupportedOperationException();
+        // GR-42440: To implement a proper watch service, we need a currently missing feature from
+        // the truffle side.
+        return new DummyWatchService();
     }
 }

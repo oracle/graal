@@ -109,6 +109,9 @@ public class EspressoSymbols {
         public static final Symbol<Type> java_io_IOException = SYMBOLS.putType("Ljava/io/IOException;");
         public static final Symbol<Type> java_io_File = SYMBOLS.putType("Ljava/io/File;");
         public static final Symbol<Type> java_io_FileNotFoundException = SYMBOLS.putType("Ljava/io/FileNotFoundException;");
+        public static final Symbol<Type> java_nio_channels_ClosedByInterruptException = SYMBOLS.putType("Ljava/nio/channels/ClosedByInterruptException;");
+        public static final Symbol<Type> java_nio_channels_AsynchronousCloseException = SYMBOLS.putType("Ljava/nio/channels/AsynchronousCloseException;");
+        public static final Symbol<Type> java_nio_channels_ClosedChannelException = SYMBOLS.putType("Ljava/nio/channels/ClosedChannelException;");
         public static final Symbol<Type> java_io_FileDescriptor = SYMBOLS.putType("Ljava/io/FileDescriptor;");
         public static final Symbol<Type> java_io_FileInputStream = SYMBOLS.putType("Ljava/io/FileInputStream;");
         public static final Symbol<Type> java_io_FileOutputStream = SYMBOLS.putType("Ljava/io/FileOutputStream;");
@@ -140,6 +143,8 @@ public class EspressoSymbols {
 
         public static final Symbol<Type> sun_nio_fs_TruffleFileSystem = SYMBOLS.putType("Lsun/nio/fs/TruffleFileSystem;");
         public static final Symbol<Type> sun_nio_fs_TruffleFileSystemProvider = SYMBOLS.putType("Lsun/nio/fs/TruffleFileSystemProvider;");
+        public static final Symbol<Type> sun_nio_fs_FileAttributeParser = SYMBOLS.putType("Lsun/nio/fs/FileAttributeParser;");
+        public static final Symbol<Type> sun_nio_ch_FileChannelImpl = SYMBOLS.putType("Lsun/nio/ch/FileChannelImpl;");
         public static final Symbol<Type> sun_nio_fs_DefaultFileSystemProvider = SYMBOLS.putType("Lsun/nio/fs/DefaultFileSystemProvider;");
         public static final Symbol<Type> sun_nio_ch_FileChannelImpl = SYMBOLS.putType("Lsun/nio/ch/FileChannelImpl;");
         public static final Symbol<Type> sun_nio_ch_NativeThread = SYMBOLS.putType("Lsun/nio/ch/NativeThread;");
@@ -757,6 +762,18 @@ public class EspressoSymbols {
         // sun.nio.fs.TrufflePath
         public static final Symbol<Name> HIDDEN_TRUFFLE_FILE = SYMBOLS.putName("0HIDDEN_TRUFFLE_FILE");
         public static final Symbol<Name> instance = SYMBOLS.putName("instance");
+        // sun.nio.fs.TruffleFileSystemProvider
+        public static final Symbol<Name> OWNER_READ_VALUE = SYMBOLS.putName("OWNER_READ_VALUE");
+        public static final Symbol<Name> OWNER_WRITE_VALUE = SYMBOLS.putName("OWNER_WRITE_VALUE");
+        public static final Symbol<Name> OWNER_EXECUTE_VALUE = SYMBOLS.putName("OWNER_EXECUTE_VALUE");
+        public static final Symbol<Name> GROUP_READ_VALUE = SYMBOLS.putName("GROUP_READ_VALUE");
+        public static final Symbol<Name> GROUP_WRITE_VALUE = SYMBOLS.putName("GROUP_WRITE_VALUE");
+        public static final Symbol<Name> GROUP_EXECUTE_VALUE = SYMBOLS.putName("GROUP_EXECUTE_VALUE");
+        public static final Symbol<Name> OTHERS_READ_VALUE = SYMBOLS.putName("OTHERS_READ_VALUE");
+        public static final Symbol<Name> OTHERS_WRITE_VALUE = SYMBOLS.putName("OTHERS_WRITE_VALUE");
+        public static final Symbol<Name> OTHERS_EXECUTE_VALUE = SYMBOLS.putName("OTHERS_EXECUTE_VALUE");
+        // sun.nio.ch.FileChannelImpl
+        public static final Symbol<Name> MAP_RW = SYMBOLS.putName("MAP_RW");
         // java.util.zip
         public static final Symbol<Name> HIDDEN_CRC32 = SYMBOLS.putName("0HIDDEN_CRC32");
         public static final Symbol<Name> inputConsumed = SYMBOLS.putName("inputConsumed");

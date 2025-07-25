@@ -22,9 +22,10 @@
  */
 package com.oracle.truffle.espresso.libs.libjava.impl;
 
-import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.StandardOpenOption;
+import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -32,6 +33,7 @@ import com.oracle.truffle.espresso.io.Checks;
 import com.oracle.truffle.espresso.io.FDAccess;
 import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
@@ -42,16 +44,20 @@ import com.oracle.truffle.espresso.substitutions.Throws;
 
 @EspressoSubstitutions(value = FileOutputStream.class, group = LibJava.class)
 public final class Target_java_io_FileOutputStream {
-    private static final FDAccess FD = new FDAccess() {
-        @Override
-        public @JavaType(FileDescriptor.class) StaticObject get(@JavaType(Object.class) StaticObject objectWithFD, TruffleIO io) {
-            return io.java_io_FileOutputStream_fd.getObject(objectWithFD);
-        }
-    };
 
     @Substitution
     public static void initIDs() {
         // Do nothing.
+    }
+
+    @Substitution(hasReceiver = true)
+    @TruffleBoundary
+    public static void open0(@JavaType(FileOutputStream.class) StaticObject self, @JavaType(String.class) StaticObject path, boolean append, @Inject TruffleIO io, @Inject Meta meta) {
+        EnumSet<StandardOpenOption> options = EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+        if (append) {
+            options.add(StandardOpenOption.APPEND);
+        }
+        io.open(self, FDAccess.forFileOutputStream(), meta.toHostString(path), options);
     }
 
     @Substitution(hasReceiver = true)
@@ -61,6 +67,6 @@ public final class Target_java_io_FileOutputStream {
                     @Inject EspressoLanguage lang, @Inject TruffleIO io, @Inject EspressoContext ctx) {
         Checks.nullCheck(b, ctx);
         Checks.requireNonForeign(b, ctx);
-        io.writeBytes(self, FD, b.unwrap(lang), off, len);
+        io.writeBytes(self, FDAccess.forFileOutputStream(), b.unwrap(lang), off, len);
     }
 }

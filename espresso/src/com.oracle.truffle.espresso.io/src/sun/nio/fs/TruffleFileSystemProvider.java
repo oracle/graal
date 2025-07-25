@@ -43,8 +43,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -115,7 +113,7 @@ class TruffleFileSystemProvider extends FileSystemProvider {
 
     @Override
     public Path getPath(URI uri) {
-        throw new UnsupportedOperationException();
+        return new TrufflePath(theFileSystem(), uri.getPath());
     }
 
     @Override
@@ -125,19 +123,51 @@ class TruffleFileSystemProvider extends FileSystemProvider {
 
     @Override
     public FileChannel newFileChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-        if (attrs == null || attrs.length > 0) {
-            throw new UnsupportedOperationException("file attributes: " + Arrays.toString(attrs));
-        }
+        // On Unix ALL_READWRITE is default
+        int fileAttributeMask = FileAttributeParser.parseWithDefault(FileAttributeParser.ALL_READWRITE, attrs);
         int openOptionsMask = openOptionsToMask(options);
-        return newFileChannel0(TrufflePath.toTrufflePath(path), new FileDescriptor(), openOptionsMask);
+        boolean readable = options.contains(StandardOpenOption.READ);
+        boolean sync = options.contains(StandardOpenOption.SYNC);
+        boolean writable = options.contains(StandardOpenOption.WRITE);
+        boolean append = options.contains(StandardOpenOption.APPEND);
+
+        // default is reading; append => writing
+        if (!readable && !writable) {
+            if (append) {
+                writable = true;
+            } else {
+                readable = true;
+            }
+        }
+
+        // set direct option
+        boolean direct = false;
+        for (OpenOption option : options) {
+            if (ExtendedOptions.DIRECT.matches(option)) {
+                direct = true;
+                break;
+            }
+        }
+        // check for Exceptions
+        if (readable && append) {
+            throw new IllegalArgumentException("READ + APPEND not allowed");
+        }
+        if (append && options.contains(StandardOpenOption.TRUNCATE_EXISTING)) {
+            throw new IllegalArgumentException("APPEND + TRUNCATE_EXISTING not allowed");
+        }
+
+        FileDescriptor fd = new FileDescriptor();
+        // populates fd via HostCode which opens the file and checks the permissions
+        newFileChannel0(TrufflePath.toTrufflePath(path), fd, openOptionsMask, fileAttributeMask);
+        return NewFileChannelHelper.open(fd, path.toString(), readable, writable, sync, direct, null);
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
-        if (attrs == null || attrs.length > 0) {
-            throw new UnsupportedOperationException("file attributes: " + Arrays.toString(attrs));
-        }
-        createDirectory0(TrufflePath.toTrufflePath(dir));
+        // ALL_PERMISSIONS is the default permission on Unix.
+        int fileAttributeMask = FileAttributeParser.parseWithDefault(FileAttributeParser.ALL_PERMISSIONS, attrs);
+        createDirectory0(TrufflePath.toTrufflePath(dir), fileAttributeMask);
     }
 
     @Override
@@ -153,9 +183,8 @@ class TruffleFileSystemProvider extends FileSystemProvider {
         delete0(trufflePath);
     }
 
-    // TODO(peterssen): Add NO_FOLLOW_LINKS?
     // Keep in sync with Target_*_TruffleFileSystemProvider#SUPPORTED_OPEN_OPTIONS.
-    private static final List<OpenOption> SUPPORTED_OPEN_OPTIONS = Collections.unmodifiableList(Arrays.asList(
+    private static final List<OpenOption> SUPPORTED_OPEN_OPTIONS = List.of(
                     StandardOpenOption.READ,
                     StandardOpenOption.WRITE,
                     StandardOpenOption.APPEND,
@@ -165,14 +194,15 @@ class TruffleFileSystemProvider extends FileSystemProvider {
                     StandardOpenOption.DELETE_ON_CLOSE,
                     StandardOpenOption.SPARSE,
                     StandardOpenOption.SYNC,
-                    StandardOpenOption.DSYNC));
+                    StandardOpenOption.DSYNC,
+                    LinkOption.NOFOLLOW_LINKS);
 
-    // TODO(peterssen): Add NO_FOLLOW_LINKS?
     // Keep in sync with Target_*_TruffleFileSystemProvider#SUPPORTED_COPY_OPTIONS.
-    private static final List<CopyOption> SUPPORTED_COPY_OPTIONS = Collections.unmodifiableList(Arrays.asList(
+    private static final List<CopyOption> SUPPORTED_COPY_OPTIONS = List.of(
                     StandardCopyOption.REPLACE_EXISTING,
                     StandardCopyOption.COPY_ATTRIBUTES,
-                    StandardCopyOption.ATOMIC_MOVE));
+                    StandardCopyOption.ATOMIC_MOVE,
+                    LinkOption.NOFOLLOW_LINKS);
 
     private static int copyOptionsToMask(CopyOption... options) {
         int mask = 0;
@@ -233,15 +263,15 @@ class TruffleFileSystemProvider extends FileSystemProvider {
     }
 
     @Override
-    public FileStore getFileStore(Path path) throws IOException {
-        throw new UnsupportedOperationException();
+    public FileStore getFileStore(Path path) {
+        return new TruffleFileStore(path);
     }
 
     // Keep in sync with Target_*_TruffleFileSystemProvider#SUPPORTED_ACCESS_MODES.
-    private static final List<AccessMode> SUPPORTED_ACCESS_MODES = Collections.unmodifiableList(Arrays.asList(
+    private static final List<AccessMode> SUPPORTED_ACCESS_MODES = List.of(
                     AccessMode.READ,
                     AccessMode.WRITE,
-                    AccessMode.EXECUTE));
+                    AccessMode.EXECUTE);
 
     private static int accessModesToMask(AccessMode... modes) {
         int mask = 0;
@@ -320,10 +350,9 @@ class TruffleFileSystemProvider extends FileSystemProvider {
 
     @Override
     public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
-        if (attrs == null || attrs.length > 0) {
-            throw new UnsupportedOperationException("file attributes: " + Arrays.toString(attrs));
-        }
-        createSymbolicLink0(TrufflePath.toTrufflePath(link), TrufflePath.toTrufflePath(target));
+        // 0 is the default permission on Unix.
+        int fileAttributeMask = FileAttributeParser.parseWithDefault(0, attrs);
+        createSymbolicLink0(TrufflePath.toTrufflePath(link), TrufflePath.toTrufflePath(target), fileAttributeMask);
     }
 
     @Override
@@ -341,9 +370,9 @@ class TruffleFileSystemProvider extends FileSystemProvider {
 
     private static native String getSeparator0();
 
-    private static native FileChannel newFileChannel0(TrufflePath path, FileDescriptor fileDescriptor, int openOptionsMask) throws IOException;
+    private static native void newFileChannel0(TrufflePath path, FileDescriptor fileDescriptor, int openOptionsMask, int fileAttributeMask) throws IOException;
 
-    private static native void createDirectory0(TrufflePath path) throws IOException;
+    private static native void createDirectory0(TrufflePath path, int fileAttributeMask) throws IOException;
 
     private static native void delete0(TrufflePath path) throws IOException;
 
@@ -355,7 +384,7 @@ class TruffleFileSystemProvider extends FileSystemProvider {
 
     private static native void checkAccess0(TrufflePath path, int accessModesMask) throws IOException;
 
-    private static native void createSymbolicLink0(TrufflePath link, TrufflePath target) throws IOException;
+    private static native void createSymbolicLink0(TrufflePath link, TrufflePath target, int fileAttributeMask) throws IOException;
 
     private static native void createLink0(TrufflePath link, TrufflePath existing) throws IOException;
 

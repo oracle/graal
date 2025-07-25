@@ -24,7 +24,6 @@ package sun.nio.fs;
 
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -36,7 +35,7 @@ import java.util.List;
  */
 final class TruffleBasicFileAttributes implements BasicFileAttributes {
 
-    static final List<String> BASIC_ATTRIBUTES = Arrays.asList(
+    static final List<String> BASIC_ATTRIBUTES = List.of(
                     "lastModifiedTime",
                     "lastAccessTime",
                     "creationTime",

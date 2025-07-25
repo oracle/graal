@@ -489,9 +489,9 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
             this.interpreterToVM = new InterpreterToVM(this);
             this.lazyCaches = new LazyContextCaches(this);
             if (language.useEspressoLibs()) {
+                this.libsState = new LibsState();
                 this.truffleIO = new TruffleIO(this);
                 this.libsMeta = new LibsMeta(this);
-                this.libsState = new LibsState();
             }
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
@@ -584,6 +584,9 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
             meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Names._init_, Signatures._void_String).invokeDirectSpecial(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
 
             meta.postSystemInit();
+            if (language.useEspressoLibs()) {
+                truffleIO.postSystemInit();
+            }
 
             // class redefinition will be enabled if debug mode or if any redefine or retransform
             // capable java agent is present

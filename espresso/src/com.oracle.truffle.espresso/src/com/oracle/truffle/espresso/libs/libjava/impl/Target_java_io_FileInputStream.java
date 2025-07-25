@@ -43,12 +43,6 @@ import com.oracle.truffle.espresso.substitutions.Throws;
 
 @EspressoSubstitutions(value = FileInputStream.class, group = LibJava.class)
 public final class Target_java_io_FileInputStream {
-    private static final FDAccess FD = new FDAccess() {
-        @Override
-        public @JavaType(FileInputStream.class) StaticObject get(@JavaType(Object.class) StaticObject objectWithFD, TruffleIO io) {
-            return io.java_io_FileInputStream_fd.getObject(objectWithFD);
-        }
-    };
 
     private static final EnumSet<StandardOpenOption> READ_ONLY_OPTION_SET = EnumSet.of(StandardOpenOption.READ);
 
@@ -63,14 +57,14 @@ public final class Target_java_io_FileInputStream {
                     @JavaType(String.class) StaticObject name,
                     @Inject Meta meta, @Inject TruffleIO io) {
         Checks.nullCheck(name, meta);
-        io.open(self, FD, meta.toHostString(name), READ_ONLY_OPTION_SET);
+        io.open(self, FDAccess.forFileInputStream(), meta.toHostString(name), READ_ONLY_OPTION_SET);
     }
 
     @Substitution(hasReceiver = true)
     @Throws(IOException.class)
     public static int read0(@JavaType(FileInputStream.class) StaticObject self,
                     @Inject TruffleIO io) {
-        return io.readSingle(self, FD);
+        return io.readSingle(self, FDAccess.forFileInputStream());
     }
 
     @Substitution(hasReceiver = true)
@@ -78,19 +72,19 @@ public final class Target_java_io_FileInputStream {
     public static int readBytes(@JavaType(FileInputStream.class) StaticObject self, @JavaType(byte[].class) StaticObject b, int off, int len,
                     @Inject TruffleIO io) {
         Checks.nullCheck(b, io);
-        return io.readBytes(self, FD, b.unwrap(io.getLanguage()), off, len);
+        return io.readBytes(self, FDAccess.forFileInputStream(), b.unwrap(io.getLanguage()), off, len);
     }
 
     @Substitution(hasReceiver = true)
     @Throws(IOException.class)
     public static long length0(@JavaType(FileInputStream.class) StaticObject self, @Inject TruffleIO io) {
-        return io.length(self, FD);
+        return io.length(self, FDAccess.forFileInputStream());
     }
 
     @Substitution(hasReceiver = true)
     @Throws(IOException.class)
     public static long position0(@JavaType(FileInputStream.class) StaticObject self, @Inject TruffleIO io) {
-        return io.position(self, FD);
+        return io.position(self, FDAccess.forFileInputStream());
     }
 
     @Substitution(hasReceiver = true)
@@ -102,8 +96,13 @@ public final class Target_java_io_FileInputStream {
 
     @Substitution(hasReceiver = true)
     @Throws(IOException.class)
-    @SuppressWarnings("unused")
-    public static int available0(@JavaType(FileInputStream.class) StaticObject self) {
-        throw JavaSubstitution.unimplemented();
+    public static int available0(@JavaType(FileInputStream.class) StaticObject self,
+                    @Inject TruffleIO io) {
+        long size = io.length(self, FDAccess.forFileInputStream());
+        long pos = io.position(self, FDAccess.forFileInputStream());
+        if (size <= pos) {
+            return 0;
+        }
+        return Math.toIntExact(size - pos);
     }
 }

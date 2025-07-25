@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,7 +70,7 @@ final class TruffleBasicFileAttributeView implements BasicFileAttributeView {
         TruffleBasicFileAttributes bfa = (TruffleBasicFileAttributes) readAttributes();
         List<String> queriedAttributes = "*".equals(attributes)
                         ? TruffleBasicFileAttributes.BASIC_ATTRIBUTES
-                        : Arrays.asList(attributes.split(","));
+                        : List.of(attributes.split(","));
 
         HashMap<String, Object> map = new HashMap<>();
         for (String attributeName : queriedAttributes) {
