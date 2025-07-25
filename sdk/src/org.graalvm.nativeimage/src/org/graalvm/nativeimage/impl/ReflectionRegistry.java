@@ -48,20 +48,20 @@ import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 public interface ReflectionRegistry {
     default void register(AccessCondition condition, Class<?>... classes) {
-        Arrays.stream(classes).forEach(clazz -> register(condition, false, clazz));
+        Arrays.stream(classes).forEach(clazz -> register(condition, false, false, clazz));
     }
 
-    void register(AccessCondition condition, boolean unsafeAllocated, Class<?> clazz);
+    void register(AccessCondition condition, boolean unsafeAllocated, boolean preserved, Class<?> clazz);
 
-    void register(AccessCondition condition, boolean queriedOnly, Executable... methods);
+    void register(AccessCondition condition, boolean queriedOnly, boolean preserved, Executable... methods);
 
-    void register(AccessCondition condition, boolean finalIsWritable, Field... fields);
+    void register(AccessCondition condition, boolean finalIsWritable, boolean preserved, Field... fields);
 
-    void registerClassLookup(AccessCondition condition, String typeName);
+    void registerClassLookup(AccessCondition condition, boolean preserved, String typeName);
 
-    void registerFieldLookup(AccessCondition condition, Class<?> declaringClass, String fieldName);
+    void registerFieldLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, String fieldName);
 
-    void registerMethodLookup(AccessCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes);
+    void registerMethodLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, String methodName, Class<?>... parameterTypes);
 
-    void registerConstructorLookup(AccessCondition condition, Class<?> declaringClass, Class<?>... parameterTypes);
+    void registerConstructorLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, Class<?>... parameterTypes);
 }

@@ -77,14 +77,14 @@ public class ReflectionRegistrationTest {
             }
 
             try {
-                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(null, true, this.getClass().getMethods());
+                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(null, true, false, this.getClass().getMethods());
                 assert false;
             } catch (NullPointerException e) {
                 assert e.getMessage().startsWith("Cannot use null value");
             }
 
             try {
-                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(null, true, this.getClass().getFields());
+                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(null, true, false, this.getClass().getFields());
                 assert false;
             } catch (NullPointerException e) {
                 assert e.getMessage().startsWith("Cannot use null value");

@@ -109,7 +109,7 @@ public final class RuntimeResourceAccess {
      */
     public static void addResourceBundle(Module module, String bundleName) {
         RuntimeResourceSupport.singleton().addResourceBundles(AccessCondition.unconditional(),
-                        withModuleName(module, bundleName));
+                        false, withModuleName(module, bundleName));
     }
 
     private static String withModuleName(Module module, String str) {

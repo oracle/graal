@@ -40,37 +40,37 @@ import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
  */
 public class WebImageRuntimeJNIAccessSupport implements RuntimeJNIAccessSupport {
     @Override
-    public void register(AccessCondition condition, boolean unsafeAllocated, Class<?> clazz) {
+    public void register(AccessCondition condition, boolean unsafeAllocated, boolean preserved, Class<?> clazz) {
         // Do nothing.
     }
 
     @Override
-    public void register(AccessCondition condition, boolean queriedOnly, Executable... methods) {
+    public void register(AccessCondition condition, boolean queriedOnly, boolean preserved, Executable... methods) {
         // Do nothing.
     }
 
     @Override
-    public void register(AccessCondition condition, boolean finalIsWritable, Field... fields) {
+    public void register(AccessCondition condition, boolean finalIsWritable, boolean preserved, Field... fields) {
         // Do nothing.
     }
 
     @Override
-    public void registerClassLookup(AccessCondition condition, String typeName) {
+    public void registerClassLookup(AccessCondition condition, boolean preserved, String typeName) {
         // Do nothing.
     }
 
     @Override
-    public void registerFieldLookup(AccessCondition condition, Class<?> declaringClass, String fieldName) {
+    public void registerFieldLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, String fieldName) {
         // Do nothing.
     }
 
     @Override
-    public void registerMethodLookup(AccessCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
+    public void registerMethodLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
         // Do nothing.
     }
 
     @Override
-    public void registerConstructorLookup(AccessCondition condition, Class<?> declaringClass, Class<?>... parameterTypes) {
+    public void registerConstructorLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, Class<?>... parameterTypes) {
         // Do nothing.
     }
 }

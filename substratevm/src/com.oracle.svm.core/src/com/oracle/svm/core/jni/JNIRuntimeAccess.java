@@ -56,6 +56,6 @@ public final class JNIRuntimeAccess {
     }
 
     public static void register(boolean finalIsWritable, Field... fields) {
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), finalIsWritable, fields);
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), finalIsWritable, false, fields);
     }
 }

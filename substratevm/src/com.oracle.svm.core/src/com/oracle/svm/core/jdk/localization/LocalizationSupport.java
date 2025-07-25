@@ -182,7 +182,7 @@ public class LocalizationSupport {
             if (i > 0) {
                 String name = baseName.substring(i + 1) + "Provider";
                 String providerName = baseName.substring(0, i) + ".spi." + name;
-                ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(AccessCondition.unconditional(), providerName);
+                ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(AccessCondition.unconditional(), false, providerName);
             }
         }
 

@@ -82,7 +82,7 @@ public final class RuntimeSerialization {
      */
     public static void register(Class<?>... classes) {
         for (Class<?> clazz : classes) {
-            RuntimeSerializationSupport.singleton().register(AccessCondition.unconditional(), clazz);
+            RuntimeSerializationSupport.singleton().register(AccessCondition.unconditional(), false, clazz);
         }
     }
 
@@ -103,7 +103,7 @@ public final class RuntimeSerialization {
     @Deprecated(since = "24.2")
     @SuppressWarnings("unused")
     public static void registerWithTargetConstructorClass(Class<?> clazz, Class<?> customTargetConstructorClazz) {
-        RuntimeSerializationSupport.singleton().register(AccessCondition.unconditional(), clazz);
+        RuntimeSerializationSupport.singleton().register(AccessCondition.unconditional(), false, clazz);
     }
 
     /**

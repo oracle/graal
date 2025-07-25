@@ -106,7 +106,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    public synchronized void addProxyClass(AccessCondition condition, Class<?>... interfaces) {
+    public synchronized void addProxyClass(AccessCondition condition, boolean preserved, Class<?>... interfaces) {
         VMError.guarantee(condition instanceof TypeReachabilityCondition && ((TypeReachabilityCondition) condition).isRuntimeChecked(), "The condition used must be a runtime condition.");
         /*
          * Make a defensive copy of the interfaces array to protect against the caller modifying the

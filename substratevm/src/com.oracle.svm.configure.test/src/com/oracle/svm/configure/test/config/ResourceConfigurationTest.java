@@ -118,7 +118,7 @@ public class ResourceConfigurationTest {
                 }
 
                 @Override
-                public void addResourceBundles(UnresolvedAccessCondition condition, String name) {
+                public void addResourceBundles(UnresolvedAccessCondition condition, boolean preserved, String name) {
                 }
 
                 @Override

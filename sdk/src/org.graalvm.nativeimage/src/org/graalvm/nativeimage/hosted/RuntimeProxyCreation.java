@@ -62,7 +62,7 @@ public final class RuntimeProxyCreation {
      * @since 22.3
      */
     public static void register(Class<?>... interfaces) {
-        ImageSingletons.lookup(RuntimeProxyRegistrySupport.class).registerProxy(AccessCondition.unconditional(), interfaces);
+        ImageSingletons.lookup(RuntimeProxyRegistrySupport.class).registerProxy(AccessCondition.unconditional(), false, interfaces);
     }
 
     private RuntimeProxyCreation() {

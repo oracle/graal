@@ -79,7 +79,7 @@ public final class RuntimeJNIAccess {
      * @since 22.3
      */
     public static void register(Executable... methods) {
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), false, methods);
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), false, false, methods);
     }
 
     /**
@@ -92,7 +92,7 @@ public final class RuntimeJNIAccess {
      * @since 22.3
      */
     public static void register(Field... fields) {
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), false, fields);
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), false, false, fields);
     }
 
     private RuntimeJNIAccess() {

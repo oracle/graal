@@ -228,11 +228,11 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport<Acc
      */
     @Override
     public void registerIncludingAssociatedClasses(AccessCondition condition, Class<?> clazz) {
-        register(condition, clazz);
+        register(condition, false, clazz);
     }
 
     @Override
-    public void register(AccessCondition condition, Class<?> clazz) {
+    public void register(AccessCondition condition, boolean preserved, Class<?> clazz) {
         if (clazz != null) {
             deniedClasses.put(clazz, true);
         }
@@ -240,7 +240,7 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport<Acc
 
     @Override
     public void register(AccessCondition condition, String className) {
-        this.register(condition, typeResolver.resolveType(className));
+        this.register(condition, false, typeResolver.resolveType(className));
     }
 
     @Override
@@ -335,7 +335,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         } catch (NoSuchMethodException e) {
             // Expected case. Do nothing
         }
-        register(condition, clazz);
+        register(condition, false, clazz);
 
         if (clazz.isArray()) {
             registerIncludingAssociatedClasses(condition, clazz.getComponentType(), alreadyVisited);
@@ -386,7 +386,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         registerConditionalConfiguration(condition, (cnd) -> {
             try {
                 Class<?> proxyClass = proxyRegistry.createProxyClassForSerialization(implementedInterfaces);
-                register(cnd, proxyClass);
+                register(cnd, false, proxyClass);
             } catch (IllegalArgumentException t) {
                 /* ignore: can't serialize class that can't be instantiated */
             }
@@ -398,15 +398,15 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         abortIfSealed();
         Class<?> serializationTargetClass = typeResolver.resolveType(targetClassName);
         /* With invalid streams we have to register the class for lookup */
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(condition, targetClassName);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(condition, false, targetClassName);
         if (serializationTargetClass == null) {
             return;
         }
-        register(condition, serializationTargetClass);
+        register(condition, false, serializationTargetClass);
     }
 
     @Override
-    public void register(AccessCondition condition, Class<?> serializationTargetClass) {
+    public void register(AccessCondition condition, boolean preserved, Class<?> serializationTargetClass) {
         abortIfSealed();
         Objects.requireNonNull(serializationTargetClass, () -> nullErrorMessage("class", "serialization"));
         registerConditionalConfiguration(condition, (cnd) -> {
@@ -414,7 +414,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
              * Register class for reflection as it is needed when the class-value itself is
              * serialized.
              */
-            ImageSingletons.lookup(RuntimeReflectionSupport.class).register(condition, serializationTargetClass);
+            ImageSingletons.lookup(RuntimeReflectionSupport.class).register(condition, false, preserved, serializationTargetClass);
 
             if (!Serializable.class.isAssignableFrom(serializationTargetClass)) {
                 return;
@@ -430,9 +430,9 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
                 Class<?> superclass = serializationTargetClass.getSuperclass();
                 if (superclass != null) {
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(AccessCondition.unconditional(), true, superclass);
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(AccessCondition.unconditional(), superclass, "writeReplace");
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(AccessCondition.unconditional(), superclass, "readResolve");
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(AccessCondition.unconditional(), true, preserved, superclass);
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(AccessCondition.unconditional(), preserved, superclass, "writeReplace");
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(AccessCondition.unconditional(), preserved, superclass, "readResolve");
                 }
 
                 registerForSerialization(cnd, serializationTargetClass);
@@ -463,7 +463,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     private void registerConstructorAccessor(AccessCondition cnd, Class<?> serializationTargetClass, Class<?> targetConstructorClass) {
         Optional.ofNullable(addConstructorAccessor(serializationTargetClass, targetConstructorClass))
                         .map(ReflectionUtil::lookupConstructor)
-                        .ifPresent(methods -> ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, false, methods));
+                        .ifPresent(methods -> ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, false, false, methods));
     }
 
     void beforeAnalysis(Feature.BeforeAnalysisAccess beforeAnalysisAccess) {
@@ -490,7 +490,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     private static void registerMethod(AccessCondition cnd, Class<?> clazz, String methodName, Class<?>... args) {
         Method method = ReflectionUtil.lookupMethod(true, clazz, methodName, args);
         if (method != null) {
-            ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, false, method);
+            ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, false, false, method);
         } else {
             RuntimeReflection.registerMethodLookup(clazz, methodName, args);
         }
@@ -584,9 +584,9 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             try {
                 /* Serialization for records uses the canonical record constructor directly. */
                 Executable[] methods = new Executable[]{RecordUtils.getCanonicalRecordConstructor(serializationTargetClass)};
-                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, false, methods);
+                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, false, false, methods);
                 Executable[] methods1 = RecordUtils.getRecordComponentAccessorMethods(serializationTargetClass);
-                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, false, methods1);
+                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, false, false, methods1);
             } catch (LinkageError le) {
                 /*
                  * Handled by the record component registration above.
