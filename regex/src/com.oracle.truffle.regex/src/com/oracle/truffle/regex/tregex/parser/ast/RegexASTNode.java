@@ -44,6 +44,7 @@ import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
+import com.oracle.truffle.regex.tregex.util.MathUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
@@ -501,6 +502,7 @@ public abstract class RegexASTNode implements JsonConvertible {
     }
 
     public void setMinPath(int n) {
+        assert n >= 0;
         minPath = n;
     }
 
@@ -509,7 +511,7 @@ public abstract class RegexASTNode implements JsonConvertible {
     }
 
     public void incMinPath(int n) {
-        minPath += n;
+        minPath = MathUtil.saturatingAdd(minPath, n);
     }
 
     public int getMaxPath() {
@@ -517,6 +519,7 @@ public abstract class RegexASTNode implements JsonConvertible {
     }
 
     public void setMaxPath(int n) {
+        assert n >= 0;
         maxPath = n;
     }
 
@@ -525,7 +528,7 @@ public abstract class RegexASTNode implements JsonConvertible {
     }
 
     public void incMaxPath(int n) {
-        maxPath += n;
+        maxPath = MathUtil.saturatingAdd(maxPath, n);
     }
 
     public int getPrefixLengthMin() {
