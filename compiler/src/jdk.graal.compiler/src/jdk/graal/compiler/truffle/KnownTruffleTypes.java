@@ -69,6 +69,7 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType BufferOverflowException = lookupType(BufferOverflowException.class);
     public final ResolvedJavaType ReadOnlyBufferException = lookupType(ReadOnlyBufferException.class);
     public final ResolvedJavaType ScopedMemoryAccess_ScopedAccessError = lookupTypeOptional("jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError");
+    public final ResolvedJavaType AssertionError = lookupType(AssertionError.class);
     public final ResolvedJavaType AbstractMemorySegmentImpl = lookupTypeOptional("jdk.internal.foreign.AbstractMemorySegmentImpl");
     public final ResolvedJavaType MemorySegmentProxy = lookupTypeOptional("jdk.internal.access.foreign.MemorySegmentProxy");
 
@@ -245,6 +246,7 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
         types.add(BufferUnderflowException);
         types.add(BufferOverflowException);
         types.add(ReadOnlyBufferException);
+        types.add(AssertionError);
         return types.toArray(ResolvedJavaType[]::new);
     }
 

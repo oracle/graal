@@ -259,6 +259,7 @@ public abstract class SubstrateSegfaultHandler {
     }
 
     @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.")
+    @NeverInline("Base registers are set in caller, prevent reads from floating before that.")
     public static void dump(PointerBase signalInfo, RegisterDumper.Context context, boolean inSVMSegfaultHandler) {
         Pointer sp = (Pointer) RegisterDumper.singleton().getSP(context);
         CodePointer ip = (CodePointer) RegisterDumper.singleton().getIP(context);

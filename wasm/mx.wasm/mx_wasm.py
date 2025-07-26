@@ -48,6 +48,7 @@ from collections import defaultdict
 import mx
 import mx_benchmark
 import mx_sdk_vm
+import mx_sdk_vm_ng
 import mx_truffle
 import mx_unittest
 import mx_util
@@ -91,6 +92,18 @@ def get_jdk(forBuild=False):
 def graalwasm_standalone_deps():
     include_truffle_runtime = not mx.env_var_to_bool("EXCLUDE_TRUFFLE_RUNTIME")
     return mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=include_truffle_runtime)
+
+def libwasmvm_build_args():
+    image_build_args = []
+    if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25"):
+        image_build_args.extend([
+            '--exclude-config',
+            r'wasm\.jar',
+            r'META-INF/native-image/org\.graalvm\.wasm/wasm-language/native-image\.properties',
+            '--initialize-at-build-time=org.graalvm.wasm',
+            '-H:MaxRuntimeCompileMethods=2000',
+        ])
+    return image_build_args
 
 #
 # Gate runners.
@@ -168,6 +181,10 @@ class WasmUnittestConfig(mx_unittest.MxUnittestConfig):
         # limit heap memory to 4G, unless otherwise specified
         if not any(a.startswith('-Xm') for a in vmArgs):
             vmArgs += ['-Xmx4g']
+        # Export GraalWasm implementation to JUnit test runner
+        mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.wasm/*=org.graalvm.wasm.test']
+        mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.wasm/*=com.oracle.truffle.wasm.closedtestcases']
+        mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.wasm/*=com.oracle.truffle.wasm.debugtests']
         return (vmArgs, mainClass, mainClassArgs)
 
 
@@ -642,11 +659,13 @@ def wasm(args, **kwargs):
 
     path_args = mx.get_runtime_jvm_args([
         "TRUFFLE_API",
-        "org.graalvm.wasm",
-        "org.graalvm.wasm.launcher",
+        "WASM",
+        "WASM_LAUNCHER",
     ] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
 
-    return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.launcher.WasmLauncher"] + wasmArgs, jdk=get_jdk(), **kwargs)
+    main_dist = mx.distribution('WASM_LAUNCHER')
+    main_class_arg = '--module=' + main_dist.get_declaring_module_name() + '/' + main_dist.mainClass if main_dist.use_module_path() else main_dist.mainClass
+    return mx.run_java(vmArgs + path_args + [main_class_arg] + wasmArgs, jdk=get_jdk(), **kwargs)
 
 @mx.command(_suite.name, "wasm-memory-layout")
 def wasm_memory_layout(args, **kwargs):
