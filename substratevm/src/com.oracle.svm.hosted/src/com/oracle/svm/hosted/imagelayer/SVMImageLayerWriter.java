@@ -665,6 +665,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setIsRead(field.getReadReason() != null);
         builder.setIsWritten(field.getWrittenReason() != null);
         builder.setIsFolded(field.getFoldedReason() != null);
+        builder.setIsUnsafeAccessed(field.isUnsafeAccessed());
 
         Field originalField = OriginalFieldProvider.getJavaField(field);
         if (originalField != null && !originalField.getDeclaringClass().equals(field.getDeclaringClass().getJavaClass())) {
