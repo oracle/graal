@@ -51,13 +51,13 @@ public class AbstractInterpretationDriver {
      * @throws IOException in case of I/O errors during logger initialization.
      */
     private void setupFramework() throws IOException {
-        /* We can crete our own custom link instance, if it is not provided, the framework will create one itself */
+        /* We can crete our own custom logger instance, if it is not provided, the framework will create one itself */
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance(debug, "myLogger", LoggerVerbosity.INFO);
         logger.log("Hello from the abstract interpretation", LoggerVerbosity.INFO);
 
         /* We can instantiate an existing analyzer or implement a new one in {@link IntraProceduralAnalyzer} and {@link InterProceduralAnalyzer}
-         * If we wish to use analyzers during the native image build, we must register them here. What is not registered, will not run.
-         * To get started quickly, we can use the sample analyzer wrappers provided in the package {@link com.oracle.svm.hosted.analysis.ai.example}.
+         * If we wish to use analyzers during the native image build, we must register them here.
+         * To get started quickly, we can use the sample analyzer wrappers provided in {@link com.oracle.svm.hosted.analysis.ai.example}.
          * */
         var analyzer = new LeaksIdSetIntraAnalyzerWrapper().getAnalyzer();
         analyzerManager.registerAnalyzer(analyzer);
