@@ -37,6 +37,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ImageSingletonKey;
@@ -60,8 +61,6 @@ public class SVMImageLayerSingletonLoader {
         Map<Integer, Object> idToObjectMap = new HashMap<>();
         Map<Class<?>, Integer> initialLayerKeyToIdMap = new HashMap<>();
         for (ImageSingletonObject.Reader obj : snapshot.getSingletonObjects()) {
-            String className = obj.getClassName().toString();
-
             EconomicMap<String, Object> keyStore = EconomicMap.create();
             for (KeyStoreEntry.Reader entry : obj.getStore()) {
                 KeyStoreEntry.Value.Reader v = entry.getValue();
@@ -80,9 +79,19 @@ public class SVMImageLayerSingletonLoader {
             // create singleton object instance
             Object result;
             try {
-                Class<?> clazz = imageLayerBuildingSupport.lookupClass(false, className);
-                Method createMethod = ReflectionUtil.lookupMethod(clazz, "createFromLoader", ImageSingletonLoader.class);
-                result = createMethod.invoke(null, new ImageSingletonLoaderImpl(keyStore, snapshot));
+                String recreateClass = obj.getRecreateClass().toString();
+                Class<?> clazz = imageLayerBuildingSupport.lookupClass(false, recreateClass);
+                if (SingletonLayeredCallbacks.LayeredSingletonInstantiator.class.isAssignableFrom(clazz)) {
+                    SingletonLayeredCallbacks.LayeredSingletonInstantiator instance = (SingletonLayeredCallbacks.LayeredSingletonInstantiator) ReflectionUtil.newInstance(clazz);
+                    result = instance.createFromLoader(new ImageSingletonLoaderImpl(keyStore, snapshot));
+                } else {
+                    // GR-66792 remove once no custom persist actions exist
+                    String recreateMethod = obj.getRecreateMethod().toString();
+                    Method createMethod = ReflectionUtil.lookupMethod(clazz, recreateMethod, ImageSingletonLoader.class);
+                    result = createMethod.invoke(null, new ImageSingletonLoaderImpl(keyStore, snapshot));
+                }
+                Class<?> instanceClass = imageLayerBuildingSupport.lookupClass(false, obj.getClassName().toString());
+                VMError.guarantee(result.getClass().equals(instanceClass));
             } catch (Throwable t) {
                 throw VMError.shouldNotReachHere("Failed to recreate image singleton", t);
             }
