@@ -681,6 +681,36 @@ public class HotSpotReplacementsUtil {
         return config.useCondCardMark;
     }
 
+    @Fold
+    public static int shenandoahGCStateOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.shenandoahGCStateOffset;
+    }
+
+    @Fold
+    public static int shenandoahSATBIndexOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.shenandoahSATBIndexOffset;
+    }
+
+    @Fold
+    public static int shenandoahSATBBufferOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.shenandoahSATBBufferOffset;
+    }
+
+    @Fold
+    public static int shenandoahCardTableOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.shenandoahCardTableOffset;
+    }
+
+    @Fold
+    public static int shenandoahGCRegionSizeBytesShift(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.shenandoahGCRegionSizeBytesShift;
+    }
+
+    @Fold
+    public static long shenandoahGCCSetFastTestAddr(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.shenandoahGCCSetFastTestAddress;
+    }
+
     public static final LocationIdentity KLASS_SUPER_CHECK_OFFSET_LOCATION = NamedLocationIdentity.immutable("Klass::_super_check_offset");
 
     @Fold
