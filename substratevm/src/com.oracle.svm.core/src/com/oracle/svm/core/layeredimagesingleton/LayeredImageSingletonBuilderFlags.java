@@ -41,11 +41,7 @@ public enum LayeredImageSingletonBuilderFlags {
     /**
      * This singleton can be accessed from the buildtime.
      */
-    BUILDTIME_ACCESS,
-    /**
-     * This singleton should not have been created. Throw error if it is created.
-     */
-    UNSUPPORTED;
+    BUILDTIME_ACCESS;
 
     /*
      * Below are some common flag patterns.
@@ -57,15 +53,9 @@ public enum LayeredImageSingletonBuilderFlags {
 
     public static final EnumSet<LayeredImageSingletonBuilderFlags> ALL_ACCESS = EnumSet.of(RUNTIME_ACCESS, BUILDTIME_ACCESS);
 
-    public static boolean verifyImageBuilderFlags(LayeredImageSingleton singleton) {
-        EnumSet<LayeredImageSingletonBuilderFlags> flags = singleton.getImageBuilderFlags();
-
-        if (!(flags.contains(UNSUPPORTED) || flags.contains(BUILDTIME_ACCESS) || flags.contains(RUNTIME_ACCESS))) {
-            assert false : String.format("At least one of the following flags must be set: %s, %s, %s", UNSUPPORTED, BUILDTIME_ACCESS, RUNTIME_ACCESS);
-        }
-
-        if (flags.contains(UNSUPPORTED)) {
-            assert flags.equals(EnumSet.of(UNSUPPORTED)) : "Unsupported should be the only flag set " + flags;
+    public static boolean verifyImageBuilderFlags(Object singleton, EnumSet<LayeredImageSingletonBuilderFlags> flags) {
+        if (!(flags.contains(BUILDTIME_ACCESS) || flags.contains(RUNTIME_ACCESS))) {
+            assert false : String.format("At least one of the following flags must be set: %s, %s", BUILDTIME_ACCESS, RUNTIME_ACCESS);
         }
 
         if (singleton instanceof MultiLayeredImageSingleton || ApplicationLayerOnlyImageSingleton.isSingletonInstanceOf(singleton)) {

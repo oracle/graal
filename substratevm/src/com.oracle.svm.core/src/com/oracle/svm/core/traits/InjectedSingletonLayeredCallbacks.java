@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layeredimagesingleton;
+package com.oracle.svm.core.traits;
+
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+
+// GR-66792 remove once no custom persist actions exist
 
 /**
- * This is used to wrap singletons which are only allowed to be accessed at runtime. When a
- * singleton wrapped with this is called during image build time an error is thrown.
+ * Temporarily used to convert {@link LayeredImageSingleton} callbacks into {@link SingletonTrait}
+ * information.
  */
-public record RuntimeOnlyWrapper(LayeredImageSingleton wrappedObject) {
+public final class InjectedSingletonLayeredCallbacks extends SingletonLayeredCallbacks {
+    final LayeredImageSingleton singleton;
+
+    public InjectedSingletonLayeredCallbacks(LayeredImageSingleton singleton) {
+        this.singleton = singleton;
+    }
+
+    @Override
+    public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object obj) {
+        return singleton.preparePersist(writer);
+    }
+
+    public Class<?> getSingletonClass() {
+        return singleton.getClass();
+    }
 }

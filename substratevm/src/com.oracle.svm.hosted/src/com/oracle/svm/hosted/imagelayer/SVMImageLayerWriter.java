@@ -38,6 +38,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -101,17 +102,21 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyWrapper;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
+import com.oracle.svm.core.traits.InjectedSingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ImageSingletonsSupportImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
@@ -166,6 +171,7 @@ import com.oracle.svm.shaded.org.capnproto.TextList;
 import com.oracle.svm.shaded.org.capnproto.Void;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.Assertions;
@@ -1091,30 +1097,55 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         polymorphicSignatureCallers.computeIfAbsent(polymorphicSignature, (m) -> ConcurrentHashMap.newKeySet()).add(caller);
     }
 
-    record SingletonPersistInfo(LayeredImageSingleton.PersistFlags flags, int id, EconomicMap<String, Object> keyStore) {
+    record SingletonPersistInfo(LayeredImageSingleton.PersistFlags flags, int id, RecreateInfo recreateInfo, EconomicMap<String, Object> keyStore) {
     }
 
-    public void writeImageSingletonInfo(List<Map.Entry<Class<?>, Object>> layeredImageSingletons) {
+    // GR-66792 remove once no custom persist actions exist
+    record RecreateInfo(String clazz, String method) {
+    }
+
+    RecreateInfo createRecreateInfo(SingletonLayeredCallbacks action) {
+        if (action instanceof InjectedSingletonLayeredCallbacks injectAction) {
+            // GR-66792 remove once no custom persist actions exist
+            Class<?> singletonClass = injectAction.getSingletonClass();
+            String recreateName = "createFromLoader";
+            Method loaderMethod = ReflectionUtil.lookupMethod(true, singletonClass, recreateName, ImageSingletonLoader.class);
+            if (loaderMethod == null) {
+                throw VMError.shouldNotReachHere("Unable to find createFromLoader for %s", singletonClass);
+            }
+            return new RecreateInfo(singletonClass.getName(), recreateName);
+
+        } else {
+            return new RecreateInfo(action.getSingletonInstantiator().getName(), "");
+        }
+    }
+
+    public void writeImageSingletonInfo(List<Map.Entry<Class<?>, ImageSingletonsSupportImpl.SingletonInfo>> layeredImageSingletons) {
         StructList.Builder<ImageSingletonKey.Builder> singletonsBuilder = snapshotBuilder.initSingletonKeys(layeredImageSingletons.size());
-        Map<LayeredImageSingleton, SingletonPersistInfo> singletonInfoMap = new HashMap<>();
+        Map<Object, SingletonPersistInfo> singletonPersistInfoMap = new HashMap<>();
         int nextID = 1;
         for (int i = 0; i < layeredImageSingletons.size(); i++) {
-            var singletonInfo = layeredImageSingletons.get(i);
-            LayeredImageSingleton singleton;
-            if (singletonInfo.getValue() instanceof RuntimeOnlyWrapper wrapper) {
-                singleton = wrapper.wrappedObject();
-            } else {
-                singleton = (LayeredImageSingleton) singletonInfo.getValue();
-            }
-            String key = singletonInfo.getKey().getName();
-            if (!singletonInfoMap.containsKey(singleton)) {
+            var singletonEntry = layeredImageSingletons.get(i);
+            String key = singletonEntry.getKey().getName();
+            Object singleton = singletonEntry.getValue().singleton();
+            if (!singletonPersistInfoMap.containsKey(singleton)) {
                 var writer = new ImageSingletonWriterImpl(snapshotBuilder, hUniverse);
-                var flags = singleton.preparePersist(writer);
+                SingletonLayeredCallbacks action = (SingletonLayeredCallbacks) singletonEntry.getValue().traitMap().getTrait(SingletonTraitKind.LAYERED_CALLBACKS).get().metadata();
+                var flags = action.doPersist(writer, singleton);
                 boolean persistData = flags == LayeredImageSingleton.PersistFlags.CREATE;
-                var info = new SingletonPersistInfo(flags, persistData ? nextID++ : -1, persistData ? writer.getKeyValueStore() : null);
-                singletonInfoMap.put(singleton, info);
+                int id = -1;
+                RecreateInfo recreateInfo = null;
+                EconomicMap<String, Object> keyValueStore = null;
+                if (persistData) {
+                    id = nextID++;
+                    recreateInfo = createRecreateInfo(action);
+                    keyValueStore = writer.getKeyValueStore();
+                }
+
+                var info = new SingletonPersistInfo(flags, id, recreateInfo, keyValueStore);
+                singletonPersistInfoMap.put(singleton, info);
             }
-            var info = singletonInfoMap.get(singleton);
+            var info = singletonPersistInfoMap.get(singleton);
 
             ImageSingletonKey.Builder sb = singletonsBuilder.get(i);
             sb.setKeyClassName(key);
@@ -1128,7 +1159,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             sb.setIsInitialLayerOnly(singleton instanceof InitialLayerOnlyImageSingleton);
         }
 
-        var sortedByIDs = singletonInfoMap.entrySet().stream()
+        var sortedByIDs = singletonPersistInfoMap.entrySet().stream()
                         .filter(e -> e.getValue().flags == LayeredImageSingleton.PersistFlags.CREATE)
                         .sorted(Comparator.comparingInt(e -> e.getValue().id))
                         .toList();
@@ -1140,6 +1171,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             ImageSingletonObject.Builder ob = objectsBuilder.get(i);
             ob.setId(info.id);
             ob.setClassName(entry.getKey().getClass().getName());
+            ob.setRecreateClass(info.recreateInfo().clazz());
+            ob.setRecreateMethod(info.recreateInfo().method());
             writeImageSingletonKeyStore(ob, info.keyStore);
         }
     }
