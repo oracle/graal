@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.util.EnumSet;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.vm.ci.code.Architecture;
 
 public interface CPUFeatureAccess {
@@ -43,7 +44,7 @@ public interface CPUFeatureAccess {
     @Uninterruptible(reason = "Thread state not set up yet.")
     void verifyHostSupportsArchitectureEarlyOrExit();
 
-    void enableFeatures(Architecture architecture);
+    void enableFeatures(Architecture architecture, LoweringProvider runtimeLowerer);
 
     /**
      * Compute the CPU features enabled at image run time.
