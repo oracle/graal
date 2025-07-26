@@ -27,20 +27,23 @@ package com.oracle.svm.core.jfr;
 import static com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList;
 import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
 
-import java.nio.charset.StandardCharsets;
-
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.sampler.JfrRecurringCallbackExecutionSampler;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
@@ -161,7 +164,19 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         assert lock.isOwner();
         filename = outputFile;
         fd = getFileSupport().create(filename, FileCreationMode.CREATE_OR_REPLACE, FileAccessMode.READ_WRITE);
+        openFile0();
+    }
 
+    // Used by JFR emergency dump
+    @Override
+    public void openFile(RawFileDescriptor file) {
+        assert lock.isOwner();
+        filename = null;
+        fd = file;
+        openFile0();
+    }
+
+    private void openFile0() {
         chunkStartTicks = JfrTicks.elapsedTicks();
         chunkStartNanos = JfrTicks.currentTimeNanos();
         nextGeneration = 1;
@@ -234,6 +249,30 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         writeThreadCheckpoint(false);
         writeFlushCheckpoint(false);
         writeMetadataEvent();
+        patchFileHeader(false);
+
+        getFileSupport().close(fd);
+        filename = null;
+        fd = Word.nullPointer();
+    }
+
+    /**
+     * Similar to a regular chunk rotation but we do not safepoint, start a new epoch, or
+     * re-register threads. Similar to a flushpoint but we close the file and also process full
+     * sampler buffers. Unfortunately, it's not possible to process the active buffers since we are
+     * not stopping for a safepoint.
+     */
+    @Override
+    public void closeFileForEmergencyDump() {
+        assert lock.isOwner();
+
+        SamplerBuffersAccess.processFullBuffers(false);
+        flushStorage(true);
+
+        writeThreadCheckpoint(true);
+        writeFlushCheckpoint(true);
+        writeMetadataEvent();
+        // Header must be marked COMPLETE, unlike at flushpoints.
         patchFileHeader(false);
 
         getFileSupport().close(fd);
@@ -355,8 +394,8 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
 
     private int writeSerializers() {
         JfrSerializer[] serializers = JfrSerializerSupport.get().getSerializers();
-        for (JfrSerializer serializer : serializers) {
-            serializer.write(this);
+        for (int i = 0; i < serializers.length; i++) {
+            serializers[i].write(this);
         }
         return serializers.length;
     }
@@ -524,10 +563,17 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         if (str.isEmpty()) {
             getFileSupport().writeByte(fd, StringEncoding.EMPTY_STRING.getValue());
         } else {
-            byte[] bytes = str.getBytes(StandardCharsets.UTF_8);
             getFileSupport().writeByte(fd, StringEncoding.UTF8_BYTE_ARRAY.getValue());
-            writeCompressedInt(bytes.length);
-            getFileSupport().write(fd, bytes);
+
+            int length = UninterruptibleUtils.String.modifiedUTF8Length(str, false);
+            Pointer buffer = NullableNativeMemory.malloc(length, NmtCategory.JFR);
+            if (buffer.isNull()) {
+                return;
+            }
+            writeCompressedInt(length);
+            UninterruptibleUtils.String.toModifiedUTF8(str, buffer, buffer.add(length), false);
+            getFileSupport().write(fd, buffer, WordFactory.unsigned(length));
+            NullableNativeMemory.free(buffer);
         }
     }
 

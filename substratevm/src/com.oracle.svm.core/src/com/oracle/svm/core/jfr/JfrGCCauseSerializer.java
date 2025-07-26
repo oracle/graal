@@ -41,8 +41,9 @@ public class JfrGCCauseSerializer implements JfrSerializer {
         // GCCauses has null entries
         List<GCCause> causes = GCCause.getGCCauses();
         int nonNullItems = 0;
-        for (GCCause cause : causes) {
-            if (cause != null) {
+
+        for (int i = 0; i < causes.size(); i++) {
+            if (causes.get(i) != null) {
                 nonNullItems++;
             }
         }
@@ -51,10 +52,10 @@ public class JfrGCCauseSerializer implements JfrSerializer {
 
         writer.writeCompressedLong(JfrType.GCCause.getId());
         writer.writeCompressedLong(nonNullItems);
-        for (GCCause cause : causes) {
-            if (cause != null) {
-                writer.writeCompressedLong(cause.getId());
-                writer.writeString(cause.getName());
+        for (int i = 0; i < causes.size(); i++) {
+            if (causes.get(i) != null) {
+                writer.writeCompressedLong(causes.get(i).getId());
+                writer.writeString(causes.get(i).getName());
             }
         }
     }

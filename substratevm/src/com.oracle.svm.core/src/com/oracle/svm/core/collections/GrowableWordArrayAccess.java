@@ -44,6 +44,14 @@ public class GrowableWordArrayAccess {
         array.setData(Word.nullPointer());
     }
 
+    public static void write(GrowableWordArray array, int index, Word value) {
+        array.getData().write(index, value);
+    }
+
+    public static <T extends Word> T read(GrowableWordArray array, int index) {
+        return array.getData().read(index);
+    }
+
     public static Word get(GrowableWordArray array, int i) {
         assert i >= 0 && i < array.getSize();
         return array.getData().addressOf(i).read();
@@ -102,5 +110,39 @@ public class GrowableWordArrayAccess {
     @Fold
     static int wordSize() {
         return ConfigurationValues.getTarget().wordSize;
+    }
+
+    public static void qsort(GrowableWordArray gwa, int low, int high, Comparator c) {
+        if (low < high) {
+            int pivotIndex = partition(gwa, low, high, c);
+            qsort(gwa, low, pivotIndex - 1, c);
+            qsort(gwa, pivotIndex + 1, high, c);
+        }
+    }
+
+    private static int partition(GrowableWordArray gwa, int low, int high, Comparator c) {
+        Word pivot = read(gwa, high);
+        int i = low - 1;
+        for (int j = low; j < high; j++) {
+            if (c.compare(read(gwa, j), pivot) <= 0) {
+                i++;
+                // Swap i and j
+                Word temp = read(gwa, i);
+                write(gwa, i, read(gwa, j));
+                write(gwa, j, temp);
+            }
+        }
+        // Swap the pivot with i+1
+        Word temp = read(gwa, i + 1);
+        write(gwa, i + 1, read(gwa, high));
+        write(gwa, high, temp);
+
+        // Return the partition index
+        return i + 1;
+    }
+
+    @FunctionalInterface
+    public interface Comparator {
+        int compare(Word a, Word b);
     }
 }
