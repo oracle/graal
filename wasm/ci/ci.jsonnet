@@ -40,6 +40,15 @@ jdks + wasm_common +
         BENCH_VM_CONFIG: 'graal-core',
       },
     },
+
+    $.jdkLatest + $.linux_amd64     + $.bench_daily  + $.bench_graalwasm_emsdk_full + {
+      name: 'bench-graalwasm-wat-micro' + self.name_suffix,
+      environment+: {
+        BENCH_RUNNER: 'run-wat-micro-benchmarks',
+        BENCH_VM: 'server',
+        BENCH_VM_CONFIG: 'graal-core',
+      },
+    },
   ],
 
   builds: utils.add_defined_in(_builds, std.thisFile),

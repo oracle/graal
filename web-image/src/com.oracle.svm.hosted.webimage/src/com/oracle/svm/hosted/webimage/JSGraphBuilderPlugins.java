@@ -114,6 +114,12 @@ public class JSGraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return false;
             }
         });
+        r.register(new InvocationPlugin("reverse", type) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                return false;
+            }
+        });
         r.register(new InvocationPlugin("bitCount", type) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {

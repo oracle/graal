@@ -84,7 +84,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     private final WasmModule module;
     private final WasmCodeEntry codeEntry;
 
-    @Child private WasmFunctionNode functionNode;
+    @Child private WasmFunctionNode<?> functionNode;
     @Child private WasmInstrumentationSupportNode instrumentation;
 
     @Child private WasmMemoryLibrary zeroMemoryLib;
@@ -92,7 +92,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     public WasmInstrumentableFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, Node[] callNodes, WasmMemoryLibrary[] memoryLibs) {
         this.module = module;
         this.codeEntry = codeEntry;
-        this.functionNode = new WasmFunctionNode(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, callNodes, memoryLibs);
+        this.functionNode = new WasmFunctionNode<>(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, callNodes, memoryLibs);
         this.functionSourceLocation = module.functionSourceCodeStartOffset(codeEntry.functionIndex());
         this.zeroMemoryLib = module.memoryCount() > 0 ? memoryLibs[0] : null;
     }
@@ -106,7 +106,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         this.zeroMemoryLib = node.zeroMemoryLib;
     }
 
-    private WasmInstrumentableFunctionNode(WasmInstrumentableFunctionNode node, WasmFunctionNode functionNode, WasmInstrumentationSupportNode instrumentation) {
+    private WasmInstrumentableFunctionNode(WasmInstrumentableFunctionNode node, WasmFunctionNode<?> functionNode, WasmInstrumentationSupportNode instrumentation) {
         this.module = node.module;
         this.codeEntry = node.codeEntry;
         this.functionNode = functionNode;
@@ -202,7 +202,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
                         final WasmInstrumentationSupportNode support = new WasmInstrumentationSupportNode(debugLineSection, sourceSection.getSource());
                         final BinaryParser binaryParser = new BinaryParser(module, context, module.codeSection());
                         final byte[] bytecode = binaryParser.createFunctionDebugBytecode(functionIndex, debugLineSection.offsetToLineIndexMap());
-                        final WasmFunctionNode functionNodeDuplicate = new WasmFunctionNode(functionNode, bytecode, support::notifyLine);
+                        final WasmFunctionNode<?> functionNodeDuplicate = new WasmFunctionNode<>(functionNode, bytecode, support::notifyLine);
                         return new WasmInstrumentableFunctionNode(this, functionNodeDuplicate, support);
                     }
                 } finally {
