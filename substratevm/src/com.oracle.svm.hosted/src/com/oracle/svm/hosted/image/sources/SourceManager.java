@@ -159,7 +159,7 @@ public class SourceManager {
      * A map from a Java type to an associated source paths which is known to have an up to date
      * entry in the relevant source file cache. This is used to memoize previous lookups.
      */
-    private static final ConcurrentHashMap<ResolvedJavaType, Path> verifiedPaths = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<ResolvedJavaType, Path> verifiedPaths = new ConcurrentHashMap<>();
 
     /**
      * An invalid path used as a marker to track failed lookups so we don't waste time looking up
