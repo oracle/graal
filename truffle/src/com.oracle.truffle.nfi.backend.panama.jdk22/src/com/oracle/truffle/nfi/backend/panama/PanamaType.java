@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,85 +40,74 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
-import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNodeFactory.StringClosureArgumentNodeGen;
-import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNodeFactory.GenericClosureArgumentNodeGen;
-
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 
-class PanamaType {
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNodeFactory.GenericClosureArgumentNodeGen;
+import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNodeFactory.StringClosureArgumentNodeGen;
+import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
+
+final class PanamaType {
 
     final MemoryLayout nativeLayout;
     final Class<?> javaType;
     final Class<?> javaRetType;
     final NativeSimpleType type;
+    final boolean isArray;
 
-    PanamaType(NativeSimpleType type) throws UnsupportedOperationException {
+    /**
+     * Creates an instance representing a simple (non-array) type.
+     */
+    private PanamaType(NativeSimpleType type, MemoryLayout nativeLayout, Class<?> javaType, Class<?> javaRetType) {
+        this(type, false, nativeLayout, javaType, javaRetType);
+    }
+
+    private PanamaType(NativeSimpleType type, boolean isArray, MemoryLayout nativeLayout, Class<?> javaType, Class<?> javaRetType) {
+        this.nativeLayout = nativeLayout;
+        this.javaType = javaType;
+        this.javaRetType = javaRetType;
         this.type = type;
-        switch (type) {
-            case VOID:
-                nativeLayout = null;
-                javaType = void.class;
-                javaRetType = javaType;
-                break;
-            case UINT8:
-            case SINT8:
-                nativeLayout = ValueLayout.JAVA_BYTE;
-                javaType = byte.class;
-                javaRetType = javaType;
-                break;
-            case UINT16:
-            case SINT16:
-                nativeLayout = ValueLayout.JAVA_SHORT;
-                javaType = short.class;
-                javaRetType = javaType;
-                break;
-            case UINT32:
-            case SINT32:
-                nativeLayout = ValueLayout.JAVA_INT;
-                javaType = int.class;
-                javaRetType = javaType;
-                break;
-            case UINT64:
-            case SINT64:
-            case POINTER:
-                nativeLayout = ValueLayout.JAVA_LONG;
-                javaType = long.class;
-                javaRetType = javaType;
-                break;
-            case FP80:
-                throw new UnsupportedOperationException("FP80 not implemented");
-            case FLOAT:
-                nativeLayout = ValueLayout.JAVA_FLOAT;
-                javaType = float.class;
-                javaRetType = javaType;
-                break;
-            case DOUBLE:
-                nativeLayout = ValueLayout.JAVA_DOUBLE;
-                javaType = double.class;
-                javaRetType = javaType;
-                break;
-            case STRING:
-                javaType = MemorySegment.class;
-                javaRetType = MemorySegment.class;
-                nativeLayout = ValueLayout.ADDRESS;
-                break;
-            case OBJECT:
-                javaType = Object.class;
-                // TODO
-                throw CompilerDirectives.shouldNotReachHere("OBJ not implemented");
-            case NULLABLE:
-                // TODO
-                throw CompilerDirectives.shouldNotReachHere("Nullable not implemented");
-            default:
-                throw CompilerDirectives.shouldNotReachHere("Type does not exist.");
-        }
+        this.isArray = isArray;
+    }
+
+    static PanamaType createSimple(NativeSimpleType type) throws UnsupportedOperationException {
+        return switch (type) {
+            case VOID -> new PanamaType(type, null, void.class, void.class);
+            case UINT8, SINT8 -> new PanamaType(type, ValueLayout.JAVA_BYTE, byte.class, byte.class);
+            case UINT16, SINT16 -> new PanamaType(type, ValueLayout.JAVA_SHORT, short.class, short.class);
+            case UINT32, SINT32 -> new PanamaType(type, ValueLayout.JAVA_INT, int.class, int.class);
+            case UINT64, SINT64, POINTER -> new PanamaType(type, ValueLayout.JAVA_LONG, long.class, long.class);
+            case FP80 -> throw new UnsupportedOperationException("FP80 not implemented");
+            case FLOAT -> new PanamaType(type, ValueLayout.JAVA_FLOAT, float.class, float.class);
+            case DOUBLE -> new PanamaType(type, ValueLayout.JAVA_DOUBLE, double.class, double.class);
+            case STRING -> new PanamaType(type, ValueLayout.ADDRESS, MemorySegment.class, MemorySegment.class);
+            case OBJECT -> throw CompilerDirectives.shouldNotReachHere("OBJ not implemented");
+            case NULLABLE -> throw CompilerDirectives.shouldNotReachHere("Nullable not implemented");
+            default -> throw CompilerDirectives.shouldNotReachHere("Type does not exist.");
+        };
+    }
+
+    static PanamaType createArray(NativeSimpleType type) throws UnsupportedOperationException {
+        return switch (type) {
+            case UINT8, SINT8, UINT16, SINT16, UINT32, SINT32, UINT64, SINT64, FLOAT, DOUBLE -> new PanamaType(type, true, ValueLayout.ADDRESS, MemorySegment.class, MemorySegment.class);
+            default -> throw CompilerDirectives.shouldNotReachHere("Type does not exist.");
+        };
+    }
+
+    public boolean needsPostCallProcessing() {
+        return isArray;
+    }
+
+    public boolean needsArena() {
+        return isArray | type == NativeSimpleType.STRING;
     }
 
     public ArgumentNode createArgumentNode() {
+        if (isArray) {
+            return ArgumentNodeFactory.ToArrayNodeGen.create(this);
+        }
         switch (type) {
             case VOID:
                 return ArgumentNodeFactory.ToVOIDNodeGen.create(this);
@@ -153,6 +142,19 @@ class PanamaType {
             default:
                 throw CompilerDirectives.shouldNotReachHere("Type does not exist.");
         }
+    }
+
+    /**
+     * Creates a node to be called after the downcall, typically to copy back data from native
+     * memory to Java object (such as an array).
+     * 
+     * @return `null` if no post-processing is needed
+     */
+    public PostCallArgumentNode createPostCallArgumentNode() {
+        if (isArray) {
+            return PostCallArgumentNodeFactory.CopyBackArrayNodeGen.create(this);
+        }
+        return null;
     }
 
     public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {

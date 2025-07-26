@@ -194,7 +194,7 @@ Depending on the configuration of components you are running, available backends
 ### Panama backend
 
 The Panama backend uses the Foreign Function and Memory APIs introduced by [project Panama](https://openjdk.org/projects/panama/). 
-This backend only supports a subset of all the types. Specifically, it does not support `STRING`, `OBJECT`, `ENV`, `FP80` or array types.
+This backend only supports a subset of all the types. Specifically, it does not support `STRING`, `OBJECT`, `ENV`, or `FP80`.
 Although less feature-complete, the backend is typically more performant.
 It is available starting from JDK 22.
 

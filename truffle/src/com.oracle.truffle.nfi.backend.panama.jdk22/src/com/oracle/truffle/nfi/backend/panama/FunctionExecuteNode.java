@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.ref.Reference;
 
@@ -57,7 +58,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-
 import com.oracle.truffle.nfi.backend.panama.PanamaSignature.CachedSignatureInfo;
 
 @GenerateUncached
@@ -106,8 +106,12 @@ abstract class FunctionExecuteNode extends Node {
 
     abstract static class SignatureExecuteNode extends RootNode {
 
+        private static final PostCallArgumentNode[] EMPTY_POST_CALL_NODE_ARRAY = new PostCallArgumentNode[0];
+
         final CachedSignatureInfo signatureInfo;
         @Children ArgumentNode[] argNodes;
+        @Children PostCallArgumentNode[] postCallArgNodes;
+        final boolean needsArena;
 
         SignatureExecuteNode(PanamaNFILanguage language, CachedSignatureInfo signatureInfo) {
             super(language);
@@ -115,8 +119,21 @@ abstract class FunctionExecuteNode extends Node {
 
             PanamaType[] argTypes = signatureInfo.getArgTypes();
             this.argNodes = new ArgumentNode[argTypes.length];
+            boolean postCall = false;
+            boolean arenaNeeded = false;
             for (int i = 0; i < argTypes.length; i++) {
                 argNodes[i] = argTypes[i].createArgumentNode();
+                postCall |= argTypes[i].needsPostCallProcessing();
+                arenaNeeded |= argTypes[i].needsArena();
+            }
+            this.needsArena = arenaNeeded;
+            if (postCall) {
+                this.postCallArgNodes = new PostCallArgumentNode[argNodes.length];
+                for (int i = 0; i < argNodes.length; i++) {
+                    postCallArgNodes[i] = argTypes[i].createPostCallArgumentNode();
+                }
+            } else {
+                this.postCallArgNodes = EMPTY_POST_CALL_NODE_ARRAY;
             }
         }
 
@@ -146,18 +163,32 @@ abstract class FunctionExecuteNode extends Node {
                 throw silenceException(RuntimeException.class, ArityException.create(argNodes.length, argNodes.length, args.length));
             }
 
+            Object[] convertedArgs = postCallArgNodes == null ? args : new Object[args.length];
+            Arena arena = needsArena ? Arena.ofConfined() : null;
             try {
-                PanamaType[] types = signatureInfo.getArgTypes();
-                assert argNodes.length == types.length;
+                try {
+                    PanamaType[] types = signatureInfo.getArgTypes();
+                    assert argNodes.length == types.length;
 
-                for (int i = 0; i < argNodes.length; i++) {
-                    args[i] = argNodes[i].execute(args[i]);
+                    for (int i = 0; i < argNodes.length; i++) {
+                        convertedArgs[i] = argNodes[i].execute(arena, args[i]);
+                    }
+                } catch (UnsupportedTypeException ex) {
+                    throw silenceException(RuntimeException.class, ex);
                 }
-            } catch (UnsupportedTypeException ex) {
-                throw silenceException(RuntimeException.class, ex);
-            }
 
-            return signatureInfo.execute(signature, args, address, this);
+                Object result = signatureInfo.execute(signature, convertedArgs, address, this);
+                for (int i = 0; i < postCallArgNodes.length; i++) {
+                    if (postCallArgNodes[i] != null) {
+                        postCallArgNodes[i].execute(args[i], convertedArgs[i]);
+                    }
+                }
+                return result;
+            } finally {
+                if (needsArena) {
+                    arena.close();
+                }
+            }
         }
 
         @SuppressWarnings({"unchecked", "unused"})
