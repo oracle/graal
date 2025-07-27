@@ -36,6 +36,12 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 
 public final class DummyLoweringProvider implements LoweringProvider {
+    private final TargetDescription target;
+
+    public DummyLoweringProvider(TargetDescription target) {
+        this.target = target;
+    }
+
     @Override
     public void lower(Node n, LoweringTool tool) {
         throw GraalError.unimplementedOverride();
@@ -48,6 +54,7 @@ public final class DummyLoweringProvider implements LoweringProvider {
 
     @Override
     public Integer smallestCompareWidth() {
+        SuspiciousHostAccessCollector.onSuspiciousHostAccess();
         // used at least by AutomaticUnsafeTransformationSupport.getStaticInitializerGraph
         return null;
     }
@@ -69,13 +76,16 @@ public final class DummyLoweringProvider implements LoweringProvider {
 
     @Override
     public boolean writesStronglyOrdered() {
+        SuspiciousHostAccessCollector.onSuspiciousHostAccess();
         // used at least by AutomaticUnsafeTransformationSupport.getStaticInitializerGraph
         return false;
     }
 
     @Override
     public TargetDescription getTarget() {
-        throw GraalError.unimplementedOverride();
+        SuspiciousHostAccessCollector.onSuspiciousHostAccess();
+        // used at least by AutomaticUnsafeTransformationSupport.getStaticInitializerGraph
+        return target;
     }
 
     @Override
@@ -85,6 +95,7 @@ public final class DummyLoweringProvider implements LoweringProvider {
 
     @Override
     public boolean divisionOverflowIsJVMSCompliant() {
+        SuspiciousHostAccessCollector.onSuspiciousHostAccess();
         // used at least by AutomaticUnsafeTransformationSupport.getStaticInitializerGraph
         return false;
     }
