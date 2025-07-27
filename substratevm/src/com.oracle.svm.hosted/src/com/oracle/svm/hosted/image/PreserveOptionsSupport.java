@@ -28,6 +28,7 @@ import static com.oracle.graal.pointsto.api.PointstoOptions.UseConservativeUnsaf
 import static com.oracle.svm.core.SubstrateOptions.EnableURLProtocols;
 import static com.oracle.svm.core.SubstrateOptions.Preserve;
 import static com.oracle.svm.core.jdk.JRTSupport.Options.AllowJRTFileSystem;
+import static com.oracle.svm.core.metadata.MetadataTracer.Options.MetadataTracingSupport;
 import static com.oracle.svm.hosted.SecurityServicesFeature.Options.AdditionalSecurityProviders;
 import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.AddAllCharsets;
 import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.IncludeAllLocales;
@@ -40,6 +41,7 @@ import java.security.Provider;
 import java.security.Security;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Stream;
@@ -140,6 +142,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
             }
         });
         if (classLoaderSupport.isPreserveMode()) {
+            /* Significantly speeds up analysis */
             if (UseConservativeUnsafeAccess.hasBeenSet(optionValues)) {
                 UserError.guarantee(UseConservativeUnsafeAccess.getValue(optionValues), "%s can not be used together with %s. Please unset %s.",
                                 SubstrateOptionsParser.commandArgument(UseConservativeUnsafeAccess, "-"),
@@ -147,12 +150,24 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
                                 SubstrateOptionsParser.commandArgument(UseConservativeUnsafeAccess, "-"));
             }
             UseConservativeUnsafeAccess.update(hostedValues, true);
+        }
 
+        if (classLoaderSupport.isPreserveAll()) {
+            /* Include all parts of native image that are stripped */
             AddAllCharsets.update(hostedValues, true);
             IncludeAllLocales.update(hostedValues, true);
             AllowJRTFileSystem.update(hostedValues, true);
-            EnableURLProtocols.update(hostedValues, "http,https,ftp,jar,file,mailto,jrt,jmod");
+
+            /* Should be removed with GR-61365 */
+            var missingJDKProtocols = List.of("http", "https", "ftp", "jar", "mailto", "jrt", "jmod");
+            for (String missingProtocol : missingJDKProtocols) {
+                EnableURLProtocols.update(hostedValues, missingProtocol);
+            }
+
             AdditionalSecurityProviders.update(hostedValues, getSecurityProvidersCSV());
+
+            /* Allow metadata tracing in preserve all images */
+            MetadataTracingSupport.update(hostedValues, true);
         }
     }
 
