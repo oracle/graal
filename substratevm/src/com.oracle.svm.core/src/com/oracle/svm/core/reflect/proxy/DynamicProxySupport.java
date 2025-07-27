@@ -203,7 +203,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
         ConditionalRuntimeValue<Object> clazzOrError = proxyCache.get(key);
 
         if (clazzOrError == null || !clazzOrError.getConditions().satisfied()) {
-            throw MissingReflectionRegistrationUtils.errorForProxy(interfaces);
+            throw MissingReflectionRegistrationUtils.reportProxyAccess(interfaces);
         }
         if (clazzOrError.getValue() instanceof Throwable) {
             throw new GraalError((Throwable) clazzOrError.getValue());

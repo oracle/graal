@@ -163,7 +163,7 @@ public final class ClassRegistries implements ParsingContext {
 
     public static Class<?> findLoadedClass(String name, ClassLoader loader) {
         if (throwMissingRegistrationErrors() && RuntimeClassLoading.followReflectionConfiguration() && !ClassForNameSupport.isRegisteredClass(name)) {
-            MissingReflectionRegistrationUtils.forClass(name);
+            MissingReflectionRegistrationUtils.reportClassAccess(name);
             return null;
         }
         ByteSequence typeBytes = ByteSequence.createTypeFromName(name);
@@ -203,7 +203,7 @@ public final class ClassRegistries implements ParsingContext {
     private Class<?> resolve(String name, ClassLoader loader) throws ClassNotFoundException {
         if (RuntimeClassLoading.followReflectionConfiguration()) {
             if (throwMissingRegistrationErrors() && !ClassForNameSupport.isRegisteredClass(name)) {
-                MissingReflectionRegistrationUtils.forClass(name);
+                MissingReflectionRegistrationUtils.reportClassAccess(name);
                 if (loader == null) {
                     return null;
                 }
@@ -301,7 +301,7 @@ public final class ClassRegistries implements ParsingContext {
                     RuntimeClassLoading.getOrCreateArrayHub(hub);
                 } else {
                     if (throwMissingRegistrationErrors()) {
-                        MissingReflectionRegistrationUtils.forClass(name);
+                        MissingReflectionRegistrationUtils.reportClassAccess(name);
                     }
                     return null;
                 }
@@ -316,7 +316,7 @@ public final class ClassRegistries implements ParsingContext {
         // name is a "binary name": `foo.Bar$1`
         assert RuntimeClassLoading.isSupported();
         if (RuntimeClassLoading.followReflectionConfiguration() && throwMissingRegistrationErrors() && !ClassForNameSupport.isRegisteredClass(name)) {
-            MissingReflectionRegistrationUtils.forClass(name);
+            MissingReflectionRegistrationUtils.reportClassAccess(name);
             // The defineClass path usually can't throw ClassNotFoundException
             throw sneakyThrow(new ClassNotFoundException(name));
         }
