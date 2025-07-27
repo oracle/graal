@@ -53,7 +53,6 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.APIOption;
@@ -1478,15 +1477,23 @@ public class SubstrateOptions {
     @Option(help = "Enable support for Arena.ofShared ", type = Expert)//
     public static final HostedOptionKey<Boolean> SharedArenaSupport = new HostedOptionKey<>(false, key -> {
         if (key.getValue()) {
-            // GR-65268: Shared arenas cannot be used together with runtime compilations
-            UserError.guarantee(!RuntimeCompilation.isEnabled(), "Arena.ofShared is not supported with runtime compilations. " +
-                            "Replace usages of Arena.ofShared with Arena.ofAuto and disable shared arena support.");
+            UserError.guarantee(isForeignAPIEnabled(), "Support for Arena.ofShared is only available with foreign API support. " +
+                            "Enable foreign API support with %s",
+                            SubstrateOptionsParser.commandArgument(ForeignAPISupport, "+"));
+
             // GR-65162: Shared arenas cannot be used together with Vector API support
             UserError.guarantee(!VectorAPIEnabled.getValue(), "Support for Arena.ofShared is not available with Vector API support. " +
                             "Either disable Vector API support using %s or replace usages of Arena.ofShared with Arena.ofAuto and disable shared arena support.",
                             SubstrateOptionsParser.commandArgument(VectorAPISupport, "-"));
         }
     });
+
+    @Fold
+    public static boolean isSharedArenaSupportEnabled() {
+        // GR-65162: Shared arenas cannot be used together with Vector API support
+        return isForeignAPIEnabled() && SubstrateOptions.SharedArenaSupport.getValue() &&
+                        (SubstrateOptions.SharedArenaSupport.hasBeenSet() || !VectorAPIEnabled.getValue());
+    }
 
     @Option(help = "Assume new types cannot be added after analysis", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> ClosedTypeWorld = new HostedOptionKey<>(true) {
