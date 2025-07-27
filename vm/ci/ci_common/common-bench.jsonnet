@@ -111,9 +111,9 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     bench_cmd:: self.base_cmd + ['benchmark'] + (if (fail_fast) then ['--fail-fast'] else []),
     interpreter_bench_cmd(vmConfig):: self.bench_cmd +
         (if std.startsWith(vmConfig, 'jvm-') && self.jdk_version >= 22 then
-            ['polybench:~r[(compiler/.*)|(warmup/.*)]']
+            ['polybench:~r[(compiler/.*)|(warmup/.*)|(wasm-simd/.*)]']
         else
-            ['polybench:~r[(compiler/.*)|(warmup/.*)|(.*panama.*)]'] # panama NFI backend only supported in JVM mode and on JDK 22+ [GR-49655]
+            ['polybench:~r[(compiler/.*)|(warmup/.*)|(.*panama.*)|(wasm-simd/.*)]'] # panama NFI backend only supported in JVM mode and on JDK 22+ [GR-49655]
         ) + ['--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}', '--polybench-vm-config=' + vmConfig],
     compiler_bench_cmd(vmConfig):: self.bench_cmd + ['polybench:*[compiler/dispatch.js]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}', '--polybench-vm-config=' + vmConfig],
     warmup_bench_cmd(vmConfig):: self.bench_cmd + ['--fork-count-file', 'ci/ci_common/benchmark-forks.json',  'polybench:r[warmup/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}', '--polybench-vm-config=' + vmConfig],
