@@ -79,6 +79,7 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
+import com.oracle.svm.core.UnsafeMemoryUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
@@ -87,6 +88,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.SharedArenaSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -310,6 +312,16 @@ public class PermissionsFeature implements Feature {
         });
 
         accessImpl.getHostVM().keepAnalysisGraphs();
+
+        if (SharedArenaSupport.isAvailable()) {
+            /*
+             * Due to the enforced call boundary when entering a safe class, calls to methods of
+             * class UnsafeMemoryUtil may remain in @Scoped-annotated methods. Since this feature is
+             * only used for reporting and the resulting image never gets executed, we allow those
+             * calls to pass verification.
+             */
+            SharedArenaSupport.singleton().registerSafeArenaAccessorClass(accessImpl.getMetaAccess(), UnsafeMemoryUtil.class);
+        }
     }
 
     private void initializeDeniedMethods(FeatureImpl.BeforeAnalysisAccessImpl accessImpl) {
