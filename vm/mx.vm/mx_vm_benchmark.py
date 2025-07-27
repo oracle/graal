@@ -184,8 +184,10 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                 # If the GRAAL_TEST and POLYBENCH_EE (for instructions metric) distributions
                 # are present, the CompileTheWorld benchmark is available.
                 self._benchmarks = ['CompileTheWorld']
-            for group in ["interpreter", "compiler", "warmup", "nfi"]:
+            for group in ["interpreter", "compiler", "warmup", "nfi", "wasm-simd"]:
                 dir_path = os.path.join(self._get_benchmark_root(), group)
+                if not os.path.exists(dir_path):
+                    continue
                 for f in os.listdir(dir_path):
                     f_path = os.path.join(dir_path, f)
                     if os.path.isfile(f_path) and os.path.splitext(f_path)[1] in self._extensions:
@@ -515,12 +517,15 @@ def register_graalvm_vms():
     host_vm_names = [default_host_vm_name] + ([short_host_vm_name] if short_host_vm_name != default_host_vm_name else [])
     for host_vm_name in host_vm_names:
         for config_name, java_args, launcher_args, priority in mx_sdk_vm.get_graalvm_hostvm_configs():
+            extra_launcher_args = []
             if config_name.startswith("jvm"):
                 # needed for NFI CLinker benchmarks
-                launcher_args += ['--vm.-enable-preview']
-            mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args), _suite, priority)
+                extra_launcher_args += ['--vm.-enable-preview']
+                # needed for GraalWasm SIMD benchmarks
+                extra_launcher_args += ['--vm.-add-modules=jdk.incubator.vector']
+            mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args + extra_launcher_args), _suite, priority)
             for mode, mode_options in _polybench_modes:
-                _polybench_vm_registry.add_vm(PolyBenchVm(host_vm_name, config_name + "-" + mode, [], mode_options + launcher_args))
+                _polybench_vm_registry.add_vm(PolyBenchVm(host_vm_name, config_name + "-" + mode, [], mode_options + launcher_args + extra_launcher_args))
         if _suite.get_import("polybenchmarks") is not None:
             import mx_polybenchmarks_benchmark
             mx_polybenchmarks_benchmark.polybenchmark_vm_registry.add_vm(PolyBenchVm(host_vm_name, "jvm", [], ["--jvm"]))

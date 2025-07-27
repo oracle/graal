@@ -150,7 +150,7 @@ mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_f
 mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_file='ce')
 # Other GraalVMs
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'xz', 'js', 'jsl', 'jss', 'rgx', 'bnative-image', 'snative-image-agent', 'snative-image-diagnostics-agent', 'tflsm'], _suite, dist_name='ce-js', env_file='ce-js')
-mx_sdk_vm.register_vm_config('ce', ce_components + ['gwal', 'gwa', 'icu4j', 'xz', 'js', 'jsl', 'jss', 'libpoly', 'njs', 'njsl', 'rgx', 'sjsvm', 'spolyglot', 'swasmvm'], _suite, dist_name='ce', env_file='ce-nodejs')
+mx_sdk_vm.register_vm_config('ce', ce_components + ['gwal', 'gwa', 'icu4j', 'xz', 'js', 'jsl', 'jss', 'libpoly', 'njs', 'njsl', 'rgx', 'sjsvm', 'spolyglot', 'swasmvm', 'tflsm'], _suite, dist_name='ce', env_file='ce-nodejs')
 mx_sdk_vm.register_vm_config('ce', ce_components_minimal + ['antlr4', 'llrn', 'llp', 'llrc', 'llrl', 'llrlf'], _suite, env_file='ce-llvm')
 mx_sdk_vm.register_vm_config('ce-python', ce_python_components, _suite)
 mx_sdk_vm.register_vm_config('ce-fastr', ce_fastr_components, _suite)
@@ -499,6 +499,19 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             ))
             # add wasm to the layout of the benchmark distribution
             _add_project_to_dist('./interpreter/', 'benchmarks.interpreter.wasm')
+
+            register_project(GraalVmWatProject(
+                suite=_suite,
+                name='benchmarks.wasm-simd.wasm',
+                deps=[],
+                workingSets=None,
+                subDir=join(_suite.dir, 'benchmarks', 'wasm-simd'),
+                theLicense=None,
+                testProject=True,
+                defaultBuild=False,
+            ))
+            # add wasm to the layout of the benchmark distribution
+            _add_project_to_dist('./wasm-simd/', 'benchmarks.wasm-simd.wasm')
 
         if mx_sdk_vm_impl.has_component('LLVM Runtime Native'):
             register_project(mx.NativeProject(

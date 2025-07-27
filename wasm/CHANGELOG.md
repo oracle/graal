@@ -24,6 +24,11 @@ This changelog summarizes major changes to the WebAssembly engine implemented in
   This aligns with the JS WebAssembly API and allows other members to be introduced on the module instance without potential name clashes.
   More information about these API changes and examples can be found in the [GraalWasm Polyglot API Migration Guide](docs/user/GraalWasmAPIMigration.md) and the [Readme](docs/user/README.md).
 * Implemented support for editing primitive values during debugging. Fixed several debugger-related issues.
+* Added an implementation of the [SIMD](https://github.com/WebAssembly/simd) proposal using the JDK's Vector API. This improves peak performance when running WebAssembly code which makes heavy use of the new instructions in the SIMD proposal. This new implementation is always used in native image. On the JVM, it is opt-in and requires setting `--add-modules=jdk.incubator.vector`. Use of the incubating Vector API will result in the following warning message being printed to stderr:
+  ```
+  WARNING: Using incubator modules: jdk.incubator.vector
+   ```
+
 
 ## Version 24.2.0
 

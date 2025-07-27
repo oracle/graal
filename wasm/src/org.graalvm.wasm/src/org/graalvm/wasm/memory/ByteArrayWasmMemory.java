@@ -53,6 +53,7 @@ import java.util.Arrays;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.api.Vector128Ops;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -258,9 +259,9 @@ final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @ExportMessage
-    public Vector128 load_i128(Node node, long address) {
+    public Object load_i128(Node node, long address) {
         if (ByteArraySupport.littleEndian().inBounds(buffer(), address, Vector128.BYTES)) {
-            return new Vector128(Arrays.copyOfRange(buffer(), (int) address, (int) address + Vector128.BYTES));
+            return Vector128Ops.SINGLETON_IMPLEMENTATION.fromArray(buffer(), (int) address);
         } else {
             throw trapOutOfBounds(node, address, 16);
         }
@@ -349,9 +350,9 @@ final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @ExportMessage
-    public void store_i128(Node node, long address, Vector128 value) {
+    public void store_i128(Node node, long address, Object value) {
         if (ByteArraySupport.littleEndian().inBounds(buffer(), address, 16)) {
-            System.arraycopy(value.getBytes(), 0, buffer(), (int) address, 16);
+            Vector128Ops.SINGLETON_IMPLEMENTATION.intoArray(Vector128Ops.cast(value), buffer(), (int) address);
         } else {
             throw trapOutOfBounds(node, address, 16);
         }

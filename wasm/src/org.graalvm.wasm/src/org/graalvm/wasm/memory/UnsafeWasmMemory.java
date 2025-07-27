@@ -57,6 +57,7 @@ import java.nio.ByteBuffer;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.api.Vector128Ops;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -259,11 +260,12 @@ public final class UnsafeWasmMemory extends WasmMemory {
     }
 
     @ExportMessage
-    public Vector128 load_i128(Node node, long address) {
+    public Object load_i128(Node node, long address) {
         validateAddress(node, address, Vector128.BYTES);
         byte[] bytes = new byte[Vector128.BYTES];
         unsafe.copyMemory(null, startAddress + address, bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET, Vector128.BYTES);
-        return new Vector128(bytes);
+        // Use ByteVector.fromMemorySegment after adopting FFM
+        return Vector128Ops.SINGLETON_IMPLEMENTATION.fromArray(bytes);
     }
 
     @ExportMessage
@@ -323,9 +325,10 @@ public final class UnsafeWasmMemory extends WasmMemory {
     }
 
     @ExportMessage
-    public void store_i128(Node node, long address, Vector128 value) {
+    public void store_i128(Node node, long address, Object value) {
         validateAddress(node, address, 16);
-        unsafe.copyMemory(value.getBytes(), Unsafe.ARRAY_BYTE_BASE_OFFSET, null, startAddress + address, 16);
+        // Use intoMemorySegment after adopting the FFM API
+        unsafe.copyMemory(Vector128Ops.SINGLETON_IMPLEMENTATION.toArray(Vector128Ops.cast(value)), Unsafe.ARRAY_BYTE_BASE_OFFSET, null, startAddress + address, 16);
     }
 
     @ExportMessage

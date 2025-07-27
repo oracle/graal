@@ -285,8 +285,11 @@ final class Util_java_lang_invoke_MethodHandle {
     }
 
     private static <T extends AccessibleObject & Member> void checkMember(T member, boolean isStatic) {
-        VMError.guarantee(Modifier.isStatic(member.getModifiers()) == isStatic,
-                        "Cannot perform %s operation on a %s member".formatted(isStatic ? "static" : "non-static", isStatic ? "non-static" : "static"));
+        if (Modifier.isStatic(member.getModifiers()) != isStatic) {
+            throw VMError.shouldNotReachHere("Cannot perform " +
+                            (isStatic ? "static" : "non-static") + " operation on a " +
+                            (isStatic ? "non-static" : "static") + " member");
+        }
     }
 
     private static SubstrateAccessor getAccessor(Target_java_lang_invoke_MemberName memberName) {
@@ -295,7 +298,10 @@ final class Util_java_lang_invoke_MethodHandle {
     }
 
     private static void checkArgs(Object[] args, int expectedLength, String methodName) {
-        VMError.guarantee((expectedLength == 0 && args == null) || args.length == expectedLength, "%s requires exactly %d arguments".formatted(methodName, expectedLength));
+        if ((expectedLength == 0 && args == null) || args.length == expectedLength) {
+            return;
+        }
+        throw VMError.shouldNotReachHere(methodName + " requires exactly " + expectedLength + " arguments");
     }
 
     private static void convertArgs(Object[] args, MethodType methodType) throws Throwable {

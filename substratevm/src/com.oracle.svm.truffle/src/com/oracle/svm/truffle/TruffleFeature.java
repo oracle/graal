@@ -118,6 +118,7 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -695,6 +696,59 @@ public class TruffleFeature implements InternalFeature {
 
         tempTargetAllowlistMethod(metaAccess, Object.class, "equals", Object.class);
         tempTargetAllowlistMethod(metaAccess, Object.class, "hashCode");
+
+        if (VectorAPIEnabled.getValue()) {
+            Class<?> abstractMaskClass = ReflectionUtil.lookupClass("jdk.incubator.vector.AbstractMask");
+            Class<?> abstractSpeciesClass = ReflectionUtil.lookupClass("jdk.incubator.vector.AbstractSpecies");
+            Class<?> abstractVectorClass = ReflectionUtil.lookupClass("jdk.incubator.vector.AbstractVector");
+            Class<?> laneTypeClass = ReflectionUtil.lookupClass("jdk.incubator.vector.LaneType");
+            Class<?> binaryClass = ReflectionUtil.lookupClass("jdk.incubator.vector.VectorOperators$Binary");
+            Class<?> operatorImplClass = ReflectionUtil.lookupClass("jdk.incubator.vector.VectorOperators$OperatorImpl");
+            Class<?> unaryClass = ReflectionUtil.lookupClass("jdk.incubator.vector.VectorOperators$Unary");
+            Class<?> vectorClass = ReflectionUtil.lookupClass("jdk.incubator.vector.Vector");
+            Class<?> vectorIntrinsicsClass = ReflectionUtil.lookupClass("jdk.incubator.vector.VectorIntrinsics");
+            Class<?> vectorShapeClass = ReflectionUtil.lookupClass("jdk.incubator.vector.VectorShape");
+            Class<?> vectorSpeciesClass = ReflectionUtil.lookupClass("jdk.incubator.vector.VectorSpecies");
+            Class<?> vectorSupportClass = ReflectionUtil.lookupClass("jdk.internal.vm.vector.VectorSupport");
+
+            /*
+             * The methods of the VectorSupport class have intrinsics in VectorAPIIntrinsics. On
+             * fast paths, those should be used instead of the Java fallback implementation. Since
+             * we do not rely on these methods on fast paths, we can omit them from PE to reduce the
+             * number of methods needed for runtime compilation and to avoid blocklist violations.
+             */
+            blocklistAllMethods(metaAccess, vectorSupportClass);
+            tempTargetAllowlistAllMethods(metaAccess, vectorSupportClass);
+
+            /*
+             * VectorMathLibrary is an extension to VectorSupport that has two more intrinsic
+             * candidates.
+             */
+            Class<?> vectorMathLibraryClass = ReflectionUtil.lookupClass(true, "jdk.incubator.vector.VectorMathLibrary");
+            if (vectorMathLibraryClass != null) {
+                markTruffleBoundary(metaAccess, vectorMathLibraryClass, "unaryMathOp", unaryClass, int.class, vectorSpeciesClass, IntFunction.class, vectorClass);
+                markTruffleBoundary(metaAccess, vectorMathLibraryClass, "binaryMathOp", binaryClass, int.class, vectorSpeciesClass, IntFunction.class, vectorClass, vectorClass);
+            }
+
+            /* Utils.isNonCapturingLambda is removed by VectorAPIIntrinsics */
+            Class<?> utilsClass = ReflectionUtil.lookupClass(true, "jdk.internal.vm.vector.Utils");
+            if (utilsClass != null) {
+                markTruffleBoundary(metaAccess, utilsClass, "isNonCapturingLambda", Object.class);
+            }
+
+            /* Vector API slow-path methods */
+            markTruffleBoundary(metaAccess, abstractMaskClass, "checkIndexFailed", long.class, int.class, long.class, int.class);
+            markTruffleBoundary(metaAccess, abstractSpeciesClass, "badArrayBits", Object.class, boolean.class, long.class);
+            markTruffleBoundary(metaAccess, abstractSpeciesClass, "badElementBits", long.class, Object.class);
+            markTruffleBoundary(metaAccess, abstractSpeciesClass, "checkFailed", Object.class, Object.class);
+            markTruffleBoundary(metaAccess, abstractVectorClass, "wrongPart", abstractSpeciesClass, abstractSpeciesClass, boolean.class, int.class);
+            markTruffleBoundary(metaAccess, laneTypeClass, "badElementType", Class.class, Object.class);
+            markTruffleBoundary(metaAccess, operatorImplClass, "illegalOperation", int.class, int.class);
+            markTruffleBoundary(metaAccess, vectorIntrinsicsClass, "requireLengthFailed", int.class, int.class);
+
+            /* Made obsolete by VectorAPIFeature's precomputation of the species */
+            markTruffleBoundary(metaAccess, abstractSpeciesClass, "computeSpecies", laneTypeClass, vectorShapeClass);
+        }
     }
 
     private void blocklistAllMethods(MetaAccessProvider metaAccess, Class<?> clazz) {
@@ -714,12 +768,30 @@ public class TruffleFeature implements InternalFeature {
         }
     }
 
+    private void tempTargetAllowlistAllMethods(MetaAccessProvider metaAccess, Class<?> clazz) {
+        for (Executable m : clazz.getMethods()) {
+            tempTargetAllowlistMethods.add(metaAccess.lookupJavaMethod(m));
+        }
+        for (Executable m : clazz.getConstructors()) {
+            tempTargetAllowlistMethods.add(metaAccess.lookupJavaMethod(m));
+        }
+    }
+
     private void tempTargetAllowlistMethod(MetaAccessProvider metaAccess, Class<?> clazz, String name, Class<?>... parameterTypes) {
         try {
             tempTargetAllowlistMethods.add(metaAccess.lookupJavaMethod(clazz.getDeclaredMethod(name, parameterTypes)));
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
+    }
+
+    /**
+     * Effectively puts a {@link TruffleBoundary} on an existing method by {@link #blocklistMethod
+     * blocklisting} it and {@link #tempTargetAllowlistMethod allowlisting} it.
+     */
+    private void markTruffleBoundary(MetaAccessProvider metaAccess, Class<?> clazz, String name, Class<?>... parameterTypes) {
+        blocklistMethod(metaAccess, clazz, name, parameterTypes);
+        tempTargetAllowlistMethod(metaAccess, clazz, name, parameterTypes);
     }
 
     /**
@@ -777,14 +849,9 @@ public class TruffleFeature implements InternalFeature {
 
                 // Determine blocklist violations
                 if (!runtimeCompilationForbidden(candidate.getImplementationMethod())) {
-                    if (isBlocklisted(candidate.getImplementationMethod())) {
-                        boolean tempAllow = !candidate.getTargetMethod().equals(candidate.getImplementationMethod()) &&
-                                        tempTargetAllowlistMethods.contains(candidate.getTargetMethod()) &&
-                                        !isBlocklisted(candidate.getImplementationMethod());
-                        if (!tempAllow) {
-                            BlocklistViolationInfo violation = new BlocklistViolationInfo(candidate, runtimeCompilation.getCallTrace(treeInfo, candidate));
-                            blocklistViolations.add(violation);
-                        }
+                    if (isBlocklisted(candidate.getImplementationMethod()) && !tempTargetAllowlistMethods.contains(candidate.getTargetMethod())) {
+                        BlocklistViolationInfo violation = new BlocklistViolationInfo(candidate, runtimeCompilation.getCallTrace(treeInfo, candidate));
+                        blocklistViolations.add(violation);
                     }
                 }
             }
