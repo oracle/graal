@@ -769,6 +769,13 @@ public final class EspressoOptions {
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> EnableAdvancedRedefinition = new OptionKey<>(false);
 
+    @Option(help = "The maximum number of lines in the stack trace for Java exceptions", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "<depth>>") //
+    // HotSpot's MaxJavaStackTraceDepth is 1024 by default
+    public static final OptionKey<Integer> MaxJavaStackTraceDepth = new OptionKey<>(32);
+
     /**
      * Property used to force liveness analysis to also be applied by the interpreter. For testing
      * purpose only. Use a host property rather than an option. An option would slow interpreter

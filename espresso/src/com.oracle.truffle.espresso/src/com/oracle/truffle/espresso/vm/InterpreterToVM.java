@@ -614,7 +614,8 @@ public final class InterpreterToVM extends ContextAccessImpl {
 
     // Recursion depth = 4
     public static StaticObject fillInStackTrace(@JavaType(Throwable.class) StaticObject throwable, Meta meta) {
-        VM.StackTrace frames = getStackTrace(new FillInStackTraceFramesFilter(), EspressoContext.DEFAULT_STACK_SIZE);
+        int maxDepth = meta.getLanguage().getMaxStackTraceDepth();
+        VM.StackTrace frames = getStackTrace(new FillInStackTraceFramesFilter(), maxDepth);
         meta.HIDDEN_FRAMES.setHiddenObject(throwable, frames);
         meta.java_lang_Throwable_backtrace.setObject(throwable, throwable);
         if (meta.getJavaVersion().java9OrLater()) {

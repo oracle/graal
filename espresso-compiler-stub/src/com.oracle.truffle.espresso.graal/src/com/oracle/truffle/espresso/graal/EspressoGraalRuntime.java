@@ -62,7 +62,7 @@ public final class EspressoGraalRuntime implements GraalRuntime, RuntimeProvider
         EspressoConstantReflectionProvider constantReflection = (EspressoConstantReflectionProvider) hostJVMCIBackend.getConstantReflection();
         ConstantFieldProvider constantFieldProvider = new EspressoConstantFieldProvider(metaAccess);
         ForeignCallsProvider foreignCalls = new DummyForeignCallsProvider();
-        LoweringProvider lowerer = new DummyLoweringProvider();
+        LoweringProvider lowerer = new DummyLoweringProvider(target);
         StampProvider stampProvider = new DummyStampProvider();
         PlatformConfigurationProvider platformConfigurationProvider = new DummyPlatformConfigurationProvider();
         MetaAccessExtensionProvider metaAccessExtensionProvider = new EspressoMetaAccessExtensionProvider(constantReflection);
