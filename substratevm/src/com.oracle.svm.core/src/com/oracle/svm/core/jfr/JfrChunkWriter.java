@@ -48,8 +48,6 @@ public interface JfrChunkWriter extends JfrUnlockedChunkWriter {
 
     void closeFile();
 
-    void closeFileForEmergencyDump();
-
     void setMetadata(byte[] bytes);
 
     boolean shouldRotateDisk();

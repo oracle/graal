@@ -770,7 +770,7 @@ public class SubstrateJVM {
             }
             assert chunkWriter.hasOpenFile();
             chunkWriter.markChunkFinal();
-            chunkWriter.closeFileForEmergencyDump();
+            chunkWriter.closeFile();
             JfrEmergencyDumpSupport.singleton().onVmError();
         } finally {
             chunkWriter.unlock();

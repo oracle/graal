@@ -27,9 +27,11 @@ package com.oracle.svm.core.jfr;
 import static com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList;
 import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
 
+import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -49,11 +51,13 @@ import com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
-import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.NativeVMOperation;
+import com.oracle.svm.core.thread.NativeVMOperationData;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -80,6 +84,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
     private static final short FLAG_COMPRESSED_INTS = 0b01;
     private static final short FLAG_CHUNK_FINAL = 0b10;
 
+    private final JfrChangeEpochOperation epochChangeOp;
     private final VMMutex lock;
     private final JfrGlobalMemory globalMemory;
     private final JfrMetadata metadata;
@@ -107,6 +112,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         this.globalMemory = globalMemory;
         this.metadata = new JfrMetadata(null);
         this.compressedInts = true;
+        this.epochChangeOp = new JfrChangeEpochOperation();
 
         /*
          * Repositories earlier in the write order may reference entries of repositories later in
@@ -237,8 +243,10 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
          * Switch to a new epoch. This is done at a safepoint to ensure that we end up with
          * consistent data, even if multiple threads have JFR events in progress.
          */
-        JfrChangeEpochOperation op = new JfrChangeEpochOperation();
-        op.enqueue();
+        int size = SizeOf.get(NativeVMOperationData.class);
+        NativeVMOperationData data = StackValue.get(size);
+        UnmanagedMemoryUtil.fill((Pointer) data, Word.unsigned(size), (byte) 0);
+        epochChangeOp.enqueue(data);
 
         /*
          * After changing the epoch, all subsequently triggered JFR events will be recorded into the
@@ -249,30 +257,6 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         writeThreadCheckpoint(false);
         writeFlushCheckpoint(false);
         writeMetadataEvent();
-        patchFileHeader(false);
-
-        getFileSupport().close(fd);
-        filename = null;
-        fd = Word.nullPointer();
-    }
-
-    /**
-     * Similar to a regular chunk rotation but we do not safepoint, start a new epoch, or
-     * re-register threads. Similar to a flushpoint but we close the file and also process full
-     * sampler buffers. Unfortunately, it's not possible to process the active buffers since we are
-     * not stopping for a safepoint.
-     */
-    @Override
-    public void closeFileForEmergencyDump() {
-        assert lock.isOwner();
-
-        SamplerBuffersAccess.processFullBuffers(false);
-        flushStorage(true);
-
-        writeThreadCheckpoint(true);
-        writeFlushCheckpoint(true);
-        writeMetadataEvent();
-        // Header must be marked COMPLETE, unlike at flushpoints.
         patchFileHeader(false);
 
         getFileSupport().close(fd);
@@ -675,13 +659,14 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         }
     }
 
-    private class JfrChangeEpochOperation extends JavaVMOperation {
+    private class JfrChangeEpochOperation extends NativeVMOperation {
+        @Platforms(Platform.HOSTED_ONLY.class)
         protected JfrChangeEpochOperation() {
             super(VMOperationInfos.get(JfrChangeEpochOperation.class, "JFR change epoch", SystemEffect.SAFEPOINT));
         }
 
         @Override
-        protected void operate() {
+        protected void operate(NativeVMOperationData d) {
             changeEpoch();
         }
 

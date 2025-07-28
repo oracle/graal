@@ -122,11 +122,6 @@ public final class JfrChunkNoWriter implements JfrChunkWriter {
     }
 
     @Override
-    public void closeFileForEmergencyDump() {
-        /* Nothing to do. */
-    }
-
-    @Override
     public void setMetadata(byte[] bytes) {
         /* Nothing to do. */
     }
