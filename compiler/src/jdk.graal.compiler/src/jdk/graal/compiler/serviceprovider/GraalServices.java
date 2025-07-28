@@ -30,7 +30,6 @@ import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +41,7 @@ import jdk.graal.compiler.core.ArchitectureSpecific;
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.internal.misc.VM;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.EncodedSpeculationReason;
@@ -120,7 +120,7 @@ public final class GraalServices {
     static {
         LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
         if (libgraal != null) {
-            libgraalServices = new HashMap<>();
+            libgraalServices = new EconomicHashMap<>();
             String arch = getJVMCIArch();
             libgraal.getClassModuleMap().keySet().stream()//
                             .map(GraalServices::loadClassOrNull)//
@@ -507,6 +507,17 @@ public final class GraalServices {
     }
 
     /**
+     * Returns a scope which tracks time spent in garbage collection if the Java virtual machine
+     * supports it.
+     */
+    public static JMXService.GCTimeStatistics getGCTimeStatistics() {
+        if (jmx == null) {
+            return null;
+        }
+        return jmx.getGCTimeStatistics();
+    }
+
+    /**
      * Returns the fused multiply add of the three arguments; that is, returns the exact product of
      * the first two arguments summed with the third argument and then rounded once to the nearest
      * {@code float}.
@@ -522,15 +533,6 @@ public final class GraalServices {
      */
     public static double fma(double a, double b, double c) {
         return Math.fma(a, b, c);
-    }
-
-    /**
-     * Gets the update-release counter for the current Java runtime.
-     *
-     * @see java.lang.Runtime.Version
-     */
-    public static int getJavaUpdateVersion() {
-        return Runtime.version().update();
     }
 
     private static final JMXService jmx = loadSingle(JMXService.class, libgraalServices != null);

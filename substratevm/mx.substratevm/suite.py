@@ -1,8 +1,8 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "7.38.0",
+    "mxversion": "7.58.6",
     "name": "substratevm",
-    "version" : "25.0.0",
+    "version" : "26.0.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -39,6 +39,27 @@ suite = {
     },
 
     "libraries" : {
+        "ASM_9.7.1" : {
+            "digest" : "sha512:4767b01603dad5c79cc1e2b5f3722f72b1059d928f184f446ba11badeb1b381b3a3a9a801cc43d25d396df950b09d19597c73173c411b1da890de808b94f1f50",
+            "sourceDigest" : "sha512:d7c0de5912d04949a3d06cad366ff35a877da2682d9c74579625d62686032ea9349aff6102b17f92e9ec7eb4e9b1cd906b649c6a3ac798bfb9e31e5425de009d",
+            "maven" : {
+                "groupId" : "org.ow2.asm",
+                "artifactId" : "asm",
+                "version" : "9.7.1",
+            },
+            "license" : "BSD-new",
+        },
+        "ASM_TREE_9.7.1" : {
+            "digest" : "sha512:e55008c392fdd35e95d3404766b12dd4b46e13d5c362fcd0ab42a65751a82737eaf0ebc857691d1916190d34407adfde4437615d69c278785416fd911e00978d",
+            "sourceDigest" : "sha512:3cea80bc7b55679dfa3d2065c6cb6951007cc7817082e9fcf4c5e3cdc073c22eddf7c7899cff60b1092049ec9038e8d3aa9a8828ef731739bda8b5afcec30e86",
+            "maven" : {
+                "groupId" : "org.ow2.asm",
+                "artifactId" : "asm-tree",
+                "version" : "9.7.1",
+            },
+            "dependencies" : ["ASM_9.7.1"],
+            "license" : "BSD-new",
+        },
         "RENAISSANCE_HARNESS_v0.9" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.9.0.tar.gz"],
             "digest" : "sha512:068207adf6bbd0a934429f7d6ddba8810e55992d06e131479658a7933bb352ea892d4304f745806dc342a6f7187a434ff2f106c6f8a6ee35ee696ea4fc998f7b",
@@ -294,8 +315,8 @@ suite = {
             "javaCompliance" : "17+",
             "spotbugsIgnoresGenerated" : True,
             "shadedDependencies" : [
-                "compiler:ASM_9.7.1",
-                "compiler:ASM_TREE_9.7.1",
+                "ASM_9.7.1",
+                "ASM_TREE_9.7.1",
             ],
             "class" : "ShadedLibraryProject",
             "shade" : {
@@ -340,6 +361,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.common",
                 "com.oracle.svm.shaded.org.objectweb.asm",
+                "com.oracle.objectfile",
                 "SVM_CONFIGURE",
                 "espresso-shared:ESPRESSO_SVM",
             ],
@@ -352,6 +374,7 @@ suite = {
             ],
             "requiresConcealed" : {
                 "java.base" : [
+                    "com.sun.crypto.provider",
                     "sun.invoke.util",
                     "sun.net",
                     "sun.net.www",
@@ -362,6 +385,8 @@ suite = {
                     "sun.reflect.generics.repository",
                     "sun.reflect.generics.tree",
                     "sun.security.jca",
+                    "sun.security.provider",
+                    "sun.security.rsa",
                     "sun.security.ssl",
                     "sun.security.util",
                     "sun.text.spi",
@@ -714,7 +739,6 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.objectfile",
                 "com.oracle.graal.reachability",
                 "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.shaded.org.capnproto",
@@ -1128,6 +1152,10 @@ suite = {
                     "jdk.internal.misc",
                     "sun.security.jca",
                 ],
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta",
+                ],
             },
             "checkstyle": "com.oracle.svm.test",
             "checkstyleVersion" : "10.21.0",
@@ -1136,7 +1164,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "21+",
+            "javaCompliance" : "22+",
             "spotbugs": "false",
             "jacoco" : "exclude",
         },
@@ -1220,7 +1248,7 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.misc",
-                    "jdk.internal.ref",
+                    "sun.nio",
                     "sun.nio.ch",
                 ],
                 "jdk.internal.vm.ci" : [
@@ -1947,6 +1975,8 @@ suite = {
                 "com.oracle.objectfile",
                 "com.oracle.objectfile.io",
                 "com.oracle.objectfile.debuginfo",
+                "com.oracle.objectfile.debugentry",
+                "com.oracle.objectfile.debugentry.range",
                 "com.oracle.objectfile.macho",
               ],
 
@@ -2077,6 +2107,7 @@ suite = {
                             "dependency:com.oracle.svm.native.libchelper/*",
                             "dependency:com.oracle.svm.native.jvm.posix/*",
                             "dependency:com.oracle.svm.native.libcontainer/*",
+                            "file:debug/include",
                         ],
                     },
                 },
@@ -2085,6 +2116,7 @@ suite = {
                         # on all other os's we don't want libc specific subdirectories
                         "include/": [
                             "dependency:com.oracle.svm.native.libchelper/include/*",
+                            "file:debug/include/*",
                         ],
                         "<os>-<arch>/": [
                             "dependency:com.oracle.svm.native.libchelper/<os>-<arch>/default/*",

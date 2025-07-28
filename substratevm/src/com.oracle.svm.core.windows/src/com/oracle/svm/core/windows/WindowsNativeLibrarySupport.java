@@ -26,9 +26,6 @@ package com.oracle.svm.core.windows;
 
 import java.io.FileDescriptor;
 
-import jdk.graal.compiler.word.Word;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
@@ -50,8 +47,9 @@ import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
 import com.oracle.svm.core.windows.headers.WinSock;
 
+import jdk.graal.compiler.word.Word;
+
 @AutomaticallyRegisteredFeature
-@Platforms(Platform.WINDOWS.class)
 class WindowsNativeLibraryFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -198,7 +196,6 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
 }
 
 @TargetClass(className = "java.io.WinNTFileSystem")
-@Platforms(Platform.WINDOWS.class)
 final class Target_java_io_WinNTFileSystem {
     @Alias
     static native void initIDs();

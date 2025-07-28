@@ -65,7 +65,6 @@ final class ExtLayout extends LayoutImpl {
     public static final boolean DoubleLocations = booleanOption(OPTION_PREFIX + "DoubleLocations", true);
     public static final boolean LongLocations = booleanOption(OPTION_PREFIX + "LongLocations", true);
     public static final boolean BooleanLocations = booleanOption(OPTION_PREFIX + "BooleanLocations", true);
-    public static final boolean TypedObjectLocations = booleanOption(OPTION_PREFIX + "TypedObjectLocations", true);
     public static final boolean InObjectFields = booleanOption(OPTION_PREFIX + "InObjectFields", true);
     public static final boolean UseVarHandle = booleanOption(OPTION_PREFIX + "UseVarHandle", false);
 

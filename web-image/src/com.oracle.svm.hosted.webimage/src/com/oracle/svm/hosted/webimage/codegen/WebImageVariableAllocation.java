@@ -29,9 +29,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.oracle.svm.hosted.webimage.js.JSBody;
+import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
+import com.oracle.svm.webimage.hightiercodegen.variables.VariableAllocation;
 
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
-import jdk.graal.compiler.hightiercodegen.variables.VariableAllocation;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,7 +73,6 @@ public class StaticInterfaceFieldTest extends GraalTest {
 
     }
 
-    @SuppressWarnings("try")
     private void eagerlyParseMethod(Class<C> clazz, String methodName) {
         RuntimeProvider rt = Graal.getRequiredCapability(RuntimeProvider.class);
         Providers providers = rt.getHostBackend().getProviders();
@@ -92,7 +91,7 @@ public class StaticInterfaceFieldTest extends GraalTest {
         OptionValues options = GraalCompilerTest.getInitialOptions();
         DebugContext debug = new Builder(options).build();
         StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).build();
-        try (DebugCloseable s = debug.disableIntercept(); DebugContext.Scope ds = debug.scope("GraphBuilding", graph, method)) {
+        try (DebugCloseable _ = debug.disableIntercept(); DebugContext.Scope _ = debug.scope("GraphBuilding", graph, method)) {
             graphBuilderSuite.apply(graph, context);
         } catch (Throwable e) {
             throw debug.handle(e);

@@ -160,6 +160,7 @@ fld public final static java.lang.String PROPERTY_IMAGE_CODE_VALUE_RUNTIME = "ru
 fld public final static java.lang.String PROPERTY_IMAGE_KIND_KEY = "org.graalvm.nativeimage.kind"
 fld public final static java.lang.String PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE = "executable"
 fld public final static java.lang.String PROPERTY_IMAGE_KIND_VALUE_SHARED_LIBRARY = "shared"
+fld public final static java.lang.String PROPERTY_NATIVE_IMAGE_PREFIX = "org.graalvm.nativeimage."
 meth public static boolean inImageBuildtimeCode()
 meth public static boolean inImageCode()
 meth public static boolean inImageRuntimeCode()
@@ -421,11 +422,15 @@ CLSS public abstract interface static org.graalvm.nativeimage.Platform$RISCV64
 intf org.graalvm.nativeimage.Platform
 meth public java.lang.String getArchitecture()
 
-CLSS public abstract interface static org.graalvm.nativeimage.Platform$WINDOWS
+CLSS public abstract interface static org.graalvm.nativeimage.impl.InternalPlatform$WINDOWS_BASE
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.impl.InternalPlatform$NATIVE_ONLY
-intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
 meth public java.lang.String getOS()
+
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$WINDOWS
+ outer org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.impl.InternalPlatform$WINDOWS_BASE
+intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
 
 CLSS public final static org.graalvm.nativeimage.Platform$WINDOWS_AARCH64
  outer org.graalvm.nativeimage.Platform

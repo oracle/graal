@@ -38,6 +38,11 @@ import com.oracle.svm.core.annotate.TargetClass;
 public final class WebImageInvalidMethodPointerHandler {
 
     @Substitute
+    private static void invalidCodeAddressHandler() {
+        throw new RuntimeException("invalid address");
+    }
+
+    @Substitute
     private static void invalidVTableEntryHandler() {
         throw new RuntimeException("invalid VTable entry");
     }

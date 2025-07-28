@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,9 +73,8 @@ public class TestDoNotMoveAllocationIntrinsic extends GraalCompilerTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void test02Local() throws Exception {
-        try (AutoCloseable c = new TTY.Filter()) {
+        try (AutoCloseable _ = new TTY.Filter()) {
             try {
                 compile("snippet02Local");
                 Assert.fail("Compilation should fail because the parameter is not a freshly allocated object");
@@ -93,9 +92,8 @@ public class TestDoNotMoveAllocationIntrinsic extends GraalCompilerTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void test03() throws Exception {
-        try (AutoCloseable c = new TTY.Filter()) {
+        try (AutoCloseable _ = new TTY.Filter()) {
             try {
                 compile("snippet03");
                 Assert.fail("Compilation should fail because there is code between the allocation and the actual usage of ensureAllocatedHere");
@@ -110,9 +108,8 @@ public class TestDoNotMoveAllocationIntrinsic extends GraalCompilerTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void test04() throws Exception {
-        try (AutoCloseable c = new TTY.Filter()) {
+        try (AutoCloseable _ = new TTY.Filter()) {
             try {
                 compile("snippet04");
                 Assert.fail("Compilation should fail because ensureAllocatedHere is used with an input that is not an allocation.");
@@ -127,7 +124,6 @@ public class TestDoNotMoveAllocationIntrinsic extends GraalCompilerTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void test05() throws Exception {
         compile("snippet05");
     }
@@ -141,7 +137,6 @@ public class TestDoNotMoveAllocationIntrinsic extends GraalCompilerTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void test06() throws Exception {
         compile("snippet06");
     }

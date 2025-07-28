@@ -42,6 +42,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.configure.ClassNameSupport;
+import com.oracle.svm.configure.config.ConfigurationMemberInfo;
+import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
@@ -53,6 +55,7 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.Utf8.WrappedAsciiCString;
@@ -181,6 +184,9 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
             JNIAccessibleClass clazz = dictionary.classesByName.get(name);
             if (clazz == null && !ClassNameSupport.isValidJNIName(name.toString())) {
                 clazz = NEGATIVE_CLASS_LOOKUP;
+            } else if (MetadataTracer.enabled()) {
+                // trace if class exists (positive query) or name is valid (negative query)
+                MetadataTracer.singleton().traceJNIType(ClassNameSupport.jniNameToTypeName(name.toString()));
             }
             clazz = checkClass(clazz, name.toString());
             if (clazz != null) {
@@ -193,7 +199,7 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
 
     private static JNIAccessibleClass checkClass(JNIAccessibleClass clazz, String name) {
         if (throwMissingRegistrationErrors() && clazz == null) {
-            MissingJNIRegistrationUtils.forClass(name);
+            MissingJNIRegistrationUtils.reportClassAccess(name);
         } else if (clazz != null && clazz.isNegative()) {
             return null;
         }
@@ -267,6 +273,12 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
     }
 
     private static JNIAccessibleMethod getDeclaredMethod(Class<?> classObject, JNIAccessibleMethodDescriptor descriptor, String dumpLabel) {
+        if (MetadataTracer.enabled()) {
+            ConfigurationType clazzType = MetadataTracer.singleton().traceJNIType(classObject.getName());
+            if (clazzType != null) {
+                clazzType.addMethod(descriptor.getNameConvertToString(), descriptor.getSignatureConvertToString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
+            }
+        }
         boolean foundClass = false;
         for (var dictionary : layeredSingletons()) {
             JNIAccessibleClass clazz = dictionary.classesByClassObject.get(classObject);
@@ -314,7 +326,7 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
              * A malformed signature never throws a missing registration error since it can't
              * possibly match an existing method.
              */
-            MissingJNIRegistrationUtils.forMethod(clazz, name.toString(), signature.toString());
+            MissingJNIRegistrationUtils.reportMethodAccess(clazz, name.toString(), signature.toString());
         } else if (method != null && method.isNegative()) {
             return null;
         }
@@ -322,6 +334,12 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
     }
 
     private static JNIAccessibleField getDeclaredField(Class<?> classObject, CharSequence name, boolean isStatic, String dumpLabel) {
+        if (MetadataTracer.enabled()) {
+            ConfigurationType clazzType = MetadataTracer.singleton().traceJNIType(classObject.getName());
+            if (clazzType != null) {
+                clazzType.addField(name.toString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED, false);
+            }
+        }
         boolean foundClass = false;
         for (var dictionary : layeredSingletons()) {
             JNIAccessibleClass clazz = dictionary.classesByClassObject.get(classObject);
@@ -393,7 +411,7 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
 
     private static JNIAccessibleField checkField(JNIAccessibleField field, Class<?> clazz, CharSequence name) {
         if (throwMissingRegistrationErrors() && field == null) {
-            MissingJNIRegistrationUtils.forField(clazz, name.toString());
+            MissingJNIRegistrationUtils.reportFieldAccess(clazz, name.toString());
         } else if (field != null && field.isNegative()) {
             return null;
         }

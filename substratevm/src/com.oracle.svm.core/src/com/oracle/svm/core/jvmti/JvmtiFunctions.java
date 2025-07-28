@@ -410,7 +410,7 @@ public final class JvmtiFunctions {
     }
 
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
-    @CEntryPoint(include = JvmtiEnabledAndJDKLatest.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(include = JvmtiEnabled.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int ClearAllFramePops(JvmtiExternalEnv externalEnv, JThread thread) {
         return JVMTI_ERROR_ACCESS_DENIED.getCValue();
@@ -1434,14 +1434,6 @@ public final class JvmtiFunctions {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static final class JvmtiEnabled implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return SubstrateOptions.JVMTI.getValue();
-        }
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static final class JvmtiEnabledAndJDKLatest implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
             return SubstrateOptions.JVMTI.getValue();

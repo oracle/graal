@@ -609,6 +609,18 @@ public class InstrumentationTest extends AbstractInstructionTest {
             }
         }
 
+        @ExpectError("An @Instrumentation operation cannot be void and also specify a dynamic operand. " + //
+                        "Instrumentations must have transparent stack effects. " +
+                        "Change the return type or remove the dynamic operand to resolve this.")
+        @Instrumentation
+        static final class InvalidInstrumentation4 {
+
+            @Specialization
+            public static void doInt(@SuppressWarnings("unused") Object arg) {
+                return;
+            }
+        }
+
     }
 
     @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class, //

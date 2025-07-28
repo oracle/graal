@@ -916,17 +916,19 @@ public final class BuildTimeInterpreterUniverse {
         if (!(iType instanceof InterpreterResolvedObjectType objectType)) {
             return;
         }
+        HostedMethod[] hostedDispatchTable = hostedType.getInterpreterDispatchTable();
+        VMError.guarantee(hostedDispatchTable != null, "Missing dispatch table for %s", hostedType);
 
-        if (hostedType.getVTable().length == 0) {
-            return;
+        InterpreterResolvedJavaMethod[] iVTable;
+        if (hostedDispatchTable.length == 0) {
+            iVTable = InterpreterResolvedJavaType.NO_METHODS;
+        } else {
+            iVTable = new InterpreterResolvedJavaMethod[hostedDispatchTable.length];
+
+            for (int i = 0; i < iVTable.length; i++) {
+                iVTable[i] = getMethod(hostedDispatchTable[i].getWrapped());
+            }
         }
-
-        InterpreterResolvedJavaMethod[] iVTable = new InterpreterResolvedJavaMethod[hostedType.getVTable().length];
-
-        for (int i = 0; i < iVTable.length; i++) {
-            iVTable[i] = getMethod(hostedType.getVTable()[i].getWrapped());
-        }
-
         objectType.setVtable(iVTable);
         rescanFieldInHeap.accept(objectType);
     }

@@ -94,7 +94,7 @@ abstract class CVSymbolSubrecord {
             String fn = null;
             for (ClassEntry classEntry : cvDebugInfo.getInstanceClasses()) {
                 if (classEntry.getFileName() != null) {
-                    fn = classEntry.getFileEntry().getFileName();
+                    fn = classEntry.getFileEntry().fileName();
                     if (fn.endsWith(".java")) {
                         fn = fn.substring(0, fn.lastIndexOf(".java")) + ".obj";
                     }
@@ -220,7 +220,7 @@ abstract class CVSymbolSubrecord {
             String fn = null;
             for (ClassEntry classEntry : cvDebugInfo.getInstanceClasses()) {
                 if (classEntry.getFileName() != null) {
-                    fn = classEntry.getFileEntry().getFileName();
+                    fn = classEntry.getFileEntry().fileName();
                     break;
                 }
             }

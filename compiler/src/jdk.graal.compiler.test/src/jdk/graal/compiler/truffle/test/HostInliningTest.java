@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -82,6 +82,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.truffle.host.HostInliningPhase;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -150,7 +151,6 @@ public class HostInliningTest extends TruffleCompilerImplTest {
         runTest("testNativeCall");
     }
 
-    @SuppressWarnings("try")
     void runTest(String methodName) {
         // initialize the Truffle runtime to ensure that all intrinsics are applied
         Truffle.getRuntime();
@@ -178,7 +178,7 @@ public class HostInliningTest extends TruffleCompilerImplTest {
             }
         }
 
-        try (DebugContext.Scope ds = graph.getDebug().scope("Testing", method, graph)) {
+        try (DebugContext.Scope _ = graph.getDebug().scope("Testing", method, graph)) {
             HighTierContext context = getEagerHighTierContext();
             CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
             if (run == TestRun.WITH_CONVERT_TO_GUARD) {
@@ -233,7 +233,7 @@ public class HostInliningTest extends TruffleCompilerImplTest {
     }
 
     public static void assertInvokesFound(StructuredGraph graph, String[] notInlined, int[] counts) {
-        Map<String, Integer> found = new HashMap<>();
+        Map<String, Integer> found = new EconomicHashMap<>();
         List<Invoke> invokes = new ArrayList<>();
         invokes.addAll(graph.getNodes().filter(InvokeNode.class).snapshot());
         invokes.addAll(graph.getNodes().filter(InvokeWithExceptionNode.class).snapshot());
@@ -413,6 +413,7 @@ public class HostInliningTest extends TruffleCompilerImplTest {
     }
 
     static int notExplorable(int value) {
+        // Checkstyle: stop stable iteration order check
         new HashMap<>().put(value, value);
         new HashMap<>().put(value, value);
         new HashMap<>().put(value, value);
@@ -434,6 +435,7 @@ public class HostInliningTest extends TruffleCompilerImplTest {
         new HashMap<>().put(value, value);
         new HashMap<>().put(value, value);
         new HashMap<>().put(value, value);
+        // Checkstyle: resume stable iteration order check
         return value;
     }
 

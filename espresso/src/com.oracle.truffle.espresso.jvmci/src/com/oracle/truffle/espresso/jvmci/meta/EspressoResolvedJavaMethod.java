@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.jvmci.meta;
 import static com.oracle.truffle.espresso.jvmci.EspressoJVMCIRuntime.runtime;
 import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedJavaType.NO_ANNOTATIONS;
 import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.BRIDGE;
+import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.SCOPED_METHOD;
 import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.SYNTHETIC;
 import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.VARARGS;
 import static java.lang.reflect.Modifier.ABSTRACT;
@@ -59,13 +60,15 @@ public final class EspressoResolvedJavaMethod implements ResolvedJavaMethod {
     public static final Parameter[] NO_PARAMETERS = new Parameter[0];
 
     private final EspressoResolvedInstanceType holder;
+    private final boolean poisonPill;
     private Executable mirrorCache;
     private String nameCache;
     private byte[] code;
     private EspressoSignature signature;
 
-    private EspressoResolvedJavaMethod(EspressoResolvedInstanceType holder) {
+    private EspressoResolvedJavaMethod(EspressoResolvedInstanceType holder, boolean poisonPill) {
         this.holder = holder;
+        this.poisonPill = poisonPill;
     }
 
     @Override
@@ -144,6 +147,14 @@ public final class EspressoResolvedJavaMethod implements ResolvedJavaMethod {
         // Copied from java.lang.Method.isDefault()
         int mask = Modifier.ABSTRACT | Modifier.PUBLIC | Modifier.STATIC;
         return ((getModifiers() & mask) == Modifier.PUBLIC) && getDeclaringClass().isInterface();
+    }
+
+    @Override
+    public boolean isDeclared() {
+        if (isConstructor() || isClassInitializer()) {
+            return false;
+        }
+        return !poisonPill;
     }
 
     @Override
@@ -324,6 +335,11 @@ public final class EspressoResolvedJavaMethod implements ResolvedJavaMethod {
     public native boolean isLeafMethod();
 
     @Override
+    public boolean isScoped() {
+        return (getFlags() & SCOPED_METHOD) != 0;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
@@ -332,13 +348,17 @@ public final class EspressoResolvedJavaMethod implements ResolvedJavaMethod {
             return false;
         }
         EspressoResolvedJavaMethod that = (EspressoResolvedJavaMethod) o;
-        return equals0(that);
+        return this.poisonPill == that.poisonPill && equals0(that);
     }
 
     private native boolean equals0(EspressoResolvedJavaMethod that);
 
     @Override
-    public native int hashCode();
+    public int hashCode() {
+        return 13 * Boolean.hashCode(poisonPill) + hashCode0();
+    }
+
+    private native int hashCode0();
 
     @Override
     public String toString() {

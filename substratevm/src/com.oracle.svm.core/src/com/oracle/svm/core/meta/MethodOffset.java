@@ -28,20 +28,23 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Objects;
 
-import org.graalvm.word.WordBase;
-
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-/** The offset of the compiled code of a method from the code base. */
-public final class MethodOffset implements WordBase {
+/**
+ * The offset of the compiled code of a method from the {@linkplain KnownIntrinsics#codeBase() code
+ * base}.
+ */
+public final class MethodOffset implements MethodRef {
     private final ResolvedJavaMethod method;
 
     public MethodOffset(ResolvedJavaMethod method) {
         this.method = Objects.requireNonNull(method);
     }
 
+    @Override
     public ResolvedJavaMethod getMethod() {
         return method;
     }

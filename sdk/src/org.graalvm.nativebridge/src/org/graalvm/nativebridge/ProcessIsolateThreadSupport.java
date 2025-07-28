@@ -47,6 +47,7 @@ import java.io.InterruptedIOException;
 import java.net.StandardProtocolFamily;
 import java.net.UnixDomainSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -120,12 +121,15 @@ final class ProcessIsolateThreadSupport {
     private static final int INITIAL_REQUEST_CACHE_SIZE = 1 << 10;
     private static final int MAX_REQUEST_CACHE_SIZE = 1 << 20;
 
+    private static final int MAX_INTERRUPTED_ATTACH_RETRIES = 10;
+
     private final DispatchSupport dispatchSupport;
     private final ServerSocketChannel local;
     private UnixDomainSocketAddress peer;
     private Thread listenThread;
     private final Set<ThreadChannel> workerThreads = ConcurrentHashMap.newKeySet();
     private final Set<ThreadChannel> attachedThreads = ConcurrentHashMap.newKeySet();
+    private final boolean initiator;
     private volatile State state;
 
     private ProcessIsolateThreadSupport(DispatchSupport dispatchSupport,
@@ -134,6 +138,7 @@ final class ProcessIsolateThreadSupport {
         this.dispatchSupport = Objects.requireNonNull(dispatchSupport);
         this.local = Objects.requireNonNull(local);
         this.peer = peer;
+        this.initiator = peer == null;
         this.state = State.NEW;
     }
 
@@ -158,6 +163,10 @@ final class ProcessIsolateThreadSupport {
         return true;
     }
 
+    boolean isInitiator() {
+        return initiator;
+    }
+
     /**
      * Starts a new background thread to establishes a connection with the peer
      * {@link ProcessIsolateThreadSupport} instance and to process thread attachment requests. The
@@ -179,6 +188,7 @@ final class ProcessIsolateThreadSupport {
             }
         });
         thread.setName(String.format("%s Connection Listen Thread", ProcessIsolateThreadSupport.class.getSimpleName()));
+        thread.setDaemon(true);
         thread.start();
         return result;
     }
@@ -284,16 +294,61 @@ final class ProcessIsolateThreadSupport {
      */
     ThreadChannel attachThread() throws IOException {
         checkState();
-        SocketChannel c = SocketChannel.open(StandardProtocolFamily.UNIX);
+        SocketChannel c = connectPeer();
         c.configureBlocking(false);
-        boolean connected = c.connect(peer);
-        while (!connected) {
-            connected = c.finishConnect();
-        }
         writeAttachRequest(c, ThreadInfo.current());
         ThreadChannel threadChannel = new ThreadChannel(this, c, null);
         attachedThreads.add(threadChannel);
         return threadChannel;
+    }
+
+    /**
+     * Connects to the peer process using blocking socket channel.
+     *
+     * <p>
+     * Using a non-blocking {@link SocketChannel} for the initial connect can fail on some Linux
+     * systems under high load, throwing a {@link java.net.SocketException} with
+     * {@code errno = EAGAIN (Resource temporarily unavailable)}. This makes non-blocking connect
+     * unreliable in such environments.
+     *
+     * <p>
+     * Although {@link Selector} and {@link SelectionKey#OP_CONNECT} can be used to wait for the
+     * completion of a connection, they cannot be used to initiate it. Therefore, this method
+     * performs the connect in blocking mode.
+     *
+     * <p>
+     * If the connect attempt is interrupted (e.g., due to {@link Thread#interrupt()}), the
+     * resulting {@link ClosedByInterruptException} is caught and ignored, and the method retries.
+     * This avoids propagating the exception, which is important for distinguishing between
+     * cancellation and interruption in {@code IsolateDeathHandler} as both {@code Context.close()}
+     * and {@code Context.interrupt()} interrupt threads.
+     */
+    private SocketChannel connectPeer() throws IOException {
+        int interruptCount = 0;
+        try {
+            while (true) {
+                SocketChannel c = SocketChannel.open(StandardProtocolFamily.UNIX);
+                try {
+                    c.connect(peer);
+                    return c;
+                } catch (ClosedByInterruptException closed) {
+                    if (interruptCount++ < MAX_INTERRUPTED_ATTACH_RETRIES) {
+                        // Clear the thread interrupt status before retry
+                        Thread.interrupted();
+                        // Retry on interrupt to avoid leaking cancellation semantics into
+                        // IsolateDeathHandler. Closing or interrupting contexts may interrupt this
+                        // thread.
+                    } else {
+                        // Fail with IsolateDeathException on repeated interrupts to avoid livelock.
+                        throw closed;
+                    }
+                }
+            }
+        } finally {
+            if (interruptCount > 0 && !Thread.currentThread().isInterrupted()) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     /**
@@ -419,6 +474,8 @@ final class ProcessIsolateThreadSupport {
          */
         @Override
         public void close() throws IOException {
+            selector.close();
+            channel.configureBlocking(true);
             channel.close();
         }
 
@@ -574,7 +631,7 @@ final class ProcessIsolateThreadSupport {
                  * retrieve it, we would need to use a native library that calls
                  * pthread_get_stacksize_np(pthread_self()).
                  */
-                Thread workerThread = new Thread(null, createDispatchRunnable(peerThreadChannel), info.name(), 2097152);
+                Thread workerThread = new Thread(null, new DispatchRunnable(peerThreadChannel), info.name(), 2097152);
                 workerThread.setPriority(info.priority);
                 workerThread.setDaemon(info.daemon);
                 workerThread.start();
@@ -632,28 +689,6 @@ final class ProcessIsolateThreadSupport {
             worker.workerThread.interrupt();
             worker.workerThread.join();
         }
-    }
-
-    private Runnable createDispatchRunnable(SocketChannel peerThreadChannel) {
-        return () -> {
-            try (SocketChannel s = peerThreadChannel) {
-                Thread currentThread = Thread.currentThread();
-                ThreadChannel threadChannel = new ThreadChannel(this, s, currentThread);
-                workerThreads.add(threadChannel);
-                try {
-                    dispatchSupport.onWorkerThreadStarted(currentThread, threadChannel);
-                    try {
-                        threadChannel.dispatch();
-                    } finally {
-                        dispatchSupport.onWorkerThreadTerminated(currentThread, threadChannel);
-                    }
-                } finally {
-                    workerThreads.remove(threadChannel);
-                }
-            } catch (IOException ioe) {
-                // Closes peerThreadChannel to notify client
-            }
-        };
     }
 
     private static void writeCloseRequest(SocketChannel channel) throws IOException {
@@ -800,5 +835,34 @@ final class ProcessIsolateThreadSupport {
 
     @SuppressWarnings("serial")
     private static final class CloseException extends IOException {
+    }
+
+    final class DispatchRunnable implements Runnable {
+
+        private final SocketChannel peerThreadChannel;
+
+        private DispatchRunnable(SocketChannel peerThreadChannel) {
+            this.peerThreadChannel = peerThreadChannel;
+        }
+
+        @Override
+        public void run() {
+            Thread currentThread = Thread.currentThread();
+            try (ThreadChannel threadChannel = new ThreadChannel(ProcessIsolateThreadSupport.this, peerThreadChannel, currentThread)) {
+                workerThreads.add(threadChannel);
+                try {
+                    dispatchSupport.onWorkerThreadStarted(currentThread, threadChannel);
+                    try {
+                        threadChannel.dispatch();
+                    } finally {
+                        dispatchSupport.onWorkerThreadTerminated(currentThread, threadChannel);
+                    }
+                } finally {
+                    workerThreads.remove(threadChannel);
+                }
+            } catch (IOException ioe) {
+                // Closes peerThreadChannel to notify client
+            }
+        }
     }
 }

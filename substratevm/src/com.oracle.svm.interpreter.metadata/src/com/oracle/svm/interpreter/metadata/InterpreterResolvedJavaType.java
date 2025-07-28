@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,12 +26,20 @@ package com.oracle.svm.interpreter.metadata;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
+import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.espresso.classfile.descriptors.Name;
+import com.oracle.svm.espresso.classfile.descriptors.Symbol;
+import com.oracle.svm.espresso.classfile.descriptors.Type;
+import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
@@ -44,10 +52,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Represents a primitive or reference resolved Java type, including additional capabilities of the
  * closed world e.g. instantiable, instantiated, effectively final ...
  */
-public abstract class InterpreterResolvedJavaType implements ResolvedJavaType {
-    public static final ResolvedJavaMethod[] NO_METHODS = new ResolvedJavaMethod[0];
+public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, CremaTypeAccess {
+    public static final InterpreterResolvedJavaMethod[] NO_METHODS = new InterpreterResolvedJavaMethod[0];
 
-    private final String name;
+    private final Symbol<Type> type;
     private final Class<?> clazz;
     private final JavaConstant clazzConstant;
     private final boolean isWordType;
@@ -56,23 +64,23 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType {
 
     // Only called at build time universe creation.
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected InterpreterResolvedJavaType(String name, Class<?> javaClass) {
-        this.name = MetadataUtil.requireNonNull(name);
+    protected InterpreterResolvedJavaType(Symbol<Type> type, Class<?> javaClass) {
+        this.type = MetadataUtil.requireNonNull(type);
         this.clazzConstant = null;
         this.clazz = MetadataUtil.requireNonNull(javaClass);
         this.isWordType = WordBase.class.isAssignableFrom(javaClass);
     }
 
     // Called by the interpreter.
-    protected InterpreterResolvedJavaType(String name, Class<?> javaClass, boolean isWordType) {
-        this.name = MetadataUtil.requireNonNull(name);
+    protected InterpreterResolvedJavaType(Symbol<Type> type, Class<?> javaClass, boolean isWordType) {
+        this.type = MetadataUtil.requireNonNull(type);
         this.clazzConstant = null;
         this.clazz = MetadataUtil.requireNonNull(javaClass);
         this.isWordType = isWordType;
     }
 
-    protected InterpreterResolvedJavaType(String name, JavaConstant clazzConstant, boolean isWordType) {
-        this.name = MetadataUtil.requireNonNull(name);
+    protected InterpreterResolvedJavaType(Symbol<Type> type, JavaConstant clazzConstant, boolean isWordType) {
+        this.type = MetadataUtil.requireNonNull(type);
         this.clazzConstant = MetadataUtil.requireNonNull(clazzConstant);
         this.clazz = null;
         this.isWordType = isWordType;
@@ -80,7 +88,7 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType {
 
     @Override
     public final String getName() {
-        return name;
+        return type.toString();
     }
 
     // This is only here for performance, otherwise the clazzConstant must be unwrapped every time.
@@ -148,6 +156,45 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType {
         return methodExitEventEnabled;
     }
 
+    @Override
+    public boolean isJavaLangObject() {
+        return ResolvedJavaType.super.isJavaLangObject();
+    }
+
+    @Override
+    public Symbol<Name> getSymbolicName() {
+        // This is assumed to be low-traffic
+        return SymbolsSupport.getNames().getOrCreate(TypeSymbols.typeToName(type));
+    }
+
+    @Override
+    public Symbol<Type> getSymbolicType() {
+        return type;
+    }
+
+    @Override
+    public final boolean isAssignableFrom(InterpreterResolvedJavaType other) {
+        return clazz.isAssignableFrom(other.clazz);
+    }
+
+    @Override
+    public final boolean hasSameDefiningClassLoader(InterpreterResolvedJavaType other) {
+        return this.clazz.getClassLoader() == other.clazz.getClassLoader();
+    }
+
+    @Override
+    public abstract InterpreterResolvedJavaMethod[] getDeclaredMethods(boolean forceLink);
+
+    @Override
+    public final boolean isMagicAccessor() {
+        return false;
+    }
+
+    @Override
+    public final boolean isConcrete() {
+        return ResolvedJavaType.super.isConcrete();
+    }
+
     // region Unimplemented methods
 
     @Override
@@ -183,6 +230,11 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType {
     @Override
     public final boolean isLinked() {
         throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
+    public void link() {
+        RuntimeClassLoading.ensureLinked(DynamicHub.fromClass(clazz));
     }
 
     @Override
@@ -261,8 +313,13 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType {
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredMethods() {
-        return NO_METHODS;
+    public final InterpreterResolvedJavaMethod[] getDeclaredMethods() {
+        return getDeclaredMethods(true);
+    }
+
+    @Override
+    public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
+        throw VMError.intentionallyUnimplemented();
     }
 
     @Override

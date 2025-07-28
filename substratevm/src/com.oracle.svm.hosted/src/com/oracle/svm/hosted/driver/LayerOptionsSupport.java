@@ -26,9 +26,11 @@ package com.oracle.svm.hosted.driver;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Stream;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.imagelayer.LayerArchiveSupport;
 
 public class LayerOptionsSupport extends IncludeOptionsSupport {
 
@@ -43,8 +45,20 @@ public class LayerOptionsSupport extends IncludeOptionsSupport {
 
         public static LayerOption parse(List<String> options) {
             VMError.guarantee(!options.isEmpty());
-            ExtendedOption[] extendedOptions = options.stream().skip(1).map(ExtendedOption::parse).toArray(ExtendedOption[]::new);
-            return new LayerOption(Path.of(options.getFirst()), extendedOptions);
+
+            Stream<String> optionsStream = options.stream();
+            String fileName;
+            String first = options.getFirst();
+            if (first.isEmpty() || first.endsWith(LayerArchiveSupport.LAYER_FILE_EXTENSION)) {
+                // First entry is empty or valid filename -> skip from parsing and use as filename
+                optionsStream = optionsStream.skip(1);
+                fileName = first;
+            } else {
+                // Assume first entry holds ExtendedOption value and use empty string as fileName
+                fileName = "";
+            }
+            ExtendedOption[] extendedOptions = optionsStream.map(ExtendedOption::parse).toArray(ExtendedOption[]::new);
+            return new LayerOption(Path.of(fileName), extendedOptions);
         }
     }
 }

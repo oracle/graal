@@ -36,11 +36,16 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.UnmodifiableEconomicSet;
+import org.graalvm.collections.EconomicSet;
 
+import java.io.File;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
 import java.lang.invoke.ConstantBootstraps;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandleProxies;
@@ -74,7 +79,8 @@ import java.util.Set;
 public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
     public enum DynamicAccessKind {
         Reflection("reflection-calls.json"),
-        Resource("resource-calls.json");
+        Resource("resource-calls.json"),
+        Foreign("foreign-calls.json");
 
         public final String fileName;
 
@@ -88,6 +94,7 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
 
     private static final EconomicMap<Class<?>, Set<MethodSignature>> reflectionMethodSignatures = EconomicMap.create();
     private static final EconomicMap<Class<?>, Set<MethodSignature>> resourceMethodSignatures = EconomicMap.create();
+    private static final EconomicMap<Class<?>, Set<MethodSignature>> foreignMethodSignatures = EconomicMap.create();
 
     private final DynamicAccessDetectionFeature dynamicAccessDetectionFeature;
 
@@ -183,6 +190,11 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
         resourceMethodSignatures.put(Class.class, Set.of(
                         new MethodSignature("getResource", String.class),
                         new MethodSignature("getResourceAsStream", String.class)));
+
+        foreignMethodSignatures.put(Linker.class, Set.of(
+                        new MethodSignature("downcallHandle", MemorySegment.class, FunctionDescriptor.class, Linker.Option[].class),
+                        new MethodSignature("downcallHandle", FunctionDescriptor.class, Linker.Option[].class),
+                        new MethodSignature("upcallStub", MethodHandle.class, FunctionDescriptor.class, Arena.class, Linker.Option[].class)));
     }
 
     public DynamicAccessDetectionPhase() {
@@ -215,7 +227,8 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
     private static MethodInfo getMethodInfo(ResolvedJavaMethod method) {
         Class<?> declaringClass = OriginalClassProvider.getJavaClass(method.getDeclaringClass());
         if (!reflectionMethodSignatures.containsKey(declaringClass) &&
-                        !resourceMethodSignatures.containsKey(declaringClass)) {
+                        !resourceMethodSignatures.containsKey(declaringClass) &&
+                        !foreignMethodSignatures.containsKey(declaringClass)) {
             return null;
         }
 
@@ -235,6 +248,9 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
         } else if (resourceMethodSignatures.containsKey(declaringClass) &&
                         resourceMethodSignatures.get(declaringClass).contains(methodSignature)) {
             return new MethodInfo(DynamicAccessKind.Resource, declaringClass.getName() + "#" + methodSignature);
+        } else if (foreignMethodSignatures.containsKey(declaringClass) &&
+                        foreignMethodSignatures.get(declaringClass).contains(methodSignature)) {
+            return new MethodInfo(DynamicAccessKind.Foreign, declaringClass.getName() + "#" + methodSignature);
         }
 
         return null;
@@ -245,14 +261,14 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
      * the value specified by the option, otherwise returns null.
      */
     private static String getSourceEntry(AnalysisType callerClass) {
-        UnmodifiableEconomicSet<String> sourceEntries = DynamicAccessDetectionFeature.instance().getSourceEntries();
+        EconomicSet<String> sourceEntries = DynamicAccessDetectionFeature.instance().getSourceEntries();
         try {
             CodeSource entryPathSource = callerClass.getJavaClass().getProtectionDomain().getCodeSource();
             if (entryPathSource != null) {
                 URL entryPathURL = entryPathSource.getLocation();
                 if (entryPathURL != null) {
                     String classPathEntry = entryPathURL.toURI().getPath();
-                    if (classPathEntry.endsWith("/")) {
+                    if (classPathEntry.endsWith(File.separator)) {
                         classPathEntry = classPathEntry.substring(0, classPathEntry.length() - 1);
                     }
                     if (sourceEntries.contains(classPathEntry)) {
@@ -287,6 +303,7 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
     public static void clearMethodSignatures() {
         reflectionMethodSignatures.clear();
         resourceMethodSignatures.clear();
+        foreignMethodSignatures.clear();
     }
 
     private static class MethodSignature {

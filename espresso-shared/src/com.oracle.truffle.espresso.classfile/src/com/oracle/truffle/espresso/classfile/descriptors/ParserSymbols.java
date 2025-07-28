@@ -75,6 +75,7 @@ public final class ParserSymbols {
         public static final Symbol<Type> jdk_internal_vm_annotation_ForceInline = SYMBOLS.putType("Ljdk/internal/vm/annotation/ForceInline;");
         public static final Symbol<Type> java_lang_invoke_DontInline = SYMBOLS.putType("Ljava/lang/invoke/DontInline;");
         public static final Symbol<Type> jdk_internal_vm_annotation_DontInline = SYMBOLS.putType("Ljdk/internal/vm/annotation/DontInline;");
+        public static final Symbol<Type> jdk_internal_ValueBased = SYMBOLS.putType("Ljdk/internal/ValueBased;");
 
         // ScopedMemoryAccess
         public static final Symbol<Type> jdk_internal_misc_ScopedMemoryAccess$Scoped = SYMBOLS.putType("Ljdk/internal/misc/ScopedMemoryAccess$Scoped;");

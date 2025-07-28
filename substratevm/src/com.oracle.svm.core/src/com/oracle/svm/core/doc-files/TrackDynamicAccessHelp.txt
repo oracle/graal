@@ -3,7 +3,7 @@ The analysis is limited to the provided comma-separated list of class-path entri
 If any dynamic access calls are found, a "dynamic-access" directory is created in the native image output,
 and the calls are serialized in "dynamic-access/<entry-name>/[reflection-calls.json][resource-calls.json]".
 
-Usage: -H:TrackDynamicAccess=[all|none|to-console|path=<cp-entry>|module=<module>|package=<package>][,...]
+Usage: -H:TrackDynamicAccess=[all|none|to-console|no-dump|path=<cp-entry>|module=<module>|package=<package>][,...]
 
 The flag can be used in following ways:
 1. -H:TrackDynamicAccess=all reports all dynamic access calls made across the entire project
@@ -12,7 +12,8 @@ The flag can be used in following ways:
 4. -H:TrackDynamicAccess=package=<package> reports all dynamic access calls made from the specified package
 5. -H:TrackDynamicAccess=none disables all previous selections for dynamic access detection
 6. -H:TrackDynamicAccess=to-console outputs all detected dynamic access calls to the console
-7. A comma-separated list of the previous cases. For example, -H:TrackDynamicAccess=path=<cp-entry>,module=<module>,package=<package>
+7. -H:TrackDynamicAccess=no-dump disables the serialization of detected dynamic access calls
+8. A comma-separated list of the previous cases. For example, -H:TrackDynamicAccess=path=<cp-entry>,module=<module>,package=<package>
 
 Example of the option usage:
 

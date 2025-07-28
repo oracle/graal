@@ -60,9 +60,11 @@ import com.oracle.truffle.api.source.SourceSection;
  * The {@link #loadedSection(Node, SourceSection, SourceSection)} is called with the visited
  * {@link Node} and {@link SourceSection}. Every call updates data about the nearest node/section.
  * These data are stored in four categories: <code>exact</code>, <code>contains</code>,
- * <code>previous</code> and <code>next</code>. After the AST traversal is done, the
- * {@link #getNearest(Set)} is called from post-visit. It uses the collected data to find a
- * <code>contextNode</code>. If the exact node was matched, it is returned. When not,
+ * <code>previous</code> and <code>next</code>. The comparisons between source sections and code
+ * positions are not totally ordered when some information is missing (section is unavailable, line
+ * is set but not a column, etc.) After the AST traversal is done, the {@link #getNearest(Set)} is
+ * called from post-visit. It uses the collected data to find a <code>contextNode</code>. If the
+ * exact node was matched, it is returned. When not,
  * {@link InstrumentableNode#findNearestNodeAt(int, int, Set)} is called on the
  * <code>contextNode</code> to provide the final nearest node.
  * <p>
@@ -520,7 +522,6 @@ final class NearestNodesCollector {
             this.line = line;
             this.column = column;
             this.offset = offset;
-            assert offset >= 0 || line >= 1 : toString();
         }
 
         static Position startOf(SourceSection section) {
@@ -547,6 +548,10 @@ final class NearestNodesCollector {
         }
 
         boolean isIn(SourceSection section) {
+            if (!isAvailable() || !section.isAvailable()) {
+                // when either is not available, it can be in
+                return true;
+            }
             if (offset >= 0 && section.hasCharIndex()) {
                 return section.getCharIndex() <= offset && offset < section.getCharEndIndex();
             }
@@ -604,7 +609,18 @@ final class NearestNodesCollector {
             }
         }
 
+        boolean isAvailable() {
+            return offset >= 0 || line >= 1;
+        }
+
         boolean isLessThan(Position other) {
+            if (!isAvailable()) {
+                // when not available, we're less than any other available
+                return other.isAvailable();
+            } else if (!other.isAvailable()) {
+                // when the other is not available, we can not be less than that
+                return false;
+            }
             if (this.offset >= 0 && other.offset >= 0) {
                 return this.offset < other.offset;
             }
@@ -615,6 +631,13 @@ final class NearestNodesCollector {
         }
 
         boolean isLessThanOrEqual(Position other) {
+            if (!isAvailable()) {
+                // when not available, we're either less than any other available, or equal
+                return true;
+            } else if (!other.isAvailable()) {
+                // when the other is not available and we are, we are not less than that
+                return false;
+            }
             if (this.offset >= 0 && other.offset >= 0) {
                 return this.offset <= other.offset;
             }

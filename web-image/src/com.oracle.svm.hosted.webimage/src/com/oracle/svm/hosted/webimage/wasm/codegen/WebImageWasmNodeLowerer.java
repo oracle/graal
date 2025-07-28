@@ -61,6 +61,8 @@ import com.oracle.svm.hosted.webimage.wasm.codegen.WasmIRWalker.Requirements;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmIsNonZeroNode;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmPopcntNode;
 import com.oracle.svm.hosted.webimage.wasm.snippets.WasmImportForeignCallDescriptor;
+import com.oracle.svm.webimage.hightiercodegen.NodeLowerer;
+import com.oracle.svm.webimage.hightiercodegen.variables.ResolvedVar;
 import com.oracle.svm.webimage.wasm.WasmForeignCallDescriptor;
 import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
 import com.oracle.svm.webimage.wasm.types.WasmUtil;
@@ -70,8 +72,6 @@ import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
-import jdk.graal.compiler.hightiercodegen.NodeLowerer;
-import jdk.graal.compiler.hightiercodegen.variables.ResolvedVar;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.AbstractEndNode;
@@ -902,6 +902,7 @@ public abstract class WebImageWasmNodeLowerer extends NodeLowerer {
                     assert type == f64 : type;
                     yield Unary.Op.F64Promote32;
                 }
+                default -> throw GraalError.unimplemented("FloatConvertNode, op: " + floatConvert.getFloatConvert()); // ExcludeFromJacocoGeneratedReport
             };
         } else if (node instanceof ReinterpretNode) {
             assert node.getStackKind().getBitCount() == node.getValue().getStackKind().getBitCount() : node.getStackKind().getBitCount() + " != " + node.getValue().getStackKind().getBitCount();
@@ -942,6 +943,7 @@ public abstract class WebImageWasmNodeLowerer extends NodeLowerer {
             case TAN -> WasmImports.F64Tan;
             case TANH -> WasmImports.F64Tanh;
             case EXP -> WasmImports.F64Exp;
+            case CBRT -> WasmImports.F64Cbrt;
         };
 
         return new Call(masm.idFactory.forFunctionImport(imported), lowerExpression(node.getValue()));

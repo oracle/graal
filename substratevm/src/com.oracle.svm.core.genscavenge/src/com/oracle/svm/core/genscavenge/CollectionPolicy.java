@@ -80,6 +80,8 @@ public interface CollectionPolicy {
                 return BasicCollectionPolicies.OnlyIncrementally.class;
             case "NeverCollect":
                 return BasicCollectionPolicies.NeverCollect.class;
+            case "Dynamic":
+                return DynamicCollectionPolicy.class;
         }
         throw UserError.abort("Policy %s does not exist.", name);
     }
@@ -210,4 +212,9 @@ public interface CollectionPolicy {
 
     /** Called before the end of a collection, in the safepoint operation. */
     void onCollectionEnd(boolean completeCollection, GCCause cause);
+
+    /** Can be overridden to recover from OOM. */
+    default boolean isOutOfMemory(UnsignedWord usedBytes) {
+        return usedBytes.aboveThan(getMaximumHeapSize());
+    }
 }

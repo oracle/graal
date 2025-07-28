@@ -43,7 +43,9 @@
           for f in _fields
         ],
         mxgate_name:: outer.task_name,
-        name: std.join("-", [outer.target, suite_short, self.mxgate_name] + config + [outer.jdk_name] + target_arch_suffix + [outer.os, outer.arch]) + batch_suffix,
+        # we use the "gate-" prefix also for tiered jobs to avoid changing existing job names
+        local name_prefix = if std.startsWith(outer.target, "tier") then "gate" else outer.target,
+        name: std.join("-", [name_prefix, suite_short, self.mxgate_name] + config + [outer.jdk_name] + target_arch_suffix + [outer.os, outer.arch]) + batch_suffix,
         run+: [["mx", "--kill-with-sigquit", "--strict-compliance"] + dynamic_imports + ["gate", "--strict-mode", "--tags", std.join(",", outer.mxgate_tags)] + outer.mxgate_extra_args],
       }
     })),
@@ -66,7 +68,22 @@
     targets: [t],
   }),
 
+  // Split gate into multiple batches
+  partial(num):: run_spec.add_multiply(
+    [
+      task_spec({
+        local batch = "%d/%d" % [i, num],
+        mxgate_batch:: batch,
+        mxgate_extra_args+: ["--partial=" + batch],
+        })
+      for i in std.range(1, num)
+    ]
+  ),
+
   gate:: $.target("gate"),
+  tier1:: $.target("tier1"),
+  tier2:: $.target("tier2"),
+  tier3:: $.target("tier3"),
   daily:: $.target("daily"),
   weekly:: $.target("weekly"),
   ondemand:: $.target("ondemand"),
@@ -82,7 +99,7 @@
       mxgate_config+::["musl-dynamic"],
       mxgate_extra_args+: ["--extra-image-builder-arguments=--libc=musl -H:+UnlockExperimentalVMOptions -H:-StaticExecutable -H:-UnlockExperimentalVMOptions"],
       environment+: {
-        MX_SVMTEST_RUN_PREFIX: "$MUSL_TOOLCHAIN/lib/libc.so ", # see GR-53484, launching the ELF file with the right interpreter
+        MX_SVMTEST_RUN_PREFIX: "$MUSL_TOOLCHAIN/x86_64-linux-musl/lib/libc.so ", # see GR-53484, launching the ELF file with the right interpreter. If the path is incorrect, some svm tests fail with "FAILED image construction: java.lang.AssertionError: internal error"
       },
   } +
     # The galahad gates run with oracle JDK, which do not offer a musl build

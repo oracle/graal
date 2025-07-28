@@ -350,4 +350,7 @@ public final class GraalOptions {
 
     @Option(help = "Enables target-specific lowering and legalization of SIMD operations. Required for SIMD code generation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TargetVectorLowering = new OptionKey<>(true);
+
+    @Option(help = "Enables caching of data structures like control flow graph or schedule across compiler phases.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> CacheCompilerDataStructures = new OptionKey<>(true);
 }

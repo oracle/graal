@@ -376,7 +376,7 @@ class LanguageLibraryProject(NativeImageLibraryProject):
     def get_build_args(self):
         build_args = super().get_build_args()[:]
 
-        # Signals flags, the first 2 are also set in AbstractLanguageLauncher but better to be explicit
+        # Signals flags
         build_args += [
             '-R:+EnableSignalHandling',
             '-R:+InstallSegfaultHandler',
@@ -424,6 +424,10 @@ class NativeImageBuildTask(mx.BuildTask):
             experimental_build_args.append('-H:+VerifyRuntimeCompilationFrameStates')
         build_args = []
 
+        # GR-65661: we need to disable the check in GraalVM for 21 as it does not allow polyglot version 26.0.0-dev
+        if get_bootstrap_graalvm_version() < mx.VersionSpec("25"):
+            build_args += ['-Dpolyglotimpl.DisableVersionChecks=true']
+
         canonical_name = self.subject.base_file_name()
         profiles = mx_sdk_vm_impl._image_profiles(canonical_name)
         if profiles:
@@ -458,12 +462,12 @@ class NativeImageBuildTask(mx.BuildTask):
             # we want "25.0.0-dev" and not "dev" (the default used in NativeImage#prepareImageBuildArgs)
             '-Dorg.graalvm.version={}'.format(_suite.release_version()),
         ] + mx_sdk_vm_impl.svm_experimental_options(experimental_build_args)
-        build_args += mx_sdk_vm_impl._extra_image_builder_args(canonical_name)
         if os.environ.get('JVMCI_VERSION_CHECK'):
             # Propagate this env var when running native image from mx
             build_args += ['-EJVMCI_VERSION_CHECK']
+        extra_build_args = mx_sdk_vm_impl._extra_image_builder_args(canonical_name)
 
-        return build_args + self.subject.get_build_args()
+        return build_args + self.subject.get_build_args() + extra_build_args
 
     def needsBuild(self, newestInput) -> Tuple[bool, str]:
         ts = TimeStampFile(self.subject.output_file())
@@ -747,6 +751,7 @@ class JavaHomeDependency(mx.BaseLibrary):
         self.is_ee_implementor = release_dict.get('IMPLEMENTOR') == 'Oracle Corporation'
         self.version = mx.VersionSpec(release_dict.get('JAVA_VERSION'))
         self.major_version = self.version.parts[1] if self.version.parts[0] == 1 else self.version.parts[0]
+        name = name.replace('<version>', str(self.major_version))
         if self.is_ee_implementor:
             the_license = "Oracle Proprietary"
         else:
@@ -1085,6 +1090,7 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
         theLicense = ['GFTC' if is_enterprise() else 'UPL']
         super().__init__(suite, name=dist_name, deps=[], layout=layout, path=None, theLicense=theLicense, platformDependent=True, path_substitutions=path_substitutions, string_substitutions=string_substitutions, maven=maven, defaultBuild=defaultBuild)
         self.buildDependencies.append(standalone_dir_dist)
+        self.reset_user_group = True
 
     def resolveDeps(self):
         super().resolveDeps()

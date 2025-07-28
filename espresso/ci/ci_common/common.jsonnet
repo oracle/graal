@@ -66,6 +66,23 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     },
   },
 
+  espresso_jdk_25: {
+    downloads+: {
+      "ESPRESSO_JAVA_HOME": graal_common.labsjdk25.downloads["JAVA_HOME"],
+    },
+  },
+  espresso_jdk_25_llvm: {
+    downloads+: {
+      "ESPRESSO_LLVM_JAVA_HOME": graal_common.labsjdk25LLVM.downloads["LLVM_JAVA_HOME"],
+    },
+  },
+
+  espresso_jdkLatest_llvm: {
+    downloads+: {
+      "ESPRESSO_LLVM_JAVA_HOME": graal_common.labsjdkLatestLLVM.downloads["LLVM_JAVA_HOME"],
+    },
+  },
+
   predicates(with_compiler, with_native_image, with_vm, with_espresso=true): {
     assert !with_native_image || with_compiler,
     guard+: {
@@ -117,14 +134,20 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   darwin_aarch64_21: self.espresso_jdk_21 + graal_common.labsjdkLatest                             + self.darwin_aarch64,
   windows_21:        self.espresso_jdk_21 + graal_common.labsjdkLatest                             + self.windows + devkits["windows-jdk-latest"],
 
-  linux_amd64_latest:                       graal_common.labsjdkLatest                             + self.linux_amd64,
+  linux_amd64_25:    self.espresso_jdk_25 + graal_common.labsjdkLatest + self.espresso_jdk_25_llvm + self.linux_amd64,
+  darwin_amd64_25:   self.espresso_jdk_25 + graal_common.labsjdkLatest + self.espresso_jdk_25_llvm + self.darwin_amd64,
+  linux_aarch64_25:  self.espresso_jdk_25 + graal_common.labsjdkLatest                             + self.linux_aarch64,
+  darwin_aarch64_25: self.espresso_jdk_25 + graal_common.labsjdkLatest                             + self.darwin_aarch64,
+  windows_25:        self.espresso_jdk_25 + graal_common.labsjdkLatest                             + self.windows + devkits["windows-jdk-latest"],
 
-  linux_amd64_graalvm21: self.espresso_jdk_21 + graal_common.graalvmee21 + self.espresso_jdk_21_llvm + self.linux_amd64,
+  linux_amd64_latest:                       graal_common.labsjdkLatest + self.espresso_jdkLatest_llvm + self.linux_amd64,
+  linux_aarch64_latest:                     graal_common.labsjdkLatest                                + self.linux_aarch64,
+
+  linux_amd64_graalvm21: self.espresso_jdk_21 + graal_common.graalvmee21 + self.espresso_jdk_21_llvm  + self.linux_amd64,
 
 
 
   // precise targets and capabilities
-  jdkLatest_gate_linux_amd64    : self.gate          + self.linux_amd64_latest,
   jdk21_gate_linux_amd64        : self.gate          + self.linux_amd64_21,
   jdk21_gate_linux_aarch64      : self.gate          + self.linux_aarch64_21,
   jdk21_gate_darwin_amd64       : self.gate          + self.darwin_amd64_21,
@@ -164,8 +187,24 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk21_on_demand_bench_linux   : self.onDemandBench + self.linux_amd64_21 + self.x52,
   jdk21_on_demand_bench_darwin  : self.onDemandBench + self.darwin_amd64_21,
   jdk21_on_demand_bench_windows : self.onDemandBench + self.windows_21,
+
+  jdk25_gate_linux_amd64        : self.gate          + self.linux_amd64_25,
+  jdk25_gate_linux_aarch64      : self.gate          + self.linux_aarch64_25,
+  jdk25_gate_darwin_amd64       : self.gate          + self.darwin_amd64_25,
+  jdk25_gate_darwin_aarch64     : self.gate          + self.darwin_aarch64_25,
+  jdk25_gate_windows_amd64      : self.gate          + self.windows_25,
+  jdk25_daily_linux_amd64       : self.daily         + self.linux_amd64_25,
+  jdk25_daily_linux_aarch64     : self.daily         + self.linux_aarch64_25,
+  jdk25_daily_darwin_amd64      : self.daily         + self.darwin_amd64_25,
+  jdk25_daily_darwin_aarch64    : self.daily         + self.darwin_aarch64_25,
+  jdk25_daily_windows_amd64     : self.daily         + self.windows_25,
+  jdk25_weekly_linux_amd64      : self.weekly        + self.linux_amd64_25,
+
+  jdkLatest_gate_linux_amd64    : self.gate          + self.linux_amd64_latest,
+  jdkLatest_daily_linux_amd64   : self.daily         + self.linux_amd64_latest,
   jdkLatest_weekly_linux_amd64  : self.weekly        + self.linux_amd64_latest,
-  
+  jdkLatest_weekly_linux_aarch64: self.weekly        + self.linux_aarch64_latest,
+
   // shared snippets
   eclipse: graal_common.deps.eclipse,
 
@@ -192,8 +231,9 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     run+: [
       ['mx'] + extra_dynamic_imports_args + ['sversions'],
       that._mx(env, (if debug then ['--debug-images'] else []) + extra_mx_args + extra_dynamic_imports_args + ['build'] + targets_args),
-      ['set-export', 'ESPRESSO_HOME', that._mx(env, ['--quiet', '--no-warning'] + extra_mx_args + extra_dynamic_imports_args + ['path', '--output', standalone])],
-    ],
+    ] + if default_env_traget then [
+      ['set-export', 'ESPRESSO_HOME', that._mx(env, ['--quiet', '--no-warning'] + extra_mx_args + extra_dynamic_imports_args + ['path', '--output', standalone])]
+    ] else [],
   },
 
   // LD_DEBUG=unused is a workaround for: symbol lookup error: jre/lib/amd64/libnio.so: undefined symbol: fstatat64

@@ -33,6 +33,8 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.internal.ref.CleanerFactory;
+
 public final class ReferenceHandler {
     public static boolean useDedicatedThread() {
         int automaticReferenceHandling = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling);
@@ -68,7 +70,7 @@ public final class ReferenceHandler {
         // Note: (sun.misc|jdk.internal).Cleaner objects are invoked in pending reference processing
 
         // Process the JDK's common cleaner, additional cleaners start their own threads
-        Target_java_lang_ref_Cleaner commonCleaner = Target_jdk_internal_ref_CleanerFactory.cleaner();
+        Target_java_lang_ref_Cleaner commonCleaner = SubstrateUtil.cast(CleanerFactory.cleaner(), Target_java_lang_ref_Cleaner.class);
         Reference<?> ref = commonCleaner.impl.queue.poll();
         while (ref != null) {
             try {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,15 +30,13 @@ import org.junit.Test;
 public class TTYTest {
 
     @Test
-    @SuppressWarnings("try")
     public void testTTYFiltered() throws Exception {
-        try (AutoCloseable c = new TTY.Filter()) {
+        try (AutoCloseable _ = new TTY.Filter()) {
             printAll();
         }
     }
 
     @Test
-    @SuppressWarnings("try")
     public void testTTYNoFilter() {
         // This test exists to get coverage of the non-filter paths in TTY
         // so its console output cannot be suppressed. As such, the source

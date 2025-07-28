@@ -56,4 +56,58 @@ public class BoxingTest extends GraalCompilerTest {
     public void testMinus300() {
         test("boxSnippet", -300);
     }
+
+    public static Object boxInt(int arg) {
+        return arg;
+    }
+
+    public static Object boxLong(long arg) {
+        return arg;
+    }
+
+    public static Object boxByte(byte arg) {
+        return arg;
+    }
+
+    public static Object boxChar(char arg) {
+        return arg;
+    }
+
+    public static Object boxBoolean(boolean arg) {
+        return arg;
+    }
+
+    public static Object boxShort(short arg) {
+        return arg;
+    }
+
+    @Test
+    public void boxInt0() {
+        test("boxInt", 0);
+    }
+
+    @Test
+    public void boxByte0() {
+        test("boxByte", (byte) 0);
+    }
+
+    @Test
+    public void boxLong0() {
+        test("boxLong", (long) 0);
+    }
+
+    @Test
+    public void boxChar0() {
+        test("boxChar", (char) 0);
+    }
+
+    @Test
+    public void boxBoolean0() {
+        test("boxBoolean", false);
+    }
+
+    @Test
+    public void boxShort0() {
+        test("boxShort", (short) 0);
+    }
 }

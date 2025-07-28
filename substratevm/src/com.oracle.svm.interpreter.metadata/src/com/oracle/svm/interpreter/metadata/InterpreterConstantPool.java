@@ -26,11 +26,15 @@ package com.oracle.svm.interpreter.metadata;
 
 import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEDYNAMIC;
 
+import java.util.List;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.espresso.classfile.ParserConstantPool;
+import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
 
 import jdk.vm.ci.meta.ConstantPool;
@@ -41,13 +45,13 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 
-public final class InterpreterConstantPool implements ConstantPool {
+public final class InterpreterConstantPool extends com.oracle.svm.espresso.classfile.ConstantPool implements ConstantPool {
 
     private final InterpreterResolvedObjectType holder;
     // Assigned after analysis.
     @UnknownObjectField(types = Object[].class) private Object[] entries;
 
-    Object at(int cpi) {
+    Object objAt(int cpi) {
         if (cpi == 0) {
             // 0 implies unknown (!= unresolved) e.g. unknown class, field, method ...
             // In this case it's not possible to even provide a name or symbolic representation for
@@ -60,6 +64,7 @@ public final class InterpreterConstantPool implements ConstantPool {
     }
 
     private InterpreterConstantPool(InterpreterResolvedObjectType holder, Object[] entries) {
+        super(new byte[]{}, new int[]{}, Symbol.EMPTY_ARRAY, 0, 0);
         this.holder = MetadataUtil.requireNonNull(holder);
         this.entries = MetadataUtil.requireNonNull(entries);
     }
@@ -76,12 +81,12 @@ public final class InterpreterConstantPool implements ConstantPool {
 
     @Override
     public JavaField lookupField(int cpi, ResolvedJavaMethod method, int opcode) {
-        return (JavaField) at(cpi);
+        return (JavaField) objAt(cpi);
     }
 
     @Override
     public JavaMethod lookupMethod(int cpi, int opcode) {
-        return (JavaMethod) at(cpi);
+        return (JavaMethod) objAt(cpi);
     }
 
     @Override
@@ -90,13 +95,18 @@ public final class InterpreterConstantPool implements ConstantPool {
     }
 
     @Override
+    public List<BootstrapMethodInvocation> lookupBootstrapMethodInvocations(boolean invokeDynamic) {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
     public JavaType lookupType(int cpi, int opcode) {
-        return (JavaType) at(cpi);
+        return (JavaType) objAt(cpi);
     }
 
     @Override
     public Object lookupConstant(int cpi) {
-        Object entry = at(cpi);
+        Object entry = objAt(cpi);
         if (entry instanceof JavaConstant) {
             return entry;
         } else if (entry instanceof JavaType) {
@@ -113,7 +123,7 @@ public final class InterpreterConstantPool implements ConstantPool {
     @Override
     public JavaConstant lookupAppendix(int cpi, int opcode) {
         assert opcode == INVOKEDYNAMIC;
-        return (JavaConstant) at(cpi);
+        return (JavaConstant) objAt(cpi);
     }
 
     @VisibleForSerialization
@@ -127,6 +137,16 @@ public final class InterpreterConstantPool implements ConstantPool {
     }
 
     // region Unimplemented methods
+
+    @Override
+    public RuntimeException classFormatError(String message) {
+        throw new ClassFormatError(message);
+    }
+
+    @Override
+    public ParserConstantPool getParserConstantPool() {
+        throw VMError.unimplemented("getParserConstantPool");
+    }
 
     @Override
     public void loadReferencedType(int cpi, int opcode) {

@@ -76,6 +76,9 @@
       default_numa_node:: 1,
       num_threads:: 72
     },
+    x52_root:: self.x52 + {
+      capabilities: ["linux_root", "amd64", "tmpfs25g"]
+    },
     x82:: common.linux_amd64 + self._bench_machine + {
       machine_name:: "x82",
       capabilities+: ["tmpfs25g"],

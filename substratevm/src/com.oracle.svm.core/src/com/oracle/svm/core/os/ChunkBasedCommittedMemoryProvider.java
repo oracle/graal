@@ -33,6 +33,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.thread.VMOperation;
@@ -41,9 +42,9 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.word.Word;
 
 public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
-    private static final OutOfMemoryError ALIGNED_OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Could not allocate an aligned heap chunk. " +
+    protected static final OutOfMemoryError ALIGNED_CHUNK_COMMIT_FAILED = new OutOfMemoryError("Could not commit an aligned heap chunk. " +
                     "Either the OS/container is out of memory or another system-level resource limit was reached (such as the number of memory mappings).");
-    private static final OutOfMemoryError UNALIGNED_OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Could not allocate an unaligned heap chunk. " +
+    protected static final OutOfMemoryError UNALIGNED_CHUNK_COMMIT_FAILED = new OutOfMemoryError("Could not commit an unaligned heap chunk. " +
                     "Either the OS/container is out of memory or another system-level resource limit was reached (such as the number of memory mappings).");
 
     @Fold
@@ -56,7 +57,7 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
     public Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment) {
         Pointer result = allocate(nbytes, alignment, false, NmtCategory.JavaHeap);
         if (result.isNull()) {
-            throw ALIGNED_OUT_OF_MEMORY_ERROR;
+            throw OutOfMemoryUtil.reportOutOfMemoryError(ALIGNED_CHUNK_COMMIT_FAILED);
         }
         return result;
     }
@@ -66,7 +67,7 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
     public Pointer allocateUnalignedChunk(UnsignedWord nbytes) {
         Pointer result = allocate(nbytes, getAlignmentForUnalignedChunks(), false, NmtCategory.JavaHeap);
         if (result.isNull()) {
-            throw UNALIGNED_OUT_OF_MEMORY_ERROR;
+            throw OutOfMemoryUtil.reportOutOfMemoryError(UNALIGNED_CHUNK_COMMIT_FAILED);
         }
         return result;
     }

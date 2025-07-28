@@ -26,6 +26,7 @@ package jdk.graal.compiler.hotspot;
 
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 import jdk.graal.compiler.core.common.LibGraalSupport;
@@ -316,6 +317,11 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
             return new ResolvedJavaMethod[0];
         }
         return methods.clone();
+    }
+
+    @Override
+    public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
+        throw new UnsupportedOperationException();
     }
 
     @Override

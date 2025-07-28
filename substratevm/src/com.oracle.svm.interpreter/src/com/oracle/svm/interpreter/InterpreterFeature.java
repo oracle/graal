@@ -44,6 +44,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -226,6 +227,9 @@ public class InterpreterFeature implements InternalFeature {
         /* required so that it can hold a relocatable pointer */
         accessImpl.registerAsImmutable(InterpreterMethodPointerHolder.singleton());
         accessImpl.registerAsImmutable(InterpreterSupport.singleton());
+
+        HostedMethod methodNotCompiledHandler = accessImpl.getMetaAccess().lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
+        InterpreterMethodPointerHolder.setMethodNotCompiledHandler(new MethodPointer(methodNotCompiledHandler));
     }
 
     @Override

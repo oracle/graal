@@ -688,11 +688,11 @@ public abstract class VMThreads implements InitialLayerOnlyImageSingleton {
 
         @Override
         protected void operate() {
-            IsolateThread currentThread = CurrentIsolate.getCurrentThread();
+            IsolateThread operationThread = CurrentIsolate.getCurrentThread();
             IsolateThread thread = firstThread();
             while (thread.isNonNull()) {
                 IsolateThread next = nextThread(thread);
-                if (thread.notEqual(currentThread) && !wasStartedByCurrentIsolate(thread)) {
+                if (thread.notEqual(queuingThread) && thread.notEqual(operationThread) && !wasStartedByCurrentIsolate(thread)) {
                     /*
                      * The code below is similar to VMThreads.detachCurrentThread() except that it
                      * doesn't call VMThreads.threadExit(). We assume that this is tolerable

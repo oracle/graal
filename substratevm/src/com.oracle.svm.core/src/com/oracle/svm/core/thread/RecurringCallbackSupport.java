@@ -353,6 +353,10 @@ public class RecurringCallbackSupport {
                     /*
                      * Before executing the callback, reset the safepoint requested counter as we
                      * don't want to trigger another callback execution in the near future.
+                     *
+                     * Recurring callbacks typically execute VM-internal code that performs hardly
+                     * any safepoint checks. We explicitly don't update the recurring callback
+                     * statistics anywhere in this method as this could skew the numbers.
                      */
                     setCounter(SafepointCheckCounter.MAX_VALUE);
                     try {
@@ -364,7 +368,6 @@ public class RecurringCallbackSupport {
                          */
                     } finally {
                         lastCallbackExecution = System.nanoTime();
-                        updateStatistics();
                     }
                 }
             } finally {

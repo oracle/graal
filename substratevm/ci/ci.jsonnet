@@ -22,10 +22,14 @@
   local spotbugs = task_spec(common.deps.spotbugs),
   local jdt = task_spec(common.deps.jdt),
   local gate = sg.gate,
+  local tier1 = sg.tier1,
+  local tier2 = sg.tier2,
+  local tier3 = sg.tier3,
   local gdb(version) = task_spec(sg.gdb(version)),
   local use_musl_static = sg.use_musl_static,
   local use_musl_dynamic = sg.use_musl_dynamic,
   local add_quickbuild = sg.add_quickbuild,
+  local partial = sg.partial,
 
   local use_oraclejdk_latest = task_spec(run_spec.evaluate_late({
     "use_oraclejdk_latest": common.oraclejdkLatest + galahad.exclude
@@ -119,24 +123,24 @@
   // START MAIN BUILD DEFINITION
   local task_dict = {
     "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp,check_libcontainer_annotations,check_libcontainer_namespace") + eclipse + jdt + spotbugs + maven + mx_build_exploded + gdb("14.2") + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk-latest": gate + t("30:00"),
+      "linux:amd64:jdk-latest": tier1 + t("30:00"),
     }),
     "basics": mxgate("build,helloworld,native_unittests,truffle_unittests,debuginfotest,hellomodule,java_agent,condconfig") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk-latest": gate + gdb("14.2") + t("55:00"),
-      "windows:amd64:jdk-latest": gate + t("1:30:00"),
+      "linux:amd64:jdk-latest": tier2 + partial(2) + gdb("14.2") + t("40:00"),
+      "windows:amd64:jdk-latest": tier3 + t("1:30:00"),
     }) + variants({
       "optlevel:quickbuild": {
-        "windows:amd64:jdk-latest": gate + t("1:30:00"),
+        "windows:amd64:jdk-latest": tier3 + t("1:30:00"),
       },
       "libc:musl_static": {
-        "linux:amd64:jdk-latest": gate + gdb("14.2") + t("55:00"),
+        "linux:amd64:jdk-latest": tier3 + gdb("14.2") + t("55:00"),
       },
       "java-compiler:ecj": {
-        "linux:amd64:jdk-latest": gate + gdb("14.2") + t("55:00"),
+        "linux:amd64:jdk-latest": tier2 + partial(2) + gdb("14.2") + t("40:00"),
       },
     }),
     "oraclejdk-helloworld": mxgate("build,helloworld,hellomodule") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk-latest": gate + use_oraclejdk_latest + t("30:00"),
+      "linux:amd64:jdk-latest": tier1 + use_oraclejdk_latest + t("30:00"),
     }),
   },
   // END MAIN BUILD DEFINITION

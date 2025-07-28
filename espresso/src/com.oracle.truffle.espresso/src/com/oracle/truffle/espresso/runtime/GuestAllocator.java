@@ -245,7 +245,7 @@ public final class GuestAllocator implements LanguageAccess {
         assert AllocationChecks.canAllocateNewArray(length);
         StaticObject[] arr = new StaticObject[length];
         Arrays.fill(arr, StaticObject.NULL);
-        return wrapArrayAs(componentKlass.getArrayClass(), arr);
+        return wrapArrayAs(componentKlass.getArrayKlass(), arr);
     }
 
     /**

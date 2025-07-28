@@ -67,6 +67,12 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
         assert check(node);
     }
 
+    public void growToSize(int newSize) {
+        if (newSize > this.values.length) {
+            this.values = Arrays.copyOf(values, Math.max(MIN_REALLOC_SIZE, newSize));
+        }
+    }
+
     @Override
     public boolean isEmpty() {
         throw new UnsupportedOperationException("isEmpty() is not supported for performance reasons");

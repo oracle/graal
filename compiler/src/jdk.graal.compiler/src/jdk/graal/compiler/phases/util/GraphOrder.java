@@ -31,6 +31,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.GraalGraphError;
@@ -71,6 +72,10 @@ import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 
 public final class GraphOrder {
 
+    public static final DebugContext.CountingTimerKey AssertSchedulableGraphTime = DebugContext.countingTimer("AssertSchedulableGraph");
+
+    public static final DebugContext.CountingTimerKey AssertNonCyclicGraphTime = DebugContext.countingTimer("AssertNonCyclicGraph");
+
     private GraphOrder() {
     }
 
@@ -82,26 +87,29 @@ public final class GraphOrder {
      * @param graph the graph to be checked.
      * @throws AssertionError if a cycle was detected.
      */
+    @SuppressWarnings("try")
     public static boolean assertNonCyclicGraph(StructuredGraph graph) {
-        List<Node> order = createOrder(graph);
-        NodeBitMap visited = graph.createNodeBitMap();
-        visited.clearAll();
-        for (Node node : order) {
-            if (node instanceof PhiNode && ((PhiNode) node).merge() instanceof LoopBeginNode) {
-                assert visited.isMarked(((PhiNode) node).valueAt(0));
-                // nothing to do
-            } else {
-                for (Node input : node.inputs()) {
-                    if (!visited.isMarked(input)) {
-                        if (input instanceof FrameState) {
-                            // nothing to do - frame states are known, allowed cycles
-                        } else {
-                            assert false : "unexpected cycle detected at input " + node + " -> " + input;
+        try (DebugCloseable a = AssertNonCyclicGraphTime.start(graph.getDebug())) {
+            List<Node> order = createOrder(graph);
+            NodeBitMap visited = graph.createNodeBitMap();
+            visited.clearAll();
+            for (Node node : order) {
+                if (node instanceof PhiNode && ((PhiNode) node).merge() instanceof LoopBeginNode) {
+                    assert visited.isMarked(((PhiNode) node).valueAt(0));
+                    // nothing to do
+                } else {
+                    for (Node input : node.inputs()) {
+                        if (!visited.isMarked(input)) {
+                            if (input instanceof FrameState) {
+                                // nothing to do - frame states are known, allowed cycles
+                            } else {
+                                assert false : "unexpected cycle detected at input " + node + " -> " + input;
+                            }
                         }
                     }
                 }
+                visited.mark(node);
             }
-            visited.mark(node);
         }
         return true;
     }
@@ -217,13 +225,16 @@ public final class GraphOrder {
         }
     }
 
+    @SuppressWarnings("try")
     public static boolean assertSchedulableGraph(StructuredGraph g) {
         assert GraphOrder.assertNonCyclicGraph(g);
-        assert g.getGuardsStage().areFrameStatesAtDeopts() || GraphOrder.assertScheduleableBeforeFSA(g);
-        if (g.getGuardsStage().areFrameStatesAtDeopts() && Assertions.detailedAssertionsEnabled(g.getOptions())) {
-            // we still want to do a memory verification of the schedule even if we can
-            // no longer use assertSchedulableGraph after the floating reads phase
-            SchedulePhase.runWithoutContextOptimizations(g, SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
+        try (DebugCloseable a = AssertSchedulableGraphTime.start(g.getDebug())) {
+            assert g.getGuardsStage().areFrameStatesAtDeopts() || GraphOrder.assertScheduleableBeforeFSA(g);
+            if (g.getGuardsStage().areFrameStatesAtDeopts() && Assertions.detailedAssertionsEnabled(g.getOptions())) {
+                // we still want to do a memory verification of the schedule even if we can
+                // no longer use assertSchedulableGraph after the floating reads phase
+                SchedulePhase.runWithoutContextOptimizations(g, SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
+            }
         }
         return true;
     }

@@ -390,7 +390,19 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     }
 
     private void validateInstrumentationSignature(CustomOperationModel customOperation, Signature signature) {
-        if (signature.dynamicOperandCount > 1) {
+        if (signature.isVoid ^ signature.dynamicOperandCount == 0) {
+            if (signature.isVoid) {
+                customOperation.addError(String.format("An @%s operation cannot be void and also specify a dynamic operand. " +
+                                "Instrumentations must have transparent stack effects. " + //
+                                "Change the return type or remove the dynamic operand to resolve this.",
+                                getSimpleName(types.Instrumentation)));
+            } else {
+                customOperation.addError(String.format("An @%s operation cannot have a return value without also specifying a single dynamic operand. " +
+                                "Instrumentations must have transparent stack effects. " + //
+                                "Use void as the return type or specify a single dynamic operand value to resolve this.",
+                                getSimpleName(types.Instrumentation)));
+            }
+        } else if (signature.dynamicOperandCount > 1) {
             customOperation.addError(String.format("An @%s operation cannot have more than one dynamic operand. " +
                             "Instrumentations must have transparent stack effects. " + //
                             "Remove the additional operands to resolve this.",
@@ -401,11 +413,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                             "Remove the variadic annotation to resolve this.",
                             getSimpleName(types.Instrumentation),
                             getSimpleName(types.Variadic)));
-        } else if (!signature.isVoid && signature.dynamicOperandCount != 1) {
-            customOperation.addError(String.format("An @%s operation cannot have a return value without also specifying a single dynamic operand. " +
-                            "Instrumentations must have transparent stack effects. " + //
-                            "Use void as the return type or specify a single dynamic operand value to resolve this.",
-                            getSimpleName(types.Instrumentation)));
         }
     }
 

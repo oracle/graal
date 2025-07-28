@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -231,13 +231,10 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
          * Convert `x < 0.0 ? Math.ceil(x) : Math.floor(x)` to RoundNode(x, TRUNCATE).
          */
         if (canonicalizer != null &&
-                        canonicalizer.supportsRounding() &&
-                        condition instanceof FloatLessThanNode &&
-                        trueValue instanceof RoundNode &&
-                        falseValue instanceof RoundNode) {
-            FloatLessThanNode lessThan = (FloatLessThanNode) condition;
-            RoundNode trueRound = (RoundNode) trueValue;
-            RoundNode falseRound = (RoundNode) falseValue;
+                        RoundNode.isSupported(canonicalizer.getLowerer().getTarget().arch) &&
+                        condition instanceof FloatLessThanNode lessThan &&
+                        trueValue instanceof RoundNode trueRound &&
+                        falseValue instanceof RoundNode falseRound) {
 
             if (trueRound.getValue() == falseRound.getValue()) {
                 ValueNode roundInput = trueRound.getValue();

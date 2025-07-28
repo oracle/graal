@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,13 +56,12 @@ public class InliningLogTest extends GraalCompilerTest {
      * Verifies that the invokes created by peeling the loop in {@link #snippetB(Foo)} are siblings
      * of the original call-tree node.
      */
-    @SuppressWarnings("try")
     @Test
     public void duplicatedInvokesAttachedCorrectly() {
         OptionValues optionValues = new OptionValues(getInitialOptions(), GraalOptions.TraceInlining, true, LoopPolicies.Options.PeelALot, true);
         ResolvedJavaMethod method = getResolvedJavaMethod("snippetA");
         StructuredGraph graph = parseEager(method, StructuredGraph.AllowAssumptions.YES, getCompilationId(method), optionValues);
-        try (TTY.Filter suppress = new TTY.Filter()) {
+        try (TTY.Filter _ = new TTY.Filter()) {
             compile(method, graph);
         }
         InliningLog inliningLog = graph.getInliningLog();

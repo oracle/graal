@@ -23,9 +23,21 @@
 package com.oracle.truffle.espresso.vm.structs;
 
 public interface MemberOffsetGetter {
-    long getInfo(String structName);
+    long getInfo(String key);
+
+    default long getStructSize(String structName) {
+        return getInfo(structName);
+    }
 
     default long getOffset(String structName, String memberName) {
         return getInfo(structName + "." + memberName);
+    }
+
+    default int getStartBit(String structName, String memberName) {
+        return Math.toIntExact(getInfo(structName + "." + memberName + ".StartBit"));
+    }
+
+    default int getEndBit(String structName, String memberName) {
+        return Math.toIntExact(getInfo(structName + "." + memberName + ".EndBit"));
     }
 }

@@ -150,7 +150,7 @@ public class InlineBeforeAnalysisPolicyUtils {
     public final int optionScopedAllowedNodes = Options.InlineBeforeAnalysisScopedAllowedNodes.getValue();
     public final int optionScopedAllowedInvokes = Options.InlineBeforeAnalysisScopedAllowedInvokes.getValue();
 
-    public final boolean optionForeignAPISupport = SubstrateOptions.ForeignAPISupport.getValue();
+    public final boolean optionForeignAPISupport = SubstrateOptions.isForeignAPIEnabled();
 
     @SuppressWarnings("unchecked") //
     private static final Class<? extends Annotation> COMPILED_LAMBDA_FORM_ANNOTATION = //
@@ -321,7 +321,16 @@ public class InlineBeforeAnalysisPolicyUtils {
     public AccumulativeInlineScope createAccumulativeInlineScope(AccumulativeInlineScope outer, AnalysisMethod caller, AnalysisMethod method, NodePredicate invalidNodePredicate) {
         AccumulativeCounters accumulativeCounters;
         int depth;
-        if (outer == null) {
+        if (isScopedMethod(caller)) {
+            /*
+             * Inlining into @Scope-annotated methods is required for correctness since in general,
+             * no calls may remain. Therefore, regardless if there is already an outer scope, those
+             * methods are always treated as inlining root.
+             */
+            depth = 1;
+            accumulativeCounters = new AccumulativeCounters(optionScopedAllowedNodes, optionScopedAllowedInvokes, InliningScopeType.ScopedMethod);
+
+        } else if (outer == null) {
             /*
              * The first level of method inlining, i.e., the top scope from the inlining policy
              * point of view.
@@ -338,9 +347,6 @@ public class InlineBeforeAnalysisPolicyUtils {
 
             } else if (optionTrackNeverNullInstanceFields && FactoryMethodSupport.isFactoryMethod(caller)) {
                 accumulativeCounters = new AccumulativeCounters(optionConstructorAllowedNodes, optionConstructorAllowedInvokes, InliningScopeType.ConstructorInlining);
-
-            } else if (isScopedMethod(caller)) {
-                accumulativeCounters = new AccumulativeCounters(optionScopedAllowedNodes, optionScopedAllowedInvokes, InliningScopeType.ScopedMethod);
 
             } else {
                 accumulativeCounters = new AccumulativeCounters(optionAllowedNodes, optionAllowedInvokes, InliningScopeType.None);

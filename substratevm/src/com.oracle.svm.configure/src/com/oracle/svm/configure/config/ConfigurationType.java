@@ -498,10 +498,9 @@ public class ConfigurationType implements JsonPrintable {
             Set<ConfigurationMethod> accessedMethods = getMethodsByAccessibility(ConfigurationMemberAccessibility.ACCESSED);
             if (!accessedMethods.isEmpty()) {
                 writer.appendSeparator().quote("methods").appendFieldSeparator();
-                JsonPrinter.printCollection(writer,
-                                accessedMethods,
-                                Comparator.comparing(ConfigurationMethod::getName).thenComparing(Comparator.nullsFirst(Comparator.comparing(ConfigurationMethod::getInternalSignature))),
-                                JsonPrintable::printJson);
+                Comparator<ConfigurationMethod> methodComparator = Comparator.comparing(ConfigurationMethod::getName)
+                                .thenComparing(Comparator.nullsFirst(Comparator.comparing(ConfigurationMethod::getInternalSignature)));
+                JsonPrinter.printCollection(writer, accessedMethods, methodComparator, JsonPrintable::printJson);
             }
         }
 

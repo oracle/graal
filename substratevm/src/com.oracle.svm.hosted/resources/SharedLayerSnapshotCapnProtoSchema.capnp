@@ -27,33 +27,35 @@ struct PersistedAnalysisType {
   isEnum @8 :Bool;
   # True if the type's initialization status was computed as BUILD_TIME. Build-time initialized types are not simulated.
   isInitialized @9 :Bool;
-  isLinked @10 :Bool;
-  sourceFileName @11 :Text;
-  enclosingTypeId @12 :TypeId;
-  componentTypeId @13 :TypeId;
-  superClassTypeId @14 :TypeId;
-  isInstantiated @15 :Bool;
-  isUnsafeAllocated @16 :Bool;
-  isReachable @17 :Bool;
-  interfaces @18 :List(TypeId);
-  instanceFieldIds @19 :List(FieldId);
-  instanceFieldIdsWithSuper @20 :List(FieldId);
-  staticFieldIds @21 :List(FieldId);
-  annotationList @22 :List(Annotation);
-  classInitializationInfo @23 :ClassInitializationInfo;
-  hasArrayType @24 :Bool;
-  subTypes @25 :List(TypeId);
-  isAnySubtypeInstantiated @26 :Bool;
+  # True if the type was configured as initialized at BUILD_TIME but initialization failed so it was registered as RUN_TIME.
+  isFailedInitialization @10 :Bool;
+  isLinked @11 :Bool;
+  sourceFileName @12 :Text;
+  enclosingTypeId @13 :TypeId;
+  componentTypeId @14 :TypeId;
+  superClassTypeId @15 :TypeId;
+  isInstantiated @16 :Bool;
+  isUnsafeAllocated @17 :Bool;
+  isReachable @18 :Bool;
+  interfaces @19 :List(TypeId);
+  instanceFieldIds @20 :List(FieldId);
+  instanceFieldIdsWithSuper @21 :List(FieldId);
+  staticFieldIds @22 :List(FieldId);
+  annotationList @23 :List(Annotation);
+  classInitializationInfo @24 :ClassInitializationInfo;
+  hasArrayType @25 :Bool;
+  subTypes @26 :List(TypeId);
+  isAnySubtypeInstantiated @27 :Bool;
   wrappedType :union {
-    none @27 :Void; # default
+    none @28 :Void; # default
     serializationGenerated :group {
-      rawDeclaringClass @28 :Text;
-      rawTargetConstructor @29 :Text;
+      rawDeclaringClass @29 :Text;
+      rawTargetConstructor @30 :Text;
     }
     lambda :group {
-      capturingClass @30 :Text;
+      capturingClass @31 :Text;
     }
-    proxyType @31 :Void;
+    proxyType @32 :Void;
   }
 }
 
@@ -94,36 +96,37 @@ struct PersistedAnalysisMethod {
   annotationList @20 :List(Annotation);
   isVarArgs @21 :Bool;
   isBridge @22 :Bool;
-  analysisGraphLocation @23 :Text;
-  analysisGraphIsIntrinsic @24 :Bool;
-  strengthenedGraphLocation @25 :Text;
-  hostedMethodIndex @26 :HostedMethodIndex;
+  isDeclared @23 :Bool;
+  analysisGraphLocation @24 :Text;
+  analysisGraphIsIntrinsic @25 :Bool;
+  strengthenedGraphLocation @26 :Text;
+  hostedMethodIndex @27 :HostedMethodIndex;
   wrappedMethod :union {
-    none @27 :Void; # default
+    none @28 :Void; # default
     factoryMethod :group {
-      targetConstructorId @28 :MethodId;
-      throwAllocatedObject @29 :Bool;
-      instantiatedTypeId @30 :TypeId;
+      targetConstructorId @29 :MethodId;
+      throwAllocatedObject @30 :Bool;
+      instantiatedTypeId @31 :TypeId;
     }
     outlinedSB :group {
-      methodTypeReturn @31 :Text;
-      methodTypeParameters @32 :List(Text);
+      methodTypeReturn @32 :Text;
+      methodTypeParameters @33 :List(Text);
     }
     cEntryPointCallStub :group {
-      originalMethodId @33 :MethodId;
-      notPublished @34 :Bool;
+      originalMethodId @34 :MethodId;
+      notPublished @35 :Bool;
     }
     wrappedMember :group {
       union {
-        reflectionExpandSignature @35 :Void;
-        javaCallVariantWrapper @36 :Void;
+        reflectionExpandSignature @36 :Void;
+        javaCallVariantWrapper @37 :Void;
       }
-      name @37 :Text;
-      declaringClassName @38 :Text;
-      argumentTypeNames @39 :List(Text);
+      name @38 :Text;
+      declaringClassName @39 :Text;
+      argumentTypeNames @40 :List(Text);
     }
     polymorphicSignature :group {
-      callers @40 :List(MethodId);
+      callers @41 :List(MethodId);
     }
   }
 }
@@ -141,12 +144,13 @@ struct PersistedAnalysisField {
   isRead @9 :Bool;
   isWritten @10 :Bool;
   isFolded @11 :Bool;
-  isStatic @12 :Bool;
-  isSynthetic @13 :Bool;
-  annotationList @14 :List(Annotation);
-  name @15 :Text;
-  priorInstalledLayerNum @16 :Int32;
-  assignmentStatus @17 :Int32;
+  isUnsafeAccessed @12 :Bool;
+  isStatic @13 :Bool;
+  isSynthetic @14 :Bool;
+  annotationList @15 :List(Annotation);
+  name @16 :Text;
+  priorInstalledLayerNum @17 :Int32;
+  assignmentStatus @18 :Int32;
 }
 
 struct CEntryPointLiteralReference {
@@ -166,8 +170,11 @@ struct ConstantReference {
     methodPointer :group {
       methodId @4 :MethodId;
     }
-    cEntryPointLiteralCodePointer @5 :CEntryPointLiteralReference;
-    cGlobalDataBasePointer @6 :Void;
+    methodOffset :group {
+      methodId @5 :MethodId;
+    }
+    cEntryPointLiteralCodePointer @6 :CEntryPointLiteralReference;
+    cGlobalDataBasePointer @7 :Void;
   }
 }
 
@@ -228,12 +235,16 @@ struct ImageSingletonKey {
   persistFlag @1 :Int32;
   objectId @2 :SingletonObjId;
   constantId @3 :ConstantId;
+  isInitialLayerOnly @4 :Bool;
 }
 
 struct ImageSingletonObject {
   id @0 :SingletonObjId;
   className @1 :Text;
   store @2 :List(KeyStoreEntry);
+  recreateClass @3 :Text;
+  # GR-66792 remove once no custom persist actions exist
+  recreateMethod @4 :Text;
 }
 
 struct Annotation {
@@ -296,7 +307,9 @@ struct StaticFinalFieldFoldingSingleton {
 
 struct LayeredRuntimeMetadataSingleton {
   methods @0 :List(MethodId);
-  fields @1 :List(FieldId);
+  methodStates @1 :List(Bool);
+  fields @2 :List(FieldId);
+  fieldStates @3 :List(Bool);
 }
 
 struct LayeredModule {

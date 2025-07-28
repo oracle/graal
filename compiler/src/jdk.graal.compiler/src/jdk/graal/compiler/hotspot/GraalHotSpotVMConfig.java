@@ -135,16 +135,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean printInlining = getFlag("PrintInlining", Boolean.class);
     public final boolean inline = getFlag("Inline", Boolean.class);
 
-    // There are 3 available locking modes:
-    // LM_MONITOR uses only heavy monitors for locking;
-    // LM_LEGACY uses stack-locking, with monitors as 2nd tier;
-    // LM_LIGHTWEIGHT uses thread-local space for storing locked objects. This avoids the overload
-    // of the mark word.
-    public final int lockingMode = getFlag("LockingMode", Integer.class);
-
-    public final int lockingModeStack = getConstant("LockingMode::LM_LEGACY", Integer.class);
-    public final int lockingModeLightweight = getConstant("LockingMode::LM_LIGHTWEIGHT", Integer.class);
-
     public final boolean foldStableValues = getFlag("FoldStableValues", Boolean.class);
     public final int maxVectorSize = getFlag("MaxVectorSize", Integer.class);
 
@@ -584,25 +574,22 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int threadDisarmedOffset = getFieldValue("CompilerToVM::Data::thread_disarmed_guard_value_offset", Integer.class, "int");
     public final long nmethodEntryBarrier = getFieldValue("CompilerToVM::Data::nmethod_entry_barrier", Long.class, "address");
 
-    // Check whether generational ZGC support is available
-    public final boolean zgcSupport = getStore().getFields().containsKey("CompilerToVM::Data::sizeof_ZStoreBarrierEntry");
-
     private long getZGCAddressField(String name) {
         // Some of these names are aliased between generational ZGC and non-generational so we avoid
         // the lookup if we don't expect generational ZGC support.
-        long address = zgcSupport ? getAddress(name, 0L, zgcSupport) : 0;
+        long address = getAddress(name, 0L, true);
         GraalError.guarantee(gc != HotSpotGraalRuntime.HotSpotGC.Z || address != 0, "Unexpected null value for %s", name);
         return address;
     }
 
     // @formatter:off
-    public final int sizeofZStoreBarrierEntry = getFieldValue("CompilerToVM::Data::sizeof_ZStoreBarrierEntry", Integer.class, "int", -1, zgcSupport);
-    public final int ZThreadLocalData_store_good_mask_offset = getConstant("ZThreadLocalData::store_good_mask_offset", Integer.class, -1, zgcSupport);
-    public final int ZThreadLocalData_store_barrier_buffer_offset = getConstant("ZThreadLocalData::store_barrier_buffer_offset", Integer.class, -1, zgcSupport);
-    public final int ZStoreBarrierBuffer_current_offset = getConstant("ZStoreBarrierBuffer::current_offset", Integer.class, -1, zgcSupport);
-    public final int ZStoreBarrierBuffer_buffer_offset = getConstant("ZStoreBarrierBuffer::buffer_offset", Integer.class, -1, zgcSupport);
-    public final int ZStoreBarrierEntry_p_offset = getConstant("ZStoreBarrierEntry::p_offset", Integer.class, -1, zgcSupport);
-    public final int ZStoreBarrierEntry_prev_offset = getConstant("ZStoreBarrierEntry::prev_offset", Integer.class, -1, zgcSupport);
+    public final int sizeofZStoreBarrierEntry = getFieldValue("CompilerToVM::Data::sizeof_ZStoreBarrierEntry", Integer.class, "int");
+    public final int ZThreadLocalData_store_good_mask_offset = getConstant("ZThreadLocalData::store_good_mask_offset", Integer.class);
+    public final int ZThreadLocalData_store_barrier_buffer_offset = getConstant("ZThreadLocalData::store_barrier_buffer_offset", Integer.class);
+    public final int ZStoreBarrierBuffer_current_offset = getConstant("ZStoreBarrierBuffer::current_offset", Integer.class);
+    public final int ZStoreBarrierBuffer_buffer_offset = getConstant("ZStoreBarrierBuffer::buffer_offset", Integer.class);
+    public final int ZStoreBarrierEntry_p_offset = getConstant("ZStoreBarrierEntry::p_offset", Integer.class);
+    public final int ZStoreBarrierEntry_prev_offset = getConstant("ZStoreBarrierEntry::prev_offset", Integer.class);
     // @formatter:on
 
     /*
@@ -620,13 +607,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long zBarrierSetRuntimeStoreBarrierOnOopFieldWithHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_oop_field_with_healing");
     public final long zBarrierSetRuntimeStoreBarrierOnOopFieldWithoutHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_oop_field_without_healing");
     public final long zBarrierSetRuntimeLoadBarrierOnOopArray = getZGCAddressField("ZBarrierSetRuntime::load_barrier_on_oop_array");
-    public final int zPointerLoadShift = getConstant("ZPointerLoadShift", Integer.class, -1, osArch.equals("aarch64") && zgcSupport);
+    public final int zPointerLoadShift = getConstant("ZPointerLoadShift", Integer.class, -1, osArch.equals("aarch64"));
 
     // aarch64 specific nmethod entry barrier support
     // @formatter:off
     public final int BarrierSetAssembler_nmethod_patching_type = getFieldValue("CompilerToVM::Data::BarrierSetAssembler_nmethod_patching_type", Integer.class, "int", -1, osArch.equals("aarch64"));
     public final long BarrierSetAssembler_patching_epoch_addr = getFieldValue("CompilerToVM::Data::BarrierSetAssembler_patching_epoch_addr", Long.class, "address", -1L,
-                    osArch.equals("aarch64") && zgcSupport);
+                    osArch.equals("aarch64"));
     public final int NMethodPatchingType_stw_instruction_and_data_patch = getConstant("NMethodPatchingType::stw_instruction_and_data_patch", Integer.class, -1, osArch.equals("aarch64"));
     public final int NMethodPatchingType_conc_instruction_and_data_patch = getConstant("NMethodPatchingType::conc_instruction_and_data_patch", Integer.class, -1, osArch.equals("aarch64"));
     public final int NMethodPatchingType_conc_data_patch = getConstant("NMethodPatchingType::conc_data_patch", Integer.class, -1, osArch.equals("aarch64"));
@@ -682,6 +669,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long arithmeticLogAddress = getFieldValue("CompilerToVM::Data::dlog", Long.class, "address");
     public final long arithmeticLog10Address = getFieldValue("CompilerToVM::Data::dlog10", Long.class, "address");
     public final long arithmeticPowAddress = getFieldValue("CompilerToVM::Data::dpow", Long.class, "address");
+    public final long arithmeticCbrtAddress = getFieldValue("CompilerToVM::Data::dcbrt", Long.class, "address");
 
     public final long fremAddress = getAddress("SharedRuntime::frem");
     public final long dremAddress = getAddress("SharedRuntime::drem");
@@ -690,10 +678,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long jvmtiVThreadEnd = getAddress("SharedRuntime::notify_jvmti_vthread_end");
     public final long jvmtiVThreadMount = getAddress("SharedRuntime::notify_jvmti_vthread_mount");
     public final long jvmtiVThreadUnmount = getAddress("SharedRuntime::notify_jvmti_vthread_unmount");
-
-    public boolean supportJVMTIVThreadNotification() {
-        return jvmtiVThreadStart != 0L && jvmtiVThreadEnd != 0L && jvmtiVThreadMount != 0L && jvmtiVThreadUnmount != 0L;
-    }
 
     // JDK-8322630
     public final int icSpeculatedKlassOffset = getFieldOffset("CompiledICData::_speculated_klass", Integer.class, "uintptr_t");
@@ -726,9 +710,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
                 if (markId.getArch() != null && !osArch.equals(markId.getArch())) {
                     continue;
                 }
-                if (zgcSupport) {
-                    GraalHotSpotVMConfigAccess.reportError("Unsupported Mark " + markId);
-                }
+                GraalHotSpotVMConfigAccess.reportError("Unsupported Mark " + markId);
                 continue;
             }
             markId.setValue(result.intValue());

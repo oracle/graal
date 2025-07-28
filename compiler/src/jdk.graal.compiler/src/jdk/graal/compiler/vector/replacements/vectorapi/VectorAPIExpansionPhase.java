@@ -46,6 +46,7 @@ import jdk.graal.compiler.graph.NodeStack;
 import jdk.graal.compiler.graph.NodeUnionFind;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphState;
@@ -55,6 +56,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.ValueProxyNode;
 import jdk.graal.compiler.nodes.calc.MinMaxNode;
+import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.type.StampTool;
@@ -476,6 +478,8 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                 NodeMap<ValueNode> expanded = new NodeMap<>(graph);
                 expanded.putAll(simdConstantCache);
 
+                /* Expand unboxing operations that are inputs to the component. */
+                unboxComponentInputs(graph, context, component, expanded);
                 /* Expand, starting from sinks and recursing upwards through inputs. */
                 for (VectorAPISinkNode sink : component.sinks) {
                     expandRecursivelyUpwards(graph, context, expanded, component.simdStamps, sink, vectorArch);
@@ -496,6 +500,67 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                 replaceComponentNodes(graph, context, component, expanded, vectorArch);
             }
         }
+    }
+
+    /**
+     * For all unboxable inputs to nodes in the component, insert the necessary unboxing code. We
+     * insert separate occurrences of the unboxing code for each usage of an unboxable input because
+     * otherwise it would be difficult to find a single correct insertion point for the unboxing
+     * code.
+     */
+    private static void unboxComponentInputs(StructuredGraph graph, CoreProviders providers, ConnectedComponent component, NodeMap<ValueNode> expanded) {
+        GraalError.guarantee(component.canExpand, "should only place unbox nodes once we know the component can expand");
+        for (ValueNode unboxableInput : component.unboxes) {
+            for (ValueNode usage : unboxableInput.usages().filter(ValueNode.class).snapshot()) {
+                if (component.simdStamps.containsKey(usage)) {
+                    if (usage instanceof VectorAPIMacroNode macro) {
+                        anchorAndUnboxInput(graph, providers, macro, unboxableInput, macro, expanded);
+                    } else if (usage instanceof ValuePhiNode phi) {
+                        for (int i = 0; i < phi.valueCount(); i++) {
+                            if (phi.valueAt(i) == unboxableInput) {
+                                anchorAndUnboxInput(graph, providers, phi, unboxableInput, phi.merge().phiPredecessorAt(i), expanded, i);
+                            }
+                        }
+                    } else if (usage instanceof ValueProxyNode proxy) {
+                        anchorAndUnboxInput(graph, providers, proxy, unboxableInput, proxy.proxyPoint(), expanded);
+                    } else {
+                        throw GraalError.shouldNotReachHereUnexpectedValue(usage);
+                    }
+                }
+            }
+        }
+        if (!component.unboxes.isEmpty()) {
+            graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "after unboxing %s inputs for %s", component.unboxes.size(), component);
+        }
+        /* Remove these unboxing operations from the component to mark them as handled. */
+        for (ValueNode unboxableInput : component.unboxes) {
+            component.simdStamps.removeKey(unboxableInput);
+        }
+        component.unboxes.clear();
+    }
+
+    private static void anchorAndUnboxInput(StructuredGraph graph, CoreProviders providers, ValueNode usage, ValueNode unboxableInput, FixedNode insertionPoint, NodeMap<ValueNode> expanded) {
+        anchorAndUnboxInput(graph, providers, usage, unboxableInput, insertionPoint, expanded, -1);
+    }
+
+    /**
+     * Adds a node anchoring {@code unboxableInput} before {@code insertionPoint}, replaces the
+     * anchor value in {@code usage}, then inserts unboxing code and records the unboxed version in
+     * the {@code expanded} map. If {@code usage} is a {@link ValuePhiNode}, {@code phiInputIndex}
+     * indicates the input to replace; it must be -1 otherwise.
+     */
+    private static void anchorAndUnboxInput(StructuredGraph graph, CoreProviders providers, ValueNode usage, ValueNode unboxableInput, FixedNode insertionPoint, NodeMap<ValueNode> expanded,
+                    int phiInputIndex) {
+        GraalError.guarantee(usage instanceof ValuePhiNode == (phiInputIndex != -1), "input index must be defined for phis, but not for any other node");
+        FixedValueAnchorNode anchor = graph.add(new FixedValueAnchorNode(unboxableInput));
+        graph.addBeforeFixed(insertionPoint, anchor);
+        if (phiInputIndex != -1) {
+            ((ValuePhiNode) usage).setValueAt(phiInputIndex, anchor);
+        } else {
+            usage.replaceAllInputs(unboxableInput, anchor);
+        }
+        ValueNode unboxed = VectorAPIBoxingUtils.unboxObject(anchor, providers);
+        expanded.setAndGrow(anchor, unboxed);
     }
 
     /**
@@ -599,7 +664,7 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                     expansion = proxy.duplicateOn(proxy.proxyPoint(), expanded.get(proxy.getOriginalNode()));
                 }
             } else if (VectorAPIBoxingUtils.asUnboxableVectorType(node, providers) != null) {
-                expansion = VectorAPIBoxingUtils.unboxObject(node, providers);
+                throw GraalError.shouldNotReachHere("unboxable input should have been expanded before members of the component: " + node);
             } else {
                 throw GraalError.shouldNotReachHere("unexpected node during expansion: " + node);
             }
@@ -664,6 +729,11 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
      */
     private static void replaceComponentNodes(StructuredGraph graph, HighTierContext context, ConnectedComponent component, NodeMap<ValueNode> expanded, VectorArchitecture vectorArch) {
         for (ValueNode node : component.simdStamps.getKeys()) {
+            if (!node.isAlive()) {
+                // As we kill CFGs while replacing each element of the component, it may be the case
+                // that an element is killed because its control dies, simply skip those elements
+                continue;
+            }
             ValueNode replacement = expanded.get(node);
             GraalError.guarantee(replacement != null, "node was not expanded: %s", node);
             graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "before replacing %s -> %s", node, replacement);

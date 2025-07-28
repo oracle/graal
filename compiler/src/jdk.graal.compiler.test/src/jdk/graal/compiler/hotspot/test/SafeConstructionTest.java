@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,20 +24,28 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
+import static java.lang.classfile.ClassFile.ACC_PRIVATE;
+import static java.lang.classfile.ClassFile.ACC_PUBLIC;
+import static java.lang.constant.ConstantDescs.CD_int;
+import static java.lang.constant.ConstantDescs.CD_short;
+import static java.lang.constant.ConstantDescs.CD_void;
+import static java.lang.constant.ConstantDescs.INIT_NAME;
+import static java.lang.constant.ConstantDescs.MTD_void;
+
 import java.io.IOException;
+import java.lang.classfile.Annotation;
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
 import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.FieldVisitor;
-import org.objectweb.asm.MethodVisitor;
 
-import com.oracle.truffle.api.impl.asm.Opcodes;
-
+import jdk.graal.compiler.core.test.CustomizedBytecodePattern;
 import jdk.graal.compiler.core.test.SubprocessTest;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -53,7 +61,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * -XX:+AlwaysSafeConstructors is specified.
  */
 @AddExports("java.base/jdk.internal.vm.annotation")
-public class SafeConstructionTest extends SubprocessTest {
+public class SafeConstructionTest extends SubprocessTest implements CustomizedBytecodePattern {
 
     static class TestClass {
         int a;
@@ -96,7 +104,7 @@ public class SafeConstructionTest extends SubprocessTest {
 
     private void checkStableWriteConstructors() {
         try {
-            Class<?> clazz = generatePrivilegedTestClass();
+            Class<?> clazz = lookupClass(MethodHandles.privateLookupIn(String.class, MethodHandles.lookup()), "java.lang.TestClass");
             List<Constructor<?>> constructors = List.of(clazz.getConstructor(), clazz.getConstructor(int.class), clazz.getConstructor(short.class));
             List<Constructor<?>> constructorsWithStableWrite = List.of(clazz.getConstructor(int.class), clazz.getConstructor(short.class));
 
@@ -110,56 +118,33 @@ public class SafeConstructionTest extends SubprocessTest {
         }
     }
 
-    /**
-     * This generates TestClass but in privileged location, allowing @Stable to be effective.
-     */
-    private static Class<?> generatePrivilegedTestClass() throws IllegalAccessException {
-        String clazzInternalName = "java/lang/TestClass";
-        String init = "<init>";
-        String aName = "a";
-        String bName = "b";
-        String intTypeDesc = int.class.descriptorString();
-
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-        cw.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, clazzInternalName, null, "java/lang/Object", null);
-        MethodVisitor mv;
-        cw.visitField(Opcodes.ACC_PRIVATE, aName, intTypeDesc, null, null);
-        FieldVisitor fv = cw.visitField(Opcodes.ACC_PRIVATE, bName, intTypeDesc, null, null);
-        fv.visitAnnotation(Stable.class.descriptorString(), true);
-
-        mv = cw.visitMethod(Opcodes.ACC_PUBLIC, init, MethodType.methodType(void.class).descriptorString(), null, null);
-        mv.visitCode();
-        mv.visitIntInsn(Opcodes.ALOAD, 0);
-        mv.visitInsn(Opcodes.ICONST_4);
-        mv.visitFieldInsn(Opcodes.PUTFIELD, clazzInternalName, aName, intTypeDesc);
-        mv.visitInsn(Opcodes.RETURN);
-        mv.visitMaxs(0, 0);
-        mv.visitEnd();
-
-        mv = cw.visitMethod(Opcodes.ACC_PUBLIC, init, MethodType.methodType(void.class, int.class).descriptorString(), null, null);
-        mv.visitCode();
-        mv.visitIntInsn(Opcodes.ALOAD, 0);
-        mv.visitIntInsn(Opcodes.ILOAD, 1);
-        mv.visitFieldInsn(Opcodes.PUTFIELD, clazzInternalName, bName, intTypeDesc);
-        mv.visitInsn(Opcodes.RETURN);
-        mv.visitMaxs(0, 0);
-        mv.visitEnd();
-
-        mv = cw.visitMethod(Opcodes.ACC_PUBLIC, init, MethodType.methodType(void.class, short.class).descriptorString(), null, null);
-        mv.visitCode();
-        mv.visitIntInsn(Opcodes.ALOAD, 0);
-        mv.visitInsn(Opcodes.DUP);
-        mv.visitInsn(Opcodes.ICONST_0);
-        mv.visitFieldInsn(Opcodes.PUTFIELD, clazzInternalName, bName, intTypeDesc);
-        mv.visitIntInsn(Opcodes.ILOAD, 1);
-        mv.visitFieldInsn(Opcodes.PUTFIELD, clazzInternalName, aName, intTypeDesc);
-        mv.visitInsn(Opcodes.RETURN);
-        mv.visitMaxs(0, 0);
-        mv.visitEnd();
-
-        cw.visitEnd();
-
-        MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(String.class, MethodHandles.lookup());
-        return lookup.defineClass(cw.toByteArray());
+    @Override
+    public byte[] generateClass(String className) {
+        ClassDesc thisClass = ClassDesc.of(className);
+        // @formatter:off
+        return ClassFile.of().build(thisClass, classBuilder -> classBuilder
+                        .withField("a", CD_int, ACC_PRIVATE)
+                        .withField("b", CD_int, fieldBuilder -> fieldBuilder
+                                        .withFlags(ACC_PRIVATE)
+                                        .with(RuntimeVisibleAnnotationsAttribute.of(Annotation.of(ClassDesc.of("jdk.internal.vm.annotation.Stable")))))
+                        .withMethodBody(INIT_NAME, MTD_void, ACC_PUBLIC, b -> b
+                                        .aload(0)
+                                        .iconst_4()
+                                        .putfield(thisClass, "a", CD_int)
+                                        .return_())
+                        .withMethodBody(INIT_NAME, MethodTypeDesc.of(CD_void, CD_int), ACC_PUBLIC, b -> b
+                                        .aload(0)
+                                        .iload(1)
+                                        .putfield(thisClass, "b", CD_int)
+                                        .return_())
+                        .withMethodBody(INIT_NAME, MethodTypeDesc.of(CD_void, CD_short), ACC_PUBLIC, b -> b
+                                        .aload(0)
+                                        .dup()
+                                        .iconst_0()
+                                        .putfield(thisClass, "b", CD_int)
+                                        .iload(1)
+                                        .putfield(thisClass, "a", CD_int)
+                                        .return_()));
+        // @formatter:on
     }
 }

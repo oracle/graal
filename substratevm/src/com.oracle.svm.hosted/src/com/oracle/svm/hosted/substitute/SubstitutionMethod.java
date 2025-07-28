@@ -178,6 +178,11 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
     }
 
     @Override
+    public boolean isDeclared() {
+        return original.isDeclared();
+    }
+
+    @Override
     public boolean isClassInitializer() {
         return original.isClassInitializer();
     }

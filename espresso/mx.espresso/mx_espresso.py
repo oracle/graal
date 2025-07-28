@@ -140,11 +140,6 @@ def jvm_standalone_deps():
             "sulong:SULONG_NATIVE",
             "sulong:SULONG_NFI",
         ]
-        if mx.suite('sulong-managed', fatalIfMissing=False):
-            result += [
-                'sulong-managed:SULONG_ENTERPRISE',
-                'sulong-managed:SULONG_ENTERPRISE_NATIVE',
-            ]
     if mx.suite('truffle-enterprise', fatalIfMissing=False):
         result.append('truffle-enterprise:TRUFFLE_ENTERPRISE')
     return result
@@ -181,9 +176,9 @@ def _run_java_truffle(args=None, cwd=None, nonZeroIsFatal=True, out=None, err=No
 
 def _run_espresso(args=None, cwd=None, nonZeroIsFatal=True, out=None, err=None, timeout=None):
     if _has_native_espresso_standalone():
-        _run_java_truffle(args, cwd, nonZeroIsFatal, out, err, timeout)
+        return _run_java_truffle(args, cwd, nonZeroIsFatal, out, err, timeout)
     else:
-        _run_espresso_launcher(args, cwd, nonZeroIsFatal, out, err, timeout)
+        return _run_espresso_launcher(args, cwd, nonZeroIsFatal, out, err, timeout)
 
 
 def _run_espresso_meta(args, nonZeroIsFatal=True, timeout=None):
@@ -434,8 +429,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     truffle_jars=['espresso:ESPRESSO', 'espresso-shared:ESPRESSO_SHARED'],
     support_distributions=['espresso:ESPRESSO_GRAALVM_SUPPORT'],
     library_configs=[espresso_library_config],
-    polyglot_lib_jar_dependencies=['espresso:LIB_JAVAVM'],
-    has_polyglot_lib_entrypoints=True,
     priority=1,
     stability=_espresso_stability,
 ))
@@ -483,14 +476,14 @@ def _espresso_input_jdk():
 def get_java_home_dep():
     global _java_home_dep
     if _java_home_dep is None:
-        _java_home_dep = JavaHomeDependency(_suite, "JAVA_HOME", _espresso_input_jdk().home)
+        _java_home_dep = JavaHomeDependency(_suite, "ESPRESSO_JAVA_HOME", _espresso_input_jdk().home)
     return _java_home_dep
 
 
 def get_llvm_java_home_dep():
     global _llvm_java_home_dep
     if _llvm_java_home_dep is None and jvm_standalone_with_llvm():
-        _llvm_java_home_dep = JavaHomeDependency(_suite, "LLVM_JAVA_HOME", espresso_llvm_java_home)
+        _llvm_java_home_dep = JavaHomeDependency(_suite, "ESPRESSO_LLVM_JAVA_HOME", espresso_llvm_java_home)
     return _llvm_java_home_dep
 
 def jvm_standalone_with_llvm():
@@ -534,8 +527,8 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         register_distribution(llvm_java_home_dep)
         register_distribution(mx.LayoutTARDistribution(_suite, 'ESPRESSO_LLVM_SUPPORT', [], {
             "lib/llvm/default/": [
-                f"dependency:LLVM_JAVA_HOME/{jdk_lib_dir}/{lib_prefix}*{lib_suffix}",
-                "dependency:LLVM_JAVA_HOME/release"
+                f"dependency:ESPRESSO_LLVM_JAVA_HOME/{jdk_lib_dir}/{lib_prefix}*{lib_suffix}",
+                "dependency:ESPRESSO_LLVM_JAVA_HOME/release"
             ],
         }, None, True, None))
         register_distribution(mx.LayoutDirDistribution(_suite, 'ESPRESSO_STANDALONE_LLVM_HOME', [], {
@@ -572,18 +565,25 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         }, None, True, None, platforms='local', ignore=ignore_msg))
 
     register_espresso_runtime_resources(register_project, register_distribution, _suite)
+    deliverable_variant = mx.get_env('ESPRESSO_DELIVERABLE_VARIANT')
+    if deliverable_variant:
+        suffix = '-' + deliverable_variant.lower()
+        dist_suffix = '_' + deliverable_variant.upper()
+    else:
+        suffix = ''
+        dist_suffix = ''
     register_distribution(DeliverableStandaloneArchive(_suite,
         standalone_dist='ESPRESSO_NATIVE_STANDALONE',
-        community_archive_name="espresso-community",
-        enterprise_archive_name="espresso",
-        community_dist_name=f'GRAALVM_ESPRESSO_COMMUNITY_JAVA{java_home_dep.major_version}',
-        enterprise_dist_name=f'GRAALVM_ESPRESSO_JAVA{java_home_dep.major_version}'))
+        community_archive_name=f"espresso-community-java{java_home_dep.major_version}{suffix}",
+        enterprise_archive_name=f"espresso-java{java_home_dep.major_version}{suffix}",
+        community_dist_name=f'GRAALVM_ESPRESSO_COMMUNITY_JAVA{java_home_dep.major_version}{dist_suffix}',
+        enterprise_dist_name=f'GRAALVM_ESPRESSO_JAVA{java_home_dep.major_version}{dist_suffix}'))
 
 
-def espresso_resources_suite():
+def espresso_resources_suite(java_home_dep=None):
     # Espresso resources are in the CE/EE suite depending on espresso java home type
     # or in espresso if there is no EE suite
-    java_home_dep = get_java_home_dep()
+    java_home_dep = java_home_dep or get_java_home_dep()
     if java_home_dep.is_ee_implementor and mx.suite('espresso-tests', fatalIfMissing=False):
         return 'espresso-tests'
     else:
@@ -591,12 +591,45 @@ def espresso_resources_suite():
 
 
 def register_espresso_runtime_resources(register_project, register_distribution, suite):
-    java_home_dep = get_java_home_dep()
-    llvm_java_home_dep = get_llvm_java_home_dep()
-    is_ee_suite = suite != _suite
     if espresso_resources_suite() != suite.name:
         return
+    register_espresso_runtime_resource(get_java_home_dep(), get_llvm_java_home_dep(), register_project, register_distribution, suite, True)
+    extra_java_homes = mx.get_env('EXTRA_ESPRESSO_JAVA_HOMES')
+    if extra_java_homes:
+        extra_java_homes = extra_java_homes.split(os.pathsep)
+    else:
+        extra_java_homes = []
+    extra_llvm_java_homes = mx.get_env('EXTRA_ESPRESSO_LLVM_JAVA_HOMES')
+    if extra_llvm_java_homes:
+        extra_llvm_java_homes = extra_llvm_java_homes.split(os.pathsep)
+    else:
+        extra_llvm_java_homes = []
+    if extra_llvm_java_homes:
+        if len(extra_llvm_java_homes) != len(extra_java_homes):
+            raise mx.abort("EXTRA_ESPRESSO_LLVM_JAVA_HOMES must either be empty or contain as many elements as EXTRA_ESPRESSO_JAVA_HOMES")
+    else:
+        extra_llvm_java_homes = [None] * len(extra_java_homes)
 
+    versions = {get_java_home_dep().major_version}
+    for extra_java_home, extra_llvm_java_home in zip(extra_java_homes, extra_llvm_java_homes):
+        extra_java_home_dep = JavaHomeDependency(suite, "ESPRESSO_JAVA_HOME_<version>", extra_java_home)
+        if extra_java_home_dep.major_version in versions:
+            raise mx.abort("Each entry in EXTRA_ESPRESSO_JAVA_HOMES should have a different java version, and they should all be different from ESPRESSO_JAVA_HOME's version")
+        versions.add(extra_java_home_dep.major_version)
+        if extra_llvm_java_home:
+            extra_llvm_java_home_dep = JavaHomeDependency(suite, "ESPRESSO_LLVM_JAVA_HOME_<version>", extra_llvm_java_home)
+        else:
+            extra_llvm_java_home_dep = None
+        if espresso_resources_suite(extra_java_home_dep) != suite.name:
+            continue
+        register_distribution(extra_java_home_dep)
+        if extra_llvm_java_home_dep:
+            register_distribution(extra_llvm_java_home_dep)
+        register_espresso_runtime_resource(extra_java_home_dep, extra_llvm_java_home_dep, register_project, register_distribution, suite, False)
+
+
+def register_espresso_runtime_resource(java_home_dep, llvm_java_home_dep, register_project, register_distribution, suite, is_main):
+    is_ee_suite = suite != _suite
     if llvm_java_home_dep:
         lib_prefix = mx.add_lib_prefix('')
         lib_suffix = mx.add_lib_suffix('')
@@ -624,7 +657,7 @@ def register_espresso_runtime_resources(register_project, register_distribution,
                 raise mx.abort("The implementors for ESPRESSO's JAVA_HOME and LLVM JAVA_HOME don't match")
         llvm_runtime_dir = {
             "source_type": "dependency",
-            "dependency": "espresso:LLVM_JAVA_HOME",
+            "dependency": llvm_java_home_dep.qualifiedName(),
             "path": f"{jdk_lib_dir}/<lib:*>",
         }
     else:
@@ -643,16 +676,17 @@ def register_espresso_runtime_resources(register_project, register_distribution,
             "man",
         ]
     if java_home_dep.is_ee_implementor:
-        espresso_runtime_resource_name = "jdk" + str(java_home_dep.major_version)
+        espresso_runtime_resource_name = f"jdk{java_home_dep.major_version}"
     else:
-        espresso_runtime_resource_name = "openjdk" + str(java_home_dep.major_version)
+        espresso_runtime_resource_name = f"openjdk{java_home_dep.major_version}"
+    runtime_dir_dist_name = f"ESPRESSO_RUNTIME_DIR_{java_home_dep.major_version}"
     register_distribution(mx.LayoutDirDistribution(
-        suite, "ESPRESSO_RUNTIME_DIR",
+        suite, runtime_dir_dist_name,
         deps=[],
         layout={
             f"META-INF/resources/java/espresso-runtime-{espresso_runtime_resource_name}/<os>/<arch>/": {
                 "source_type": "dependency",
-                "dependency": "espresso:JAVA_HOME",
+                "dependency": java_home_dep.qualifiedName(),
                 "path": "*",
                 "exclude": [
                     "include",
@@ -679,18 +713,23 @@ def register_espresso_runtime_resources(register_project, register_distribution,
         hashEntry=f"META-INF/resources/java/espresso-runtime-{espresso_runtime_resource_name}/<os>/<arch>/sha256",
         fileListEntry=f"META-INF/resources/java/espresso-runtime-{espresso_runtime_resource_name}/<os>/<arch>/files",
         maven=False))
+    runtime_resources_project_name = f'com.oracle.truffle.espresso.resources.runtime.{espresso_runtime_resource_name}'
     if register_project:
         # com.oracle.truffle.espresso.resources.runtime
-        register_project(EspressoRuntimeResourceProject(suite, 'src', espresso_runtime_resource_name, suite.defaultLicense))
+        register_project(EspressoRuntimeResourceProject(suite, runtime_resources_project_name, 'src', espresso_runtime_resource_name, suite.defaultLicense))
 
+    if is_main:
+        runtime_resources_dist_name = "ESPRESSO_RUNTIME_RESOURCES"
+    else:
+        runtime_resources_dist_name = f"ESPRESSO_RUNTIME_RESOURCES_{java_home_dep.major_version}"
     register_distribution(mx_jardistribution.JARDistribution(
-        suite, "ESPRESSO_RUNTIME_RESOURCES", None, None, None,
+        suite, runtime_resources_dist_name, None, None, None,
         moduleInfo={
-            "name": "org.graalvm.espresso.resources.runtime",
+            "name": f"org.graalvm.espresso.resources.runtime.{espresso_runtime_resource_name}",
         },
         deps=[
-            "com.oracle.truffle.espresso.resources.runtime",
-            "ESPRESSO_RUNTIME_DIR",
+            runtime_resources_project_name,
+            runtime_dir_dist_name,
         ],
         mainClass=None,
         excludedLibs=[],
@@ -709,8 +748,7 @@ def register_espresso_runtime_resources(register_project, register_distribution,
 
 
 class EspressoRuntimeResourceProject(mx.JavaProject):
-    def __init__(self, suite, subDir, runtime_name, theLicense):
-        name = f'com.oracle.truffle.espresso.resources.runtime'
+    def __init__(self, suite, name, subDir, runtime_name, theLicense):
         project_dir = join(suite.dir, subDir, name)
         deps = ['truffle:TRUFFLE_API']
         super().__init__(suite, name, subDir=subDir, srcDirs=[], deps=deps,
@@ -727,12 +765,20 @@ class EspressoRuntimeResourceProject(mx.JavaProject):
 
 
 class EspressoRuntimeResourceBuildTask(mx.JavaBuildTask):
+    subject: EspressoRuntimeResourceProject
+
     def __str__(self):
         return f'Generating {self.subject.name} internal resource and compiling it with {self._getCompiler().name()}'
 
     @staticmethod
     def _template_file():
         return join(_suite.mxDir, 'espresso_runtime_resource.template')
+
+    def witness_file(self):
+        return join(self.subject.get_output_root(), 'witness')
+
+    def witness_contents(self):
+        return self.subject.resource_id
 
     def needsBuild(self, newestInput):
         is_needed, reason = mx.ProjectBuildTask.needsBuild(self, newestInput)
@@ -748,6 +794,13 @@ class EspressoRuntimeResourceBuildTask(mx.JavaBuildTask):
         ])
         if newestInput is None or newestInput.isOlderThan(template_ts):
             newestInput = template_ts
+        witness_file = self.witness_file()
+        if not exists(witness_file):
+            return True, witness_file + " doesn't exist"
+        expected = self.witness_contents()
+        with open(witness_file, 'r', encoding='utf-8') as f:
+            if f.read() != expected:
+                return True, "Outdated content"
         return super().needsBuild(newestInput)
 
     @staticmethod
@@ -791,6 +844,10 @@ class EspressoRuntimeResourceBuildTask(mx.JavaBuildTask):
         with mx_util.SafeFileCreation(target_file) as sfc, open(sfc.tmpPath, 'w', encoding='utf-8') as f:
             f.write(file_content)
         super(EspressoRuntimeResourceBuildTask, self).build()
+        witness_file = self.witness_file()
+        mx_util.ensure_dirname_exists(witness_file)
+        with mx_util.SafeFileCreation(witness_file) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as outfile:
+            outfile.write(self.witness_contents())
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(

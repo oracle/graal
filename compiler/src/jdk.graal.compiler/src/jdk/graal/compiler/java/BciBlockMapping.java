@@ -235,8 +235,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -264,6 +262,9 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.util.CollectionsUtil;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaMethod;
@@ -317,7 +318,7 @@ public class BciBlockMapping implements JavaMethodContext {
     protected static final int UNASSIGNED_ID = -1;
 
     private static final BitSet SHARED_EMPTY_BITSET = new BitSet();
-    private static final Set<BciBlock> SHARED_EMPTY_BCIBLOCK_SET = Set.of();
+    private static final Set<BciBlock> SHARED_EMPTY_BCIBLOCK_SET = CollectionsUtil.setOf();
 
     public static class BciBlock implements Cloneable {
 
@@ -1025,7 +1026,7 @@ public class BciBlockMapping implements JavaMethodContext {
             return SHARED_EMPTY_BCIBLOCK_SET;
         }
 
-        Set<BciBlock> requestedBlockStarts = new HashSet<>();
+        Set<BciBlock> requestedBlockStarts = new EconomicHashSet<>();
         // start basic blocks at all exception handler blocks and mark them as exception entries
         for (int i = 0; i < exceptionHandlers.length; i++) {
             ExceptionHandler h = exceptionHandlers[i];
@@ -1646,7 +1647,7 @@ public class BciBlockMapping implements JavaMethodContext {
             return "no blockmap";
         }
         StringBuilder sb = new StringBuilder();
-        Map<BciBlock, Integer> debugIds = new HashMap<>();
+        Map<BciBlock, Integer> debugIds = new EconomicHashMap<>();
         int[] nextDebugId = new int[]{-2};
         ToIntFunction<BciBlock> getId = b -> {
             int id = b.getId();

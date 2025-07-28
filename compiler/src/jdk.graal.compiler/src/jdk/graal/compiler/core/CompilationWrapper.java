@@ -38,6 +38,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.Formatter;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -493,8 +495,11 @@ public abstract class CompilationWrapper<T> {
                             failed, total, rate, TimeUnit.NANOSECONDS.toMillis(periodNS), option, maxRateValue);
             msg.format("To mitigate systemic compilation failure detection, set %s to a higher value. ", option);
             msg.format("To disable systemic compilation failure detection, set %s to 0. ", option);
-            msg.format("To get more information on compilation failures, set %s to Print or Diagnose. ", GraalCompilerOptions.CompilationFailureAction.getName());
+            StringWriter sw = new StringWriter();
+            cause.printStackTrace(new PrintWriter(sw));
+            msg.format("Current failure: %s", sw);
             TTY.println(msg.toString());
+
             if (maxRateValue < 0) {
                 // A negative value means the VM should be exited
                 return true;

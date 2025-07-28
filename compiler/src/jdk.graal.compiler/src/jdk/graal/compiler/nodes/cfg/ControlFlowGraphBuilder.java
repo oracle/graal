@@ -28,7 +28,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 
 public class ControlFlowGraphBuilder {
     private final StructuredGraph structuredGraph;
-    private boolean backendBlocks;
+    private boolean modifiableBlocks;
     private boolean connectBlocks;
     private boolean computeFrequency;
     private boolean computeLoops;
@@ -39,8 +39,8 @@ public class ControlFlowGraphBuilder {
         this.structuredGraph = structuredGraph;
     }
 
-    public ControlFlowGraphBuilder backendBlocks(boolean backendBlocksParam) {
-        this.backendBlocks = backendBlocksParam;
+    public ControlFlowGraphBuilder modifiableBlocks(boolean backendBlocksParam) {
+        this.modifiableBlocks = backendBlocksParam;
         return this;
     }
 
@@ -70,6 +70,6 @@ public class ControlFlowGraphBuilder {
     }
 
     public ControlFlowGraph build() {
-        return ControlFlowGraph.compute(structuredGraph, backendBlocks, connectBlocks, computeFrequency, computeLoops, computeDominators, computePostdominators);
+        return ControlFlowGraph.compute(structuredGraph, modifiableBlocks, connectBlocks, computeFrequency, computeLoops, computeDominators, computePostdominators);
     }
 }

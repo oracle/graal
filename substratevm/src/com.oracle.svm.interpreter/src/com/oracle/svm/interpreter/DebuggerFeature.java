@@ -65,7 +65,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.FunctionPointerHolder;
-import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -77,6 +76,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.DeoptimizationFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageGenerator;
+import com.oracle.svm.hosted.SymbolsFeature;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.image.NativeImageHeap;
@@ -151,7 +151,8 @@ public class DebuggerFeature implements InternalFeature {
         return Arrays.asList(
                         DeoptimizationFeature.class,
                         InterpreterFeature.class,
-                        IdentityMethodAddressResolverFeature.class);
+                        IdentityMethodAddressResolverFeature.class,
+                        SymbolsFeature.class);
     }
 
     private static Class<?> getArgumentClass(GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, ValueNode arg) {
@@ -437,9 +438,6 @@ public class DebuggerFeature implements InternalFeature {
         for (HostedType hostedType : hUniverse.getTypes()) {
             iUniverse.mirrorSVMVTable(hostedType, objectType -> accessImpl.getHeapScanner().rescanField(objectType, vtableHolderField));
         }
-
-        HostedMethod methodNotCompiledHandler = hMetaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
-        InterpreterMethodPointerHolder.setMethodNotCompiledHandler(new MethodPointer(methodNotCompiledHandler));
 
         // Allow methods that call System.arraycopy to be interpreted.
         try {

@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -59,6 +60,10 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.graal.pointsto.meta.AnalysisElement;
+import com.oracle.graal.pointsto.meta.AnalysisElement.ElementNotification;
+import com.oracle.graal.pointsto.meta.AnalysisElement.MethodOverrideReachableNotification;
+import com.oracle.graal.pointsto.meta.AnalysisElement.SubtypeReachableNotification;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -358,14 +363,13 @@ public class FeatureImpl {
     public static class BeforeAnalysisAccessImpl extends AnalysisAccessBase implements Feature.BeforeAnalysisAccess {
 
         private final NativeLibraries nativeLibraries;
-        private final ReachabilityHandler reachabilityHandler;
         private final ClassForNameSupport classForNameSupport;
+        private final Map<Consumer<DuringAnalysisAccess>, ElementNotification> reachabilityNotifications = new ConcurrentHashMap<>();
 
         public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries,
                         DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
             this.nativeLibraries = nativeLibraries;
-            this.reachabilityHandler = new ConcurrentReachabilityHandler();
             this.classForNameSupport = ClassForNameSupport.currentLayer();
         }
 
@@ -469,22 +473,80 @@ public class FeatureImpl {
 
         @Override
         public void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Object... elements) {
-            reachabilityHandler.registerReachabilityHandler(this, callback, elements);
+            /*
+             * All callback->notification pairs are tracked by the reachabilityNotifications map to
+             * prevent registering the same callback multiple times. The notifications are also
+             * tracked by each AnalysisElement, i.e., each trigger, and are removed as soon as they
+             * are notified.
+             */
+            ElementNotification notification = reachabilityNotifications.computeIfAbsent(callback, ElementNotification::new);
+
+            if (notification.isNotified()) {
+                /* Already notified from an earlier registration, nothing to do. */
+                return;
+            }
+
+            for (Object trigger : elements) {
+                AnalysisElement analysisElement = switch (trigger) {
+                    case Class<?> clazz -> getMetaAccess().lookupJavaType(clazz);
+                    case Field field -> getMetaAccess().lookupJavaField(field);
+                    case Executable executable -> getMetaAccess().lookupJavaMethod(executable);
+                    default -> throw UserError.abort("'registerReachabilityHandler' called with an element that is not a Class, Field, or Executable: %s",
+                                    trigger.getClass().getTypeName());
+                };
+
+                analysisElement.registerReachabilityNotification(notification);
+                if (analysisElement.isTriggered()) {
+                    /*
+                     * Element already triggered, just notify the callback. At this point we could
+                     * just notify the callback and bail out, but, for debugging, it may be useful
+                     * to execute the notification for each trigger. Note that although the
+                     * notification can be shared between multiple triggers the notification
+                     * mechanism ensures that the callback itself is only executed once.
+                     */
+                    analysisElement.notifyReachabilityCallback(getUniverse(), notification);
+                }
+            }
         }
 
         @Override
         public void registerMethodOverrideReachabilityHandler(BiConsumer<DuringAnalysisAccess, Executable> callback, Executable baseMethod) {
-            reachabilityHandler.registerMethodOverrideReachabilityHandler(this, callback, baseMethod);
+            AnalysisMethod baseAnalysisMethod = getMetaAccess().lookupJavaMethod(baseMethod);
+            MethodOverrideReachableNotification notification = new MethodOverrideReachableNotification(callback);
+            baseAnalysisMethod.registerOverrideReachabilityNotification(notification);
+
+            /*
+             * Notify for already reachable overrides. When a new override becomes reachable all
+             * installed reachability callbacks in the supertypes declaring the method are
+             * triggered.
+             */
+            for (AnalysisMethod override : reachableMethodOverrides(baseAnalysisMethod)) {
+                notification.notifyCallback(getUniverse(), override);
+            }
         }
 
         @Override
         public void registerSubtypeReachabilityHandler(BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass) {
-            reachabilityHandler.registerSubtypeReachabilityHandler(this, callback, baseClass);
+            AnalysisType baseType = getMetaAccess().lookupJavaType(baseClass);
+            SubtypeReachableNotification notification = new SubtypeReachableNotification(callback);
+            baseType.registerSubtypeReachabilityNotification(notification);
+
+            /*
+             * Notify for already reachable subtypes. When a new type becomes reachable all
+             * installed reachability callbacks in the supertypes are triggered.
+             */
+            for (AnalysisType subtype : reachableSubtypes(baseType)) {
+                notification.notifyCallback(getUniverse(), subtype);
+            }
         }
 
         @Override
         public void registerClassInitializerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Class<?> clazz) {
-            reachabilityHandler.registerClassInitializerReachabilityHandler(this, callback, clazz);
+            /*
+             * In our current static analysis implementations, there is no difference between the
+             * reachability of a class and the reachability of its class initializer.
+             */
+            registerReachabilityHandler(callback, clazz);
         }
 
         @Override

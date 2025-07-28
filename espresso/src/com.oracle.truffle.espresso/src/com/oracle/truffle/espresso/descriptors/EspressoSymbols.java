@@ -99,6 +99,10 @@ public class EspressoSymbols {
         public static final Symbol<Type> jdk_internal_util_ArraysSupport = SYMBOLS.putType("Ljdk/internal/util/ArraysSupport;");
         public static final Symbol<Type> jdk_internal_util_SystemProps_Raw = SYMBOLS.putType("Ljdk/internal/util/SystemProps$Raw;");
 
+        // CDS
+        public static final Symbol<Type> jdk_internal_misc_CDS = SYMBOLS.putType("Ljdk/internal/misc/CDS;");
+        public static final Symbol<Type> jdk_internal_module_ArchivedBootLayer = SYMBOLS.putType("Ljdk/internal/module/ArchivedBootLayer;");
+
         // io
         public static final Symbol<Type> java_io_InputStream = SYMBOLS.putType("Ljava/io/InputStream;");
         public static final Symbol<Type> java_io_PrintStream = SYMBOLS.putType("Ljava/io/PrintStream;");
@@ -154,8 +158,10 @@ public class EspressoSymbols {
         public static final Symbol<Type> jdk_internal_module_Modules = SYMBOLS.putType("Ljdk/internal/module/Modules;");
         public static final Symbol<Type> java_lang_module_ModuleDescriptor = SYMBOLS.putType("Ljava/lang/module/ModuleDescriptor;");
 
-        // CRC32
+        // Espresso Libs
         public static final Symbol<Type> java_util_zip_CRC32 = SYMBOLS.putType("Ljava/util/zip/CRC32;");
+        public static final Symbol<Type> java_util_zip_Inflater = SYMBOLS.putType("Ljava/util/zip/Inflater;");
+        public static final Symbol<Type> java_util_zip_DataFormatException = SYMBOLS.putType("Ljava/util/zip/DataFormatException;");
 
         // URL class loader
         public static final Symbol<Type> java_net_URLClassLoader = SYMBOLS.putType("Ljava/net/URLClassLoader;");
@@ -317,7 +323,6 @@ public class EspressoSymbols {
         public static final Symbol<Type> java_lang_ref_Reference$Lock = SYMBOLS.putType("Ljava/lang/ref/Reference$Lock;");
 
         public static final Symbol<Type> sun_misc_Cleaner = SYMBOLS.putType("Lsun/misc/Cleaner;");
-        public static final Symbol<Type> jdk_internal_ref_Cleaner = SYMBOLS.putType("Ljdk/internal/ref/Cleaner;");
 
         public static final Symbol<Type> java_lang_StackTraceElement = SYMBOLS.putType("Ljava/lang/StackTraceElement;");
         public static final Symbol<Type> java_lang_StackTraceElement_array = SYMBOLS.putType("[Ljava/lang/StackTraceElement;");
@@ -618,6 +623,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> parent = SYMBOLS.putName("parent");
         public static final Symbol<Name> unnamedModule = SYMBOLS.putName("unnamedModule");
         public static final Symbol<Name> nameAndId = SYMBOLS.putName("nameAndId");
+        public static final Symbol<Name> resetArchivedStates = SYMBOLS.putName("resetArchivedStates");
         public static final Symbol<Name> HIDDEN_CLASS_LOADER_REGISTRY = SYMBOLS.putName("0HIDDEN_CLASS_LOADER_REGISTRY");
         // j.l.Module
         public static final Symbol<Name> loader = SYMBOLS.putName("loader");
@@ -752,6 +758,13 @@ public class EspressoSymbols {
         public static final Symbol<Name> instance = SYMBOLS.putName("instance");
         // java.util.zip
         public static final Symbol<Name> HIDDEN_CRC32 = SYMBOLS.putName("0HIDDEN_CRC32");
+        public static final Symbol<Name> inputConsumed = SYMBOLS.putName("inputConsumed");
+        public static final Symbol<Name> outputConsumed = SYMBOLS.putName("outputConsumed");
+        public static final Symbol<Name> len = SYMBOLS.putName("len");
+        public static final Symbol<Name> off = SYMBOLS.putName("off");
+        public static final Symbol<Name> needDict = SYMBOLS.putName("needDict");
+        public static final Symbol<Name> finished = SYMBOLS.putName("finished");
+        public static final Symbol<Name> buf = SYMBOLS.putName("buf");
         // java.lang.invoke.*
         // CallSite
         public static final Symbol<Name> target = SYMBOLS.putName("target");
@@ -822,6 +835,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> referent = SYMBOLS.putName("referent");
         // java.util.regex
         public static final Symbol<Name> parentPattern = SYMBOLS.putName("parentPattern");
+        public static final Symbol<Name> text = SYMBOLS.putName("text");
         public static final Symbol<Name> pattern = SYMBOLS.putName("pattern");
         public static final Symbol<Name> flags0 = SYMBOLS.putName("flags0");
         public static final Symbol<Name> compiled = SYMBOLS.putName("compiled");
@@ -942,6 +956,12 @@ public class EspressoSymbols {
         public static final Symbol<Name> entrySet = SYMBOLS.putName("entrySet");
         public static final Symbol<Name> hasNext = SYMBOLS.putName("hasNext");
         public static final Symbol<Name> toArray = SYMBOLS.putName("toArray");
+
+        // CDS
+        public static final Symbol<Name> IS_USING_ARCHIVE = SYMBOLS.putName("IS_USING_ARCHIVE");
+        public static final Symbol<Name> IS_DUMPING_STATIC_ARCHIVE = SYMBOLS.putName("IS_DUMPING_STATIC_ARCHIVE");
+        public static final Symbol<Name> archivedBootLayer = SYMBOLS.putName("archivedBootLayer");
+
         // j.l.Object
         public static final Symbol<Name> HIDDEN_SYSTEM_IHASHCODE = SYMBOLS.putName("0HIDDEN_SYSTEM_IHASHCODE");
         // MemberName
@@ -967,6 +987,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> HIDDEN_THREAD_PARK_LOCK = SYMBOLS.putName("0HIDDEN_THREAD_PARK_LOCK");
         public static final Symbol<Name> HIDDEN_HOST_THREAD = SYMBOLS.putName("0HIDDEN_HOST_THREAD");
         public static final Symbol<Name> HIDDEN_ESPRESSO_MANAGED = SYMBOLS.putName("0HIDDEN_ESPRESSO_MANAGED");
+        public static final Symbol<Name> HIDDEN_TO_NATIVE_LOCK = SYMBOLS.putName("0HIDDEN_TO_NATIVE_LOCK");
         public static final Symbol<Name> HIDDEN_INTERRUPTED = SYMBOLS.putName("0HIDDEN_INTERRUPTED");
         public static final Symbol<Name> HIDDEN_THREAD_PENDING_MONITOR = SYMBOLS.putName("0HIDDEN_THREAD_PENDING_MONITOR");
         public static final Symbol<Name> HIDDEN_THREAD_WAITING_MONITOR = SYMBOLS.putName("0HIDDEN_THREAD_WAITING_MONITOR");
@@ -984,9 +1005,11 @@ public class EspressoSymbols {
         public static final Symbol<Name> HIDDEN_TREGEX_MATCH = SYMBOLS.putName("0HIDDEN_TREGEX_MATCH");
         public static final Symbol<Name> HIDDEN_TREGEX_FULLMATCH = SYMBOLS.putName("0HIDDEN_TREGEX_FULLMATCH");
         public static final Symbol<Name> HIDDEN_TREGEX_SEARCH = SYMBOLS.putName("0HIDDEN_TREGEX_SEARCH");
-        public static final Symbol<Name> HIDDEN_TREGEX_UNSUPPORTED = SYMBOLS.putName("0HIDDEN_TREGEX_UNSUPPORTED");
+        public static final Symbol<Name> HIDDEN_TREGEX_STATUS = SYMBOLS.putName("0HIDDEN_TREGEX_STATUS");
         // Matcher
         public static final Symbol<Name> HIDDEN_TREGEX_TSTRING = SYMBOLS.putName("0HIDDEN_TREGEX_TSTRING");
+        public static final Symbol<Name> HIDDEN_TREGEX_TEXT_SYNC = SYMBOLS.putName("0HIDDEN_TREGEX_TEXT_SYNC");
+        public static final Symbol<Name> HIDDEN_TREGEX_PATTERN_SYNC = SYMBOLS.putName("0HIDDEN_TREGEX_PATTERN_SYNC");
         public static final Symbol<Name> HIDDEN_TREGEX_OLD_LAST_BACKUP = SYMBOLS.putName("0HIDDEN_TREGEX_OLD_LAST_BACKUP");
         public static final Symbol<Name> HIDDEN_TREGEX_MOD_COUNT_BACKUP = SYMBOLS.putName("0HIDDEN_TREGEX_MOD_COUNT_BACKUP");
         public static final Symbol<Name> HIDDEN_TREGEX_TRANSPARENT_BOUNDS_BACKUP = SYMBOLS.putName("0HIDDEN_TREGEX_TRANSPARENT_BOUNDS_BACKUP");
@@ -1355,12 +1378,15 @@ public class EspressoSymbols {
                         Types.java_lang_Object);
         public static final Symbol<Signature> UnknownKeyException_Object_Throwable = SYMBOLS.putSignature(Types.com_oracle_truffle_espresso_polyglot_UnknownKeyException,
                         Types.java_lang_Object, Types.java_lang_Throwable);
+        public static final Symbol<Signature> String_String = SYMBOLS.putSignature(Types.java_lang_String, Types.java_lang_String);
 
         // JVMCI
         public static final Symbol<Signature> EspressoJVMCIRuntime = SYMBOLS.putSignature(Types.com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime);
         public static final Symbol<Signature> _void_EspressoResolvedJavaType_int_Class = SYMBOLS.putSignature(Types._void, Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaType,
                         Types._int, Types.java_lang_Class);
         public static final Symbol<Signature> _void_EspressoResolvedInstanceType = SYMBOLS.putSignature(Types._void, Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType);
+        public static final Symbol<Signature> _void_EspressoResolvedInstanceType_boolean = SYMBOLS.putSignature(Types._void, Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType,
+                        Types._boolean);
         public static final Symbol<Signature> EspressoResolvedPrimitiveType_int = SYMBOLS.putSignature(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedPrimitiveType, Types._int);
         public static final Symbol<Signature> DummyEspressoGraalJVMCICompiler_JVMCIRuntime = SYMBOLS.putSignature(Types.jdk_graal_compiler_espresso_DummyEspressoGraalJVMCICompiler,
                         Types.jdk_vm_ci_runtime_JVMCIRuntime);
@@ -1377,8 +1403,10 @@ public class EspressoSymbols {
         public static final Symbol<Signature> PrimitiveConstant_float = SYMBOLS.putSignature(Types.jdk_vm_ci_meta_PrimitiveConstant, Types._float);
         public static final Symbol<Signature> PrimitiveConstant_double = SYMBOLS.putSignature(Types.jdk_vm_ci_meta_PrimitiveConstant, Types._double);
         public static final Symbol<Signature> PrimitiveConstant_char_long = SYMBOLS.putSignature(Types.jdk_vm_ci_meta_PrimitiveConstant, Types._char, Types._long);
-        public static final Symbol<Signature> _void_boolean_EspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array = SYMBOLS.putSignature(Types._void, Types._boolean,
-                        Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMethod, Types.java_lang_String, Types.jdk_vm_ci_meta_JavaConstant, Types.jdk_vm_ci_meta_JavaConstant_array);
+        public static final Symbol<Signature> _void_boolean_EspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array_int_EspressoConstantPool = SYMBOLS.putSignature(Types._void,
+                        Types._boolean, Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMethod, Types.java_lang_String, Types.jdk_vm_ci_meta_JavaConstant,
+                        Types.jdk_vm_ci_meta_JavaConstant_array, Types._int, Types.com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool);
+        public static final Symbol<Signature> UnresolvedJavaType_String = SYMBOLS.putSignature(Types.jdk_vm_ci_meta_UnresolvedJavaType, Types.java_lang_String);
 
         public static final Symbol<Signature> _void_sun_misc_Signal = SYMBOLS.putSignature(Types._void, Types.sun_misc_Signal);
         public static final Symbol<Signature> _void_jdk_internal_misc_Signal = SYMBOLS.putSignature(Types._void, Types.jdk_internal_misc_Signal);

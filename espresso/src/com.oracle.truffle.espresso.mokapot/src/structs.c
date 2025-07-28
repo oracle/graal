@@ -23,6 +23,7 @@
 
 #include "jvm.h"
 #include "jvmti.h"
+#include "jmm_common.h"
 #include "structs.h"
 
 #include <jni.h>
@@ -31,9 +32,9 @@
 #include <string.h>
 
 #define JNI_STRUCT_MEMBER_LIST(V) \
-	V(JavaVMAttachArgs, version) \
-	V(JavaVMAttachArgs, name) \
-	V(JavaVMAttachArgs, group) \
+    V(JavaVMAttachArgs, version) \
+    V(JavaVMAttachArgs, name) \
+    V(JavaVMAttachArgs, group)
 
 #define JVM_STRUCT_MEMBER_LIST(V) \
     V(jdk_version_info, jdk_version)
@@ -171,20 +172,29 @@
     V(_jvmtiEventCallbacks, VMObjectAlloc) \
     V(_jvmtiEventCallbacks, reserved85) \
     V(_jvmtiEventCallbacks, SampledObjectAlloc)
-    
+
+#define JMM_STRUCT_BITFIELD_MEMBER_LIST(V) \
+    V(jmmOptionalSupport, isLowMemoryDetectionSupported) \
+    V(jmmOptionalSupport, isCompilationTimeMonitoringSupported) \
+    V(jmmOptionalSupport, isThreadContentionMonitoringSupported) \
+    V(jmmOptionalSupport, isCurrentThreadCpuTimeSupported) \
+    V(jmmOptionalSupport, isOtherThreadCpuTimeSupported) \
+    V(jmmOptionalSupport, isObjectMonitorUsageSupported) \
+    V(jmmOptionalSupport, isSynchronizerUsageSupported) \
+    V(jmmOptionalSupport, isThreadAllocatedMemorySupported) \
+    V(jmmOptionalSupport, isRemoteDiagnosticCommandsSupported)
+
 #define MEMBER_INFO_STRUCT_MEMBER_LIST(V) \
     V(member_info, id) \
     V(member_info, offset) \
     V(member_info, next)
-    
+
 #define JNI_STRUCT_LIST(V) \
-	V(JavaVMAttachArgs) \
-	V(JavaVMAttachArgs) \
-	V(JavaVMAttachArgs) \
+    V(JavaVMAttachArgs)
 
 #define JVM_STRUCT_LIST(V) \
     V(jdk_version_info)
-    
+
 #define JVMTI_STRUCT_LIST(V) \
     V(_jvmtiThreadInfo) \
     V(_jvmtiMonitorStackDepthInfo) \
@@ -208,37 +218,44 @@
     V(_jvmtiTimerInfo) \
     V(_jvmtiAddrLocationMap) \
     V(_jvmtiEventCallbacks)
-    
+
+#define JMM_STRUCT_LIST(V) \
+    V(jmmOptionalSupport)
+
 #define MEMBER_INFO_STRUCT_LIST(V) \
     V(member_info)
 
 #define STRUCT_LIST_LIST(V) \
-	JNI_STRUCT_LIST(V) \
-	JVM_STRUCT_LIST(V) \
+    JNI_STRUCT_LIST(V) \
+    JVM_STRUCT_LIST(V) \
     JVMTI_STRUCT_LIST(V) \
+    JMM_STRUCT_LIST(V) \
     MEMBER_INFO_STRUCT_LIST(V)
-    
+
 #define STRUCT_MEMBER_LIST_LIST(V) \
-	JNI_STRUCT_MEMBER_LIST(V) \
-	JVM_STRUCT_MEMBER_LIST(V) \
+    JNI_STRUCT_MEMBER_LIST(V) \
+    JVM_STRUCT_MEMBER_LIST(V) \
     JVMTI_STRUCT_MEMBER_LIST(V) \
     MEMBER_INFO_STRUCT_MEMBER_LIST(V)
 
+#define STRUCT_BITFIELD_MEMBER_LIST_LIST(V) \
+    JMM_STRUCT_BITFIELD_MEMBER_LIST(V)
+
 void add_member_info(member_info** info, char* id, size_t offset) {
-	member_info* current = malloc(sizeof(struct member_info));
-	current->id = id;
-	current->offset = offset;
-	current->next = (*info);
-	*info = current;
+    member_info* current = malloc(sizeof(struct member_info));
+    current->id = id;
+    current->offset = offset;
+    current->next = (*info);
+    *info = current;
 }
 
 size_t lookup_member_info(member_info** info, char* id) {
-	for (member_info* current = *info; current != NULL; current = current->next) {
-		if (strcmp(id, current->id) == 0) {
-			return current->offset;
-		}
-	}
-	return -1;
+    for (member_info* current = *info; current != NULL; current = current->next) {
+        if (strcmp(id, current->id) == 0) {
+            return current->offset;
+        }
+    }
+    return -1;
 }
 
 void free_member_info(member_info** info) {
@@ -256,11 +273,52 @@ void free_member_info(member_info** info) {
 JNIEXPORT void JNICALL initializeStructs(void (*notify_member_offset_init)(void *)) {
   member_info** info = malloc(sizeof(struct member_info*));
   (*info) = NULL;
-	
+
   #define MEMBER_INFO__(STRUCT_NAME, MEMBER_NAME) \
     add_member_info(info, #STRUCT_NAME "." #MEMBER_NAME, offsetof(struct STRUCT_NAME, MEMBER_NAME));
-    
+
   STRUCT_MEMBER_LIST_LIST(MEMBER_INFO__)
+  #undef MEMBER_INFO__
+
+  // from com.oracle.svm.hosted.c.codegen.QueryCodeWriter#visitStructBitfieldInfo
+  #define MEMBER_INFO__(STRUCT_NAME, MEMBER_NAME) \
+    {                                             \
+      struct _w {                                 \
+        STRUCT_NAME s;                           \
+        jlong pad;                                \
+      } w;                                        \
+      char *p;                                    \
+      size_t byte_offset;                         \
+      unsigned char start_bit = 0, end_bit = 0;   \
+      jlong v;                                    \
+      jlong all_bits_set = -1;                    \
+      memset(&w, 0x0, sizeof(w));                 \
+      w.s.MEMBER_NAME = all_bits_set;             \
+      p = (char*)&w.s;                            \
+      byte_offset = 0;                            \
+      while (byte_offset < sizeof(w.s) && *(p + byte_offset) == 0) { \
+        byte_offset++;                            \
+      }                                           \
+      if (byte_offset >= sizeof(w.s)) {           \
+        start_bit = end_bit = -1;\
+      } else {                                    \
+        v = *((jlong*) (p + byte_offset));        \
+        while ((v & 0x1) == 0) {                  \
+          start_bit++;                            \
+          v = v >> 1;                             \
+        }                                         \
+        end_bit = start_bit;                      \
+        while (v != 1) {                          \
+          end_bit++;                              \
+          v = v >> 1;                             \
+        }                                         \
+      }                                           \
+      add_member_info(info, #STRUCT_NAME "." #MEMBER_NAME, byte_offset); \
+      add_member_info(info, #STRUCT_NAME "." #MEMBER_NAME ".StartBit", start_bit); \
+      add_member_info(info, #STRUCT_NAME "." #MEMBER_NAME ".EndBit", end_bit + 1); \
+    }
+
+    STRUCT_BITFIELD_MEMBER_LIST_LIST(MEMBER_INFO__)
   #undef MEMBER_INFO__
 
   #define STRUCT_INFO__(STRUCT_NAME) \
@@ -268,9 +326,9 @@ JNIEXPORT void JNICALL initializeStructs(void (*notify_member_offset_init)(void 
 
   STRUCT_LIST_LIST(STRUCT_INFO__)
   #undef STRUCT_INFO__
-  
+
   notify_member_offset_init(info);
-  
+
   free_member_info(info);
 }
 

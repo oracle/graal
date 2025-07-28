@@ -73,7 +73,7 @@ public final class Arguments {
 
     private static final Set<String> IGNORED_XX_OPTIONS = Set.of(
                     "ReservedCodeCacheSize",
-                    // `TieredStopAtLevel=0` is handled separately, other values are ignored
+                    // `TieredStopAtLevel=0|1` is handled separately, other values are ignored
                     "TieredStopAtLevel",
                     "MaxMetaspaceSize",
                     "HeapDumpOnOutOfMemoryError",
@@ -95,6 +95,7 @@ public final class Arguments {
 
         boolean ignoreUnrecognized = args.getIgnoreUnrecognized();
         boolean printFlagsFinal = false;
+        String argumentError = null;
         List<String> xOptions = new ArrayList<>();
 
         for (int i = 0; i < count; i++) {
@@ -218,8 +219,14 @@ public final class Arguments {
                         builder.option("engine.CompileImmediately", "true");
                     } else if (optionString.startsWith("-Xint") || "-XX:TieredStopAtLevel=0".equals(optionString)) {
                         builder.option("engine.Compilation", "false");
-                    } else if ("-Xshare:auto".equals(optionString) || "-Xshare:off".equals(optionString)) {
-                        // ignore
+                    } else if ("-XX:TieredStopAtLevel=1".equals(optionString)) {
+                        builder.option("engine.Mode", "latency");
+                    } else if (optionString.startsWith("-Xshare:")) {
+                        String value = optionString.substring("-Xshare:".length());
+                        builder.option("java.CDS", value);
+                    } else if (optionString.startsWith("--sun-misc-unsafe-memory-access=")) {
+                        String value = optionString.substring("--sun-misc-unsafe-memory-access=".length());
+                        builder.option("java.SunMiscUnsafeMemoryAccess", value);
                     } else if (optionString.startsWith("-XX:")) {
                         handler.handleXXArg(optionString);
                     } else if (optionString.startsWith("--help:")) {
@@ -237,12 +244,16 @@ public final class Arguments {
                     }
                 }
             } catch (ArgumentException e) {
-                if (!ignoreUnrecognized) {
-                    // Failed to parse
-                    warn(e.getMessage());
-                    return JNI_ERR();
+                // Failed to parse
+                if (argumentError == null) {
+                    argumentError = e.getMessage();
                 }
             }
+        }
+
+        if (argumentError != null && !ignoreUnrecognized) {
+            warn(argumentError);
+            return JNI_ERR();
         }
 
         for (String xOption : xOptions) {

@@ -73,7 +73,7 @@ public class WasmGCHeapLayouter implements ImageHeapLayouter {
     }
 
     @Override
-    public WasmGCImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize) {
+    public WasmGCImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize, ImageHeapLayouterCallback callback) {
         layoutPseudoPartition();
         doLayout();
 

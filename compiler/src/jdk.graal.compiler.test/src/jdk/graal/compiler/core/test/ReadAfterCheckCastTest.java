@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,10 +81,9 @@ public class ReadAfterCheckCastTest extends GraphScheduleTest {
         test("test1Snippet");
     }
 
-    @SuppressWarnings("try")
     private void test(final String snippet) {
         DebugContext debug = getDebugContext();
-        try (DebugContext.Scope s = debug.scope("ReadAfterCheckCastTest", new DebugDumpScope(snippet))) {
+        try (DebugContext.Scope _ = debug.scope("ReadAfterCheckCastTest", new DebugDumpScope(snippet))) {
             // check shape of graph, with lots of assumptions. will probably fail if graph
             // structure changes significantly
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);

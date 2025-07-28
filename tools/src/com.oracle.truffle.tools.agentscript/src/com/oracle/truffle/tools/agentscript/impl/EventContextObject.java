@@ -132,7 +132,7 @@ final class EventContextObject extends AbstractContextObject {
             Node instrumentableNode = findInstrumentableParent(n);
             if (instrumentableNode != null && lib.hasScope(instrumentableNode, frame)) {
                 try {
-                    Object frameVars = new CurrentScopeView(lib.getScope(instrumentableNode, frame, false));
+                    Object frameVars = lib.getScope(instrumentableNode, frame, false);
                     Object ret = iop.execute(callback, location, frameVars);
                     return iop.isNull(ret) ? null : ret;
                 } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException ex) {

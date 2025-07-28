@@ -38,6 +38,8 @@ import com.oracle.truffle.api.TruffleLogger;
  * JDWP. Each entity will be assigned a unique ID. Only weak references are kept for entities.
  */
 public final class Ids<T> {
+    public static final int ID_SIZE = 8;
+    private static final Pattern ANON_INNER_CLASS_PATTERN = Pattern.compile(".*\\$\\d+.*");
 
     private volatile long uniqueID = 1;
 
@@ -52,8 +54,6 @@ public final class Ids<T> {
      * implementing language.
      */
     private final T nullObject;
-
-    public static final Pattern ANON_INNER_CLASS_PATTERN = Pattern.compile(".*\\$\\d+.*");
 
     private HashMap<String, Long> innerClassIDMap = new HashMap<>(16);
 

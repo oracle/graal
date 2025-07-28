@@ -23,123 +23,42 @@
 package com.oracle.truffle.espresso.jni;
 
 import java.lang.ref.WeakReference;
-import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.Objects;
 import java.util.WeakHashMap;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Manages a collection of weak references associated to handles.
  */
-public class WeakHandles<T> {
-
-    private static final int DEFAULT_INITIAL_CAPACITY = 16;
-
+public final class WeakHandles<T> extends HandleStorage<T, WeakReference<T>> {
     private final WeakHashMap<T, Integer> map;
-    private final LinkedList<Integer> freeList = new LinkedList<>();
 
-    // Non-empty.
-    private WeakReference<T>[] handles;
+    @Override
+    WeakReference<T> toREF(T object) {
+        return new WeakReference<>(object);
+    }
 
-    /**
-     * Creates a handle collection pre-allocated capacity.
-     *
-     * @param initialCapacity must be > 0
-     */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public WeakHandles(int initialCapacity) {
-        if (initialCapacity <= 0) {
-            throw new IllegalArgumentException("initialCapacity must be > 0");
-        }
-        map = new WeakHashMap<>(initialCapacity);
-        handles = new WeakReference[initialCapacity];
+    @Override
+    T deREF(WeakReference<T> ref) {
+        return ref != null ? ref.get() : null;
     }
 
     public WeakHandles() {
-        this(DEFAULT_INITIAL_CAPACITY);
+        super(true);
+        map = new WeakHashMap<>(DEFAULT_INITIAL_CAPACITY);
     }
 
-    /**
-     * Creates a new handle for the given object or returns an existing handle if the object is
-     * already in the collection.
-     * 
-     * @return new or existing handle, provided handles are guanteed to be > 0
-     */
     @TruffleBoundary
-    public synchronized int handlify(T object) {
+    @Override
+    public synchronized long handlify(T object) {
         Objects.requireNonNull(object);
         Integer handle = map.get(object);
-        return handle != null
-                        ? handle
-                        : addHandle(object);
-    }
-
-    /**
-     * Returns the object associated with a handle. This operation is performance-critical,
-     * shouldn't block.
-     *
-     * @param index handle, must be > 0 and fit in an integer
-     * @return the object associated with the handle or null if was collected
-     */
-    @SuppressWarnings("unchecked")
-    public T getObject(long index) {
-        if (index <= 0) {
-            throw new IllegalArgumentException("index");
+        if (handle != null) {
+            return handle;
         }
-        WeakReference<T> weakRef = CompilerDirectives.castExact(handles[Math.toIntExact(index)], WeakReference.class);
-        return weakRef != null
-                        ? weakRef.get()
-                        : null;
-    }
-
-    /**
-     * Returns the handle associated with a given object.
-     * 
-     * @return The handle associated with the given object or -1 if the object doesn't have a handle
-     *         or the object was collected. A valid handle is guaranteed to be != 0.
-     */
-    @TruffleBoundary
-    public synchronized long getIndex(T object) {
-        Integer index = map.get(Objects.requireNonNull(object));
-        return index != null
-                        ? index
-                        : -1;
-    }
-
-    @TruffleBoundary
-    private int getFreeSlot() {
-        if (!freeList.isEmpty()) {
-            return freeList.removeFirst();
-        }
-        // 0 is a dummy entry, start at 1 to avoid NULL handles.
-        for (int i = 1; i < handles.length; ++i) {
-            if (handles[i] == null || handles[i].get() == null) {
-                freeList.addLast(i);
-            }
-        }
-        return freeList.isEmpty()
-                        ? -1
-                        : freeList.removeFirst();
-    }
-
-    @TruffleBoundary
-    private synchronized int addHandle(T object) {
-        Objects.requireNonNull(object);
-        int index = getFreeSlot();
-        if (index < 0) { // no slot available
-            WeakReference<T>[] newHandles = Arrays.copyOf(handles, 2 * handles.length);
-            for (int i = handles.length; i < newHandles.length; ++i) {
-                freeList.addLast(i);
-            }
-            handles = newHandles;
-            index = freeList.removeFirst();
-        }
-        assert index >= 0;
-        handles[index] = new WeakReference<>(object);
-        map.put(object, index);
-        return index;
+        handle = (int) super.handlify(object);
+        map.put(object, handle);
+        return handle;
     }
 }

@@ -28,12 +28,12 @@ package com.oracle.svm.hosted.webimage.wasmgc.phases;
 import com.oracle.svm.hosted.webimage.codegen.phase.OutlineRuntimeChecksPhase;
 import com.oracle.svm.hosted.webimage.codegen.phase.ReconstructionVerificationPhase;
 import com.oracle.svm.hosted.webimage.codegen.phase.WebImageLowTier;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.StackifierReconstructionPhase;
 import com.oracle.svm.hosted.webimage.wasm.phases.UnorderedIsTruePhase;
 import com.oracle.svm.hosted.webimage.wasm.phases.ValueDropPhase;
 import com.oracle.svm.hosted.webimage.wasm.phases.WasmStackifierReconstructionPhase;
 import com.oracle.svm.hosted.webimage.wasm.phases.WasmSwitchPhase;
 
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.StackifierReconstructionPhase;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.ExpandLogicPhase;

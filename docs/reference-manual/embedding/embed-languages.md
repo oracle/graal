@@ -27,7 +27,7 @@ permalink: /reference-manual/embed-languages/
 
 The [GraalVM Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html) lets you embed and run code from guest languages in Java host applications.
 
-Throughout this section, you will learn how to create a host application in Java that runs on GraalVM and directly calls a guest language. 
+Throughout this section, you will learn how to create a host application in Java that runs on GraalVM and directly calls a guest language.
 You can use the tabs beneath each code example to choose between JavaScript, R, Ruby, and Python.
 
 > Note: The usage description for polyglot embeddings was revised with GraalVM for JDK 21 and Polyglot API version 23.1.0. If you are still using Polyglot API version older than 23.1.0, ensure the correct version of the documentation is displayed. More information on the change can be found in the [release notes](https://www.graalvm.org/release-notes/JDK_21/#graalvm-for-jdk-21).
@@ -40,23 +40,23 @@ See the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-e
 
 Here is an example Maven dependency setup that you can put into your project:
 ```xml
-<dependency> 
-	<groupId>org.graalvm.polyglot</groupId> 
-	<artifactId>polyglot</artifactId> 
+<dependency>
+	<groupId>org.graalvm.polyglot</groupId>
+	<artifactId>polyglot</artifactId>
 	<version>${graalvm.polyglot.version}</version>
 </dependency>
-<dependency> 
+<dependency>
 	<groupId>org.graalvm.polyglot</groupId>
 	<!-- Select a language: js, ruby, python, java, llvm, wasm, languages-->
-	<artifactId>js</artifactId> 
+	<artifactId>js</artifactId>
 	<version>${graalvm.polyglot.version}</version>
 	<type>pom</type>
 </dependency>
 <!-- Add additional languages if needed -->
-<dependency> 
-	<groupId>org.graalvm.polyglot</groupId> 
+<dependency>
+	<groupId>org.graalvm.polyglot</groupId>
     <!-- Select a tool: profiler, inspect, coverage, dap, tools -->
-	<artifactId>profiler</artifactId> 
+	<artifactId>profiler</artifactId>
 	<version>${graalvm.polyglot.version}</version>
 	<type>pom</type>
 </dependency>
@@ -68,7 +68,7 @@ Language and tool dependencies use the [GraalVM Free Terms and Conditions (GFTC)
 To use community-licensed versions instead, add the `-community` suffix to each artifact (for example, `js-community`).
 To access [polyglot isolate](#polyglot-isolates) artifacts, use the `-isolate` suffix instead (for example, `js-isolate`).
 
-The artifacts `languages` and `tools` include all available languages and tools as dependencies. 
+The artifacts `languages` and `tools` include all available languages and tools as dependencies.
 This artifact might grow or shrink between major releases.
 We recommend selecting only the needed language(s) for a production deployment.
 
@@ -93,7 +93,7 @@ In this example, `lib/polyglot` directory should contain all polyglot and langua
 To access polyglot classes from the class path, you must also specify the `--add-modules=org.graalvm.polyglot` JVM option.
 If you are using [GraalVM Native Image](#build-native-executables-from-polyglot-applications), polyglot modules on the class path will be automatically upgraded to the module path.
 
-While we do support creating single uber JAR files from polyglot libraries, for example, using the Maven Assembly plugin, but we do not recommend it.
+While we do support [creating single uber JAR files](#uber-jar-file-creation) from polyglot libraries, for example, using the Maven Assembly plugin, we do not recommend it.
 Also note that uber JAR files are not supported when creating native binaries with GraalVM Native Image.
 
 ## Compile and Run a Polyglot Application
@@ -125,13 +125,12 @@ You can use this application with other code examples to demonstrate more advanc
 
 Polyglot applications let you take values from one programming language and use them with other languages.
 
-Use the code example in this section with your polyglot application to show how the Polyglot API can return JavaScript, Python, or Ruby functions as Java values.
+Use the code example in this section with your polyglot application to show how the Polyglot API can return JavaScript or Python functions as Java values.
 
 {%
 include snippet-tabs
 tab1type="java" tab1id="Function_JS" tab1name="JavaScript" tab1path="embed/function_js.java"
 tab2type="java" tab2id="Function_Python" tab2name="Python" tab2path="embed/function_python.java"
-tab3type="java" tab3id="Function_Ruby" tab3name="Ruby" tab3path="embed/function_ruby.java"
 %}
 
 In this code:
@@ -153,7 +152,6 @@ Use the code example in this section with your polyglot application to show how 
 include snippet-tabs
 tab1type="java" tab1id="Access_JS" tab1name="JavaScript" tab1path="embed/access_js_from_java.java"
 tab2type="java" tab2id="Access_Python" tab2name="Python" tab2path="embed/access_python_from_java.java"
-tab3type="java" tab3id="Access_Ruby" tab3name="Ruby" tab3path="embed/access_ruby_from_java.java"
 %}
 
 In this code:
@@ -183,7 +181,6 @@ Use the code example in this section with your polyglot application to show how 
 include snippet-tabs
 tab1type="java" tab1id="Access_Java_from_JS" tab1name="JavaScript" tab1path="embed/access_java_from_js.java"
 tab2type="java" tab2id="Access_Java_from_Python" tab2name="Python" tab2path="embed/access_java_from_python.java"
-tab3type="java" tab3id="Access_Java_from_Ruby" tab3name="Ruby" tab3path="embed/access_java_from_ruby.java"
 %}
 
 In this code:
@@ -221,7 +218,6 @@ Use the code example in this section with your polyglot application to show how 
 include snippet-tabs
 tab1type="java" tab1id="Lookup_Java_from_JS" tab1name="JavaScript" tab1path="embed/lookup_java_from_js.java"
 tab2type="java" tab2id="Lookup_Java_from_Python" tab2name="Python" tab2path="embed/lookup_java_from_python.java"
-tab3type="java" tab3id="Lookup_Java_from_Ruby" tab3name="Ruby" tab3path="embed/lookup_java_from_ruby.java"
 %}
 
 In this code:
@@ -248,7 +244,6 @@ Use the code example in this section with your polyglot application to see how y
 include snippet-tabs
 tab1type="java" tab1id="Proxy_JS" tab1name="JavaScript" tab1path="embed/proxy_js.java"
 tab2type="java" tab2id="Proxy_Python" tab2name="Python" tab2path="embed/proxy_python.java"
-tab3type="java" tab3id="Proxy_Ruby" tab3name="Ruby" tab3path="embed/proxy_ruby.java"
 %}
 
 In this code:
@@ -425,7 +420,7 @@ This table shows the level of optimizations the Java runtimes currently provide:
 * **Optimized with additional compiler passes:** Oracle GraalVM implements additional optimizations performed during runtime compilation. For example, it uses a more advanced inlining heuristic. This typically leads to better runtime performance and memory consumption.
 * **Optimized via VM option:** Optimization is enabled by specifying `-XX:+EnableJVMCI` to the `java` launcher.
 * **Optimized via VM option and `--upgrade-module-path`:** Optimization is enabled by specifying `-XX:+EnableJVMCI` to the `java` launcher. Additionally, the Graal compiler must be downloaded as a JAR file and specified to the `java` launcher with `--upgrade-module-path`. In this mode, the compiler runs as a Java application and may negatively affect the execution performance of the host application.
-* **No runtime optimizations:** With no runtime optimizations or if JVMCI is not enabled, the guest application code is executed in interpreter-only mode. 
+* **No runtime optimizations:** With no runtime optimizations or if JVMCI is not enabled, the guest application code is executed in interpreter-only mode.
 * **JVMCI:** Refers to the [Java-Level JVM Compiler Interface](https://openjdk.org/jeps/243) supported by most Java runtimes.
 
 A project has been created to enable runtime optimization by default for Oracle JDK and OpenJDK.
@@ -442,8 +437,8 @@ Execution without runtime compilation will negatively impact the guest applicati
 
 This indicates that the guest application is executed with no runtime optimizations enabled.
 The warning can be suppressed by either suppressing using the `--engine.WarnInterpreterOnly=false` option or the `-Dpolyglot.engine.WarnInterpreterOnly=false` system property.
-In addition, the `compiler.jar` file and its dependencies must be downloaded from [Maven Central](https://central.sonatype.com/artifact/org.graalvm.compiler/compiler/) and referred to use the option `--upgrade-module-path`. 
-Note that `compiler.jar` must *not* be put on the module or class path. 
+In addition, the `compiler.jar` file and its dependencies must be downloaded from [Maven Central](https://central.sonatype.com/artifact/org.graalvm.compiler/compiler/) and referred to use the option `--upgrade-module-path`.
+Note that `compiler.jar` must *not* be put on the module or class path.
 Refer to the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-embedding-demo) for an example configuration using Maven or Gradle.
 
 ### Switching to the Fallback Engine
@@ -736,7 +731,7 @@ public class PolyglotIsolate {
 		try (Context context = Context.newBuilder("js")
 			  .allowHostAccess(HostAccess.SCOPED)
 			  .option("engine.SpawnIsolate", "true").build()) {
-			  
+
 			Value function = context.eval("js", "x => x+1");
 			assert function.canExecute();
 			int x = function.execute(41).asInt();
@@ -941,6 +936,131 @@ In this code:
 - The `context.eval()` call evaluates a specified snippet of guest language code.
 - The `listener.close()` closes a listener earlier, however execution listeners are automatically closed with the engine.
 
+## Uber JAR File Creation
+
+Uber JARs are JAR files that bundle all dependencies into a single archive for easier distribution.
+However, creating an Uber JAR is not recommended for Graal languages because it breaks module descriptors, file integrity metadata, and JAR signature information.
+Uber JARs are only supported on HotSpot and are not supported for native image generation, as the Native Image tool requires intact Java module descriptors.
+
+If you must use Uber JARs, use the minimal configuration below and verify that it is still up to date whenever you upgrade.
+
+You can find a working example of valid Maven Shade and Assembly plugin configurations in the [polyglot embedding example](https://github.com/graalvm/polyglot-embedding-demo?tab=readme-ov-file#maven-usage).
+See the `shade` and `assembly` profiles in [_pom.xml_](https://github.com/graalvm/polyglot-embedding-demo/blob/main/pom.xml#L384).
+
+### Maven Shade Plugin
+
+If you intend to use the Maven Shade plugin, include at least the following transformers and filter configuration:
+
+```xml
+<profile>
+    <id>shade</id>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <transformers>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                            <mainClass>org.example.embedding.Main</mainClass>
+                            <manifestEntries>
+                                <Multi-Release>true</Multi-Release>
+                            </manifestEntries>
+                        </transformer>
+                    </transformers>
+                    <filters>
+                    	  <!-- Filters JAR signature files -->
+                        <filter>
+                            <artifact>*:*:*:*</artifact>
+                            <excludes>
+                                <exclude>META-INF/*.SF</exclude>
+                                <exclude>META-INF/*.DSA</exclude>
+                                <exclude>META-INF/*.RSA</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</profile>
+```
+
+### Maven Assembly plugin
+
+If you are using the Maven Assembly plugin, you may apply the following configuration:
+
+```xml
+<profile>
+    <id>assembly</id>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <archive>
+                                <manifest>
+                                    <mainClass>org.example.embedding.Main</mainClass>
+                                </manifest>
+                                <manifestEntries>
+                                    <Multi-Release>true</Multi-Release>
+                                </manifestEntries>
+                            </archive>
+                            <descriptors>
+                                <descriptor>assembly.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</profile>
+```
+with the corresponding `assembly.xml`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<assembly xmlns="http://maven.apache.org/ASSEMBLY/2.2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.2.0 http://maven.apache.org/xsd/assembly-2.2.0.xsd">
+    <id>jar-with-dependencies</id>
+    <formats>
+        <format>jar</format>
+    </formats>
+    <includeBaseDirectory>false</includeBaseDirectory>
+    <dependencySets>
+        <dependencySet>
+            <outputDirectory>/</outputDirectory>
+            <useProjectArtifact>true</useProjectArtifact>
+            <unpack>true</unpack>
+            <scope>runtime</scope>
+        </dependencySet>
+    </dependencySets>
+    <containerDescriptorHandlers>
+        <containerDescriptorHandler>
+            <handlerName>metaInf-services</handlerName>
+        </containerDescriptorHandler>
+    </containerDescriptorHandlers>
+</assembly
+```
+
 ## Compatibility with JSR-223 ScriptEngine
 
 <!--
@@ -966,7 +1086,7 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
     private static final String LANGUAGE_ID = "<<INSERT LANGUAGE ID HERE>>";
 ```
 
-Rename the class as desired and change the `LANGUAGE_ID` to the desired Truffle language (for example, "python" for GraalPy or "ruby" for TruffleRuby). 
+Rename the class as desired and change the `LANGUAGE_ID` to the desired Truffle language (for example, "python" for GraalPy or "js" for GraalJS).
 To use it, include a `META-INF/services/javax.script.ScriptEngineFactory` file in your resources with the chosen class name.
 This will allow the default `javax.script.ScriptEngineManager` to discover the language automatically.
 Alternatively, the factory can be registered via `javax.script.ScriptEngineManager#registerEngineName` or instantiated and used directly.

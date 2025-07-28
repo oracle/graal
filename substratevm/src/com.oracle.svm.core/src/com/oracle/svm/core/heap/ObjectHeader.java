@@ -80,8 +80,7 @@ public abstract class ObjectHeader {
 
     /**
      * If we should constant-fold the header calculation when initializing new objects, this method
-     * returns the size of the header, else it returns -1. This method should be in sync with
-     * {@link #readHeaderFromObject(Object)}.
+     * returns the size of the header, else it returns -1.
      */
     public abstract int constantHeaderSize();
 

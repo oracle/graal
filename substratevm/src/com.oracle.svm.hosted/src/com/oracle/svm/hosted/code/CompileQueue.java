@@ -61,6 +61,7 @@ import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -245,12 +246,12 @@ public class CompileQueue {
         }
     }
 
-    public static class MethodConstantReason extends CompileReason {
+    public static class MethodRefConstantReason extends CompileReason {
 
         private final HostedMethod owner;
         private final HostedMethod callTarget;
 
-        public MethodConstantReason(HostedMethod owner, HostedMethod callTarget, CompileReason prevReason) {
+        public MethodRefConstantReason(HostedMethod owner, HostedMethod callTarget, CompileReason prevReason) {
             super(prevReason);
             this.owner = owner;
             this.callTarget = callTarget;
@@ -258,7 +259,7 @@ public class CompileQueue {
 
         @Override
         public String toString() {
-            return "Method " + callTarget.format("%r %h.%n(%p)") + " is reachable through a method pointer/offset from " + owner.format("%r %h.%n(%p)");
+            return "Method " + callTarget.format("%r %h.%n(%p)") + " is reachable via MethodRef from " + owner.format("%r %h.%n(%p)");
         }
     }
 
@@ -1415,7 +1416,7 @@ public class CompileQueue {
                 }
             }
         }
-        ensureCompiledForMethodConstants(method, reason, result);
+        ensureCompiledForMethodRefConstants(method, reason, result);
     }
 
     protected void removeDeoptTargetOptimizations(Suites suites) {
@@ -1426,18 +1427,19 @@ public class CompileQueue {
         DeoptimizationUtils.removeDeoptTargetOptimizations(lirSuites);
     }
 
-    protected final void ensureCompiledForMethodConstants(HostedMethod method, CompileReason reason, CompilationResult result) {
+    protected final void ensureCompiledForMethodRefConstants(HostedMethod method, CompileReason reason, CompilationResult result) {
         for (DataPatch dataPatch : result.getDataPatches()) {
             if (dataPatch.reference instanceof ConstantReference constantRef) {
                 VMConstant constant = constantRef.getConstant();
-                HostedMethod referencedMethod = null;
+                MethodRef ref = null;
                 if (constant instanceof SubstrateMethodPointerConstant pointerConstant) {
-                    referencedMethod = (HostedMethod) pointerConstant.pointer().getMethod();
+                    ref = pointerConstant.pointer();
                 } else if (constant instanceof SubstrateMethodOffsetConstant offsetConstant) {
-                    referencedMethod = (HostedMethod) offsetConstant.offset().getMethod();
+                    ref = offsetConstant.offset();
                 }
-                if (referencedMethod != null) {
-                    ensureCompiled(referencedMethod, new MethodConstantReason(method, referencedMethod, reason));
+                if (ref != null) {
+                    HostedMethod referencedMethod = (HostedMethod) ref.getMethod();
+                    ensureCompiled(referencedMethod, new MethodRefConstantReason(method, referencedMethod, reason));
                 }
             }
         }

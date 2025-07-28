@@ -29,10 +29,9 @@ import java.lang.reflect.Field;
 
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
-import com.oracle.graal.pointsto.heap.TLABObjectHeaderConstant;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.graal.nodes.TLABObjectHeaderConstant;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -88,7 +87,7 @@ public class HostedSnippetReflectionProvider implements SnippetReflectionProvide
             return null;
         }
 
-        JavaConstant constant = new TLABObjectHeaderConstant((ImageHeapInstance) forObject(hub), constantHeaderSize);
+        JavaConstant constant = new TLABObjectHeaderConstant(forObject(hub), constantHeaderSize);
         ValueNode res = NonFoldingConstantNode.create(constant, graph);
         if (constantHeaderSize == Integer.BYTES) {
             res = graph.addOrUniqueWithInputs(ZeroExtendNode.create(res, Long.SIZE, NodeView.DEFAULT));

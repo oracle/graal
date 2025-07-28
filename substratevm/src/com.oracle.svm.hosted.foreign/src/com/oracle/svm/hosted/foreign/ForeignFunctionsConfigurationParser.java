@@ -55,11 +55,15 @@ import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.ForeignConfigurationParser;
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.foreign.MemoryLayoutParser.MemoryLayoutParserException;
+import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.util.json.JsonFormatter;
 import jdk.graal.compiler.util.json.JsonParserException;
@@ -76,6 +80,7 @@ public class ForeignFunctionsConfigurationParser extends ForeignConfigurationPar
     private static final Linker.Option[] EMPTY_OPTIONS = new Linker.Option[0];
 
     private final ImageClassLoader imageClassLoader;
+    private final NativeImageConditionResolver conditionResolver;
     private final RuntimeForeignAccessSupport accessSupport;
     private final Map<String, MemoryLayout> canonicalLayouts;
 
@@ -84,6 +89,7 @@ public class ForeignFunctionsConfigurationParser extends ForeignConfigurationPar
     public ForeignFunctionsConfigurationParser(ImageClassLoader imageClassLoader, RuntimeForeignAccessSupport access, Map<String, MemoryLayout> canonicalLayouts) {
         super(EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
         this.imageClassLoader = imageClassLoader;
+        this.conditionResolver = new NativeImageConditionResolver(imageClassLoader, ClassInitializationSupport.singleton());
         this.accessSupport = access;
         this.canonicalLayouts = canonicalLayouts;
     }
@@ -96,17 +102,30 @@ public class ForeignFunctionsConfigurationParser extends ForeignConfigurationPar
     }
 
     @Override
-    protected void registerDowncall(ConfigurationCondition configurationCondition, FunctionDescriptor descriptor, Option[] options) {
-        accessSupport.registerForDowncall(ConfigurationCondition.alwaysTrue(), descriptor, (Object[]) options);
+    protected void registerDowncall(UnresolvedConfigurationCondition configurationCondition, FunctionDescriptor descriptor, Option[] options) {
+        TypeResult<ConfigurationCondition> typeResult = conditionResolver.resolveCondition(configurationCondition);
+        if (!typeResult.isPresent()) {
+            return;
+        }
+        accessSupport.registerForDowncall(typeResult.get(), descriptor, (Object[]) options);
     }
 
     @Override
-    protected void registerUpcall(ConfigurationCondition configurationCondition, FunctionDescriptor descriptor, Option[] options) {
-        accessSupport.registerForUpcall(ConfigurationCondition.alwaysTrue(), descriptor, (Object[]) options);
+    protected void registerUpcall(UnresolvedConfigurationCondition configurationCondition, FunctionDescriptor descriptor, Option[] options) {
+        TypeResult<ConfigurationCondition> typeResult = conditionResolver.resolveCondition(configurationCondition);
+        if (!typeResult.isPresent()) {
+            return;
+        }
+        accessSupport.registerForUpcall(typeResult.get(), descriptor, (Object[]) options);
     }
 
     @Override
-    protected void registerDirectUpcallWithDescriptor(String className, String methodName, FunctionDescriptor descriptor, Option[] options) {
+    protected void registerDirectUpcallWithDescriptor(UnresolvedConfigurationCondition configurationCondition, String className, String methodName, FunctionDescriptor descriptor, Option[] options) {
+        TypeResult<ConfigurationCondition> typeResult = conditionResolver.resolveCondition(configurationCondition);
+        if (!typeResult.isPresent()) {
+            return;
+        }
+
         Class<?> aClass;
         try {
             aClass = imageClassLoader.forName(className);
@@ -129,11 +148,16 @@ public class ForeignFunctionsConfigurationParser extends ForeignConfigurationPar
                             className, methodName, methodType);
             return;
         }
-        accessSupport.registerForDirectUpcall(ConfigurationCondition.alwaysTrue(), target, descriptor, (Object[]) options);
+        accessSupport.registerForDirectUpcall(typeResult.get(), target, descriptor, (Object[]) options);
     }
 
     @Override
-    protected void registerDirectUpcallWithoutDescriptor(String className, String methodName, EconomicMap<String, Object> optionsMap) {
+    protected void registerDirectUpcallWithoutDescriptor(UnresolvedConfigurationCondition configurationCondition, String className, String methodName, EconomicMap<String, Object> optionsMap) {
+        TypeResult<ConfigurationCondition> typeResult = conditionResolver.resolveCondition(configurationCondition);
+        if (!typeResult.isPresent()) {
+            return;
+        }
+
         Class<?> aClass;
         try {
             aClass = imageClassLoader.forName(className);
@@ -167,7 +191,7 @@ public class ForeignFunctionsConfigurationParser extends ForeignConfigurationPar
         for (Pair<FunctionDescriptor, MethodHandle> pair : descriptors) {
             var options = createUpcallOptions(optionsMap, pair.getLeft());
             try {
-                accessSupport.registerForDirectUpcall(ConfigurationCondition.alwaysTrue(), pair.getRight(), pair.getLeft(), (Object[]) options);
+                accessSupport.registerForDirectUpcall(typeResult.get(), pair.getRight(), pair.getLeft(), (Object[]) options);
             } catch (IllegalArgumentException e) {
                 handleMissingElement(e, "Could not register direct upcall stub '%s.%s%s'", className, methodName, pair.getLeft().toMethodType());
             }

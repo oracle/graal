@@ -440,6 +440,27 @@ public final class Meta extends ContextAccessImpl
             HIDDEN_CRC32 = null;
         }
 
+        java_util_zip_Inflater = knownKlass(Types.java_util_zip_Inflater);
+        if (getJavaVersion().java11OrLater()) {
+            java_util_zip_Inflater_inputConsumed = java_util_zip_Inflater.requireDeclaredField(Names.inputConsumed, Types._int);
+            java_util_zip_Inflater_outputConsumed = java_util_zip_Inflater.requireDeclaredField(Names.outputConsumed, Types._int);
+            java_util_zip_Inflater_buf = null;
+            java_util_zip_Inflater_len = null;
+            java_util_zip_Inflater_off = null;
+            java_util_zip_Inflater_needDict = null;
+            java_util_zip_Inflater_finished = null;
+        } else {
+            java_util_zip_Inflater_inputConsumed = null;
+            java_util_zip_Inflater_outputConsumed = null;
+            java_util_zip_Inflater_buf = java_util_zip_Inflater.requireDeclaredField(Names.buf, Types._byte_array);
+            java_util_zip_Inflater_len = java_util_zip_Inflater.requireDeclaredField(Names.len, Types._int);
+            java_util_zip_Inflater_off = java_util_zip_Inflater.requireDeclaredField(Names.off, Types._int);
+            java_util_zip_Inflater_needDict = java_util_zip_Inflater.requireDeclaredField(Names.needDict, Types._boolean);
+            java_util_zip_Inflater_finished = java_util_zip_Inflater.requireDeclaredField(Names.finished, Types._boolean);
+        }
+
+        java_util_zip_DataFormatException = knownKlass(Types.java_util_zip_DataFormatException);
+
         ObjectKlass nioNativeThreadKlass = knownKlass(Types.sun_nio_ch_NativeThread);
         sun_nio_ch_NativeThread_init = nioNativeThreadKlass.lookupDeclaredMethod(Names.init, Signatures._void);
         if (getJavaVersion().java21OrLater()) {
@@ -510,6 +531,7 @@ public final class Meta extends ContextAccessImpl
         } else {
             java_nio_ByteBuffer_get = null;
         }
+
         java_nio_ByteBuffer_getByte = java_nio_ByteBuffer.requireDeclaredMethod(Names.get, Signatures._byte_int);
         java_nio_ByteBuffer_getShort = java_nio_ByteBuffer.requireDeclaredMethod(Names.getShort, Signatures._short_int);
         java_nio_ByteBuffer_getInt = java_nio_ByteBuffer.requireDeclaredMethod(Names.getInt, Signatures._int_int);
@@ -542,6 +564,7 @@ public final class Meta extends ContextAccessImpl
                         .maybeHiddenfield(java_lang_Thread);
         HIDDEN_HOST_THREAD = java_lang_Thread.requireHiddenField(Names.HIDDEN_HOST_THREAD);
         HIDDEN_ESPRESSO_MANAGED = java_lang_Thread.requireHiddenField(Names.HIDDEN_ESPRESSO_MANAGED);
+        HIDDEN_TO_NATIVE_LOCK = java_lang_Thread.requireHiddenField(Names.HIDDEN_TO_NATIVE_LOCK);
         HIDDEN_DEPRECATION_SUPPORT = java_lang_Thread.requireHiddenField(Names.HIDDEN_DEPRECATION_SUPPORT);
         HIDDEN_THREAD_UNPARK_SIGNALS = java_lang_Thread.requireHiddenField(Names.HIDDEN_THREAD_UNPARK_SIGNALS);
         HIDDEN_THREAD_PARK_LOCK = java_lang_Thread.requireHiddenField(Names.HIDDEN_THREAD_PARK_LOCK);
@@ -637,6 +660,7 @@ public final class Meta extends ContextAccessImpl
 
         java_lang_System = knownKlass(Types.java_lang_System);
         java_lang_System_exit = java_lang_System.requireDeclaredMethod(Names.exit, Signatures._void_int);
+        java_lang_System_getProperty = java_lang_System.requireDeclaredMethod(Names.getProperty, Signatures.String_String);
         java_lang_System_securityManager = diff() //
                         .field(VERSION_21_OR_LOWER, Names.security, Types.java_lang_SecurityManager) //
                         .notRequiredField(java_lang_System);
@@ -953,15 +977,12 @@ public final class Meta extends ContextAccessImpl
                         .klass();
         sun_reflect_ConstantPool_constantPoolOop = sun_reflect_ConstantPool.requireDeclaredField(Names.constantPoolOop, Types.java_lang_Object);
 
-        sun_misc_Cleaner = diff() //
-                        .klass(VERSION_8_OR_LOWER, Types.sun_misc_Cleaner) //
-                        .klass(VERSION_9_OR_HIGHER, Types.jdk_internal_ref_Cleaner) //
-                        .klass();
-
         if (getJavaVersion().java8OrEarlier()) {
             java_lang_ref_Reference_pending = java_lang_ref_Reference.requireDeclaredField(Names.pending, Types.java_lang_ref_Reference);
+            sun_misc_Cleaner = knownKlass(Types.sun_misc_Cleaner);
         } else {
             java_lang_ref_Reference_pending = null;
+            sun_misc_Cleaner = null;
         }
         java_lang_ref_Reference_lock = diff() //
                         .field(VERSION_8_OR_LOWER, Names.lock, Types.java_lang_ref_Reference$Lock) //
@@ -1017,11 +1038,14 @@ public final class Meta extends ContextAccessImpl
 
         java_time_LocalDate = knownKlass(Types.java_time_LocalDate);
         java_time_LocalDate_year = java_time_LocalDate.requireDeclaredField(Names.year, Types._int);
-        assert java_time_LocalDate_year.getKind() == JavaKind.Int;
-        java_time_LocalDate_month = java_time_LocalDate.requireDeclaredField(Names.month, Types._short);
-        assert java_time_LocalDate_month.getKind() == JavaKind.Short;
-        java_time_LocalDate_day = java_time_LocalDate.requireDeclaredField(Names.day, Types._short);
-        assert java_time_LocalDate_day.getKind() == JavaKind.Short;
+        java_time_LocalDate_month = diff() //
+                        .field(VERSION_24_OR_LOWER, Names.month, Types._short) //
+                        .field(VERSION_25_OR_HIGHER, Names.month, Types._byte) //
+                        .field(java_time_LocalDate);
+        java_time_LocalDate_day = diff() //
+                        .field(VERSION_24_OR_LOWER, Names.day, Types._short) //
+                        .field(VERSION_25_OR_HIGHER, Names.day, Types._byte) //
+                        .field(java_time_LocalDate);
         java_time_LocalDate_of = java_time_LocalDate.requireDeclaredMethod(Names.of, Signatures.LocalDate_int_int_int);
 
         java_time_ZonedDateTime = knownKlass(Types.java_time_ZonedDateTime);
@@ -1097,116 +1121,6 @@ public final class Meta extends ContextAccessImpl
         java_util_Optional = knownKlass(Types.java_util_Optional);
         java_util_Optional_EMPTY = java_util_Optional.requireDeclaredField(Names.EMPTY, Types.java_util_Optional);
         java_util_Optional_value = java_util_Optional.requireDeclaredField(Names.value, Types.java_lang_Object);
-
-        java_util_regex_Pattern = knownKlass(Types.java_util_regex_Pattern);
-        java_util_regex_Pattern_init = java_util_regex_Pattern.requireMethod(Names._init_, Signatures._void_String_int);
-        java_util_regex_Pattern_compile = java_util_regex_Pattern.requireDeclaredMethod(Names.compile, Signatures._void);
-
-        if (context.getJavaVersion().java20OrLater()) {
-            java_util_regex_Pattern_namedGroups = java_util_regex_Pattern.requireMethod(Names.namedGroups, Signatures.Map);
-        } else {
-            java_util_regex_Pattern_namedGroups = null;
-        }
-
-        if (context.regexSubstitutionsEnabled()) {
-            java_util_regex_Pattern_HIDDEN_tregexMatch = java_util_regex_Pattern.requireHiddenField(Names.HIDDEN_TREGEX_MATCH);
-            java_util_regex_Pattern_HIDDEN_tregexFullmatch = java_util_regex_Pattern.requireHiddenField(Names.HIDDEN_TREGEX_FULLMATCH);
-            java_util_regex_Pattern_HIDDEN_tregexSearch = java_util_regex_Pattern.requireHiddenField(Names.HIDDEN_TREGEX_SEARCH);
-            java_util_regex_Pattern_HIDDEN_unsupported = java_util_regex_Pattern.requireHiddenField(Names.HIDDEN_TREGEX_UNSUPPORTED);
-        } else {
-            java_util_regex_Pattern_HIDDEN_tregexMatch = null;
-            java_util_regex_Pattern_HIDDEN_tregexFullmatch = null;
-            java_util_regex_Pattern_HIDDEN_tregexSearch = null;
-            java_util_regex_Pattern_HIDDEN_unsupported = null;
-        }
-
-        if (context.getJavaVersion().java21OrLater()) {
-            java_util_regex_Pattern_pattern = java_util_regex_Pattern.requireDeclaredField(Names.pattern, Types.java_lang_String);
-            java_util_regex_Pattern_flags = java_util_regex_Pattern.requireDeclaredField(Names.flags, Types._int);
-            java_util_regex_Pattern_flags0 = java_util_regex_Pattern.requireDeclaredField(Names.flags0, Types._int);
-            java_util_regex_Pattern_compiled = java_util_regex_Pattern.requireDeclaredField(Names.compiled, Types._boolean);
-            java_util_regex_Pattern_namedGroups_field = java_util_regex_Pattern.requireDeclaredField(Names.namedGroups, Types.java_util_Map);
-            java_util_regex_Pattern_capturingGroupCount = java_util_regex_Pattern.requireDeclaredField(Names.capturingGroupCount, Types._int);
-            java_util_regex_Pattern_root = java_util_regex_Pattern.requireDeclaredField(Names.root, Types.java_util_regex_Pattern_Node);
-            java_util_regex_Pattern_localCount = java_util_regex_Pattern.requireDeclaredField(Names.localCount, Types._int);
-            java_util_regex_Pattern_localTCNCount = java_util_regex_Pattern.requireDeclaredField(Names.localTCNCount, Types._int);
-        } else {
-            java_util_regex_Pattern_pattern = null;
-            java_util_regex_Pattern_flags = null;
-            java_util_regex_Pattern_flags0 = null;
-            java_util_regex_Pattern_compiled = null;
-            java_util_regex_Pattern_namedGroups_field = null;
-            java_util_regex_Pattern_capturingGroupCount = null;
-            java_util_regex_Pattern_root = null;
-            java_util_regex_Pattern_localCount = null;
-            java_util_regex_Pattern_localTCNCount = null;
-        }
-
-        java_util_regex_Matcher = knownKlass(Types.java_util_regex_Matcher);
-        java_util_regex_Matcher_init = java_util_regex_Matcher.requireMethod(Names._init_, Signatures._void_CharSequence_Pattern);
-        java_util_regex_Matcher_reset = java_util_regex_Matcher.requireMethod(Names.reset, Signatures.Matcher_CharSequence);
-        java_util_regex_Matcher_match = java_util_regex_Matcher.requireMethod(Names.match, Signatures._boolean_int_int);
-        java_util_regex_Matcher_search = java_util_regex_Matcher.requireMethod(Names.search, Signatures._boolean_int);
-        java_util_regex_Matcher_groupCount = java_util_regex_Matcher.requireDeclaredMethod(Names.groupCount, Signatures._int);
-        java_util_regex_Matcher_hitEnd = java_util_regex_Matcher.requireDeclaredField(Names.hitEnd, Types._boolean);
-        java_util_regex_Matcher_requireEnd = java_util_regex_Matcher.requireDeclaredField(Names.requireEnd, Types._boolean);
-
-        if (context.regexSubstitutionsEnabled()) {
-            java_util_regex_Matcher_HIDDEN_tstring = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_TSTRING);
-            java_util_regex_Matcher_HIDDEN_oldLastBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_OLD_LAST_BACKUP);
-            java_util_regex_Matcher_HIDDEN_modCountBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_MOD_COUNT_BACKUP);
-            java_util_regex_Matcher_HIDDEN_transparentBoundsBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_TRANSPARENT_BOUNDS_BACKUP);
-            java_util_regex_Matcher_HIDDEN_anchoringBoundsBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_ANCHORING_BOUNDS_BACKUP);
-            java_util_regex_Matcher_HIDDEN_fromBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_FROM_BACKUP);
-            java_util_regex_Matcher_HIDDEN_toBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_TO_BACKUP);
-            java_util_regex_Matcher_HIDDEN_matchingModeBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_MATCHING_MODE_BACKUP);
-            java_util_regex_Matcher_HIDDEN_searchFromBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_SEARCH_FROM_BACKUP);
-        } else {
-            java_util_regex_Matcher_HIDDEN_tstring = null;
-            java_util_regex_Matcher_HIDDEN_oldLastBackup = null;
-            java_util_regex_Matcher_HIDDEN_modCountBackup = null;
-            java_util_regex_Matcher_HIDDEN_transparentBoundsBackup = null;
-            java_util_regex_Matcher_HIDDEN_anchoringBoundsBackup = null;
-            java_util_regex_Matcher_HIDDEN_fromBackup = null;
-            java_util_regex_Matcher_HIDDEN_toBackup = null;
-            java_util_regex_Matcher_HIDDEN_matchingModeBackup = null;
-            java_util_regex_Matcher_HIDDEN_searchFromBackup = null;
-        }
-
-        if (context.getJavaVersion().java21OrLater()) {
-            java_util_regex_Matcher_parentPattern = java_util_regex_Matcher.requireDeclaredField(Names.parentPattern, Types.java_util_regex_Pattern);
-            java_util_regex_Matcher_groups = java_util_regex_Matcher.requireDeclaredField(Names.groups, Types._int_array);
-            java_util_regex_Matcher_first = java_util_regex_Matcher.requireDeclaredField(Names.first, Types._int);
-            java_util_regex_Matcher_last = java_util_regex_Matcher.requireDeclaredField(Names.last, Types._int);
-            java_util_regex_Matcher_oldLast = java_util_regex_Matcher.requireDeclaredField(Names.oldLast, Types._int);
-            java_util_regex_Matcher_from = java_util_regex_Matcher.requireDeclaredField(Names.from, Types._int);
-            java_util_regex_Matcher_to = java_util_regex_Matcher.requireDeclaredField(Names.to, Types._int);
-            java_util_regex_Matcher_modCount = java_util_regex_Matcher.requireDeclaredField(Names.modCount, Types._int);
-            java_util_regex_Matcher_transparentBounds = java_util_regex_Matcher.requireDeclaredField(Names.transparentBounds, Types._boolean);
-            java_util_regex_Matcher_anchoringBounds = java_util_regex_Matcher.requireDeclaredField(Names.anchoringBounds, Types._boolean);
-            java_util_regex_Matcher_locals = java_util_regex_Matcher.requireDeclaredField(Names.locals, Types._int_array);
-            java_util_regex_Matcher_localsPos = java_util_regex_Matcher.requireDeclaredField(Names.localsPos, Types.java_util_regex_IntHashSet_array);
-
-        } else {
-            java_util_regex_Matcher_parentPattern = null;
-            java_util_regex_Matcher_groups = null;
-            java_util_regex_Matcher_first = null;
-            java_util_regex_Matcher_last = null;
-            java_util_regex_Matcher_oldLast = null;
-            java_util_regex_Matcher_from = null;
-            java_util_regex_Matcher_to = null;
-            java_util_regex_Matcher_modCount = null;
-            java_util_regex_Matcher_transparentBounds = null;
-            java_util_regex_Matcher_anchoringBounds = null;
-            java_util_regex_Matcher_locals = null;
-            java_util_regex_Matcher_localsPos = null;
-        }
-
-        if (context.getJavaVersion().java21OrLater()) {
-            java_util_regex_IntHashSet = knownKlass(Types.java_util_regex_IntHashSet);
-        } else {
-            java_util_regex_IntHashSet = null;
-        }
 
         java_util_concurrent_locks_AbstractOwnableSynchronizer = knownKlass(Types.java_util_concurrent_locks_AbstractOwnableSynchronizer);
         java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread = java_util_concurrent_locks_AbstractOwnableSynchronizer.requireDeclaredField(Names.exclusiveOwnerThread,
@@ -1302,6 +1216,8 @@ public final class Meta extends ContextAccessImpl
                         .notRequiredMethod(jdk_internal_module_ModuleLoaderMap_Modules);
 
         interopDispatch = new InteropKlassesDispatch(this);
+
+        tRegexSupport = context.getLanguage().useTRegex() ? new TRegexSupport() : null;
     }
 
     private static void initializeEspressoClassInHierarchy(ObjectKlass klass) {
@@ -1753,6 +1669,16 @@ public final class Meta extends ContextAccessImpl
     public final ObjectKlass java_util_zip_CRC32;
     public final Field HIDDEN_CRC32;
 
+    public final ObjectKlass java_util_zip_Inflater;
+    public final Field java_util_zip_Inflater_inputConsumed;
+    public final Field java_util_zip_Inflater_outputConsumed;
+    public final Field java_util_zip_Inflater_buf;
+    public final Field java_util_zip_Inflater_len;
+    public final Field java_util_zip_Inflater_off;
+    public final Field java_util_zip_Inflater_needDict;
+    public final Field java_util_zip_Inflater_finished;
+    public final ObjectKlass java_util_zip_DataFormatException;
+
     public final Method sun_nio_ch_NativeThread_isNativeThread;
     public final Method sun_nio_ch_NativeThread_current0;
     public final Method sun_nio_ch_NativeThread_signal;
@@ -1819,6 +1745,7 @@ public final class Meta extends ContextAccessImpl
     public final Method java_lang_Thread_getThreadGroup;
     public final Field HIDDEN_HOST_THREAD;
     public final Field HIDDEN_ESPRESSO_MANAGED;
+    public final Field HIDDEN_TO_NATIVE_LOCK;
     public final Field HIDDEN_INTERRUPTED;
     public final Field HIDDEN_THREAD_UNPARK_SIGNALS;
     public final Field HIDDEN_THREAD_PARK_LOCK;
@@ -1858,6 +1785,7 @@ public final class Meta extends ContextAccessImpl
     public final Method java_lang_System_initPhase1;
     public final Method java_lang_System_initPhase2;
     public final Method java_lang_System_initPhase3;
+    public final Method java_lang_System_getProperty;
     public final Method java_lang_System_exit;
     public final Field java_lang_System_securityManager;
     public final Field java_lang_System_in;
@@ -2078,54 +2006,6 @@ public final class Meta extends ContextAccessImpl
     public final ObjectKlass java_util_Optional;
     public final Field java_util_Optional_value;
     public final Field java_util_Optional_EMPTY;
-
-    public final ObjectKlass java_util_regex_Pattern;
-    public final Field java_util_regex_Pattern_HIDDEN_tregexMatch;
-    public final Field java_util_regex_Pattern_HIDDEN_tregexFullmatch;
-    public final Field java_util_regex_Pattern_HIDDEN_tregexSearch;
-    public final Field java_util_regex_Pattern_HIDDEN_unsupported;
-    public final Field java_util_regex_Pattern_pattern;
-    public final Field java_util_regex_Pattern_flags;
-    public final Field java_util_regex_Pattern_flags0;
-    public final Field java_util_regex_Pattern_compiled;
-    public final Method java_util_regex_Pattern_init;
-    public final Method java_util_regex_Pattern_namedGroups;
-    public final Field java_util_regex_Pattern_namedGroups_field;
-    public final Field java_util_regex_Pattern_capturingGroupCount;
-    public final Field java_util_regex_Pattern_root;
-    public final Method java_util_regex_Pattern_compile;
-    public final Field java_util_regex_Pattern_localCount;
-    public final Field java_util_regex_Pattern_localTCNCount;
-    public final ObjectKlass java_util_regex_IntHashSet;
-    public final ObjectKlass java_util_regex_Matcher;
-    public final Method java_util_regex_Matcher_init;
-    public final Method java_util_regex_Matcher_reset;
-    public final Field java_util_regex_Matcher_HIDDEN_tstring;
-    public final Field java_util_regex_Matcher_HIDDEN_oldLastBackup;
-    public final Field java_util_regex_Matcher_HIDDEN_modCountBackup;
-    public final Field java_util_regex_Matcher_HIDDEN_transparentBoundsBackup;
-    public final Field java_util_regex_Matcher_HIDDEN_anchoringBoundsBackup;
-    public final Field java_util_regex_Matcher_HIDDEN_fromBackup;
-    public final Field java_util_regex_Matcher_HIDDEN_toBackup;
-    public final Field java_util_regex_Matcher_HIDDEN_matchingModeBackup;
-    public final Field java_util_regex_Matcher_HIDDEN_searchFromBackup;
-    public final Field java_util_regex_Matcher_modCount;
-    public final Field java_util_regex_Matcher_parentPattern;
-    public final Field java_util_regex_Matcher_groups;
-    public final Field java_util_regex_Matcher_first;
-    public final Field java_util_regex_Matcher_last;
-    public final Field java_util_regex_Matcher_oldLast;
-    public final Field java_util_regex_Matcher_from;
-    public final Field java_util_regex_Matcher_to;
-    public final Method java_util_regex_Matcher_match;
-    public final Method java_util_regex_Matcher_search;
-    public final Field java_util_regex_Matcher_transparentBounds;
-    public final Field java_util_regex_Matcher_anchoringBounds;
-    public final Field java_util_regex_Matcher_locals;
-    public final Field java_util_regex_Matcher_localsPos;
-    public final Field java_util_regex_Matcher_hitEnd;
-    public final Field java_util_regex_Matcher_requireEnd;
-    public final Method java_util_regex_Matcher_groupCount;
 
     public final ObjectKlass java_util_concurrent_locks_AbstractOwnableSynchronizer;
     public final Field java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread;
@@ -2412,7 +2292,7 @@ public final class Meta extends ContextAccessImpl
         public final Method Services_openJVMCITo;
 
         public final ObjectKlass UnresolvedJavaType;
-        public final Method UnresolvedJavaType_init;
+        public final Method UnresolvedJavaType_create;
         public final Field UnresolvedJavaType_name;
 
         public final ObjectKlass UnresolvedJavaField;
@@ -2460,7 +2340,7 @@ public final class Meta extends ContextAccessImpl
             HIDDEN_FIELD_MIRROR = EspressoResolvedJavaField.requireHiddenField(Names.HIDDEN_FIELD_MIRROR);
 
             EspressoResolvedJavaMethod = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMethod);
-            EspressoResolvedJavaMethod_init = EspressoResolvedJavaMethod.requireDeclaredMethod(Names._init_, Signatures._void_EspressoResolvedInstanceType);
+            EspressoResolvedJavaMethod_init = EspressoResolvedJavaMethod.requireDeclaredMethod(Names._init_, Signatures._void_EspressoResolvedInstanceType_boolean);
             HIDDEN_METHOD_MIRROR = EspressoResolvedJavaMethod.requireHiddenField(Names.HIDDEN_METHOD_MIRROR);
             EspressoResolvedJavaMethod_holder = EspressoResolvedJavaMethod.requireDeclaredField(Names.holder, Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType);
 
@@ -2479,13 +2359,13 @@ public final class Meta extends ContextAccessImpl
 
             EspressoBootstrapMethodInvocation = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoBootstrapMethodInvocation);
             EspressoBootstrapMethodInvocation_init = EspressoBootstrapMethodInvocation.requireDeclaredMethod(Names._init_,
-                            Signatures._void_boolean_EspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array);
+                            Signatures._void_boolean_EspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array_int_EspressoConstantPool);
 
             Services = knownKlass(Types.jdk_vm_ci_services_Services);
             Services_openJVMCITo = Services.requireDeclaredMethod(Names.openJVMCITo, Signatures._void_Module);
 
             UnresolvedJavaType = knownKlass(Types.jdk_vm_ci_meta_UnresolvedJavaType);
-            UnresolvedJavaType_init = UnresolvedJavaType.requireDeclaredMethod(Names._init_, Signatures._void_String);
+            UnresolvedJavaType_create = UnresolvedJavaType.requireDeclaredMethod(Names.create, Signatures.UnresolvedJavaType_String);
             UnresolvedJavaType_name = UnresolvedJavaType.requireDeclaredField(Names.name, Types.java_lang_String);
 
             UnresolvedJavaField = knownKlass(Types.jdk_vm_ci_meta_UnresolvedJavaField);
@@ -2550,6 +2430,124 @@ public final class Meta extends ContextAccessImpl
 
     @CompilationFinal public JVMCISupport jvmci;
 
+    public final class TRegexSupport {
+        public final ObjectKlass java_util_regex_Pattern;
+        public final Field java_util_regex_Pattern_HIDDEN_tregexMatch;
+        public final Field java_util_regex_Pattern_HIDDEN_tregexFullmatch;
+        public final Field java_util_regex_Pattern_HIDDEN_tregexSearch;
+        public final Field java_util_regex_Pattern_HIDDEN_status;
+        public final Field java_util_regex_Pattern_pattern;
+        public final Field java_util_regex_Pattern_flags;
+        public final Field java_util_regex_Pattern_flags0;
+        public final Field java_util_regex_Pattern_compiled;
+        public final Method java_util_regex_Pattern_init;
+        public final Method java_util_regex_Pattern_namedGroups;
+        public final Field java_util_regex_Pattern_namedGroups_field;
+        public final Field java_util_regex_Pattern_capturingGroupCount;
+        public final Field java_util_regex_Pattern_root;
+        public final Method java_util_regex_Pattern_compile;
+        public final Field java_util_regex_Pattern_localCount;
+        public final Field java_util_regex_Pattern_localTCNCount;
+        public final ObjectKlass java_util_regex_IntHashSet;
+        public final ObjectKlass java_util_regex_Matcher;
+        public final Method java_util_regex_Matcher_init;
+        public final Method java_util_regex_Matcher_reset;
+        public final Field java_util_regex_Matcher_HIDDEN_tstring;
+        public final Field java_util_regex_Matcher_HIDDEN_textSync;
+        public final Field java_util_regex_Matcher_HIDDEN_patternSync;
+        public final Field java_util_regex_Matcher_HIDDEN_oldLastBackup;
+        public final Field java_util_regex_Matcher_HIDDEN_modCountBackup;
+        public final Field java_util_regex_Matcher_HIDDEN_transparentBoundsBackup;
+        public final Field java_util_regex_Matcher_HIDDEN_anchoringBoundsBackup;
+        public final Field java_util_regex_Matcher_HIDDEN_fromBackup;
+        public final Field java_util_regex_Matcher_HIDDEN_toBackup;
+        public final Field java_util_regex_Matcher_HIDDEN_matchingModeBackup;
+        public final Field java_util_regex_Matcher_HIDDEN_searchFromBackup;
+        public final Field java_util_regex_Matcher_text;
+        public final Field java_util_regex_Matcher_modCount;
+        public final Field java_util_regex_Matcher_parentPattern;
+        public final Field java_util_regex_Matcher_groups;
+        public final Field java_util_regex_Matcher_first;
+        public final Field java_util_regex_Matcher_last;
+        public final Field java_util_regex_Matcher_oldLast;
+        public final Field java_util_regex_Matcher_from;
+        public final Field java_util_regex_Matcher_to;
+        public final Method java_util_regex_Matcher_match;
+        public final Method java_util_regex_Matcher_search;
+        public final Field java_util_regex_Matcher_transparentBounds;
+        public final Field java_util_regex_Matcher_anchoringBounds;
+        public final Field java_util_regex_Matcher_locals;
+        public final Field java_util_regex_Matcher_localsPos;
+        public final Field java_util_regex_Matcher_hitEnd;
+        public final Field java_util_regex_Matcher_requireEnd;
+        public final Method java_util_regex_Matcher_groupCount;
+
+        private TRegexSupport() {
+            assert getLanguage().useTRegex();
+            assert getJavaVersion().java21OrLater();
+
+            java_util_regex_Pattern = knownKlass(Types.java_util_regex_Pattern);
+            java_util_regex_Pattern_init = java_util_regex_Pattern.requireMethod(Names._init_, Signatures._void_String_int);
+            java_util_regex_Pattern_compile = java_util_regex_Pattern.requireDeclaredMethod(Names.compile, Signatures._void);
+
+            java_util_regex_Pattern_namedGroups = java_util_regex_Pattern.requireMethod(Names.namedGroups, Signatures.Map);
+
+            java_util_regex_Pattern_HIDDEN_tregexMatch = java_util_regex_Pattern.requireHiddenField(Names.HIDDEN_TREGEX_MATCH);
+            java_util_regex_Pattern_HIDDEN_tregexFullmatch = java_util_regex_Pattern.requireHiddenField(Names.HIDDEN_TREGEX_FULLMATCH);
+            java_util_regex_Pattern_HIDDEN_tregexSearch = java_util_regex_Pattern.requireHiddenField(Names.HIDDEN_TREGEX_SEARCH);
+            java_util_regex_Pattern_HIDDEN_status = java_util_regex_Pattern.requireHiddenField(Names.HIDDEN_TREGEX_STATUS);
+
+            java_util_regex_Pattern_pattern = java_util_regex_Pattern.requireDeclaredField(Names.pattern, Types.java_lang_String);
+            java_util_regex_Pattern_flags = java_util_regex_Pattern.requireDeclaredField(Names.flags, Types._int);
+            java_util_regex_Pattern_flags0 = java_util_regex_Pattern.requireDeclaredField(Names.flags0, Types._int);
+            java_util_regex_Pattern_compiled = java_util_regex_Pattern.requireDeclaredField(Names.compiled, Types._boolean);
+            java_util_regex_Pattern_namedGroups_field = java_util_regex_Pattern.requireDeclaredField(Names.namedGroups, Types.java_util_Map);
+            java_util_regex_Pattern_capturingGroupCount = java_util_regex_Pattern.requireDeclaredField(Names.capturingGroupCount, Types._int);
+            java_util_regex_Pattern_root = java_util_regex_Pattern.requireDeclaredField(Names.root, Types.java_util_regex_Pattern_Node);
+            java_util_regex_Pattern_localCount = java_util_regex_Pattern.requireDeclaredField(Names.localCount, Types._int);
+            java_util_regex_Pattern_localTCNCount = java_util_regex_Pattern.requireDeclaredField(Names.localTCNCount, Types._int);
+
+            java_util_regex_Matcher = knownKlass(Types.java_util_regex_Matcher);
+            java_util_regex_Matcher_init = java_util_regex_Matcher.requireMethod(Names._init_, Signatures._void_CharSequence_Pattern);
+            java_util_regex_Matcher_reset = java_util_regex_Matcher.requireMethod(Names.reset, Signatures.Matcher_CharSequence);
+            java_util_regex_Matcher_match = java_util_regex_Matcher.requireMethod(Names.match, Signatures._boolean_int_int);
+            java_util_regex_Matcher_search = java_util_regex_Matcher.requireMethod(Names.search, Signatures._boolean_int);
+            java_util_regex_Matcher_groupCount = java_util_regex_Matcher.requireDeclaredMethod(Names.groupCount, Signatures._int);
+            java_util_regex_Matcher_hitEnd = java_util_regex_Matcher.requireDeclaredField(Names.hitEnd, Types._boolean);
+            java_util_regex_Matcher_requireEnd = java_util_regex_Matcher.requireDeclaredField(Names.requireEnd, Types._boolean);
+
+            java_util_regex_Matcher_HIDDEN_tstring = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_TSTRING);
+            java_util_regex_Matcher_HIDDEN_textSync = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_TEXT_SYNC);
+            java_util_regex_Matcher_HIDDEN_patternSync = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_PATTERN_SYNC);
+            java_util_regex_Matcher_HIDDEN_oldLastBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_OLD_LAST_BACKUP);
+            java_util_regex_Matcher_HIDDEN_modCountBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_MOD_COUNT_BACKUP);
+            java_util_regex_Matcher_HIDDEN_transparentBoundsBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_TRANSPARENT_BOUNDS_BACKUP);
+            java_util_regex_Matcher_HIDDEN_anchoringBoundsBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_ANCHORING_BOUNDS_BACKUP);
+            java_util_regex_Matcher_HIDDEN_fromBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_FROM_BACKUP);
+            java_util_regex_Matcher_HIDDEN_toBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_TO_BACKUP);
+            java_util_regex_Matcher_HIDDEN_matchingModeBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_MATCHING_MODE_BACKUP);
+            java_util_regex_Matcher_HIDDEN_searchFromBackup = java_util_regex_Matcher.requireHiddenField(Names.HIDDEN_TREGEX_SEARCH_FROM_BACKUP);
+
+            java_util_regex_Matcher_parentPattern = java_util_regex_Matcher.requireDeclaredField(Names.parentPattern, Types.java_util_regex_Pattern);
+            java_util_regex_Matcher_text = java_util_regex_Matcher.requireDeclaredField(Names.text, Types.java_lang_CharSequence);
+            java_util_regex_Matcher_groups = java_util_regex_Matcher.requireDeclaredField(Names.groups, Types._int_array);
+            java_util_regex_Matcher_first = java_util_regex_Matcher.requireDeclaredField(Names.first, Types._int);
+            java_util_regex_Matcher_last = java_util_regex_Matcher.requireDeclaredField(Names.last, Types._int);
+            java_util_regex_Matcher_oldLast = java_util_regex_Matcher.requireDeclaredField(Names.oldLast, Types._int);
+            java_util_regex_Matcher_from = java_util_regex_Matcher.requireDeclaredField(Names.from, Types._int);
+            java_util_regex_Matcher_to = java_util_regex_Matcher.requireDeclaredField(Names.to, Types._int);
+            java_util_regex_Matcher_modCount = java_util_regex_Matcher.requireDeclaredField(Names.modCount, Types._int);
+            java_util_regex_Matcher_transparentBounds = java_util_regex_Matcher.requireDeclaredField(Names.transparentBounds, Types._boolean);
+            java_util_regex_Matcher_anchoringBounds = java_util_regex_Matcher.requireDeclaredField(Names.anchoringBounds, Types._boolean);
+            java_util_regex_Matcher_locals = java_util_regex_Matcher.requireDeclaredField(Names.locals, Types._int_array);
+            java_util_regex_Matcher_localsPos = java_util_regex_Matcher.requireDeclaredField(Names.localsPos, Types.java_util_regex_IntHashSet_array);
+
+            java_util_regex_IntHashSet = knownKlass(Types.java_util_regex_IntHashSet);
+        }
+    }
+
+    public final TRegexSupport tRegexSupport;
+
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;
 
@@ -2601,7 +2599,7 @@ public final class Meta extends ContextAccessImpl
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public @JavaType(Throwable.class) static StaticObject initExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(String.class) StaticObject message) {
+    public static @JavaType(Throwable.class) StaticObject initExceptionWithMessage(ObjectKlass exceptionKlass, @JavaType(String.class) StaticObject message) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         assert StaticObject.isNull(message) || exceptionKlass.getMeta().java_lang_String.isAssignableFrom(message.getKlass());
         return exceptionKlass.getMeta().dispatch.initEx(exceptionKlass, message, null);
@@ -2618,7 +2616,7 @@ public final class Meta extends ContextAccessImpl
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public @JavaType(Throwable.class) static StaticObject initExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, String message) {
+    public static @JavaType(Throwable.class) StaticObject initExceptionWithMessage(ObjectKlass exceptionKlass, String message) {
         return initExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(message));
     }
 
@@ -2632,7 +2630,7 @@ public final class Meta extends ContextAccessImpl
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public @JavaType(Throwable.class) static StaticObject initException(@JavaType(Throwable.class) ObjectKlass exceptionKlass) {
+    public static @JavaType(Throwable.class) StaticObject initException(ObjectKlass exceptionKlass) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         return exceptionKlass.getMeta().dispatch.initEx(exceptionKlass, null, null);
     }
@@ -2648,10 +2646,28 @@ public final class Meta extends ContextAccessImpl
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public @JavaType(Throwable.class) static StaticObject initExceptionWithCause(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(Throwable.class) StaticObject cause) {
+    public static @JavaType(Throwable.class) StaticObject initExceptionWithCause(ObjectKlass exceptionKlass, @JavaType(Throwable.class) StaticObject cause) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         assert StaticObject.isNull(cause) || exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(cause.getKlass());
         return exceptionKlass.getMeta().dispatch.initEx(exceptionKlass, null, cause);
+    }
+
+    /**
+     * Allocate and initializes an exception of the given guest klass.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the
+     * {@link Throwable#Throwable(String, Throwable) constructor with message and cause}. The given
+     * guest class must have such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    public static @JavaType(Throwable.class) StaticObject initException(ObjectKlass exceptionKlass, @JavaType(String.class) StaticObject message, @JavaType(Throwable.class) StaticObject cause) {
+        assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
+        assert StaticObject.isNull(cause) || exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(cause.getKlass());
+        assert StaticObject.isNull(message) || exceptionKlass.getMeta().java_lang_String.isAssignableFrom(message.getKlass());
+        return exceptionKlass.getMeta().dispatch.initEx(exceptionKlass, message, cause);
     }
 
     /**
@@ -2745,6 +2761,32 @@ public final class Meta extends ContextAccessImpl
     @HostCompilerDirectives.InliningCutoff
     public EspressoException throwExceptionWithCause(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(Throwable.class) StaticObject cause) {
         throw throwException(initExceptionWithCause(exceptionKlass, cause));
+    }
+
+    /**
+     * Initializes and throws an exception of the given guest klass. A guest instance is allocated
+     * and initialized by calling the {@link Throwable#Throwable(String, Throwable) constructor with
+     * cause}. The given guest class must have such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    @HostCompilerDirectives.InliningCutoff
+    public EspressoException throwException(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(String.class) StaticObject message, @JavaType(Throwable.class) StaticObject cause) {
+        throw throwException(initException(exceptionKlass, message, cause));
+    }
+
+    /**
+     * Initializes and throws an exception of the given guest klass. A guest instance is allocated
+     * and initialized by calling the {@link Throwable#Throwable(String, Throwable) constructor with
+     * cause}. The given guest class must have such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    @HostCompilerDirectives.InliningCutoff
+    public EspressoException throwException(@JavaType(Throwable.class) ObjectKlass exceptionKlass, String message, @JavaType(Throwable.class) StaticObject cause) {
+        throw throwException(initException(exceptionKlass, exceptionKlass.getMeta().toGuestString(message), cause));
     }
 
     /**
@@ -2955,7 +2997,7 @@ public final class Meta extends ContextAccessImpl
             if (elemental == null) {
                 return null;
             }
-            return elemental.getArrayClass(TypeSymbols.getArrayDimensions(type));
+            return elemental.getArrayKlass(TypeSymbols.getArrayDimensions(type));
         }
         return loadKlassOrNull(type, classLoader, protectionDomain);
     }
@@ -2975,7 +3017,7 @@ public final class Meta extends ContextAccessImpl
         }
         if (TypeSymbols.isArray(type)) {
             Klass elemental = resolveSymbolOrFail(getTypes().getElementalType(type), classLoader, protectionDomain);
-            return elemental.getArrayClass(TypeSymbols.getArrayDimensions(type));
+            return elemental.getArrayKlass(TypeSymbols.getArrayDimensions(type));
         }
         return loadKlassOrFail(type, classLoader, protectionDomain);
     }

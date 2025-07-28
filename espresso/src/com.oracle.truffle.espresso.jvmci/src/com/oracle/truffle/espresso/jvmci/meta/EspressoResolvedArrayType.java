@@ -26,6 +26,8 @@ import static com.oracle.truffle.espresso.jvmci.EspressoJVMCIRuntime.runtime;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -283,6 +285,11 @@ public final class EspressoResolvedArrayType extends EspressoResolvedObjectType 
     @Override
     public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
         return NO_METHODS;
+    }
+
+    @Override
+    public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
+        return Collections.emptyList();
     }
 
     @Override

@@ -120,7 +120,7 @@ public class AArch64HotSpotZBarrierSetLIRGenerator implements AArch64ReadBarrier
                     LIRInstruction op,
                     GraalHotSpotVMConfig config,
                     AArch64Address address,
-                    Register result,
+                    Register tmp,
                     StoreKind storeKind,
                     ForeignCallLinkage callTarget,
                     LIRFrameState state) {
@@ -130,9 +130,9 @@ public class AArch64HotSpotZBarrierSetLIRGenerator implements AArch64ReadBarrier
             Register rscratch1 = sc1.getRegister();
             Register rscratch2 = sc2.getRegister();
 
-            Assembler.guaranteeDifferentRegisters(address.getBase(), result, rscratch1);
-            Assembler.guaranteeDifferentRegisters(address.getOffset(), result, rscratch1);
-            Assembler.guaranteeDifferentRegisters(result, rscratch1);
+            Assembler.guaranteeDifferentRegisters(address.getBase(), tmp, rscratch1);
+            Assembler.guaranteeDifferentRegisters(address.getOffset(), tmp, rscratch1);
+            Assembler.guaranteeDifferentRegisters(tmp, rscratch1);
 
             if (storeKind == StoreKind.Atomic) {
                 if (state != null) {
@@ -182,7 +182,7 @@ public class AArch64HotSpotZBarrierSetLIRGenerator implements AArch64ReadBarrier
                 storeBarrierMedium(crb, masm, config,
                                 address,
                                 rscratch2,
-                                result,
+                                tmp,
                                 rscratch1,
                                 storeKind,
                                 continuation,
@@ -423,10 +423,11 @@ public class AArch64HotSpotZBarrierSetLIRGenerator implements AArch64ReadBarrier
                     AllocatableValue allocatableNewValue,
                     BarrierType barrierType) {
         ForeignCallLinkage callTarget = getWriteBarrierStub(barrierType, StoreKind.Atomic);
-        AllocatableValue temp = tool.newVariable(tool.toRegisterKind(LIRKind.value(memKind)));
+        AllocatableValue tmp = tool.newVariable(tool.toRegisterKind(LIRKind.value(memKind)));
+        AllocatableValue tmp2 = tool.newVariable(tool.toRegisterKind(LIRKind.value(memKind)));
         tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
         tool.append(new AArch64HotSpotZCompareAndSwapOp(isLogicVariant, memKind, memoryOrder, isLogicVariant, result,
-                        allocatableExpectedValue, allocatableNewValue, tool.asAllocatable(address), config, callTarget, temp));
+                        allocatableExpectedValue, allocatableNewValue, tool.asAllocatable(address), config, callTarget, tmp, tmp2));
     }
 
     @Override

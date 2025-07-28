@@ -42,6 +42,7 @@ package com.oracle.truffle.object.ext.test;
 
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertObjectLocation;
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertPrimitiveLocation;
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.assumeExtLayout;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -61,7 +62,6 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 import com.oracle.truffle.object.ext.test.ObjectModelRegressionTest.TestDynamicObject;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
@@ -86,7 +86,7 @@ public class PolymorphicPrimitivesTest extends AbstractParametrizedLibraryTest {
 
     @Before
     public void before() {
-        TruffleTestAssumptions.assumeEnterpriseRuntime();
+        assumeExtLayout();
     }
 
     @Test

@@ -27,7 +27,6 @@ package jdk.graal.compiler.nodes.extended;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -68,6 +67,7 @@ import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.spi.SwitchFoldable;
 import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -183,6 +183,10 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
 
     @Override
     public void simplify(SimplifierTool tool) {
+        super.simplify(tool);
+        if (this.isDeleted()) {
+            return;
+        }
         if (shouldInjectBranchProbabilities()) {
             injectBranchProbabilities();
         }
@@ -566,7 +570,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         }
         int arrayLength = optionalArrayLength;
 
-        Map<Integer, List<Integer>> reverseArrayMapping = new HashMap<>();
+        Map<Integer, List<Integer>> reverseArrayMapping = new EconomicHashMap<>();
         for (int i = 0; i < arrayLength; i++) {
             JavaConstant elementConstant = tool.getConstantReflection().readArrayElement(arrayConstant, i);
             if (elementConstant == null || elementConstant.getJavaKind() != JavaKind.Int) {

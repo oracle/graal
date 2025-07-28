@@ -276,14 +276,20 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     }
 }
 
+/**
+ * {@link CFunctionSnippets} may only be used for code that cannot be deoptimized. Otherwise,
+ * deoptimization could destroy stack allocated {@link JavaFrameAnchor} structs when rewriting the
+ * stack.
+ */
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 class CFunctionSnippetsFeature implements InternalFeature {
-
     @Override
     @SuppressWarnings("unused")
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-        new CFunctionSnippets(options, providers, lowerings);
+        if (hosted) {
+            new CFunctionSnippets(options, providers, lowerings);
+        }
     }
 }

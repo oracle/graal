@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,15 @@
  */
 package jdk.graal.compiler.core.test;
 
+import static java.lang.classfile.ClassFile.ACC_PRIVATE;
+import static java.lang.classfile.ClassFile.ACC_STATIC;
+import static java.lang.constant.ConstantDescs.CD_int;
+
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.TypeKind;
+import java.lang.classfile.attribute.ConstantValueAttribute;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,40 +40,40 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.FieldVisitor;
-import org.objectweb.asm.MethodVisitor;
 
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @RunWith(Parameterized.class)
-public class SubWordReturnTest extends CustomizedBytecodePatternTest {
-
-    private final JavaKind kind;
-    private final int value;
+public class SubWordReturnTest extends GraalCompilerTest implements CustomizedBytecodePattern {
 
     @Parameters(name = "{0}, {1}")
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         for (int i : new int[]{1000000, 1000001, -1000000, -1}) {
-            ret.add(new Object[]{JavaKind.Boolean, i});
-            ret.add(new Object[]{JavaKind.Byte, i});
-            ret.add(new Object[]{JavaKind.Short, i});
-            ret.add(new Object[]{JavaKind.Char, i});
+            ret.add(new Object[]{TypeKind.BOOLEAN, i});
+            ret.add(new Object[]{TypeKind.BYTE, i});
+            ret.add(new Object[]{TypeKind.SHORT, i});
+            ret.add(new Object[]{TypeKind.CHAR, i});
         }
         return ret;
     }
 
-    public SubWordReturnTest(JavaKind kind, int value) {
+    private static final String GET = "get";
+    private static final String WRAPPER = "wrapper";
+    private static final String FIELD = "intField";
+
+    private final TypeKind kind;
+    private final int value;
+
+    public SubWordReturnTest(TypeKind kind, int value) {
         this.kind = kind;
         this.value = value;
     }
 
     @Test
     public void testSubWordReturn() throws ClassNotFoundException {
-        Class<?> testClass = getClass(SubWordReturnTest.class.getName() + "$" + kind.toString() + "Getter");
-        ResolvedJavaMethod method = getResolvedJavaMethod(testClass, "testSnippet");
+        Class<?> testClass = getClass(SubWordReturnTest.class.getName() + "$" + kind.toString().toLowerCase() + "Getter");
+        ResolvedJavaMethod method = getResolvedJavaMethod(testClass, WRAPPER);
         test(method, null);
     }
 
@@ -82,35 +91,28 @@ public class SubWordReturnTest extends CustomizedBytecodePatternTest {
             return 0;
         }
 
-        public static int testByteSnippet() {
+        public static int wrapper() {
             return get();
         }
     }
 
     @Override
-    protected byte[] generateClass(String internalClassName) {
-        ClassWriter cw = new ClassWriter(0);
-        cw.visit(52, ACC_SUPER | ACC_PUBLIC, internalClassName, null, "java/lang/Object", null);
+    public byte[] generateClass(String className) {
+        ClassDesc thisClass = ClassDesc.of(className);
+        ClassDesc targetType = kind.upperBound();
+        MethodTypeDesc getMethodTypeDesc = MethodTypeDesc.of(targetType);
 
-        FieldVisitor intField = cw.visitField(ACC_PRIVATE | ACC_STATIC, "intField", "I", null, value);
-        intField.visitEnd();
-
-        MethodVisitor get = cw.visitMethod(ACC_PRIVATE | ACC_STATIC, "get", "()" + kind.getTypeChar(), null, null);
-        get.visitCode();
-        get.visitFieldInsn(GETSTATIC, internalClassName, "intField", "I");
-        get.visitInsn(IRETURN);
-        get.visitMaxs(1, 0);
-        get.visitEnd();
-
-        MethodVisitor snippet = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "testSnippet", "()I", null, null);
-        snippet.visitCode();
-        snippet.visitMethodInsn(INVOKESTATIC, internalClassName, "get", "()" + kind.getTypeChar(), false);
-        snippet.visitInsn(IRETURN);
-        snippet.visitMaxs(1, 0);
-        snippet.visitEnd();
-
-        cw.visitEnd();
-        return cw.toByteArray();
+        // @formatter:off
+        return ClassFile.of().build(thisClass, classBuilder -> classBuilder
+                        .withField(FIELD, CD_int, fieldBuilder -> fieldBuilder
+                                        .withFlags(ACC_PRIVATE | ACC_STATIC)
+                                        .with(ConstantValueAttribute.of(value)))
+                        .withMethodBody(GET, getMethodTypeDesc, ACC_PUBLIC_STATIC, b -> b
+                                        .getstatic(thisClass, FIELD, CD_int)
+                                        .ireturn())
+                        .withMethodBody(WRAPPER, MethodTypeDesc.of(CD_int), ACC_PUBLIC_STATIC, b -> b
+                                        .invokestatic(thisClass, GET, getMethodTypeDesc)
+                                        .ireturn()));
+        // @formatter:on
     }
-
 }

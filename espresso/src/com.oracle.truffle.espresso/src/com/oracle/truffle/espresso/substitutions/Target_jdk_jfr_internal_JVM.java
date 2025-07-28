@@ -41,51 +41,99 @@ public final class Target_jdk_jfr_internal_JVM {
         // ignore this
     }
 
-    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11To21.class)
     @SuppressWarnings("unused")
     public static void setFileNotification(@JavaType(internalName = "Ljdk/jfr/internal/JVM;") StaticObject self, long delta) {
         // ignore this
     }
 
-    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(languageFilter = VersionFilter.Java22OrLater.class)
+    @SuppressWarnings("unused")
+    public static void setFileNotification(long delta) {
+        // ignore this
+    }
+
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11To21.class)
     @SuppressWarnings("unused")
     public static void setMemorySize(@JavaType(internalName = "Ljdk/jfr/internal/JVM;") StaticObject self, long size) {
         // ignore this
     }
 
-    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(languageFilter = VersionFilter.Java22OrLater.class)
+    @SuppressWarnings("unused")
+    public static void setMemorySize(long size) {
+        // ignore this
+    }
+
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11To21.class)
     @SuppressWarnings("unused")
     public static void setGlobalBufferSize(@JavaType(internalName = "Ljdk/jfr/internal/JVM;") StaticObject self, long size) {
         // ignore this
     }
 
-    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(languageFilter = VersionFilter.Java22OrLater.class)
+    @SuppressWarnings("unused")
+    public static void setGlobalBufferSize(long size) {
+        // ignore this
+    }
+
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11To21.class)
     @SuppressWarnings("unused")
     public static void setGlobalBufferCount(@JavaType(internalName = "Ljdk/jfr/internal/JVM;") StaticObject self, long count) {
         // ignore this
     }
 
-    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java21OrLater.class)
+    @Substitution(languageFilter = VersionFilter.Java22OrLater.class)
+    @SuppressWarnings("unused")
+    public static void setGlobalBufferCount(long count) {
+        // ignore this
+    }
+
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java21.class)
     @SuppressWarnings("unused")
     public static void setDumpPath(@JavaType(internalName = "Ljdk/jfr/internal/JVM;") StaticObject self, @JavaType(String.class) StaticObject dumpPathText) {
         // ignore this
     }
 
-    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(languageFilter = VersionFilter.Java22OrLater.class)
+    @SuppressWarnings("unused")
+    public static void setDumpPath(@JavaType(String.class) StaticObject dumpPathText) {
+        // ignore this
+    }
+
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11To21.class)
     @SuppressWarnings("unused")
     public static void setStackDepth(@JavaType(internalName = "Ljdk/jfr/internal/JVM;") StaticObject self, int depth) {
         // ignore this
     }
 
-    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(languageFilter = VersionFilter.Java22OrLater.class)
+    @SuppressWarnings("unused")
+    public static void setStackDepth(int depth) {
+        // ignore this
+    }
+
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11To21.class)
     @SuppressWarnings("unused")
     public static void setThreadBufferSize(@JavaType(internalName = "Ljdk/jfr/internal/JVM;") StaticObject self, long size) {
         // ignore this
     }
 
-    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java21OrLater.class)
+    @Substitution(languageFilter = VersionFilter.Java22OrLater.class)
+    @SuppressWarnings("unused")
+    public static void setThreadBufferSize(long size) {
+        // ignore this
+    }
+
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java21.class)
     @SuppressWarnings("unused")
     public static boolean isContainerized(@JavaType(internalName = "Ljdk/jfr/internal/JVM;") StaticObject self) {
+        return false;
+    }
+
+    @Substitution(languageFilter = VersionFilter.Java22OrLater.class)
+    @SuppressWarnings("unused")
+    public static boolean isContainerized() {
         return false;
     }
 }

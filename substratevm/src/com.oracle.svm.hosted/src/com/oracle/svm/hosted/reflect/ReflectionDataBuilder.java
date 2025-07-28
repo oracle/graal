@@ -40,6 +40,7 @@ import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_SIGNERS_FL
 import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllTypeReachableConditionsAsTypeReached;
 
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
@@ -56,6 +57,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -65,6 +68,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -84,9 +88,17 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
+import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
@@ -110,6 +122,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final SubstrateAnnotationExtractor annotationExtractor;
     private BeforeAnalysisAccessImpl analysisAccess;
     private final ClassForNameSupport classForNameSupport;
+    private LayeredReflectionDataBuilder layeredReflectionDataBuilder;
 
     private boolean sealed;
 
@@ -172,6 +185,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             registerConditionalConfiguration(conditionalTask.condition, (cnd) -> universe.getBigbang().postTask(debug -> conditionalTask.task.accept(cnd)));
         }
         pendingConditionalTasks.clear();
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            layeredReflectionDataBuilder = LayeredReflectionDataBuilder.singleton();
+        }
     }
 
     public void beforeAnalysis(BeforeAnalysisAccessImpl beforeAnalysisAccess) {
@@ -222,6 +238,21 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 registerLinkageError(clazz, e, classLookupExceptions);
             }
         });
+    }
+
+    void registerClassMetadata(ConfigurationCondition condition, Class<?> clazz) {
+        registerAllDeclaredFieldsQuery(condition, true, clazz);
+        registerAllFieldsQuery(condition, true, clazz);
+        registerAllDeclaredMethodsQuery(condition, true, clazz);
+        registerAllMethodsQuery(condition, true, clazz);
+        registerAllDeclaredConstructorsQuery(condition, true, clazz);
+        registerAllConstructorsQuery(condition, true, clazz);
+        registerAllDeclaredClassesQuery(condition, clazz);
+        registerAllClassesQuery(condition, clazz);
+        registerAllRecordComponentsQuery(condition, clazz);
+        registerAllPermittedSubclassesQuery(condition, clazz);
+        registerAllNestMembersQuery(condition, clazz);
+        registerAllSignersQuery(condition, clazz);
     }
 
     /**
@@ -427,6 +458,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
         AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(reflectExecutable);
         AnalysisType declaringType = analysisMethod.getDeclaringClass();
+
+        if (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isMethodRegistered(analysisMethod)) {
+            /* GR-66387: The runtime condition should be combined across layers. */
+            return;
+        }
+
         var classMethods = registeredMethods.computeIfAbsent(declaringType, t -> new ConcurrentHashMap<>());
         var shouldRegisterReachabilityHandler = classMethods.isEmpty();
 
@@ -588,6 +625,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
         AnalysisField analysisField = metaAccess.lookupJavaField(reflectField);
         AnalysisType declaringClass = analysisField.getDeclaringClass();
+
+        if (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isFieldRegistered(analysisField)) {
+            /* GR-66387: The runtime condition should be combined across layers. */
+            return;
+        }
 
         var classFields = registeredFields.computeIfAbsent(declaringClass, t -> new ConcurrentHashMap<>());
         boolean exists = classFields.containsKey(analysisField);
@@ -1159,10 +1201,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public int getEnabledReflectionQueries(Class<?> clazz) {
         int enabledQueries = enabledQueriesFlags.getOrDefault(clazz, 0);
         /*
-         * Primitives, arrays and object are registered by default since they provide reflective
-         * access to either no members or only Object methods.
+         * Primitives and arrays are registered by default since they provide reflective access to
+         * no members.
          */
-        if (clazz == Object.class || clazz.isPrimitive() || clazz.isArray()) {
+        if (clazz.isPrimitive() || clazz.isArray()) {
             enabledQueries |= ALL_DECLARED_CLASSES_FLAG | ALL_CLASSES_FLAG | ALL_DECLARED_CONSTRUCTORS_FLAG | ALL_CONSTRUCTORS_FLAG | ALL_DECLARED_METHODS_FLAG | ALL_METHODS_FLAG |
                             ALL_DECLARED_FIELDS_FLAG | ALL_FIELDS_FLAG;
         }
@@ -1243,6 +1285,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public void registerHeapReflectionExecutable(Executable reflectExecutable, ScanReason reason) {
+        if (reflectExecutable instanceof Constructor<?> reflectConstructor && ReflectionSubstitutionSupport.singleton().isCustomSerializationConstructor(reflectConstructor)) {
+            /*
+             * Constructors created by Constructor.newWithAccessor are indistinguishable from an
+             * equivalent constructor with a "correct" accessor, and as such could hide this
+             * constructor from reflection queries. We therefore exclude such constructors from the
+             * internal reflection metadata.
+             */
+            return;
+        }
         AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(reflectExecutable);
         if (heapMethods.put(analysisMethod, reflectExecutable) == null) {
             if (sealed) {
@@ -1363,6 +1414,100 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public static class TestBackdoor {
         public static void registerField(ReflectionDataBuilder reflectionDataBuilder, boolean queriedOnly, Field field) {
             reflectionDataBuilder.runConditionalInAnalysisTask(ConfigurationCondition.alwaysTrue(), (cnd) -> reflectionDataBuilder.registerField(cnd, queriedOnly, field));
+        }
+    }
+
+    @AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
+    public static class LayeredReflectionDataBuilder implements LayeredImageSingleton {
+        public static final String METHODS = "methods";
+        public static final String FIELDS = "fields";
+        public static final String REFLECTION_DATA_BUILDER = "reflection data builder";
+        public static final String REFLECTION_DATA_BUILDER_CLASSES = REFLECTION_DATA_BUILDER + " classes";
+        /**
+         * The methods registered for reflection in the previous layers. The key of the map is the
+         * id of the declaring type and the set contains the method ids.
+         */
+        private final Map<Integer, Set<Integer>> previousLayerRegisteredMethods;
+        /**
+         * The fields registered for reflection in the previous layers. The key of the map is the id
+         * of the declaring type and the set contains the field ids.
+         */
+        private final Map<Integer, Set<Integer>> previousLayerRegisteredFields;
+
+        public LayeredReflectionDataBuilder() {
+            this(Map.of(), Map.of());
+        }
+
+        private LayeredReflectionDataBuilder(Map<Integer, Set<Integer>> previousLayerRegisteredMethods, Map<Integer, Set<Integer>> previousLayerRegisteredFields) {
+            this.previousLayerRegisteredMethods = previousLayerRegisteredMethods;
+            this.previousLayerRegisteredFields = previousLayerRegisteredFields;
+        }
+
+        public static LayeredReflectionDataBuilder singleton() {
+            return ImageSingletons.lookup(LayeredReflectionDataBuilder.class);
+        }
+
+        public boolean isMethodRegistered(AnalysisMethod analysisMethod) {
+            return isElementRegistered(previousLayerRegisteredMethods, analysisMethod.getDeclaringClass(), analysisMethod.getId());
+        }
+
+        public boolean isFieldRegistered(AnalysisField analysisField) {
+            return isElementRegistered(previousLayerRegisteredFields, analysisField.getDeclaringClass(), analysisField.getId());
+        }
+
+        private static boolean isElementRegistered(Map<Integer, Set<Integer>> previousLayerRegisteredElements, AnalysisType declaringClass, int elementId) {
+            Set<Integer> previousLayerRegisteredElementIds = previousLayerRegisteredElements.get(declaringClass.getId());
+            if (declaringClass.isInBaseLayer() && previousLayerRegisteredElementIds != null) {
+                return previousLayerRegisteredElementIds.contains(elementId);
+            }
+            return false;
+        }
+
+        @Override
+        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+            return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
+        }
+
+        @Override
+        public PersistFlags preparePersist(ImageSingletonWriter writer) {
+            ReflectionDataBuilder reflectionDataBuilder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
+            persistRegisteredElements(writer, reflectionDataBuilder.registeredMethods, AnalysisMethod::getId, METHODS);
+            persistRegisteredElements(writer, reflectionDataBuilder.registeredFields, AnalysisField::getId, FIELDS);
+            return PersistFlags.CREATE;
+        }
+
+        private static <T, U> void persistRegisteredElements(ImageSingletonWriter writer, Map<AnalysisType, Map<T, U>> registeredElements, Function<T, Integer> getId, String element) {
+            List<Integer> classes = new ArrayList<>();
+            for (var entry : registeredElements.entrySet()) {
+                classes.add(entry.getKey().getId());
+                writer.writeIntList(getElementKeyName(element, entry.getKey().getId()), entry.getValue().keySet().stream().map(getId).toList());
+            }
+            writer.writeIntList(getClassesKeyName(element), classes);
+        }
+
+        @SuppressWarnings("unused")
+        public static Object createFromLoader(ImageSingletonLoader loader) {
+            var previousLayerRegisteredMethods = loadRegisteredElements(loader, METHODS);
+            var previousLayerRegisteredFields = loadRegisteredElements(loader, FIELDS);
+            return new LayeredReflectionDataBuilder(previousLayerRegisteredMethods, previousLayerRegisteredFields);
+        }
+
+        private static Map<Integer, Set<Integer>> loadRegisteredElements(ImageSingletonLoader loader, String element) {
+            Map<Integer, Set<Integer>> previousLayerRegisteredElements = new HashMap<>();
+            var classes = loader.readIntList(getClassesKeyName(element));
+            for (int key : classes) {
+                var elements = loader.readIntList(getElementKeyName(element, key)).stream().collect(Collectors.toUnmodifiableSet());
+                previousLayerRegisteredElements.put(key, elements);
+            }
+            return Collections.unmodifiableMap(previousLayerRegisteredElements);
+        }
+
+        private static String getClassesKeyName(String element) {
+            return REFLECTION_DATA_BUILDER_CLASSES + " " + element;
+        }
+
+        private static String getElementKeyName(String element, int typeId) {
+            return REFLECTION_DATA_BUILDER + " " + element + " " + typeId;
         }
     }
 }

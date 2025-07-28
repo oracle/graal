@@ -195,9 +195,12 @@ public class DebugOptions {
                    "will not include metrics for compiler code that is not executed.", type = OptionType.Debug)
     public static final OptionKey<Boolean> ListMetrics = new OptionKey<>(false);
     @Option(help = """
-                   File to which metrics are dumped per compilation.
-                   A CSV format is used if the file ends with .csv otherwise a more
-                   human readable format is used. The fields in the CSV format are:
+                   File to which metrics are dumped per compilation at shutdown.
+                   A %p in the name will be replaced with a string identifying the process, usually the process id.
+                   A CSV format is used if the file ends with .csv otherwise a more human readable format is used.
+                   An empty argument causes metrics to be dumped to the console.
+                   
+                   The fields in the CSV format are:
                               compilable - method being compiled
                      compilable_identity - identity hash code of compilable
                           compilation_nr - where this compilation lies in the ordered
@@ -207,9 +210,15 @@ public class DebugOptions {
                              metric_name - name of metric
                             metric_value - value of metric""", type = OptionType.Debug)
      public static final OptionKey<String> MetricsFile = new OptionKey<>(null);
-    @Option(help = "File to which aggregated metrics are dumped at shutdown. A CSV format is used if the file ends with .csv " +
-                   "otherwise a more human readable format is used. If not specified, metrics are dumped to the console.", type = OptionType.Debug)
+    @Option(help = """
+                   File to which aggregated metrics are dumped at shutdown.
+                   A %p in the name will be replaced with a string identifying the process, usually the process id.
+                   A CSV format is used if the file ends with .csv otherwise a more human readable format is used.
+                   An empty argument causes metrics to be dumped to the console.""", type = OptionType.Debug)
     public static final OptionKey<String> AggregatedMetricsFile = new OptionKey<>(null);
+
+    @Option(help = "Omit metrics with a zero value when writing CSV files.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> OmitZeroMetrics = new OptionKey<>(true);
 
     @Option(help = "Enable debug output for stub code generation and snippet preparation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DebugStubsAndSnippets = new OptionKey<>(false);

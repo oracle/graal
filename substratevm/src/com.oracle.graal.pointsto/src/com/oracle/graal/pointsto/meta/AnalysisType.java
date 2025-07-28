@@ -175,8 +175,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private AnalysisMethod[] declaredMethods;
     private Set<AnalysisMethod> dispatchTableMethods;
 
-    private AnalysisType[] allInterfaces;
-
     /* isArray is an expensive operation so we eagerly compute it */
     private final boolean isArray;
     private final boolean isJavaLangObject;
@@ -377,36 +375,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return dimension;
     }
 
-    /**
-     * @return All interfaces this type inherits (including itself if it is an interface).
-     */
-    public AnalysisType[] getAllInterfaces() {
-        if (allInterfaces != null) {
-            return allInterfaces;
-        }
-
-        Set<AnalysisType> allInterfaceSet = new HashSet<>();
-
-        if (isInterface()) {
-            allInterfaceSet.add(this);
-        }
-
-        if (this.superClass != null) {
-            allInterfaceSet.addAll(Arrays.asList(this.superClass.getAllInterfaces()));
-        }
-
-        for (AnalysisType i : interfaces) {
-            allInterfaceSet.addAll(Arrays.asList(i.getAllInterfaces()));
-        }
-
-        var result = allInterfaceSet.toArray(AnalysisType[]::new);
-
-        // ensure result is fully visible across threads
-        VarHandle.storeStoreFence();
-        allInterfaces = result;
-        return allInterfaces;
-    }
-
     public void cleanupAfterAnalysis() {
         instantiatedTypes = null;
         instantiatedTypesNonNull = null;
@@ -525,7 +493,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public static boolean verifyAssignableTypes(BigBang bb) {
-        List<AnalysisType> allTypes = bb.getUniverse().getTypes();
+        List<AnalysisType> allTypes = bb.getUniverse().getTypes().stream().filter(t -> !(t.getWrapped() instanceof BaseLayerType)).toList();
 
         Set<String> mismatchedAssignableResults = ConcurrentHashMap.newKeySet();
         allTypes.parallelStream().filter(t -> t.instantiatedTypes != null).forEach(t1 -> {
@@ -1338,6 +1306,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
+    public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
+        /*
+         * Not needed on SubstrateVM for now.
+         */
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
         return getDeclaredConstructors(true);
     }
@@ -1346,18 +1322,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AnalysisMethod[] getDeclaredConstructors(boolean forceLink) {
         GraalError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
         return universe.lookup(wrapped.getDeclaredConstructors(forceLink));
-    }
-
-    public AnalysisMethod findConstructor(Signature signature) {
-        if (wrapped instanceof BaseLayerType) {
-            return null;
-        }
-        for (AnalysisMethod ctor : getDeclaredConstructors(false)) {
-            if (ctor.getSignature().equals(signature)) {
-                return ctor;
-            }
-        }
-        return null;
     }
 
     public boolean isOpenTypeWorldDispatchTableMethodsCalculated() {
@@ -1492,6 +1456,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private static final int ANNOTATION = 0x00002000;
 
     /* Method copied from java.lang.Class. */
+    @Override
     public boolean isAnnotation() {
         return (getModifiers() & ANNOTATION) != 0;
     }

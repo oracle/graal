@@ -116,6 +116,11 @@ public final class SnippetResolvedJavaMethod implements ResolvedJavaMethod {
     }
 
     @Override
+    public boolean isDeclared() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public boolean isClassInitializer() {
         throw new UnsupportedOperationException();
     }

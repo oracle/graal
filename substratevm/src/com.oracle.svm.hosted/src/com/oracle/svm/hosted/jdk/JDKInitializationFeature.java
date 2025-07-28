@@ -28,6 +28,7 @@ import java.lang.reflect.Field;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.FutureDefaultsOptions;
@@ -110,7 +111,7 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("sun.net", JDK_CLASS_REASON);
 
         rci.initializeAtBuildTime("sun.nio", JDK_CLASS_REASON);
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
+        if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
             rci.initializeAtRunTime("sun.nio.ch.PipeImpl", "Contains SecureRandom reference, therefore can't be included in the image heap");
         }
 
@@ -196,7 +197,6 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("com.sun.security.jgss", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.security.cert.internal.x509", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.security.ntlm", JDK_CLASS_REASON);
-        rci.initializeAtBuildTime("com.sun.security.sasl", JDK_CLASS_REASON);
 
         rci.initializeAtBuildTime("java.security", JDK_CLASS_REASON);
         rci.initializeAtRunTime("sun.security.pkcs11.P11Util", "Cleaner reference");
@@ -218,7 +218,6 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("sun.security.krb5", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.pkcs", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.pkcs10", JDK_CLASS_REASON);
-        rci.initializeAtBuildTime("sun.security.pkcs11", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.pkcs12", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.provider", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.rsa", JDK_CLASS_REASON);
@@ -228,8 +227,12 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("sun.security.util", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.validator", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.x509", JDK_CLASS_REASON);
-        rci.initializeAtBuildTime("sun.security.smartcardio", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.jndi", JDK_CLASS_REASON);
+        if (!FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+            rci.initializeAtBuildTime("sun.security.pkcs11", JDK_CLASS_REASON);
+            rci.initializeAtBuildTime("sun.security.smartcardio", JDK_CLASS_REASON);
+            rci.initializeAtBuildTime("com.sun.security.sasl", JDK_CLASS_REASON);
+        }
         if (Platform.includedIn(Platform.DARWIN.class)) {
             rci.initializeAtBuildTime("apple.security", JDK_CLASS_REASON);
         }
@@ -275,6 +278,11 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtRunTime("jdk.internal.logger.LoggerFinderLoader", "Contains a static field with a FilePermission value");
 
         rci.initializeAtRunTime("jdk.internal.markdown.MarkdownTransformer", "Contains a static field with a DocTreeScanner which is initialized at run time");
+
+        /* Ensure "enhanced exception messages" are initialized (JDK 25+26, JDK-8348986). */
+        var exceptionsClass = ReflectionUtil.lookupClass("jdk.internal.util.Exceptions");
+        var exceptionsSetup = ReflectionUtil.lookupMethod(exceptionsClass, "setup");
+        ReflectionUtil.invokeMethod(exceptionsSetup, null);
 
         /*
          * The local class Holder in FallbackLinker#getInstance fails the build time initialization

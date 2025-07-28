@@ -25,10 +25,10 @@
 
 package com.oracle.svm.hosted.webimage.codegen.phase;
 
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.StackifierReconstructionPhase;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 
 import jdk.graal.compiler.core.phases.BaseTier;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.StackifierReconstructionPhase;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 
