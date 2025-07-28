@@ -1,0 +1,17 @@
+[[rule]]
+files = "Resources.java ResourcesHelper.java"
+all = [
+    "david.nestorovic@oracle.com",
+    "ivan.ristovic@oracle.com"
+]
+any = [
+]
+
+[[rule]]
+files = "ModuleNative.java RuntimeModuleSupport.java Target_java_lang_Module*.java Target_java_lang_module_*.java Target_jdk_internal_module_*.java"
+all = [
+    "ivan.ristovic@oracle.com",
+    "paul.woegerer@oracle.com"
+]
+any = [
+]
