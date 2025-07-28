@@ -59,6 +59,7 @@ import com.oracle.svm.core.collections.RingBuffer;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizedFrame.RelockObjectData;
 import com.oracle.svm.core.deopt.DeoptimizedFrame.VirtualFrame;
+import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -754,15 +755,7 @@ public final class Deoptimizer {
         /**
          * Custom prologue: save all of the architecture's return registers onto the stack.
          */
-        EagerEntryStub,
-
-        /**
-         * Custom prologue: same custom Prologue as the EagerEntryStub, but we also reserve some
-         * additional memory on the stack when this stub is entered, because the lazyDeoptStub might
-         * need to access callee-saved values in the frame of the callee of the method to be
-         * deoptimized.
-         */
-        LazyEntryStub,
+        EntryStub,
 
         /**
          * Custom prologue: set the stack pointer to the first method parameter.
@@ -812,7 +805,27 @@ public final class Deoptimizer {
         return pointer != Word.nullPointer();
     }
 
-    @DeoptStub(stubType = StubType.LazyEntryStub)
+    /**
+     * Entry point for the lazy deopt stub.
+     * <p>
+     * This method uses {@link StubCallingConvention} for when the callee (the return of which is
+     * intercepted) also uses stub calling convention. In that case, the callee (rather than the
+     * caller) has initially saved the values of registers, and these values are required for
+     * constructing the deopt frame. The values have already been restored to their registers before
+     * the return to this stub, and using stub calling convention here saves them again to the same
+     * expected locations.
+     * <p>
+     * Usually, the saved register values would still be present below the stack pointer, but could
+     * also have been overwritten by an interrupt or signal handler. The ABI might guarantee a safe
+     * zone below the stack pointer to prevent this, but such zones are typically also not large
+     * enough to fit all saved registers, especially with vector registers.
+     * <p>
+     * If the callee does not use stub calling convention, this method unnecessarily saves
+     * registers, but it avoids having additional stubs and selecting between them and should not
+     * have significant impact.
+     */
+    @StubCallingConvention
+    @DeoptStub(stubType = StubType.EntryStub)
     @Uninterruptible(reason = "Rewriting stack; gpReturnValue holds object reference.")
     public static UnsignedWord lazyDeoptStubObjectReturn(Pointer originalStackPointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
         try {
@@ -837,7 +850,9 @@ public final class Deoptimizer {
         }
     }
 
-    @DeoptStub(stubType = StubType.LazyEntryStub)
+    /** See {@link #lazyDeoptStubObjectReturn}. */
+    @StubCallingConvention
+    @DeoptStub(stubType = StubType.EntryStub)
     @Uninterruptible(reason = "Rewriting stack.")
     public static UnsignedWord lazyDeoptStubPrimitiveReturn(Pointer originalStackPointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
         /*
@@ -987,7 +1002,7 @@ public final class Deoptimizer {
      *            when the deopt stub was reached. It must be restored to the register before
      *            completion of the stub.
      */
-    @DeoptStub(stubType = StubType.EagerEntryStub)
+    @DeoptStub(stubType = StubType.EntryStub)
     @Uninterruptible(reason = "Frame holds Objects in unmanaged storage.")
     public static UnsignedWord eagerDeoptStub(Pointer originalStackPointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
         try {
