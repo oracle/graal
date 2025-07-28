@@ -245,6 +245,11 @@ abstract class Transition {
         }
 
         @Override
+        protected boolean isWeak() {
+            return true;
+        }
+
+        @Override
         public String toString() {
             return String.format("objectType(%s)", getObjectType());
         }
