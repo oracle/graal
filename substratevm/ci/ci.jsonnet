@@ -145,6 +145,6 @@
   },
   // END MAIN BUILD DEFINITION
   processed_builds::run_spec.process(task_dict),
-  builds: util.add_defined_in([util.add_gate_predicate(b, gate_triggering_suites) for b in self.processed_builds.list], std.thisFile),
+  builds: util.add_defined_in([util.add_gate_predicate(sg.validate_tiers(b), gate_triggering_suites) for b in self.processed_builds.list], std.thisFile),
   assert tools.check_names($.builds),
 }
