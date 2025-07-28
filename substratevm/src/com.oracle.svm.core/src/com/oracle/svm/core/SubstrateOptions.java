@@ -168,7 +168,7 @@ public class SubstrateOptions {
     public static final String LAYER_OPTION_PREFIX = "-H:Layer"; // "--layer"
     public static final String LAYER_CREATE_OPTION = LAYER_OPTION_PREFIX + "Create"; // "-create"
     // @APIOption(name = LAYER_CREATE_OPTION) // use when non-experimental
-    @Option(help = "Experimental: Build a Native Image layer.")//
+    @Option(help = "Experimental: Build a Native Image layer. See NativeImageLayers.md for more info.")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> LayerCreate = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     // public static final String LAYER_USE_OPTION = LAYER_OPTION_PREFIX + "-use";
@@ -1455,8 +1455,6 @@ public class SubstrateOptions {
     @Option(help = "Ignore classes or packages (comma separated) from the ones included with '-H:Preserve'. This can be used to workaround potential issues related to '-H:Preserve'.", type = OptionType.Debug) //
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IgnorePreserveForClasses = new HostedOptionKey<>(
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
-    @Option(help = "Force include include all public types and methods that can be reached using normal Java access rules.")//
-    public static final HostedOptionKey<Boolean> UseBaseLayerInclusionPolicy = new HostedOptionKey<>(false);
 
     @Option(help = "Support for calls via the Java Foreign Function and Memory API", type = Expert) //
     public static final HostedOptionKey<Boolean> ForeignAPISupport = new HostedOptionKey<>(true);

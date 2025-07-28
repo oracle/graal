@@ -30,6 +30,9 @@ import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 
+/**
+ * A wrapper field that can be unwrapped to an original host VM field.
+ */
 public interface OriginalFieldProvider {
 
     /**

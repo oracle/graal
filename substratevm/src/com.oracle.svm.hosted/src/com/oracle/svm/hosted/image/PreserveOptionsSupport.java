@@ -55,7 +55,9 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
+import com.oracle.graal.pointsto.ClassInclusionPolicy.DefaultAllInclusionPolicy;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
@@ -68,6 +70,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class PreserveOptionsSupport extends IncludeOptionsSupport {
 
@@ -181,10 +184,12 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         return joiner.toString();
     }
 
-    public static void registerPreservedClasses(NativeImageClassLoaderSupport classLoaderSupport) {
+    public static void registerPreservedClasses(BigBang bb, MetaAccessProvider originalMetaAccess, NativeImageClassLoaderSupport classLoaderSupport) {
         var classesOrPackagesToIgnore = SubstrateOptions.IgnorePreserveForClasses.getValue().valuesAsSet();
+        ClassInclusionPolicy classInclusionPolicy = new DefaultAllInclusionPolicy("included by " + SubstrateOptionsParser.commandArgument(Preserve, ""));
+        classInclusionPolicy.setBigBang(bb);
         var classesToPreserve = classLoaderSupport.getClassesToPreserve()
-                        .filter(ClassInclusionPolicy::isClassIncludedBase)
+                        .filter(clazz -> classInclusionPolicy.isOriginalTypeIncluded(originalMetaAccess.lookupJavaType(clazz)))
                         .filter(c -> !(classesOrPackagesToIgnore.contains(c.getPackageName()) || classesOrPackagesToIgnore.contains(c.getName())))
                         .sorted(Comparator.comparing(ReflectionUtil::getClassHierarchyDepth).reversed())
                         .toList();

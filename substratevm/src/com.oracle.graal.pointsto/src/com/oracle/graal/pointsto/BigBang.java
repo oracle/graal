@@ -45,6 +45,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Central static analysis interface that groups together the functionality of reachability analysis
@@ -139,12 +140,17 @@ public interface BigBang extends ReachabilityAnalysis {
     }
 
     @SuppressWarnings("unused")
-    default void registerTypeForBaseImage(Class<?> cls) {
+    default void tryRegisterTypeForBaseImage(ResolvedJavaType type) {
 
     }
 
     @SuppressWarnings("unused")
-    default void registerMethodForBaseImage(AnalysisMethod method) {
+    default void tryRegisterMethodForBaseImage(AnalysisMethod method) {
+
+    }
+
+    @SuppressWarnings("unused")
+    default void tryRegisterFieldForBaseImage(AnalysisField field) {
 
     }
 }

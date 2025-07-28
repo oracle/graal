@@ -78,6 +78,7 @@ import com.oracle.svm.core.fieldvaluetransformer.ConstantValueFieldValueTransfor
 import com.oracle.svm.core.fieldvaluetransformer.FieldOffsetFieldValueTransformer;
 import com.oracle.svm.core.fieldvaluetransformer.NewInstanceOfFixedClassFieldValueTransformer;
 import com.oracle.svm.core.fieldvaluetransformer.StaticFieldBaseFieldValueTransformer;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -91,6 +92,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
+import jdk.internal.reflect.Reflection;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -229,14 +231,37 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (deleteAnnotations.get(field) != null) {
             return true;
         }
-        return isAnnotationPresent(field, Delete.class);
+        if (isAnnotationPresent(field, Delete.class)) {
+            return true;
+        }
+        if (isImplicitlyDeleted(field)) {
+            return true;
+        }
+        return false;
     }
 
-    public boolean isAnnotationPresent(Field field, Class<? extends Annotation> annotationClass) {
-        return isAnnotationPresent(metaAccess.lookupJavaField(field), annotationClass);
+    /**
+     * When an entire type is fully substituted, for example when {@link Class} is replaced with
+     * {@link DynamicHub}, we replace all fields of the original type. All the fields that are
+     * not @{@link Substitute} are implicitly considered as @{@link Delete}. However, not all
+     * implicitly deleted fields are present in the {@link #deleteAnnotations} map because when the
+     * original class fields are iterated {@link Class#getDeclaredFields()} applies
+     * {@link Reflection#filterFields(Class, Field[])} and excludes several fields from reflection
+     * access.
+     */
+    private boolean isImplicitlyDeleted(ResolvedJavaField field) {
+        /*
+         * If a field's type is fully substituted but the field was not substituted, then it is
+         * considered implicitly deleted.
+         */
+        return typeSubstitutions.get(field.getDeclaringClass()) instanceof SubstitutionType && !fieldSubstitutions.containsKey(field);
     }
 
-    public boolean isAnnotationPresent(ResolvedJavaField field, Class<? extends Annotation> annotationClass) {
+    public boolean hasInjectAccessors(ResolvedJavaField field) {
+        return isAnnotationPresent(field, InjectAccessors.class);
+    }
+
+    private boolean isAnnotationPresent(ResolvedJavaField field, Class<? extends Annotation> annotationClass) {
         ResolvedJavaField substitutionField = fieldSubstitutions.get(field);
         if (substitutionField != null) {
             return AnnotationAccess.isAnnotationPresent(substitutionField, annotationClass);

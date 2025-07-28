@@ -143,6 +143,10 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
         Objects.requireNonNull(field);
         GraalError.guarantee(field instanceof HotSpotResolvedJavaField, "Unexpected implementation class: %s", field.getClass());
 
+        if (field.isInternal()) {
+            /* internal fields never have a corresponding java.lang.reflect.Field. */
+            return null;
+        }
         return runtime().getMirror(field);
     }
 }
