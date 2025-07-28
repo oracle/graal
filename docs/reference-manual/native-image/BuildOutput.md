@@ -36,6 +36,7 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
     3,158 types,   3,625 fields, and  14,804 methods found reachable
     1,012 types,      36 fields, and     377 methods registered for reflection
        57 types,      57 fields, and      52 methods registered for JNI access
+        0 downcalls and 0 upcalls registered for foreign access
         4 native libraries: dl, pthread, rt, z
 [3/8] Building universe...                                       (0.8s @ 0.99GB)
 [4/8] Parsing methods...      [*]                                (0.6s @ 0.75GB)
@@ -171,8 +172,8 @@ Large numbers can cause significant reflection overheads, slow down the build pr
 #### <a name="glossary-jni-access-registrations"></a>JNI Access Registrations
 The number of types, fields, and methods that are registered for [JNI](JNI.md) access.
 
-#### <a name="glossary-foreign-downcall-and-upcall-registrations"></a>Foreign functions stubs
-The number of downcalls and upcalls registered for [foreign](ForeignInterface.md) function access.
+#### <a name="glossary-foreign-downcall-and-upcall-registrations"></a>Foreign Access Registrations
+The number of downcalls and upcalls registered for [foreign function access](FFM-API.md).
 
 #### <a name="glossary-runtime-methods"></a>Runtime Compiled Methods
 The number of methods marked for runtime compilation.

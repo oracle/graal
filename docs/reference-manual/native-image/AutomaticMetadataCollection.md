@@ -9,7 +9,7 @@ redirect_from: /reference-manual/native-image/Agent/
 # Collect Metadata with the Tracing Agent
 
 The Native Image tool relies on the static analysis of an application's reachable code at runtime. 
-However, the analysis cannot always completely predict all usages of the Java Native Interface (JNI), Java Reflection, Dynamic Proxy objects, or class path resources. 
+However, the analysis cannot always completely predict all usages of the Java Native Interface (JNI), Foreign Function and Memory (FFM) API, Java Reflection, Dynamic Proxy objects, or class path resources. 
 Undetected usages of these dynamic features must be provided to the `native-image` tool in the form of [metadata](ReachabilityMetadata.md) (precomputed in code or as JSON configuration files).
 
 Here you will find information how to automatically collect metadata for an application and write JSON configuration files.
@@ -195,3 +195,4 @@ An arbitrary number of `--input-dir` arguments with sets of configuration files 
 * [Build a Native Executable with Reflection](guides/build-with-reflection.md)
 * [Reachability Metadata](ReachabilityMetadata.md)
 * [Experimental Agent Options](ExperimentalAgentOptions.md)
+* [Foreign Function and Memory API in Native Image](FFM-API.md)
