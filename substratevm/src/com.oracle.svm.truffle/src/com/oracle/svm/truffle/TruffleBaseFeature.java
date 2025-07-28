@@ -481,7 +481,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     @Override
     public void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         StaticObjectSupport.registerInvocationPlugins(plugins, reason);
-        TruffleInvocationPlugins.register(providers.getLowerer().getTarget().arch, plugins.getInvocationPlugins(), providers.getReplacements());
+        TruffleInvocationPlugins.register(providers.getLowerer().getTarget().arch, plugins.getInvocationPlugins());
 
         /*
          * We need to constant-fold Profile.isProfilingEnabled already during static analysis, so

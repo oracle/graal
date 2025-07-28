@@ -25,6 +25,7 @@
 package jdk.graal.compiler.replacements.aarch64;
 
 import java.lang.reflect.Type;
+import java.util.Arrays;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.Stride;
@@ -41,18 +42,17 @@ import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.MaxNode;
 import jdk.graal.compiler.nodes.calc.MinNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
+import jdk.graal.compiler.nodes.calc.ReinterpretNode;
 import jdk.graal.compiler.nodes.calc.RoundFloatToIntegerNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.memory.address.IndexAddressNode;
-import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.InvocationPluginHelper;
 import jdk.graal.compiler.replacements.SnippetSubstitutionInvocationPlugin;
@@ -63,39 +63,40 @@ import jdk.graal.compiler.replacements.StringUTF16CompressNode;
 import jdk.graal.compiler.replacements.StringUTF16Snippets;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
 import jdk.graal.compiler.replacements.nodes.ArrayCompareToNode;
+import jdk.graal.compiler.replacements.nodes.ArrayFillNode;
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
-import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.FloatToHalfFloatNode;
 import jdk.graal.compiler.replacements.nodes.HalfFloatToFloatNode;
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
-import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     @Override
-    public void register(Plugins plugins, Replacements replacements, Architecture arch, boolean registerForeignCallMath, OptionValues options) {
-        register(plugins, replacements, registerForeignCallMath, options);
+    public void registerPlugins(Plugins plugins, OptionValues options) {
+        register(plugins, options);
     }
 
-    public static void register(Plugins plugins, Replacements replacements, boolean registerForeignCallMath, OptionValues options) {
+    public static void register(Plugins plugins, OptionValues options) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             @Override
             public void run() {
-                registerFloatPlugins(invocationPlugins, replacements);
-                registerMathPlugins(invocationPlugins, registerForeignCallMath);
+                registerFloatPlugins(invocationPlugins);
+                registerMathPlugins(invocationPlugins);
                 registerStrictMathPlugins(invocationPlugins);
+                registerArraysPlugins(invocationPlugins);
+
                 if (GraalOptions.EmitStringSubstitutions.getValue(options)) {
-                    registerStringLatin1Plugins(invocationPlugins, replacements);
-                    registerStringUTF16Plugins(invocationPlugins, replacements);
+                    registerStringLatin1Plugins(invocationPlugins);
+                    registerStringUTF16Plugins(invocationPlugins);
                 }
             }
         });
     }
 
-    private static void registerFloatPlugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, Float.class, replacements);
+    private static void registerFloatPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Float.class);
 
         r.register(new InvocationPlugin("float16ToFloat", short.class) {
             @Override
@@ -113,23 +114,8 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    private static void registerMathPlugins(InvocationPlugins plugins, boolean registerForeignCallMath) {
+    private static void registerMathPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Math.class);
-        if (registerForeignCallMath) {
-            registerUnaryMath(r, "sin", UnaryMathIntrinsicNode.UnaryOperation.SIN);
-            registerUnaryMath(r, "cos", UnaryMathIntrinsicNode.UnaryOperation.COS);
-            registerUnaryMath(r, "tan", UnaryMathIntrinsicNode.UnaryOperation.TAN);
-            registerUnaryMath(r, "exp", UnaryMathIntrinsicNode.UnaryOperation.EXP);
-            registerUnaryMath(r, "log", UnaryMathIntrinsicNode.UnaryOperation.LOG);
-            registerUnaryMath(r, "log10", UnaryMathIntrinsicNode.UnaryOperation.LOG10);
-            r.register(new InlineOnlyInvocationPlugin("pow", double.class, double.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.push(JavaKind.Double, b.append(BinaryMathIntrinsicNode.create(x, y, BinaryMathIntrinsicNode.BinaryOperation.POW)));
-                    return true;
-                }
-            });
-        }
         registerFMA(r);
         registerMinMax(r);
 
@@ -217,16 +203,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         registerMinMax(r);
     }
 
-    private static void registerUnaryMath(Registration r, String name, UnaryMathIntrinsicNode.UnaryOperation operation) {
-        r.register(new InlineOnlyInvocationPlugin(name, double.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Double, b.append(UnaryMathIntrinsicNode.create(value, operation)));
-                return true;
-            }
-        });
-    }
-
     private static final class ArrayCompareToPlugin extends InvocationPlugin {
         private final Stride strideA;
         private final Stride strideB;
@@ -268,8 +244,8 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         }
     }
 
-    private static void registerStringLatin1Plugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, "java.lang.StringLatin1", replacements);
+    private static void registerStringLatin1Plugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, "java.lang.StringLatin1");
         r.setAllowOverwrite(true);
         r.register(new ArrayCompareToPlugin(Stride.S1, Stride.S1, "compareTo", byte[].class, byte[].class));
         r.register(new ArrayCompareToPlugin(Stride.S1, Stride.S2, "compareToUTF16", byte[].class, byte[].class));
@@ -350,8 +326,8 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    private static void registerStringUTF16Plugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, "java.lang.StringUTF16", replacements);
+    private static void registerStringUTF16Plugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, "java.lang.StringUTF16");
         r.setAllowOverwrite(true);
         r.register(new ArrayCompareToPlugin(Stride.S2, Stride.S2, "compareTo", byte[].class, byte[].class));
         r.register(new ArrayCompareToPlugin(Stride.S2, Stride.S1, true, "compareToLatin1", byte[].class, byte[].class));
@@ -430,7 +406,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return true;
             }
         });
-        Registration r2 = new Registration(plugins, StringUTF16Snippets.class, replacements);
+        Registration r2 = new Registration(plugins, StringUTF16Snippets.class);
         r2.register(new InvocationPlugin("getChar", byte[].class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
@@ -440,5 +416,42 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return true;
             }
         });
+    }
+
+    public static class ArrayFillInvocationPlugin extends InvocationPlugin {
+        private final JavaKind kind;
+
+        public ArrayFillInvocationPlugin(JavaKind kind, Type... argumentTypes) {
+            super("fill", argumentTypes);
+            this.kind = kind;
+        }
+
+        @SuppressWarnings("try")
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode array, ValueNode value) {
+            ConstantNode arrayBaseOffset = ConstantNode.forLong(b.getMetaAccess().getArrayBaseOffset(this.kind), b.getGraph());
+            ValueNode nonNullArray = b.nullCheckedValue(array, DeoptimizationAction.None);
+            ValueNode arrayLength = b.add(new ArrayLengthNode(nonNullArray));
+            ValueNode castedValue = value;
+            if (this.kind == JavaKind.Float) {
+                castedValue = ReinterpretNode.create(JavaKind.Int, value, NodeView.DEFAULT);
+            } else if (this.kind == JavaKind.Double) {
+                castedValue = ReinterpretNode.create(JavaKind.Long, value, NodeView.DEFAULT);
+            }
+            b.add(new ArrayFillNode(nonNullArray, arrayBaseOffset, arrayLength, castedValue, this.kind));
+            return true;
+        }
+    }
+
+    private static void registerArraysPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Arrays.class);
+        r.register(new ArrayFillInvocationPlugin(JavaKind.Boolean, boolean[].class, boolean.class));
+        r.register(new ArrayFillInvocationPlugin(JavaKind.Byte, byte[].class, byte.class));
+        r.register(new ArrayFillInvocationPlugin(JavaKind.Char, char[].class, char.class));
+        r.register(new ArrayFillInvocationPlugin(JavaKind.Short, short[].class, short.class));
+        r.register(new ArrayFillInvocationPlugin(JavaKind.Int, int[].class, int.class));
+        r.register(new ArrayFillInvocationPlugin(JavaKind.Float, float[].class, float.class));
+        r.register(new ArrayFillInvocationPlugin(JavaKind.Long, long[].class, long.class));
+        r.register(new ArrayFillInvocationPlugin(JavaKind.Double, double[].class, double.class));
     }
 }

@@ -30,7 +30,6 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool.RoundingMode;
@@ -40,16 +39,15 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Round floating-point value.
- * <p>
- * Can only be used if {@link CanonicalizerTool#supportsRounding()} or
- * {@link LoweringProvider#supportsRounding()} returns {@code true}.
  */
 @NodeInfo(cycles = CYCLES_1)
 public final class RoundNode extends UnaryNode implements ArithmeticLIRLowerable {
@@ -76,18 +74,12 @@ public final class RoundNode extends UnaryNode implements ArithmeticLIRLowerable
     }
 
     private static double round(RoundingMode mode, double input) {
-        switch (mode) {
-            case DOWN:
-                return Math.floor(input);
-            case NEAREST:
-                return Math.rint(input);
-            case UP:
-                return Math.ceil(input);
-            case TRUNCATE:
-                return input < 0.0 ? Math.ceil(input) : Math.floor(input);
-            default:
-                throw GraalError.unimplemented("unimplemented RoundingMode " + mode); // ExcludeFromJacocoGeneratedReport
-        }
+        return switch (mode) {
+            case DOWN -> Math.floor(input);
+            case NEAREST -> Math.rint(input);
+            case UP -> Math.ceil(input);
+            case TRUNCATE -> input < 0.0 ? Math.ceil(input) : Math.floor(input);
+        };
     }
 
     private static FloatStamp roundStamp(FloatStamp stamp, RoundingMode mode) {
@@ -143,4 +135,12 @@ public final class RoundNode extends UnaryNode implements ArithmeticLIRLowerable
         builder.setResult(this, gen.emitRound(builder.operand(getValue()), mode));
     }
 
+    @SuppressWarnings("unlikely-arg-type")
+    public static boolean isSupported(Architecture arch) {
+        return switch (arch) {
+            case AMD64 amd64 -> amd64.getFeatures().contains(AMD64.CPUFeature.SSE4_1);
+            case AArch64 aarch64 -> true;
+            default -> false;
+        };
+    }
 }

@@ -92,7 +92,7 @@ public class AMD64HotSpotBackendFactory extends HotSpotBackendFactory {
                         options,
                         target,
                         barrierSet);
-        AMD64GraphBuilderPlugins.register(plugins, replacements, (AMD64) target.arch, options);
+        AMD64GraphBuilderPlugins.register(plugins, options);
         return plugins;
     }
 
@@ -112,12 +112,9 @@ public class AMD64HotSpotBackendFactory extends HotSpotBackendFactory {
         return new AMD64HotSpotForeignCallsProvider(runtime, graalRuntime, metaAccess, codeCache, wordTypes, nativeABICallerSaveRegisters);
     }
 
-    /**
-     * @param replacements
-     */
     @Override
     protected HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins,
-                    HotSpotRegistersProvider registers, HotSpotReplacementsImpl replacements, OptionValues options) {
+                    HotSpotRegistersProvider registers, OptionValues options) {
         return new AddressLoweringHotSpotSuitesProvider(new AMD64HotSpotSuitesCreator(compilerConfiguration, plugins), config, runtime,
                         new AddressLoweringByNodePhase(new AMD64HotSpotAddressLowering(config, registers.getHeapBaseRegister())));
     }
