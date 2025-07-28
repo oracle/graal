@@ -1475,12 +1475,8 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> VectorAPISupport = new HostedOptionKey<>(false);
 
     @Option(help = "Enable support for Arena.ofShared ", type = Expert)//
-    public static final HostedOptionKey<Boolean> SharedArenaSupport = new HostedOptionKey<>(false, key -> {
-        if (key.getValue()) {
-            UserError.guarantee(isForeignAPIEnabled(), "Support for Arena.ofShared is only available with foreign API support. " +
-                            "Enable foreign API support with %s",
-                            SubstrateOptionsParser.commandArgument(ForeignAPISupport, "+"));
-
+    public static final HostedOptionKey<Boolean> SharedArenaSupport = new HostedOptionKey<>(true, key -> {
+        if (isSharedArenaSupportEnabled()) {
             // GR-65162: Shared arenas cannot be used together with Vector API support
             UserError.guarantee(!VectorAPIEnabled.getValue(), "Support for Arena.ofShared is not available with Vector API support. " +
                             "Either disable Vector API support using %s or replace usages of Arena.ofShared with Arena.ofAuto and disable shared arena support.",
