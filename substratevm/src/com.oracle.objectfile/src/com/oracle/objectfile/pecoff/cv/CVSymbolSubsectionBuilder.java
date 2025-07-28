@@ -66,7 +66,7 @@ final class CVSymbolSubsectionBuilder {
         this.cvSymbolSubsection = new CVSymbolSubsection(cvDebugInfo);
         this.lineRecordBuilder = new CVLineRecordBuilder(cvDebugInfo);
         this.heapName = SectionName.SVM_HEAP.getFormatDependentName(cvDebugInfo.getCVSymbolSection().getOwner().getFormat());
-        /* For isolates, Graal currently uses r14; this code will handle r8-r15. */
+        /* For isolates, Graal currently uses r14 as the heap base; this code will handle r8-r15. */
         assert AMD64.r8.number <= cvDebugInfo.getHeapbaseRegister() && cvDebugInfo.getHeapbaseRegister() <= AMD64.r15.number;
         this.heapRegister = (short) (CV_AMD64_R8 + cvDebugInfo.getHeapbaseRegister() - AMD64.r8.number);
     }
