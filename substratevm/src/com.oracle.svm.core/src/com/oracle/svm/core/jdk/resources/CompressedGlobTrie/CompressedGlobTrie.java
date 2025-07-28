@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,8 +38,9 @@ import java.util.function.Predicate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.util.GlobUtils;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.StringUtil;
 
 /**
@@ -105,12 +106,9 @@ public class CompressedGlobTrie {
             List<GlobWithInfo<C>> starPatterns = new ArrayList<>();
             List<GlobWithInfo<C>> noStarPatterns = new ArrayList<>();
 
-            List<String> invalidPatterns = classifyPatterns(patterns, doubleStarPatterns, starPatterns, noStarPatterns);
-            if (!invalidPatterns.isEmpty()) {
-                StringBuilder sb = new StringBuilder("Error: invalid glob patterns found:" + System.lineSeparator());
-                invalidPatterns.forEach(msg -> sb.append(msg).append(System.lineSeparator()));
-
-                throw UserError.abort(sb.toString());
+            List<String> invalidPatternsErrors = classifyPatterns(patterns, doubleStarPatterns, starPatterns, noStarPatterns);
+            if (!invalidPatternsErrors.isEmpty()) {
+                invalidPatternsErrors.forEach(LogUtils::warning);
             }
 
             /* sort patterns in the groups based on generality */
@@ -221,7 +219,12 @@ public class CompressedGlobTrie {
                 /* validate patterns */
                 String error = GlobUtils.validatePattern(patternWithInfo.pattern());
                 if (!error.isEmpty()) {
-                    invalidPatterns.add(error);
+                    if (patternWithInfo.additionalContent() instanceof ClassLoaderSupport.ConditionWithOrigin conditionWithOrigin) {
+                        invalidPatterns.add(error + "Pattern is from: " + conditionWithOrigin.origin());
+                    } else {
+                        invalidPatterns.add(error);
+                    }
+
                     continue;
                 }
 
