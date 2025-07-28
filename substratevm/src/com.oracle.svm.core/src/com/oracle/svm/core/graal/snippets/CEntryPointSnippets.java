@@ -671,9 +671,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     private static int tearDownIsolate() {
         try {
             /* Execute interruptible code. */
-            if (!initiateTearDownIsolateInterruptibly()) {
-                return CEntryPointErrors.UNSPECIFIED;
-            }
+            initiateTearDownIsolateInterruptibly();
 
             /* After threadExit(), only uninterruptible code may be executed. */
             RecurringCallbackSupport.suspendCallbackTimer("Execution of arbitrary code is prohibited during the last teardown steps.");
@@ -722,13 +720,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
     }
 
-    @Uninterruptible(reason = "Tear-down in progress - still safe to execute interruptible Java code.", calleeMustBe = false)
-    private static boolean initiateTearDownIsolateInterruptibly() {
+    @Uninterruptible(reason = "Tear-down in progress - still safe to execute interruptible Java code.", callerMustBe = true, calleeMustBe = false)
+    private static void initiateTearDownIsolateInterruptibly() {
         RuntimeSupport.executeTearDownHooks();
-        if (!PlatformThreads.tearDownOtherThreads()) {
-            return false;
-        }
-
+        PlatformThreads.tearDownOtherThreads();
         /*
          * At this point, only the current thread, the VM operation thread, and the reference
          * handler thread are still running.
@@ -739,7 +734,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         VMThreads.singleton().threadExit();
         /* After threadExit(), only uninterruptible code may be executed. */
-        return true;
     }
 
     @Snippet(allowMissingProbabilities = true)
