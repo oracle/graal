@@ -659,7 +659,7 @@ public final class JDWPContextImpl implements JDWPContext {
         if (bci >= 0) {
             BytecodeStream bs = new BytecodeStream(method.getOriginalCode());
             int nextBci = bs.nextBCI(bci);
-            if (nextBci <= bs.endBCI()) {
+            if (nextBci < bs.endBCI()) {
                 // Use the next only if it's in bounds.
                 bci = nextBci;
             }
