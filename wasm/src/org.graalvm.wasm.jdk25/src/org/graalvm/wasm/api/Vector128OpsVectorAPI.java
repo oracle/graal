@@ -438,34 +438,34 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
             case Bytecode.VECTOR_F64X2_GT -> f64x2_relop(x, y, VectorOperators.GT);
             case Bytecode.VECTOR_F64X2_LE -> f64x2_relop(x, y, VectorOperators.LE);
             case Bytecode.VECTOR_F64X2_GE -> f64x2_relop(x, y, VectorOperators.GE);
-            case Bytecode.VECTOR_I8X16_NARROW_I16X8_S -> narrow(x, y, I16X8, I8X16, VectorOperators.S2B, VectorOperators.ZERO_EXTEND_B2S, Byte.MIN_VALUE, Byte.MAX_VALUE);
-            case Bytecode.VECTOR_I8X16_NARROW_I16X8_U -> narrow(x, y, I16X8, I8X16, VectorOperators.S2B, VectorOperators.ZERO_EXTEND_B2S, (short) 0, (short) 0xff);
+            case Bytecode.VECTOR_I8X16_NARROW_I16X8_S -> narrow(x, y, I16X8, I8X16, Byte.MIN_VALUE, Byte.MAX_VALUE);
+            case Bytecode.VECTOR_I8X16_NARROW_I16X8_U -> narrow(x, y, I16X8, I8X16, (short) 0, (short) 0xff);
             case Bytecode.VECTOR_I8X16_ADD -> binop(x, y, I8X16, VectorOperators.ADD);
             case Bytecode.VECTOR_I8X16_ADD_SAT_S -> binop(x, y, I8X16, VectorOperators.SADD);
-            case Bytecode.VECTOR_I8X16_ADD_SAT_U -> binop_sat_u(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S, VectorOperators.S2B, VectorOperators.ADD, 0, 0xff);
+            case Bytecode.VECTOR_I8X16_ADD_SAT_U -> binop_sat_u(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S, VectorOperators.ADD, 0, 0xff);
             case Bytecode.VECTOR_I8X16_SUB -> binop(x, y, I8X16, VectorOperators.SUB);
             case Bytecode.VECTOR_I8X16_SUB_SAT_S -> binop(x, y, I8X16, VectorOperators.SSUB);
-            case Bytecode.VECTOR_I8X16_SUB_SAT_U -> binop_sat_u(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S, VectorOperators.S2B, VectorOperators.SUB, 0, 0xff);
+            case Bytecode.VECTOR_I8X16_SUB_SAT_U -> binop_sat_u(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S, VectorOperators.SUB, 0, 0xff);
             case Bytecode.VECTOR_I8X16_MIN_S -> binop(x, y, I8X16, VectorOperators.MIN);
             case Bytecode.VECTOR_I8X16_MIN_U -> binop(x, y, I8X16, VectorOperators.UMIN);
             case Bytecode.VECTOR_I8X16_MAX_S -> binop(x, y, I8X16, VectorOperators.MAX);
             case Bytecode.VECTOR_I8X16_MAX_U -> binop(x, y, I8X16, VectorOperators.UMAX);
-            case Bytecode.VECTOR_I8X16_AVGR_U -> avgr(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S, VectorOperators.S2B);
-            case Bytecode.VECTOR_I16X8_NARROW_I32X4_S -> narrow(x, y, I32X4, I16X8, VectorOperators.I2S, VectorOperators.ZERO_EXTEND_S2I, Short.MIN_VALUE, Short.MAX_VALUE);
-            case Bytecode.VECTOR_I16X8_NARROW_I32X4_U -> narrow(x, y, I32X4, I16X8, VectorOperators.I2S, VectorOperators.ZERO_EXTEND_S2I, 0, 0xffff);
+            case Bytecode.VECTOR_I8X16_AVGR_U -> avgr_u(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S);
+            case Bytecode.VECTOR_I16X8_NARROW_I32X4_S -> narrow(x, y, I32X4, I16X8, Short.MIN_VALUE, Short.MAX_VALUE);
+            case Bytecode.VECTOR_I16X8_NARROW_I32X4_U -> narrow(x, y, I32X4, I16X8, 0, 0xffff);
             case Bytecode.VECTOR_I16X8_Q15MULR_SAT_S, Bytecode.VECTOR_I16X8_RELAXED_Q15MULR_S -> i16x8_q15mulr_sat_s(x, y);
             case Bytecode.VECTOR_I16X8_ADD -> binop(x, y, I16X8, VectorOperators.ADD);
             case Bytecode.VECTOR_I16X8_ADD_SAT_S -> binop(x, y, I16X8, VectorOperators.SADD);
-            case Bytecode.VECTOR_I16X8_ADD_SAT_U -> binop_sat_u(x, y, I16X8, I32X4, VectorOperators.ZERO_EXTEND_S2I, VectorOperators.I2S, VectorOperators.ADD, 0, 0xffff);
+            case Bytecode.VECTOR_I16X8_ADD_SAT_U -> binop_sat_u(x, y, I16X8, I32X4, VectorOperators.ZERO_EXTEND_S2I, VectorOperators.ADD, 0, 0xffff);
             case Bytecode.VECTOR_I16X8_SUB -> binop(x, y, I16X8, VectorOperators.SUB);
             case Bytecode.VECTOR_I16X8_SUB_SAT_S -> binop(x, y, I16X8, VectorOperators.SSUB);
-            case Bytecode.VECTOR_I16X8_SUB_SAT_U -> binop_sat_u(x, y, I16X8, I32X4, VectorOperators.ZERO_EXTEND_S2I, VectorOperators.I2S, VectorOperators.SUB, 0, 0xffff);
+            case Bytecode.VECTOR_I16X8_SUB_SAT_U -> binop_sat_u(x, y, I16X8, I32X4, VectorOperators.ZERO_EXTEND_S2I, VectorOperators.SUB, 0, 0xffff);
             case Bytecode.VECTOR_I16X8_MUL -> binop(x, y, I16X8, VectorOperators.MUL);
             case Bytecode.VECTOR_I16X8_MIN_S -> binop(x, y, I16X8, VectorOperators.MIN);
             case Bytecode.VECTOR_I16X8_MIN_U -> binop(x, y, I16X8, VectorOperators.UMIN);
             case Bytecode.VECTOR_I16X8_MAX_S -> binop(x, y, I16X8, VectorOperators.MAX);
             case Bytecode.VECTOR_I16X8_MAX_U -> binop(x, y, I16X8, VectorOperators.UMAX);
-            case Bytecode.VECTOR_I16X8_AVGR_U -> avgr(x, y, I16X8, I32X4, VectorOperators.ZERO_EXTEND_S2I, VectorOperators.I2S);
+            case Bytecode.VECTOR_I16X8_AVGR_U -> avgr_u(x, y, I16X8, I32X4, VectorOperators.ZERO_EXTEND_S2I);
             case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_S -> extmul(x, y, I8X16, VectorOperators.B2S, 0);
             case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_U -> extmul(x, y, I8X16, VectorOperators.ZERO_EXTEND_B2S, 0);
             case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_S -> extmul(x, y, I8X16, VectorOperators.B2S, 1);
@@ -883,8 +883,8 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
         DoubleVector xHigh = castDouble128(x.convert(VectorOperators.F2D, 1));
         LongVector xLowTrunc = truncSatU32(xLow);
         LongVector xHighTrunc = truncSatU32(xHigh);
-        IntVector resultLow = castInt128(compact(xLowTrunc, 0, I64X2, I32X4, VectorOperators.L2I, VectorOperators.ZERO_EXTEND_I2L));
-        IntVector resultHigh = castInt128(compact(xHighTrunc, 0, I64X2, I32X4, VectorOperators.L2I, VectorOperators.ZERO_EXTEND_I2L));
+        IntVector resultLow = castInt128(compact(xLowTrunc, 0, I64X2, I32X4));
+        IntVector resultHigh = castInt128(compact(xHighTrunc, -1, I64X2, I32X4));
         IntVector result = resultLow.or(resultHigh);
         return result.reinterpretAsBytes();
     }
@@ -903,7 +903,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
     private static ByteVector i32x4_trunc_sat_f64x2_u_zero(ByteVector xBytes) {
         DoubleVector x = F64X2.reinterpret(xBytes);
         LongVector longResult = truncSatU32(x);
-        IntVector result = castInt128(compact(longResult, 0, I64X2, I32X4, VectorOperators.L2I, VectorOperators.ZERO_EXTEND_I2L));
+        IntVector result = castInt128(compact(longResult, 0, I64X2, I32X4));
         return result.reinterpretAsBytes();
     }
 
@@ -965,8 +965,11 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
      * {@code VectorSupport#convert} in a way that would map a vector of N elements to a vector of M
      * elements, where M > N. Such a situation is currently not supported by the Graal compiler
      * [GR-68216].
+     * <p>
+     * Works only for integral shapes. See {@link #compactGeneral} for the general implementation.
+     * </p>
      */
-    private static <E, F> Vector<F> compact(Vector<E> vec, int part, Shape<E> inShape, Shape<F> outShape, VectorOperators.Conversion<E, F> downcast, VectorOperators.Conversion<F, E> upcast) {
+    private static <E, F> Vector<F> compact(Vector<E> vec, int part, Shape<E> inShape, Shape<F> outShape) {
         // Works only for integral shapes.
         assert inShape.species().elementType() == short.class && outShape.species().elementType() == byte.class ||
                         inShape.species().elementType() == int.class && outShape.species().elementType() == short.class ||
@@ -976,8 +979,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
             case -1 -> outShape.highMask;
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
-        VectorSpecies<F> halfSizeOutShape = outShape.species().withShape(VectorShape.S_64_BIT);
-        return vec.convertShape(downcast, halfSizeOutShape, 0).convertShape(upcast, inShape.species(), 0).reinterpretShape(outShape.species(), 0).rearrange(outShape.compressEvensShuffle, mask);
+        return vec.reinterpretShape(outShape.species(), 0).rearrange(outShape.compressEvensShuffle, mask);
     }
 
     /**
@@ -987,11 +989,11 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
                     Shape<WI> wideIntegralShape, Shape<N> narrowShape,
                     VectorOperators.Conversion<W, N> downcast,
                     VectorOperators.Conversion<N, NI> asIntegral,
-                    VectorOperators.Conversion<NI, WI> upcast) {
+                    VectorOperators.Conversion<NI, WI> zeroExtend) {
         // NI and WI must be integral types, with NI being half the size of WI.
-        assert upcast.domainType() == byte.class && upcast.rangeType() == short.class ||
-                        upcast.domainType() == short.class && upcast.rangeType() == int.class ||
-                        upcast.domainType() == int.class && upcast.rangeType() == long.class;
+        assert zeroExtend.domainType() == byte.class && zeroExtend.rangeType() == short.class ||
+                        zeroExtend.domainType() == short.class && zeroExtend.rangeType() == int.class ||
+                        zeroExtend.domainType() == int.class && zeroExtend.rangeType() == long.class;
         VectorMask<N> mask = switch (part) {
             case 0 -> narrowShape.lowMask;
             case -1 -> narrowShape.highMask;
@@ -1000,44 +1002,43 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
         VectorSpecies<N> halfSizeOutShape = narrowShape.species().withShape(VectorShape.S_64_BIT);
         Vector<N> down = vec.convertShape(downcast, halfSizeOutShape, 0);
         Vector<NI> downIntegral = down.convert(asIntegral, 0);
-        Vector<WI> upIntegral = downIntegral.convertShape(upcast, wideIntegralShape.species(), 0);
+        Vector<WI> upIntegral = downIntegral.convertShape(zeroExtend, wideIntegralShape.species(), 0);
         Vector<N> narrowEvens = upIntegral.reinterpretShape(narrowShape.species(), 0);
         return narrowEvens.rearrange(narrowShape.compressEvensShuffle, mask);
     }
 
-    private static <E, F> ByteVector narrow(ByteVector xBytes, ByteVector yBytes,
-                    Shape<E> inShape, Shape<F> outShape, VectorOperators.Conversion<E, F> downcast, VectorOperators.Conversion<F, E> upcast,
-                    long min, long max) {
+    private static <E, F> ByteVector narrow(ByteVector xBytes, ByteVector yBytes, Shape<E> inShape, Shape<F> outShape, long min, long max) {
         Vector<E> x = inShape.reinterpret(xBytes);
         Vector<E> y = inShape.reinterpret(yBytes);
         Vector<E> xSat = sat(x, inShape, min, max);
         Vector<E> ySat = sat(y, inShape, min, max);
-        Vector<F> resultLow = compact(xSat, 0, inShape, outShape, downcast, upcast);
-        Vector<F> resultHigh = compact(ySat, -1, inShape, outShape, downcast, upcast);
+        Vector<F> resultLow = compact(xSat, 0, inShape, outShape);
+        Vector<F> resultHigh = compact(ySat, -1, inShape, outShape);
         Vector<F> result = resultLow.lanewise(VectorOperators.OR, resultHigh);
         return result.reinterpretAsBytes();
     }
 
     private static <E, F> ByteVector binop_sat_u(ByteVector xBytes, ByteVector yBytes,
                     Shape<E> shape, Shape<F> extendedShape,
-                    VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast,
+                    VectorOperators.Conversion<E, F> upcast,
                     VectorOperators.Binary op, long min, long max) {
-        return upcastBinopDowncast(xBytes, yBytes, shape, extendedShape, upcast, downcast, (x, y) -> {
+        return upcastBinopDowncast(xBytes, yBytes, shape, extendedShape, upcast, (x, y) -> {
             Vector<F> rawResult = x.lanewise(op, y);
             Vector<F> satResult = sat(rawResult, extendedShape, min, max);
             return satResult;
         });
     }
 
-    private static <E, F> ByteVector avgr(ByteVector xBytes, ByteVector yBytes, Shape<E> shape, Shape<F> extendedShape, VectorOperators.Conversion<E, F> upcast,
-                    VectorOperators.Conversion<F, E> downcast) {
+    private static <E, F> ByteVector avgr_u(ByteVector xBytes, ByteVector yBytes,
+                    Shape<E> shape, Shape<F> extendedShape,
+                    VectorOperators.Conversion<E, F> upcast) {
         Vector<F> one = extendedShape.broadcast(1);
         Vector<F> two = extendedShape.broadcast(2);
-        return upcastBinopDowncast(xBytes, yBytes, shape, extendedShape, upcast, downcast, (x, y) -> x.add(y).add(one).div(two));
+        return upcastBinopDowncast(xBytes, yBytes, shape, extendedShape, upcast, (x, y) -> x.add(y).add(one).div(two));
     }
 
     private static ByteVector i16x8_q15mulr_sat_s(ByteVector xBytes, ByteVector yBytes) {
-        return upcastBinopDowncast(xBytes, yBytes, I16X8, I32X4, VectorOperators.S2I, VectorOperators.I2S, (x, y) -> {
+        return upcastBinopDowncast(xBytes, yBytes, I16X8, I32X4, VectorOperators.S2I, (x, y) -> {
             Vector<Integer> rawResult = x.mul(y).add(I32X4.broadcast(1 << 14)).lanewise(VectorOperators.ASHR, I32X4.broadcast(15));
             Vector<Integer> satResult = sat(rawResult, I32X4, Short.MIN_VALUE, Short.MAX_VALUE);
             return satResult;
@@ -1228,7 +1229,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
 
     private static <E, F> ByteVector upcastBinopDowncast(ByteVector xBytes, ByteVector yBytes,
                     Shape<E> shape, Shape<F> extendedShape,
-                    VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast,
+                    VectorOperators.Conversion<E, F> upcast,
                     BinaryVectorOp<F> op) {
         Vector<E> x = shape.reinterpret(xBytes);
         Vector<E> y = shape.reinterpret(yBytes);
@@ -1236,8 +1237,8 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
         Vector<F> xHigh = x.convert(upcast, 1);
         Vector<F> yLow = y.convert(upcast, 0);
         Vector<F> yHigh = y.convert(upcast, 1);
-        Vector<E> resultLow = compact(op.apply(xLow, yLow), 0, extendedShape, shape, downcast, upcast);
-        Vector<E> resultHigh = compact(op.apply(xHigh, yHigh), -1, extendedShape, shape, downcast, upcast);
+        Vector<E> resultLow = compact(op.apply(xLow, yLow), 0, extendedShape, shape);
+        Vector<E> resultHigh = compact(op.apply(xHigh, yHigh), -1, extendedShape, shape);
         Vector<E> result = resultLow.lanewise(VectorOperators.OR, resultHigh);
         return result.reinterpretAsBytes();
     }
