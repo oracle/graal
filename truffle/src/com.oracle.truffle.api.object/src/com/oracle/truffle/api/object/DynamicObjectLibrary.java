@@ -317,9 +317,10 @@ public abstract class DynamicObjectLibrary extends Library {
      * be used sparingly (with at most one constant value per property) since it could cause an
      * excessive amount of shapes to be created.
      * <p>
-     * Note: the value will be strongly referenced from the shape and should be a value type or
-     * light-weight object without any references to guest language objects in order to prevent
-     * potential memory leaks.
+     * Note: the value is strongly referenced from the shape property map. It should ideally be a
+     * value type or light-weight object without any references to guest language objects in order
+     * to prevent potential memory leaks from holding onto the Shape in inline caches. The Shape
+     * transition itself is weak, so the previous shapes will not hold strongly on the value.
      *
      * <h3>Usage example:</h3>
      *
@@ -352,9 +353,11 @@ public abstract class DynamicObjectLibrary extends Library {
      * Sets the object's dynamic type identifier. What this type represents is completely up to the
      * language. For example, it could be a guest-language class.
      *
-     * The type object is strongly referenced from the shape. It is important that this be a
-     * singleton or light-weight object without any references to guest language objects in order to
-     * keep the memory footprint low and prevent potential memory leaks.
+     * The type object is strongly referenced from the shape. It should ideally be a singleton or
+     * light-weight object without any references to guest language objects in order to keep the
+     * memory footprint low and prevent potential memory leaks from holding onto the Shape in inline
+     * caches. The Shape transition itself is weak, so the previous shapes will not hold strongly on
+     * the type object.
      *
      * Type objects are always compared by object identity, never {@code equals}.
      *

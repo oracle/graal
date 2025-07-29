@@ -93,7 +93,7 @@ public class LeakCheckTest {
     }
 
     /**
-     * Make sure constant properties do not leak.
+     * Make sure constant property transitions do not leak.
      */
     @Test
     public void constantPropertyLeakCheck() {
@@ -127,7 +127,41 @@ public class LeakCheckTest {
     }
 
     /**
-     * Make sure constant properties do not leak.
+     * Make sure dynamic type transitions do not leak.
+     */
+    @Test
+    public void dynamicTypeLeakCheck() {
+        Shape emptyShape = newEmptyShape();
+        List<WeakReference<Shape>> weakShapeRefs = new ArrayList<>();
+        List<Shape> strongShapeRefs = new ArrayList<>();
+
+        for (int i = 0; i < 100000; i++) {
+            DynamicObject obj = newInstance(emptyShape);
+            Leak value = new Leak();
+            LIBRARY.setDynamicType(obj, value);
+
+            Shape shape = obj.getShape();
+            value.shape = shape;
+            weakShapeRefs.add(new WeakReference<>(shape));
+            strongShapeRefs.add(shape);
+        }
+
+        strongShapeRefs.clear();
+        System.gc();
+
+        for (WeakReference<Shape> fullShapeRef : weakShapeRefs) {
+            assertNull("Shape should have been garbage-collected", fullShapeRef.get());
+        }
+
+        // trigger transition map cleanup
+        DynamicObject obj = newInstance(emptyShape);
+        LIBRARY.setDynamicType(obj, new Leak());
+
+        Reference.reachabilityFence(emptyShape);
+    }
+
+    /**
+     * Make sure constant property transitions do not leak.
      */
     @Test
     public void constantPropertyLeakCheckSingleTransition() {
@@ -148,6 +182,47 @@ public class LeakCheckTest {
             leak.shape = obj.getShape();
             LIBRARY.putConstant(obj, "c", leak, 0);
             leak.shape = obj.getShape();
+
+            Shape shape = obj.getShape();
+            weakShapeRefs.add(new WeakReference<>(shape));
+            strongShapeRefs.add(shape);
+        }
+
+        strongShapeRefs.clear();
+        System.gc();
+
+        for (WeakReference<Shape> fullShapeRef : weakShapeRefs) {
+            assertNull("Shape should have been garbage-collected", fullShapeRef.get());
+        }
+
+        Reference.reachabilityFence(shapesToKeepAlive);
+    }
+
+    /**
+     * Make sure dynamic type transitions do not leak.
+     */
+    @Test
+    public void dynamicTypeLeakCheckSingleTransition() {
+        List<Shape> shapesToKeepAlive = new ArrayList<>();
+        List<WeakReference<Shape>> weakShapeRefs = new ArrayList<>();
+        List<Shape> strongShapeRefs = new ArrayList<>();
+
+        for (int i = 0; i < 100000; i++) {
+            Shape emptyShape = newEmptyShape();
+            shapesToKeepAlive.add(emptyShape);
+            DynamicObject obj = newInstance(emptyShape);
+
+            Leak leak1 = new Leak();
+            LIBRARY.setDynamicType(obj, leak1);
+            leak1.shape = obj.getShape();
+
+            Leak leak2 = new Leak();
+            LIBRARY.setDynamicType(obj, leak2);
+            leak2.shape = obj.getShape();
+
+            Leak leak3 = new Leak();
+            LIBRARY.setDynamicType(obj, leak3);
+            leak3.shape = obj.getShape();
 
             Shape shape = obj.getShape();
             weakShapeRefs.add(new WeakReference<>(shape));
