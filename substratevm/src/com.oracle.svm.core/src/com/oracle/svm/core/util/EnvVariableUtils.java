@@ -51,8 +51,6 @@ public class EnvVariableUtils {
         if (OS.WINDOWS.isCurrent()) {
             requiredEnvVariableKeys.addAll(REQUIRED_ENV_VARIABLE_KEYS_WINDOWS);
         }
-        System.out.printf("XXX cout reuired var= %s\n", requiredEnvVariableKeys);
-        System.err.printf("XXX cerr reuired var= %s\n", requiredEnvVariableKeys);
         return requiredEnvVariableKeys;
     }
 
@@ -89,7 +87,6 @@ public class EnvVariableUtils {
 
         private static String mapKey(String key) {
             if (OS.WINDOWS.isCurrent()) {
-                System.err.println("XXX ROOT mapKey " + key + " to " + key.toUpperCase(Locale.ROOT));
                 return key.toUpperCase(Locale.ROOT);
             }
             return key;
@@ -97,7 +94,6 @@ public class EnvVariableUtils {
 
         private static boolean isKeyRequiredCondition(String key) {
             // LC_* are locale vars that override LANG for specific categories (or all, with LC_ALL)
-            System.err.println("XXX cerr key " + key + " req=" + REQUIRED_ENV_VARIABLE_KEYS.contains(key));
             return REQUIRED_ENV_VARIABLE_KEYS.contains(key) || key.startsWith("LC_");
         }
     }
