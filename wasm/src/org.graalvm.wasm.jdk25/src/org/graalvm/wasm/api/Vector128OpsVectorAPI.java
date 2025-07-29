@@ -69,7 +69,9 @@ import static org.graalvm.wasm.api.Vector128.BYTES;
  */
 final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
 
-    static Vector128Ops<?> create() {
+    private static final Vector128Ops<byte[]> fallbackOps = Vector128OpsFallback.create();
+
+    static Vector128Ops<ByteVector> create() {
         return new Vector128OpsVectorAPI();
     }
 
@@ -349,12 +351,12 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
             case Bytecode.VECTOR_F64X2_TRUNC -> trunc(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D,
                             Vector128OpsVectorAPI::getExponentDoubles, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
             case Bytecode.VECTOR_F64X2_NEAREST -> nearest(x, F64X2, 1L << (DOUBLE_SIGNIFICAND_WIDTH - 1));
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S -> convert(x, F32X4, VectorOperators.F2I);
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U -> i32x4_trunc_sat_f32x4_u(x);
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S -> I8X16.species().fromArray(fallbackOps.unary(x.toArray(), vectorOpcode), 0); // GR-51421
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U -> I8X16.species().fromArray(fallbackOps.unary(x.toArray(), vectorOpcode), 0); // GR-51421
             case Bytecode.VECTOR_F32X4_CONVERT_I32X4_S -> convert(x, I32X4, VectorOperators.I2F);
             case Bytecode.VECTOR_F32X4_CONVERT_I32X4_U -> f32x4_convert_i32x4_u(x);
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_S_ZERO -> convert(x, F64X2, VectorOperators.D2I);
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_U_ZERO -> i32x4_trunc_sat_f64x2_u_zero(x);
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_S_ZERO -> I8X16.species().fromArray(fallbackOps.unary(x.toArray(), vectorOpcode), 0); // GR-51421
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_U_ZERO -> I8X16.species().fromArray(fallbackOps.unary(x.toArray(), vectorOpcode), 0); // GR-51421
             case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_S -> convert(x, I32X4, VectorOperators.I2D);
             case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U -> f64x2_convert_low_i32x4_u(x);
             case Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO -> convert(x, F64X2, VectorOperators.D2F);
@@ -859,6 +861,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
         return result.reinterpretAsBytes();
     }
 
+    @SuppressWarnings("unused")
     private static ByteVector i32x4_trunc_sat_f32x4_u(ByteVector xBytes) {
         FloatVector x = F32X4.reinterpret(xBytes);
         DoubleVector xLow = castDouble128(x.convert(VectorOperators.F2D, 0));
@@ -879,6 +882,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
         return result.reinterpretAsBytes();
     }
 
+    @SuppressWarnings("unused")
     private static ByteVector i32x4_trunc_sat_f64x2_u_zero(ByteVector xBytes) {
         DoubleVector x = F64X2.reinterpret(xBytes);
         LongVector longResult = truncSatU32(x);
@@ -889,6 +893,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
     private static ByteVector f64x2_convert_low_i32x4_u(ByteVector xBytes) {
         IntVector x = xBytes.reinterpretAsInts();
         Vector<Long> xUnsignedLow = castLong128(x.convert(VectorOperators.ZERO_EXTEND_I2L, 0));
+        // Note: L2D might not expand well on certain architectures.
         Vector<Double> result = castDouble128(xUnsignedLow.convert(VectorOperators.L2D, 0));
         return result.reinterpretAsBytes();
     }
@@ -1137,11 +1142,13 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
         return vec.max(vMin).min(vMax);
     }
 
+    @SuppressWarnings("unused")
     private static LongVector truncSatU32(DoubleVector x) {
         VectorMask<Long> underflow = x.test(VectorOperators.IS_NAN).or(x.test(VectorOperators.IS_NEGATIVE)).cast(I64X2.species());
         VectorMask<Long> overflow = x.compare(VectorOperators.GT, F64X2.broadcast((double) 0xffff_ffffL)).cast(I64X2.species());
         LongVector zero = I64X2.zero();
         LongVector u32max = I64X2.broadcast(0xffff_ffffL);
+        // GR-51421: D2L not supported by Graal compiler.
         LongVector trunc = castLong128(x.convert(VectorOperators.D2L, 0));
         return trunc.blend(u32max, overflow).blend(zero, underflow);
     }

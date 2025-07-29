@@ -65,7 +65,7 @@ import static org.graalvm.wasm.api.Vector128.SHORT_LENGTH;
  */
 public final class Vector128OpsFallback implements Vector128Ops<byte[]> {
 
-    public static Vector128Ops<?> create() {
+    public static Vector128Ops<byte[]> create() {
         return new Vector128OpsFallback();
     }
 
