@@ -423,8 +423,8 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
             case Bytecode.VECTOR_F64X2_GT -> f64x2_relop(x, y, VectorOperators.GT);
             case Bytecode.VECTOR_F64X2_LE -> f64x2_relop(x, y, VectorOperators.LE);
             case Bytecode.VECTOR_F64X2_GE -> f64x2_relop(x, y, VectorOperators.GE);
-            case Bytecode.VECTOR_I8X16_NARROW_I16X8_S -> narrow(x, y, I16X8, VectorOperators.S2B, Byte.MIN_VALUE, Byte.MAX_VALUE);
-            case Bytecode.VECTOR_I8X16_NARROW_I16X8_U -> narrow(x, y, I16X8, VectorOperators.S2B, 0, 0xff);
+            case Bytecode.VECTOR_I8X16_NARROW_I16X8_S -> i8x16_narrow_i16x8_s(x, y, Byte.MIN_VALUE, Byte.MAX_VALUE);
+            case Bytecode.VECTOR_I8X16_NARROW_I16X8_U -> i8x16_narrow_i16x8_s(x, y, (short) 0, (short) 0xff);
             case Bytecode.VECTOR_I8X16_ADD -> binop(x, y, I8X16, VectorOperators.ADD);
             case Bytecode.VECTOR_I8X16_ADD_SAT_S -> binop(x, y, I8X16, VectorOperators.SADD);
             case Bytecode.VECTOR_I8X16_ADD_SAT_U -> binop_sat_u(x, y, I8X16, I16X8, VectorOperators.ZERO_EXTEND_B2S, VectorOperators.S2B, VectorOperators.ADD, 0, 0xff);
@@ -935,6 +935,29 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
         LongVector minusOne = I64X2.broadcast(-1);
         LongVector result = zero.blend(minusOne, x.compare(comp, y).cast(I64X2.species()));
         return result.reinterpretAsBytes();
+    }
+
+    private static final VectorShuffle<Byte> EVENS_I8X16 = VectorShuffle.fromOp(ByteVector.SPECIES_128, i -> (i * 2) % 16);
+    private static final VectorMask<Byte> LOW_I8X16 = VectorMask.fromLong(ByteVector.SPECIES_128, (1L << 8) - 1);
+    private static final VectorMask<Byte> HIGH_I8X16 = VectorMask.fromLong(ByteVector.SPECIES_128, ((1L << 8) - 1) << 8);
+
+    private static ByteVector i8x16_compact_16x8(Vector<Short> vec, int part) {
+        VectorMask<Byte> mask = switch (part) {
+            case 0 -> LOW_I8X16;
+            case -1 -> HIGH_I8X16;
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return vec.convertShape(VectorOperators.S2B, ByteVector.SPECIES_64, 0).convertShape(VectorOperators.ZERO_EXTEND_B2S, ShortVector.SPECIES_128, 0).reinterpretAsBytes().rearrange(EVENS_I8X16, mask);
+    }
+
+    private static ByteVector i8x16_narrow_i16x8_s(ByteVector xBytes, ByteVector yBytes, short min, short max) {
+        ShortVector x = I16X8.reinterpret(xBytes);
+        ShortVector y = I16X8.reinterpret(yBytes);
+        Vector<Short> xSat = sat(x, I16X8, min, max);
+        Vector<Short> ySat = sat(y, I16X8, min, max);
+        ByteVector resultLow = i8x16_compact_16x8(xSat, 0);
+        ByteVector resultHigh = i8x16_compact_16x8(ySat, -1);
+        return resultLow.or(resultHigh);
     }
 
     private static <E, F> ByteVector narrow(ByteVector xBytes, ByteVector yBytes, Shape<E> shape, VectorOperators.Conversion<E, F> conv, long min, long max) {
