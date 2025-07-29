@@ -1353,11 +1353,10 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             asm.maybeEmitIndirectTargetMarker();
 
             /*
-             * Keep the return address slot. This keeps the stack walkable, which is crucial for the
-             * interruptible phase of lazy deoptimization. (The return address points to the deopt
-             * stub, while the original return address is stored in the deopt slot.)
+             * Keep the return address slot. The correct return address is written in the stub
+             * itself (read more there). The original return address is stored in the deopt slot.
              *
-             * This also ensures that the stack pointer is aligned properly.
+             * Keeping the return address also ensures that the stack pointer is aligned properly.
              */
             asm.subq(registerConfig.getFrameRegister(), FrameAccess.returnAddressSize());
 
