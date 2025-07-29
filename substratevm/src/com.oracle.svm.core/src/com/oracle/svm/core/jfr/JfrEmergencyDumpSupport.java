@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +23,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import com.oracle.svm.core.os.RawFileOperationSupport;
+import org.graalvm.nativeimage.ImageSingletons;
 
-public class JfrGCNameSerializer implements JfrSerializer {
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrGCNameSerializer() {
+import jdk.graal.compiler.api.replacements.Fold;
+
+public interface JfrEmergencyDumpSupport {
+    @Fold
+    static boolean isPresent() {
+        return ImageSingletons.contains(JfrEmergencyDumpSupport.class);
     }
 
-    @Override
-    public void write(JfrChunkWriter writer) {
-        JfrGCName[] gcNames = JfrGCNames.singleton().getNames();
-        writer.writeCompressedLong(JfrType.GCName.getId());
-        writer.writeCompressedLong(gcNames.length);
-        for (int i = 0; i < gcNames.length; i++) {
-            writer.writeCompressedLong(gcNames[i].getId());
-            writer.writeString(gcNames[i].getName());
-        }
+    @Fold
+    static JfrEmergencyDumpSupport singleton() {
+        return ImageSingletons.lookup(JfrEmergencyDumpSupport.class);
     }
+
+    void initialize();
+
+    void setRepositoryLocation(String dirText);
+
+    void setDumpPath(String dumpPathText);
+
+    String getDumpPath();
+
+    RawFileOperationSupport.RawFileDescriptor chunkPath();
+
+    void onVmError();
+
+    void teardown();
 }
