@@ -384,7 +384,7 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
     }
 
     private static ShapeImpl addToTransitionMap(Transition transition, ShapeImpl successor, TransitionMap<Transition, ShapeImpl> map) {
-        if (transition.hasConstantLocation()) {
+        if (transition.isWeak()) {
             return map.putWeakKeyIfAbsent(transition, successor);
         } else {
             return map.putIfAbsent(transition, successor);
@@ -416,7 +416,7 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
     private static Object newSingleEntry(Transition transition, ShapeImpl successor) {
         transitionSingleEntriesCreated.inc();
         Object key = transition;
-        if (transition.hasConstantLocation()) {
+        if (transition.isWeak()) {
             key = new WeakKey<>(transition);
         }
         return new StrongKeyWeakValueEntry<>(key, successor);
