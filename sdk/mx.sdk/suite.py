@@ -1541,6 +1541,12 @@ suite = {
     "LLVM_NINJA_TOOLCHAIN": {
       "native": True,
       "platformDependent": True,
+      "native_toolchain": {
+        "kind": "ninja",
+        "compiler": "llvm-toolchain",
+        # empty, so it defaults everything to host properties
+        "target": {},
+      },
       "os": {
         "linux": {
           "layout": {
