@@ -80,6 +80,17 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
         public final VectorShuffle<E> compressEvensShuffle = VectorShuffle.fromOp(species(), i -> (i * 2) % species().length());
         public final VectorMask<E> lowMask = VectorMask.fromLong(species(), (1L << (species().length() / 2)) - 1);
         public final VectorMask<E> highMask = VectorMask.fromLong(species(), ((1L << (species().length() / 2)) - 1) << (species().length() / 2));
+        public final VectorMask<E> evensMask;
+        public final VectorMask<E> oddsMask;
+
+        protected Shape() {
+            boolean[] values = new boolean[species().length() + 1];
+            for (int i = 0; i < values.length; i++) {
+                values[i] = i % 2 == 0;
+            }
+            evensMask = species().loadMask(values, 0);
+            oddsMask = species().loadMask(values, 1);
+        }
 
         public abstract Vector<E> reinterpret(ByteVector bytes);
 
@@ -738,8 +749,8 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
 
     private static <E, F> ByteVector extadd_pairwise(ByteVector xBytes, Shape<E> shape, VectorOperators.Conversion<E, F> conv) {
         Vector<E> x = shape.reinterpret(xBytes);
-        Vector<F> evens = x.compress(evens(shape)).convert(conv, 0);
-        Vector<F> odds = x.compress(odds(shape)).convert(conv, 0);
+        Vector<F> evens = x.compress(shape.evensMask).convert(conv, 0);
+        Vector<F> odds = x.compress(shape.oddsMask).convert(conv, 0);
         Vector<F> result = evens.add(odds);
         return result.reinterpretAsBytes();
     }
@@ -1045,10 +1056,10 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
     private static ByteVector i32x4_dot_i16x8_s(ByteVector xBytes, ByteVector yBytes) {
         ShortVector x = xBytes.reinterpretAsShorts();
         ShortVector y = yBytes.reinterpretAsShorts();
-        Vector<Integer> xEvens = castInt128(x.compress(castShort128Mask(evens(I16X8))).convert(VectorOperators.S2I, 0));
-        Vector<Integer> xOdds = castInt128(x.compress(castShort128Mask(odds(I16X8))).convert(VectorOperators.S2I, 0));
-        Vector<Integer> yEvens = castInt128(y.compress(castShort128Mask(evens(I16X8))).convert(VectorOperators.S2I, 0));
-        Vector<Integer> yOdds = castInt128(y.compress(castShort128Mask(odds(I16X8))).convert(VectorOperators.S2I, 0));
+        Vector<Integer> xEvens = castInt128(x.compress(castShort128Mask(I16X8.evensMask)).convert(VectorOperators.S2I, 0));
+        Vector<Integer> xOdds = castInt128(x.compress(castShort128Mask(I16X8.oddsMask)).convert(VectorOperators.S2I, 0));
+        Vector<Integer> yEvens = castInt128(y.compress(castShort128Mask(I16X8.evensMask)).convert(VectorOperators.S2I, 0));
+        Vector<Integer> yOdds = castInt128(y.compress(castShort128Mask(I16X8.oddsMask)).convert(VectorOperators.S2I, 0));
         Vector<Integer> xMulYEvens = xEvens.mul(yEvens);
         Vector<Integer> xMulYOdds = xOdds.mul(yOdds);
         Vector<Integer> dot = xMulYEvens.lanewise(VectorOperators.ADD, xMulYOdds);
@@ -1070,10 +1081,10 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
     }
 
     private static ByteVector i16x8_relaxed_dot_i8x16_i7x16_s(ByteVector x, ByteVector y) {
-        Vector<Short> xEvens = castShort128(x.compress(castByte128Mask(evens(I8X16))).convert(VectorOperators.B2S, 0));
-        Vector<Short> xOdds = castShort128(x.compress(castByte128Mask(odds(I8X16))).convert(VectorOperators.B2S, 0));
-        Vector<Short> yEvens = castShort128(y.compress(castByte128Mask(evens(I8X16))).convert(VectorOperators.B2S, 0));
-        Vector<Short> yOdds = castShort128(y.compress(castByte128Mask(odds(I8X16))).convert(VectorOperators.B2S, 0));
+        Vector<Short> xEvens = castShort128(x.compress(castByte128Mask(I8X16.evensMask)).convert(VectorOperators.B2S, 0));
+        Vector<Short> xOdds = castShort128(x.compress(castByte128Mask(I8X16.oddsMask)).convert(VectorOperators.B2S, 0));
+        Vector<Short> yEvens = castShort128(y.compress(castByte128Mask(I8X16.evensMask)).convert(VectorOperators.B2S, 0));
+        Vector<Short> yOdds = castShort128(y.compress(castByte128Mask(I8X16.oddsMask)).convert(VectorOperators.B2S, 0));
         Vector<Short> xMulYEvens = xEvens.mul(yEvens);
         Vector<Short> xMulYOdds = xOdds.mul(yOdds);
         Vector<Short> dot = xMulYEvens.lanewise(VectorOperators.SADD, xMulYOdds);
@@ -1112,15 +1123,15 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
 
     private static ByteVector i32x4_relaxed_dot_i8x16_i7x16_add_s(ByteVector x, ByteVector y, ByteVector zBytes) {
         IntVector z = zBytes.reinterpretAsInts();
-        ShortVector xEvens = castShort128(x.compress(castByte128Mask(evens(I8X16))).convert(VectorOperators.B2S, 0));
-        ShortVector xOdds = castShort128(x.compress(castByte128Mask(odds(I8X16))).convert(VectorOperators.B2S, 0));
-        ShortVector yEvens = castShort128(y.compress(castByte128Mask(evens(I8X16))).convert(VectorOperators.B2S, 0));
-        ShortVector yOdds = castShort128(y.compress(castByte128Mask(odds(I8X16))).convert(VectorOperators.B2S, 0));
+        ShortVector xEvens = castShort128(x.compress(castByte128Mask(I8X16.evensMask)).convert(VectorOperators.B2S, 0));
+        ShortVector xOdds = castShort128(x.compress(castByte128Mask(I8X16.oddsMask)).convert(VectorOperators.B2S, 0));
+        ShortVector yEvens = castShort128(y.compress(castByte128Mask(I8X16.evensMask)).convert(VectorOperators.B2S, 0));
+        ShortVector yOdds = castShort128(y.compress(castByte128Mask(I8X16.oddsMask)).convert(VectorOperators.B2S, 0));
         ShortVector xMulYEvens = xEvens.mul(yEvens);
         ShortVector xMulYOdds = xOdds.mul(yOdds);
         ShortVector dot = xMulYEvens.lanewise(VectorOperators.SADD, xMulYOdds);
-        IntVector dotEvens = castInt128(dot.compress(castShort128Mask(evens(I16X8))).convert(VectorOperators.S2I, 0));
-        IntVector dotOdds = castInt128(dot.compress(castShort128Mask(odds(I16X8))).convert(VectorOperators.S2I, 0));
+        IntVector dotEvens = castInt128(dot.compress(castShort128Mask(I16X8.evensMask)).convert(VectorOperators.S2I, 0));
+        IntVector dotOdds = castInt128(dot.compress(castShort128Mask(I16X8.oddsMask)).convert(VectorOperators.S2I, 0));
         IntVector dots = dotEvens.add(dotOdds);
         IntVector result = dots.add(z);
         return result.reinterpretAsBytes();
@@ -1229,23 +1240,6 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
         Vector<E> resultHigh = compact(op.apply(xHigh, yHigh), -1, extendedShape, shape, downcast, upcast);
         Vector<E> result = resultLow.lanewise(VectorOperators.OR, resultHigh);
         return result.reinterpretAsBytes();
-    }
-
-    private static final boolean[] ALTERNATING_BITS;
-
-    static {
-        ALTERNATING_BITS = new boolean[I8X16.species().length() + 1];
-        for (int i = 0; i < ALTERNATING_BITS.length; i++) {
-            ALTERNATING_BITS[i] = i % 2 == 0;
-        }
-    }
-
-    private static <E> VectorMask<E> evens(Shape<E> shape) {
-        return VectorMask.fromArray(shape.species(), ALTERNATING_BITS, 0);
-    }
-
-    private static <E> VectorMask<E> odds(Shape<E> shape) {
-        return VectorMask.fromArray(shape.species(), ALTERNATING_BITS, 1);
     }
 
     @Override
