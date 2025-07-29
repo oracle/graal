@@ -1253,13 +1253,12 @@ def _check_latest_jvmci_version():
                     # only compare the same major versions
                     if latest == 'not found':
                         latest = current
-                    # [GR-69961] temporarily disable until labsjdk-ce|ee-25 is gone from common.json
-                    # elif latest != current:
-                    #     # All JVMCI JDKs in common.json with the same major version
-                    #     # are expected to have the same JVMCI version.
-                    #     # If they don't then the repo is in some transitionary state
-                    #     # (e.g. making a JVMCI release) so skip the check.
-                    #     return False, distribution
+                    elif latest != current:
+                        # All JVMCI JDKs in common.json with the same major version
+                        # are expected to have the same JVMCI version.
+                        # If they don't then the repo is in some transitionary state
+                        # (e.g. making a JVMCI release) so skip the check.
+                        return False, distribution
         return not isinstance(latest, str), latest
 
     version_check_setting = os.environ.get('JVMCI_VERSION_CHECK', None)
