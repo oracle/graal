@@ -26,22 +26,26 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R8;
-import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MAX_PRIMITIVE;
-
 import java.lang.reflect.Modifier;
 
 import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.ConstantValueEntry;
 import com.oracle.objectfile.debugentry.FieldEntry;
+import com.oracle.objectfile.debugentry.LocalEntry;
+import com.oracle.objectfile.debugentry.LocalValueEntry;
+import com.oracle.objectfile.debugentry.RegisterValueEntry;
+import com.oracle.objectfile.debugentry.StackValueEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
+import jdk.vm.ci.amd64.AMD64;
 
-import java.lang.reflect.Modifier;
+import java.util.List;
+import java.util.Map;
 
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R8;
+import static com.oracle.objectfile.pecoff.cv.CVRegisterUtil.CV_AMD64_R8;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MAX_PRIMITIVE;
 
 final class CVSymbolSubsectionBuilder {
@@ -153,10 +157,10 @@ final class CVSymbolSubsectionBuilder {
         int localBP = 1 << 14; /* Local base pointer = SP (0=none, 1=sp, 2=bp 3=r13). */
         int paramBP = 1 << 16; /* Param base pointer = SP. */
         int frameFlags = asynceh + localBP + paramBP; /* NB: LLVM uses 0x14000. */
-        addSymbolRecord(new CVSymbolSubrecord.CVSymbolFrameProcRecord(cvDebugInfo, compiledEntry.getFrameSize(), frameFlags));
+        addSymbolRecord(new CVSymbolSubrecord.CVSymbolFrameProcRecord(cvDebugInfo, compiledEntry.frameSize(), frameFlags));
 
         /* it's costly to compute this, so only compute it once */
-        HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varRangeMap = primaryRange.getVarRangeMap();
+        Map<LocalEntry, List<Range>> varRangeMap = primaryRange.getVarRangeMap();
 
         addParameters(compiledEntry, varRangeMap);
         /* In the future: addLocals(compiledEntry, varRangeMap); */
@@ -168,50 +172,46 @@ final class CVSymbolSubsectionBuilder {
         addLineNumberRecords(compiledEntry);
     }
 
-    void addParameters(CompiledMethodEntry primaryEntry, HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varRangeMap) {
-        final Range primaryRange = primaryEntry.getPrimary();
+    void addParameters(CompiledMethodEntry primaryEntry, Map<LocalEntry, List<Range>> varRangeMap) {
+        final Range primaryRange = primaryEntry.primary();
         /* The name as exposed to the linker. */
         final String externalName = primaryRange.getSymbolName();
-        final MethodEntry method = primaryRange.isPrimary() ? primaryRange.getMethodEntry() : primaryRange.getFirstCallee().getMethodEntry();
+        final MethodEntry method = primaryRange.isPrimary() ? primaryRange.getMethodEntry() : primaryRange.getCallees().getFirst().getMethodEntry();
 
         /* define 'this' as a local just as we define other object pointers */
         if (!Modifier.isStatic(method.getModifiers())) {
-            final TypeEntry typeEntry = primaryEntry.getClassEntry();
-            DebugInfoProvider.DebugLocalInfo thisparam = method.getThisParam();
+            final TypeEntry typeEntry = primaryEntry.ownerType();
+            LocalEntry thisParam = method.getThisParam();
             final int typeIndex = cvDebugInfo.getCVTypeSection().getIndexForPointer(typeEntry);
-            emitLocal(thisparam, varRangeMap, thisparam.name(), typeEntry, typeIndex, true, externalName, primaryRange);
+            emitLocal(thisParam, varRangeMap, thisParam.name(), typeEntry, typeIndex, true, externalName, primaryRange);
         }
 
         /* define function parameters */
-        for (int i = 0; i < method.getParamCount(); i++) {
-            final DebugInfoProvider.DebugLocalInfo paramInfo = method.getParam(i);
-            final TypeEntry typeEntry = method.getParamType(i);
+        for (LocalEntry paramInfo : method.getParams()) {
+            final TypeEntry typeEntry = paramInfo.type();
             final int typeIndex = cvDebugInfo.getCVTypeSection().addTypeRecords(typeEntry).getSequenceNumber();
             emitLocal(paramInfo, varRangeMap, paramInfo.name(), typeEntry, typeIndex, true, externalName, primaryRange);
         }
     }
 
-    private static int infoTypeToInt(DebugInfoProvider.DebugLocalValueInfo info) {
-        switch (info.localKind()) {
-            case REGISTER:
-                return info.regIndex();
-            case STACKSLOT:
-                return -info.stackSlot();
-            default:
-                return 0;
+    private static int infoTypeToInt(LocalValueEntry info) {
+        return switch (info) {
+            case RegisterValueEntry p -> p.regIndex();
+            case StackValueEntry p -> -p.stackSlot();
+            default -> 0;
         }
-    }
+;    }
 
-    void emitLocal(DebugInfoProvider.DebugLocalInfo info, HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varRangeMap, String name, TypeEntry typeEntry, int typeIndex, boolean isParam,
+    void emitLocal(LocalEntry info, Map<LocalEntry, List<Range>> varRangeMap, String name, TypeEntry typeEntry, int typeIndex, boolean isParam,
                     String procName, Range range) {
         int flags = isParam ? S_LOCAL_FLAGS_IS_PARAM : 0;
-        List<SubRange> ranges = varRangeMap.get(info);
+        List<Range> ranges = varRangeMap.get(info);
         addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, name, typeIndex, flags));
-        int currentHigh = Integer.MIN_VALUE;
+        long currentHigh = Integer.MIN_VALUE;
         int registerOrSlot = 0; /* -slot or +register or 0=unknown */
         CVSymbolSubrecord.CVSymbolDefRangeBase currentRecord = null;
-        for (SubRange subrange : ranges) {
-            DebugInfoProvider.DebugLocalValueInfo value = subrange.lookupValue(info);
+        for (Range subrange : ranges) {
+            LocalValueEntry value = subrange.lookupValue(info);
             if (value != null) {
                 if (subrange.getLo() == currentHigh && registerOrSlot == infoTypeToInt(value)) {
                     /* if we can, merge records */
@@ -223,20 +223,25 @@ final class CVSymbolSubsectionBuilder {
                 }
                 currentHigh = subrange.getHi();
                 registerOrSlot = infoTypeToInt(value);
-                if (value.localKind() == REGISTER) {
-                    short cvreg = CVRegisterUtil.getCVRegister(value.regIndex(), typeEntry);
-                    currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, procName, subrange.getLo() - range.getLo(), (short) (subrange.getHi() - subrange.getLo()), cvreg);
-                    addSymbolRecord(currentRecord);
-                } else if (value.localKind() == STACKSLOT) {
-                    currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel(cvDebugInfo, procName, subrange.getLo() - range.getLo(), (short) (subrange.getHi() - subrange.getLo()),
-                                    value.stackSlot());
-                    addSymbolRecord(currentRecord);
-                } else if (value.localKind() == CONSTANT) {
-                    /* For now, silently ignore constant definitions an parameters. */
-                    /* JavaConstant constant = value.constantValue(); */
-                } else {
-                    /* Unimplemented - this is a surprise. */
-                    assert (false);
+                switch (value) {
+                    case RegisterValueEntry v -> {
+                        short cvreg = CVRegisterUtil.getCVRegister(v.regIndex(), typeEntry);
+                        currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, procName, (int) (subrange.getLo() - range.getLo()), (short) (subrange.getHi() - subrange.getLo()), cvreg);
+                        addSymbolRecord(currentRecord);
+                    }
+                    case StackValueEntry v -> {
+                        currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel(cvDebugInfo, procName, (int) (subrange.getLo() - range.getLo()), (short) (subrange.getHi() - subrange.getLo()),
+                                v.stackSlot());
+                        addSymbolRecord(currentRecord);
+                    }
+                    case ConstantValueEntry v -> {
+                        /* For now, silently ignore constant definitions an parameters. */
+                        /* JavaConstant constant = value.constantValue(); */
+                    }
+                    default -> {
+                        /* Unimplemented - this is a surprise. */
+                        assert (false);
+                    }
                 }
             }
         }

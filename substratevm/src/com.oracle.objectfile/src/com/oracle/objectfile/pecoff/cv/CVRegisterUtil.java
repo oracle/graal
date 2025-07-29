@@ -26,9 +26,12 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
+import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Register;
+
+import java.util.Objects;
 
 @SuppressWarnings("unused")
 public class CVRegisterUtil {
@@ -256,26 +259,15 @@ public class CVRegisterUtil {
         }
 
         final short cvCode;
-        if (typeEntry.isPrimitive()) {
-            switch (typeEntry.getSize()) {
-                case 1:
-                    cvCode = cvReg.cv1;
-                    break;
-                case 2:
-                    cvCode = cvReg.cv2;
-                    break;
-                case 4:
-                    cvCode = cvReg.cv4;
-                    break;
-                case 8:
-                    cvCode = cvReg.cv8;
-                    break;
-                default:
-                    cvCode = -1;
-                    break;
-            }
-        } else {
-            /* Objects are represented by 8 byte pointers. */
+        if (Objects.requireNonNull(typeEntry) instanceof PrimitiveTypeEntry) {
+            cvCode = switch (typeEntry.getSize()) {
+                case 1 -> cvReg.cv1;
+                case 2 -> cvReg.cv2;
+                case 4 -> cvReg.cv4;
+                case 8 -> cvReg.cv8;
+                default -> -1;
+            };
+        } else {/* Objects are represented by 8 byte pointers. */
             cvCode = cvReg.cv8;
         }
         assert cvCode != -1;

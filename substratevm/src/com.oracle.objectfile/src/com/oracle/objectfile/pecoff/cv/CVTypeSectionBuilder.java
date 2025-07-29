@@ -149,8 +149,8 @@ class CVTypeSectionBuilder {
     CVTypeRecord buildFunction(CompiledMethodEntry entry) {
         ClassEntry ownerType = entry.ownerType();
         assert ownerType != null;
-        CVTypeRecord.CVTypeMFunctionRecord mFunctionRecord = buildMemberFunction(ownerType, entry.getPrimary().getMethodEntry());
-        return buildFuncIdRecord(mFunctionRecord, entry.getPrimary().getMethodName());
+        CVTypeRecord.CVTypeMFunctionRecord mFunctionRecord = buildMemberFunction(ownerType, entry.primary().getMethodEntry());
+        return buildFuncIdRecord(mFunctionRecord, entry.primary().getMethodName());
     }
 
     static class FieldListBuilder {
@@ -309,7 +309,7 @@ class CVTypeSectionBuilder {
             fieldListBuilder.addField(btype);
         }
 
-        if (typeEntry.isHeader()) {
+        if (typeEntry instanceof HeaderTypeEntry) {
             FieldEntry hubField = ((HeaderTypeEntry) typeEntry).getHubField();
             log("field %s attr=(%s) offset=%d size=%d valuetype=%s", hubField.fieldName(), hubField.getModifiersString(), hubField.getOffset(), hubField.getSize(),
                             hubField.getValueType().getTypeName());
