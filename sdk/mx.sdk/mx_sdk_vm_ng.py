@@ -473,7 +473,7 @@ class NativeImageBuildTask(mx.BuildTask):
         ts = TimeStampFile(self.subject.output_file())
         if not ts.exists():
             return True, f"{ts.path} does not exist"
-        if ts.isOlderThan(newestInput):
+        if newestInput and ts.isOlderThan(newestInput):
             return True, f"{ts} is older than {newestInput}"
         previous_build_args = []
         command_file = self._get_command_file()
