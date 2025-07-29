@@ -828,6 +828,14 @@ public final class Deoptimizer {
     @DeoptStub(stubType = StubType.EntryStub)
     @Uninterruptible(reason = "Rewriting stack; gpReturnValue holds object reference.")
     public static UnsignedWord lazyDeoptStubObjectReturn(Pointer originalStackPointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
+        /*
+         * Establish the correct return address for this stub to make the stack walkable. The return
+         * address could have been overwritten by an interrupt or signal handler if the ABI doesn't
+         * guarantee a safe zone below the stack pointer.
+         */
+        CodePointer returnAddress = DeoptimizationSupport.getLazyDeoptStubObjectReturnPointer();
+        FrameAccess.singleton().writeReturnAddress(CurrentIsolate.getCurrentThread(), originalStackPointer, returnAddress);
+
         try {
             assert PointerUtils.isAMultiple(KnownIntrinsics.readStackPointer(), Word.unsigned(ConfigurationValues.getTarget().stackAlignment));
             assert Options.LazyDeoptimization.getValue();
@@ -855,6 +863,10 @@ public final class Deoptimizer {
     @DeoptStub(stubType = StubType.EntryStub)
     @Uninterruptible(reason = "Rewriting stack.")
     public static UnsignedWord lazyDeoptStubPrimitiveReturn(Pointer originalStackPointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
+        /* Establish the correct return address for this stub (see ObjectReturn stub for details) */
+        CodePointer returnAddress = DeoptimizationSupport.getLazyDeoptStubPrimitiveReturnPointer();
+        FrameAccess.singleton().writeReturnAddress(CurrentIsolate.getCurrentThread(), originalStackPointer, returnAddress);
+
         /*
          * Note: when we dispatch an exception, we enter lazyDeoptStubObjectReturn instead, since
          * that involves returning an exception object.
@@ -1005,6 +1017,10 @@ public final class Deoptimizer {
     @DeoptStub(stubType = StubType.EntryStub)
     @Uninterruptible(reason = "Frame holds Objects in unmanaged storage.")
     public static UnsignedWord eagerDeoptStub(Pointer originalStackPointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
+        /* Establish the correct return address for this stub to make the stack walkable. */
+        CodePointer returnAddress = DeoptimizationSupport.getEagerDeoptStubPointer();
+        FrameAccess.singleton().writeReturnAddress(CurrentIsolate.getCurrentThread(), originalStackPointer, returnAddress);
+
         try {
             assert PointerUtils.isAMultiple(KnownIntrinsics.readStackPointer(), Word.unsigned(ConfigurationValues.getTarget().stackAlignment));
             VMError.guarantee(VMThreads.StatusSupport.isStatusJava(), "Deopt stub execution must not be visible to other threads.");
