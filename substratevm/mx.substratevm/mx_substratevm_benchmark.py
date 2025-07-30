@@ -782,8 +782,8 @@ class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
 
     def generate_bundle(self, app_name: str, layer_info: Layer):
         """Generates the NIB file for the app-layer pair associated with the current benchmark stage."""
-        if app_name == "micronaut-pegasus-function" and mx.get_env("JDK17_HOME") is None:
-            mx.abort(f"App '{app_name}' requires JDK17_HOME env var to point to a JDK 17 distribution in order to build maven project.")
+        if app_name == "micronaut-pegasus-function" and mx.get_env("JDK21_HOME") is None:
+            mx.abort(f"App '{app_name}' requires JDK21_HOME env var to point to a JDK 21 distribution in order to build maven project.")
 
         nib_generation_cmd = ["./graalos-gate.py", "build", "--build-profile", "nib", app_name]
         if layer_info is not None:
