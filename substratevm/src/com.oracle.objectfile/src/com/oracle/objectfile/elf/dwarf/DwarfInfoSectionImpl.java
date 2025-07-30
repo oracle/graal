@@ -29,6 +29,7 @@ package com.oracle.objectfile.elf.dwarf;
 import java.lang.reflect.Modifier;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
@@ -210,42 +211,42 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writePrimitives(DebugContext context, byte[] buffer, int p) {
         log(context, "  [0x%08x] primitive types", p);
 
-        Cursor cursor = new Cursor(p);
+        int pos = p;
         // write primitives
         // i.e. all Java primitives and foreign primitive types.
-        primitiveTypeStream().forEach(primitiveTypeEntry -> {
+        for (PrimitiveTypeEntry primitiveTypeEntry : getPrimitiveTypes()) {
             if (primitiveTypeEntry.getBitCount() > 0) {
-                cursor.set(writePrimitiveType(context, primitiveTypeEntry, buffer, cursor.get()));
+                pos = writePrimitiveType(context, primitiveTypeEntry, buffer, pos);
             } else {
-                cursor.set(writeVoidType(context, primitiveTypeEntry, buffer, cursor.get()));
+                pos = writeVoidType(context, primitiveTypeEntry, buffer, pos);
             }
-        });
+        }
 
-        return cursor.get();
+        return pos;
     }
 
     private int writePointerToTypes(DebugContext context, byte[] buffer, int p) {
         log(context, "  [0x%08x] pointer to types", p);
 
-        Cursor cursor = new Cursor(p);
+        int pos = p;
         // write foreign pointer types
-        pointerTypeStream().forEach(pointerTypeEntry -> {
-            cursor.set(writePointerToType(context, pointerTypeEntry, buffer, cursor.get()));
-        });
+        for (PointerToTypeEntry pointerTypeEntry : getPointerTypes()) {
+            pos = writePointerToType(context, pointerTypeEntry, buffer, pos);
+        }
 
-        return cursor.get();
+        return pos;
     }
 
     private int writeForeignStructTypes(DebugContext context, byte[] buffer, int p) {
         log(context, "  [0x%08x] foreign struct types", p);
 
-        Cursor cursor = new Cursor(p);
+        int pos = p;
         // write foreign pointer types
-        foreignStructTypeStream().forEach(foreignStructTypeEntry -> {
-            cursor.set(writeTypeUnits(context, foreignStructTypeEntry, buffer, cursor.get()));
-        });
+        for (ForeignStructTypeEntry foreignStructTypeEntry : getForeignStructTypes()) {
+            pos = writeTypeUnits(context, foreignStructTypeEntry, buffer, pos);
+        }
 
-        return cursor.get();
+        return pos;
     }
 
     private int writeClassConstantObjects(DebugContext context, byte[] buffer, int p) {
@@ -270,12 +271,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
         pos = writeStrSectionOffset(compilationDirectory, buffer, pos);
 
-        Cursor cursor = new Cursor(pos);
         /* Write the location for the special Class object pseudo-static field for all types */
-        typeStream().forEach(typeEntry -> {
-            cursor.set(writeClassConstantDeclaration(context, typeEntry, buffer, cursor.get()));
-        });
-        pos = cursor.get();
+        for (TypeEntry typeEntry : getTypes()) {
+            pos = writeClassConstantDeclaration(context, typeEntry, buffer, pos);
+        }
 
         /*
          * Write a terminating null attribute.
@@ -515,11 +514,11 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeStructFields(DebugContext context, List<FieldEntry> fields, byte[] buffer, int p) {
-        Cursor cursor = new Cursor(p);
-        fields.forEach(fieldEntry -> {
-            cursor.set(writeStructField(context, fieldEntry, buffer, cursor.get()));
-        });
-        return cursor.get();
+        int pos = p;
+        for (FieldEntry fieldEntry : fields) {
+            pos = writeStructField(context, fieldEntry, buffer, pos);
+        }
+        return pos;
     }
 
     private int writeStructField(DebugContext context, FieldEntry fieldEntry, byte[] buffer, int p) {
@@ -588,17 +587,17 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return writeAttrAccessibility(modifiers, buffer, pos);
     }
 
-    private int writeInstanceClasses(DebugContext context, byte[] buffer, int pos) {
-        log(context, "  [0x%08x] instance classes", pos);
-        Cursor cursor = new Cursor(pos);
-        instanceClassStream().forEach(classEntry -> {
+    private int writeInstanceClasses(DebugContext context, byte[] buffer, int p) {
+        log(context, "  [0x%08x] instance classes", p);
+        int pos = p;
+        for (ClassEntry classEntry : getInstanceClasses()) {
             /*
              * For run-time debug info, we create a type unit with the opaque type, so no need to
              * create a full type unit here. The foreign method list is no actual instance class,
              * but just needs a compilation unit to reference the compilation.
              */
             if (!dwarfSections.isRuntimeCompilation() && classEntry != dwarfSections.getForeignMethodListClassEntry()) {
-                cursor.set(writeTypeUnits(context, classEntry, buffer, cursor.get()));
+                pos = writeTypeUnits(context, classEntry, buffer, pos);
             }
             /*
              * We only need to write a CU for a class entry if compilations or static fields are
@@ -608,11 +607,11 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
              */
             if (classEntry.getMethods().stream().anyMatch(m -> m.isInRange() || m.isInlined()) ||
                             classEntry.getFields().stream().anyMatch(DwarfInfoSectionImpl::isManifestedStaticField)) {
-                setCUIndex(classEntry, cursor.get());
-                cursor.set(writeInstanceClassInfo(context, classEntry, buffer, cursor.get()));
+                setCUIndex(classEntry, pos);
+                pos = writeInstanceClassInfo(context, classEntry, buffer, pos);
             }
-        });
-        return cursor.get();
+        }
+        return pos;
     }
 
     private int writeTypeUnits(DebugContext context, StructureTypeEntry typeEntry, byte[] buffer, int p) {
@@ -943,16 +942,19 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeOpaqueTypes(DebugContext context, byte[] buffer, int p) {
         log(context, "  [0x%08x] opaque types", p);
 
-        Cursor cursor = new Cursor(p);
+        int pos = p;
         /*
          * Write all structured types as opaque types (except Foreign method list). With this
          * representation, types are resolved by name in gdb (at run-time we know the types must
          * already exist in the AOT debug info).
          */
-        typeStream().filter(t -> t instanceof StructureTypeEntry && t != dwarfSections.getForeignMethodListClassEntry())
-                        .forEach(structureTypeEntry -> cursor.set(writeOpaqueType(context, structureTypeEntry, buffer, cursor.get())));
+        for (TypeEntry t : getTypes()) {
+            if (t instanceof StructureTypeEntry && t != dwarfSections.getForeignMethodListClassEntry()) {
+                pos = writeOpaqueType(context, t, buffer, pos);
+            }
+        }
 
-        return cursor.get();
+        return pos;
     }
 
     private int writeOpaqueType(DebugContext context, TypeEntry typeEntry, byte[] buffer, int p) {
@@ -1323,12 +1325,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeSkeletonMethodParameterDeclarations(DebugContext context, MethodEntry method, byte[] buffer, int p) {
         int pos = p;
-        if (!Modifier.isStatic(method.getModifiers())) {
-            LocalEntry paramInfo = method.getThisParam();
-            pos = writeSkeletonMethodParameterDeclaration(context, paramInfo, true, buffer, pos);
-        }
         for (LocalEntry paramInfo : method.getParams()) {
-            pos = writeSkeletonMethodParameterDeclaration(context, paramInfo, false, buffer, pos);
+            pos = writeSkeletonMethodParameterDeclaration(context, paramInfo, method.isThisParam(paramInfo), buffer, pos);
         }
         return pos;
     }
@@ -1445,26 +1443,21 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeMethodParameterDeclarations(DebugContext context, ClassEntry classEntry, MethodEntry method, int fileIdx, int level, byte[] buffer, int p) {
         int pos = p;
-        if (!Modifier.isStatic(method.getModifiers())) {
-            LocalEntry paramInfo = method.getThisParam();
-            setMethodLocalIndex(classEntry, method, paramInfo, pos);
-            pos = writeMethodParameterDeclaration(context, paramInfo, fileIdx, true, level, buffer, pos);
-        }
         for (LocalEntry paramInfo : method.getParams()) {
             setMethodLocalIndex(classEntry, method, paramInfo, pos);
-            pos = writeMethodParameterDeclaration(context, paramInfo, fileIdx, false, level, buffer, pos);
+            pos = writeMethodParameterDeclaration(context, method, paramInfo, fileIdx, method.isThisParam(paramInfo), level, buffer, pos);
         }
         return pos;
     }
 
-    private int writeMethodParameterDeclaration(DebugContext context, LocalEntry paramInfo, int fileIdx, boolean artificial, int level, byte[] buffer,
+    private int writeMethodParameterDeclaration(DebugContext context, MethodEntry method, LocalEntry paramInfo, int fileIdx, boolean artificial, int level, byte[] buffer,
                     int p) {
         int pos = p;
         log(context, "  [0x%08x] method parameter declaration", pos);
         AbbrevCode abbrevCode;
         String paramName = uniqueDebugString(paramInfo.name());
         TypeEntry paramType = paramInfo.type();
-        int line = paramInfo.getLine();
+        int line = method.getLine();
         if (artificial) {
             abbrevCode = AbbrevCode.METHOD_PARAMETER_DECLARATION_1;
         } else if (line >= 0) {
@@ -1496,21 +1489,21 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeMethodLocalDeclarations(DebugContext context, ClassEntry classEntry, MethodEntry method, int fileIdx, int level, byte[] buffer, int p) {
         int pos = p;
-        for (LocalEntry local : method.getLocals()) {
-            setMethodLocalIndex(classEntry, method, local, pos);
+        for (MethodEntry.Local local : method.getLocals()) {
+            setMethodLocalIndex(classEntry, method, local.localEntry(), pos);
             pos = writeMethodLocalDeclaration(context, local, fileIdx, level, buffer, pos);
         }
         return pos;
     }
 
-    private int writeMethodLocalDeclaration(DebugContext context, LocalEntry paramInfo, int fileIdx, int level, byte[] buffer,
+    private int writeMethodLocalDeclaration(DebugContext context, MethodEntry.Local local, int fileIdx, int level, byte[] buffer,
                     int p) {
         int pos = p;
         log(context, "  [0x%08x] method local declaration", pos);
         AbbrevCode abbrevCode;
-        String paramName = uniqueDebugString(paramInfo.name());
-        TypeEntry paramType = paramInfo.type();
-        int line = paramInfo.getLine();
+        String paramName = uniqueDebugString(local.localEntry().name());
+        TypeEntry paramType = local.localEntry().type();
+        int line = local.line();
         if (line >= 0) {
             abbrevCode = AbbrevCode.METHOD_LOCAL_DECLARATION_1;
         } else {
@@ -1563,12 +1556,13 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          * Only write locations for static fields that have an offset greater than 0. A negative
          * offset indicates that the field has been folded into code as an unmaterialized constant.
          */
-        Cursor cursor = new Cursor(p);
-        classEntry.getFields().stream().filter(DwarfInfoSectionImpl::isManifestedStaticField)
-                        .forEach(fieldEntry -> {
-                            cursor.set(writeClassStaticFieldLocation(context, classEntry, fieldEntry, buffer, cursor.get()));
-                        });
-        return cursor.get();
+        int pos = p;
+        for (FieldEntry fieldEntry : classEntry.getFields()) {
+            if (isManifestedStaticField(fieldEntry)) {
+                pos = writeClassStaticFieldLocation(context, classEntry, fieldEntry, buffer, pos);
+            }
+        }
+        return pos;
     }
 
     private int writeStaticFieldDeclarations(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
@@ -1576,19 +1570,20 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          * Only write locations for static fields that have an offset greater than 0. A negative
          * offset indicates that the field has been folded into code as an unmaterialized constant.
          */
-        Cursor cursor = new Cursor(p);
-        classEntry.getFields().stream().filter(DwarfInfoSectionImpl::isManifestedStaticField)
-                        .forEach(fieldEntry -> {
-                            cursor.set(writeClassStaticFieldDeclaration(context, classEntry, fieldEntry, buffer, cursor.get()));
-                        });
-        return cursor.get();
+        int pos = p;
+        for (FieldEntry fieldEntry : classEntry.getFields()) {
+            if (isManifestedStaticField(fieldEntry)) {
+                pos = writeClassStaticFieldDeclaration(context, fieldEntry, buffer, pos);
+            }
+        }
+        return pos;
     }
 
     private static boolean isManifestedStaticField(FieldEntry fieldEntry) {
         return Modifier.isStatic(fieldEntry.getModifiers()) && fieldEntry.getOffset() >= 0;
     }
 
-    private int writeClassStaticFieldDeclaration(DebugContext context, ClassEntry classEntry, FieldEntry fieldEntry, byte[] buffer, int p) {
+    private int writeClassStaticFieldDeclaration(DebugContext context, FieldEntry fieldEntry, byte[] buffer, int p) {
         assert Modifier.isStatic(fieldEntry.getModifiers());
 
         int pos = p;
@@ -1601,7 +1596,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             abbrevCode = AbbrevCode.FIELD_DECLARATION_4;
         }
         /* Record the position of the declaration to use when we write the definition. */
-        setFieldDeclarationIndex(classEntry, fieldEntry.fieldName(), pos);
+        setFieldDeclarationIndex(fieldEntry, pos);
         log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
 
@@ -1633,9 +1628,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeClassStaticFieldLocation(DebugContext context, ClassEntry classEntry, FieldEntry fieldEntry, byte[] buffer, int p) {
         int pos = p;
-        String fieldName = fieldEntry.fieldName();
-        int fieldDefinitionOffset = getFieldDeclarationIndex(classEntry, fieldName);
-        log(context, "  [0x%08x] static field location %s.%s", pos, classEntry.getTypeName(), fieldName);
+        int fieldDefinitionOffset = getFieldDeclarationIndex(fieldEntry);
+        log(context, "  [0x%08x] static field location %s.%s", pos, classEntry.getTypeName(), fieldEntry.fieldName());
         AbbrevCode abbrevCode = AbbrevCode.STATIC_FIELD_LOCATION;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
@@ -1651,12 +1645,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeArrays(DebugContext context, byte[] buffer, int p) {
         log(context, "  [0x%08x] array classes", p);
-        Cursor cursor = new Cursor(p);
-        arrayTypeStream().forEach(arrayTypeEntry -> {
-            cursor.set(writeTypeUnits(context, arrayTypeEntry, buffer, cursor.get()));
-            cursor.set(writeArray(context, arrayTypeEntry, buffer, cursor.get()));
-        });
-        return cursor.get();
+        int pos = p;
+        for (ArrayTypeEntry arrayTypeEntry : getArrayTypes()) {
+            pos = writeTypeUnits(context, arrayTypeEntry, buffer, pos);
+            pos = writeArray(context, arrayTypeEntry, buffer, pos);
+        }
+        return pos;
     }
 
     private int writeArrayLayoutTypeUnit(DebugContext context, ArrayTypeEntry arrayTypeEntry, byte[] buffer, int p) {
@@ -1778,12 +1772,13 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeFields(DebugContext context, ArrayTypeEntry arrayTypeEntry, byte[] buffer, int p) {
-        Cursor cursor = new Cursor(p);
-        arrayTypeEntry.getFields().stream().filter(DwarfInfoSectionImpl::isManifestedField)
-                        .forEach(fieldEntry -> {
-                            cursor.set(writeField(context, arrayTypeEntry, fieldEntry, buffer, cursor.get()));
-                        });
-        return cursor.get();
+        int pos = p;
+        for (FieldEntry fieldEntry : arrayTypeEntry.getFields()) {
+            if (isManifestedField(fieldEntry)) {
+                pos = writeField(context, arrayTypeEntry, fieldEntry, buffer, pos);
+            }
+        }
+        return pos;
     }
 
     private int writeArrayDataType(DebugContext context, TypeEntry elementType, byte[] buffer, int p) {
@@ -1868,11 +1863,11 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeMethodLocations(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
-        Cursor cursor = new Cursor(p);
-        classEntry.compiledMethods().forEach(compiledMethodEntry -> {
-            cursor.set(writeMethodLocation(context, classEntry, compiledMethodEntry, buffer, cursor.get()));
-        });
-        return cursor.get();
+        int pos = p;
+        for (CompiledMethodEntry compiledMethodEntry : classEntry.compiledMethods()) {
+            pos = writeMethodLocation(context, classEntry, compiledMethodEntry, buffer, pos);
+        }
+        return pos;
     }
 
     private int writeMethodLocation(DebugContext context, ClassEntry classEntry, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
@@ -1919,11 +1914,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             assert !range.isLeaf() : "should only be looking up var ranges for inlined calls";
             methodEntry = range.getCallees().getFirst().getMethodEntry();
         }
-        if (!Modifier.isStatic(methodEntry.getModifiers())) {
-            LocalEntry thisParamInfo = methodEntry.getThisParam();
-            int refAddr = getMethodLocalIndex(classEntry, methodEntry, thisParamInfo);
-            pos = writeMethodLocalLocation(context, range, thisParamInfo, refAddr, depth, true, buffer, pos);
-        }
         for (LocalEntry paramInfo : methodEntry.getParams()) {
             int refAddr = getMethodLocalIndex(classEntry, methodEntry, paramInfo);
             pos = writeMethodLocalLocation(context, range, paramInfo, refAddr, depth, true, buffer, pos);
@@ -1941,9 +1931,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             methodEntry = range.getCallees().getFirst().getMethodEntry();
         }
 
-        for (LocalEntry local : methodEntry.getLocals()) {
-            int refAddr = getMethodLocalIndex(classEntry, methodEntry, local);
-            pos = writeMethodLocalLocation(context, range, local, refAddr, depth, false, buffer, pos);
+        for (MethodEntry.Local local : methodEntry.getLocals()) {
+            int refAddr = getMethodLocalIndex(classEntry, methodEntry, local.localEntry());
+            pos = writeMethodLocalLocation(context, range, local.localEntry(), refAddr, depth, false, buffer, pos);
         }
         return pos;
     }
@@ -2058,7 +2048,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeAbstractInlineMethods(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
-        HashSet<MethodEntry> inlinedMethods = collectInlinedMethods(context, classEntry, p);
+        Set<MethodEntry> inlinedMethods = collectInlinedMethods(context, classEntry, p);
         int pos = p;
         for (MethodEntry methodEntry : inlinedMethods) {
             // n.b. class entry used to index the method belongs to the inlining method
@@ -2073,7 +2063,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private HashSet<MethodEntry> collectInlinedMethods(DebugContext context, ClassEntry classEntry, int p) {
+    private Set<MethodEntry> collectInlinedMethods(DebugContext context, ClassEntry classEntry, int p) {
         final HashSet<MethodEntry> methods = new HashSet<>();
         classEntry.compiledMethods().forEach(compiledMethod -> addInlinedMethods(context, compiledMethod, compiledMethod.primary(), methods, p));
         return methods;

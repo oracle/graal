@@ -49,9 +49,9 @@ public record CompiledMethodEntry(PrimaryRange primary, List<FrameSizeChangeEntr
      *
      * @return the stream of all ranges
      */
-    public Stream<Range> topDownRangeStream() {
+    public Stream<Range> topDownRangeStream(boolean includePrimary) {
         // skip the root of the range stream which is the primary range
-        return primary.rangeStream().skip(1);
+        return primary.rangeStream().skip(includePrimary ? 0 : 1);
     }
 
     /**
@@ -62,7 +62,7 @@ public record CompiledMethodEntry(PrimaryRange primary, List<FrameSizeChangeEntr
      * @return the stream of leaf ranges
      */
     public Stream<Range> leafRangeStream() {
-        return topDownRangeStream().filter(Range::isLeaf);
+        return topDownRangeStream(false).filter(Range::isLeaf);
     }
 
     /**
@@ -73,6 +73,11 @@ public record CompiledMethodEntry(PrimaryRange primary, List<FrameSizeChangeEntr
      * @return the stream of call ranges
      */
     public Stream<Range> callRangeStream() {
-        return topDownRangeStream().filter(range -> !range.isLeaf());
+        return topDownRangeStream(false).filter(range -> !range.isLeaf());
+    }
+
+    public void seal() {
+        // Seal the primary range. Also seals all subranges recursively.
+        primary.seal();
     }
 }

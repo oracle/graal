@@ -28,7 +28,8 @@ package com.oracle.svm.hosted.image.sources;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.ConcurrentHashMap;
+
+import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -53,7 +54,10 @@ public class SourceManager {
      */
     public Path findAndCacheSource(ResolvedJavaType resolvedType, Class<?> clazz, DebugContext debugContext) {
         /* short circuit if we have already seen this type */
-        Path path = verifiedPaths.get(resolvedType);
+        Path path;
+        synchronized (verifiedPaths) {
+            path = verifiedPaths.get(resolvedType);
+        }
         if (path != null) {
             return (path != INVALID_PATH ? path : null);
         }
@@ -82,7 +86,9 @@ public class SourceManager {
             }
         }
         /* memoize the lookup */
-        verifiedPaths.put(resolvedType, (path != null ? path : INVALID_PATH));
+        synchronized (verifiedPaths) {
+            verifiedPaths.put(resolvedType, (path != null ? path : INVALID_PATH));
+        }
 
         return path;
     }
@@ -159,7 +165,7 @@ public class SourceManager {
      * A map from a Java type to an associated source paths which is known to have an up to date
      * entry in the relevant source file cache. This is used to memoize previous lookups.
      */
-    private final ConcurrentHashMap<ResolvedJavaType, Path> verifiedPaths = new ConcurrentHashMap<>();
+    private final EconomicMap<ResolvedJavaType, Path> verifiedPaths = EconomicMap.create();
 
     /**
      * An invalid path used as a marker to track failed lookups so we don't waste time looking up

@@ -72,7 +72,6 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
-import com.oracle.svm.hosted.image.sources.SourceManager;
 import com.oracle.svm.hosted.util.DiagnosticUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -258,7 +257,6 @@ class NativeImageDebugInfoFeature implements InternalFeature {
     public void beforeImageWrite(BeforeImageWriteAccess access) {
         Timer timer = TimerCollection.singleton().get(TimerCollection.Registry.DEBUG_INFO);
         try (Timer.StopTimer t = timer.start()) {
-            ImageSingletons.add(SourceManager.class, new SourceManager());
             var accessImpl = (FeatureImpl.BeforeImageWriteAccessImpl) access;
             var image = accessImpl.getImage();
             var debugContext = new DebugContext.Builder(HostedOptionValues.singleton(), new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();

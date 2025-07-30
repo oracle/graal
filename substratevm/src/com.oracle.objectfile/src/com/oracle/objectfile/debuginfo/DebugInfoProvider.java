@@ -26,7 +26,7 @@
 
 package com.oracle.objectfile.debuginfo;
 
-import java.util.SortedSet;
+import java.util.List;
 
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
@@ -68,9 +68,9 @@ public interface DebugInfoProvider {
      */
     int objectAlignment();
 
-    SortedSet<TypeEntry> typeEntries();
+    List<TypeEntry> typeEntries();
 
-    SortedSet<CompiledMethodEntry> compiledMethodEntries();
+    List<CompiledMethodEntry> compiledMethodEntries();
 
     String cachePath();
 

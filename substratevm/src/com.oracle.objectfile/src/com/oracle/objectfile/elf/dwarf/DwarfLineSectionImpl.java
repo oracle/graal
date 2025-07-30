@@ -28,6 +28,7 @@ package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.DirEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfForm;
@@ -78,9 +79,9 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          * class CU that contains compiled methods.
          */
 
-        Cursor byteCount = new Cursor();
-        instanceClassWithCompilationStream().forEachOrdered(classEntry -> {
-            setLineIndex(classEntry, byteCount.get());
+        int pos = 0;
+        for (ClassEntry classEntry : getInstanceClassesWithCompilation()) {
+            setLineIndex(classEntry, pos);
             int headerSize = headerSize();
             int dirTableSize = writeDirTable(null, classEntry, null, 0);
             int fileTableSize = writeFileTable(null, classEntry, null, 0);
@@ -89,9 +90,9 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             // mark the start of the line table for this entry
             int lineNumberTableSize = computeLineNumberTableSize(classEntry);
             int totalSize = prologueSize + lineNumberTableSize;
-            byteCount.add(totalSize);
-        });
-        byte[] buffer = new byte[byteCount.get()];
+            pos += totalSize;
+        }
+        byte[] buffer = new byte[pos];
         super.setContent(buffer);
     }
 
@@ -144,12 +145,11 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         assert contentByteArrayCreated();
 
         byte[] buffer = getContent();
-        Cursor cursor = new Cursor();
+        int pos = 0;
 
         enableLog(context);
-        log(context, "  [0x%08x] DEBUG_LINE", cursor.get());
-        instanceClassWithCompilationStream().forEachOrdered(classEntry -> {
-            int pos = cursor.get();
+        log(context, "  [0x%08x] DEBUG_LINE", pos);
+        for (ClassEntry classEntry : getInstanceClassesWithCompilation()) {
             setLineIndex(classEntry, pos);
             int lengthPos = pos;
             pos = writeHeader(classEntry, buffer, pos);
@@ -165,9 +165,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             log(context, "  [0x%08x] lineNumberTableSize = 0x%x", pos, pos - lineNumberTablePos);
             log(context, "  [0x%08x] size = 0x%x", pos, pos - lengthPos);
             patchLength(lengthPos, buffer, pos);
-            cursor.set(pos);
-        });
-        assert cursor.get() == buffer.length;
+        }
+        assert pos == buffer.length;
     }
 
     private int writeHeader(ClassEntry classEntry, byte[] buffer, int p) {
@@ -279,18 +278,16 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * Write out the list of dirs
          */
-        Cursor cursor = new Cursor(pos);
-        Cursor idx = new Cursor(1);
-        classEntry.getDirs().forEach(dirEntry -> {
-            int dirIdx = idx.get();
+        int dirIdx = 1;
+        for (DirEntry dirEntry : classEntry.getDirs()) {
             assert (classEntry.getDirIdx(dirEntry) == dirIdx);
             String dirPath = uniqueDebugLineString(dirEntry.getPathString());
-            verboseLog(context, "  [0x%08x] %-4d %s", cursor.get(), dirIdx, dirPath);
-            cursor.set(writeLineStrSectionOffset(dirPath, buffer, cursor.get()));
-            idx.add(1);
-        });
+            verboseLog(context, "  [0x%08x] %-4d %s", pos, dirIdx, dirPath);
+            pos = writeLineStrSectionOffset(dirPath, buffer, pos);
+            dirIdx++;
+        }
 
-        return cursor.get();
+        return pos;
     }
 
     private int writeFileTable(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
@@ -325,20 +322,18 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * Write out the list of files
          */
-        Cursor cursor = new Cursor(pos);
-        Cursor idx = new Cursor(1);
-        classEntry.getFiles().forEach(fileEntry -> {
-            int fileIdx = idx.get();
+        int fileIdx = 1;
+        for (FileEntry fileEntry : classEntry.getFiles()) {
             assert classEntry.getFileIdx(fileEntry) == fileIdx;
             int dirIdx = classEntry.getDirIdx(fileEntry);
             String baseName = uniqueDebugLineString(fileEntry.fileName());
-            verboseLog(context, "  [0x%08x] %-5d %-5d %s", cursor.get(), fileIdx, dirIdx, baseName);
-            cursor.set(writeLineStrSectionOffset(baseName, buffer, cursor.get()));
-            cursor.set(writeULEB(dirIdx, buffer, cursor.get()));
-            idx.add(1);
-        });
+            verboseLog(context, "  [0x%08x] %-5d %-5d %s", pos, fileIdx, dirIdx, baseName);
+            pos = writeLineStrSectionOffset(baseName, buffer, pos);
+            pos = writeULEB(dirIdx, buffer, pos);
+            fileIdx++;
+        }
 
-        return cursor.get();
+        return pos;
     }
 
     private long debugLine = 1;
@@ -539,16 +534,14 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeLineNumberTable(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
-        Cursor cursor = new Cursor(p);
-        classEntry.compiledMethods().forEach(compiledMethod -> {
-            int pos = cursor.get();
+        int pos = p;
+        for (CompiledMethodEntry compiledMethod : classEntry.compiledMethods()) {
             String methodName = compiledMethod.primary().getFullMethodNameWithParams();
             String fileName = compiledMethod.ownerType().getFullFileName();
             log(context, "  [0x%08x] %s %s", pos, methodName, fileName);
             pos = writeCompiledMethodLineInfo(context, classEntry, compiledMethod, buffer, pos);
-            cursor.set(pos);
-        });
-        return cursor.get();
+        }
+        return pos;
     }
 
     private static Range prologueLeafRange(CompiledMethodEntry compiledEntry) {
