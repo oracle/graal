@@ -158,7 +158,7 @@ public final class CounterTrackerLong extends CounterTracker {
 
     @Override
     public String dumpState(int sId, long[] fixedData, int[][] intArrays) {
-        long[] bs = {fixedData[mapId(sId)]};
+        long[] bs = {fixedData[mapId(sId)] & BitSets.getRange(0, max - 1)};
         int[] values = new int[BitSets.size(bs)];
         PrimitiveIterator.OfInt it = BitSets.iterator(bs);
         for (int i = values.length - 1; i >= 0; i--) {

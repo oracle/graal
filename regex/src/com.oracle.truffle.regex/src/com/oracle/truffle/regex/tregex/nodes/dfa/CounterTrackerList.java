@@ -262,14 +262,6 @@ public class CounterTrackerList extends CounterTracker {
         }
     }
 
-    private void ensureCanAlloc1(int sId, long[] fixedData, int[][] intArrays) {
-        int bufferPointer = getBufferPointer(sId, fixedData);
-        int[] buf = intArrays[bufferPointer];
-        if (getStart(sId, fixedData) + getSize(sId, fixedData) == buf.length) {
-            intArrays[bufferPointer] = Arrays.copyOf(buf, buf.length << 1);
-        }
-    }
-
     private void incAll(int sId, long[] fixedData, int[][] intArrays) {
         int[] buffer = getBuffer(sId, fixedData, intArrays);
         int offset = getOffset(sId, fixedData) + 1;
@@ -306,11 +298,20 @@ public class CounterTrackerList extends CounterTracker {
     }
 
     private void set1(int sId, long[] fixedData, int[][] intArrays) {
-        ensureCanAlloc1(sId, fixedData, intArrays);
-        int[] buf = getBuffer(sId, fixedData, intArrays);
+        int bufferPointer = getBufferPointer(sId, fixedData);
+        int[] buf = intArrays[bufferPointer];
+        int start = getStart(sId, fixedData);
         int size = getSize(sId, fixedData);
-        buf[getStart(sId, fixedData) + size] = getOffset(sId, fixedData) - 1;
-        setSize(sId, fixedData, size + 1);
+        int offset = getOffset(sId, fixedData);
+        int insert1Value = offset - 1;
+        if (size == 0 || buf[start + size - 1] != insert1Value) {
+            if (start + size == buf.length) {
+                buf = Arrays.copyOf(buf, buf.length << 1);
+                intArrays[bufferPointer] = buf;
+            }
+            buf[start + size] = insert1Value;
+            setSize(sId, fixedData, size + 1);
+        }
     }
 
     @TruffleBoundary

@@ -128,7 +128,28 @@ public class CharacterClass extends QuantifiableTerm {
 
     @Override
     public boolean isUnrollingCandidate(RegexOptions options) {
-        return hasQuantifier() && getQuantifier().isWithinThreshold(options.quantifierUnrollLimitSingleCC);
+        if (!hasQuantifier()) {
+            return false;
+        }
+        if (getQuantifier().isWithinThreshold(Math.min(options.quantifierUnrollLimitGroup, options.quantifierUnrollLimitSingleCC))) {
+            return true;
+        }
+        if (getQuantifier().isWithinThreshold(Math.max(options.quantifierUnrollLimitGroup, options.quantifierUnrollLimitSingleCC))) {
+            // If the quantifier on this character class is large, but still within unroll
+            // threshold, we take parent group quantifiers into account; If there is a bounded
+            // quantifier on any parent group, unrolling the current quantifier may lead to either
+            // an explosion of NFA states if the parent quantifier is unrolled as well, or an
+            // explosion of guarded NFA transitions if the parent quantifier is not unrolled.
+            Group parent = getQuantifiedParentGroup();
+            while (parent != null) {
+                if (!parent.getQuantifier().isUnrollTrivial()) {
+                    return false;
+                }
+                parent = parent.getQuantifiedParentGroup();
+            }
+            return true;
+        }
+        return false;
     }
 
     public void addLookBehindEntry(RegexAST ast, LookBehindAssertion lookBehindEntry) {
