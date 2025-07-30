@@ -5,6 +5,10 @@
 * Added experimental support for JVMCI. It can be enabled with the `java.EnableJVMCI` option.
 * Added experimentation support for `-javaagent`. It can also be enabled from the polyglot API with `java.JavaAgent.$i` option set to `/path/to/jar=agent-options` where `$i` starts at 0 and increments by 1 for each extra java agent.
 * Added the `org.graalvm.continuations.IdentityHashCodes` class, providing utilities for restoring identity hashcodes. This may be used for more properly deserializing continuations. 
+* Added support for guest Java version 25.
+* Introduce a `EnableAdvancedRedefinition` option that controls whether things like method or field addition/removal and class hierarchy changes are enabled.
+  It controls the access to such features both for JDWP and java agents.
+  Previously, this was enabled by default for JDWP, in this release it must be explicitly turned on.
 
 ## Version 24.2.0
 ### User-visible changes

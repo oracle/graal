@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.jar.Attributes;
@@ -96,15 +97,15 @@ public class ArchiveSupport {
         return mf;
     }
 
-    public void expandJarToDir(Path inputJarFilePath, Path outputDir, AtomicBoolean outputDirDeleted) {
-        expandJarToDir(Function.identity(), inputJarFilePath, outputDir, outputDirDeleted);
+    public void expandJarToDir(Path inputJarFilePath, Path outputDir) {
+        expandJarToDir(Function.identity(), inputJarFilePath, outputDir, () -> false);
     }
 
-    public void expandJarToDir(Function<Path, Path> relativizeEntry, Path inputJarFilePath, Path outputDir, AtomicBoolean outputDirDeleted) {
+    public void expandJarToDir(Function<Path, Path> relativizeEntry, Path inputJarFilePath, Path outputDir, BooleanSupplier outputDirDeleted) {
         try {
             try (JarFile archive = new JarFile(inputJarFilePath.toFile())) {
                 Enumeration<JarEntry> jarEntries = archive.entries();
-                while (jarEntries.hasMoreElements() && !outputDirDeleted.get()) {
+                while (jarEntries.hasMoreElements() && !outputDirDeleted.getAsBoolean()) {
                     JarEntry jarEntry = jarEntries.nextElement();
                     Path originalEntry = outputDir.resolve(jarEntry.getName());
                     Path targetEntry = relativizeEntry.apply(originalEntry);

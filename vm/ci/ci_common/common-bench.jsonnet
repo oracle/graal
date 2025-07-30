@@ -23,7 +23,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
 
   vm_bench_common: self.vm_bench_base(machine_name='x52') + { capabilities+: ['tmpfs25g'] },
 
-  vm_bench_js_linux_amd64(bench_suite=null): vm.vm_java_Latest + vm_common.svm_common + vm_common.sulong + vm.custom_vm + self.vm_bench_common + {
+  vm_bench_js_linux_amd64(bench_suite=null): vm.vm_java_Latest + common.deps.svm + common.deps.sulong + vm.custom_vm + self.vm_bench_common + {
     cmd_base:: vm_common.mx_vm_common + ['--dynamicimports', 'js-benchmarks', 'benchmark', '--results-file', self.result_file],
     config_base:: ['--js-vm=graal-js', '--js-vm-config=default', '--jvm=graalvm-${VM_ENV}'],
     setup+: [
@@ -52,14 +52,14 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       ENABLE_POLYBENCH_HPC: 'yes',
       POLYBENCH_HPC_EXTRA_HEADERS: '/cm/shared/apps/papi/papi-5.5.1/include',
       POLYBENCH_HPC_PAPI_LIB_DIR: '/cm/shared/apps/papi/papi-5.5.1/lib',
-    } + if !std.objectHasAll(self, 'machine_name') then {} else if self.machine_name  == 'e3' ||  self.machine_name  == 'e4_36_256' then {LIBPFM_FORCE_PMU: 'amd64'} else if self.machine_name == 'x52' then {} else {},
+    } + if !std.objectHasAll(self, 'machine_name') then {} else if std.count(['e3', 'e4_36_256', 'e4_8_64'], self.machine_name) > 0 then {LIBPFM_FORCE_PMU: 'amd64'} else if self.machine_name == 'x52' then {} else {},
   },
 
   vm_bench_polybenchmarks_base(env): {
     base_cmd:: ['mx', '--env', env, '--dy', 'polybenchmarks'],
   },
 
-  vm_bench_polybenchmarks_linux_build: vm_common.svm_common + vm_common.truffleruby + vm_common.graalpy + vm.custom_vm + vm.vm_java_Latest + self.polybench_hpc_linux_common(shape='e4_36_256') + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') + {
+  vm_bench_polybenchmarks_linux_build: common.deps.svm + common.deps.truffleruby + common.deps.graalpy + vm.custom_vm + vm.vm_java_Latest + self.polybench_hpc_linux_common(shape='e4_8_64') + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') + {
     setup+: [
       self.base_cmd + ['sforceimports'],
     ],
@@ -80,7 +80,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
   },
 
   # TODO (GR-60584): re-enable espresso polybench jobs once polybench is unchained
-  vm_bench_polybenchmarks_linux_common(vm_config='jvm', is_gate=false, suite='default:~r[.*jar]', shape=null): vm_common.svm_common + vm_common.truffleruby + vm.custom_vm + vm.vm_java_Latest + self.polybench_hpc_linux_common(shape=shape) + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') {
+  vm_bench_polybenchmarks_linux_common(vm_config='jvm', is_gate=false, suite='default:~r[.*jar]', shape=null): common.deps.svm + common.deps.truffleruby + vm.custom_vm + vm.vm_java_Latest + self.polybench_hpc_linux_common(shape=shape) + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') + (if is_gate then self.vm_bench_base(machine_name=null) else self.vm_bench_common) + {
     bench_cmd:: self.base_cmd + ['benchmark', '--results-file', self.result_file],
     setup+: [
       self.base_cmd + ['sforceimports'],
@@ -104,16 +104,16 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     notify_emails+: if (is_gate) then [] else [ 'boris.spasojevic@oracle.com' ],
     teardown+:      if (is_gate) then [] else [ $.vm_bench_common.upload ],
     timelimit:      if (is_gate) then '1:00:00' else '1:30:00',
-  } + (if is_gate then self.vm_bench_base(machine_name=null) else self.vm_bench_common),
+  },
 
-  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}', fail_fast=false, skip_machine=false): (if skip_machine then self.vm_bench_base(machine_name=null) else self.vm_bench_common) + vm_common.svm_common + vm_common.truffleruby + vm_common.graalpy + vm.custom_vm + vm_common.wasm {
+  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}', fail_fast=false, skip_machine=false): (if skip_machine then self.vm_bench_base(machine_name=null) else self.vm_bench_common) + common.deps.svm + common.deps.truffleruby + common.deps.graalpy + common.deps.wasm + vm.custom_vm {
     base_cmd:: ['mx', '--env', env],
     bench_cmd:: self.base_cmd + ['benchmark'] + (if (fail_fast) then ['--fail-fast'] else []),
     interpreter_bench_cmd(vmConfig):: self.bench_cmd +
         (if std.startsWith(vmConfig, 'jvm-') && self.jdk_version >= 22 then
-            ['polybench:~r[(compiler/.*)|(warmup/.*)]']
+            ['polybench:~r[(compiler/.*)|(warmup/.*)|(wasm-simd/.*)]']
         else
-            ['polybench:~r[(compiler/.*)|(warmup/.*)|(.*panama.*)]'] # panama NFI backend only supported in JVM mode and on JDK 22+ [GR-49655]
+            ['polybench:~r[(compiler/.*)|(warmup/.*)|(.*panama.*)|(wasm-simd/.*)]'] # panama NFI backend only supported in JVM mode and on JDK 22+ [GR-49655]
         ) + ['--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}', '--polybench-vm-config=' + vmConfig],
     compiler_bench_cmd(vmConfig):: self.bench_cmd + ['polybench:*[compiler/dispatch.js]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}', '--polybench-vm-config=' + vmConfig],
     warmup_bench_cmd(vmConfig):: self.bench_cmd + ['--fork-count-file', 'ci/ci_common/benchmark-forks.json',  'polybench:r[warmup/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}', '--polybench-vm-config=' + vmConfig],
@@ -125,7 +125,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     notify_groups:: ['polybench'],
   },
 
-  vm_bench_polybench_hpc_linux_common(env, metric, benchmarks='*', polybench_vm_config='native-interpreter'): self.polybench_hpc_linux_common(shape='e4_36_256') + self.vm_bench_polybench_linux_common(env=env, fail_fast=false, skip_machine=true) + {
+  vm_bench_polybench_hpc_linux_common(env, metric, benchmarks='*', polybench_vm_config='native-interpreter'): self.polybench_hpc_linux_common(shape='e4_8_64') + self.vm_bench_polybench_linux_common(env=env, fail_fast=false, skip_machine=true) + {
     machine_name_prefix:: "gate-",
     run+: [
       self.base_cmd + ['benchmark', 'polybench:'+benchmarks,
@@ -211,7 +211,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       self.compiler_bench_cmd(vmConfig='native-standard') + ['--metric=partial-evaluation-time'],
       self.warmup_bench_cmd(vmConfig='native-standard') + ['--metric=one-shot'],
     ],
-    timelimit: '1:30:00',
+    timelimit: '1:00:00',
     notify_groups: ['polybench'],
   },
 
@@ -275,7 +275,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     notify_groups:: ['compiler_bench']
   },
 
-  vm_bench_polybench_nfi_linux_amd64: self.vm_bench_common + vm_common.svm_common + self.vm_bench_polybench_nfi,
+  vm_bench_polybench_nfi_linux_amd64: self.vm_bench_common + common.deps.svm + self.vm_bench_polybench_nfi,
 
   local builds = [
     # We used to expand `${common_vm_linux}` here to work around some limitations in the version of pyhocon that we use in the CI
@@ -325,8 +325,8 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       notify_groups:: ['javascript'],
     },
 
-    vm_common.vm_base('linux', 'amd64', 'gate') + self.vm_bench_polybenchmarks_linux_common(is_gate=true, shape='e4_36_256')    + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybenchmarks-' + utils.jdk_and_hardware(self)},
-    vm_common.vm_base('linux', 'amd64', 'gate') + self.vm_gate_polybench_linux + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybench-' + utils.jdk_and_hardware(self)},
+    vm_common.vm_base('linux', 'amd64', 'tier3') + self.vm_bench_polybenchmarks_linux_common(is_gate=true, shape='e4_8_64')    + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybenchmarks-' + utils.jdk_and_hardware(self)},
+    vm_common.vm_base('linux', 'amd64', 'tier3') + self.vm_gate_polybench_linux + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybench-' + utils.jdk_and_hardware(self)},
   ],
 
   builds: utils.add_defined_in(builds, std.thisFile),

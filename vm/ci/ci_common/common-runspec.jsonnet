@@ -87,7 +87,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
         LANG: 'en_US.UTF-8',
         MACOSX_DEPLOYMENT_TARGET: '11.0',  # for compatibility with macOS BigSur
       },
-      capabilities+: ['darwin_bigsur', 'ram16gb'],
+      capabilities+: ['ram16gb'],
     },
 
     local common_vm_windows = common_vm + graal_common.windows_server_2016_amd64,
@@ -195,17 +195,18 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     },
   } else {})),
 
-  local deploy_graalvm_espresso = svm_common + common_os_deploy + espresso_name + task_spec({
+  local deploy_graalvm_espresso(major_version, with_g1=false) = svm_common + common_os_deploy + espresso_name + task_spec({
     notify_groups:: ['deploy'],
   }) + build_base_graalvm_image(with_profiles=false) + task_spec({
-    espresso_standalone_dist:: if vm.edition == 'ce' then 'GRAALVM_ESPRESSO_COMMUNITY_JAVA21' else 'GRAALVM_ESPRESSO_JAVA21',
+    espresso_standalone_dist:: (if vm.edition == 'ce' then 'GRAALVM_ESPRESSO_COMMUNITY_JAVA' + major_version else 'GRAALVM_ESPRESSO_JAVA' + major_version) +
+      (if with_g1 then '_G1' else ''),
     mx_vm_espresso:: vm.mx_cmd_base_no_env + ['--env', self.mx_env_espresso] + self.mx_vm_cmd_suffix,
-    run +:[
+    run +: (if with_g1 then [['set-export', 'ESPRESSO_DELIVERABLE_VARIANT', 'G1']] else []) + [
       # $GRAALVM_HOME was built and set by build_base_graalvm_image
       # Build the espresso standalone with this GraalVM
       ['set-export', 'BOOTSTRAP_GRAALVM', '$GRAALVM_HOME'],
       ['set-export', 'VM_ENV', self.mx_env_espresso],
-      self.mx_vm_espresso + ['build', '--targets=' + self.espresso_standalone_dist],
+      self.mx_vm_espresso + (if with_g1 then ['--extra-image-builder-argument=--gc=G1'] else []) + ['build', '--targets=' + self.espresso_standalone_dist],
       # Smoke test the built stabndalone
       ['set-export', 'ESPRESSO_STANDALONE', self.mx_vm_espresso + ['--quiet', '--no-warning', 'path', '--output', 'ESPRESSO_NATIVE_STANDALONE']],
       ['set-export', 'DACAPO_JAR', self.mx_vm_espresso + ['--quiet', '--no-warning', 'paths', '--download', 'DACAPO_MR1_2baec49']],
@@ -215,7 +216,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
       # Deploy it to the artifact server
       self.mx_vm_espresso + deploy_artifacts(self.os, suite='espresso', tags=['standalone']),
     ],
-  }) + timelimit('1:45:00'),
+  }) + timelimit('1:45:00') + notify_emails('gilles.m.duboscq@oracle.com'),
 
   local deploy_vm_base_task_dict = {
     #
@@ -223,32 +224,30 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     # NOTE: After adding or removing deploy jobs, please make sure you modify ce-release-artifacts.json accordingly.
     #
     "vm-base": mx_env + deploy_graalvm_base + default_os_arch_jdk_mixin + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk21": weekly,
       "linux:amd64:jdk-latest": post_merge,
-      "linux:aarch64:jdk21": weekly + capabilities('!xgene3') + timelimit('1:30:00'),
       "linux:aarch64:jdk-latest": daily + capabilities('!xgene3') + timelimit('1:30:00'),
-
-      "darwin:amd64:jdk21": weekly,
-      "darwin:amd64:jdk-latest": daily,
-      "darwin:aarch64:jdk21": weekly + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
-      "darwin:aarch64:jdk-latest": daily + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
-
-      "windows:amd64:jdk21": weekly + timelimit('1:30:00'),
+      "darwin:amd64:jdk-latest": daily + capabilities('darwin_bigsur'),
+      "darwin:aarch64:jdk-latest": daily + capabilities('darwin_bigsur') + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
       "windows:amd64:jdk-latest": daily + timelimit('1:30:00'),
     }),
   },
 
   local deploy_vm_espresso_task_dict = {
     #
-    # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
+    # Deploy the GraalVM Espresso standalones
     #
-    "vm-espresso": mx_env + deploy_graalvm_espresso + espresso_java_home(21) + default_os_arch_jdk_mixin + platform_spec(no_jobs) + (
+    "vm-espresso": mx_env + deploy_graalvm_espresso(25) + espresso_java_home(25) + default_os_arch_jdk_mixin + platform_spec(no_jobs) + (
     if vm.deploy_espress_standalone then platform_spec({
-      "linux:amd64:jdk-latest": weekly,
+      "linux:amd64:jdk-latest": daily,
       "linux:aarch64:jdk-latest": weekly,
-      "darwin:amd64:jdk-latest": weekly,
-      "darwin:aarch64:jdk-latest": weekly,
+      "darwin:amd64:jdk-latest": weekly + capabilities('darwin_bigsur'),
+      "darwin:aarch64:jdk-latest": weekly + capabilities('darwin_bigsur'),
       "windows:amd64:jdk-latest": weekly,
+    }) else {}),
+    "vm-espresso-g1": mx_env + deploy_graalvm_espresso(25, with_g1=true) + espresso_java_home(25) + default_os_arch_jdk_mixin + platform_spec(no_jobs) + (
+    if vm.deploy_espress_standalone && vm.edition == 'ee' then platform_spec({
+      "linux:amd64:jdk-latest": daily,
+      "linux:aarch64:jdk-latest": weekly,
     }) else {}),
   },
 

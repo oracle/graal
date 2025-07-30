@@ -331,15 +331,12 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     public long encodeHubPointerForImageHeap(ImageHeapObject obj, long hubOffsetFromHeapBase) {
         long header = hubOffsetFromHeapBase << numReservedExtraHubBits;
         assert (header & reservedHubBitsMask) == 0 : "Object header bits must be zero initially";
-        if (obj.getPartition() instanceof ChunkedImageHeapPartition partition) {
-            if (partition.isWritable() && HeapImpl.usesImageHeapCardMarking()) {
-                header |= REMSET_OR_MARKED1_BIT.rawValue();
-            }
-            if (partition.usesUnalignedObjects()) {
-                header |= UNALIGNED_BIT.rawValue();
-            }
-        } else {
-            assert obj.getPartition() instanceof FillerObjectDummyPartition;
+        ChunkedImageHeapPartition partition = (ChunkedImageHeapPartition) obj.getPartition();
+        if (partition.isWritable() && HeapImpl.usesImageHeapCardMarking()) {
+            header |= REMSET_OR_MARKED1_BIT.rawValue();
+        }
+        if (partition.usesUnalignedObjects()) {
+            header |= UNALIGNED_BIT.rawValue();
         }
         if (isIdentityHashFieldOptional()) {
             header |= (IDHASH_STATE_IN_FIELD.rawValue() << IDHASH_STATE_SHIFT);

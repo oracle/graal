@@ -88,7 +88,7 @@ final class DefaultStrategy extends LayoutStrategy {
 
     @Override
     protected Location createLocationForValue(ShapeImpl shape, Object value, int putFlags) {
-        return ((CoreAllocator) shape.allocator()).locationForValue(value, true, value != null, putFlags);
+        return ((CoreAllocator) shape.allocator()).locationForValue(value, putFlags);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,10 +57,8 @@ import java.lang.annotation.Target;
 public @interface GenerateNativeToHotSpotBridge {
 
     /**
-     * The native bridge configuration. The returned class must have an accessible static
-     * {@code getInstance()} method returning a {@link JNIConfig} instance. The returned
-     * {@link JNIConfig} instance is used for marshallers' lookup.
+     * Specifies the factory class that provides the configuration for the generated bridge, such as
+     * marshallers.
      */
-    Class<?> jniConfig();
-
+    Class<?> factory();
 }

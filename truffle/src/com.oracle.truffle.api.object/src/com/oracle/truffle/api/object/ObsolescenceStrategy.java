@@ -162,7 +162,8 @@ final class ObsolescenceStrategy extends ExtLayoutStrategy {
         assert oldProperty.getKey().equals(newProperty.getKey());
         Object key = newProperty.getKey();
 
-        Transition replacePropertyTransition = new Transition.IndirectReplacePropertyTransition(oldProperty, newProperty);
+        var replacePropertyTransition = new Transition.IndirectReplacePropertyTransition(oldProperty, newProperty);
+        shape.onPropertyTransition(replacePropertyTransition);
         ShapeImpl cachedShape = shape.queryTransition(replacePropertyTransition);
         if (cachedShape != null) {
             return cachedShape;

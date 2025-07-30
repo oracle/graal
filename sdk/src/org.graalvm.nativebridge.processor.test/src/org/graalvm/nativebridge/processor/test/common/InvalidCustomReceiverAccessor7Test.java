@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,19 @@
  */
 package org.graalvm.nativebridge.processor.test.common;
 
+import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
 import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
 import org.graalvm.nativebridge.CustomReceiverAccessor;
+import org.graalvm.nativebridge.GenerateNativeToNativeBridge;
+import org.graalvm.nativebridge.GenerateProcessToProcessBridge;
 import org.graalvm.nativebridge.processor.test.CustomReceiverService;
 import org.graalvm.nativebridge.processor.test.ExpectError;
 import org.graalvm.nativebridge.processor.test.ServiceAPI;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
-@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
+@GenerateProcessToProcessBridge(factory = ForeignServiceFactory.class)
+@GenerateHotSpotToNativeBridge(factory = ForeignServiceFactory.class)
+@GenerateNativeToNativeBridge(factory = ForeignServiceFactory.class)
+@GenerateNativeToHotSpotBridge(factory = ForeignServiceFactory.class)
 abstract class InvalidCustomReceiverAccessor7Test extends CustomReceiverService {
 
     @CustomReceiverAccessor

@@ -184,8 +184,10 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                 # If the GRAAL_TEST and POLYBENCH_EE (for instructions metric) distributions
                 # are present, the CompileTheWorld benchmark is available.
                 self._benchmarks = ['CompileTheWorld']
-            for group in ["interpreter", "compiler", "warmup", "nfi"]:
+            for group in ["interpreter", "compiler", "warmup", "nfi", "wasm-simd"]:
                 dir_path = os.path.join(self._get_benchmark_root(), group)
+                if not os.path.exists(dir_path):
+                    continue
                 for f in os.listdir(dir_path):
                     f_path = os.path.join(dir_path, f)
                     if os.path.isfile(f_path) and os.path.splitext(f_path)[1] in self._extensions:
@@ -515,12 +517,15 @@ def register_graalvm_vms():
     host_vm_names = [default_host_vm_name] + ([short_host_vm_name] if short_host_vm_name != default_host_vm_name else [])
     for host_vm_name in host_vm_names:
         for config_name, java_args, launcher_args, priority in mx_sdk_vm.get_graalvm_hostvm_configs():
+            extra_launcher_args = []
             if config_name.startswith("jvm"):
                 # needed for NFI CLinker benchmarks
-                launcher_args += ['--vm.-enable-preview']
-            mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args), _suite, priority)
+                extra_launcher_args += ['--vm.-enable-preview']
+                # needed for GraalWasm SIMD benchmarks
+                extra_launcher_args += ['--vm.-add-modules=jdk.incubator.vector']
+            mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args + extra_launcher_args), _suite, priority)
             for mode, mode_options in _polybench_modes:
-                _polybench_vm_registry.add_vm(PolyBenchVm(host_vm_name, config_name + "-" + mode, [], mode_options + launcher_args))
+                _polybench_vm_registry.add_vm(PolyBenchVm(host_vm_name, config_name + "-" + mode, [], mode_options + launcher_args + extra_launcher_args))
         if _suite.get_import("polybenchmarks") is not None:
             import mx_polybenchmarks_benchmark
             mx_polybenchmarks_benchmark.polybenchmark_vm_registry.add_vm(PolyBenchVm(host_vm_name, "jvm", [], ["--jvm"]))
@@ -533,7 +538,7 @@ def register_graalvm_vms():
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
             config_names = list()
-            for main_config in ['default', 'gate', 'llvm', 'native-architecture', 'future-defaults-all', 'preserve-all', 'preserve-classpath', 'layered'] + analysis_context_sensitivity:
+            for main_config in ['default', 'gate', 'llvm', 'native-architecture', 'future-defaults-all', 'preserve-all', 'preserve-classpath'] + analysis_context_sensitivity:
                 config_names.append(f'{main_config}-{config_suffix}')
 
             for optimization_level in optimization_levels:
@@ -545,7 +550,7 @@ def register_graalvm_vms():
                 mx_benchmark.add_java_vm(NativeImageVM('native-image', config_name, ['--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED']), _suite, 10)
 
     # Adding JAVA_HOME VMs to be able to run benchmarks on GraalVM binaries without the need of building it first
-    for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'upx', 'upx-g1gc', 'quickbuild', 'quickbuild-g1gc', 'layered']:
+    for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'upx', 'upx-g1gc', 'quickbuild', 'quickbuild-g1gc']:
         mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', java_home_config), _suite, 5)
 
 

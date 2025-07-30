@@ -42,7 +42,7 @@ public abstract class AbstractPackageTable<M, PE extends AbstractPackageTable.Ab
         }
 
         private final ME module;
-        private ArrayList<ME> exports;
+        protected ArrayList<ME> exports;
         private boolean isUnqualifiedExported;
         private boolean isExportedAllUnnamed;
         private String bootClasspathLocation;

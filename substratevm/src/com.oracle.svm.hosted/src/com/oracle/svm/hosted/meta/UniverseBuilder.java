@@ -49,7 +49,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -91,12 +90,14 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.OpenTypeWorldFeature;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
@@ -122,7 +123,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public class UniverseBuilder {
     @Platforms(Platform.HOSTED_ONLY.class) //
-    private static final WordBase[] EMPTY_VTABLE = new WordBase[0];
+    private static final MethodRef[] EMPTY_VTABLE = new MethodRef[0];
 
     private final AnalysisUniverse aUniverse;
     private final AnalysisMetaAccess aMetaAccess;
@@ -180,6 +181,16 @@ public class UniverseBuilder {
                 assert origHMethod != null;
                 HostedMethod previous = hUniverse.methods.put(aMethod, origHMethod);
                 assert previous == null : "Overwriting analysis key";
+            }
+
+            // see SharedMethod#getIndirectCallTarget for more information
+            if (!SubstrateOptions.useClosedTypeWorldHubLayout()) {
+                OpenTypeWorldFeature.computeIndirectCallTargets(hUniverse, hUniverse.methods);
+            } else {
+                hUniverse.methods.forEach((aMethod, hMethod) -> {
+                    assert aMethod.isOriginalMethod();
+                    hMethod.setIndirectCallTarget(hMethod);
+                });
             }
 
             HostedConfiguration.initializeDynamicHubLayout(hMetaAccess);
@@ -597,8 +608,10 @@ public class UniverseBuilder {
 
         // Reserve "synthetic" fields in this class (but not subclasses) below.
 
-        // A reference to a {@link java.util.concurrent.locks.ReentrantLock for "synchronized" or
-        // Object.wait() and Object.notify() and friends.
+        /*
+         * A reference to a JavaMonitor instance for "synchronized" or Object.wait() and
+         * Object.notify() and friends.
+         */
         if (clazz.needMonitorField()) {
             int size = layout.getReferenceSize();
             int endOffset = usedBytes.length();
@@ -908,10 +921,13 @@ public class UniverseBuilder {
 
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
+        boolean closedTypeWorldHubLayout = SubstrateOptions.useClosedTypeWorldHubLayout();
+        boolean useOffsets = SubstrateOptions.useRelativeCodePointers();
 
         for (HostedType type : hUniverse.getTypes()) {
             hUniverse.hostVM().recordActivity();
 
+            // See also similar logic in DynamicHub.allocate
             int layoutHelper;
             int monitorOffset = 0;
             int identityHashOffset = 0;
@@ -958,8 +974,8 @@ public class UniverseBuilder {
             DynamicHub hub = type.getHub();
             hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset, referenceMapIndex, type.isInstantiated());
 
-            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-                WordBase[] vtable = createVTable(type.closedTypeWorldVTable);
+            if (closedTypeWorldHubLayout) {
+                MethodRef[] vtable = createVTable(type.closedTypeWorldVTable, useOffsets);
                 hub.setClosedTypeWorldData(vtable, type.getTypeID(), type.getTypeCheckStart(), type.getTypeCheckRange(),
                                 type.getTypeCheckSlot(), type.getClosedTypeWorldTypeCheckSlots());
             } else {
@@ -991,20 +1007,20 @@ public class UniverseBuilder {
                     typeSlotIdx += 2;
                 }
 
-                WordBase[] vtable = createVTable(type.openTypeWorldDispatchTables);
+                MethodRef[] vtable = createVTable(type.openTypeWorldDispatchTables, useOffsets);
                 hub.setOpenTypeWorldData(vtable, type.getTypeID(), type.getTypeIDDepth(), type.getNumClassTypes(), type.getNumInterfaceTypes(), openTypeWorldTypeCheckSlots);
             }
         }
     }
 
-    private static WordBase[] createVTable(HostedMethod[] methods) {
+    private static MethodRef[] createVTable(HostedMethod[] methods, boolean useOffsets) {
         if (methods.length == 0) {
             return EMPTY_VTABLE;
         }
-        WordBase[] vtable = new WordBase[methods.length];
+        MethodRef[] vtable = new MethodRef[methods.length];
         for (int i = 0; i < methods.length; i++) {
             HostedMethod method = methods[i];
-            if (SubstrateOptions.useRelativeCodePointers()) {
+            if (useOffsets) {
                 vtable[i] = new MethodOffset(method);
             } else {
                 /*

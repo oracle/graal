@@ -36,8 +36,9 @@ import java.io.InterruptedIOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -59,9 +60,9 @@ import jdk.graal.compiler.graphio.parsing.model.InputMethod;
  * @author Ondrej Douda <ondrej.douda@oracle.com>
  */
 public final class DataBinaryWriter {
-    private static final Set<String> GROUP_PROPERTY_EXCLUDE = new HashSet<>(Arrays.asList(PROPNAME_NAME, PROPNAME_TYPE));
-    public static final Set<String> NODE_PROPERTY_EXCLUDE = new HashSet<>(Stream.concat(ModelBuilder.SYSTEM_PROPERTIES.stream(), Stream.of(PROPNAME_SHORT_NAME)).collect(Collectors.toList()));
-    private static final Set<String> GRAPH_PROPERTY_EXCLUDE = new HashSet<>(Arrays.asList(PROPNAME_NAME, PROPNAME_DUPLICATE));
+    private static final Set<String> GROUP_PROPERTY_EXCLUDE = Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(PROPNAME_NAME, PROPNAME_TYPE)));
+    public static final Set<String> NODE_PROPERTY_EXCLUDE = Stream.concat(ModelBuilder.SYSTEM_PROPERTIES.stream(), Stream.of(PROPNAME_SHORT_NAME)).collect(Collectors.toUnmodifiableSet());
+    private static final Set<String> GRAPH_PROPERTY_EXCLUDE = Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(PROPNAME_NAME, PROPNAME_DUPLICATE)));
 
     private final GraphOutput<InputGraph, Method> target;
     private final AtomicBoolean cancel;

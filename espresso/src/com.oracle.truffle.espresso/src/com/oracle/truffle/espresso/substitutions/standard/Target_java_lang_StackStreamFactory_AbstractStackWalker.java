@@ -30,6 +30,7 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.VersionFilter;
+import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions(type = "Ljava/lang/StackStreamFactory$AbstractStackWalker;")
 public final class Target_java_lang_StackStreamFactory_AbstractStackWalker {
@@ -52,5 +53,33 @@ public final class Target_java_lang_StackStreamFactory_AbstractStackWalker {
                     @Inject EspressoLanguage language,
                     @Inject Meta meta) {
         return meta.getContext().getVM().JVM_CallStackWalk19(stackStream, mode, skipframes, contScope, cont, batchSize, startIndex, frames, language, meta);
+    }
+
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java22OrLater.class)
+    public static @JavaType(Object.class) StaticObject callStackWalk(
+                    @JavaType(internalName = "Ljava/lang/StackStreamFactory$AbstractStackWalker;") StaticObject stackStream,
+                    int mode, int skipframes,
+                    @JavaType(internalName = "Ljdk/internal/vm/ContinuationScope;") StaticObject contScope,
+                    @JavaType(internalName = "Ljdk/internal/vm/Continuation;") StaticObject cont,
+                    int bufferSize, int startIndex,
+                    @JavaType(Object[].class) StaticObject frames,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta) {
+        return meta.getContext().getVM().JVM_CallStackWalk19(stackStream, mode, skipframes, contScope, cont,
+                        bufferSize - startIndex, // Translate to batch size
+                        startIndex, frames, language, meta);
+    }
+
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java22OrLater.class)
+    public static int fetchStackFrames(
+                    @JavaType(internalName = "Ljava/lang/StackStreamFactory;") StaticObject stream,
+                    int mode, long anchor,
+                    @SuppressWarnings("unused") int lastBatchFrameCount,
+                    int bufferSize, int startIndex,
+                    @JavaType(Object[].class) StaticObject frames,
+                    @Inject EspressoLanguage lang,
+                    @Inject Meta meta,
+                    @Inject VM vm) {
+        return vm.JVM_MoreStackWalk(stream, mode, anchor, bufferSize - startIndex, startIndex, frames, lang, meta);
     }
 }

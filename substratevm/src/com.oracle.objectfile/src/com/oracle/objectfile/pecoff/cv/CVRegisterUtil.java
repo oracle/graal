@@ -26,9 +26,12 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
+import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Register;
+
+import java.util.Objects;
 
 @SuppressWarnings("unused")
 public class CVRegisterUtil {
@@ -195,41 +198,41 @@ public class CVRegisterUtil {
 
     /* List of Graal assignable registers and CodeView register IDs. */
     private static final CvRegDef[] compactRegDefs = {
-                    /* 8, 16, 32, 64 bits */
-                    new CvRegDef(AMD64.rax, CV_AMD64_AL, CV_AMD64_AX, CV_AMD64_EAX, CV_AMD64_RAX),
-                    new CvRegDef(AMD64.rcx, CV_AMD64_CL, CV_AMD64_CX, CV_AMD64_ECX, CV_AMD64_RCX),
-                    new CvRegDef(AMD64.rdx, CV_AMD64_DL, CV_AMD64_DX, CV_AMD64_EDX, CV_AMD64_RDX),
-                    new CvRegDef(AMD64.rbx, CV_AMD64_BL, CV_AMD64_BX, CV_AMD64_EBX, CV_AMD64_RBX),
-                    new CvRegDef(AMD64.rsp, CV_AMD64_SPL, CV_AMD64_SP, CV_AMD64_ESP, CV_AMD64_RSP),
-                    new CvRegDef(AMD64.rbp, CV_AMD64_BPL, CV_AMD64_BP, CV_AMD64_EBP, CV_AMD64_RBP),
-                    new CvRegDef(AMD64.rsi, CV_AMD64_SIL, CV_AMD64_SI, CV_AMD64_ESI, CV_AMD64_RSI),
-                    new CvRegDef(AMD64.rdi, CV_AMD64_DIL, CV_AMD64_DI, CV_AMD64_EDI, CV_AMD64_RDI),
-                    new CvRegDef(AMD64.r8, CV_AMD64_R8B, CV_AMD64_R8W, CV_AMD64_R8D, CV_AMD64_R8),
-                    new CvRegDef(AMD64.r9, CV_AMD64_R9B, CV_AMD64_R9W, CV_AMD64_R9D, CV_AMD64_R9),
-                    new CvRegDef(AMD64.r10, CV_AMD64_R10B, CV_AMD64_R10W, CV_AMD64_R10D, CV_AMD64_R10),
-                    new CvRegDef(AMD64.r11, CV_AMD64_R11B, CV_AMD64_R11W, CV_AMD64_R11D, CV_AMD64_R11),
-                    new CvRegDef(AMD64.r12, CV_AMD64_R12B, CV_AMD64_R12W, CV_AMD64_R12D, CV_AMD64_R12),
-                    new CvRegDef(AMD64.r13, CV_AMD64_R13B, CV_AMD64_R13W, CV_AMD64_R13D, CV_AMD64_R13),
-                    new CvRegDef(AMD64.r14, CV_AMD64_R14B, CV_AMD64_R14W, CV_AMD64_R14D, CV_AMD64_R14),
-                    new CvRegDef(AMD64.r15, CV_AMD64_R15B, CV_AMD64_R15W, CV_AMD64_R15D, CV_AMD64_R15),
+            /* 8, 16, 32, 64 bits */
+            new CvRegDef(AMD64.rax, CV_AMD64_AL, CV_AMD64_AX, CV_AMD64_EAX, CV_AMD64_RAX),
+            new CvRegDef(AMD64.rcx, CV_AMD64_CL, CV_AMD64_CX, CV_AMD64_ECX, CV_AMD64_RCX),
+            new CvRegDef(AMD64.rdx, CV_AMD64_DL, CV_AMD64_DX, CV_AMD64_EDX, CV_AMD64_RDX),
+            new CvRegDef(AMD64.rbx, CV_AMD64_BL, CV_AMD64_BX, CV_AMD64_EBX, CV_AMD64_RBX),
+            new CvRegDef(AMD64.rsp, CV_AMD64_SPL, CV_AMD64_SP, CV_AMD64_ESP, CV_AMD64_RSP),
+            new CvRegDef(AMD64.rbp, CV_AMD64_BPL, CV_AMD64_BP, CV_AMD64_EBP, CV_AMD64_RBP),
+            new CvRegDef(AMD64.rsi, CV_AMD64_SIL, CV_AMD64_SI, CV_AMD64_ESI, CV_AMD64_RSI),
+            new CvRegDef(AMD64.rdi, CV_AMD64_DIL, CV_AMD64_DI, CV_AMD64_EDI, CV_AMD64_RDI),
+            new CvRegDef(AMD64.r8, CV_AMD64_R8B, CV_AMD64_R8W, CV_AMD64_R8D, CV_AMD64_R8),
+            new CvRegDef(AMD64.r9, CV_AMD64_R9B, CV_AMD64_R9W, CV_AMD64_R9D, CV_AMD64_R9),
+            new CvRegDef(AMD64.r10, CV_AMD64_R10B, CV_AMD64_R10W, CV_AMD64_R10D, CV_AMD64_R10),
+            new CvRegDef(AMD64.r11, CV_AMD64_R11B, CV_AMD64_R11W, CV_AMD64_R11D, CV_AMD64_R11),
+            new CvRegDef(AMD64.r12, CV_AMD64_R12B, CV_AMD64_R12W, CV_AMD64_R12D, CV_AMD64_R12),
+            new CvRegDef(AMD64.r13, CV_AMD64_R13B, CV_AMD64_R13W, CV_AMD64_R13D, CV_AMD64_R13),
+            new CvRegDef(AMD64.r14, CV_AMD64_R14B, CV_AMD64_R14W, CV_AMD64_R14D, CV_AMD64_R14),
+            new CvRegDef(AMD64.r15, CV_AMD64_R15B, CV_AMD64_R15W, CV_AMD64_R15D, CV_AMD64_R15),
 
-                    /* 32, 64 bits */
-                    new CvRegDef(AMD64.xmm0, CV_AMD64_XMM0_0, CV_AMD64_XMM0L), /* xmm0=16 */
-                    new CvRegDef(AMD64.xmm1, CV_AMD64_XMM1_0, CV_AMD64_XMM1L),
-                    new CvRegDef(AMD64.xmm2, CV_AMD64_XMM2_0, CV_AMD64_XMM2L),
-                    new CvRegDef(AMD64.xmm3, CV_AMD64_XMM3_0, CV_AMD64_XMM3L),
-                    new CvRegDef(AMD64.xmm4, CV_AMD64_XMM4_0, CV_AMD64_XMM4L),
-                    new CvRegDef(AMD64.xmm5, CV_AMD64_XMM5_0, CV_AMD64_XMM5L),
-                    new CvRegDef(AMD64.xmm6, CV_AMD64_XMM6_0, CV_AMD64_XMM6L),
-                    new CvRegDef(AMD64.xmm7, CV_AMD64_XMM7_0, CV_AMD64_XMM7L),
-                    new CvRegDef(AMD64.xmm8, CV_AMD64_XMM8_0, CV_AMD64_XMM8L),
-                    new CvRegDef(AMD64.xmm9, CV_AMD64_XMM9_0, CV_AMD64_XMM9L),
-                    new CvRegDef(AMD64.xmm10, CV_AMD64_XMM10_0, CV_AMD64_XMM10L),
-                    new CvRegDef(AMD64.xmm11, CV_AMD64_XMM11_0, CV_AMD64_XMM11L),
-                    new CvRegDef(AMD64.xmm12, CV_AMD64_XMM12_0, CV_AMD64_XMM12L),
-                    new CvRegDef(AMD64.xmm13, CV_AMD64_XMM13_0, CV_AMD64_XMM13L),
-                    new CvRegDef(AMD64.xmm14, CV_AMD64_XMM14_0, CV_AMD64_XMM14L),
-                    new CvRegDef(AMD64.xmm15, CV_AMD64_XMM15_0, CV_AMD64_XMM15L),
+            /* 32, 64 bits */
+            new CvRegDef(AMD64.xmm0, CV_AMD64_XMM0_0, CV_AMD64_XMM0L), /* xmm0=16 */
+            new CvRegDef(AMD64.xmm1, CV_AMD64_XMM1_0, CV_AMD64_XMM1L),
+            new CvRegDef(AMD64.xmm2, CV_AMD64_XMM2_0, CV_AMD64_XMM2L),
+            new CvRegDef(AMD64.xmm3, CV_AMD64_XMM3_0, CV_AMD64_XMM3L),
+            new CvRegDef(AMD64.xmm4, CV_AMD64_XMM4_0, CV_AMD64_XMM4L),
+            new CvRegDef(AMD64.xmm5, CV_AMD64_XMM5_0, CV_AMD64_XMM5L),
+            new CvRegDef(AMD64.xmm6, CV_AMD64_XMM6_0, CV_AMD64_XMM6L),
+            new CvRegDef(AMD64.xmm7, CV_AMD64_XMM7_0, CV_AMD64_XMM7L),
+            new CvRegDef(AMD64.xmm8, CV_AMD64_XMM8_0, CV_AMD64_XMM8L),
+            new CvRegDef(AMD64.xmm9, CV_AMD64_XMM9_0, CV_AMD64_XMM9L),
+            new CvRegDef(AMD64.xmm10, CV_AMD64_XMM10_0, CV_AMD64_XMM10L),
+            new CvRegDef(AMD64.xmm11, CV_AMD64_XMM11_0, CV_AMD64_XMM11L),
+            new CvRegDef(AMD64.xmm12, CV_AMD64_XMM12_0, CV_AMD64_XMM12L),
+            new CvRegDef(AMD64.xmm13, CV_AMD64_XMM13_0, CV_AMD64_XMM13L),
+            new CvRegDef(AMD64.xmm14, CV_AMD64_XMM14_0, CV_AMD64_XMM14L),
+            new CvRegDef(AMD64.xmm15, CV_AMD64_XMM15_0, CV_AMD64_XMM15L),
     };
 
     private static final CvRegDef[] javaToCvRegisters = new CvRegDef[MAX_JAVA_REGISTER_NUMBER + 1];
@@ -241,8 +244,8 @@ public class CVRegisterUtil {
         }
     }
 
-    /* convert a Java register number to a CodeView register code */
-    /* thos Codeview code depends upon the register type and size */
+    /* Convert a Java register number to a CodeView register code */
+    /* the CodeView code depends upon the register type and size */
     static short getCVRegister(int javaReg, TypeEntry typeEntry) {
         assert 0 <= javaReg && javaReg <= MAX_JAVA_REGISTER_NUMBER;
         if (javaReg > MAX_JAVA_REGISTER_NUMBER) {
@@ -256,26 +259,15 @@ public class CVRegisterUtil {
         }
 
         final short cvCode;
-        if (typeEntry.isPrimitive()) {
-            switch (typeEntry.getSize()) {
-                case 1:
-                    cvCode = cvReg.cv1;
-                    break;
-                case 2:
-                    cvCode = cvReg.cv2;
-                    break;
-                case 4:
-                    cvCode = cvReg.cv4;
-                    break;
-                case 8:
-                    cvCode = cvReg.cv8;
-                    break;
-                default:
-                    cvCode = -1;
-                    break;
-            }
-        } else {
-            /* Objects are represented by 8 byte pointers. */
+        if (Objects.requireNonNull(typeEntry) instanceof PrimitiveTypeEntry) {
+            cvCode = switch (typeEntry.getSize()) {
+                case 1 -> cvReg.cv1;
+                case 2 -> cvReg.cv2;
+                case 4 -> cvReg.cv4;
+                case 8 -> cvReg.cv8;
+                default -> -1;
+            };
+        } else {/* Objects are represented by 8 byte pointers. */
             cvCode = cvReg.cv8;
         }
         assert cvCode != -1;

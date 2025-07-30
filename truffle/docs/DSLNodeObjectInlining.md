@@ -428,7 +428,7 @@ For example:
         /* ... */
 
         @ExportMessage
-        final long abs(@Bind("$node") Node node,
+        final long abs(@Bind Node node,
                        @Cached InlinedConditionProfile profile) {
             if (profile.profile(node, this.value >= 0)) {
                 return  this.value;

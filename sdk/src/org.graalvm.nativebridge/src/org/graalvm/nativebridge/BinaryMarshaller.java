@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@ import java.util.Objects;
  * of a custom type. Marshallers are used to support types that are not directly implemented by the
  * native bridge processor.
  *
- * @see JNIConfig.Builder
+ * @see MarshallerConfig.Builder
  */
 public interface BinaryMarshaller<T> {
 
@@ -59,7 +59,7 @@ public interface BinaryMarshaller<T> {
     /**
      * Deserializes and recreates an object passed to a foreign method.
      */
-    T read(BinaryInput input);
+    T read(Isolate<?> isolate, BinaryInput input);
 
     /**
      * Estimates a size in bytes needed to marshall given object. The returned value is used to
@@ -77,24 +77,24 @@ public interface BinaryMarshaller<T> {
      * semantics. Marshallers that do not support {@link Out} parameters do not need to implement
      * this method. The default implementation throws {@link UnsupportedOperationException}. To
      * support {@link Out} parameters the {@link BinaryMarshaller} must implement also
-     * {@link #readUpdate(BinaryInput, Object)} and {@link #inferUpdateSize(Object)}.
+     * {@link #readUpdate(Isolate, BinaryInput, Object)} and {@link #inferUpdateSize(Object)}.
      * <p>
      * The {@link Out} parameters are passed in the following way:
      * <ol>
      * <li>The start point method writes the parameter using
      * {@link #write(BinaryOutput, Object)}.</li>
      * <li>A foreign method call is made.</li>
-     * <li>The end point method reads the parameter using {@link #read(BinaryInput)}.</li>
+     * <li>The end point method reads the parameter using {@link #read(Isolate, BinaryInput)}.</li>
      * <li>The end point receiver method is called with the unmarshalled parameter.</li>
      * <li>After calling the receiver method, the end point method writes the mutated {@link Out}
      * parameter state using {@link #writeUpdate(BinaryOutput, Object)}.</li>
      * <li>A foreign method returns.</li>
      * <li>The state of the {@link Out} parameter is updated using
-     * {@link #readUpdate(BinaryInput, Object)}.</li>
+     * {@link #readUpdate(Isolate, BinaryInput, Object)}.</li>
      * </ol>
      * <p>
      *
-     * @see BinaryMarshaller#readUpdate(BinaryInput, Object)
+     * @see BinaryMarshaller#readUpdate(Isolate, BinaryInput, Object)
      * @see BinaryMarshaller#inferUpdateSize(Object)
      */
     @SuppressWarnings("unused")
@@ -113,7 +113,7 @@ public interface BinaryMarshaller<T> {
      * @see BinaryMarshaller#inferUpdateSize(Object)
      */
     @SuppressWarnings("unused")
-    default void readUpdate(BinaryInput input, T object) {
+    default void readUpdate(Isolate<?> isolate, BinaryInput input, T object) {
         throw new UnsupportedOperationException();
     }
 
@@ -126,10 +126,10 @@ public interface BinaryMarshaller<T> {
      * {@link Out} parameters do not need to implement this method. The default implementation
      * throws {@link UnsupportedOperationException}. To support {@link Out} parameters the
      * {@link BinaryMarshaller} must implement also {@link #writeUpdate(BinaryOutput, Object)} and
-     * {@link #readUpdate(BinaryInput, Object)}.
+     * {@link #readUpdate(Isolate, BinaryInput, Object)}.
      *
      * @see BinaryMarshaller#writeUpdate(BinaryOutput, Object)
-     * @see BinaryMarshaller#readUpdate(BinaryInput, Object)
+     * @see BinaryMarshaller#readUpdate(Isolate, BinaryInput, Object)
      */
     default int inferUpdateSize(@SuppressWarnings("unused") T object) {
         throw new UnsupportedOperationException();

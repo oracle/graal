@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -53,12 +54,14 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
+import com.oracle.svm.core.foreign.phases.SubstrateOptimizeSharedArenaAccessPhase.OptimizeSharedArenaConfig;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.image.DisallowedImageHeapObjects.DisallowedObjectReporter;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -67,17 +70,22 @@ import jdk.internal.foreign.CABI;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.CapturableState;
 import jdk.internal.foreign.abi.LinkerOptions;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class ForeignFunctionsRuntime implements ForeignSupport {
+public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedArenaConfig {
     @Fold
     public static ForeignFunctionsRuntime singleton() {
         return ImageSingletons.lookup(ForeignFunctionsRuntime.class);
     }
 
     private final AbiUtils.TrampolineTemplate trampolineTemplate;
-    private final EconomicMap<NativeEntryPointInfo, FunctionPointerHolder> downcallStubs = EconomicMap.create();
-    private final EconomicMap<Pair<DirectMethodHandleDesc, JavaEntryPointInfo>, FunctionPointerHolder> directUpcallStubs = EconomicMap.create();
-    private final EconomicMap<JavaEntryPointInfo, FunctionPointerHolder> upcallStubs = EconomicMap.create();
+
+    private final EconomicMap<NativeEntryPointInfo, FunctionPointerHolder> downcallStubs = ImageHeapMap.create("downcallStubs");
+    private final EconomicMap<Pair<DirectMethodHandleDesc, JavaEntryPointInfo>, FunctionPointerHolder> directUpcallStubs = ImageHeapMap.create("directUpcallStubs");
+    private final EconomicMap<JavaEntryPointInfo, FunctionPointerHolder> upcallStubs = ImageHeapMap.create("upcallStubs");
+    private final EconomicSet<ResolvedJavaType> neverAccessesSharedArenaTypes = EconomicSet.create();
+    private final EconomicSet<ResolvedJavaMethod> neverAccessesSharedArenaMethods = EconomicSet.create();
 
     private final Map<Long, TrampolineSet> trampolines = new HashMap<>();
     private TrampolineSet currentTrampolineSet;
@@ -92,36 +100,71 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
 
     public static boolean areFunctionCallsSupported() {
         return switch (CABI.current()) {
-            case CABI.SYS_V -> !OS.DARWIN.isCurrent(); // GR-63074: code emit failures on
-                                                       // darwin-amd64
-            case CABI.WIN_64, CABI.MAC_OS_AARCH_64, CABI.LINUX_AARCH_64 -> true;
+            case CABI.SYS_V, CABI.WIN_64, CABI.MAC_OS_AARCH_64, CABI.LINUX_AARCH_64 -> true;
             default -> false;
         };
     }
 
     public static RuntimeException functionCallsUnsupported() {
-        assert SubstrateOptions.ForeignAPISupport.getValue();
+        assert SubstrateOptions.isForeignAPIEnabled();
         throw VMError.unsupportedFeature("Calling foreign functions is currently not supported on platform: " +
                         (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase(Locale.ROOT));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addDowncallStubPointer(NativeEntryPointInfo nep, CFunctionPointer ptr) {
-        VMError.guarantee(!downcallStubs.containsKey(nep), "Seems like multiple stubs were generated for %s", nep);
-        VMError.guarantee(downcallStubs.put(nep, new FunctionPointerHolder(ptr)) == null);
+    public boolean downcallStubExists(NativeEntryPointInfo nep) {
+        return downcallStubs.containsKey(nep);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addUpcallStubPointer(JavaEntryPointInfo jep, CFunctionPointer ptr) {
-        VMError.guarantee(!upcallStubs.containsKey(jep), "Seems like multiple stubs were generated for %s", jep);
-        VMError.guarantee(upcallStubs.put(jep, new FunctionPointerHolder(ptr)) == null);
+    public int getDowncallStubsCount() {
+        return downcallStubs.size();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addDirectUpcallStubPointer(DirectMethodHandleDesc desc, JavaEntryPointInfo jep, CFunctionPointer ptr) {
+    public boolean upcallStubExists(JavaEntryPointInfo jep) {
+        return upcallStubs.containsKey(jep);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public int getUpcallStubsCount() {
+        return upcallStubs.size();
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean directUpcallStubExists(DirectMethodHandleDesc desc, JavaEntryPointInfo jep) {
+        return directUpcallStubs.containsKey(Pair.create(desc, jep));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public int getDirectUpcallStubsCount() {
+        return directUpcallStubs.size();
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean addDowncallStubPointer(NativeEntryPointInfo nep, CFunctionPointer ptr) {
+        return downcallStubs.putIfAbsent(nep, new FunctionPointerHolder(ptr)) == null;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean addUpcallStubPointer(JavaEntryPointInfo jep, CFunctionPointer ptr) {
+        return upcallStubs.putIfAbsent(jep, new FunctionPointerHolder(ptr)) == null;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean addDirectUpcallStubPointer(DirectMethodHandleDesc desc, JavaEntryPointInfo jep, CFunctionPointer ptr) {
         var key = Pair.create(desc, jep);
-        VMError.guarantee(!directUpcallStubs.containsKey(key), "Seems like multiple stubs were generated for %s", desc);
-        VMError.guarantee(directUpcallStubs.put(key, new FunctionPointerHolder(ptr)) == null);
+        return directUpcallStubs.putIfAbsent(key, new FunctionPointerHolder(ptr)) == null;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerSafeArenaAccessorClass(ResolvedJavaType type) {
+        neverAccessesSharedArenaTypes.add(type);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerSafeArenaAccessorMethod(ResolvedJavaMethod method) {
+        neverAccessesSharedArenaMethods.add(method);
     }
 
     /**
@@ -341,6 +384,17 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
     @Platforms(Platform.HOSTED_ONLY.class)//
     public static final SnippetRuntime.SubstrateForeignCallDescriptor CAPTURE_CALL_STATE = SnippetRuntime.findForeignCall(ForeignFunctionsRuntime.class,
                     "captureCallState", HAS_SIDE_EFFECT, LocationIdentity.any());
+
+    @Override
+    public boolean isSafeCallee(ResolvedJavaMethod method) {
+        if (neverAccessesSharedArenaMethods.contains(method)) {
+            return true;
+        }
+        if (neverAccessesSharedArenaTypes.contains(method.getDeclaringClass())) {
+            return true;
+        }
+        return false;
+    }
 }
 
 interface StubPointer extends CFunctionPointer {

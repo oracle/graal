@@ -67,30 +67,11 @@ public class JDKArgsUtils {
             boolean isArgFileOption = argument.startsWith("@") && !argument.startsWith("@@");
             if (isArgFileOption || isTerminalOpt(argument)) {
                 throw errorFunction.apply("Option '" + argument + "' is not allowed in environment variable " + envVarName);
-            } else if (!isExpectingNoDashArg(argument, result)) {
-                throw errorFunction.apply("Cannot specify main class in environment variable " + envVarName);
             }
             result.add(argument);
             assert i >= envVarValueLength || isspace(envVarValue.charAt(i));
         }
         return result;
-    }
-
-    private static boolean isExpectingNoDashArg(String argument, List<String> previousArgs) {
-        if (argument.startsWith("-")) {
-            return true; // Ignore dash args
-        }
-        if (previousArgs.isEmpty()) {
-            return false; // No previous arg means the no-dash arg is unexpected
-        }
-        String previousArg = previousArgs.getLast();
-        // Derivation from port: unpack any flags for JVM running the image generator
-        previousArg = previousArg.startsWith("-J") ? previousArg.substring(2) : previousArg;
-        boolean expectingNoDashArg = isWhiteSpaceOption(previousArg);
-        if ("-jar".equals(previousArg) || "--module".equals(previousArg) || "-m".equals(previousArg)) {
-            expectingNoDashArg = false;
-        }
-        return expectingNoDashArg;
     }
 
     public static boolean isspace(char value) {
@@ -108,34 +89,5 @@ public class JDKArgsUtils {
             case "--expert-options", "--expert-options-all", "--expert-options-detail" -> true;
             default -> arg.startsWith("--module=");
         };
-    }
-
-    private static boolean isWhiteSpaceOption(String name) {
-        return isModuleOption(name) || isLauncherOption(name);
-    }
-
-    private static boolean isModuleOption(String name) {
-        return switch (name) {
-            case "--module-path", "-p", "--upgrade-module-path", "--add-modules", "--enable-native-access", "--limit-modules", "--add-exports", "--add-opens", "--add-reads", "--patch-module" -> true;
-            default -> false;
-        };
-    }
-
-    private static boolean isLauncherOption(String name) {
-        return isClassPathOption(name) ||
-                        isLauncherMainOption(name) ||
-                        "--describe-module".equals(name) ||
-                        "-d".equals(name) ||
-                        "--source".equals(name);
-    }
-
-    private static boolean isClassPathOption(String name) {
-        return "-classpath".equals(name) ||
-                        "-cp".equals(name) ||
-                        "--class-path".equals(name);
-    }
-
-    private static boolean isLauncherMainOption(String name) {
-        return "--module".equals(name) || "-m".equals(name);
     }
 }

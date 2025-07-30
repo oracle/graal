@@ -39,7 +39,7 @@ import jdk.graal.compiler.processor.AbstractProcessor;
 // Checkstyle: allow Class.getSimpleName
 
 /**
- * Annotation processor for the @AutomaticallyRegistredFeature annotation. We need to generate some
+ * Annotation processor for the @AutomaticallyRegisteredFeature annotation. We need to generate some
  * textual listing of all annotated feature classes that can be easily loaded in the image builder.
  * Standard Java ServiceLoader descriptors are the easiest, because mx already has the support to
  * aggregate service descriptors for multiple projects that end up in the same module.

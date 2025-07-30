@@ -47,37 +47,49 @@ public interface ParserKlassProvider {
         return 0;
     }
 
-    static ParserKlass parseKlass(ClassRegistry.ClassDefinitionInfo info, ClassLoadingEnv env, StaticObject loader, Symbol<Type> typeOrNull, byte[] bytes) {
+    /**
+     * Like {@link #parseKlass} but throws host exceptions that must be caught an handled by the
+     * called.
+     * 
+     * @throws ValidationException a descriptor validation caused a class format error.
+     * @throws ParserException various exceptions, see subclasses.
+     */
+    static ParserKlass parseKlassWithHostErrors(ClassRegistry.ClassDefinitionInfo info, ClassLoadingEnv env, StaticObject loader, Symbol<Type> typeOrNull, byte[] bytes) throws ValidationException {
         boolean verifiable = EspressoVerifier.needsVerify(env.getLanguage(), loader);
         boolean loaderIsBootOrPlatform = env.loaderIsBootOrPlatform(loader);
+        // Classes from trusted class loaders can create strongly referenced symbols directly
+        // during parsing.
+        boolean ensureStrongSymbols = env.loaderIsBootOrPlatform(loader) || env.loaderIsAppLoader(loader);
+        ParsingContext parsingContext = ClassLoadingEnv.createParsingContext(env, ensureStrongSymbols);
+
+        // Trusted classes do not need validation/verification.
+        boolean validate = verifiable;
+        ParserKlass parserKlass = ClassfileParser.parse(parsingContext, new ClassfileStream(bytes, null), verifiable, loaderIsBootOrPlatform, typeOrNull, info.isHidden,
+                        info.forceAllowVMAnnotations, validate);
+        if (info.isHidden) {
+            Symbol<Type> requestedClassType = typeOrNull;
+            assert requestedClassType != null;
+            long hiddenKlassId = env.getNewKlassId();
+            Symbol<Name> thisKlassName = parsingContext.getOrCreateName(TypeSymbols.hiddenClassName(requestedClassType, hiddenKlassId));
+            Symbol<Type> thisKlassType = parsingContext.getOrCreateTypeFromName(thisKlassName);
+            var pool = parserKlass.getConstantPool().patchForHiddenClass(parserKlass.getThisKlassIndex(), thisKlassName);
+            var classFlags = parserKlass.getFlags() | Constants.ACC_IS_HIDDEN_CLASS;
+            return new ParserKlass(pool, classFlags, thisKlassName, thisKlassType,
+                            parserKlass.getSuperKlass(), parserKlass.getSuperInterfaces(),
+                            parserKlass.getMethods(), parserKlass.getFields(),
+                            parserKlass.getAttributes(),
+                            parserKlass.getThisKlassIndex(),
+                            parserKlass.getMajorVersion(), parserKlass.getMinorVersion(),
+                            parserKlass.getHiddenKlassId());
+        }
+
+        return parserKlass;
+    }
+
+    static ParserKlass parseKlass(ClassRegistry.ClassDefinitionInfo info, ClassLoadingEnv env, StaticObject loader, Symbol<Type> typeOrNull, byte[] bytes) {
         Meta meta = env.getMeta();
         try {
-            // Classes from trusted class loaders can create strongly referenced symbols directly
-            // during parsing.
-            boolean ensureStrongSymbols = env.loaderIsBootOrPlatform(loader) || env.loaderIsAppLoader(loader);
-            ParsingContext parsingContext = ClassLoadingEnv.createParsingContext(env, ensureStrongSymbols);
-
-            // Trusted classes do not need validation/verification.
-            boolean validate = verifiable;
-            ParserKlass parserKlass = ClassfileParser.parse(parsingContext, new ClassfileStream(bytes, null), verifiable, loaderIsBootOrPlatform, typeOrNull, info.isHidden,
-                            info.forceAllowVMAnnotations, validate);
-            if (info.isHidden) {
-                Symbol<Type> requestedClassType = typeOrNull;
-                assert requestedClassType != null;
-                long hiddenKlassId = env.getNewKlassId();
-                Symbol<Name> thisKlassName = parsingContext.getOrCreateName(TypeSymbols.hiddenClassName(requestedClassType, hiddenKlassId));
-                Symbol<Type> thisKlassType = parsingContext.getOrCreateTypeFromName(thisKlassName);
-                var pool = parserKlass.getConstantPool().patchForHiddenClass(parserKlass.getThisKlassIndex(), thisKlassName);
-                var classFlags = parserKlass.getFlags() | Constants.ACC_IS_HIDDEN_CLASS;
-                return new ParserKlass(pool, classFlags, thisKlassName, thisKlassType,
-                                parserKlass.getSuperKlass(), parserKlass.getSuperInterfaces(),
-                                parserKlass.getMethods(), parserKlass.getFields(),
-                                parserKlass.getAttributes(),
-                                parserKlass.getThisKlassIndex(), parserKlass.getHiddenKlassId());
-            }
-
-            return parserKlass;
-
+            return parseKlassWithHostErrors(info, env, loader, typeOrNull, bytes);
         } catch (ValidationException | ParserException.ClassFormatError validationOrBadFormat) {
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, validationOrBadFormat.getMessage());
         } catch (ParserException.UnsupportedClassVersionError unsupportedClassVersionError) {

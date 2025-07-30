@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -141,4 +141,135 @@ public final class ExactMath {
         return x < 0.0 ? Math.ceil(x) : Math.floor(x);
     }
 
+    /**
+     * Converts the double value to unsigned long with truncation (i.e. rounding towards zero) and
+     * saturation of <code>NaN</code> and <code>x &lt;= -1</code> to <code>0</code>, and
+     * <code>x >= 2<sup>64</sup></code> to <code>2<sup>63</sup>-1</code> (<code>-1</code>).
+     * <p>
+     * Non-saturating (e.g. trapping) behavior can be implemented by checking the input for NaN,
+     * underflow (<code>x &lt;= -1</code>) and overflow (<code>x >= 0x1p64</code>) first.
+     *
+     * @param x input value
+     * @return the unsigned integer result, wrapped in a signed integer
+     * @since 25.0
+     */
+    public static long truncateToUnsignedLong(double x) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, x >= 0x1p63)) {
+            // x >= 2**63
+            long signedResult = (long) (x - 0x1p63);
+            return signedResult | (1L << 63);
+        } else {
+            // x < 2**63 or NaN
+            long signedResult = (long) x;
+            return signedResult & ~(signedResult >> 63); // max(result, 0)
+        }
+    }
+
+    /**
+     * Converts the float value to unsigned long with truncation (i.e. rounding towards zero) and
+     * saturation of <code>NaN</code> and <code>x &lt;= -1</code> to <code>0</code>, and
+     * <code>x >= 2<sup>64</sup></code> to <code>2<sup>63</sup>-1</code> (<code>-1</code>).
+     * <p>
+     * Non-saturating (e.g. trapping) behavior can be implemented by checking the input for NaN,
+     * underflow (<code>x &lt;= -1f</code>) and overflow (<code>x >= 0x1p64f</code>) first.
+     *
+     * @param x input value
+     * @return the unsigned integer result, wrapped in a signed integer
+     * @since 25.0
+     */
+    public static long truncateToUnsignedLong(float x) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, x >= 0x1p63f)) {
+            // x >= 2**63
+            long signedResult = (long) (x - 0x1p63f);
+            return signedResult | (1L << 63);
+        } else {
+            // x < 2**31 or NaN
+            long signedResult = (long) x;
+            return (signedResult & ~(signedResult >> 63)); // max(result, 0)
+        }
+    }
+
+    /**
+     * Converts the double value to unsigned long with truncation (i.e. rounding towards zero) and
+     * saturation of <code>NaN</code> and <code>x &lt;= -1</code> to <code>0</code>, and
+     * <code>x >= 2<sup>32</sup></code> to <code>2<sup>31</sup>-1</code> (<code>-1</code>).
+     * <p>
+     * Non-saturating (e.g. trapping) behavior can be implemented by checking the input for NaN,
+     * underflow (<code>x &lt;= -1</code>) and overflow (<code>x >= 0x1p32</code>) first.
+     *
+     * @param x input value
+     * @return the unsigned integer result, wrapped in a signed integer
+     * @since 25.0
+     */
+    public static int truncateToUnsignedInt(double x) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, x >= 0x1p31)) {
+            // x >= 2**31
+            int signedResult = (int) (x - 0x1p31);
+            return signedResult | (1 << 31);
+        } else {
+            // x < 2**31 or NaN
+            int signedResult = (int) x;
+            return (signedResult & ~(signedResult >> 31)); // max(result, 0)
+        }
+    }
+
+    /**
+     * Converts the float value to unsigned int with truncation (i.e. rounding towards zero) and
+     * saturation of <code>NaN</code> and <code>x &lt;= -1</code> to <code>0</code>, and
+     * <code>x >= 2<sup>32</sup></code> to <code>2<sup>31</sup>-1</code> (<code>-1</code>).
+     * <p>
+     * Non-saturating (e.g. trapping) behavior can be implemented by checking the input for NaN,
+     * underflow (<code>x &lt;= -1</code>) and overflow (<code>x >= 0x1p64</code>) first.
+     *
+     * @param x input value
+     * @return the unsigned integer result, wrapped in a signed integer
+     * @since 25.0
+     */
+    public static int truncateToUnsignedInt(float x) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, x >= 0x1p31f)) {
+            // x >= 2**31
+            int signedResult = (int) (x - 0x1p31f);
+            return signedResult | (1 << 31);
+        } else {
+            // x < 2**31 or NaN
+            int signedResult = (int) x;
+            return (signedResult & ~(signedResult >> 31)); // max(result, 0)
+        }
+    }
+
+    /**
+     * Converts the given unsigned {@code long} to the closest {@code double} value.
+     *
+     * @param x unsigned integer input, wrapped in a signed integer
+     * @return the {@code double} result
+     * @since 25.0
+     */
+    public static double unsignedToDouble(long x) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, x >= 0)) {
+            return x;
+        } else {
+            // unsigned ceil div by 2, convert to double, and multiply by 2.
+            // the lsb is needed to ensure correct rounding to nearest even.
+            double halfRoundUp = ((x >>> 1) | (x & 1));
+            return halfRoundUp + halfRoundUp;
+        }
+    }
+
+    /**
+     * Converts the given unsigned {@code long} to the closest {@code float} value.
+     *
+     * @param x unsigned integer input, wrapped in a signed integer
+     * @return the {@code float} result
+     * @since 25.0
+     */
+    public static float unsignedToFloat(long x) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, x >= 0)) {
+            return x;
+        } else {
+            // unsigned ceil div by 2, convert to float, and multiply by 2.
+            // the lsb is needed to ensure correct rounding to nearest even.
+            float halfRoundUp = ((x >>> 1) | (x & 1));
+            return halfRoundUp + halfRoundUp;
+        }
+    }
 }

@@ -278,7 +278,7 @@ public class LoopUtility {
 
     @SuppressWarnings("try")
     public static void removeObsoleteProxies(StructuredGraph graph, CoreProviders context, CanonicalizerPhase canonicalizer, LoopsData loopsData) {
-        final EconomicSetNodeEventListener inputChanges = new EconomicSetNodeEventListener(EnumSet.of(NodeEvent.INPUT_CHANGED));
+        final EconomicSetNodeEventListener inputChanges = new EconomicSetNodeEventListener(EnumSet.of(NodeEvent.INPUT_CHANGED, NodeEvent.CONTROL_FLOW_CHANGED));
         try (NodeEventScope s = graph.trackNodeEvents(inputChanges)) {
             for (Loop loop : loopsData.loops()) {
                 removeObsoleteProxiesForLoop(loop);

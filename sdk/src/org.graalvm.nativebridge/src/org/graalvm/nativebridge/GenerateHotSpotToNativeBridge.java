@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,10 @@
  */
 package org.graalvm.nativebridge;
 
-import org.graalvm.nativeimage.c.function.CEntryPoint.AlwaysIncluded;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.function.BooleanSupplier;
 
 /**
  * Generates a HotSpot to native bridge. For the annotated class, the processor generates a bridge
@@ -60,19 +57,21 @@ import java.util.function.BooleanSupplier;
 public @interface GenerateHotSpotToNativeBridge {
 
     /**
-     * If the supplier returns {@code true}, the bridge entry points are added automatically when
-     * building a shared library. This means the bridge entry points are root methods for
-     * compilation, and everything reachable from them is compiled too. The provided class must have
-     * a nullary constructor, which is used to instantiate the class. The
-     * {@link BooleanSupplier#getAsBoolean()}} function is called on the newly instantiated
-     * instance.
+     * Specifies the factory class that provides the configuration for the generated bridge, such as
+     * marshallers.
      */
-    Class<? extends BooleanSupplier> include() default AlwaysIncluded.class;
+    Class<?> factory();
 
     /**
-     * The native bridge configuration. The returned class must have an accessible static
-     * {@code getInstance()} method returning a {@link JNIConfig} instance. The returned
-     * {@link JNIConfig} instance is used for marshallers' lookup.
+     * Specifies the service implementation to be instantiated within the isolate for an initial
+     * service. The implementation class must either:
+     * <ul>
+     * <li>Provide a publicly accessible no-argument constructor, or</li>
+     * <li>Define a static {@code getInstance()} method with no arguments that returns an instance
+     * of the service.</li>
+     * </ul>
+     * This attribute is only applicable to initial services; for non-initial services, it has no
+     * effect.
      */
-    Class<?> jniConfig();
+    Class<?> implementation() default NoImplementation.class;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -53,7 +54,11 @@ public class BundleSerializationUtils {
         Class<?> clazz = bundle.getClass().getSuperclass();
         while (clazz != null && ResourceBundle.class.isAssignableFrom(clazz)) {
             try {
-                return (Map<String, Object>) ReflectionUtil.lookupField(clazz, "lookup").get(bundle);
+                Object lookup = ReflectionUtil.lookupField(clazz, "lookup").get(bundle);
+                if (lookup instanceof Supplier) {
+                    return ((Supplier<Map<String, Object>>) lookup).get();
+                }
+                return (Map<String, Object>) lookup;
             } catch (ReflectionUtil.ReflectionUtilError | ReflectiveOperationException e) {
                 clazz = clazz.getSuperclass();
             }

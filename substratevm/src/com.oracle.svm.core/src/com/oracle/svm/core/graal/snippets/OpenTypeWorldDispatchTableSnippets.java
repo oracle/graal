@@ -123,6 +123,13 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
             int vtableStartingOffset = KnownOffsets.singleton().getVTableBaseOffset();
             if (target != null) {
                 /*
+                 * Update target to point to indirect call target. The indirect call target is
+                 * different than the original target when the original target is a method we have
+                 * not placed in any virtual/interface table. See SharedMethod#getIndirectCallTarget
+                 * and HostedMethod#indirectCallVTableIndex for more information.
+                 */
+                target = target.getIndirectCallTarget();
+                /*
                  * If the target is known, then we know whether to use the class dispatch table or
                  * an interface dispatch table.
                  */

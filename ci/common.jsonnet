@@ -58,6 +58,9 @@ local common_json = import "../common.json";
   } + {
     'oraclejdk24': jdk_base + common_json.jdks["oraclejdk24"] + { jdk_version:: 24 },
   } + {
+    [name]: jdk_base + common_json.jdks[name] + { jdk_version:: 25 }
+    for name in ["oraclejdk25"] + variants("labsjdk-ce-25") + variants("labsjdk-ee-25")
+  } + {
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self), jdk_name:: "jdk-latest"}
     for name in ["oraclejdk-latest"] + variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
   } + {
@@ -142,6 +145,11 @@ local common_json = import "../common.json";
 
     common_catch_files: {
       catch_files+: [
+        # There are additional catch_files-like patterns in buildbot/graal/catcher.py for:
+        # * hs_err_pid*.log files
+        # * Dumping IGV graphs to (?P<filename>.+(\.gv\.xml|\.bgv))
+        # * CFGPrinter: Output to file (?P<filename>.*compilations-.+\.cfg)
+        # There are defined there for efficiency reasons.
         # Keep in sync with jdk.graal.compiler.debug.StandardPathUtilitiesProvider#DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP
         "Graal diagnostic output saved in '(?P<filename>[^']+)'",
         # Keep in sync with jdk.graal.compiler.debug.DebugContext#DUMP_FILE_MESSAGE_REGEXP
@@ -205,26 +213,34 @@ local common_json = import "../common.json";
       },
     },
 
+    cmake:: {
+      packages+: {
+        cmake: "==3.22.2",
+      },
+    },
+
     gradle:: {
       downloads+: {
         GRADLE_JAVA_HOME: jdks_data["oraclejdk21"],
       }
     },
 
-    local code_tools = {
+    # ProGuard does not yet run on JDK 25
+    proguard: {
+      downloads+: if 'jdk_version' in self && self.jdk_version > 21 then {
+        TOOLS_JAVA_HOME: jdks_data['oraclejdk24'],
+        IGV_JAVA_HOME: jdks_data['oraclejdk21'],
+      } else {},
+    },
+    # GR-49566: SpotBugs does not yet run on JDK 22
+    spotbugs: {
       downloads+: if 'jdk_version' in self && self.jdk_version > 21 then {
         TOOLS_JAVA_HOME: jdks_data['oraclejdk21'],
       } else {},
     },
-    # GR-46676: ProGuard does not yet run on JDK 22
-    proguard: code_tools,
-    # GR-49566: SpotBugs does not yet run on JDK 22
-    spotbugs: code_tools,
 
-    sulong:: {
-      packages+: {
-        cmake: "==3.22.2",
-      } + if self.os == "windows" then {
+    sulong:: self.cmake + {
+      packages+: if self.os == "windows" then {
         msvc_source: "==14.0",
       } else {},
     },
@@ -259,11 +275,12 @@ local common_json = import "../common.json";
       } else {},
     },
 
-    graalpy:: self.gradle + {
+    graalpy:: self.gradle + self.cmake + {
       packages+: if (self.os == "linux") then {
-        libffi: '>=3.2.1',
-        bzip2: '>=1.0.6',
-        maven: ">=3.3.9",
+        libffi: '==3.2.1',
+        bzip2: '==1.0.6',
+        zlib: '==1.2.11',
+        maven: "==3.6.3",
       } else {},
     },
 
@@ -286,9 +303,8 @@ local common_json = import "../common.json";
         if (self.os == "linux" && self.arch == "amd64") then {
           readline: '==6.3',
           pcre2: '==10.37',
-          curl: '==7.50.1',
           gnur: '==4.0.3-gcc4.8.5-pcre2',
-        }
+        } + if (std.objectHasAll(self, 'os_distro') && self['os_distro'] == 'ol' && std.objectHasAll(self, 'os_distro_version') && self['os_distro_version'] == '9') then {curl: '==7.78.0'} else {curl: '==7.50.1'}
         else if (self.os == "darwin" && self.arch == "amd64") then {
           'pcre2': '==10.37',
         } else {},
@@ -350,6 +366,15 @@ local common_json = import "../common.json";
   # Job frequencies
   # ***************
   frequencies: {
+    tier1: {
+      targets+: ["tier1"],
+    },
+    tier2: {
+      targets+: ["tier2"],
+    },
+    tier3: {
+      targets+: ["tier3"],
+    },
     gate: {
       targets+: ["gate"],
     },
@@ -451,18 +476,21 @@ local common_json = import "../common.json";
     local aarch64 = { arch:: "aarch64", capabilities+: [self.arch] },
 
     local ol_distro = { os_distro:: "ol" },
+    local ol7_distro = ol_distro + { os_distro_version:: "7" },
+    local ol8_distro = ol_distro + { os_distro_version:: "8" },
+    local ol9_distro = ol_distro + { os_distro_version:: "9" },
 
     linux_amd64: self.linux_amd64_ol7,
-    linux_amd64_ol7: linux + amd64 + ol7 + ol_distro,
-    linux_amd64_ol8: linux + amd64 + ol8 + ol_distro,
-    linux_amd64_ol9: linux + amd64 + ol9 + ol_distro,
+    linux_amd64_ol7: linux + amd64 + ol7 + ol7_distro,
+    linux_amd64_ol8: linux + amd64 + ol8 + ol8_distro,
+    linux_amd64_ol9: linux + amd64 + ol9 + ol9_distro,
 
     linux_aarch64: self.linux_aarch64_ol7,
-    linux_aarch64_ol7: linux + aarch64 + ol7 + ol_distro,
-    linux_aarch64_ol8: linux + aarch64 + ol8 + ol_distro,
-    linux_aarch64_ol9: linux + aarch64 + ol9 + ol_distro,
+    linux_aarch64_ol7: linux + aarch64 + ol7 + ol7_distro,
+    linux_aarch64_ol8: linux + aarch64 + ol8 + ol8_distro,
+    linux_aarch64_ol9: linux + aarch64 + ol9 + ol9_distro,
 
-    linux_amd64_ubuntu: linux + amd64 + ubuntu22 + { os_distro:: "ubuntu" },
+    linux_amd64_ubuntu: linux + amd64 + ubuntu22 + { os_distro:: "ubuntu", os_distro_version:: "22" },
 
     darwin_amd64: darwin + amd64,
     darwin_aarch64: darwin + aarch64,

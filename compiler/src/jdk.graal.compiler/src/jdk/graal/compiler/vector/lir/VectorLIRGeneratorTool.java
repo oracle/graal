@@ -76,4 +76,8 @@ public interface VectorLIRGeneratorTool extends ArithmeticLIRGeneratorTool {
     Value emitMoveOpMaskToInteger(LIRKind resultKind, Value mask, int maskLen);
 
     Value emitMoveIntegerToOpMask(LIRKind resultKind, Value mask);
+
+    Value emitVectorCompress(LIRKind resultKind, Value source, Value mask);
+
+    Value emitVectorExpand(LIRKind resultKind, Value source, Value mask);
 }

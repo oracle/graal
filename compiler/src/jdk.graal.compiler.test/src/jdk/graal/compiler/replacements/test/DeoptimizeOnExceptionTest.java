@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,24 +24,34 @@
  */
 package jdk.graal.compiler.replacements.test;
 
+import static java.lang.classfile.ClassFile.ACC_PUBLIC;
+import static java.lang.classfile.ClassFile.JAVA_5_VERSION;
+import static java.lang.constant.ConstantDescs.CD_Object;
+import static java.lang.constant.ConstantDescs.CD_long;
+import static java.lang.constant.ConstantDescs.INIT_NAME;
+import static java.lang.constant.ConstantDescs.MTD_void;
+
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.Label;
+import java.lang.classfile.Opcode;
+import java.lang.classfile.instruction.DiscontinuedInstruction.JsrInstruction;
+import java.lang.classfile.instruction.DiscontinuedInstruction.RetInstruction;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
 import java.util.Random;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.api.test.ExportingClassLoader;
 import jdk.graal.compiler.core.phases.HighTier;
+import jdk.graal.compiler.core.test.CustomizedBytecodePattern;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.AbstractInliningPhase;
-import org.junit.Assert;
-import org.junit.Test;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -49,7 +59,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * Tests that deoptimization upon exception handling works.
  */
-public class DeoptimizeOnExceptionTest extends GraalCompilerTest {
+public class DeoptimizeOnExceptionTest extends GraalCompilerTest implements CustomizedBytecodePattern {
 
     @SuppressWarnings("this-escape")
     public DeoptimizeOnExceptionTest() {
@@ -73,32 +83,88 @@ public class DeoptimizeOnExceptionTest extends GraalCompilerTest {
         return m1 + m2 + m3 + m4 + m5;
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void test2() {
-        test("test2Snippet");
-    }
-
-    public String test2Snippet() throws Exception {
         try {
-            ClassLoader testCl = new MyClassLoader();
-            @SuppressWarnings("unchecked")
-            Class<Runnable> c = (Class<Runnable>) testCl.loadClass(name);
-            Runnable r = c.getDeclaredConstructor().newInstance();
+            Class<Runnable> testClass = (Class<Runnable>) getClass(DeoptimizeOnExceptionTest.class.getName() + "$" + "TestJSR");
+            Runnable r = testClass.getDeclaredConstructor().newInstance();
             ct = Long.MAX_VALUE;
             // warmup
             for (int i = 0; i < 100; i++) {
                 r.run();
             }
-            // compile
-            ResolvedJavaMethod method = getResolvedJavaMethod(c, "run");
-            getCode(method);
             ct = 0;
-            r.run();
+            InstalledCode compiledMethod = getCode(getResolvedJavaMethod(testClass, "run"));
+            compiledMethod.executeVarargs(r);
         } catch (Throwable e) {
             e.printStackTrace(System.out);
             Assert.fail();
         }
-        return "SUCCESS";
+    }
+
+    public static void methodB() {
+        // Application code to be compiled. No need to use
+        // GraalCompilerTest.getRandomInstance()
+        Random r = new Random(System.currentTimeMillis());
+        while (r.nextFloat() > .03f) {
+            // Empty
+        }
+
+        return;
+    }
+
+    public static void methodA() {
+        // Application code to be compiled. No need to use
+        // GraalCompilerTest.getRandomInstance()
+        Random r = new Random(System.currentTimeMillis());
+        while (r.nextDouble() > .05) {
+            // Empty
+        }
+        return;
+    }
+
+    private static Object m = new Object();
+    static long ct = Long.MAX_VALUE;
+
+    public static Object getM() {
+        if (ct-- > 0) {
+            return m;
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public byte[] generateClass(String className) {
+        ClassDesc outerClass = cd(DeoptimizeOnExceptionTest.class);
+
+        // @formatter:off
+        return ClassFile.of().build(ClassDesc.of(className), classBuilder -> classBuilder
+                        .withVersion(JAVA_5_VERSION, 0)
+                        .withInterfaceSymbols(cd(Runnable.class))
+                        .withMethodBody(INIT_NAME, MTD_void, ACC_PUBLIC, b -> b
+                                        .aload(0)
+                                        .invokespecial(CD_Object, INIT_NAME, MTD_void)
+                                        .return_())
+                        .withMethodBody("run", MTD_void, ACC_PUBLIC, b -> {
+                            Label l1 = b.newLabel();
+                            b
+                                            .invokestatic(outerClass, "getM", MethodTypeDesc.of(CD_Object))
+                                            .with(JsrInstruction.of(l1))
+                                            .return_()
+                                            .labelBinding(l1)
+                                            .astore(1)
+                                            .invokestatic(cd(System.class), "currentTimeMillis", MethodTypeDesc.of(CD_long))
+                                            .pop2()
+                                            .invokestatic(outerClass, "getM", MethodTypeDesc.of(CD_Object))
+                                            .dup()
+                                            .ifThenElse(Opcode.IFNONNULL,
+                                                            thenBlock -> thenBlock.invokestatic(outerClass, "methodA", MTD_void),
+                                                            elseBlock -> elseBlock.invokestatic(outerClass, "methodB", MTD_void))
+                                            .with(RetInstruction.of(1));
+                        }));
+        // @formatter:on
     }
 
     @Test
@@ -153,88 +219,5 @@ public class DeoptimizeOnExceptionTest extends GraalCompilerTest {
         }
 
         return GraalDirectives.inCompiledCode();
-    }
-
-    public static class MyClassLoader extends ExportingClassLoader {
-        @Override
-        protected Class<?> findClass(String className) throws ClassNotFoundException {
-            return defineClass(name.replace('/', '.'), clazz, 0, clazz.length);
-        }
-    }
-
-    public static void methodB() {
-        Random r = new Random(System.currentTimeMillis());
-        while (r.nextFloat() > .03f) {
-            // Empty
-        }
-
-        return;
-    }
-
-    public static void methodA() {
-        Random r = new Random(System.currentTimeMillis());
-        while (r.nextDouble() > .05) {
-            // Empty
-        }
-        return;
-    }
-
-    private static Object m = new Object();
-    static long ct = Long.MAX_VALUE;
-
-    public static Object getM() {
-        if (ct-- > 0) {
-            return m;
-        } else {
-            return null;
-        }
-    }
-
-    private static String name = "t/TestJSR";
-
-    private static final byte[] clazz = makeClazz();
-
-    private static byte[] makeClazz() {
-        // Code generated the class below using asm.
-        String clazzName = DeoptimizeOnExceptionTest.class.getName().replace('.', '/');
-        final ClassWriter w = new ClassWriter(0);
-        w.visit(Opcodes.V1_5, Opcodes.ACC_PUBLIC,
-                        "t/TestJSR", null, "java/lang/Object",
-                        new String[]{"java/lang/Runnable"});
-        MethodVisitor mv = w.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, new String[]{});
-        mv.visitCode();
-        mv.visitVarInsn(Opcodes.ALOAD, 0);
-        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
-        mv.visitInsn(Opcodes.RETURN);
-        mv.visitMaxs(10, 10);
-        mv.visitEnd();
-
-        mv = w.visitMethod(Opcodes.ACC_PUBLIC, "run", "()V", null, null);
-        mv.visitCode();
-        mv.visitMethodInsn(Opcodes.INVOKESTATIC, clazzName, "getM", "()Ljava/lang/Object;", false);
-        Label l1 = new Label();
-        mv.visitJumpInsn(Opcodes.JSR, l1);
-        mv.visitInsn(Opcodes.RETURN);
-
-        mv.visitLabel(l1);
-        mv.visitVarInsn(Opcodes.ASTORE, 1);
-
-        Label lElse = new Label();
-        Label lEnd = new Label();
-        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/System", "currentTimeMillis", "()J", false);
-        mv.visitInsn(Opcodes.POP2);
-        mv.visitMethodInsn(Opcodes.INVOKESTATIC, clazzName, "getM", "()Ljava/lang/Object;", false);
-        mv.visitInsn(Opcodes.DUP);
-        mv.visitJumpInsn(Opcodes.IFNULL, lElse);
-        mv.visitMethodInsn(Opcodes.INVOKESTATIC, clazzName, "methodA", "()V", false);
-        mv.visitJumpInsn(Opcodes.GOTO, lEnd);
-        mv.visitLabel(lElse);
-        mv.visitMethodInsn(Opcodes.INVOKESTATIC, clazzName, "methodB", "()V", false);
-        mv.visitLabel(lEnd);
-
-        mv.visitVarInsn(Opcodes.RET, 1);
-        mv.visitMaxs(10, 10);
-        mv.visitEnd();
-        return w.toByteArray();
     }
 }

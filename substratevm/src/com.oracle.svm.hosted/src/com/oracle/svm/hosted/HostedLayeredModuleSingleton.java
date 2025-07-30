@@ -29,7 +29,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.imagelayer.BuildingInitialLayerPredicate;
@@ -37,7 +36,7 @@ import com.oracle.svm.core.jdk.LayeredModuleSingleton;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
-import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
+import com.oracle.svm.hosted.imagelayer.CapnProtoAdapters;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerWriter;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ModulePackages;
@@ -103,7 +102,7 @@ public class HostedLayeredModuleSingleton extends LayeredModuleSingleton {
             Map<String, Set<String>> packages = new HashMap<>();
             for (int j = 0; j < packagesReader.size(); ++j) {
                 var packageEntryReader = packagesReader.get(j);
-                HashSet<String> modules = SVMImageLayerLoader.streamStrings(packageEntryReader.getModules()).collect(Collectors.toCollection(HashSet::new));
+                Set<String> modules = CapnProtoAdapters.toCollection(packageEntryReader.getModules(), HashSet::new);
                 packages.put(packageEntryReader.getPackageKey().toString(), modules);
             }
             modulePackages.put(entryReader.getModuleKey().toString(), packages);

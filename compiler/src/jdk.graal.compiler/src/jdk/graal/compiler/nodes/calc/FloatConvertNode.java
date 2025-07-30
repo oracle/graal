@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package jdk.graal.compiler.nodes.calc;
 
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 
+import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.FloatConvertOp;
@@ -43,6 +44,9 @@ import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 
@@ -94,12 +98,21 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
         switch (getFloatConvert()) {
             case F2D:
             case I2D:
+            case UI2D:
                 return true;
             case I2F:
             case L2D:
             case L2F:
-                if (value.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
-                    return isLosslessIntegerToFloatingPoint((IntegerStamp) value.stamp(NodeView.DEFAULT), (FloatStamp) stamp(NodeView.DEFAULT));
+                if (value.stamp(NodeView.DEFAULT) instanceof IntegerStamp inputStamp) {
+                    return isLosslessIntegerToFloatingPoint(inputStamp, (FloatStamp) stamp(NodeView.DEFAULT), false);
+                } else {
+                    return false;
+                }
+            case UI2F:
+            case UL2D:
+            case UL2F:
+                if (value.stamp(NodeView.DEFAULT) instanceof IntegerStamp inputStamp) {
+                    return isLosslessIntegerToFloatingPoint(inputStamp, (FloatStamp) stamp(NodeView.DEFAULT), true);
                 } else {
                     return false;
                 }
@@ -118,21 +131,19 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
         return ArithmeticOpTable.forStamp(inputStamp).getFloatConvert(op).canOverflowInteger(inputStamp);
     }
 
-    private static boolean isLosslessIntegerToFloatingPoint(IntegerStamp inputStamp, FloatStamp resultStamp) {
-        int mantissaBits;
-        switch (resultStamp.getBits()) {
-            case 32:
-                mantissaBits = 24;
-                break;
-            case 64:
-                mantissaBits = 53;
-                break;
-            default:
-                throw GraalError.shouldNotReachHereUnexpectedValue(resultStamp.getBits()); // ExcludeFromJacocoGeneratedReport
-        }
+    private static boolean isLosslessIntegerToFloatingPoint(IntegerStamp inputStamp, FloatStamp resultStamp, boolean unsigned) {
+        int mantissaBits = switch (resultStamp.getBits()) {
+            case 32 -> 24;
+            case 64 -> 53;
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(resultStamp.getBits()); // ExcludeFromJacocoGeneratedReport
+        };
         long max = 1L << mantissaBits;
         long min = -(1L << mantissaBits);
-        return min <= inputStamp.lowerBound() && inputStamp.upperBound() <= max;
+        if (unsigned) {
+            return Long.compareUnsigned(inputStamp.unsignedUpperBound(), max) <= 0;
+        } else {
+            return min <= inputStamp.lowerBound() && inputStamp.upperBound() <= max;
+        }
     }
 
     @Override
@@ -142,8 +153,7 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
             return ret;
         }
 
-        if (forValue instanceof FloatConvertNode) {
-            FloatConvertNode other = (FloatConvertNode) forValue;
+        if (forValue instanceof FloatConvertNode other) {
             if (other.isLossless() && other.op == this.op.reverse()) {
                 return other.getValue();
             }
@@ -159,5 +169,29 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
     @Override
     public boolean mayNullCheckSkipConversion() {
         return false;
+    }
+
+    /**
+     * Indicates whether this target platform supports lowering floating point conversions to
+     * unsigned integer.
+     */
+    public static boolean supportsFloatToUnsignedConvert(Architecture arch) {
+        return switch (arch) {
+            case AMD64 amd64 -> true;
+            case AArch64 aarch64 -> true;
+            default -> false;
+        };
+    }
+
+    /**
+     * Indicates whether this target platform supports lowering conversions from unsigned integers
+     * to floating point.
+     */
+    public static boolean supportsUnsignedToFloatConvert(Architecture arch) {
+        return switch (arch) {
+            case AMD64 amd64 -> AMD64BaseAssembler.supportsFullAVX512(amd64.getFeatures());
+            case AArch64 aarch64 -> true;
+            default -> false;
+        };
     }
 }

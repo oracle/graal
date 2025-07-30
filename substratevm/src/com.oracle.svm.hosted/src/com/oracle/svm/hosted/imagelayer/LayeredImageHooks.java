@@ -24,50 +24,69 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.WordBase;
 
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
-import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.core.meta.MethodRef;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Class containing hooks which can only be registered and executed during layered image builds.
  */
 @AutomaticallyRegisteredFeature
 public class LayeredImageHooks implements InternalFeature, FeatureSingleton {
-    private final Set<Consumer<WrittenDynamicHubInfo>> hubWrittenCallbacks = ConcurrentHashMap.newKeySet();
+    private final Set<DynamicHubWrittenCallback> hubWrittenCallbacks = ConcurrentHashMap.newKeySet();
+    private final Set<PatchedWordWrittenCallback> patchedWordWrittenCallbacks = ConcurrentHashMap.newKeySet();
 
     @Override
     public boolean isInConfiguration(Feature.IsInConfigurationAccess access) {
         return ImageLayerBuildingSupport.buildingImageLayer();
     }
 
-    private static LayeredImageHooks singleton() {
+    @Fold
+    public static LayeredImageHooks singleton() {
         return ImageSingletons.lookup(LayeredImageHooks.class);
     }
 
-    public record WrittenDynamicHubInfo(DynamicHub hub, AnalysisUniverse aUniverse, HostedUniverse hUniverse, Object vTable) {
-
+    @FunctionalInterface
+    public interface DynamicHubWrittenCallback {
+        void afterDynamicHubWritten(DynamicHub hub, MethodRef[] vtable);
     }
 
-    /**
-     * Register a callback which will execute each time a new {@link DynamicHub} is installed in the
-     * image heap.
-     */
-    public static void registerDynamicHubWrittenCallback(Consumer<WrittenDynamicHubInfo> consumer) {
-        singleton().hubWrittenCallbacks.add(consumer);
+    public void registerDynamicHubWrittenCallback(DynamicHubWrittenCallback callback) {
+        hubWrittenCallbacks.add(Objects.requireNonNull(callback));
     }
 
-    public static void processWrittenDynamicHub(WrittenDynamicHubInfo info) {
-        singleton().hubWrittenCallbacks.forEach(callback -> callback.accept(info));
+    public void processDynamicHubWritten(DynamicHub object, MethodRef[] vTable) {
+        for (var callback : hubWrittenCallbacks) {
+            callback.afterDynamicHubWritten(object, vTable);
+        }
+    }
+
+    @FunctionalInterface
+    public interface PatchedWordWrittenCallback {
+        void afterPatchedWordWritten(WordBase word, int offsetInHeap, ImageHeapLayoutInfo heapLayout);
+    }
+
+    public void registerPatchedWordWrittenCallback(PatchedWordWrittenCallback callback) {
+        patchedWordWrittenCallbacks.add(Objects.requireNonNull(callback));
+    }
+
+    public void processPatchedWordWritten(WordBase word, int offsetInHeap, ImageHeapLayoutInfo heapLayout) {
+        for (var callback : patchedWordWrittenCallbacks) {
+            callback.afterPatchedWordWritten(word, offsetInHeap, heapLayout);
+        }
     }
 }

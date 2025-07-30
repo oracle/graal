@@ -27,8 +27,6 @@ package jdk.graal.compiler.phases.util;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
 import jdk.graal.compiler.debug.DebugContext;
@@ -42,6 +40,7 @@ import jdk.graal.compiler.nodes.ProxyNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
+import jdk.graal.compiler.util.Digest;
 
 /**
  * A utility class that computes graph signatures and canonical node identity which can be useful
@@ -51,7 +50,7 @@ public class GraphSignature {
 
     private int nextId;
     private final NodeMap<Integer> canonicalId;
-    private byte[] signature;
+    private final byte[] signature;
 
     @SuppressWarnings("this-escape")
     public GraphSignature(StructuredGraph graph) {
@@ -81,21 +80,15 @@ public class GraphSignature {
         ByteArrayOutputStream byteArray = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(byteArray);
         computeFromSchedule(graph, dos);
-        try {
-            return getSignature(byteArray, "SHA-512");
-        } catch (NoSuchAlgorithmException e) {
-            throw new GraalError(e);
-        }
+        return getSignature(byteArray);
     }
 
-    private static byte[] getSignature(ByteArrayOutputStream byteArray, String algorithm) throws NoSuchAlgorithmException {
+    private static byte[] getSignature(ByteArrayOutputStream byteArray) {
         byte[] data = byteArray.toByteArray();
         if (data.length == 0) {
             return null;
         }
-        MessageDigest digest = MessageDigest.getInstance(algorithm);
-        digest.update(data);
-        return digest.digest();
+        return Digest.digestAsByteArray(data, 0, data.length);
     }
 
     private static String getSignatureString(byte[] data) {

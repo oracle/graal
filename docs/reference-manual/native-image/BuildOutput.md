@@ -277,7 +277,28 @@ Unassociated types are displayed when certain types (such as classes, interfaces
 If these types contain vulnerabilities, SBOM scanning will not detect them.
 To fix this, ensure that proper GAV coordinates (Group ID, Artifact ID, and Version) are defined in the project POM's properties or in _MANIFEST.MF_ using standard formats.
 
+Use the [build report](BuildReport.md) to view included components, their dependencies, and any unassociated types.
 For more information, see [Software Bill of Materials](../../security/native-image.md).
+
+#### <a name="glossary-obfuscation"></a>Advanced Obfuscation
+This section indicates whether advanced obfuscation was applied.
+Advanced obfuscation is applied to your application code and third-party dependencies, but not to the JDK or [Substrate VM](https://github.com/oracle/graal/tree/master/substratevm) code.
+
+**Obfuscated elements include:**
+* Module, package, and class names
+* Method and source file names (as seen in stack traces)
+* Field names (as seen in heap dumps)
+
+**Elements that are _not_ obfuscated:**
+* Names affected by registrations in reachability metadata
+* Names in preserved code (via `-H:Preserve`)
+* Module and package names containing a class that loads a resource
+* Names of annotations, lambdas, and proxies
+
+To export a mapping from original to obfuscated names, use `-H:AdvancedObfuscation=export-mapping`. 
+See the [build report](BuildReport.md) for summary statistics, such as the percentage of class and method names that were obfuscated. 
+
+> Native Image obfuscates binaries by removing class files, applying aggressive optimizations, and eliminating dead code. The advanced obfuscation feature also obfuscates symbol names.
 
 #### <a name="glossary-backwards-edge-cfi"></a>Backwards-Edge Control-Flow Integrity (CFI)
 Control-Flow Integrity (CFI) can be enforced with the experimental `-H:CFI=HW` option.

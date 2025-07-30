@@ -33,6 +33,19 @@
     ]
   },
 
+  energy_tracking:: {
+    python_version: 3,
+    environment+: {
+      "MX_TRACKER" : "energy"
+    },
+    packages+: {
+      "powerstat": "==0.04.03"
+    },
+    docker: {
+      "image": "buildslave_ol8_podman",
+    },
+  },
+
   product_jdks:: [
      common["labsjdk-ee-latest"],
   ],

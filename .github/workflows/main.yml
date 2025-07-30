@@ -152,8 +152,6 @@ jobs:
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/sulong,/substratevm"
               NATIVE_IMAGES: "graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang-cl,graalvm-native-clang++,graalvm-native-ld,lib:llvmvm"
-              DISABLE_POLYGLOT: true
-              DISABLE_LIBPOLYGLOT: true
           - env:
               JDK_VERSION: "latest"
               GATE_TAGS: "build"

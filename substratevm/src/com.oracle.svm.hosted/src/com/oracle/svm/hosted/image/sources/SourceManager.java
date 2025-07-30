@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -28,10 +28,9 @@ package com.oracle.svm.hosted.image.sources;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import jdk.graal.compiler.debug.DebugContext;
-
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -72,10 +71,10 @@ public class SourceManager {
                 path = locateSource(fileName, packageName, clazz);
                 if (path == null) {
                     // as a last ditch effort derive path from the Java class name
-                    if (debugContext.areScopesEnabled()) {
+                    if (debugContext.isLogEnabled()) {
                         debugContext.log(DebugContext.INFO_LEVEL, "Failed to find source file for class %s%n", resolvedType.toJavaName());
                     }
-                    if (packageName.length() > 0) {
+                    if (!packageName.isEmpty()) {
                         path = Paths.get("", packageName.split("\\."));
                         path = path.resolve(fileName);
                     }
@@ -93,7 +92,7 @@ public class SourceManager {
      * the source name embedded in the class file or the class name itself.
      *
      * @param resolvedType the resolved java type whose source file name is required
-     * @return the file name or null if it the class cannot be associated with a source file
+     * @return the file name or null if the class cannot be associated with a source file
      */
     private static String computeBaseName(ResolvedJavaType resolvedType) {
         if (resolvedType.isPrimitive()) {
@@ -146,10 +145,10 @@ public class SourceManager {
      *
      * @param fileName the base file name for the source file
      * @param packageName the name of the package for the associated Java class
-     * @return a protoype name for the source file
+     * @return a prototype name for the source file
      */
     private static Path computePrototypeName(String fileName, String packageName) {
-        if (packageName.length() == 0) {
+        if (packageName.isEmpty()) {
             return Paths.get("", fileName);
         } else {
             return Paths.get("", packageName.split("\\.")).resolve(fileName);
@@ -160,7 +159,7 @@ public class SourceManager {
      * A map from a Java type to an associated source paths which is known to have an up to date
      * entry in the relevant source file cache. This is used to memoize previous lookups.
      */
-    private static HashMap<ResolvedJavaType, Path> verifiedPaths = new HashMap<>();
+    private final ConcurrentHashMap<ResolvedJavaType, Path> verifiedPaths = new ConcurrentHashMap<>();
 
     /**
      * An invalid path used as a marker to track failed lookups so we don't waste time looking up

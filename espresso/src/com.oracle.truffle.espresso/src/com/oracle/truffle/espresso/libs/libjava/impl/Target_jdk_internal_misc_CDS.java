@@ -39,30 +39,30 @@ public final class Target_jdk_internal_misc_CDS {
 
     @Substitution
     public static void initializeFromArchive(@JavaType(Class.class) StaticObject c, @Inject EspressoContext ctx) {
-        ctx.getVM().JVM_InitializeFromArchive(c);
+        VM.JVM_InitializeFromArchive(c, ctx);
     }
 
     @Substitution
     public static void defineArchivedModules(
                     @JavaType(Object.class) StaticObject platformLoader,
-                    @JavaType(Object.class) StaticObject systemLoader) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.unimplemented();
+                    @JavaType(Object.class) StaticObject systemLoader,
+                    @Inject EspressoContext context) {
+        VM.JVM_DefineArchivedModules(platformLoader, systemLoader, context);
     }
 
     @Substitution
-    public static long getRandomSeedForDumping() {
-        return VM.JVM_GetRandomSeedForDumping();
+    public static long getRandomSeedForDumping(@Inject EspressoContext context) {
+        return VM.JVM_GetRandomSeedForDumping(context);
     }
 
     @Substitution
-    public static boolean isDumpingArchive0() {
-        return VM.JVM_IsCDSDumpingEnabled();
+    public static boolean isDumpingArchive0(@Inject EspressoContext context) {
+        return VM.JVM_IsCDSDumpingEnabled(context);
     }
 
     @Substitution
-    public static boolean isSharingEnabled0() {
-        return VM.JVM_IsSharingEnabled();
+    public static boolean isSharingEnabled0(@Inject EspressoContext context) {
+        return VM.JVM_IsSharingEnabled(context);
     }
 
     @Substitution

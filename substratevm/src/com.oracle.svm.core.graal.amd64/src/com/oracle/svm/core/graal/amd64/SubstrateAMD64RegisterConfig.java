@@ -25,6 +25,7 @@
 package com.oracle.svm.core.graal.amd64;
 
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import static jdk.vm.ci.amd64.AMD64.k0;
 import static jdk.vm.ci.amd64.AMD64.k1;
 import static jdk.vm.ci.amd64.AMD64.k2;
 import static jdk.vm.ci.amd64.AMD64.k3;
@@ -73,6 +74,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateUtil;
@@ -128,14 +130,14 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
         boolean haveAVX512 = ((AMD64) target.arch).getFeatures().contains(AMD64.CPUFeature.AVX512F);
         ArrayList<Register> regs;
         if (haveAVX512) {
-            /*
-             * GR-40969: We would like to use valueRegistersAVX512. However, we emit a mix of VEX
-             * and EVEX encoded instructions, and the VEX variants cannot address the extended
-             * AVX-512 registers (XMM16-31). For now, limit ourselves to XMM0-15.
-             */
             regs = new ArrayList<>();
             regs.addAll(valueRegistersAVX512);
-            regs.addAll(MASK_REGISTERS);
+            /*
+             * valueRegistersAVX512 contains all mask registers, including k0. k0 is not a general
+             * allocatable register, most instructions that read it interpret it as "no opmask"
+             * rather than as a real opmask register.
+             */
+            regs.remove(k0);
         } else {
             regs = new ArrayList<>();
             regs.addAll(valueRegistersSSE);
@@ -145,8 +147,9 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                 regs.addAll(MASK_REGISTERS);
             }
         }
+        VMError.guarantee(!regs.contains(k0), "We must never treat k0 as a general allocatable register.");
 
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
+        if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
             // This is the Windows 64-bit ABI for parameters.
             // Note that float parameters also "consume" a general register and vice versa in the
             // native ABI.
@@ -195,7 +198,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                  * rbp must be last in the list, so that it gets the location closest to the saved
                  * return address.
                  */
-                if (Platform.includedIn(Platform.WINDOWS.class)) {
+                if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
                     calleeSaveRegisters = List.of(rbx, rdi, rsi, r12, r13, r14, r15, rbp,
                                     xmm6, xmm7, xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15);
                 } else {
@@ -243,7 +246,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
     @Override
     public PlatformKind getCalleeSaveRegisterStorageKind(Architecture arch, Register calleeSaveRegister) {
-        if (Platform.includedIn(Platform.WINDOWS.class) && AMD64.XMM.equals(calleeSaveRegister.getRegisterCategory())) {
+        if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) && AMD64.XMM.equals(calleeSaveRegister.getRegisterCategory())) {
             VMError.guarantee(calleeSaveRegister.encoding() >= xmm6.encoding() && calleeSaveRegister.encoding() <= xmm15.encoding(), "unexpected callee saved register");
             return V128_QWORD;
         }
@@ -321,7 +324,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                 JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, parameterTypes[i], metaAccess, target);
                 kinds[i] = kind;
 
-                if (type.nativeABI() && Platform.includedIn(Platform.WINDOWS.class)) {
+                if (type.nativeABI() && Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
                     // Strictly positional: float parameters consume a general register and vice
                     // versa
                     currentGeneral = i;

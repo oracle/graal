@@ -753,8 +753,8 @@ public class EspressoInterop extends BaseInterop {
             Meta meta = receiver.getKlass().getMeta();
             if (instanceOf(receiver, meta.java_time_LocalDate)) {
                 int year = (int) meta.java_time_LocalDate_year.get(receiver);
-                short month = (short) meta.java_time_LocalDate_month.get(receiver);
-                short day = (short) meta.java_time_LocalDate_day.get(receiver);
+                short month = ((Number) meta.java_time_LocalDate_month.get(receiver)).shortValue();
+                short day = ((Number) meta.java_time_LocalDate_day.get(receiver)).shortValue();
                 return LocalDate.of(year, month, day);
             } else if (instanceOf(receiver, meta.java_time_LocalDateTime)) {
                 StaticObject localDate = (StaticObject) meta.java_time_LocalDateTime_toLocalDate.invokeDirectSpecial(receiver);

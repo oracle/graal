@@ -10,7 +10,7 @@ redirect_from:
 
 # Sandboxing
 
-GraalVM allows a host application written in a JVM-based language to execute guest code written in Javascript via the [Polyglot API](../reference-manual/embedding/embed-languages.md).
+GraalVM allows a host application written in a JVM-based language to execute guest code written in Javascript or WebAssembly via the [Polyglot API](../reference-manual/embedding/embed-languages.md).
 Configured with a [sandbox policy](#sandbox-policies), a security boundary between a host application and guest code can be established.
 For example, host code can execute untrusted guest code using the [UNTRUSTED](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/SandboxPolicy.html#UNTRUSTED) policy.
 Host code can also execute multiple mutually distrusting instances of guest code that will be protected from one another.
@@ -478,12 +478,36 @@ In the case of a misprediction, the result of these instructions is discarded.
 However, the execution may have caused side effects in the micro-architectural state of a CPU.
 For example, data may have been pulled into the cache during transient execution - a side-channel that can be read by timing data access.
 
-GraalVM protects against Spectre attacks by inserting speculative execution barrier instructions in runtime compiled guest code to prevent attackers from crafting speculative execution gadgets.
-A speculative execution barrier is placed at each target of a conditional branch that is relevant to Java memory safety to stop speculative execution.
+GraalVM protects against Spectre attacks by applying masking to memory accesses in runtime compiled code.
+Since the masking operation is also effective during speculative execution, accesses protected by masks are always scoped to the isolate heap.
+For memory accesses where masking is not applicable, GraalVM inserts speculative execution barrier instructions to prevent attackers from crafting speculative execution gadgets.
+On AArch64 protection relies solely on speculative execution barrier instructions.
+
+### Process Isolation
+
+As an experimental feature, the dedicated native-image isolate that runs the Polyglot engine in the ISOLATED and UNTRUSTED policy can run in a separate process.
+The feature is enabled by setting `engine.IsolateMode=external`, experimental options have to be allowed:
+```java
+try (Context context = Context.newBuilder("js")
+                              .allowExperimentalOptions(true)
+                              .sandbox(SandboxPolicy.ISOLATED)
+                              .out(new ByteArrayOutputStream())
+                              .err(new ByteArrayOutputStream())
+                              .option("engine.MaxIsolateMemory", "256MB")
+                              .option("engine.IsolateMode", "external")
+                              .build()) {
+    context.eval("js", "print('Hello JavaScript!');");
+}
+```
+
+Executing guest code in a separate process further deepens the isolation between the host application and guest code by providing a separate address space and signal domain.
+This means that defenses against leaking sensitive data from the same address space are no longer necessary and fatal crashes of the native-image isolate no longer affect the host application.
+These properties come at the expense of slower startup performance of a corresponding Polyglot engine as well as an increased communication overhead between host and guest code.
+Under the hood, host and guest processes communicate via Unix Domain sockets, transparently hidden behind the Polyglot API.
 
 ## Sharing Execution Engines
 
-Guest code of different trust domains has to be separated at the polyglot engine level, that is, only guest code of the same trust domain should share an engine.
+Guest code of different trust domains has to be separated at the Polyglot engine level, that is, only guest code of the same trust domain should share an engine.
 When multiple context share an engine, all of them must have the same sandbox policy (the engine's sandbox policy).
 Application developers may choose to share execution engines among execution contexts for performance reasons.
 While the context holds the state of the executed code, the engine holds the code itself.

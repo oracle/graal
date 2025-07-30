@@ -197,7 +197,7 @@ public @interface GenerateBytecode {
 
     /**
      * Whether the generated interpreter should support Truffle tag instrumentation. When
-     * instrumentation is enabled, the generated builder will define <code>startTag(...)</code> and
+     * instrumentation is enabled, the generated builder will define <code>beginTag(...)</code> and
      * <code>endTag(...)</code> methods that can be used to annotate the bytecode with
      * {@link com.oracle.truffle.api.instrumentation.Tag tags}. Truffle tag instrumentation also
      * allows you to specify implicit tagging using {@link Operation#tags()}. If tag instrumentation
@@ -527,5 +527,14 @@ public @interface GenerateBytecode {
      * @since 25.0
      */
     String variadicStackLimit() default "32";
+
+    /**
+     * Enables additional assertions, that would be otherwise too costly outside testing. The
+     * additional assertions can also be enabled dynamically at build time by passing
+     * <code>-Atruffle.dsl.AdditionalAssertions=true</code> to the Java compiler.
+     *
+     * @since 25.0
+     */
+    boolean additionalAssertions() default false;
 
 }

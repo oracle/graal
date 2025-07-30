@@ -150,6 +150,11 @@ public abstract class NonBytecodeMethod implements GraphProvider, ResolvedJavaMe
     }
 
     @Override
+    public boolean isDeclared() {
+        return false;
+    }
+
+    @Override
     public boolean isClassInitializer() {
         return false;
     }

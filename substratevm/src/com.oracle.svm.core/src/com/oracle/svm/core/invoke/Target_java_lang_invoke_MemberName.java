@@ -27,11 +27,16 @@ package com.oracle.svm.core.invoke;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Member;
 
+import org.graalvm.nativeimage.MissingReflectionRegistrationError;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives;
+import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.core.util.VMError;
 
 @TargetClass(className = "java.lang.invoke.MemberName")
 public final class Target_java_lang_invoke_MemberName {
@@ -81,7 +86,57 @@ public final class Target_java_lang_invoke_MemberName {
 
     @SuppressWarnings("static-method")
     @Substitute
-    private boolean vminfoIsConsistent() {
+    boolean vminfoIsConsistent() {
         return true; /* The substitution class doesn't use the same internals as the JDK */
+    }
+
+    @Alias
+    @Override
+    protected native Target_java_lang_invoke_MemberName clone();
+
+    @Alias
+    native void ensureTypeVisible(Class<?> refc);
+
+    @Alias
+    public native boolean isResolved();
+
+    @Alias
+    native boolean referenceKindIsConsistent();
+
+    @Alias
+    native void initResolved(boolean isResolved);
+}
+
+@TargetClass(className = "java.lang.invoke.MemberName", innerClass = "Factory")
+final class Target_java_lang_invoke_MemberName_Factory {
+    @Substitute
+    @SuppressWarnings("static-method")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/b685ea54081fcf54a6567dddb49b63435a6e1ea4/src/java.base/share/classes/java/lang/invoke/MemberName.java#L937-L973")
+    private Target_java_lang_invoke_MemberName resolve(byte refKind, Target_java_lang_invoke_MemberName ref, Class<?> lookupClass, int allowedModes,
+                    boolean speculativeResolve) {
+        Target_java_lang_invoke_MemberName m = ref.clone();
+        assert (refKind == m.getReferenceKind());
+        try {
+            m = Target_java_lang_invoke_MethodHandleNatives.resolve(m, lookupClass, allowedModes, speculativeResolve);
+            if (m == null) {
+                VMError.guarantee(speculativeResolve, "non-speculative resolution should return member name or throw");
+                return null;
+            }
+            m.ensureTypeVisible(m.getDeclaringClass());
+            m.resolution = null;
+        } catch (ClassNotFoundException | LinkageError ex) {
+            if (ex instanceof MissingReflectionRegistrationError e) {
+                /* Bypass the LinkageError catch below */
+                throw e;
+            }
+            VMError.guarantee(m != null, "speculative resolution should not throw");
+            assert (!m.isResolved());
+            m.resolution = ex;
+            return m;
+        }
+        assert (m.referenceKindIsConsistent());
+        m.initResolved(true);
+        assert (m.vminfoIsConsistent());
+        return m;
     }
 }

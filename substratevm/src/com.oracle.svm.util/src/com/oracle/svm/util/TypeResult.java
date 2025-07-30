@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.util;
 
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -43,6 +44,25 @@ public final class TypeResult<T> {
 
     public static <T> TypeResult<T> forException(String name, Throwable exception) {
         return new TypeResult<>(name, null, exception);
+    }
+
+    public static <T> TypeResult<T> toSingleElement(TypeResult<List<T>> result) {
+        if (result.isPresent()) {
+            if (result.get().size() != 1) {
+                throw new IllegalArgumentException("Ambiguous type descriptor not allowed here");
+            }
+            return forType(result.getName(), result.get().getFirst());
+        } else {
+            return forException(result.getName(), result.getException());
+        }
+    }
+
+    public static <T> TypeResult<List<T>> toList(TypeResult<T> result) {
+        if (result.isPresent()) {
+            return forType(result.getName(), List.of(result.get()));
+        } else {
+            return forException(result.getName(), result.getException());
+        }
     }
 
     private final String name;
@@ -80,6 +100,10 @@ public final class TypeResult<T> {
             return TypeResult.forException(name, getException());
         }
 
+    }
+
+    public String getName() {
+        return name;
     }
 
     public Throwable getException() {

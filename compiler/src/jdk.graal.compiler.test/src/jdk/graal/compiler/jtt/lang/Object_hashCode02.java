@@ -37,7 +37,7 @@ public final class Object_hashCode02 extends JTTTest {
 
     public static final Object obj1 = new Object();
     public static final Object obj2 = DayOfWeek.FRIDAY;
-    public static final Object obj3 = new HashMap<>();
+    public static final Object obj3 = new HashMap<>(); // STABLE ITERATION ORDER: empty
 
     public static int test(int a) {
         if (a == 1) {

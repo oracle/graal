@@ -39,7 +39,15 @@ public final class JavaVersion implements Comparable<JavaVersion> {
         public static final VersionRange VERSION_19_OR_HIGHER = higher(19);
         public static final VersionRange VERSION_20_OR_LOWER = lower(20);
         public static final VersionRange VERSION_21_OR_HIGHER = higher(21);
-        public static final VersionRange ALL = new VersionRange(0, LATEST_SUPPORTED);
+        public static final VersionRange VERSION_21_OR_LOWER = lower(21);
+        public static final VersionRange VERSION_22_OR_HIGHER = higher(22);
+        public static final VersionRange VERSION_24_OR_LOWER = lower(24);
+        public static final VersionRange VERSION_25_OR_HIGHER = higher(25);
+
+        public static final VersionRange ALL = between(0, LATEST_SUPPORTED);
+        public static final VersionRange VERSION_9_TO_21 = between(9, 21);
+        public static final VersionRange VERSION_9_TO_23 = between(9, 23);
+        public static final VersionRange VERSION_22_TO_23 = between(22, 23);
 
         private final int low;
         private final int high;
@@ -57,6 +65,10 @@ public final class JavaVersion implements Comparable<JavaVersion> {
             return new VersionRange(version, LATEST_SUPPORTED);
         }
 
+        public static VersionRange between(int low, int high) {
+            return new VersionRange(low, high);
+        }
+
         public boolean contains(JavaVersion version) {
             return version.inRange(low, high);
         }
@@ -64,7 +76,8 @@ public final class JavaVersion implements Comparable<JavaVersion> {
 
     public static final JavaVersion HOST_VERSION = forVersion(Runtime.version());
 
-    public static final int LATEST_SUPPORTED = 21;
+    public static final int LATEST_SUPPORTED = 26;
+    public static final int LATEST_SUPPORTED_CLASSFILE = ClassfileParser.JAVA_26_VERSION;
 
     private final int version;
 
@@ -174,6 +187,30 @@ public final class JavaVersion implements Comparable<JavaVersion> {
         return version >= 21;
     }
 
+    public boolean java21OrEarlier() {
+        return version <= 21;
+    }
+
+    public boolean java22OrLater() {
+        return version >= 22;
+    }
+
+    public boolean java23OrEarlier() {
+        return version <= 23;
+    }
+
+    public boolean java23OrLater() {
+        return version >= 23;
+    }
+
+    public boolean java24OrEarlier() {
+        return version <= 24;
+    }
+
+    public boolean java25OrLater() {
+        return version >= 25;
+    }
+
     public boolean inRange(int low, int high) {
         return version >= low && version <= high;
     }
@@ -192,6 +229,10 @@ public final class JavaVersion implements Comparable<JavaVersion> {
 
     public int classFileVersion() {
         return version + 44;
+    }
+
+    public int featureVersion() {
+        return version;
     }
 
     @Override

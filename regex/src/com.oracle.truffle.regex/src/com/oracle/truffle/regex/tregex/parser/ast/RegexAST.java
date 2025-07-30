@@ -62,12 +62,12 @@ import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.Counter;
+import com.oracle.truffle.regex.tregex.parser.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.ASTDebugDumpVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.AddToSetVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
-import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -207,6 +207,15 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
 
     public Token.Quantifier getQuantifier(int quantifierIndex) {
         return quantifiers.get(quantifierIndex);
+    }
+
+    public int[] getAllQuantifierBounds() {
+        var quantifierBounds = new int[quantifiers.size() * 2];
+        for (int i = 0; i < quantifiers.size(); i++) {
+            quantifierBounds[2 * i] = quantifiers.get(i).getMin();
+            quantifierBounds[2 * i + 1] = quantifiers.get(i).getMax();
+        }
+        return quantifierBounds;
     }
 
     public void registerZeroWidthQuantifiable(QuantifiableTerm zeroWidthQuantifiable) {
@@ -716,11 +725,11 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return getNumberOfNodes() <= TRegexOptions.TRegexMaxParseTreeSizeForDFA &&
                         getNumberOfCaptureGroups() <= TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA &&
                         !(getProperties().hasBackReferences() ||
-                                        getProperties().hasLargeCountedRepetitions() ||
+                                        (getRoot().hasQuantifiers() && (!getOptions().isBooleanMatch() || getRoot().hasLookBehinds())) ||
+                                        getProperties().hasNestedBoundedQuantifiers() ||
                                         getProperties().hasNegativeLookAheadAssertions() ||
                                         getProperties().hasNonLiteralLookBehindAssertions() ||
                                         getProperties().hasNegativeLookBehindAssertions() ||
-                                        getRoot().hasQuantifiers() ||
                                         getRoot().hasAtomicGroups() ||
                                         getProperties().hasConditionalReferencesIntoLookAheads() ||
                                         getProperties().hasLookAroundWithCaptureGroupsNestedInQuantifier()) &&
@@ -742,9 +751,9 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         if (getProperties().hasBackReferences()) {
             sb.add("regex has back-references");
         }
-        if (getProperties().hasLargeCountedRepetitions()) {
+        if (getProperties().hasLargeBoundedQuantifiers()) {
             sb.add(String.format("regex has large counted repetitions (threshold: %d for single CC, %d for groups)",
-                            TRegexOptions.TRegexQuantifierUnrollThresholdSingleCC, TRegexOptions.TRegexQuantifierUnrollThresholdGroup));
+                            TRegexOptions.TRegexQuantifierUnrollLimitSingleCC, TRegexOptions.TRegexQuantifierUnrollLimitGroup));
         }
         if (getProperties().hasNegativeLookAheadAssertions()) {
             sb.add("regex has negative look-ahead assertions");

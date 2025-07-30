@@ -129,7 +129,7 @@ final class SubstrateSegfaultHandlerStartupHook implements RuntimeSupport.Hook {
 public abstract class SubstrateSegfaultHandler {
     public static class Options {
         @Option(help = "Install segfault handler that prints register contents and full Java stacktrace. Default: enabled for an executable, disabled for a shared library, disabled when EnableSignalHandling is disabled.")//
-        static final RuntimeOptionKey<Boolean> InstallSegfaultHandler = new RuntimeOptionKey<>(null);
+        public static final RuntimeOptionKey<Boolean> InstallSegfaultHandler = new RuntimeOptionKey<>(null);
     }
 
     private static final long MARKER_VALUE = 0x0123456789ABCDEFL;
@@ -259,6 +259,7 @@ public abstract class SubstrateSegfaultHandler {
     }
 
     @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.")
+    @NeverInline("Base registers are set in caller, prevent reads from floating before that.")
     public static void dump(PointerBase signalInfo, RegisterDumper.Context context, boolean inSVMSegfaultHandler) {
         Pointer sp = (Pointer) RegisterDumper.singleton().getSP(context);
         CodePointer ip = (CodePointer) RegisterDumper.singleton().getIP(context);

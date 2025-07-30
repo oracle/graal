@@ -156,7 +156,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     }
 
     private static void runInParallel(boolean vthreads, Runnable callable) throws InterruptedException, ExecutionException {
-        ExecutorService executor = threadPool(PARALLELISM, vthreads);
+        ExecutorService executor = threadPool(vthreads ? Math.min(PARALLELISM, Runtime.getRuntime().availableProcessors()) : PARALLELISM, vthreads);
         List<Future<?>> futures = new ArrayList<>();
         /*
          * For virtual threads, we want a number of iterations well above the maxPoolSize of

@@ -66,6 +66,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Formatter;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -74,6 +75,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -87,6 +89,8 @@ import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -188,22 +192,23 @@ public final class SubprocessTestUtils {
     }
 
     private static Subprocess execute(Method testMethod, boolean failOnNonZeroExitCode, List<String> prefixVMOptions,
-                    List<String> postfixVmOptions, Duration timeout) throws IOException, InterruptedException {
+                    List<String> postfixVmOptions, boolean removeOptimizedRuntimeOptions, Duration timeout, Consumer<ProcessHandle> onStart) throws IOException, InterruptedException {
         String enclosingElement = testMethod.getDeclaringClass().getName();
         String testName = testMethod.getName();
         Subprocess subprocess = javaHelper(
-                        configure(getVmArgs(), prefixVMOptions, postfixVmOptions),
+                        configure(getVmArgs(), prefixVMOptions, postfixVmOptions, removeOptimizedRuntimeOptions),
                         null, null,
                         List.of("com.oracle.mxtool.junit.MxJUnitWrapper", String.format("%s#%s", enclosingElement, testName)),
-                        timeout);
+                        timeout, onStart);
         if (failOnNonZeroExitCode && subprocess.exitCode != 0) {
             Assert.fail(String.format("Subprocess produced non-0 exit code %d%n%s", subprocess.exitCode, subprocess.preserveArgFile()));
         }
         return subprocess;
     }
 
-    private static List<String> configure(List<String> vmArgs, List<String> prefixVMOptions, List<String> postfixVmOptions) {
+    private static List<String> configure(List<String> vmArgs, List<String> prefixVMOptions, List<String> postfixVmOptions, boolean removeOptimizedRuntimeOptions) {
         List<String> newVmArgs = new ArrayList<>();
+        Predicate<String> optimizedRuntimeFilter = removeOptimizedRuntimeOptions ? new OptimizedRuntimeOptionsFilter() : (s) -> true;
         newVmArgs.addAll(vmArgs.stream().filter(vmArg -> {
             for (String toRemove : getForbiddenVmOptions()) {
                 if (vmArg.startsWith(toRemove)) {
@@ -221,14 +226,14 @@ public final class SubprocessTestUtils {
                 }
             }
             return true;
-        }).collect(Collectors.toList()));
+        }).filter(optimizedRuntimeFilter).toList());
         for (String additionalVmOption : prefixVMOptions) {
-            if (!additionalVmOption.startsWith(TO_REMOVE_PREFIX)) {
+            if (!additionalVmOption.startsWith(TO_REMOVE_PREFIX) && optimizedRuntimeFilter.test(additionalVmOption)) {
                 newVmArgs.add(1, additionalVmOption);
             }
         }
         for (String additionalVmOption : postfixVmOptions) {
-            if (!additionalVmOption.startsWith(TO_REMOVE_PREFIX)) {
+            if (!additionalVmOption.startsWith(TO_REMOVE_PREFIX) && optimizedRuntimeFilter.test(additionalVmOption)) {
                 newVmArgs.add(additionalVmOption);
             }
         }
@@ -465,6 +470,8 @@ public final class SubprocessTestUtils {
         private boolean failOnNonZeroExit = true;
         private Duration timeout;
         private Consumer<Subprocess> onExit;
+        private Consumer<ProcessHandle> onStart;
+        private boolean removeOptimizedRuntimeOptions;
 
         private Builder(Class<?> testClass, Runnable run) {
             this.testClass = testClass;
@@ -492,6 +499,17 @@ public final class SubprocessTestUtils {
          */
         public Builder postfixVmOption(String... options) {
             postfixVmArgs.addAll(List.of(options));
+            return this;
+        }
+
+        /**
+         * Removes all {@code OptimizedRuntimeOptions} from the command line.
+         * <p>
+         * This method is useful in tests that require fallback to the default Truffle runtime,
+         * which does not support optimized runtime options.
+         */
+        public Builder removeOptimizedRuntimeOptions(boolean value) {
+            removeOptimizedRuntimeOptions = value;
             return this;
         }
 
@@ -525,11 +543,16 @@ public final class SubprocessTestUtils {
             return this;
         }
 
+        public Builder onStart(Consumer<ProcessHandle> start) {
+            this.onStart = start;
+            return this;
+        }
+
         public void run() throws IOException, InterruptedException {
             if (isSubprocess()) {
                 runnable.run();
             } else {
-                Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs, timeout);
+                Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs, removeOptimizedRuntimeOptions, timeout, onStart);
                 if (onExit != null) {
                     try {
                         onExit.accept(process);
@@ -702,8 +725,10 @@ public final class SubprocessTestUtils {
      * @param mainClassAndArgs the main class and its arguments
      * @param timeout the duration to wait for the process to finish. If null, the calling thread
      *            waits for the process indefinitely.
+     * @param onStart a callback invoked immediately after the subprocess has successfully started
      */
-    private static Subprocess javaHelper(List<String> vmArgs, Map<String, String> env, File workingDir, List<String> mainClassAndArgs, Duration timeout) throws IOException, InterruptedException {
+    private static Subprocess javaHelper(List<String> vmArgs, Map<String, String> env, File workingDir, List<String> mainClassAndArgs,
+                    Duration timeout, Consumer<ProcessHandle> onStart) throws IOException, InterruptedException {
         List<String> command = new ArrayList<>(vmArgs.size());
         for (String vmArg : vmArgs) {
             if (vmArg == PACKAGE_OPENING_OPTIONS) {
@@ -717,7 +742,7 @@ public final class SubprocessTestUtils {
             System.err.println("The subprocess will wait for a debugger to be attached on port 8000");
         }
         command.addAll(mainClassAndArgs);
-        return process(command, env, workingDir, timeout);
+        return process(command, env, workingDir, timeout, onStart);
     }
 
     /**
@@ -731,8 +756,10 @@ public final class SubprocessTestUtils {
      * @param timeout the duration to wait for the process to finish. When the timeout is reached,
      *            the subprocess is terminated forcefully. If the timeout is null, the calling
      *            thread waits for the process indefinitely.
+     * @param onStart a callback invoked immediately after the subprocess has successfully started
      */
-    private static Subprocess process(List<String> command, Map<String, String> env, File workingDir, Duration timeout) throws IOException, InterruptedException {
+    private static Subprocess process(List<String> command, Map<String, String> env, File workingDir,
+                    Duration timeout, Consumer<ProcessHandle> onStart) throws IOException, InterruptedException {
         Path argfile = makeArgfile(command);
         ProcessBuilder processBuilder = new ProcessBuilder(argfile == null ? command : List.of(command.get(0), "@" + argfile));
         if (workingDir != null) {
@@ -744,6 +771,9 @@ public final class SubprocessTestUtils {
         }
         processBuilder.redirectErrorStream(true);
         Process process = processBuilder.start();
+        if (onStart != null) {
+            onStart.accept(process.toHandle());
+        }
         BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
         List<String> output = new ArrayList<>();
         if (timeout == null) {
@@ -1160,6 +1190,36 @@ public final class SubprocessTestUtils {
 
                 ch = in.read();
             }
+        }
+    }
+
+    private static final class OptimizedRuntimeOptionsFilter implements Predicate<String> {
+
+        private final Set<String> toRemove;
+
+        OptimizedRuntimeOptionsFilter() {
+            Set<String> optionNames;
+            try {
+                Class<?> options = Class.forName("com.oracle.truffle.runtime.OptimizedRuntimeOptions");
+                OptionDescriptors descriptors = (OptionDescriptors) ReflectionUtils.invokeStatic(options, "getDescriptors");
+                optionNames = new HashSet<>();
+                for (OptionDescriptor descriptor : descriptors) {
+                    optionNames.add(String.format("-Dpolyglot.%s", descriptor.getName()));
+                }
+            } catch (ClassNotFoundException e) {
+                optionNames = Set.of();
+            }
+            toRemove = optionNames;
+        }
+
+        @Override
+        public boolean test(String s) {
+            int index = s.lastIndexOf("=");
+            if (index > 0) {
+                String key = s.substring(0, index);
+                return !toRemove.contains(key);
+            }
+            return true;
         }
     }
 }

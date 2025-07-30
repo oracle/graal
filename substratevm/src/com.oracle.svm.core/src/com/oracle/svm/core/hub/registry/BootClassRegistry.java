@@ -69,6 +69,9 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
         // Only looking into the jimage for now. There could be appended elements.
         // see GraalServices.getSavedProperty("jdk.boot.class.path.append")
         String pkg = packageFromType(type);
+        if (pkg == null) {
+            return null;
+        }
         try {
             String moduleName = ClassRegistries.getBootModuleForPackage(pkg);
             if (moduleName == null) {

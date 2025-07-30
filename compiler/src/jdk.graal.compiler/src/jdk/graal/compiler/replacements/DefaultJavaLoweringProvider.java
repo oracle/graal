@@ -80,6 +80,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
@@ -89,6 +90,7 @@ import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
+import jdk.graal.compiler.nodes.calc.OrNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
 import jdk.graal.compiler.nodes.calc.RightShiftNode;
 import jdk.graal.compiler.nodes.calc.SignExtendNode;
@@ -834,7 +836,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         } else {
             memoryRead.setGuard(guard);
         }
-        ValueNode readValue = performBooleanCoercionIfNecessary(implicitLoadConvert(graph, readKind, memoryRead, compressible), readKind);
+        ValueNode readValue = implicitUnsafeLoadConvert(graph, readKind, memoryRead, compressible);
         load.replaceAtUsages(readValue);
         return memoryRead;
     }
@@ -849,18 +851,18 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         // An unsafe read must not float otherwise it may float above
         // a test guaranteeing the read is safe.
         memoryRead.setForceFixed(true);
-        ValueNode readValue = performBooleanCoercionIfNecessary(implicitLoadConvert(graph, readKind, memoryRead, false), readKind);
+        ValueNode readValue = implicitUnsafeLoadConvert(graph, readKind, memoryRead, false);
         load.replaceAtUsages(readValue);
         graph.replaceFixedWithFixed(load, memoryRead);
     }
 
-    private static ValueNode performBooleanCoercionIfNecessary(ValueNode readValue, JavaKind readKind) {
-        if (readKind == JavaKind.Boolean) {
-            StructuredGraph graph = readValue.graph();
-            IntegerEqualsNode eq = graph.addOrUnique(new IntegerEqualsNode(readValue, ConstantNode.forInt(0, graph)));
-            return graph.addOrUnique(new ConditionalNode(eq, ConstantNode.forBoolean(false, graph), ConstantNode.forBoolean(true, graph)));
-        }
-        return readValue;
+    /**
+     * Coerce integer values into a boolean 0 or 1 to match Java semantics. The returned nodes have
+     * not been added to the graph.
+     */
+    private static ValueNode performBooleanCoercion(ValueNode readValue) {
+        IntegerEqualsNode eq = new IntegerEqualsNode(readValue, ConstantNode.forInt(0));
+        return new ConditionalNode(eq, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true));
     }
 
     protected void lowerUnsafeStoreNode(RawStoreNode store) {
@@ -1273,45 +1275,66 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         return stamp;
     }
 
-    public final ValueNode implicitLoadConvertWithBooleanCoercionIfNecessary(StructuredGraph graph, JavaKind kind, ValueNode value) {
-        return performBooleanCoercionIfNecessary(implicitLoadConvert(graph, kind, value), kind);
+    protected abstract ValueNode newCompressionNode(CompressionOp op, ValueNode value);
+
+    /**
+     * Perform sign or zero extensions for subword types, and convert potentially unsafe 8 bit
+     * boolean values into 0 or 1. The nodes have already been added to the graph.
+     */
+    public final ValueNode implicitUnsafeLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value, boolean compressible) {
+        if (compressible && kind.isObject()) {
+            return implicitLoadConvert(graph, kind, value, compressible);
+        } else {
+            ValueNode ret = implicitUnsafePrimitiveLoadConvert(kind, value);
+            if (!ret.isAlive()) {
+                ret = graph.addOrUniqueWithInputs(ret);
+            }
+            return ret;
+        }
     }
 
     public final ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value) {
         return implicitLoadConvert(graph, kind, value, true);
     }
 
-    public ValueNode implicitLoadConvert(JavaKind kind, ValueNode value) {
-        return implicitLoadConvert(kind, value, true);
-    }
-
+    /**
+     * Perform sign or zero extensions for subword types and add the nodes to the graph.
+     */
     protected final ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value, boolean compressible) {
-        ValueNode ret = implicitLoadConvert(kind, value, compressible);
+        ValueNode ret;
+        if (useCompressedOops(kind, compressible)) {
+            ret = newCompressionNode(CompressionOp.Uncompress, value);
+        } else {
+            ret = implicitPrimitiveLoadConvert(kind, value);
+        }
+
         if (!ret.isAlive()) {
-            ret = graph.addOrUnique(ret);
+            ret = graph.addOrUniqueWithInputs(ret);
         }
         return ret;
     }
 
-    protected abstract ValueNode newCompressionNode(CompressionOp op, ValueNode value);
+    /**
+     * Perform sign or zero extensions for subword types. The caller is expected to add an resulting
+     * nodes to the graph.
+     */
+    public static ValueNode implicitPrimitiveLoadConvert(JavaKind kind, ValueNode value) {
+        return switch (kind) {
+            case Byte, Short -> new SignExtendNode(value, 32);
+            case Boolean, Char -> new ZeroExtendNode(value, 32);
+            default -> value;
+        };
+    }
 
     /**
-     * @param compressible whether the convert should be compressible
+     * Perform sign or zero extensions for subword types, and convert potentially unsafe 8 bit
+     * boolean values into 0 or 1. The caller is expected to add an resulting * nodes to the graph.
      */
-    protected ValueNode implicitLoadConvert(JavaKind kind, ValueNode value, boolean compressible) {
-        if (useCompressedOops(kind, compressible)) {
-            return newCompressionNode(CompressionOp.Uncompress, value);
+    public static ValueNode implicitUnsafePrimitiveLoadConvert(JavaKind kind, ValueNode value) {
+        if (kind == JavaKind.Boolean) {
+            return performBooleanCoercion(new ZeroExtendNode(value, 32));
         }
-
-        switch (kind) {
-            case Byte:
-            case Short:
-                return new SignExtendNode(value, 32);
-            case Boolean:
-            case Char:
-                return new ZeroExtendNode(value, 32);
-        }
-        return value;
+        return implicitPrimitiveLoadConvert(kind, value);
     }
 
     public ValueNode arrayImplicitStoreConvert(StructuredGraph graph,
@@ -1368,15 +1391,60 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
             return newCompressionNode(CompressionOp.Compress, value);
         }
 
-        switch (kind) {
-            case Boolean:
-            case Byte:
-                return new NarrowNode(value, 8);
-            case Char:
-            case Short:
-                return new NarrowNode(value, 16);
-        }
-        return value;
+        return implicitPrimitiveStoreConvert(kind, value);
+    }
+
+    public static ValueNode implicitPrimitiveStoreConvert(JavaKind kind, ValueNode value) {
+        return switch (kind) {
+            case Boolean, Byte -> new NarrowNode(value, 8);
+            case Char, Short -> new NarrowNode(value, 16);
+            default -> value;
+        };
+    }
+
+    /**
+     * Simulate a primitive store.
+     *
+     * So for code like:
+     *
+     * <pre>
+     * static class Data {
+     *     int value = 0xF0F0F0F0;
+     * }
+     *
+     * Data data = new Data();
+     * UNSAFE.putByte(data, FIELD_OFFSET, 0x0F);
+     * </pre>
+     *
+     * The field value of the data object is 0xF0F0F0F0 before the unsafe write operation and
+     * 0xF0F0F00F after the unsafe write operation. We are not allowed to touch the upper 3 bytes.
+     * To simulate the write operation we extract the appropriate bytes and combine them.
+     * <p>
+     * Example for a byte operation, currently stored value 0xF0F0F0F0 and value to store
+     * 0x0000000F:
+     *
+     * <pre>
+     * lowerBytesMask   = 00000000 00000000 00000000 11111111
+     * upperBytesMask   = 11111111 11111111 11111111 00000000
+     * currentStored    = 11110000 11110000 11110000 11110000
+     * valueToStore     = 00000000 00000000 00000000 00001111
+     * newValue         = (currentStored & upperBytesMask) | (valueToStore & lowerBytesMask)
+     *                  = 11110000 11110000 11110000 00001111
+     * </pre>
+     *
+     */
+    public static ValueNode simulatePrimitiveStore(JavaKind kind, ValueNode currentValue, ValueNode valueToStore) {
+        // compute the masks
+        int bitCount = kind.getByteCount() * 8;
+        int lowerBytesMask = (int) CodeUtil.mask(bitCount);
+        int upperBytesMask = ~lowerBytesMask;
+
+        // extract the upper bytes from the current entry
+        ValueNode upperBytes = AndNode.create(ConstantNode.forInt(upperBytesMask), currentValue, NodeView.DEFAULT);
+        // extract the lower bytes from the value
+        ValueNode lowerBytes = AndNode.create(ConstantNode.forInt(lowerBytesMask), valueToStore, NodeView.DEFAULT);
+        // combine both
+        return OrNode.create(upperBytes, lowerBytes, NodeView.DEFAULT);
     }
 
     protected abstract ValueNode createReadHub(StructuredGraph graph, ValueNode object, LoweringTool tool);

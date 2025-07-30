@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,7 @@ final class StackTraceElementMarshaller implements BinaryMarshaller<StackTraceEl
     private static final int STACK_TRACE_ELEMENT_SIZE_ESTIMATE = 100;
 
     @Override
-    public StackTraceElement read(BinaryInput in) {
+    public StackTraceElement read(Isolate<?> isolate, BinaryInput in) {
         String className = in.readUTF();
         String methodName = in.readUTF();
         String fileName = in.readUTF();

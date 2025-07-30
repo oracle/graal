@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,20 +40,19 @@
  */
 package org.graalvm.nativebridge.processor.test.common;
 
-import org.graalvm.jniutils.HSObject;
-import org.graalvm.jniutils.JNI.JNIEnv;
-import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.nativebridge.ForeignObject;
+import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
 import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
+import org.graalvm.nativebridge.GenerateNativeToNativeBridge;
+import org.graalvm.nativebridge.GenerateProcessToProcessBridge;
 import org.graalvm.nativebridge.Idempotent;
 import org.graalvm.nativebridge.processor.test.ExpectError;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
-@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class InvalidMethod3Test extends HSObject implements InvalidService {
-
-    InvalidMethod3Test(JNIEnv env, JObject handle) {
-        super(env, handle);
-    }
+@GenerateProcessToProcessBridge(factory = ForeignServiceFactory.class)
+@GenerateHotSpotToNativeBridge(factory = ForeignServiceFactory.class)
+@GenerateNativeToNativeBridge(factory = ForeignServiceFactory.class)
+@GenerateNativeToHotSpotBridge(factory = ForeignServiceFactory.class)
+abstract class InvalidMethod3Test implements InvalidService, ForeignObject {
 
     @Idempotent
     @ExpectError("A method with a cached return value must have a non-void return type.%n" +

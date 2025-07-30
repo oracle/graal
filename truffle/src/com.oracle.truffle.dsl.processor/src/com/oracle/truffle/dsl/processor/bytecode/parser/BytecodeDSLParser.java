@@ -69,6 +69,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLCodeGenerator;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLBuiltins;
@@ -244,6 +245,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.variadicStackLimit = ElementUtils.getAnnotationValue(String.class, generateBytecodeMirror, "variadicStackLimit", true);
         boolean enableBytecodeDebugListener = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableBytecodeDebugListener");
         model.bytecodeDebugListener = (!enableBytecodeDebugListener || types.BytecodeDebugListener == null) ? false : ElementUtils.isAssignable(typeElement.asType(), types.BytecodeDebugListener);
+        model.additionalAssertions = TruffleProcessorOptions.additionalAssertions(processingEnv) ||
+                        ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "additionalAssertions", true);
 
         BytecodeDSLBuiltins.addBuiltins(model, types, context);
 
@@ -314,7 +317,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                                                 getSimpleName(types.ProvidedTags)));
             } else if (model.enableRootTagging && model.getProvidedRootTag() == null) {
                 model.addError(generateBytecodeMirror, taginstrumentationValue,
-                                "Tag instrumentation uses implicit root tagging, but the RootTag was not provded by the language class '%s'. " +
+                                "Tag instrumentation uses implicit root tagging, but the RootTag was not provided by the language class '%s'. " +
                                                 "Specify the tag using @%s(%s.class) on the language class or explicitly disable root tagging using @%s(.., enableRootTagging=false) to resolve this.",
                                 getQualifiedName(model.languageClass),
                                 getSimpleName(types.ProvidedTags),
@@ -323,7 +326,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 model.enableRootTagging = false;
             } else if (model.enableRootBodyTagging && model.getProvidedRootBodyTag() == null) {
                 model.addError(generateBytecodeMirror, taginstrumentationValue,
-                                "Tag instrumentation uses implicit root body tagging, but the RootTag was not provded by the language class '%s'. " +
+                                "Tag instrumentation uses implicit root body tagging, but the RootTag was not provided by the language class '%s'. " +
                                                 "Specify the tag using @%s(%s.class) on the language class or explicitly disable root tagging using @%s(.., enableRootBodyTagging=false) to resolve this.",
                                 getQualifiedName(model.languageClass),
                                 getSimpleName(types.ProvidedTags),
@@ -601,9 +604,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         }
 
         if (!customOperationDeclared) {
-            model.addError("At least one operation must be declared using @%s, @%s, or @%s.",
-                            getSimpleName(types.Operation), getSimpleName(types.OperationProxy),
-                            getSimpleName(types.ShortCircuitOperation));
+            model.addWarning("No custom operations were declared. Custom operations can be declared using @%s, @%s, or @%s.",
+                            getSimpleName(types.Operation), getSimpleName(types.OperationProxy), getSimpleName(types.ShortCircuitOperation));
         }
 
         // error sync

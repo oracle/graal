@@ -50,11 +50,13 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class)),
-                @Variant(suffix = "Checked", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, allowUnsafe = false)),
-                @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableUncachedInterpreter = true)),
-                @Variant(suffix = "BoxingEliminated", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, boxingEliminationTypes = {int.class, boolean.class})),
-                @Variant(suffix = "All", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableUncachedInterpreter = true, boxingEliminationTypes = {
+                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableTagInstrumentation = true, enableYield = true)),
+                @Variant(suffix = "Checked", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableTagInstrumentation = true, enableYield = true, allowUnsafe = false)),
+                @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true)),
+                @Variant(suffix = "BoxingEliminated", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableTagInstrumentation = true, enableYield = true, boxingEliminationTypes = {
+                                int.class,
+                                boolean.class})),
+                @Variant(suffix = "All", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true, boxingEliminationTypes = {
                                 int.class, boolean.class}))
 })
 public abstract class BytecodeBenchmarkRootNode extends RootNode implements BytecodeRootNode {
@@ -86,4 +88,5 @@ public abstract class BytecodeBenchmarkRootNode extends RootNode implements Byte
             return left < right;
         }
     }
+
 }

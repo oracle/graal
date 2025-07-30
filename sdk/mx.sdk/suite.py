@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.49.0",
+  "mxversion": "7.58.6",
   "name" : "sdk",
-  "version" : "25.0.0",
+  "version" : "26.0.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -135,7 +135,6 @@ suite = {
         "version": "3.28.0",
       },
     },
-
     "JLINE_TERMINAL": {
       "moduleName": "org.jline.terminal",
       "digest": "sha512:abe0ad0303e5eb81b549301dfdcf34aace14495240816f14302d193296c7a8be31488e468d18a215976b8e4e8fa29f72d830e492eed7d4a6f9f04c81a6e36c3c",
@@ -146,7 +145,6 @@ suite = {
         "version": "3.28.0",
       },
     },
-
     "JLINE_BUILTINS": {
       "moduleName": "org.jline.builtins",
       "digest": "sha512:189d893405170a3edc624a6b822a8a394a2f8b623c23aed9e015d4b018b232307408b6038322719155fc7da7e9c04a9bb0a76c8521f49dd86a5f84ea3880acb6",
@@ -154,6 +152,16 @@ suite = {
       "maven": {
         "groupId": "org.jline",
         "artifactId": "jline-builtins",
+        "version": "3.28.0",
+      },
+    },
+    "JLINE_TERMINAL_FFM": {
+      "moduleName": "org.jline.terminal.ffm",
+      "digest": "sha512:e5839b04a2fd6119a11c6bc16e05203af88512039d85551b19d6e87c358a325ed5eb7051022a225e2641357c99d9c4121817a4795c50cf79a13b6b9d537cee96",
+      "sourceDigest": "sha512:c651ae99fe1f453d9b3d22913e2fb003c11ff9c43621bedd7508fa322b49f15c3d93cf146c00f2e1f9dd939f3ca9009a52ee407b63fa3f3d4f5c997a1efba139",
+      "maven": {
+        "groupId": "org.jline",
+        "artifactId": "jline-terminal-ffm",
         "version": "3.28.0",
       },
     },
@@ -220,12 +228,12 @@ suite = {
       "os_arch": {
         "linux": {
           "amd64": {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/toolchain-gcc-musl/toolchain-gcc-10.2.1-musl-1.2.2-linux-amd64.tar.gz"],
-            "digest" : "sha512:8f49b04d4826c560c791e5223f504046fa0daa6b79e581ea1781a2d01f4efe2de4a0fb6771dc1b07318ab0109a61ea3b04255eadf36191a76687f873931eb283",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/toolchain-gcc-musl/toolchain-gcc-10.3.0-zlib-1.2.13-musl-1.2.5.1-linux-amd64.tar.gz"],
+            "digest" : "sha512:a4be5d7f0a0857e30992079b39b0b7a00b80b4f255a0dddf8e4208d53c0a2a79ad26dbcb3e7b4018bfc1ef5751cf2bf7180c64d6b13dd4c80ed2dd0335945736",
           },
           "aarch64": {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/toolchain-gcc-musl/toolchain-gcc-10.2.1-musl-1.2.2-linux-aarch64.tar.gz"],
-            "digest" : "sha512:f5545f6b36c2306861c026895d437a57357515e8dfefb0e8419413f61b146f42dc072f8a8a7a9f4885d6448396d656f59264e61e3f5eedd278486228aa58904e",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/toolchain-gcc-musl/toolchain-gcc-10.3.0-zlib-1.2.13-musl-1.2.5.1-linux-aarch64.tar.gz"],
+            "digest" : "sha512:7f645bceaad864e6a0cf3289ca234e76819f7bfc06abf0c82b59e51e152191235b65c3b7f4e9baa2f2c2982459ffec2c284d99cc28bf7923eb9022eef03ad72d",
           },
           "<others>": {
             "optional": True,
@@ -456,6 +464,16 @@ suite = {
       "javaCompliance" : "21+"
     },
 
+    "org.graalvm.webimage.api": {
+        "subDir": "src",
+        "sourceDirs": ["src"],
+        "dependencies": [],
+        "javaCompliance": "21+",
+        "spotbugs": "true",
+        "workingSets": "SDK",
+        "checkstyle": "org.graalvm.word",
+    },
+
     "com.oracle.svm.core.annotate" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -622,6 +640,51 @@ suite = {
       "testProject" : True,
       "graalCompilerSourceEdition": "ignore",
     },
+    "org.graalvm.nativebridge.benchmark": {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "NATIVEBRIDGE",
+      ],
+      "annotationProcessors" : [
+        "NATIVEBRIDGE_PROCESSOR",
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "17+",
+      "workingSets" : "Graal,Test",
+      "jacoco" : "exclude",
+      "testProject" : True,
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "org.graalvm.nativebridge.launcher": {
+      "subDir": "src",
+      "native": "executable",
+      "deliverable": "launcher",
+      "use_jdk_headers": True,
+      "buildDependencies": [
+      ],
+      "os_arch": {
+        "windows": {
+          "<others>": {
+            "cflags": ["/std:c++17"]
+          }
+        },
+        "linux": {
+          "<others>": {
+            "toolchain": "sdk:LLVM_NINJA_TOOLCHAIN",
+            "cflags": ["-std=c++17", "-g", "-Wall", "-Werror", "-D_GNU_SOURCE", "-stdlib=libc++"],
+            "ldlibs": ["-ldl", "-pthread", "-stdlib=libc++", "-static-libstdc++", "-l:libc++abi.a"],
+          },
+        },
+        "darwin": {
+          "<others>": {
+            "cflags": ["-std=c++17", "-g", "-Wall", "-Werror", "-pthread", "-ObjC++"],
+            "ldlibs": ["-ldl", "-pthread", "-framework", "Foundation"],
+          },
+        },
+      },
+      "graalCompilerSourceEdition": "ignore",
+    },
     "org.graalvm.toolchain.test" : {
       "class" : "ToolchainTestProject",
       "subDir" : "src",
@@ -629,13 +692,16 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
     "org.graalvm.shadowed.org.jline": {
-      # shaded JLINE_*
+      # shaded custom JLine bundle
       "subDir": "src",
       "sourceDirs": ["src"],
       "javaCompliance": "17+",
       "spotbugs": "false",
       "requires": [
         "java.logging",
+      ],
+      "dependencies": [
+        "sdk:NATIVEIMAGE",
       ],
       "shadedDependencies": [
         "sdk:JLINE_READER",
@@ -677,6 +743,11 @@ suite = {
                     String getDetectedCharset() { return null; }
                 }""",
           },
+          # Adds calls to initialize logging. This is a convenient way to enable JLine logging
+          # in order to verify which terminal provider is used at runtime.
+          "org/jline/terminal/TerminalBuilder.java": {
+            "private TerminalBuilder\\(\\) {}": "private TerminalBuilder() { org.graalvm.shadowed.org.jline.terminal.JLineLoggingSupport.init(); }"
+          },
           # Remove dependency on JLine's native library (would require shading and deployment of the library)
           # The native library is a fallback for functionality that is otherwise done via accessing
           # JDK internals via reflection.
@@ -700,16 +771,24 @@ suite = {
                 import org.graalvm.shadowed.org.jline.terminal.Terminal;
                 import org.graalvm.shadowed.org.jline.terminal.impl.exec.ExecTerminalProvider;
               """,
+            # \\x7b is to avoid the opening curly brace, which confuses the suite.py parser.
+            # The commented out closing curly brace at the end is to match the opening
+            # brace, again, to make the suite.py parser happy.
             "static TerminalProvider load\\(String name\\) throws IOException \\x7b":
               """
               static TerminalProvider load(String name) throws IOException {
                   switch (name) {
                       case \"exec\":
                           return new ExecTerminalProvider();
+                      case \"ffm\":
+                          TerminalProvider p = org.graalvm.shadowed.org.jline.terminal.impl.ffm.FFMTerminalProviderLoader.load();
+                          if (p != null) {
+                              return p;
+                          }
                       default:
-                        if (Boolean.TRUE) { // to avoid unreachable code
-                            throw new IOException(\"Unable to find terminal provider \" + name);
-                        }
+                          if (Boolean.TRUE) { // to avoid unreachable code below the switch
+                              throw new IOException(\"Unable to find terminal provider \" + name);
+                          }
                   }
                   // }
               """,
@@ -717,6 +796,48 @@ suite = {
         },
       },
       "description": "JLINE shaded library.",
+      "allowsJavadocWarnings": True,
+      "noMavenJavadoc": True,
+      "javac.lint.overrides": 'none',
+      "jacoco": "exclude",
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "org.graalvm.shadowed.org.jline.jdk22": {
+      # Shaded JLINE_TERMINAL_FFM as jdk22 overlay for the shaded JLine bundle
+      # Needs --enable-native-access=org.graalvm.shadowed.jline
+      "subDir": "src",
+      "sourceDirs": ["src"],
+      "javaCompliance": "22+",
+      "spotbugs": "false",
+      "requires": [
+        "java.logging",
+      ],
+      "dependencies": [
+        "org.graalvm.shadowed.org.jline",
+        "sdk:NATIVEIMAGE",
+      ],
+      "shadedDependencies": [
+        "sdk:JLINE_TERMINAL_FFM",
+      ],
+      "class": "ShadedLibraryProject",
+      "shade": {
+        "packages": {
+          "org.jline": "org.graalvm.shadowed.org.jline",
+        },
+        "exclude": [
+          "META-INF/MANIFEST.MF",
+          # we patch the JLine's service loading mechanism with
+          # hard-coded set of supported services, see one of the patches below
+          "META-INF/services/**",
+          "META-INF/maven/**",
+          # We have our own native-image configuration (in the overlaid project)
+          "META-INF/native-image/**",
+        ],
+      },
+      "description": "JLINE FFM based Terminal service provider.",
+      "overlayTarget" : "org.graalvm.shadowed.org.jline",
+      "multiReleaseJarVersion" : "22",
+      "ignoreSrcGenForOverlayMap": "true",
       "allowsJavadocWarnings": True,
       "noMavenJavadoc": True,
       "javac.lint.overrides": 'none',
@@ -906,6 +1027,25 @@ suite = {
       },
     },
 
+    "WEBIMAGE_PREVIEW": {
+      "subDir": "src",
+      "dependencies": [
+        "org.graalvm.webimage.api",
+      ],
+      "distDependencies": [],
+      "moduleInfo": {
+        "name": "org.graalvm.webimage.api",
+        "exports": [
+          "org.graalvm.webimage.api",
+        ],
+      },
+      "description": "The JavaScript interoperability API for GraalVM Web Image. This API is currently in preview and subject to change at any time.",
+      "maven": {
+        "artifactId": "webimage-preview",
+        "tag": ["default", "public"],
+      },
+    },
+
     "POLYGLOT_VERSION": {
       "type": "dir",
       "platformDependent": False,
@@ -1061,7 +1201,12 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
     "JLINE3": {
-      # shaded JLINE_*
+      # Custom shaded JLine bundle (with FFM terminal provider on JDK22+)
+      # One must pass --enable-native-access=org.graalvm.shadowed.jline, otherwise
+      # JLine silently falls back to exec provider on POSIX, and with a warning
+      # to "Dumb" provider on Windows
+      # If desired, the FFM terminal on JDK22+ can be disabled at built time using system property:
+      # org.graalvm.shadowed.org.jline.terminal.ffm.disable=true
       "moduleInfo": {
         "name": "org.graalvm.shadowed.jline",
         "requires": [
@@ -1086,6 +1231,10 @@ suite = {
       "spotbugs": "false",
       "dependencies": [
         "org.graalvm.shadowed.org.jline",
+      ],
+      "distDependencies": [
+         "sdk:NATIVEIMAGE",
+         "sdk:POLYGLOT",
       ],
       "description": "JLINE3 shaded module.",
       "allowsJavadocWarnings": True,
@@ -1192,6 +1341,24 @@ suite = {
       "distDependencies" : [],
       "maven": False,
     },
+    "NATIVEBRIDGE_LAUNCHER_RESOURCES": {
+      "type": "dir",
+      "platformDependent": True,
+      "platforms": [
+          "linux-amd64",
+          "linux-aarch64",
+          "darwin-amd64",
+          "darwin-aarch64",
+          "windows-amd64",
+          "windows-aarch64",
+      ],
+      "layout": {
+        "<os>/<arch>/": "dependency:org.graalvm.nativebridge.launcher",
+      },
+      "description": "Contains a launcher for process isolated polyglot.",
+      "maven": False,
+      "graalCompilerSourceEdition": "ignore",
+    },
     "NATIVEBRIDGE_PROCESSOR_TEST" : {
       "subDir" : "src",
       "dependencies" : [
@@ -1206,6 +1373,18 @@ suite = {
           "jdk.vm.ci.services",
         ],
       },
+      "maven": False,
+      "testDistribution" : True,
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "NATIVEBRIDGE_BENCHMARK": {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.nativebridge.benchmark"
+      ],
+      "distDependencies" : [
+        "NATIVEBRIDGE"
+      ],
       "maven": False,
       "testDistribution" : True,
       "graalCompilerSourceEdition": "ignore",
@@ -1447,9 +1626,9 @@ LDFLAGS=
                 "source_type": "string",
                 "value": '''
 include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
-CC=<path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/gcc
-CXX=<path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/g++
-AR=<path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/ar
+CC=<path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/x86_64-linux-musl-gcc
+CXX=<path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/x86_64-linux-musl-g++
+AR=<path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/x86_64-linux-musl-ar
 CFLAGS=
 CXXFLAGS=
 LDFLAGS=
@@ -1467,9 +1646,9 @@ LDFLAGS=
                 "source_type": "string",
                 "value": '''
 include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
-CC=<path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/gcc
-CXX=<path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/g++
-AR=<path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/ar
+CC=<path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/aarch64-linux-musl-gcc
+CXX=<path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/aarch64-linux-musl-g++
+AR=<path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/aarch64-linux-musl-ar
 CFLAGS=
 CXXFLAGS=
 LDFLAGS=
@@ -1509,9 +1688,9 @@ LDFLAGS=
               "toolchain.cmake" : {
                 "source_type": "string",
                 "value": '''
-set(CMAKE_C_COMPILER   <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/gcc)
-set(CMAKE_CXX_COMPILER <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/g++)
-set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/ar)
+set(CMAKE_C_COMPILER   <path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/x86_64-linux-musl-gcc)
+set(CMAKE_CXX_COMPILER <path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/x86_64-linux-musl-g++)
+set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/x86_64-linux-musl-ar)
 '''
               },
             },
@@ -1524,9 +1703,9 @@ set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/ar
               "toolchain.cmake" : {
                 "source_type": "string",
                 "value": '''
-set(CMAKE_C_COMPILER   <path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/gcc)
-set(CMAKE_CXX_COMPILER <path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/g++)
-set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/ar)
+set(CMAKE_C_COMPILER   <path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/aarch64-linux-musl-gcc)
+set(CMAKE_CXX_COMPILER <path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/aarch64-linux-musl-g++)
+set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/aarch64-linux-musl-ar)
 '''
               },
             },

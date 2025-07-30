@@ -160,20 +160,22 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
         // * This makes sure .equals works
         // * It also ensures the methods have the right i/v-table indices
         Method identityMethod = m.identity();
+        boolean poisoned = m.hasPoisonPill();
         assert meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(holder) == identityMethod.getDeclaringKlass();
         StaticObject jvmciMirror = meta.jvmci.EspressoResolvedJavaMethod.allocateInstance(context);
         meta.jvmci.HIDDEN_METHOD_MIRROR.setHiddenObject(jvmciMirror, identityMethod);
-        methodConstructor.call(jvmciMirror, holder);
+        methodConstructor.call(jvmciMirror, holder, poisoned);
         return jvmciMirror;
     }
 
     static StaticObject toJVMCIMethod(Method m, StaticObject holder, Meta meta) {
         // We need to get the identity method (see above)
         Method identityMethod = m.identity();
+        boolean poisoned = m.hasPoisonPill();
         assert meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(holder) == identityMethod.getDeclaringKlass();
         StaticObject jvmciMirror = meta.jvmci.EspressoResolvedJavaMethod.allocateInstance(meta.getContext());
         meta.jvmci.HIDDEN_METHOD_MIRROR.setHiddenObject(jvmciMirror, identityMethod);
-        meta.jvmci.EspressoResolvedJavaMethod_init.invokeDirectSpecial(jvmciMirror, holder);
+        meta.jvmci.EspressoResolvedJavaMethod_init.invokeDirectSpecial(jvmciMirror, holder, poisoned);
         return jvmciMirror;
     }
 
@@ -474,5 +476,51 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
         Meta meta = context.getMeta();
         ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
         return selfKlass.getVTable().length;
+    }
+
+    @Substitution(hasReceiver = true)
+    abstract static class GetAllMethods0 extends SubstitutionNode {
+        abstract @JavaType(internalName = "[Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedJavaMethod;") StaticObject execute(StaticObject self);
+
+        @Specialization
+        static StaticObject doDefault(StaticObject self,
+                        @Bind("getContext()") EspressoContext context,
+                        @Cached("create(context.getMeta().jvmci.EspressoResolvedJavaMethod_init.getCallTarget())") DirectCallNode methodConstructor) {
+            assert context.getLanguage().isInternalJVMCIEnabled();
+            Meta meta = context.getMeta();
+
+            ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+
+            Method.MethodVersion[] declaredMethodVersions = klass.getDeclaredMethodVersions();
+            Method.MethodVersion[] mirandaMethods = klass.getMirandaMethods();
+            int resultSize = declaredMethodVersions.length;
+            if (mirandaMethods != null) {
+                for (Method.MethodVersion mirandaMethod : mirandaMethods) {
+                    if (mirandaMethod.getMethod().hasPoisonPill()) {
+                        resultSize++;
+                    }
+                }
+            }
+            StaticObject result = meta.jvmci.EspressoResolvedJavaMethod.allocateReferenceArray(resultSize);
+            StaticObject[] underlying = result.unwrap(context.getLanguage());
+            int i = 0;
+            for (Method.MethodVersion methodVersion : declaredMethodVersions) {
+                underlying[i++] = toJVMCIMethod(methodVersion.getMethod(), self, methodConstructor, context, meta);
+            }
+            if (resultSize != declaredMethodVersions.length) {
+                for (Method.MethodVersion mirandaMethod : mirandaMethods) {
+                    if (mirandaMethod.getMethod().hasPoisonPill()) {
+                        StaticObject holder;
+                        if (mirandaMethod.getDeclaringKlass() == klass) {
+                            holder = self;
+                        } else {
+                            holder = toJVMCIInstanceType(mirandaMethod.getDeclaringKlass(), meta);
+                        }
+                        underlying[i++] = toJVMCIMethod(mirandaMethod.getMethod(), holder, methodConstructor, context, meta);
+                    }
+                }
+            }
+            return result;
+        }
     }
 }

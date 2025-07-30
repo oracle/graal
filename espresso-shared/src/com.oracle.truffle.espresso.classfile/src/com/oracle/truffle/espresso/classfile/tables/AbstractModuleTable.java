@@ -25,6 +25,7 @@
 package com.oracle.truffle.espresso.classfile.tables;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
@@ -36,11 +37,11 @@ public abstract class AbstractModuleTable<M, ME extends AbstractModuleTable.Abst
     }
 
     public ME createAndAddEntry(Symbol<Name> name, String version, String location, boolean isOpen, M module) {
-        return createAndAddEntry(name, new ModuleData<>(version, location, module, isOpen));
+        return createAndAddEntry(name, new ModuleData<>(version, location, module, 0, isOpen));
     }
 
     public ME createUnnamedModuleEntry(M module) {
-        ME result = createEntry(null, new ModuleData<>(null, null, module, true));
+        ME result = createEntry(null, new ModuleData<>(null, null, module, 0, true));
         result.setCanReadAllUnnamed();
         return result;
     }
@@ -50,22 +51,36 @@ public abstract class AbstractModuleTable<M, ME extends AbstractModuleTable.Abst
         private final String location;
         private final boolean isOpen;
         private final M module;
+        private final int archivedModuleRefId;
 
-        public ModuleData(String version, String location, M module, boolean isOpen) {
+        public ModuleData(String version, String location, M module, int archivedModuleRefId, boolean isOpen) {
             this.version = version;
             this.location = location;
             this.isOpen = isOpen;
             this.module = module;
+            this.archivedModuleRefId = archivedModuleRefId;
         }
     }
 
     public abstract static class AbstractModuleEntry<M> extends EntryTable.NamedEntry {
         private final boolean isOpen;
         private M module;
+
+        public int getArchivedModuleRefId() {
+            return archivedModuleRefId;
+        }
+
+        private int archivedModuleRefId;
         private String version;
         private String location;
+
+        public boolean canReadAllUnnamed() {
+            return canReadAllUnnamed;
+        }
+
         private boolean canReadAllUnnamed;
-        private ArrayList<AbstractModuleEntry<M>> reads;
+
+        protected List<AbstractModuleEntry<M>> reads;
         private volatile boolean hasDefaultReads;
 
         protected AbstractModuleEntry(Symbol<Name> name, ModuleData<M> data) {
@@ -74,6 +89,7 @@ public abstract class AbstractModuleTable<M, ME extends AbstractModuleTable.Abst
             this.location = data.location;
             this.isOpen = data.isOpen;
             this.module = data.module;
+            this.archivedModuleRefId = data.archivedModuleRefId;
         }
 
         public void addReads(AbstractModuleEntry<M> from) {

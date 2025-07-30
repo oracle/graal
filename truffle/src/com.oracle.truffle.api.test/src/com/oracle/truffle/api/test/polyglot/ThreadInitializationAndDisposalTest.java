@@ -40,9 +40,12 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.truffle.api.test.ThreadUtils;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -106,6 +109,54 @@ public class ThreadInitializationAndDisposalTest {
         }
     }
 
+    /**
+     * A utility language used to wait for the termination of a specific thread identified by ID.
+     * <p>
+     * In the context of external isolates, the "mirror" thread created for a host thread terminates
+     * after the host thread itself. This delay introduces a race condition in tests such as
+     * {@code testDeadThreadDisposed}, which assume that once the host thread is no longer alive, it
+     * must have been finalized. This language resolves the issue by actively waiting for the
+     * "mirror" thread to terminate before continuing.
+     */
+    @TruffleLanguage.Registration
+    static final class WaitForThreadTermination extends AbstractExecutableTestLanguage {
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            long threadId = (long) contextArguments[0];
+            long timeOutMillis = (long) contextArguments[1];
+            Thread thread = findThread(threadId);
+            if (thread == null || !thread.isAlive()) {
+                return true;
+            }
+            thread.join(timeOutMillis);
+            return !thread.isAlive();
+        }
+
+        private static Thread findThread(long threadId) {
+            for (Thread thread : ThreadUtils.getAllThreads()) {
+                if (thread.threadId() == threadId) {
+                    return thread;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Waits for the thread identified by {@code threadId} to terminate within the given
+         * timeout. This call is executed in a separate {@link Context} to avoid affecting the
+         * currently running test.
+         *
+         * @return {@code true} if the thread terminated within the timeout, {@code false} otherwise
+         */
+        static boolean doWait(long threadId, Duration timeOut, Engine engine) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                return AbstractExecutableTestLanguage.evalTestLanguage(context, WaitForThreadTermination.class, "", threadId, timeOut.toMillis()).asBoolean();
+            }
+        }
+    }
+
     @Test
     public void testDeadThreadDisposed() throws InterruptedException {
         /*
@@ -113,16 +164,19 @@ public class ThreadInitializationAndDisposalTest {
          * enter on the main thread to occur after the separate thread is joined, so that it causes
          * the separate thread's disposal.
          */
-        try (Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.UsePreInitializedContext", "false").build()) {
-            AtomicLong threadId = new AtomicLong();
-            Thread t = new Thread(() -> threadId.set(AbstractExecutableTestLanguage.evalTestLanguage(context, DeadThreadDisposedTestLanguage.class, "").asLong()));
-            t.start();
-            t.join();
-            Assert.assertFalse(t.isAlive());
-            long mainThreadId = AbstractExecutableTestLanguage.evalTestLanguage(context, DeadThreadDisposedTestLanguage.class, "").asLong();
-            Assert.assertEquals(threadId.get() + "," + mainThreadId, context.getBindings(DeadThreadDisposedTestLanguage.ID).getMember("initialized").asString());
-            Assert.assertEquals(String.valueOf(threadId.get()), context.getBindings(DeadThreadDisposedTestLanguage.ID).getMember("finalized").asString());
-            Assert.assertEquals(String.valueOf(threadId.get()), context.getBindings(DeadThreadDisposedTestLanguage.ID).getMember("disposed").asString());
+        try (Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("engine.UsePreInitializedContext", "false").build()) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                AtomicLong threadId = new AtomicLong();
+                Thread t = new Thread(() -> threadId.set(AbstractExecutableTestLanguage.evalTestLanguage(context, DeadThreadDisposedTestLanguage.class, "").asLong()));
+                t.start();
+                t.join();
+                Assert.assertFalse(t.isAlive());
+                Assert.assertTrue(WaitForThreadTermination.doWait(threadId.get(), Duration.ofSeconds(10), engine));
+                long mainThreadId = AbstractExecutableTestLanguage.evalTestLanguage(context, DeadThreadDisposedTestLanguage.class, "").asLong();
+                Assert.assertEquals(threadId.get() + "," + mainThreadId, context.getBindings(DeadThreadDisposedTestLanguage.ID).getMember("initialized").asString());
+                Assert.assertEquals(String.valueOf(threadId.get()), context.getBindings(DeadThreadDisposedTestLanguage.ID).getMember("finalized").asString());
+                Assert.assertEquals(String.valueOf(threadId.get()), context.getBindings(DeadThreadDisposedTestLanguage.ID).getMember("disposed").asString());
+            }
         }
     }
 }

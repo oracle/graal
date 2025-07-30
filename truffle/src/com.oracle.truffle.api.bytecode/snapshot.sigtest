@@ -184,6 +184,7 @@ hfds parser
 
 CLSS public final com.oracle.truffle.api.bytecode.BytecodeSupport
 innr public final static CloneReferenceList
+innr public final static ConstantsBuffer
 supr java.lang.Object
 
 CLSS public final static com.oracle.truffle.api.bytecode.BytecodeSupport$CloneReferenceList<%0 extends java.lang.Object>
@@ -193,6 +194,17 @@ meth public void add({com.oracle.truffle.api.bytecode.BytecodeSupport$CloneRefer
 meth public void forEach(java.util.function.Consumer<{com.oracle.truffle.api.bytecode.BytecodeSupport$CloneReferenceList%0}>)
 supr java.lang.Object
 hfds references,size
+
+CLSS public final static com.oracle.truffle.api.bytecode.BytecodeSupport$ConstantsBuffer
+ outer com.oracle.truffle.api.bytecode.BytecodeSupport
+cons public init()
+meth public int add(java.lang.Object)
+meth public int addNull()
+meth public java.lang.Object[] create()
+meth public java.lang.Object[] materialize()
+meth public void clear()
+supr java.lang.Object
+hfds EMPTY,EMPTY_ARRAY,HASH_THRESHOLD,INITIAL_CAPACITY,MAX_CAPACITY,constants,keys,maxSize,size,values
 
 CLSS public final !enum com.oracle.truffle.api.bytecode.BytecodeTier
 fld public final static com.oracle.truffle.api.bytecode.BytecodeTier CACHED
@@ -289,6 +301,7 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.Gener
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean additionalAssertions()
 meth public abstract !hasdefault boolean allowUnsafe()
 meth public abstract !hasdefault boolean enableBlockScoping()
 meth public abstract !hasdefault boolean enableBytecodeDebugListener()

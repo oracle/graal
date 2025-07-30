@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,11 +46,11 @@ final class DefaultThrowableMarshaller implements BinaryMarshaller<Throwable> {
     private final DefaultStackTraceMarshaller stackTraceMarshaller = DefaultStackTraceMarshaller.INSTANCE;
 
     @Override
-    public Throwable read(BinaryInput in) {
+    public Throwable read(Isolate<?> isolate, BinaryInput in) {
         String foreignExceptionClassName = in.readUTF();
         String foreignExceptionMessage = (String) in.readTypedValue();
-        StackTraceElement[] foreignExceptionStack = stackTraceMarshaller.read(in);
-        return new MarshalledException(foreignExceptionClassName, foreignExceptionMessage, ForeignException.mergeStackTrace(foreignExceptionStack));
+        StackTraceElement[] foreignExceptionStack = stackTraceMarshaller.read(isolate, in);
+        return new MarshalledException(foreignExceptionClassName, foreignExceptionMessage, ForeignException.mergeStackTrace(isolate, foreignExceptionStack));
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,8 +47,6 @@ import jdk.graal.compiler.graph.Graph.Mark;
 import jdk.graal.compiler.graph.Graph.NodeEventListener;
 import jdk.graal.compiler.graph.Graph.NodeEventScope;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.Node.IndirectInputChangedCanonicalization;
-import jdk.graal.compiler.graph.Node.InputsChangedCanonicalization;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeFlood;
 import jdk.graal.compiler.graph.NodeWorkList;
@@ -318,29 +316,37 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             }
 
             @Override
+            public void controlFlowChanged(Node node) {
+                handleWithEdges(node);
+            }
+
+            @Override
             public void inputChanged(Node node) {
-                tool.workList.add(node);
-                if (node instanceof IndirectInputChangedCanonicalization) {
-                    for (Node usage : node.usages()) {
-                        tool.workList.add(usage);
-                    }
-                }
-                if (node instanceof InputsChangedCanonicalization) {
-                    for (Node input : node.inputs()) {
-                        tool.workList.add(input);
-                    }
-                }
-                if (node instanceof AbstractBeginNode) {
-                    AbstractBeginNode abstractBeginNode = (AbstractBeginNode) node;
-                    if (abstractBeginNode.predecessor() != null) {
-                        tool.workList.add(abstractBeginNode.predecessor());
-                    }
-                }
+                handleWithEdges(node);
             }
 
             @Override
             public void usagesDroppedToZero(Node node) {
                 tool.workList.add(node);
+            }
+
+            private void handleWithEdges(Node node) {
+                tool.workList.add(node);
+                if (node instanceof Node.IndirectInputChangedCanonicalization) {
+                    for (Node usage : node.usages()) {
+                        tool.workList.add(usage);
+                    }
+                }
+                if (node instanceof Node.InputsChangedCanonicalization) {
+                    for (Node input : node.inputs()) {
+                        tool.workList.add(input);
+                    }
+                }
+                if (node instanceof AbstractBeginNode abstractBeginNode) {
+                    if (abstractBeginNode.predecessor() != null) {
+                        tool.workList.add(abstractBeginNode.predecessor());
+                    }
+                }
             }
         };
 
@@ -837,11 +843,6 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         @Override
         public Integer smallestCompareWidth() {
             return context.getLowerer().smallestCompareWidth();
-        }
-
-        @Override
-        public boolean supportsRounding() {
-            return context.getLowerer().supportsRounding();
         }
 
         @Override

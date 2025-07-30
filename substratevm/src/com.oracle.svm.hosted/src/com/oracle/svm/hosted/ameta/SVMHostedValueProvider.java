@@ -38,6 +38,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.MethodOffset;
+import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
@@ -100,7 +101,7 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
     }
 
     /**
-     * {@link #forObject} replaces patched words such as relocatable pointers with
+     * {@link #forObject} replaces patched words such as {@link MethodRef} with
      * {@link PatchedWordConstant}, and regular {@link WordBase} values with
      * {@link PrimitiveConstant}. No other {@link WordBase} values can be reachable at this point.
      */
@@ -157,9 +158,8 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
     /**
      * Intercept {@link WordBase} constants and:
      * <ul>
-     * <li>replace {@link RelocatedPointer} and {@link MethodOffset} constants with
-     * {@link PatchedWordConstant} to easily and reliably distinguish them from other
-     * {@link WordBase} values during image build.</li>
+     * <li>replace {@link MethodRef} constants with {@link PatchedWordConstant} to easily and
+     * reliably distinguish them from other {@link WordBase} values during image build.</li>
      * <li>replace regular {@link WordBase} values with corresponding integer kind
      * {@link PrimitiveConstant}.</li>
      * </ul>

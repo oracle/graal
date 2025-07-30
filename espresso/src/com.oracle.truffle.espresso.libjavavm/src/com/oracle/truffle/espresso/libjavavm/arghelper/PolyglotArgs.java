@@ -148,7 +148,7 @@ class PolyglotArgs {
 
     private OptionDescriptor findOptionDescriptor(String group, String key) {
         OptionDescriptors descriptors = null;
-        if (group.equals("engine")) {
+        if ("engine".equals(group) || "compiler".equals(group)) {
             descriptors = getTempEngine().getOptions();
         } else {
             Engine engine = getTempEngine();

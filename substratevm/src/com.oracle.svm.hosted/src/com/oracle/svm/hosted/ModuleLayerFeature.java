@@ -56,6 +56,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.encoder.SymbolEncoder;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -134,7 +136,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  */
 @AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
-public final class ModuleLayerFeature implements InternalFeature {
+public class ModuleLayerFeature implements InternalFeature {
     private ModuleLayerFeatureUtils moduleLayerFeatureUtils;
     private ModuleLayer bootLayer;
 
@@ -605,6 +607,8 @@ public final class ModuleLayerFeature implements InternalFeature {
     private void replicateVisibilityModifications(ModuleLayer runtimeBootLayer, AfterAnalysisAccessImpl accessImpl, ImageClassLoader cl, Set<Module> analysisReachableNamedModules,
                     Set<Module> analysisReachableUnnamedModules) {
         List<Module> applicationModules = findApplicationModules(runtimeBootLayer, cl.applicationModulePath());
+        Set<String> applicationModuleNames = applicationModules.stream().map(Module::getName).collect(Collectors.toUnmodifiableSet());
+        ImageSingletons.add(ApplicationModules.class, () -> applicationModuleNames);
 
         Map<Module, Module> namedModulePairs = analysisReachableNamedModules
                         .stream()
@@ -625,6 +629,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                 for (Map.Entry<Module, Module> e2 : unnamedModulePairs.entrySet()) {
                     replicateVisibilityModification(accessImpl, applicationModules, hostedFrom, e2.getKey(), runtimeFrom, e2.getValue());
                 }
+                moduleLayerFeatureUtils.encodeFields(accessImpl, runtimeFrom);
             }
         } catch (IllegalAccessException ex) {
             throw VMError.shouldNotReachHere("Failed to transfer hosted module relations to the runtime boot module layer.", ex);
@@ -746,6 +751,7 @@ public final class ModuleLayerFeature implements InternalFeature {
     private final class ModuleLayerFeatureUtils {
         private final Map<ClassLoader, Map<String, Module>> runtimeModules;
         private final ImageClassLoader imageClassLoader;
+        private final SymbolEncoder encoder = SymbolEncoder.singleton();
 
         private final Module allUnnamedModule;
         private final Set<Module> allUnnamedModuleSet;
@@ -1210,6 +1216,32 @@ public final class ModuleLayerFeature implements InternalFeature {
                 LayeredModuleSingleton.singleton().setExportedPackages(module, exports);
             }
             rescan(accessImpl, exports, module, moduleExportedPackagesField);
+        }
+
+        /**
+         * Encodes the "opens" and "exports" package names.
+         */
+        void encodeFields(AfterAnalysisAccessImpl accessImpl, Module module) throws IllegalAccessException {
+            encodeField(moduleExportedPackagesField, accessImpl, module);
+            encodeField(moduleOpenPackagesField, accessImpl, module);
+        }
+
+        @SuppressWarnings("unchecked")
+        private void encodeField(Field field, AfterAnalysisAccessImpl accessImpl, Module module) throws IllegalAccessException {
+            Map<String, Set<Module>> fieldValue = (Map<String, Set<Module>>) field.get(module);
+            if (fieldValue == null) {
+                return;
+            }
+            Map<String, Set<Module>> encodedFieldValue = fieldValue.entrySet().stream()
+                            .collect(Collectors.toMap(
+                                            e -> encoder.encodePackage(e.getKey()),
+                                            Map.Entry::getValue));
+            field.set(module, encodedFieldValue);
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                accessImpl.rescanObject(encodedFieldValue);
+            } else {
+                accessImpl.rescanField(module, field);
+            }
         }
 
         @SuppressWarnings("unchecked")

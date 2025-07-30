@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.substitute;
 
 import java.lang.reflect.AnnotatedElement;
 import java.util.Arrays;
+import java.util.List;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.svm.core.annotate.Inject;
@@ -260,6 +261,12 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
         VMError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
         return original.getDeclaredMethods(forceLink);
+    }
+
+    @Override
+    public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
+        VMError.guarantee(forceLink == false, "only use getAllMethods without forcing to link, because linking can throw LinkageError");
+        return original.getAllMethods(forceLink);
     }
 
     @Override

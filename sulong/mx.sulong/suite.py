@@ -1,7 +1,7 @@
 suite = {
-  "mxversion": "7.48.0",
+  "mxversion": "7.55.2",
   "name" : "sulong",
-  "version" : "25.0.0",
+  "version" : "26.0.0",
   "release" : False,
   "versionConflictResolution" : "latest",
   "groupId": "org.graalvm.llvm",
@@ -1749,7 +1749,7 @@ suite = {
       "noMavenJavadoc": True,
     },
 
-    "LLVM_NATIVE_COMMUNITY": {
+    "LLVM_NATIVE_POM": {
       "type": "pom",
       "runtimeDependencies": [
         "SULONG_CORE",
@@ -1759,23 +1759,22 @@ suite = {
         "truffle:TRUFFLE_RUNTIME",
       ],
       "maven": {
-        "artifactId": "llvm-native-community",
+        "artifactId": "llvm-native",
         "tag": ["default", "public"],
       },
       "description": "Graal native LLVM engine.",
       "license": "BSD-new",
     },
-
-    "LLVM_COMMUNITY": {
+    "LLVM_POM": {
       "type": "pom",
       "runtimeDependencies": [
-        "LLVM_NATIVE_COMMUNITY",
+        "LLVM_NATIVE_POM",
       ],
       "maven": {
         "artifactId": "llvm-community",
         "tag": ["default", "public"],
       },
-      "description": "Graal LLVM engine.",
+      "description": "Deprecated: Please use the \'llvm-native\' Maven artifact instead.",
       "license": "BSD-new",
     },
 

@@ -32,6 +32,7 @@ import java.util.Map;
 import org.graalvm.options.OptionMap;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -129,6 +130,14 @@ final class AgentLibraries extends ContextAccessImpl {
         return getNativeAccess().lookupAndBindSymbol(library, AGENT_ONLOAD, ONLOAD_SIGNATURE, true, true);
     }
 
+    public void noSupportWarning(TruffleLogger logger) {
+        assert !agents.isEmpty();
+        logger.warning("Native agent support is currently disabled in Espresso.");
+        for (AgentLibrary agent : agents) {
+            logger.warning("Ignoring passed native agent: " + agent.name);
+        }
+    }
+
     private static class AgentLibrary {
 
         final String name;
@@ -143,6 +152,5 @@ final class AgentLibraries extends ContextAccessImpl {
             this.options = options;
             this.isAbsolutePath = isAbsolutePath;
         }
-
     }
 }

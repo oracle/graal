@@ -50,6 +50,7 @@ import java.util.stream.Stream;
 
 import com.oracle.svm.core.TrackDynamicAccessEnabled;
 import com.oracle.svm.hosted.DynamicAccessDetectionFeature;
+import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
@@ -343,7 +344,7 @@ public final class ReflectionPlugins {
                         return false;
                     }
                     loader = (ClassLoader) unboxObjectConstant(b, classLoaderNode.asJavaConstant());
-                    if (loader == ClassLoader.getSystemClassLoader()) {
+                    if (loader == NativeImageSystemClassLoader.singleton().defaultSystemClassLoader) {
                         /*
                          * The run time's application class loader is the build time's image class
                          * loader.

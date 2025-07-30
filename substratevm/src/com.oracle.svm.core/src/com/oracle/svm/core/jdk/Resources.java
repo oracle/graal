@@ -35,7 +35,10 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -51,6 +54,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.ClassLoaderSupport.ConditionWithOrigin;
 import com.oracle.svm.core.MissingRegistrationUtils;
@@ -58,9 +62,10 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationError;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
 import com.oracle.svm.core.jdk.resources.ResourceExceptionEntry;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
@@ -68,10 +73,12 @@ import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.CompressedGlobTrie;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobTrieNode;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.GlobUtils;
@@ -85,10 +92,16 @@ import com.oracle.svm.util.NativeImageResourcePathRepresentation;
  * Registered resources are then available from DynamicHub#getResource classes and
  * {@link Target_java_lang_ClassLoader class loaders}.
  */
-public final class Resources implements MultiLayeredImageSingleton, UnsavedSingleton {
+public final class Resources implements MultiLayeredImageSingleton {
 
     private static final int INVALID_TIMESTAMP = -1;
     public static final char RESOURCES_INTERNAL_PATH_SEPARATOR = '/';
+    private static final String RESOURCE_KEYS = "resourceKeys";
+    private static final String RESOURCE_REGISTRATION_STATES = "resourceRegistrationStates";
+    private static final String PATTERNS = "patterns";
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private SymbolEncoder encoder;
 
     /**
      * @return the singleton corresponding to this layer's resources in a layered build, the unique
@@ -116,12 +129,92 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
      * {see com.oracle.svm.hosted.ModuleLayerFeature}.
      */
     private final EconomicMap<ModuleResourceKey, ConditionalRuntimeValue<ResourceStorageEntryBase>> resources = ImageHeapMap.createNonLayeredMap();
+    /** Regexp patterns used to match names of resources to be included in the image. */
     private final EconomicMap<RequestedPattern, RuntimeConditionSet> requestedPatterns = ImageHeapMap.createNonLayeredMap();
 
-    public record RequestedPattern(String module, String resource) {
+    /**
+     * The string representation of {@link ModuleNameResourceKey} that are already registered in
+     * previous layers. Since the {@link ModuleInstanceResourceKey} contains a reference to a
+     * {@link Module}, the {@link Module} name is used instead of the object itself in the string
+     * representation. This works under the assumption (enforced by
+     * LayeredModuleSingleton.setPackages) that all modules have a different unique name in Layered
+     * Images.
+     *
+     * The boolean associated to each {@link ModuleNameResourceKey} is true if the registered value
+     * is complete and false in the case of a negative query.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private final Map<String, Boolean> previousLayerResources;
+
+    /**
+     * The string representation of {@link RequestedPattern} that are already registered in previous
+     * layers.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private final Set<String> previousLayerPatterns;
+
+    public record RequestedPattern(String module, String pattern) {
     }
 
-    public record ModuleResourceKey(Module module, String resource) {
+    public interface ModuleResourceKey {
+        Module getModule();
+
+        String getModuleName();
+
+        Object module();
+
+        String resource();
+    }
+
+    /**
+     * In standalone images, the module object is the {@link Module} reference itself.
+     */
+    public record ModuleInstanceResourceKey(Module module, String resource) implements ModuleResourceKey {
+        public ModuleInstanceResourceKey {
+            assert !ImageLayerBuildingSupport.buildingImageLayer() : "The ModuleInstanceResourceKey should only be used in standalone images.";
+        }
+
+        @Override
+        public Module getModule() {
+            return module;
+        }
+
+        @Override
+        public String getModuleName() {
+            if (module == null) {
+                return null;
+            }
+            return module.getName();
+        }
+    }
+
+    /**
+     * In Layered Image, only the module name is stored in the record.
+     */
+    public record ModuleNameResourceKey(Object module, String resource) implements ModuleResourceKey {
+        public ModuleNameResourceKey {
+            /*
+             * A null module in the ModuleResourceKey represents any unnamed module, meaning that
+             * only one marker (null) is needed for all of them and that if the module is not null,
+             * it is named (see Resources.createStorageKey). This string representation relies on
+             * the assumption (enforced by LayeredModuleSingleton.setPackages) that a layered image
+             * build cannot contain two modules with the same name, so Module#getName() is
+             * guaranteed to be unique for layered images.
+             */
+            assert module == null || module instanceof Module : "The ModuleNameResourceKey constructor should only be called with a Module as first argument";
+            assert ImageLayerBuildingSupport.buildingImageLayer() : "The ModuleNameResourceKey should only be used in layered images.";
+            module = (module != null) ? ((Module) module).getName() : module;
+        }
+
+        @Override
+        public Module getModule() {
+            throw VMError.shouldNotReachHere("Accessing the module instance of the ModuleResourceKey is not supported in layered images.");
+        }
+
+        @Override
+        public String getModuleName() {
+            return (String) module;
+        }
     }
 
     /**
@@ -152,6 +245,17 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
     private Function<Module, Module> hostedToRuntimeModuleMapper;
 
     Resources() {
+        this(Map.of(), Set.of());
+    }
+
+    Resources(Map<String, Boolean> previousLayerResources, Set<String> previousLayerPatterns) {
+        this.previousLayerResources = previousLayerResources;
+        this.previousLayerPatterns = previousLayerPatterns;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setEncoder(SymbolEncoder encoder) {
+        this.encoder = encoder;
     }
 
     public GlobTrieNode<ConditionWithOrigin> getResourcesTrieRoot() {
@@ -181,6 +285,11 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    public Iterable<ModuleResourceKey> resourceKeys() {
+        return resources.getKeys();
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     public int count() {
         return resources.size();
     }
@@ -201,7 +310,7 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
                 m = currentLayer().hostedToRuntimeModuleMapper.apply(m);
             }
         }
-        return new ModuleResourceKey(m, resourceName);
+        return ImageLayerBuildingSupport.buildingImageLayer() ? new ModuleNameResourceKey(m, resourceName) : new ModuleInstanceResourceKey(m, resourceName);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class) //
@@ -212,9 +321,8 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
     @Platforms(Platform.HOSTED_ONLY.class)
     public static Set<String> getIncludedResourcesModules() {
         return StreamSupport.stream(currentLayer().resources.getKeys().spliterator(), false)
-                        .map(ModuleResourceKey::module)
+                        .map(ModuleResourceKey::getModuleName)
                         .filter(Objects::nonNull)
-                        .map(Module::getName)
                         .collect(Collectors.toSet());
     }
 
@@ -232,6 +340,14 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
         }
     }
 
+    private void addResource(ModuleResourceKey key, ConditionalRuntimeValue<ResourceStorageEntryBase> entry) {
+        Boolean previousLayerData = ImageLayerBuildingSupport.buildingImageLayer() ? previousLayerResources.get(key.toString()) : null;
+        /* GR-66387: The runtime condition should be combined across layers. */
+        if (previousLayerData == null || (!previousLayerData && entry.getValueUnconditionally() != NEGATIVE_QUERY_MARKER)) {
+            resources.put(key, entry);
+        }
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     private void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar, boolean isNegativeQuery) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to add a resource entry after analysis.");
@@ -242,7 +358,7 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
             ConditionalRuntimeValue<ResourceStorageEntryBase> entry = resources.get(key);
             if (isNegativeQuery) {
                 if (entry == null) {
-                    resources.put(key, new ConditionalRuntimeValue<>(conditionSet, NEGATIVE_QUERY_MARKER));
+                    addResource(key, new ConditionalRuntimeValue<>(conditionSet, NEGATIVE_QUERY_MARKER));
                 }
                 return;
             }
@@ -250,7 +366,7 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
             if (entry == null || entry.getValueUnconditionally() == NEGATIVE_QUERY_MARKER) {
                 updateTimeStamp();
                 entry = new ConditionalRuntimeValue<>(conditionSet, new ResourceStorageEntry(isDirectory, fromJar));
-                resources.put(key, entry);
+                addResource(key, entry);
             } else {
                 if (key.module() != null) {
                     // if the entry already exists, and it comes from a module, it is the same entry
@@ -299,7 +415,7 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
         ModuleResourceKey key = createStorageKey(module, resourceName);
         synchronized (resources) {
             updateTimeStamp();
-            resources.put(key, new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), new ResourceExceptionEntry(e)));
+            addResource(key, new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), new ResourceExceptionEntry(e)));
         }
     }
 
@@ -318,7 +434,14 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
         assert MissingRegistrationUtils.throwMissingRegistrationErrors();
         synchronized (requestedPatterns) {
             updateTimeStamp();
-            requestedPatterns.put(new RequestedPattern(module, handleEscapedCharacters(pattern)), RuntimeConditionSet.createHosted(condition));
+            addPattern(new RequestedPattern(encoder.encodeModule(module), handleEscapedCharacters(pattern)), RuntimeConditionSet.createHosted(condition));
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private void addPattern(RequestedPattern pattern, RuntimeConditionSet condition) {
+        if (!previousLayerPatterns.contains(pattern.toString())) {
+            requestedPatterns.put(pattern, condition);
         }
     }
 
@@ -330,7 +453,7 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
 
     /*
      * This handles generated include patterns which start and end with \Q and \E. The actual
-     * resource name is located inbetween those tags.
+     * resource name is located in between those tags.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     private static String handleEscapedCharacters(String pattern) {
@@ -352,50 +475,47 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
         return resourceName.equals(canonicalResourceName) || removeTrailingSlash(resourceName).equals(canonicalResourceName);
     }
 
-    public static ResourceStorageEntryBase getAtRuntime(String name, boolean throwOnMissing) {
-        return getAtRuntime(null, name, throwOnMissing);
+    public static ResourceStorageEntryBase getAtRuntime(String name) {
+        return getAtRuntime(null, name, false);
     }
 
     /**
-     * If {@code throwOnMissing} is false, we have to distinguish an entry that was in the metadata
-     * from one that was not, so the caller can correctly throw the
-     * {@link MissingResourceRegistrationError}. This is needed because different modules can be
-     * tried on the same resource name, causing an unexpected exception if we throw directly.
+     * Looks up a resource from {@code module} with name {@code resourceName}.
+     * <p>
+     * The {@code probe} parameter indicates whether the caller is probing for the existence of a
+     * resource. If {@code probe} is true, failed resource lookups return will not throw missing
+     * registration errors and may instead return {@link #MISSING_METADATA_MARKER}.
+     * <p>
+     * Tracing note: When this method is used for probing, only successful metadata matches will be
+     * traced. If a probing result is {@link #MISSING_METADATA_MARKER}, the caller must explicitly
+     * trace the missing metadata.
      */
-    public static ResourceStorageEntryBase getAtRuntime(Module module, String resourceName, boolean throwOnMissing) {
+    public static ResourceStorageEntryBase getAtRuntime(Module module, String resourceName, boolean probe) {
         VMError.guarantee(ImageInfo.inImageRuntimeCode(), "This function should be used only at runtime.");
         String canonicalResourceName = NativeImageResourcePathRepresentation.toCanonicalForm(resourceName);
         String moduleName = moduleName(module);
         ConditionalRuntimeValue<ResourceStorageEntryBase> entry = getEntry(module, canonicalResourceName);
         if (entry == null) {
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                for (var r : layeredSingletons()) {
-                    MapCursor<RequestedPattern, RuntimeConditionSet> cursor = r.requestedPatterns.getEntries();
-                    while (cursor.advance()) {
-                        RequestedPattern moduleResourcePair = cursor.getKey();
-                        if (Objects.equals(moduleName, moduleResourcePair.module) &&
-                                        ((matchResource(moduleResourcePair.resource, resourceName) || matchResource(moduleResourcePair.resource, canonicalResourceName)) &&
-                                                        cursor.getValue().satisfied())) {
-                            return null;
-                        }
-                    }
-
-                    String glob = GlobUtils.transformToTriePath(resourceName, moduleName);
-                    String canonicalGlob = GlobUtils.transformToTriePath(canonicalResourceName, moduleName);
-                    GlobTrieNode<ConditionWithOrigin> globsTrie = r.getResourcesTrieRoot();
-                    if (CompressedGlobTrie.match(globsTrie, glob) ||
-                                    CompressedGlobTrie.match(globsTrie, canonicalGlob)) {
-                        return null;
-                    }
+                if (missingResourceMatchesIncludePattern(resourceName, moduleName) || missingResourceMatchesIncludePattern(canonicalResourceName, moduleName)) {
+                    // This resource name matches a pattern/glob from the provided metadata, but no
+                    // resource with the name actually exists. Do not report missing metadata.
+                    traceResource(resourceName, moduleName);
+                    return null;
                 }
-
-                return missingMetadata(resourceName, throwOnMissing);
+                traceResourceMissingMetadata(resourceName, moduleName, probe);
+                return missingMetadata(module, resourceName, probe);
             } else {
+                // NB: Without exact reachability metadata, resource include patterns are not
+                // stored in the image heap, so we cannot reliably identify if the resource was
+                // included at build time. Assume it is missing.
+                traceResourceMissingMetadata(resourceName, moduleName, probe);
                 return null;
             }
         }
+        traceResource(resourceName, moduleName);
         if (!entry.getConditions().satisfied()) {
-            return missingMetadata(resourceName, throwOnMissing);
+            return missingMetadata(module, resourceName, probe);
         }
 
         ResourceStorageEntryBase unconditionalEntry = entry.getValue();
@@ -423,6 +543,51 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
         return unconditionalEntry;
     }
 
+    @AlwaysInline("tracing should fold away when disabled")
+    private static void traceResource(String resourceName, String moduleName) {
+        if (MetadataTracer.enabled()) {
+            MetadataTracer.singleton().traceResource(resourceName, moduleName);
+        }
+    }
+
+    @AlwaysInline("tracing should fold away when disabled")
+    private static void traceResourceMissingMetadata(String resourceName, String moduleName) {
+        traceResourceMissingMetadata(resourceName, moduleName, false);
+    }
+
+    @AlwaysInline("tracing should fold away when disabled")
+    private static void traceResourceMissingMetadata(String resourceName, String moduleName, boolean probe) {
+        if (MetadataTracer.enabled() && !probe) {
+            // Do not trace missing metadata for probing queries, otherwise we'll trace an entry for
+            // every module. The caller is responsible for tracing missing entries if it uses
+            // probing.
+            MetadataTracer.singleton().traceResource(resourceName, moduleName);
+        }
+    }
+
+    /**
+     * Checks whether the given missing resource is matched by a pattern/glob registered at build
+     * time. In such a case, we should not report missing metadata.
+     */
+    private static boolean missingResourceMatchesIncludePattern(String resourceName, String moduleName) {
+        VMError.guarantee(MissingRegistrationUtils.throwMissingRegistrationErrors(), "include patterns are only stored in the image with exact reachability metadata");
+        String glob = GlobUtils.transformToTriePath(resourceName, moduleName);
+        for (var r : layeredSingletons()) {
+            MapCursor<RequestedPattern, RuntimeConditionSet> cursor = r.requestedPatterns.getEntries();
+            while (cursor.advance()) {
+                RequestedPattern moduleResourcePair = cursor.getKey();
+                if (Objects.equals(moduleName, moduleResourcePair.module) && matchResource(moduleResourcePair.pattern, resourceName) && cursor.getValue().satisfied()) {
+                    return true;
+                }
+            }
+
+            if (CompressedGlobTrie.match(r.getResourcesTrieRoot(), glob)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static ConditionalRuntimeValue<ResourceStorageEntryBase> getEntry(Module module, String canonicalResourceName) {
         for (var r : layeredSingletons()) {
             ConditionalRuntimeValue<ResourceStorageEntryBase> entry = r.resources.get(createStorageKey(module, canonicalResourceName));
@@ -433,9 +598,9 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
         return null;
     }
 
-    private static ResourceStorageEntryBase missingMetadata(String resourceName, boolean throwOnMissing) {
-        if (throwOnMissing) {
-            MissingResourceRegistrationUtils.missingResource(resourceName);
+    private static ResourceStorageEntryBase missingMetadata(Module module, String resourceName, boolean probe) {
+        if (!probe) {
+            MissingResourceRegistrationUtils.reportResourceAccess(module, resourceName);
         }
         return MISSING_METADATA_MARKER;
     }
@@ -464,42 +629,45 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
         return urls.hasMoreElements() ? urls.nextElement() : null;
     }
 
-    public static InputStream createInputStream(String resourceName) {
-        return createInputStream(null, resourceName);
-    }
-
     /* Avoid pulling in the URL class when only an InputStream is needed. */
     public static InputStream createInputStream(Module module, String resourceName) {
         if (resourceName == null) {
             return null;
         }
+        ResourceStorageEntryBase entry = findResourceForInputStream(module, resourceName);
+        if (entry == MISSING_METADATA_MARKER) {
+            traceResourceMissingMetadata(resourceName, moduleName(module));
+            MissingResourceRegistrationUtils.reportResourceAccess(module, resourceName);
+            return null;
+        } else if (entry == null) {
+            return null;
+        }
+        List<byte[]> data = entry.getData();
+        return data.isEmpty() ? null : new ByteArrayInputStream(data.get(0));
+    }
 
-        ResourceStorageEntryBase entry = getAtRuntime(module, resourceName, false);
-        boolean isInMetadata = entry != MISSING_METADATA_MARKER;
-        if (moduleName(module) == null && (entry == MISSING_METADATA_MARKER || entry == null)) {
+    private static ResourceStorageEntryBase findResourceForInputStream(Module module, String resourceName) {
+        ResourceStorageEntryBase result = getAtRuntime(module, resourceName, true);
+        if (moduleName(module) == null && (result == MISSING_METADATA_MARKER || result == null)) {
             /*
              * If module is not specified or is an unnamed module and entry was not found as
              * classpath-resource we have to search for the resource in all modules in the image.
              */
             for (Module m : RuntimeModuleSupport.singleton().getBootLayer().modules()) {
-                entry = getAtRuntime(m, resourceName, false);
+                ResourceStorageEntryBase entry = getAtRuntime(m, resourceName, true);
                 if (entry != MISSING_METADATA_MARKER) {
-                    isInMetadata = true;
-                }
-                if (entry != null && entry != MISSING_METADATA_MARKER) {
-                    break;
+                    if (entry != null) {
+                        // resource found
+                        return entry;
+                    } else {
+                        // found a negative query. remember this result but keep trying in case some
+                        // other module supplies an actual resource.
+                        result = null;
+                    }
                 }
             }
         }
-
-        if (!isInMetadata) {
-            MissingResourceRegistrationUtils.missingResource(resourceName);
-        }
-        if (entry == null || entry == MISSING_METADATA_MARKER) {
-            return null;
-        }
-        List<byte[]> data = entry.getData();
-        return data.isEmpty() ? null : new ByteArrayInputStream(data.get(0));
+        return result;
     }
 
     public static Enumeration<URL> createURLs(String resourceName) {
@@ -515,27 +683,28 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
 
         List<URL> resourcesURLs = new ArrayList<>();
         String canonicalResourceName = NativeImageResourcePathRepresentation.toCanonicalForm(resourceName);
-        boolean shouldAppendTrailingSlash = hasTrailingSlash(resourceName);
+        if (hasTrailingSlash(resourceName)) {
+            canonicalResourceName += "/";
+        }
 
         /* If moduleName was unspecified we have to consider all modules in the image */
         if (moduleName(module) == null) {
             for (Module m : RuntimeModuleSupport.singleton().getBootLayer().modules()) {
-                ResourceStorageEntryBase entry = getAtRuntime(m, resourceName, false);
-                if (entry == MISSING_METADATA_MARKER) {
-                    continue;
+                ResourceStorageEntryBase entry = getAtRuntime(m, resourceName, true);
+                if (entry != MISSING_METADATA_MARKER) {
+                    missingMetadata = false;
+                    addURLEntries(resourcesURLs, (ResourceStorageEntry) entry, m, canonicalResourceName);
                 }
-                missingMetadata = false;
-                addURLEntries(resourcesURLs, (ResourceStorageEntry) entry, m, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
             }
         }
-        ResourceStorageEntryBase explicitEntry = getAtRuntime(module, resourceName, false);
+        ResourceStorageEntryBase explicitEntry = getAtRuntime(module, resourceName, true);
         if (explicitEntry != MISSING_METADATA_MARKER) {
             missingMetadata = false;
-            addURLEntries(resourcesURLs, (ResourceStorageEntry) explicitEntry, module, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
+            addURLEntries(resourcesURLs, (ResourceStorageEntry) explicitEntry, module, canonicalResourceName);
         }
 
         if (missingMetadata) {
-            MissingResourceRegistrationUtils.missingResource(resourceName);
+            MissingResourceRegistrationUtils.reportResourceAccess(module, resourceName);
         }
 
         if (resourcesURLs.isEmpty()) {
@@ -590,13 +759,65 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
     public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
         return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
     }
+
+    @Override
+    public PersistFlags preparePersist(ImageSingletonWriter writer) {
+        List<String> resourceKeys = new ArrayList<>();
+        List<Boolean> resourceRegistrationStates = new ArrayList<>();
+        Set<String> patterns = new HashSet<>(previousLayerPatterns);
+
+        var cursor = resources.getEntries();
+        while (cursor.advance()) {
+            resourceKeys.add(cursor.getKey().toString());
+            boolean isNegativeQuery = cursor.getValue().getValueUnconditionally() == NEGATIVE_QUERY_MARKER;
+            resourceRegistrationStates.add(!isNegativeQuery);
+        }
+
+        for (var entry : previousLayerResources.entrySet()) {
+            /*
+             * If a complete entry overwrites a negative query from a previous layer, the
+             * previousLayerResources map entry needs to be skipped to register the new entry for
+             * extension layers.
+             */
+            if (!resourceKeys.contains(entry.getKey())) {
+                resourceKeys.add(entry.getKey());
+                resourceRegistrationStates.add(entry.getValue());
+            }
+        }
+
+        requestedPatterns.getKeys().forEach(p -> patterns.add(p.toString()));
+
+        writer.writeStringList(RESOURCE_KEYS, resourceKeys);
+        writer.writeBoolList(RESOURCE_REGISTRATION_STATES, resourceRegistrationStates);
+        writer.writeStringList(PATTERNS, patterns.stream().toList());
+
+        return PersistFlags.CREATE;
+    }
+
+    @SuppressWarnings("unused")
+    public static Object createFromLoader(ImageSingletonLoader loader) {
+        List<String> previousLayerResourceKeys = loader.readStringList(RESOURCE_KEYS);
+        List<Boolean> previousLayerRegistrationStates = loader.readBoolList(RESOURCE_REGISTRATION_STATES);
+        Map<String, Boolean> previousLayerResources = new HashMap<>();
+
+        for (int i = 0; i < previousLayerResourceKeys.size(); ++i) {
+            previousLayerResources.put(previousLayerResourceKeys.get(i), previousLayerRegistrationStates.get(i));
+        }
+
+        Set<String> previousLayerPatterns = Set.copyOf(loader.readStringList(PATTERNS));
+
+        return new Resources(Collections.unmodifiableMap(previousLayerResources), previousLayerPatterns);
+    }
 }
 
 @AutomaticallyRegisteredFeature
 final class ResourcesFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(Resources.class, new Resources());
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            ImageSingletons.add(Resources.class, new Resources());
+        }
+        Resources.currentLayer().setEncoder(SymbolEncoder.singleton());
     }
 
     @Override

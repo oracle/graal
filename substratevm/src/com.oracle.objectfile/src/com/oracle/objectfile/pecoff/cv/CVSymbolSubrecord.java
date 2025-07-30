@@ -94,7 +94,7 @@ abstract class CVSymbolSubrecord {
             String fn = null;
             for (ClassEntry classEntry : cvDebugInfo.getInstanceClasses()) {
                 if (classEntry.getFileName() != null) {
-                    fn = classEntry.getFileEntry().getFileName();
+                    fn = classEntry.getFileEntry().fileName();
                     if (fn.endsWith(".java")) {
                         fn = fn.substring(0, fn.lastIndexOf(".java")) + ".obj";
                     }
@@ -220,7 +220,7 @@ abstract class CVSymbolSubrecord {
             String fn = null;
             for (ClassEntry classEntry : cvDebugInfo.getInstanceClasses()) {
                 if (classEntry.getFileName() != null) {
-                    fn = classEntry.getFileEntry().getFileName();
+                    fn = classEntry.getFileEntry().fileName();
                     break;
                 }
             }
@@ -616,7 +616,7 @@ abstract class CVSymbolSubrecord {
         protected final String displayName;
 
         @SuppressWarnings("unused")
-        CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, String symbolName, String displayName, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex,
+        CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, String symbolName, String displayName, int pparent, int pend, int pnext, long proclen, int debugStart, int debugEnd, int typeIndex,
                         short segment, byte flags) {
             super(cvDebugInfo, CVDebugConstants.S_GPROC32);
             this.symbolName = symbolName;
@@ -624,7 +624,8 @@ abstract class CVSymbolSubrecord {
             this.pparent = pparent;
             this.pend = pend;
             this.pnext = pnext;
-            this.proclen = proclen;
+            assert proclen <= Integer.MAX_VALUE;
+            this.proclen = (int) proclen;
             this.debugStart = debugStart;
             this.debugEnd = debugEnd;
             this.typeIndex = typeIndex;
@@ -632,7 +633,7 @@ abstract class CVSymbolSubrecord {
             this.flags = flags;
         }
 
-        protected CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, short cmd, String symbolName, String displayName, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd,
+        protected CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, short cmd, String symbolName, String displayName, int pparent, int pend, int pnext, long proclen, int debugStart, int debugEnd,
                         int typeIndex, short segment, byte flags) {
             super(cvDebugInfo, cmd);
             this.symbolName = symbolName;
@@ -640,7 +641,8 @@ abstract class CVSymbolSubrecord {
             this.pparent = pparent;
             this.pend = pend;
             this.pnext = pnext;
-            this.proclen = proclen;
+            assert proclen <= Integer.MAX_VALUE;
+            this.proclen = (int) proclen;
             this.debugStart = debugStart;
             this.debugEnd = debugEnd;
             this.typeIndex = typeIndex;
@@ -672,7 +674,7 @@ abstract class CVSymbolSubrecord {
 
     public static class CVSymbolGProc32IdRecord extends CVSymbolGProc32Record {
 
-        CVSymbolGProc32IdRecord(CVDebugInfo cvDebugInfo, String symbolName, String displayName, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex,
+        CVSymbolGProc32IdRecord(CVDebugInfo cvDebugInfo, String symbolName, String displayName, int pparent, int pend, int pnext, long proclen, int debugStart, int debugEnd, int typeIndex,
                         short segment, byte flags) {
 
             super(cvDebugInfo, CVDebugConstants.S_GPROC32_ID, symbolName, displayName, pparent, pend, pnext, proclen, debugStart, debugEnd, typeIndex, segment, flags);

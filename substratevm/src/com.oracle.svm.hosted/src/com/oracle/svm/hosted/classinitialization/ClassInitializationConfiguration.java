@@ -52,12 +52,17 @@ import com.oracle.svm.core.util.UserError;
  *
  * Every node tracks a list of reasons for the set configuration. This list helps the users debug
  * conflicts in the configuration.
+ * 
+ * A {@code strict} configuration, as specified by {@link InitializationNode#strict}, defines
+ * whether an initialization kind, as specified by {@link InitializationNode#kind}, was explicitly
+ * configured for the corresponding type. A {@code non-strict} configuration is a configuration
+ * inherited from a parent package configuration.
  */
 final class ClassInitializationConfiguration {
     private static final String ROOT_QUALIFIER = "";
     private static final int MAX_NUMBER_OF_REASONS = 10;
 
-    private InitializationNode root = new InitializationNode("", null, null, false);
+    private final InitializationNode root = new InitializationNode("", null, null, false);
 
     public synchronized void insert(String classOrPackage, InitKind kind, String reason, boolean strict) {
         assert kind != null;

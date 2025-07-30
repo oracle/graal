@@ -30,7 +30,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,7 +45,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
 import jdk.graal.compiler.util.CollectionsUtil;
-
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.CodeUtil.DefaultRefMapFormatter;
@@ -75,7 +74,7 @@ public class ObjdumpDisassemblerProvider implements DisassemblerProvider {
     }
 
     // cached validity of candidate objdump executables.
-    private static final Map<String, Boolean> objdumpCache = new HashMap<>();
+    private static final Map<String, Boolean> objdumpCache = new EconomicHashMap<>();
 
     private static Process createProcess(String[] cmd) {
         ProcessBuilder pb = new ProcessBuilder(cmd);
@@ -125,7 +124,7 @@ public class ObjdumpDisassemblerProvider implements DisassemblerProvider {
             Register fp = regConfig.getFrameRegister();
             RefMapFormatter slotFormatter = new DefaultRefMapFormatter(target.wordSize, fp, 0);
 
-            Map<Integer, String> annotations = new HashMap<>();
+            Map<Integer, String> annotations = new EconomicHashMap<>();
             for (DataPatch site : compResult.getDataPatches()) {
                 putAnnotation(annotations, site.pcOffset, "{" + site.reference.toString() + "}");
             }

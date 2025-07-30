@@ -36,7 +36,6 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -44,6 +43,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeSystemProperties;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 
+import com.oracle.svm.core.FutureDefaultsOptions;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.c.locale.LocaleSupport;
@@ -69,6 +70,15 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
     private static final String[] HOSTED_PROPERTIES = {
                     "java.version",
                     "java.version.date",
+                    "java.class.version",
+                    "java.runtime.version",
+                    "java.specification.name",
+                    "java.specification.vendor",
+                    "java.specification.version",
+                    "java.specification.maintenance.version",
+                    "java.vm.specification.name",
+                    "java.vm.specification.vendor",
+                    "java.vm.specification.version",
                     ImageInfo.PROPERTY_IMAGE_KIND_KEY,
                     /*
                      * We do not support cross-compilation for now. Separators might also be cached
@@ -83,14 +93,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
                     "native.encoding",
                     "stdout.encoding",
                     "stderr.encoding",
-                    "java.class.version",
-                    "java.runtime.version",
-                    "java.specification.name",
-                    "java.specification.vendor",
-                    "java.specification.version",
-                    "java.vm.specification.name",
-                    "java.vm.specification.vendor",
-                    "java.vm.specification.version"
+                    "stdin.encoding",
     };
 
     /** System properties that are computed at run time on first access. */
@@ -140,6 +143,10 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         initializeProperty("sun.arch.data.model", Integer.toString(ConfigurationValues.getTarget().wordJavaKind.getBitCount()));
 
         initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
+
+        for (String futureDefault : FutureDefaultsOptions.getFutureDefaults()) {
+            initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
+        }
 
         ArrayList<LazySystemProperty> lazyProperties = new ArrayList<>();
         lazyProperties.add(new LazySystemProperty(UserSystemProperty.NAME, this::userNameValue));

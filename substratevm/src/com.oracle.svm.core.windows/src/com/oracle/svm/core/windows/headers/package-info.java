@@ -23,8 +23,8 @@
  * questions.
  */
 
-@Platforms(Platform.WINDOWS.class)
+@Platforms(InternalPlatform.WINDOWS_BASE.class)
 package com.oracle.svm.core.windows.headers;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;

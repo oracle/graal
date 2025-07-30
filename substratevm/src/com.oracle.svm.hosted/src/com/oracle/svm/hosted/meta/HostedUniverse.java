@@ -601,7 +601,7 @@ public class HostedUniverse implements Universe {
         private static Optional<HostedType[]> proxyType(HostedType type) {
             HostedType baseType = type.getBaseType();
             boolean isProxy = Proxy.isProxyClass(baseType.getJavaClass());
-            assert isProxy == (baseType.toJavaName(false).startsWith("$Proxy") && !(type.getWrapped().getWrapped() instanceof BaseLayerType));
+            assert !isProxy || (baseType.toJavaName(false).startsWith("$Proxy") && !(type.getWrapped().getWrapped() instanceof BaseLayerType));
             if (isProxy) {
                 return Optional.of(baseType.getInterfaces());
             } else {

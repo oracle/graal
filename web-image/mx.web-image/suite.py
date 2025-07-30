@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "7.33.0",
+    "mxversion": "7.55.2",
     "name": "web-image",
     "versionConflictResolution": "latest",
     "version": "1.0",
@@ -89,7 +89,7 @@ suite = {
                 "compiler:GRAAL",
                 "substratevm:SVM",
                 "substratevm:SVM_CONFIGURE",
-                "org.graalvm.webimage.api",
+                "sdk:WEBIMAGE_PREVIEW",
                 "SVM_WASM_JIMFS",
             ],
             "requires": [
@@ -115,17 +115,6 @@ suite = {
             ],
             "spotbugsIgnoresGenerated": True,
             "checkPackagePrefix": False,
-        },
-        "org.graalvm.webimage.api": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [],
-            "javaCompliance": "21+",
-            "spotbugs": "true",
-            "workingSets": "web-image",
-            "annotationProcessors": ["compiler:GRAAL_PROCESSOR"],
-            "checkstyle": "com.oracle.svm.webimage",
-            "spotbugsIgnoresGenerated": True,
         },
         "com.oracle.svm.webimage.tools": {
             "subDir": "src",
@@ -160,7 +149,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "substratevm:SVM",
-                "SVM_WASM_API",
                 "WEBIMAGE_LIBRARY_SUPPORT",
                 "mx:JUNIT",
                 "NET_JAVA_HTML",
@@ -197,7 +185,11 @@ suite = {
                 "java.compiler",
             ],
             "requiresConcealed": {
-                "java.base": ["sun.nio.ch", "sun.security.provider", "jdk.internal.reflect"],
+                "java.base": [
+                    "sun.nio.ch",
+                    "sun.security.provider",
+                    "jdk.internal.reflect",
+                ],
                 "jdk.internal.vm.ci": ["jdk.vm.ci.code.site", "jdk.vm.ci.code", "jdk.vm.ci.common", "jdk.vm.ci.meta"],
             },
             "javaCompliance": "21+",
@@ -281,7 +273,7 @@ suite = {
             ],
             "distDependencies": [
                 "substratevm:SVM",
-                "SVM_WASM_API",
+                "sdk:WEBIMAGE_PREVIEW",
                 "SVM_WASM_JIMFS",
             ],
             "moduleInfo": {
@@ -289,7 +281,6 @@ suite = {
                 "requires": [
                     "org.graalvm.nativeimage.pointsto",
                     "org.graalvm.nativeimage.builder",
-                    "org.graalvm.webimage.api",
                     "org.graalvm.collections",
                 ],
                 "opens": [
@@ -303,20 +294,6 @@ suite = {
                             org.graalvm.extraimage.librarysupport,
                             org.graalvm.extraimage.closurecompiler,
                             com.oracle.svm.extraimage_enterprise.closurecompiler""",
-                ],
-            },
-            "maven": False,
-        },
-        "SVM_WASM_API": {
-            "subDir": "src",
-            "dependencies": [
-                "org.graalvm.webimage.api",
-            ],
-            "distDependencies": [],
-            "moduleInfo": {
-                "name": "org.graalvm.webimage.api",
-                "exports": [
-                    "org.graalvm.webimage.api",
                 ],
             },
             "maven": False,
@@ -349,7 +326,6 @@ suite = {
                 "requires": [
                     "jdk.graal.compiler",
                     "org.graalvm.nativeimage.builder",
-                    "org.graalvm.webimage.api",
                 ],
             },
         },
@@ -413,7 +389,6 @@ suite = {
                 "com.oracle.svm.webimage.jtt",
             ],
             "distDependencies": [
-                "SVM_WASM_API",
                 "WEBIMAGE_LIBRARY_SUPPORT",
             ],
             "exclude": [

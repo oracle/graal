@@ -34,6 +34,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import java.util.List;
+
 /**
  * The type interface which is both used in the hosted and substrate worlds.
  */
@@ -99,5 +101,13 @@ public interface SharedType extends ResolvedJavaType {
             return new AssumptionResult<>(implementations[0]);
         }
         return null;
+    }
+
+    @Override
+    default List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
+        /*
+         * Not needed on SubstrateVM for now.
+         */
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 }

@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.LabeledBlock;
 import com.oracle.svm.hosted.webimage.wasm.ast.FunctionTypeDescriptor;
 import com.oracle.svm.hosted.webimage.wasm.ast.ImportDescriptor;
 import com.oracle.svm.hosted.webimage.wasm.ast.TypeUse;
@@ -48,11 +49,10 @@ import com.oracle.svm.hosted.webimage.wasm.ast.id.WebImageWasmIds.Param;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WebImageWasmIds.SwitchLabel;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WebImageWasmIds.TempLocal;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.id.WebImageWasmGCIds;
+import com.oracle.svm.webimage.hightiercodegen.variables.ResolvedVar;
 import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlock;
-import jdk.graal.compiler.hightiercodegen.variables.ResolvedVar;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;

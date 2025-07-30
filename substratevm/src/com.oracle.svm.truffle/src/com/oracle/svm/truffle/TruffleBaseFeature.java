@@ -300,7 +300,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     static boolean isStaticMethodPresent(String className, String methodName, Collection<Class<?>> parameterTypes) {
         try {
             Class<?> clazz = Class.forName(className);
-            Method method = ReflectionUtil.lookupMethod(clazz, methodName, parameterTypes.toArray(new Class<?>[0]));
+            Method method = ReflectionUtil.lookupMethod(true, clazz, methodName, parameterTypes.toArray(new Class<?>[0]));
             return method != null;
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere(e);
@@ -481,7 +481,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     @Override
     public void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         StaticObjectSupport.registerInvocationPlugins(plugins, reason);
-        TruffleInvocationPlugins.register(providers.getLowerer().getTarget().arch, plugins.getInvocationPlugins(), providers.getReplacements());
+        TruffleInvocationPlugins.register(providers.getLowerer().getTarget().arch, plugins.getInvocationPlugins());
 
         /*
          * We need to constant-fold Profile.isProfilingEnabled already during static analysis, so
@@ -1569,10 +1569,8 @@ final class Target_com_oracle_truffle_polyglot_LanguageCache {
 final class Target_com_oracle_truffle_polyglot_PolyglotEngineImpl {
     @Substitute
     static void logFallback(String message) {
-        try (Log log = Log.log()) {
-            log.string(message.getBytes(StandardCharsets.UTF_8));
-            log.flush();
-        }
+        Log.log().string(message.getBytes(StandardCharsets.UTF_8));
+        Log.log().flush();
     }
 }
 

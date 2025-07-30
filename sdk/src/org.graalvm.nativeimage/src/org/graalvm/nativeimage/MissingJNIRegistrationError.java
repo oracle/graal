@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,7 +74,7 @@ import java.lang.reflect.Method;
  *
  * @since 24.1
  */
-public final class MissingJNIRegistrationError extends Error {
+public final class MissingJNIRegistrationError extends LinkageError {
     @Serial private static final long serialVersionUID = -8940056537864516986L;
 
     private final Class<?> elementType;

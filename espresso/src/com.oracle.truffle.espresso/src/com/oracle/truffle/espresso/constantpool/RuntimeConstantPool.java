@@ -112,13 +112,20 @@ public final class RuntimeConstantPool extends ConstantPool {
      * Returns the resolved, non-primitive, constant pool entry.
      */
     public ResolvedConstant resolvedAt(ObjectKlass accessingKlass, int index) {
+        return resolvedAt(accessingKlass, index, true);
+    }
+
+    public ResolvedConstant resolvedAt(ObjectKlass accessingKlass, int index, boolean allowStickyFailures) {
         ResolvedConstant c = resolvedConstants[index];
         if (c == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             synchronized (this) {
                 c = resolvedConstants[index];
                 if (c == null) {
-                    resolvedConstants[index] = c = resolve(index, accessingKlass);
+                    c = resolve(index, accessingKlass);
+                    if (allowStickyFailures || c.isSuccess()) {
+                        resolvedConstants[index] = c;
+                    }
                 }
             }
         }
@@ -136,7 +143,11 @@ public final class RuntimeConstantPool extends ConstantPool {
     }
 
     public Klass resolvedKlassAt(ObjectKlass accessingKlass, int index) {
-        ResolvedClassConstant resolved = (ResolvedClassConstant) resolvedAt(accessingKlass, index);
+        return resolvedKlassAt(accessingKlass, index, true);
+    }
+
+    public Klass resolvedKlassAt(ObjectKlass accessingKlass, int index, boolean allowStickyFailures) {
+        ResolvedClassConstant resolved = (ResolvedClassConstant) resolvedAt(accessingKlass, index, allowStickyFailures);
         return (Klass) resolved.value();
     }
 
@@ -361,27 +372,13 @@ public final class RuntimeConstantPool extends ConstantPool {
             Symbol<Type> type = context.getTypes().fromClassNameEntry(klassName);
             Klass klass = context.getMeta().resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
             Klass checkedKlass = klass.getElementalType();
-            if (!Klass.checkAccess(checkedKlass, accessingKlass, false)) {
+            if (!Klass.checkAccess(checkedKlass, accessingKlass)) {
                 Meta meta = context.getMeta();
                 context.getLogger().log(Level.FINE,
                                 "Access check of: " + checkedKlass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
                 StringBuilder errorMessage = new StringBuilder("failed to access class ");
                 errorMessage.append(checkedKlass.getExternalName()).append(" from class ").append(accessingKlass.getExternalName());
-                if (context.getJavaVersion().modulesEnabled()) {
-                    errorMessage.append(" (");
-                    if (accessingKlass.module() == checkedKlass.module()) {
-                        errorMessage.append(checkedKlass.getExternalName());
-                        errorMessage.append(" and ");
-                        ClassRegistry.classInModuleOfLoader(accessingKlass, true, errorMessage, meta);
-                    } else {
-                        // checkedKlass is not an array type (getElementalType) nor a
-                        // primitive type (it would have passed the access checks)
-                        ClassRegistry.classInModuleOfLoader((ObjectKlass) checkedKlass, false, errorMessage, meta);
-                        errorMessage.append("; ");
-                        ClassRegistry.classInModuleOfLoader(accessingKlass, false, errorMessage, meta);
-                    }
-                    errorMessage.append(")");
-                }
+                ClassRegistry.appendModuleAndLoadersDetails(context.getClassLoadingEnv(), checkedKlass, accessingKlass, errorMessage, context);
                 throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, errorMessage.toString());
             }
             return new ResolvedFoundClassConstant(klass);
@@ -479,7 +476,7 @@ public final class RuntimeConstantPool extends ConstantPool {
             return true;
         }
         // MagicAccessorImpl marks internal reflection classes that have access to everything.
-        if (accessingKlass.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass)) {
+        if (accessingKlass.isMagicAccessor()) {
             return true;
         }
 

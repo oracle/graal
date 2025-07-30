@@ -37,6 +37,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions;
@@ -481,6 +482,16 @@ public final class EspressoResolvedInstanceType extends EspressoResolvedObjectTy
     }
 
     private native EspressoResolvedJavaMethod[] getDeclaredMethods0();
+
+    @Override
+    public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
+        if (forceLink) {
+            link();
+        }
+        return Arrays.asList(getAllMethods0());
+    }
+
+    private native EspressoResolvedJavaMethod[] getAllMethods0();
 
     @Override
     public native EspressoResolvedJavaMethod getClassInitializer();

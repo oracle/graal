@@ -62,7 +62,7 @@ import jdk.graal.compiler.options.OptionType;
  */
 public final class JRTSupport {
 
-    static class Options {
+    public static class Options {
         @Option(help = "Enable support for reading Java modules (jimage format) and the jrt:// file system. Requires java.home to be set at runtime.", type = OptionType.Expert) //
         public static final HostedOptionKey<Boolean> AllowJRTFileSystem = new HostedOptionKey<>(false);
     }

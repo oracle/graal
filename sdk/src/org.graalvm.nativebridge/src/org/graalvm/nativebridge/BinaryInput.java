@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,7 +66,7 @@ import static org.graalvm.nativebridge.BinaryOutput.bufferSize;
  *
  * @see BinaryOutput
  * @see BinaryMarshaller
- * @see JNIConfig.Builder#registerMarshaller(Class, BinaryMarshaller)
+ * @see MarshallerConfig.Builder#registerMarshaller(Class, BinaryMarshaller)
  */
 public abstract class BinaryInput {
 
@@ -338,6 +338,24 @@ public abstract class BinaryInput {
     }
 
     /**
+     * Reads a string using a modified UTF-8 encoding in a machine-independent manner, supporting
+     * {@code null} values.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read.
+     * @throws IllegalArgumentException if the bytes do not represent a valid modified UTF-8
+     *             encoding of a string.
+     * @since 25.0
+     */
+    public final String readString() throws IndexOutOfBoundsException, IllegalArgumentException {
+        boolean nonNull = readBoolean();
+        if (nonNull) {
+            return readUTF();
+        } else {
+            return null;
+        }
+    }
+
+    /**
      * Reads a single value, using the data type encoded in the marshalled data.
      *
      * @return The read value, such as a boxed Java primitive, a {@link String}, a {@code null}, or
@@ -553,7 +571,7 @@ public abstract class BinaryInput {
         }
     }
 
-    private static final class ByteArrayBinaryInput extends BinaryInput {
+    static final class ByteArrayBinaryInput extends BinaryInput {
 
         private final byte[] buffer;
 
@@ -593,9 +611,13 @@ public abstract class BinaryInput {
             pos += len;
             return result;
         }
+
+        byte[] getArray() {
+            return buffer;
+        }
     }
 
-    private static final class CCharPointerInput extends BinaryInput {
+    static final class CCharPointerInput extends BinaryInput {
 
         /**
          * Represents the point at which the average cost of a JNI call exceeds the expense of an
@@ -651,6 +673,10 @@ public abstract class BinaryInput {
             ByteBuffer result = CTypeConversion.asByteBuffer(address.addressOf(pos), len).order(ByteOrder.BIG_ENDIAN).asReadOnlyBuffer();
             pos += len;
             return result;
+        }
+
+        public CCharPointer getAddress() {
+            return address;
         }
     }
 }

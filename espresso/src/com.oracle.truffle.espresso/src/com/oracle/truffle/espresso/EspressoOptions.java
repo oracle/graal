@@ -154,6 +154,16 @@ public final class EspressoOptions {
                     usageSyntax = "<module>" + PATH_SEPARATOR_INSERT + "<module>" + PATH_SEPARATOR_INSERT + "...") //
     public static final OptionKey<List<String>> EnableNativeAccess = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
 
+    @Option(help = "Allow or deny access to code and data outside the Java runtime " +
+                    "by code in modules for which native access is not explicitly enabled. " +
+                    "<value> is one of `deny`, `warn` or `allow`. The default value is `warn`. " +
+                    "This option will be removed in a future release." +
+                    "\\nEquivalent to '--illegal-native-access=<value>'", //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.STABLE, //
+                    usageSyntax = "warn|deny|allow") //
+    public static final OptionKey<String> IllegalNativeAccess = new OptionKey<>("");
+
     @Option(help = "Installation directory for Java Runtime Environment (JRE).", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.STABLE, //
@@ -395,38 +405,37 @@ public final class EspressoOptions {
             final String[] options = s.split(",");
             String transport = null;
             String host = null;
-            String port = null;
+            int port = 0;
             boolean server = false;
             boolean suspend = true;
 
             for (String keyValue : options) {
-                String[] parts = keyValue.split("=");
-                if (parts.length != 2) {
+                int equalsIndex = keyValue.indexOf('=');
+                if (equalsIndex <= 0) {
                     throw new IllegalArgumentException("JDWP options must be a comma separated list of key=value pairs.");
                 }
-                String key = parts[0];
-                String value = parts[1];
+                String key = keyValue.substring(0, equalsIndex);
+                String value = keyValue.substring(equalsIndex + 1);
                 switch (key) {
                     case "address":
-                        parts = value.split(":");
                         String inputHost = null;
-                        String inputPort;
-                        if (parts.length == 1) {
-                            inputPort = parts[0];
-                        } else if (parts.length == 2) {
-                            inputHost = parts[0];
-                            inputPort = parts[1];
-                        } else {
-                            throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Not a 'host:port' pair.");
-                        }
-                        long realValue;
-                        try {
-                            realValue = Long.valueOf(inputPort);
-                            if (realValue < 0 || realValue > 65535) {
-                                throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Must be in the 0 - 65535 range.");
+                        int inputPort = 0;
+                        if (!value.isEmpty()) {
+                            int colonIndex = value.indexOf(':');
+                            if (colonIndex > 0) {
+                                inputHost = value.substring(0, colonIndex);
                             }
-                        } catch (NumberFormatException ex) {
-                            throw new IllegalArgumentException("Invalid JDWP option, address is not a number. Must be a number in the 0 - 65535 range.");
+                            String portStr = value.substring(colonIndex + 1);
+                            long realValue;
+                            try {
+                                realValue = Long.valueOf(portStr);
+                                if (realValue < 0 || realValue > 65535) {
+                                    throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Must be in the 0 - 65535 range.");
+                                }
+                            } catch (NumberFormatException ex) {
+                                throw new IllegalArgumentException("Invalid JDWP option, address: " + value + ". Port is not a number. Must be a number in the 0 - 65535 range.");
+                            }
+                            inputPort = (int) realValue;
                         }
                         host = inputHost;
                         port = inputPort;
@@ -630,7 +639,7 @@ public final class EspressoOptions {
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> EnableSignals = new OptionKey<>(false);
 
-    @Option(help = "Enables java agents. Support is currently very limited.", //
+    @Option(help = "Enables native JVMTI agents. Support is currently very limited.", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") //
@@ -653,17 +662,16 @@ public final class EspressoOptions {
         JAVA,
     }
 
-    private static final OptionType<JImageMode> JIMAGE_MODE_OPTION_TYPE = new OptionType<>("JImageMode",
-                    new Function<String, JImageMode>() {
-                        @Override
-                        public JImageMode apply(String s) {
-                            try {
-                                return JImageMode.valueOf(s.toUpperCase(Locale.ROOT));
-                            } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException("JImage: Mode can be 'native', 'java'.");
-                            }
-                        }
-                    });
+    private static final OptionType<JImageMode> JIMAGE_MODE_OPTION_TYPE = new OptionType<>("JImageMode", new Function<String, JImageMode>() {
+        @Override
+        public JImageMode apply(String s) {
+            try {
+                return JImageMode.valueOf(s.toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("JImage: Mode can be 'native', 'java'.");
+            }
+        }
+    });
 
     @Option(help = "Selects the jimage reader.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
@@ -715,6 +723,58 @@ public final class EspressoOptions {
                     category = OptionCategory.INTERNAL, //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") public static final OptionKey<Boolean> EagerFrameAnalysis = new OptionKey<>(false);
+
+    public enum XShareOption {
+        auto,
+        on,
+        off,
+        dump
+    }
+
+    @Option(help = "Sets the class data sharing (CDS) mode.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "auto|on|off|dump") //
+    public static final OptionKey<XShareOption> CDS = new OptionKey<>(XShareOption.off);
+
+    @Option(help = "Overrides the default path to the (static) CDS archive.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "<path>") //
+    public static final OptionKey<Path> SharedArchiveFile = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
+
+    @Option(help = "Sets the amount of time, in ms, various thread requests (such as 'Thread.getStackTrace()') will wait for when the requested thread is considered unresponsive w.r.t. espresso.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "<duration in ms>") //
+    public static final OptionKey<Integer> ThreadRequestGracePeriod = new OptionKey<>(100);
+
+    public enum MemoryAccessOption {
+        allow,
+        warn,
+        debug,
+        deny,
+        defaultValue // undocumented sentinel value
+    }
+
+    @Option(help = "Allow or deny usage of unsupported API sun.misc.Unsafe", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "allow|warn|debug|deny") //
+    public static final OptionKey<MemoryAccessOption> SunMiscUnsafeMemoryAccess = new OptionKey<>(MemoryAccessOption.defaultValue);
+
+    @Option(help = "Enable advanced class redefinition.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> EnableAdvancedRedefinition = new OptionKey<>(false);
+
+    @Option(help = "The maximum number of lines in the stack trace for Java exceptions", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "<depth>>") //
+    // HotSpot's MaxJavaStackTraceDepth is 1024 by default
+    public static final OptionKey<Integer> MaxJavaStackTraceDepth = new OptionKey<>(32);
 
     /**
      * Property used to force liveness analysis to also be applied by the interpreter. For testing

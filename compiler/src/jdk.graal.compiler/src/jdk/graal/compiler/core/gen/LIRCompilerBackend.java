@@ -171,7 +171,7 @@ public class LIRCompilerBackend {
                  * LIRGeneration may have changed the CFG, so in case a schedule is needed afterward
                  * we make sure it will be recomputed.
                  */
-                graph.clearLastSchedule();
+                graph.clearLastCFG();
                 return result;
             } catch (Throwable e) {
                 throw debug.handle(e);

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.driver;
 
+import static com.oracle.svm.core.util.EnvVariableUtils.EnvironmentVariable;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -59,6 +61,7 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -82,6 +85,7 @@ import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.FallbackExecutor.Options;
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.OS;
+import com.oracle.svm.core.SharedConstants;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VM;
@@ -107,7 +111,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import com.oracle.svm.core.JavaVersionUtil;
 import jdk.internal.jimage.ImageReader;
 
 public class NativeImage {
@@ -131,6 +135,16 @@ public class NativeImage {
     static final String graalvmVendorVersion = VM.getVendorVersion();
     private static final String ALL_UNNAMED = "ALL-UNNAMED";
     static final String graalvmVersion = System.getProperty("org.graalvm.version", "dev");
+
+    /**
+     * The path to a temporary directory that is available during the process lifetime of the
+     * driver. The builder process can retrieve the directory path through the environment variable
+     * {@link SharedConstants#DRIVER_TEMP_DIR_ENV_VARIABLE}. The directory is created via
+     * {@link ArchiveSupport#createTempDir} and is therefore removed by the
+     * {@link Runtime#addShutdownHook shutdown hook}.
+     */
+    private final Path driverTempDir;
+    private static final String DRIVER_TEMP_DIR_PREFIX = "driverRoot-";
 
     private static Map<String, String[]> getCompilerFlags() {
         Map<String, String[]> result = new HashMap<>();
@@ -278,7 +292,6 @@ public class NativeImage {
     final String oHCLibraryPath = oH(SubstrateOptions.CLibraryPath);
     final String oHFallbackThreshold = oH(SubstrateOptions.FallbackThreshold);
     final String oHFallbackExecutorJavaArg = oH(FallbackExecutor.Options.FallbackExecutorJavaArg);
-    final String oHNativeImageOptionsEnvVar = oH(SubstrateOptions.BuildOutputNativeImageOptionsEnvVarValue, OptionOrigin.originDriver);
     final String oRRuntimeJavaArg = oR(Options.FallbackExecutorRuntimeJavaArg);
     final String oHTraceClassInitialization = oH(SubstrateOptions.TraceClassInitialization);
     final String oHTraceObjectInstantiation = oH(SubstrateOptions.TraceObjectInstantiation);
@@ -353,6 +366,7 @@ public class NativeImage {
         protected final List<String> args;
 
         private HostFlags hostFlags;
+        private Path driverTempDir;
 
         BuildConfiguration(BuildConfiguration original) {
             modulePathBuild = original.modulePathBuild;
@@ -362,6 +376,7 @@ public class NativeImage {
             libJvmciDir = original.libJvmciDir;
             args = original.args;
             hostFlags = original.hostFlags;
+            driverTempDir = original.driverTempDir;
         }
 
         protected BuildConfiguration(List<String> args) {
@@ -509,6 +524,12 @@ public class NativeImage {
 
         protected List<Path> getImageProvidedJars() {
             return getJars(rootDir.resolve(Paths.get("lib", "svm")));
+        }
+
+        protected void setDriverTempDir(Path tempDir) {
+            Objects.requireNonNull(tempDir);
+            VMError.guarantee(Files.isDirectory(tempDir));
+            this.driverTempDir = tempDir;
         }
 
         public HostFlags getHostFlags() {
@@ -913,6 +934,9 @@ public class NativeImage {
         apiOptionHandler = new APIOptionHandler(this);
         registerOptionHandler(apiOptionHandler);
         registerOptionHandler(new MacroOptionHandler(this));
+
+        this.driverTempDir = config.driverTempDir != null ? config.driverTempDir : archiveSupport.createTempDir(DRIVER_TEMP_DIR_PREFIX, new AtomicBoolean(true));
+        config.setDriverTempDir(this.driverTempDir);
     }
 
     void addMacroOptionRoot(Path configDir) {
@@ -925,29 +949,35 @@ public class NativeImage {
         optionHandlers.add(handler);
     }
 
+    private List<String> defaultNativeImageArgs = null;
+
     private List<String> getDefaultNativeImageArgs() {
-        List<String> defaultNativeImageArgs = new ArrayList<>();
-        String propertyOptions = userConfigProperties.get("NativeImageArgs");
-        if (propertyOptions != null) {
-            Collections.addAll(defaultNativeImageArgs, propertyOptions.split(" +"));
-        }
-        final String envVarName = SubstrateOptions.NATIVE_IMAGE_OPTIONS_ENV_VAR;
-        String nativeImageOptionsValue = System.getenv(envVarName);
-        if (nativeImageOptionsValue != null) {
-            defaultNativeImageArgs.addAll(JDKArgsUtils.parseArgsFromEnvVar(nativeImageOptionsValue, envVarName, msg -> showError(msg)));
-        }
-        if (!defaultNativeImageArgs.isEmpty()) {
-            String buildApplyOptionName = BundleSupport.BundleOptionVariants.apply.optionName();
-            if (config.getBuildArgs().stream().noneMatch(arg -> arg.startsWith(buildApplyOptionName + "="))) {
-                if (nativeImageOptionsValue != null) {
-                    addPlainImageBuilderArg(oHNativeImageOptionsEnvVar + nativeImageOptionsValue);
+        if (defaultNativeImageArgs == null) {
+            List<String> args = new ArrayList<>();
+            String propertyOptions = userConfigProperties.get("NativeImageArgs");
+            if (propertyOptions != null) {
+                Collections.addAll(args, propertyOptions.split(" +"));
+            }
+            final String envVarName = SubstrateOptions.NATIVE_IMAGE_OPTIONS_ENV_VAR;
+            String nativeImageOptionsValue = System.getenv(envVarName);
+            if (nativeImageOptionsValue != null) {
+                args.addAll(JDKArgsUtils.parseArgsFromEnvVar(nativeImageOptionsValue, envVarName, msg -> showError(msg)));
+            }
+            if (!args.isEmpty()) {
+                String buildApplyOptionName = BundleSupport.BundleOptionVariants.apply.optionName();
+                if (config.getBuildArgs().stream().noneMatch(arg -> arg.startsWith(buildApplyOptionName + "="))) {
+                    if (nativeImageOptionsValue != null) {
+                        LogUtils.info("Picked up " + envVarName, nativeImageOptionsValue);
+                    }
+                    defaultNativeImageArgs = List.copyOf(args);
+                } else {
+                    LogUtils.warning("Option '" + buildApplyOptionName + "' in use. Ignoring environment variables " + envVarName + " and " + NativeImage.CONFIG_FILE_ENV_VAR_KEY + ".");
                 }
-                return List.copyOf(defaultNativeImageArgs);
             } else {
-                LogUtils.warning("Option '" + buildApplyOptionName + "' in use. Ignoring environment variables " + envVarName + " and " + NativeImage.CONFIG_FILE_ENV_VAR_KEY + ".");
+                defaultNativeImageArgs = List.of();
             }
         }
-        return List.of();
+        return defaultNativeImageArgs;
     }
 
     static void ensureDirectoryExists(Path dir) {
@@ -1602,7 +1632,7 @@ public class NativeImage {
 
     protected Path createVMInvocationArgumentFile(List<String> arguments) {
         try {
-            Path argsFile = Files.createTempFile("vminvocation", ".args");
+            Path argsFile = createFileInTempDir("vminvocation.args");
             StringJoiner joiner = new StringJoiner("\n");
             for (String arg : arguments) {
                 // Options in @argfile need to be properly quoted as
@@ -1620,7 +1650,6 @@ public class NativeImage {
             }
             String joinedOptions = joiner.toString();
             Files.write(argsFile, joinedOptions.getBytes());
-            argsFile.toFile().deleteOnExit();
             return argsFile;
         } catch (IOException e) {
             throw showError(e.getMessage());
@@ -1629,10 +1658,9 @@ public class NativeImage {
 
     protected Path createImageBuilderArgumentFile(List<String> imageBuilderArguments) {
         try {
-            Path argsFile = Files.createTempFile("native-image", ".args");
+            Path argsFile = createFileInTempDir("native-image.args");
             String joinedOptions = String.join("\0", imageBuilderArguments);
             Files.write(argsFile, joinedOptions.getBytes());
-            argsFile.toFile().deleteOnExit();
             return argsFile;
         } catch (IOException e) {
             throw showError(e.getMessage());
@@ -1717,12 +1745,7 @@ public class NativeImage {
              */
             keepAliveFile = Path.of("/proc/" + ProcessHandle.current().pid() + "/comm");
         } else {
-            try {
-                keepAliveFile = Files.createTempFile(".native_image", "alive");
-                keepAliveFile.toFile().deleteOnExit();
-            } catch (IOException e) {
-                throw showError("Temporary keep-alive file could not be created");
-            }
+            keepAliveFile = createFileInTempDir(".native_image.alive");
         }
 
         boolean useContainer = useBundle() && bundleSupport.useContainer;
@@ -1754,7 +1777,7 @@ public class NativeImage {
             }
             int exitStatusCode = bundleSupport.containerSupport.initializeImage();
             switch (ExitStatus.of(exitStatusCode)) {
-                case OK -> {
+                case OK, CONTAINER_REUSE -> {
                 }
                 case BUILDER_ERROR -> {
                     /* Exit, builder has handled error reporting. */
@@ -1807,6 +1830,7 @@ public class NativeImage {
             WindowsBuildEnvironmentUtil.propagateEnv(environment);
         }
         environment.put(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM, Boolean.toString(config.modulePathBuild));
+        environment.put(SharedConstants.DRIVER_TEMP_DIR_ENV_VARIABLE, config.driverTempDir.toString());
         if (!config.modulePathBuild) {
             /**
              * The old mode of running the image generator on the class path, which was deprecated
@@ -1850,6 +1874,28 @@ public class NativeImage {
             if (p != null) {
                 p.destroy();
             }
+        }
+    }
+
+    /**
+     * Creates a file with name 'fileName' in the {@link NativeImage#driverTempDir temporary
+     * directory} and returns the path to the newly created file. Note: the file will be deleted if
+     * it already exists.
+     *
+     * @param fileName the name of file to create in the temporary directory.
+     * @return the path to the newly created file.
+     */
+    private Path createFileInTempDir(String fileName) {
+        Objects.requireNonNull(fileName);
+        try {
+            Path path = driverTempDir.resolve(fileName);
+            Files.deleteIfExists(path);
+            Files.createFile(path);
+            return path;
+        } catch (InvalidPathException e) {
+            throw showError("Invalid path for file in temp directory: " + e.getMessage());
+        } catch (IOException e) {
+            throw showError("Unable to create file in temp directory: " + e.getMessage());
         }
     }
 
@@ -1935,19 +1981,9 @@ public class NativeImage {
     }
 
     private static void sanitizeJVMEnvironment(Map<String, String> environment, Map<String, String> imageBuilderEnvironment) {
-        Set<String> requiredKeys = new HashSet<>(List.of("PATH", "PWD", "HOME", "LANG", "LANGUAGE"));
-        Function<String, String> keyMapper;
-        if (OS.WINDOWS.isCurrent()) {
-            requiredKeys.addAll(List.of("TEMP", "INCLUDE", "LIB"));
-            keyMapper = s -> s.toUpperCase(Locale.ROOT);
-        } else {
-            keyMapper = Function.identity();
-        }
         Map<String, String> restrictedEnvironment = new HashMap<>();
         environment.forEach((key, val) -> {
-            String mappedKey = keyMapper.apply(key);
-            // LC_* are locale vars that override LANG for specific categories (or all, with LC_ALL)
-            if (requiredKeys.contains(mappedKey) || mappedKey.startsWith("LC_")) {
+            if (EnvironmentVariable.isKeyRequired(key)) {
                 restrictedEnvironment.put(key, val);
             }
         });
@@ -1956,8 +1992,9 @@ public class NativeImage {
             if (entry.getValue() != null) {
                 restrictedEnvironment.put(entry.getKey(), entry.getValue());
             } else {
+                EnvironmentVariable imageBuilderEnvironmentVariable = EnvironmentVariable.of(entry);
                 environment.forEach((key, val) -> {
-                    if (keyMapper.apply(key).equals(keyMapper.apply(entry.getKey()))) {
+                    if (imageBuilderEnvironmentVariable.keyEquals(key)) {
                         /*
                          * Record key as it was given by -E<key-name> (by using `entry.getKey()`
                          * instead of `key`) to allow creating bundles on Windows that will also
@@ -2048,6 +2085,13 @@ public class NativeImage {
                         build(new FallbackBuildConfiguration(nativeImage), nativeImageProvider);
                         LogUtils.warning("Image '" + nativeImage.imageName + "' is a fallback image that requires a JDK for execution (use --" + SubstrateOptions.OptionNameNoFallback +
                                         " to suppress fallback image generation and to print more detailed information why a fallback image was necessary).");
+                        break;
+                    case REBUILD_AFTER_ANALYSIS:
+                        build(config, buildConfig -> {
+                            NativeImage rebuildNativeImage = nativeImageProvider.apply(buildConfig);
+                            rebuildNativeImage.addImageBuilderJavaArgs(String.format("-D%s=true", SharedConstants.REBUILD_AFTER_ANALYSIS_MARKER));
+                            return rebuildNativeImage;
+                        });
                         break;
                     case OUT_OF_MEMORY, OUT_OF_MEMORY_KILLED:
                         nativeImage.showOutOfMemoryWarning();

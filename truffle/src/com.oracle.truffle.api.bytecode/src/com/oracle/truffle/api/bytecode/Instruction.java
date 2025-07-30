@@ -172,7 +172,7 @@ public abstract class Instruction {
      */
     public final SourceSection getSourceSection() {
         BytecodeNode bytecode = getBytecodeNode();
-        if (bytecode.getSourceInformation() == null) {
+        if (bytecode == null || bytecode.getSourceInformation() == null) {
             // avoid materialization of source info
             return null;
         }
@@ -190,7 +190,7 @@ public abstract class Instruction {
      */
     public final SourceSection[] getSourceSections() {
         BytecodeNode bytecode = getBytecodeNode();
-        if (bytecode.getSourceInformation() == null) {
+        if (bytecode == null || bytecode.getSourceInformation() == null) {
             // avoid materialization of source info
             return null;
         }
@@ -488,7 +488,7 @@ public abstract class Instruction {
                 case BYTECODE_INDEX:
                     return String.format("%s(%04x)", getName(), asBytecodeIndex());
                 case BRANCH_PROFILE:
-                    return String.format("%s(%s)", getName(), asBranchProfile().toString());
+                    return String.format("%s(%s)", getName(), asBranchProfile());
                 case TAG_NODE:
                     return String.format("%s%s", getName(), printTagProfile(asTagNode()));
                 default:

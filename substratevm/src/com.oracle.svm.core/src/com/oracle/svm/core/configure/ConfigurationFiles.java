@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ConfigurationParserOption;
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -190,7 +191,7 @@ public final class ConfigurationFiles {
             if (TreatAllTypeReachableConditionsAsTypeReached.getValue()) {
                 result.add(ConfigurationParserOption.TREAT_ALL_TYPE_REACHABLE_CONDITIONS_AS_TYPE_REACHED);
             }
-            if (TreatAllNameEntriesAsType.getValue()) {
+            if (TreatAllNameEntriesAsType.getValue() || FutureDefaultsOptions.treatNameAsType()) {
                 result.add(ConfigurationParserOption.TREAT_ALL_NAME_ENTRIES_AS_TYPE);
             }
             return result;

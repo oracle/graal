@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -106,15 +106,16 @@ public final class ForeignException extends RuntimeException {
      * still possible to use it by the hand-written code, but it's recommended to use the bridge
      * processor.
      *
+     * @param isolate the receiver isolate
      * @param marshaller the marshaller to unmarshal the exception
      */
-    public RuntimeException throwOriginalException(BinaryMarshaller<? extends Throwable> marshaller) {
+    public RuntimeException throwOriginalException(Isolate<?> isolate, BinaryMarshaller<? extends Throwable> marshaller) {
         try {
             if (rawData == null) {
                 throw new RuntimeException("Failed to marshall foreign throwable.");
             }
             BinaryInput in = BinaryInput.create(rawData);
-            Throwable t = marshaller.read(in);
+            Throwable t = marshaller.read(isolate, in);
             throw ForeignException.silenceException(RuntimeException.class, t);
         } finally {
             clearPendingException();
@@ -152,21 +153,28 @@ public final class ForeignException extends RuntimeException {
      * @param foreignExceptionStack the stack trace marshalled into the {@link ForeignException}
      * @return the stack trace combining both local and foreign stack trace elements
      */
-    public static StackTraceElement[] mergeStackTrace(StackTraceElement[] foreignExceptionStack) {
+    public static StackTraceElement[] mergeStackTrace(Isolate<?> isolate, StackTraceElement[] foreignExceptionStack) {
         if (foreignExceptionStack.length == 0) {
             // Exception has no stack trace, nothing to merge.
             return foreignExceptionStack;
         }
         ForeignException localException = pendingException.get();
         if (localException != null) {
-            switch (localException.kind) {
-                case HOST_TO_GUEST:
-                    return JNIExceptionWrapper.mergeStackTraces(localException.getStackTrace(), foreignExceptionStack, false);
-                case GUEST_TO_HOST:
-                    return JNIExceptionWrapper.mergeStackTraces(foreignExceptionStack, localException.getStackTrace(), true);
-                default:
-                    throw new IllegalStateException("Unsupported kind " + localException.kind);
+            StackMerger merger;
+            if (isolate instanceof ProcessIsolate) {
+                merger = ProcessIsolateStack::mergeStackTraces;
+            } else if (isolate instanceof NativeIsolate) {
+                merger = JNIExceptionWrapper::mergeStackTraces;
+            } else if (isolate instanceof HSIsolate) {
+                merger = JNIExceptionWrapper::mergeStackTraces;
+            } else {
+                throw new IllegalArgumentException("Unsupported isolate type: " + isolate);
             }
+            return switch (localException.kind) {
+                case HOST_TO_GUEST -> merger.merge(localException.getStackTrace(), foreignExceptionStack, false);
+                case GUEST_TO_HOST -> merger.merge(foreignExceptionStack, localException.getStackTrace(), true);
+                default -> throw new IllegalStateException("Unsupported kind " + localException.kind);
+            };
         } else {
             return foreignExceptionStack;
         }
@@ -362,5 +370,10 @@ public final class ForeignException extends RuntimeException {
                 context.throwJNIExceptionWrapper();
             }
         }
+    }
+
+    @FunctionalInterface
+    private interface StackMerger {
+        StackTraceElement[] merge(StackTraceElement[] hostStack, StackTraceElement[] isolateStack, boolean originatedInHost);
     }
 }

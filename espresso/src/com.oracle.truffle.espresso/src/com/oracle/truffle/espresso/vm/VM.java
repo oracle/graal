@@ -32,13 +32,15 @@ import static com.oracle.truffle.espresso.jni.JniEnv.JNI_EVERSION;
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
-import static com.oracle.truffle.espresso.runtime.EspressoContext.DEFAULT_STACK_SIZE;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.ACCESS_VM_ANNOTATIONS;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.HIDDEN_CLASS;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.NESTMATE_CLASS;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.STRONG_LOADER_LINK;
+import static com.oracle.truffle.espresso.threads.ThreadState.OBJECT_WAIT;
+import static com.oracle.truffle.espresso.threads.ThreadState.TIMED_OBJECT_WAIT;
 
 import java.io.File;
+import java.lang.invoke.MethodType;
 import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -49,9 +51,11 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -84,11 +88,14 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.EspressoOptions.MemoryAccessOption;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
+import com.oracle.truffle.espresso.cds.CDSSupport;
 import com.oracle.truffle.espresso.classfile.ClasspathEntry;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
@@ -115,6 +122,7 @@ import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.BootClassRegistry;
+import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import com.oracle.truffle.espresso.impl.Field;
@@ -158,8 +166,8 @@ import com.oracle.truffle.espresso.substitutions.continuations.Target_org_graalv
 import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_ref_Reference;
-import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.ThreadAccess;
+import com.oracle.truffle.espresso.threads.ThreadState;
 import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.npe.ExtendedNPEMessage;
 import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
@@ -206,6 +214,9 @@ public final class VM extends NativeEnv {
     private final Object zipLoadLock = new Object() {
     };
     private volatile @Pointer TruffleObject zipLibrary;
+
+    // The initial system properties
+    private Map<String, String> systemProperties;
 
     public void attachThread(Thread hostThread) {
         if (hostThread != Thread.currentThread()) {
@@ -455,6 +466,9 @@ public final class VM extends NativeEnv {
     }
 
     private StaticObject nonReflectionClassLoader(StaticObject loader) {
+        if (getJavaVersion().java21OrLater()) {
+            return loader;
+        }
         if (StaticObject.notNull(loader)) {
             Meta meta = getMeta();
             if (meta.sun_reflect_DelegatingClassLoader.isAssignableFrom(loader.getKlass())) {
@@ -575,7 +589,7 @@ public final class VM extends NativeEnv {
                 packageNames.add(meta.toGuestString(s));
             }
         });
-        return StaticObject.createArray(meta.java_lang_String.getArrayClass(), packageNames.toArray(StaticObject.EMPTY_ARRAY), getContext());
+        return StaticObject.createArray(meta.java_lang_String.getArrayKlass(), packageNames.toArray(StaticObject.EMPTY_ARRAY), getContext());
     }
 
     @VmImpl
@@ -862,8 +876,9 @@ public final class VM extends NativeEnv {
 
         EspressoContext context = getContext();
         StaticObject currentThread = context.getCurrentPlatformThread();
-        State state = timeout > 0 ? State.TIMED_WAITING : State.WAITING;
-        try (Transition transition = Transition.transition(context, state)) {
+        ThreadState state = timeout > 0 ? TIMED_OBJECT_WAIT : OBJECT_WAIT;
+        Transition transition = Transition.transition(state, profiler);
+        try {
             final boolean report = context.shouldReportVMEvents();
             if (report) {
                 context.reportMonitorWait(self, timeout);
@@ -883,13 +898,15 @@ public final class VM extends NativeEnv {
             if (getThreadAccess().isInterrupted(currentThread, true)) {
                 throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
             }
-            getThreadAccess().fullSafePoint(currentThread);
+            getThreadAccess().checkDeprecatedThreadStatus(currentThread);
         } catch (IllegalMonitorStateException e) {
             profiler.profile(1);
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalMonitorStateException, e.getMessage());
         } catch (IllegalArgumentException e) {
             profiler.profile(2);
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
+        } finally {
+            transition.restore(profiler);
         }
     }
 
@@ -940,6 +957,7 @@ public final class VM extends NativeEnv {
         if (klass.isPrimitive()) {
             return StaticObject.NULL;
         }
+        assert getMeta().HIDDEN_SIGNERS != null;
         StaticObject signersArray = (StaticObject) getMeta().HIDDEN_SIGNERS.getHiddenObject(self);
         if (signersArray == null || StaticObject.isNull(signersArray)) {
             return StaticObject.NULL;
@@ -951,6 +969,7 @@ public final class VM extends NativeEnv {
     public void JVM_SetClassSigners(@JavaType(Class.class) StaticObject self, @JavaType(Object[].class) StaticObject signers) {
         Klass klass = self.getMirrorKlass(getMeta());
         if (!klass.isPrimitive() && !klass.isArray()) {
+            assert getMeta().HIDDEN_SIGNERS != null;
             getMeta().HIDDEN_SIGNERS.setHiddenObject(self, signers);
         }
     }
@@ -1368,6 +1387,31 @@ public final class VM extends NativeEnv {
     }
 
     @VmImpl(isJni = true)
+    public int JVM_GetClassFileVersion(@JavaType(Class.class) StaticObject clazz, @Inject SubstitutionProfiler profiler) {
+        if (StaticObject.isNull(clazz)) {
+            profiler.profile(0);
+            throw getMeta().throwNullPointerException();
+        }
+        /*
+         * From HotSpot:
+         * 
+         * Return the current class's class file version. The low order 16 bits of the returned jint
+         * contain the class's major version. The high order 16 bits contain the class's minor
+         * version.
+         */
+        Klass klass = clazz.getMirrorKlass(getMeta());
+        if (klass instanceof ObjectKlass objKlass) {
+            profiler.profile(1);
+            ParserKlass parser = objKlass.getLinkedKlass().getParserKlass();
+            return ((parser.getMinorVersion() << 16) | (parser.getMajorVersion()));
+        }
+        profiler.profile(2);
+        // For primitives, return latest (Same as HotSpot).
+        // We do the same for arrays. HotSpot just crashes in that case.
+        return getJavaVersion().classFileVersion();
+    }
+
+    @VmImpl(isJni = true)
     public boolean JVM_AreNestMates(@JavaType(Class.class) StaticObject current, @JavaType(Class.class) StaticObject member) {
         return current.getMirrorKlass(getMeta()).nest() == member.getMirrorKlass(getMeta()).nest();
     }
@@ -1393,7 +1437,7 @@ public final class VM extends NativeEnv {
         if (StaticObject.isNull(current)) {
             return StaticObject.NULL;
         }
-        StaticObject pd = (StaticObject) getMeta().HIDDEN_PROTECTION_DOMAIN.getHiddenObject(current);
+        StaticObject pd = getMeta().HIDDEN_PROTECTION_DOMAIN.getMaybeHiddenObject(current);
         return pd == null ? StaticObject.NULL : pd;
     }
 
@@ -1561,7 +1605,7 @@ public final class VM extends NativeEnv {
             return JNI_ERR;
         }
         TruffleObject interopPtr = null;
-        if (JVMTI.isJvmtiVersion(version)) {
+        if (getContext().getEspressoEnv().EnableNativeAgents && JVMTI.isJvmtiVersion(version)) {
             // JVMTI is requested before the main thread is created.
             // Also note that every request of a JVMTI env returns a freshly created structure.
             interopPtr = jvmti.create(version);
@@ -1739,13 +1783,21 @@ public final class VM extends NativeEnv {
         private boolean hiddenTop;
 
         public StackTrace() {
-            this(DEFAULT_STACK_SIZE);
+            this(32);
         }
 
         private StackTrace(int size) {
             this.trace = new StackElement[size];
             this.capacity = size;
             this.size = 0;
+        }
+
+        public StaticObject toGuest(EspressoContext ctx) {
+            return ctx.getMeta().java_lang_StackTraceElement.allocateReferenceArray(size, i -> {
+                StaticObject ste = ctx.getMeta().java_lang_StackTraceElement.allocateInstance(ctx);
+                VM.fillInElement(ste, trace[i], ctx.getMeta());
+                return ste;
+            });
         }
 
         public StackElement top() {
@@ -2453,6 +2505,13 @@ public final class VM extends NativeEnv {
         }
     }
 
+    public synchronized Map<String, String> getSystemProperties() {
+        if (systemProperties == null) {
+            systemProperties = Collections.unmodifiableMap(buildPropertiesMap().map);
+        }
+        return systemProperties;
+    }
+
     private PropertiesMap buildPropertiesMap() {
         PropertiesMap map = new PropertiesMap();
         OptionValues options = getContext().getEnv().getOptions();
@@ -2482,6 +2541,14 @@ public final class VM extends NativeEnv {
             map.setNumberedProperty("jdk.module.addopens.", options.get(EspressoOptions.AddOpens), "AddOpens");
             addmodCount = map.setNumberedProperty("jdk.module.addmods.", options.get(EspressoOptions.AddModules), "AddModules");
             map.setNumberedProperty("jdk.module.enable.native.access.", options.get(EspressoOptions.EnableNativeAccess), "EnableNativeAccess");
+            map.setPropertyIfExists("jdk.module.illegal.native.access", options.get(EspressoOptions.IllegalNativeAccess), "IllegalNativeAccess");
+        }
+
+        if (getJavaVersion().java23OrLater()) {
+            MemoryAccessOption memoryAccessOption = options.get(EspressoOptions.SunMiscUnsafeMemoryAccess);
+            if (memoryAccessOption != MemoryAccessOption.defaultValue) {
+                map.set("sun.misc.unsafe.memory.access", memoryAccessOption.name(), "SunMiscUnsafeMemoryAccess");
+            }
         }
 
         // Applications expect different formats e.g. 1.8 vs. 11
@@ -2537,7 +2604,7 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     @TruffleBoundary
     public @JavaType(Properties.class) StaticObject JVM_InitProperties(@JavaType(Properties.class) StaticObject properties) {
-        Map<String, String> props = buildPropertiesMap().map;
+        Map<String, String> props = getSystemProperties();
         Method setProperty = properties.getKlass().lookupMethod(Names.setProperty, Signatures.Object_String_String);
         for (Map.Entry<String, String> entry : props.entrySet()) {
             setProperty.invokeWithConversions(properties, entry.getKey(), entry.getValue());
@@ -2548,7 +2615,7 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     @TruffleBoundary
     public @JavaType(String[].class) StaticObject JVM_GetProperties(@Inject EspressoLanguage language) {
-        Map<String, String> props = buildPropertiesMap().map;
+        Map<String, String> props = getSystemProperties();
         StaticObject array = getMeta().java_lang_String.allocateReferenceArray(props.size() * 2);
         int index = 0;
         for (Map.Entry<String, String> entry : props.entrySet()) {
@@ -2720,7 +2787,7 @@ public final class VM extends NativeEnv {
     /**
      * Returns the caller frame, 'depth' levels up. If securityStackWalk is true, some Espresso
      * frames are skipped according to {@link #isIgnoredBySecurityStackWalk}.
-     * 
+     *
      * May return null if there is no Java frame on the stack.
      */
     @TruffleBoundary
@@ -3449,7 +3516,13 @@ public final class VM extends NativeEnv {
         if (numThreads < threads.length) {
             threads = Arrays.copyOf(threads, numThreads);
         }
-        return getMeta().getAllocator().wrapArrayAs(getMeta().java_lang_Thread.getArrayClass(), threads);
+        return getMeta().getAllocator().wrapArrayAs(getMeta().java_lang_Thread.getArrayKlass(), threads);
+    }
+
+    @VmImpl(isJni = true)
+    public static @JavaType(internalName = "Ljdk/internal/vm/ThreadSnapshot;") StaticObject JVM_CreateThreadSnapshot(@SuppressWarnings("unused") @JavaType(Thread.class) StaticObject thread,
+                    @Inject Meta meta) {
+        throw meta.throwException(meta.java_lang_UnsupportedOperationException);
     }
 
     // endregion threads
@@ -3839,33 +3912,114 @@ public final class VM extends NativeEnv {
 
     // region archive
 
+    @TruffleBoundary
     @VmImpl(isJni = true)
-    @SuppressWarnings("unused")
-    public void JVM_InitializeFromArchive(@JavaType(Class.class) StaticObject cls) {
-        /*
-         * Used to reduce boot time of certain initializations through CDS (/ex: module
-         * initialization). Currently unsupported.
-         */
+    public static void JVM_DefineArchivedModules(@JavaType(ClassLoader.class) StaticObject platformLoader,
+                    @JavaType(ClassLoader.class) StaticObject systemLoader,
+                    @Inject EspressoContext context) {
+        CDSSupport cds = context.getCDS();
+        if (cds == null || !cds.isUsingArchive()) {
+            return;
+        }
+
+        ClassRegistries registries = context.getRegistries();
+
+        ClassRegistry bootRegistry = registries.getBootClassRegistry();
+        ClassRegistry platformRegistry = registries.getClassRegistry(platformLoader);
+        ClassRegistry systemRegistry = registries.getClassRegistry(systemLoader);
+        for (ClassRegistry registry : List.of(bootRegistry, platformRegistry, systemRegistry)) {
+            cds.hydrateFromCache(registry.getUnnamedModule());
+            registry.modules().collectValues(cds::hydrateFromCache);
+        }
+
+        context.getRegistries().processFixupList(registries.getJavaBaseModule().module());
     }
 
+    @TruffleBoundary
     @VmImpl(isJni = true)
+    public static void JVM_InitializeFromArchive(@JavaType(Class.class) StaticObject clazz, @Inject EspressoContext context) {
+        CDSSupport cds = context.getCDS();
+        if (cds == null) {
+            return;
+        }
+
+        Klass klass = clazz.getMirrorKlass();
+        cds.initializeFromArchive(klass);
+    }
+
+    @TruffleBoundary
+    @VmImpl
     public static boolean JVM_IsDumpingClassList() {
         return false;
     }
 
-    @VmImpl(isJni = true)
-    public static boolean JVM_IsCDSDumpingEnabled() {
-        return false;
-    }
-
-    @VmImpl(isJni = true)
-    public static boolean JVM_IsSharingEnabled() {
-        return false;
-    }
-
+    @TruffleBoundary
     @VmImpl
-    public static long JVM_GetRandomSeedForDumping() {
-        return 0L;
+    public static boolean JVM_IsCDSDumpingEnabled(@Inject EspressoContext context) {
+        CDSSupport cds = context.getCDS();
+        return cds != null && cds.isDumpingStaticArchive();
+    }
+
+    @TruffleBoundary
+    @VmImpl
+    public static int JVM_GetCDSConfigStatus(@Inject EspressoContext context) {
+        CDSSupport cds = context.getCDS();
+        if (cds != null) {
+            return cds.getCDSConfigStatus(context);
+        }
+        return 0; // nothing
+    }
+
+    @TruffleBoundary
+    @VmImpl
+    public static boolean JVM_IsSharingEnabled(@Inject EspressoContext context) {
+        CDSSupport cds = context.getCDS();
+        return cds != null && cds.isUsingArchive();
+    }
+
+    @TruffleBoundary
+    @VmImpl
+    public static long JVM_GetRandomSeedForDumping(@Inject EspressoContext context) {
+        CDSSupport cds = context.getCDS();
+        if (cds != null && cds.isDumpingStaticArchive()) {
+            // HotSpot hashes internal VM data/versions here.
+            // Espresso is not tied to a specific Java version, so we keep it simple.
+            long seed = Objects.hashCode(EspressoLanguage.VM_VERSION);
+            if (seed == 0) { // don't let this ever be zero.
+                seed = 0x87654321;
+            }
+            CDSSupport.getLogger().fine("JVM_GetRandomSeedForDumping() = " + seed);
+            return seed;
+        } else {
+            return 0L;
+        }
+    }
+
+    @VmImpl(isJni = true)
+    @TruffleBoundary
+    @SuppressWarnings("unused")
+    public static void JVM_RegisterLambdaProxyClassForArchiving(
+                    @JavaType(Class.class) StaticObject caller,
+                    @JavaType(String.class) StaticObject interfaceMethodName,
+                    @JavaType(MethodType.class) StaticObject factoryType,
+                    @JavaType(MethodType.class) StaticObject interfaceMethodType,
+                    @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject implementationMember,
+                    @JavaType(MethodType.class) StaticObject dynamicMethodType,
+                    @JavaType(Class.class) StaticObject lambdaProxyClass) {
+        // Not supported by Espresso's CDS.
+    }
+
+    @VmImpl(isJni = true)
+    @TruffleBoundary
+    @SuppressWarnings("unused")
+    public static @JavaType(Class.class) StaticObject JVM_LookupLambdaProxyClassFromArchive(
+                    @JavaType(Class.class) StaticObject caller,
+                    @JavaType(String.class) StaticObject interfaceMethodName,
+                    @JavaType(MethodType.class) StaticObject factoryType,
+                    @JavaType(MethodType.class) StaticObject interfaceMethodType,
+                    @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject implementationMember,
+                    @JavaType(MethodType.class) StaticObject dynamicMethodType) {
+        return StaticObject.NULL; // Not supported by Espresso's CDS.
     }
 
     // endregion archive
@@ -3938,20 +4092,32 @@ public final class VM extends NativeEnv {
 
     @VmImpl(isJni = true)
     @SuppressWarnings("unused")
-    public static void JVM_InitStackTraceElement(@JavaType(StackTraceElement.class) StaticObject element, @JavaType(internalName = "Ljava/lang/StackFrameInfo;") StaticObject info,
+    public static void JVM_InitStackTraceElement(@JavaType(StackTraceElement.class) StaticObject element,
+                    @JavaType(internalName = "Ljava/lang/StackFrameInfo;") StaticObject info,
                     @Inject Meta meta) {
         if (StaticObject.isNull(element) || StaticObject.isNull(info)) {
             throw meta.throwNullPointerException();
         }
-        StaticObject mname = meta.java_lang_StackFrameInfo_memberName.getObject(info);
+        Field mnameField = meta.getJavaVersion().java22OrLater()
+                        ? meta.java_lang_ClassFrameInfo_classOrMemberName
+                        : meta.java_lang_StackFrameInfo_memberName;
+        Field clazzField = meta.getJavaVersion().java22OrLater()
+                        ? meta.java_lang_invoke_ResolvedMethodName_vmholder
+                        : meta.java_lang_invoke_MemberName_clazz;
+        Field targetField = meta.getJavaVersion().java22OrLater()
+                        ? meta.HIDDEN_VM_METHOD // ResolvedMethodName.vmMethod
+                        : meta.HIDDEN_VMTARGET; // MemberName.vmTarget
+        assert mnameField != null && clazzField != null && targetField != null;
+        StaticObject mname = mnameField.getObject(info);
         if (StaticObject.isNull(mname)) {
             throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "uninitialized StackFrameInfo !");
         }
-        StaticObject clazz = meta.java_lang_invoke_MemberName_clazz.getObject(mname);
-        Method m = (Method) meta.HIDDEN_VMTARGET.getHiddenObject(mname);
+        StaticObject clazz = clazzField.getObject(mname);
+        Method m = (Method) targetField.getHiddenObject(mname);
         if (m == null) {
             throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "uninitialized StackFrameInfo !");
         }
+
         int bci = meta.java_lang_StackFrameInfo_bci.getInt(info);
         fillInElement(element, new VM.EspressoStackElement(m, bci), meta);
     }
@@ -4139,6 +4305,28 @@ public final class VM extends NativeEnv {
                     @Inject Meta meta) {
         checkStackWalkArguments(language, batchSize, startIndex, frames, meta);
         return getStackWalk().fetchNextBatch(stackStream, mode, anchor, batchSize, startIndex, frames, meta);
+    }
+
+    @VmImpl(isJni = true)
+    @TruffleBoundary
+    public static void JVM_ExpandStackFrameInfo(@JavaType(internalName = "Ljava/lang/StackFrameInfo;") StaticObject obj,
+                    @Inject Meta meta) {
+        StaticObject resolvedMethodName = meta.java_lang_ClassFrameInfo_classOrMemberName.getObject(obj);
+        if (StaticObject.isNull(resolvedMethodName) || resolvedMethodName.getKlass() != meta.java_lang_invoke_ResolvedMethodName) {
+            return;
+        }
+        Method m = (Method) meta.HIDDEN_VM_METHOD.getHiddenObject(resolvedMethodName);
+        if (m == null) {
+            return;
+        }
+        boolean hasName = !StaticObject.isNull(meta.java_lang_StackFrameInfo_name.getObject(obj));
+        boolean hasType = !StaticObject.isNull(meta.java_lang_StackFrameInfo_type.getObject(obj));
+        if (!hasName) {
+            meta.java_lang_StackFrameInfo_name.setObject(obj, meta.toGuestString(m.getName()));
+        }
+        if (!hasType) {
+            meta.java_lang_StackFrameInfo_type.setObject(obj, meta.toGuestString(m.getRawSignature()));
+        }
     }
 
     // endregion stackwalk

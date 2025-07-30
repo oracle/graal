@@ -36,7 +36,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 
 public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
-    private final HashMap<Symbol<Name>, T> entries = new HashMap<>();
+    protected final HashMap<Symbol<Name>, T> entries = new HashMap<>();
 
     private final BlockLock readBlock;
     private final BlockLock writeBlock;

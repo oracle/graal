@@ -41,6 +41,7 @@ import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lan
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.CONSTANTS_BEFORE_16;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.LM_UNCONDITIONAL;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_CALLER_SENSITIVE;
+import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_HIDDEN_MEMBER;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_IS_CONSTRUCTOR;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_IS_FIELD;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_IS_METHOD;
@@ -639,6 +640,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         if (target.isCallerSensitive()) {
             res |= MN_CALLER_SENSITIVE;
         }
+        if (target.isHidden()) {
+            res |= MN_HIDDEN_MEMBER;
+        }
         return res;
     }
 
@@ -713,6 +717,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         // @CallerSensitive annotation detected
         public static final int MN_CALLER_SENSITIVE = 0x00100000;
         public static final int MN_TRUSTED_FINAL = 0x00200000; // trusted final field
+        public static final int MN_HIDDEN_MEMBER = 0x00400000; /*- members defined in a hidden class or with @Hidden */
         public static final int MN_REFERENCE_KIND_SHIFT = 24; // refKind
         public static final int MN_REFERENCE_KIND_MASK = 0x0F000000 >> MN_REFERENCE_KIND_SHIFT;
         // The SEARCH_* bits are not for MN.flags but for the matchFlags argument of MHN.getMembers:

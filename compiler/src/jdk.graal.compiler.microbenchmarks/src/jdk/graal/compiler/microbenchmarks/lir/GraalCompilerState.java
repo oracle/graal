@@ -393,7 +393,7 @@ public abstract class GraalCompilerState {
     }
 
     private static ControlFlowGraph deepCopy(ControlFlowGraph cfg) {
-        return ControlFlowGraph.newBuilder(cfg.graph).backendBlocks(true).connectBlocks(true).computeFrequency(true).computeLoops(true).computeDominators(true).computePostdominators(
+        return ControlFlowGraph.newBuilder(cfg.graph).modifiableBlocks(true).connectBlocks(true).computeFrequency(true).computeLoops(true).computeDominators(true).computePostdominators(
                         true).build();
     }
 

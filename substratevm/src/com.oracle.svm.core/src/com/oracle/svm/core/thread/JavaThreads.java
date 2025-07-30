@@ -335,58 +335,6 @@ public final class JavaThreads {
         }
     }
 
-    /**
-     * Thread instance initialization.
-     *
-     * This method is a copy of the implementation of the JDK 8 method
-     *
-     * <code>Thread.init(ThreadGroup g, Runnable target, String name, long stackSize)</code>
-     *
-     * and the JDK 11 constructor
-     *
-     * <code>Thread(ThreadGroup g, Runnable target, String name, long stackSize,
-     * AccessControlContext acc, boolean inheritThreadLocals)</code>
-     *
-     * with these unsupported features removed:
-     * <ul>
-     * <li>No security manager: using the ContextClassLoader of the parent.</li>
-     * </ul>
-     */
-    static void initializeNewThread(
-                    Target_java_lang_Thread tjlt,
-                    ThreadGroup groupArg,
-                    Runnable target,
-                    String name,
-                    long stackSize,
-                    boolean inheritThreadLocals) {
-        if (name == null) {
-            throw new NullPointerException("The name cannot be null");
-        }
-        tjlt.name = name;
-
-        final Thread parent = Thread.currentThread();
-        final ThreadGroup group = ((groupArg != null) ? groupArg : parent.getThreadGroup());
-
-        int priority;
-        boolean daemon;
-        if (JavaThreads.toTarget(parent) == tjlt) {
-            priority = Thread.NORM_PRIORITY;
-            daemon = false;
-        } else {
-            priority = parent.getPriority();
-            daemon = parent.isDaemon();
-        }
-
-        initThreadFields(tjlt, group, target, stackSize, priority, daemon);
-
-        PlatformThreads.setThreadStatus(fromTarget(tjlt), ThreadStatus.NEW);
-
-        initNewThreadLocalsAndLoader(tjlt, inheritThreadLocals, parent);
-
-        /* Set thread ID */
-        tjlt.tid = nextThreadID();
-    }
-
     static void initThreadFields(Target_java_lang_Thread tjlt, ThreadGroup group, Runnable target, long stackSize, int priority, boolean daemon) {
         assert tjlt.holder == null;
         tjlt.holder = new Target_java_lang_Thread_FieldHolder(group, target, stackSize, priority, daemon);

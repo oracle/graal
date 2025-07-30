@@ -169,20 +169,22 @@ public abstract class InvokeVirtual extends EspressoNode {
         @Specialization
         @ReportPolymorphism.Megamorphic
         Object callIndirect(Object[] args,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile error,
                         @Cached IndirectCallNode indirectCallNode) {
             StaticObject receiver = (StaticObject) args[0];
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
             // vtable lookup.
-            Method.MethodVersion target = genericMethodLookup(this, resolutionSeed, receiver.getKlass(), error);
+            Method.MethodVersion target = genericMethodLookup(node, resolutionSeed, receiver.getKlass(), error);
             return indirectCallNode.call(target.getCallTarget(), args);
         }
     }
 
     static Method.MethodVersion methodLookup(Method resolutionSeed, Klass receiverKlass) {
         CompilerAsserts.neverPartOfCompilation();
-        return genericMethodLookup(null, resolutionSeed, receiverKlass, InlinedBranchProfile.getUncached());
+        return genericMethodLookup(null, // OK for uncached branch profile.
+                        resolutionSeed, receiverKlass, InlinedBranchProfile.getUncached());
     }
 
     static Method.MethodVersion genericMethodLookup(Node node, Method resolutionSeed, Klass receiverKlass, InlinedBranchProfile error) {

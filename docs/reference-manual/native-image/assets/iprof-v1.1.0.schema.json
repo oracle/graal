@@ -1,0 +1,374 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://graalvm.org/iprof.schema.json",
+    "title": "Root object of an iprof file.",
+    "description": "Stores profiling information used for GraalVM PGO.",
+    "type": "object",
+    "required": [
+        "methods",
+        "types",
+        "version"
+    ],
+    "properties": {
+        "types": {
+            "$id": "#root/types",
+            "title": "Types",
+            "type": "array",
+            "default": [],
+            "description": "Information about types required to interpret the profile.",
+            "items":{
+                "$id": "#root/types/items",
+                "title": "Items",
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "properties": {
+                    "id": {
+                        "$id": "#root/types/items/id",
+                        "title": "Id",
+                        "type": "integer",
+                        "description": "Per-file-unique ID for the type.",
+                        "examples": [
+                            1
+                        ]
+                    },
+                    "name": {
+                        "$id": "#root/types/items/name",
+                        "title": "Name",
+                        "type": "string",
+                        "description": "Fully qualified name of the type.",
+                        "examples": [
+                            "java.util.ArrayList"
+                        ],
+                        "pattern": "^.*$"
+                    }
+                }
+            }
+        },
+        "methods": {
+            "$id": "#root/methods",
+            "title": "Methods",
+            "type": "array",
+            "default": [],
+            "description": "Information about methods required to interpret the profile.",
+            "items":{
+                "$id": "#root/methods/items",
+                "title": "Method",
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "signature"
+                ],
+                "properties": {
+                    "id": {
+                        "$id": "#root/methods/items/id",
+                        "title": "Id",
+                        "type": "integer",
+                        "description": "Per-file-unique ID for the method.",
+                        "examples": [
+                            2
+                        ]
+                    },
+                    "name": {
+                        "$id": "#root/methods/items/name",
+                        "title": "Name",
+                        "type": "string",
+                        "examples": [
+                            "main"
+                        ],
+                        "pattern": "^.*$"
+                    },
+                    "signature": {
+                        "$id": "#root/methods/items/signature",
+                        "title": "Signature",
+                        "type": "array",
+                        "description": "Sequence of type IDs from the types list, consisting of declaration class ID, return type ID, and type IDs in the signature, in that order.",
+                        "items":{
+                            "$id": "#root/methods/items/signature/items",
+                            "title": "Items",
+                            "type": "integer",
+                            "examples": [
+                                1
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "callCountProfiles": {
+            "$id": "#root/callCountProfiles",
+            "title": "Call count profiles",
+            "type": "array",
+            "default": [],
+            "description": "Information about how many times a method was executed in all it's inlining contexts.",
+            "items":{
+                "$id": "#root/callCountProfiles/items",
+                "title": "Items",
+                "type": "object",
+                "required": [
+                    "ctx",
+                    "records"
+                ],
+                "properties": {
+                    "ctx": {
+                        "$id": "#root/callCountProfiles/items/ctx",
+                        "title": "Context",
+                        "type": "string",
+                        "description": "List of method:bci pairs, separated with <. Caller is to the right of the callee.",
+                        "examples": [
+                            "2:0",
+                            "1:0<4:6"
+                        ],
+                        "pattern": "^[0-9]+:0(<[0-9]+:-?[0-9]+)*$"
+                    },
+                    "records": {
+                        "$id": "#root/callCountProfiles/items/records",
+                        "title": "Records",
+                        "type": "array",
+                        "items":{
+                            "$id": "#root/callCountProfiles/items/records/items",
+                            "title": "Items",
+                            "type": "integer",
+                            "examples": [
+                                1
+                            ]
+                        },
+                        "description": "Single-value array containing the call count of the method in the given context.",
+                        "minItems": 1,
+                        "maxItems": 1
+                    }
+                }
+            }
+        },
+        "conditionalProfiles": {
+            "$id": "#root/conditionalProfiles",
+            "title": "Conditional profiles",
+            "type": "array",
+            "default": [],
+            "description": "Information about how many times each branch of a conditional was taken.",
+            "items":{
+                "$id": "#root/conditionalProfiles/items",
+                "title": "Items",
+                "type": "object",
+                "required": [
+                    "ctx",
+                    "records"
+                ],
+                "properties": {
+                    "ctx": {
+                        "$id": "#root/callCountProfiles/items/ctx",
+                        "title": "Context",
+                        "type": "string",
+                        "description": "List of method:bci pairs, separated with <. Caller is to the right of the callee.",
+                        "examples": [
+                            "2:0",
+                            "1:0<4:6"
+                        ],
+                        "pattern": "^[0-9]+:-?[0-9]+(<[0-9]+:-?[0-9]+)*$"
+                    },
+                    "records": {
+                        "$id": "#root/callCountProfiles/items/records",
+                        "title": "Records",
+                        "type": "array",
+                        "description": "Array of integer values containing a series of triplets: BCI, index (order) and execution count for that branch.",
+                        "items":{
+                            "$id": "#root/callCountProfiles/items/records/items",
+                            "title": "Items",
+                            "type": "integer",
+                            "examples": [
+                                1
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "monitorProfiles": {
+            "$id": "#root/monitorProfiles",
+            "title": "Monitor profiles",
+            "type": "array",
+            "default": [],
+            "description": "Information about how many times a type was synchronized on.",
+            "items":{
+                "$id": "#root/monitorProfiles/items",
+                "title": "Items",
+                "type": "object",
+                "required": [
+                    "ctx",
+                    "records"
+                ],
+                "properties": {
+                    "ctx": {
+                        "$id": "#root/monitorProfiles/items/ctx",
+                        "title": "Context",
+                        "type": "string",
+                        "description": "Dummy context.",
+                        "examples": [
+                            "0:0"
+                        ],
+                        "pattern": "^0:0$"
+                    },
+                    "records": {
+                        "$id": "#root/monitorProfiles/items/records",
+                        "title": "Records",
+                        "type": "array",
+                        "description": "Array of integer values containing a series of pairs: type id and number of times that type was used for synchronization.",
+                        "default": [],
+                        "items":{
+                            "$id": "#root/monitorProfiles/items/records/items",
+                            "title": "Items",
+                            "type": "integer",
+                            "examples": [
+                                1
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "samplingProfiles": {
+            "$id": "#root/samplingProfiles",
+            "title": "Samplingprofiles",
+            "type": "array",
+            "default": [],
+            "description": "Periodically gathered run-time call stacks (i.e. samples).",
+            "items":{
+                "$id": "#root/samplingProfiles/items",
+                "title": "Items",
+                "type": "object",
+                "required": [
+                    "ctx",
+                    "records"
+                ],
+                "properties": {
+                    "ctx": {
+                        "$id": "#root/samplingProfiles/items/ctx",
+                        "title": "Context",
+                        "type": "string",
+                        "description": "List of method:bci pairs, separated with <. Caller is to the right of the callee.",
+                        "examples": [
+                            "2:0",
+                            "1:0<4:6"
+                        ],
+                        "pattern": "^[0-9]+:-?[0-9]+(<[0-9]+:-?[0-9]+)*$"
+                    },
+                    "records": {
+                        "$id": "#root/samplingProfiles/items/records",
+                        "title": "Records",
+                        "type": "array",
+                        "description": "Single-value array containing the number of times the given context was recorded at run time.",
+                        "items":{
+                            "$id": "#root/samplingProfiles/items/records/items",
+                            "title": "Items",
+                            "type": "integer",
+                            "examples": [
+                                1
+                            ]
+                        },
+                        "minItems": 1,
+                        "maxItems": 1
+                    }
+                }
+            }
+        },
+        "version": {
+            "$id": "#root/version",
+            "title": "Version",
+            "type": "string",
+            "default": "",
+            "examples": [
+                "1.0.0"
+            ],
+            "pattern": "^[0-9]+.[0-9]+.[0-9]+$"
+        },
+        "virtualInvokeProfiles": {
+            "$id": "#root/virtualInvokeProfiles",
+            "title": "Virtual invoke profiles",
+            "type": "array",
+            "default": [],
+            "description": "Information about the run-time receiver types of virutal invokes.",
+            "items":{
+                "$id": "#root/virtualInvokeProfiles/items",
+                "title": "Items",
+                "type": "object",
+                "required": [
+                    "ctx",
+                    "records"
+                ],
+                "properties": {
+                    "ctx": {
+                        "$id": "#root/virtualInvokeProfiles/items/ctx",
+                        "title": "Context",
+                        "type": "string",
+                        "description": "List of method:bci pairs, separated with <. Caller is to the right of the callee.",
+                        "examples": [
+                            "2:0",
+                            "1:0<4:6"
+                        ],
+                        "pattern": "^[0-9]+:-?[0-9]+(<[0-9]+:-?[0-9]+)*$"
+                    },
+                    "records": {
+                        "$id": "#root/virtualInvokeProfiles/items/records",
+                        "title": "Records",
+                        "type": "array",
+                        "description": "Array of integer values containing a series of pairs: type id and number of times the virtual call receiver was of that type.",
+                        "items":{
+                            "$id": "#root/virtualInvokeProfiles/items/records/items",
+                            "title": "Items",
+                            "type": "integer",
+                            "examples": [
+                                1
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "instanceofProfiles": {
+            "$id": "#root/instanceofProfiles",
+            "title": "Instanceof profiles",
+            "type": "array",
+            "default": [],
+            "description": "Information about the run-time types of values that are checked at instanceofs.",
+            "items":{
+                "$id": "#root/instanceofProfiles/items",
+                "title": "Items",
+                "type": "object",
+                "required": [
+                    "ctx",
+                    "records"
+                ],
+                "properties": {
+                    "ctx": {
+                        "$id": "#root/instanceofProfiles/items/ctx",
+                        "title": "Context",
+                        "type": "string",
+                        "description": "List of method:bci pairs, separated with <. Caller is to the right of the callee.",
+                        "examples": [
+                            "2:0",
+                            "1:0<4:6"
+                        ],
+                        "pattern": "^[0-9]+:-?[0-9]+(<[0-9]+:-?[0-9]+)*$"
+                    },
+                    "records": {
+                        "$id": "#root/instanceofProfiles/items/records",
+                        "title": "Records",
+                        "type": "array",
+                        "description": "Array of integer values containing a series of pairs: type id and number of times the particular type was seen at the instanceof.",
+                        "items":{
+                            "$id": "#root/instanceofProfiles/items/records/items",
+                            "title": "Items",
+                            "type": "integer",
+                            "examples": [
+                                1
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,11 +73,10 @@ public class PushNodesThroughPiTest extends GraalCompilerTest {
 
     @Ignore
     @Test
-    @SuppressWarnings("try")
     public void test1() {
         final String snippet = "test1Snippet";
         DebugContext debug = getDebugContext();
-        try (DebugContext.Scope s = debug.scope("PushThroughPi", new DebugDumpScope(snippet))) {
+        try (DebugContext.Scope _ = debug.scope("PushThroughPi", new DebugDumpScope(snippet))) {
             StructuredGraph graph = compileTestSnippet(snippet);
             for (ReadNode rn : graph.getNodes().filter(ReadNode.class)) {
                 OffsetAddressNode address = (OffsetAddressNode) rn.getAddress();

@@ -26,12 +26,11 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import com.oracle.objectfile.debugentry.FileEntry;
-import com.oracle.objectfile.debugentry.CompiledMethodEntry;
-import com.oracle.objectfile.debugentry.range.Range;
-import com.oracle.objectfile.debugentry.range.SubRange;
-
 import java.util.Iterator;
+
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.FileEntry;
+import com.oracle.objectfile.debugentry.range.Range;
 
 /*
  * In CV4, the line table consists of a series of file headers followed by line number entries.
@@ -102,9 +101,9 @@ public class CVLineRecordBuilder {
         }
 
         /* Add line record. Address is relative to start of function. */
-        int lineLoAddr = range.getLo() - compiledEntry.getPrimary().getLo();
+        int lineLoAddr = (int) (range.getLo() - compiledEntry.primary().getLo());
         int line = Math.max(range.getLine(), 1);
-        debug("  processRange:   addNewLine: 0x%05x-0x%05x %s", lineLoAddr, range.getHi() - compiledEntry.getPrimary().getLo(), line);
+        debug("  processRange:   addNewLine: 0x%05x-0x%05x %s", lineLoAddr, range.getHi() - compiledEntry.primary().getLo(), line);
         lineRecord.addNewLine(lineLoAddr, line);
     }
 }

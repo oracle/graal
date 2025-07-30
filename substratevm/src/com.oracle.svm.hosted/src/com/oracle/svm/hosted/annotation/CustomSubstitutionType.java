@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.annotation;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
+import java.util.List;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.svm.core.util.VMError;
@@ -257,6 +258,11 @@ public abstract class CustomSubstitutionType implements ResolvedJavaType, Origin
     @Override
     public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
         return original.getDeclaredMethods(forceLink);
+    }
+
+    @Override
+    public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
+        return original.getAllMethods(forceLink);
     }
 
     @Override

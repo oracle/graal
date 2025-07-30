@@ -27,6 +27,7 @@ package com.oracle.svm.graal.isolated;
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 
+import com.oracle.svm.core.SubstrateSegfaultHandler;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolates;
@@ -127,6 +128,10 @@ public final class IsolatedGraalUtils {
 
         /* Compilation isolates do the reference handling manually to avoid the extra thread. */
         appendArgument(builder, SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling, false);
+
+        /* Disable signal handling for compilation isolates. */
+        appendArgument(builder, SubstrateOptions.EnableSignalHandling, false);
+        appendArgument(builder, SubstrateSegfaultHandler.Options.InstallSegfaultHandler, false);
     }
 
     private static void appendOptionsExplicitlySetForCompilationIsolates(CreateIsolateParameters.Builder builder) {

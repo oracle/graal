@@ -45,9 +45,9 @@ import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ConstantPoolPatcher;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.preinit.ParserKlassProvider;
+import com.oracle.truffle.espresso.redefinition.RedefinitionException.RedefinitionError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
@@ -77,7 +77,7 @@ public final class InnerClassRedefiner {
         this.context = context;
     }
 
-    public HotSwapClassInfo[] matchAnonymousInnerClasses(List<RedefineInfo> redefineInfos, List<ObjectKlass> removedInnerClasses) throws RedefinitionNotSupportedException {
+    public HotSwapClassInfo[] matchAnonymousInnerClasses(List<RedefineInfo> redefineInfos, List<ObjectKlass> removedInnerClasses) throws RedefinitionException {
         hotswapState.clear();
         ArrayList<RedefineInfo> unhandled = new ArrayList<>(redefineInfos);
 
@@ -144,7 +144,7 @@ public final class InnerClassRedefiner {
                     try {
                         classInfo.patchBytes(ConstantPoolPatcher.patchConstantPool(classInfo.getBytes(), rules, context));
                     } catch (ParserException.ClassFormatError ex) {
-                        throw new RedefinitionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
+                        throw new RedefinitionException(RedefinitionError.InvalidClassFormat);
                     }
                 }
             }
@@ -161,14 +161,14 @@ public final class InnerClassRedefiner {
         }
     }
 
-    private void fetchMissingInnerClasses(HotSwapClassInfo hotswapInfo) throws RedefinitionNotSupportedException {
+    private void fetchMissingInnerClasses(HotSwapClassInfo hotswapInfo) throws RedefinitionException {
         StaticObject definingLoader = hotswapInfo.getClassLoader();
 
         Set<Symbol<Name>> innerNames = new HashSet<>(1);
         try {
             searchConstantPoolForDirectInnerAnonymousClassNames(hotswapInfo, innerNames);
         } catch (ParserException.ClassFormatError ex) {
-            throw new RedefinitionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
+            throw new RedefinitionException(RedefinitionError.InvalidClassFormat);
         }
 
         // poke the defining guest classloader for the resources
@@ -229,7 +229,7 @@ public final class InnerClassRedefiner {
     }
 
     private void matchClassInfo(HotSwapClassInfo hotSwapInfo, List<ObjectKlass> removedInnerClasses, Map<StaticObject, Map<Symbol<Name>, Symbol<Name>>> renamingRules)
-                    throws RedefinitionNotSupportedException {
+                    throws RedefinitionException {
         Klass klass = hotSwapInfo.getKlass();
         // try to fetch all direct inner classes
         // based on the constant pool in the class bytes
@@ -351,7 +351,7 @@ public final class InnerClassRedefiner {
 
             // do a one-time look up of all currently loaded
             // classes for this loader and fill in the map
-            List<Klass> loadedKlasses = classRegistry.getLoadedKlasses();
+            Set<Klass> loadedKlasses = context.getRegistries().getLoadedClassesByLoader(klass.getDefiningClassLoader(), false);
             for (Klass loadedKlass : loadedKlasses) {
                 if (loadedKlass instanceof ObjectKlass objectKlass) {
                     Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(loadedKlass.getNameAsString());

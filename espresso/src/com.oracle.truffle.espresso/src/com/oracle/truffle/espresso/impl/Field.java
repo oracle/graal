@@ -507,6 +507,22 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
         setObjectHelper(obj, value, forceVolatile);
     }
 
+    public final void setMaybeHiddenObject(StaticObject obj, StaticObject value) {
+        setMaybeHiddenObject(obj, value, false);
+    }
+
+    public final void setMaybeHiddenObject(StaticObject obj, StaticObject value, boolean forceVolatile) {
+        setObjectHelper(obj, value, forceVolatile);
+    }
+
+    public final StaticObject getMaybeHiddenObject(StaticObject obj) {
+        return getMaybeHiddenObject(obj, false);
+    }
+
+    public final StaticObject getMaybeHiddenObject(StaticObject obj, boolean forceVolatile) {
+        return (StaticObject) getObjectHelper(obj, forceVolatile);
+    }
+
     public Object compareAndExchangeHiddenObject(StaticObject obj, Object before, Object after) {
         obj.checkNotForeign();
         assert isHidden() : this + " is not hidden";

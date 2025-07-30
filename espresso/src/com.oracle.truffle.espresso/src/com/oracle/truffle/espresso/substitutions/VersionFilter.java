@@ -94,6 +94,18 @@ public interface VersionFilter extends LanguageFilter {
         }
     }
 
+    final class Java11To21 implements VersionFilter {
+        public static final Java11To21 INSTANCE = new Java11To21();
+
+        private Java11To21() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.inRange(11, 21);
+        }
+    }
+
     final class Java13OrEarlier implements VersionFilter {
         public static final Java13OrEarlier INSTANCE = new Java13OrEarlier();
 
@@ -163,6 +175,54 @@ public interface VersionFilter extends LanguageFilter {
         @Override
         public boolean isValidFor(JavaVersion version) {
             return version.java21OrLater();
+        }
+    }
+
+    final class Java21 implements VersionFilter {
+        public static final Java21 INSTANCE = new Java21();
+
+        private Java21() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.inRange(21, 21);
+        }
+    }
+
+    final class Java22OrLater implements VersionFilter {
+        public static final Java22OrLater INSTANCE = new Java22OrLater();
+
+        private Java22OrLater() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java22OrLater();
+        }
+    }
+
+    final class Java24OrEarlier implements VersionFilter {
+        public static final Java24OrEarlier INSTANCE = new Java24OrEarlier();
+
+        private Java24OrEarlier() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java24OrEarlier();
+        }
+    }
+
+    final class Java25OrLater implements VersionFilter {
+        public static final Java25OrLater INSTANCE = new Java25OrLater();
+
+        private Java25OrLater() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java25OrLater();
         }
     }
 }

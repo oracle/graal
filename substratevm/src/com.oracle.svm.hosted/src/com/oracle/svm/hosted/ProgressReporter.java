@@ -48,12 +48,15 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
+import com.oracle.graal.pointsto.meta.AnalysisElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -71,8 +74,6 @@ import com.oracle.svm.core.VM;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.jdk.Resources;
-import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -81,8 +82,10 @@ import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.traits.BuiltinTraits;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.TimeUtils;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ProgressReporterFeature.UserRecommendation;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.AnalysisResults;
@@ -96,7 +99,6 @@ import com.oracle.svm.hosted.image.NativeImageDebugInfoStripFeature;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.util.CPUType;
 import com.oracle.svm.hosted.util.DiagnosticUtils;
-import com.oracle.svm.hosted.util.JDKArgsUtils;
 import com.oracle.svm.hosted.util.VMErrorReporter;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.sun.management.OperatingSystemMXBean;
@@ -107,7 +109,8 @@ import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.util.json.JsonWriter;
 
-public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
+@SingletonTraits(access = BuiltinTraits.BuildtimeAccessOnly.class, layeredCallbacks = BuiltinTraits.NoLayeredCallbacks.class, layeredInstallationKind = SingletonLayeredInstallationKind.Independent.class)
+public class ProgressReporter {
     private static final int CHARACTERS_PER_LINE;
     private static final String HEADLINE_SEPARATOR;
     private static final String LINE_SEPARATOR;
@@ -257,7 +260,6 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
 
         printFeatures(features);
         printExperimentalOptions(classLoader);
-        printEnvironmentVariableOptions();
         printResourceInfo();
     }
 
@@ -406,17 +408,6 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         return origin.isStable() || origin.isInternal();
     }
 
-    private void printEnvironmentVariableOptions() {
-        String envVarValue = SubstrateOptions.BuildOutputNativeImageOptionsEnvVarValue.getValue();
-        if (envVarValue != null && !envVarValue.isEmpty()) {
-            l().printLineSeparator();
-            l().yellowBold().a(" ").doclink("Picked up " + SubstrateOptions.NATIVE_IMAGE_OPTIONS_ENV_VAR, "#glossary-picked-up-ni-options").reset().a(":").println();
-            for (String arg : JDKArgsUtils.parseArgsFromEnvVar(envVarValue, SubstrateOptions.NATIVE_IMAGE_OPTIONS_ENV_VAR, UserError::abort)) {
-                l().a(" - '%s'", arg).println();
-            }
-        }
-    }
-
     private void printResourceInfo() {
         Runtime runtime = Runtime.getRuntime();
         long maxMemory = runtime.maxMemory();
@@ -479,32 +470,17 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
 
     private void printAnalysisStatistics(AnalysisUniverse universe, Collection<String> libraries) {
         String typesFieldsMethodFormat = "%,9d types, %,7d fields, and %,7d methods ";
-        long reachableTypes;
-        if (universe.hostVM().useBaseLayer()) {
-            reachableTypes = universe.getTypes().stream().filter(AnalysisType::isReachable).filter(t -> !t.isInBaseLayer()).count();
-        } else {
-            reachableTypes = universe.getTypes().stream().filter(AnalysisType::isReachable).count();
-        }
+        long reachableTypes = reportedReachableTypes(universe).size();
         long totalTypes = universe.getTypes().size();
         recordJsonMetric(AnalysisResults.DEPRECATED_TYPES_TOTAL, totalTypes);
         recordJsonMetric(AnalysisResults.TYPES_REACHABLE, reachableTypes);
         Collection<AnalysisField> fields = universe.getFields();
-        long reachableFields;
-        if (universe.hostVM().useBaseLayer()) {
-            reachableFields = fields.stream().filter(AnalysisField::isAccessed).filter(f -> !f.isInBaseLayer()).count();
-        } else {
-            reachableFields = fields.stream().filter(AnalysisField::isAccessed).count();
-        }
+        long reachableFields = reportedReachableFields(universe).size();
         int totalFields = fields.size();
         recordJsonMetric(AnalysisResults.DEPRECATED_FIELD_TOTAL, totalFields);
         recordJsonMetric(AnalysisResults.FIELD_REACHABLE, reachableFields);
         Collection<AnalysisMethod> methods = universe.getMethods();
-        long reachableMethods;
-        if (universe.hostVM().useBaseLayer()) {
-            reachableMethods = methods.stream().filter(AnalysisMethod::isReachable).filter(m -> !m.isInBaseLayer()).count();
-        } else {
-            reachableMethods = methods.stream().filter(AnalysisMethod::isReachable).count();
-        }
+        long reachableMethods = reportedReachableMethods(universe).size();
         int totalMethods = methods.size();
         recordJsonMetric(AnalysisResults.DEPRECATED_METHOD_TOTAL, totalMethods);
         recordJsonMetric(AnalysisResults.METHOD_REACHABLE, reachableMethods);
@@ -543,6 +519,23 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
             l().a("%,9d ", numRuntimeCompiledMethods).doclink("runtime compiled methods", "#glossary-runtime-methods")
                             .a(" (%.1f%% of all reachable methods)", Utils.toPercentage(numRuntimeCompiledMethods, reachableMethods), reachableMethods).println();
         }
+    }
+
+    public static List<AnalysisType> reportedReachableTypes(AnalysisUniverse universe) {
+        return reportedElements(universe, universe.getTypes(), AnalysisType::isReachable, t -> !t.isInBaseLayer());
+    }
+
+    public static List<AnalysisField> reportedReachableFields(AnalysisUniverse universe) {
+        return reportedElements(universe, universe.getFields(), AnalysisField::isAccessed, f -> !f.isInBaseLayer());
+    }
+
+    public static List<AnalysisMethod> reportedReachableMethods(AnalysisUniverse universe) {
+        return reportedElements(universe, universe.getMethods(), AnalysisMethod::isReachable, m -> !m.isInBaseLayer());
+    }
+
+    private static <T extends AnalysisElement> List<T> reportedElements(AnalysisUniverse universe, Collection<T> elements, Predicate<T> elementsFilter, Predicate<T> baseLayerFilter) {
+        Stream<T> reachableElements = elements.stream().filter(elementsFilter);
+        return universe.hostVM().useBaseLayer() ? reachableElements.filter(baseLayerFilter).toList() : reachableElements.toList();
     }
 
     public ReporterClosable printUniverse() {
@@ -703,7 +696,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         }
     }
 
-    public void printEpilog(Optional<String> optionalImageName, Optional<NativeImageGenerator> optionalGenerator, ImageClassLoader classLoader, boolean wasSuccessfulBuild,
+    public void printEpilog(Optional<String> optionalImageName, Optional<NativeImageGenerator> optionalGenerator, ImageClassLoader classLoader, NativeImageGeneratorRunner.BuildOutcome buildOutcome,
                     Optional<Throwable> optionalUnhandledThrowable, OptionValues parsedHostedOptions) {
         executor.shutdown();
 
@@ -734,7 +727,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         double totalSeconds = Utils.millisToSeconds(getTimer(TimerCollection.Registry.TOTAL).getTotalTime());
         recordJsonMetric(ResourceUsageKey.TOTAL_SECS, totalSeconds);
 
-        createAdditionalArtifacts(imageName, generator, wasSuccessfulBuild, parsedHostedOptions);
+        createAdditionalArtifacts(imageName, generator, buildOutcome.successful(), parsedHostedOptions);
         printArtifacts(BuildArtifacts.singleton());
 
         l().printHeadlineSeparator();
@@ -745,10 +738,18 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         } else {
             timeStats = String.format("%dm %ds", (int) totalSeconds / 60, (int) totalSeconds % 60);
         }
-        l().a(wasSuccessfulBuild ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
-                        .a(wasSuccessfulBuild ? "in" : "after").a(" ").a(timeStats).a(".").println();
+        l().a(outcomePrefix(buildOutcome)).a(" generating '").bold().a(imageName).reset().a("' ")
+                        .a(buildOutcome.successful() ? "in" : "after").a(" ").a(timeStats).a(".").println();
 
         printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions);
+    }
+
+    private static String outcomePrefix(NativeImageGeneratorRunner.BuildOutcome buildOutcome) {
+        return switch (buildOutcome) {
+            case SUCCESSFUL -> "Finished";
+            case FAILED -> "Failed";
+            case STOPPED -> "Stopped";
+        };
     }
 
     private void printErrorMessage(Optional<Throwable> optionalUnhandledThrowable, OptionValues parsedHostedOptions) {
@@ -865,6 +866,20 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
             l().a("            to reduce GC overhead and improve image build time.").println();
         }
         lastGCStats = currentGCStats;
+    }
+
+    public Object getJsonMetricValue(JsonMetric metric) {
+        if (jsonHelper == null) {
+            return null;
+        }
+        return metric.getValue(jsonHelper);
+    }
+
+    public boolean containsJsonMetricValue(JsonMetric metric) {
+        if (jsonHelper == null) {
+            return false;
+        }
+        return metric.containsValue(jsonHelper);
     }
 
     public void recordJsonMetric(JsonMetric metric, Object value) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,7 +91,7 @@ import java.lang.reflect.Method;
  *
  * @since 23.0
  */
-public final class MissingReflectionRegistrationError extends Error {
+public final class MissingReflectionRegistrationError extends LinkageError {
     @Serial private static final long serialVersionUID = 2764341882856270640L;
 
     private final Class<?> elementType;

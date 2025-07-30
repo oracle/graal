@@ -50,8 +50,12 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 
 @Registration(id = "bm", name = "bm")
+@ProvidedTags({RootTag.class, RootBodyTag.class})
 public class BenchmarkLanguage extends TruffleLanguage<Object> {
 
     private static final Map<String, Function<BenchmarkLanguage, CallTarget>> NAMES = new HashMap<>();

@@ -39,6 +39,9 @@ public enum ExitStatus {
     DRIVER_ERROR(20),
     DRIVER_TO_BUILDER_ERROR(21),
     WATCHDOG_EXIT(30),
+    REBUILD_AFTER_ANALYSIS(40),
+    // podman can exit 125 if container does not need building
+    CONTAINER_REUSE(125),
     MISSING_METADATA(172),
     UNKNOWN(255);
 

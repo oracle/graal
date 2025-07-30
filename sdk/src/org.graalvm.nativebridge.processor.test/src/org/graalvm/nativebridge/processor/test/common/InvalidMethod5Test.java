@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,22 +40,20 @@
  */
 package org.graalvm.nativebridge.processor.test.common;
 
-import org.graalvm.jniutils.HSObject;
-import org.graalvm.nativebridge.EndPointHandle;
+import org.graalvm.nativebridge.ForeignObject;
+import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
 import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
+import org.graalvm.nativebridge.GenerateNativeToNativeBridge;
+import org.graalvm.nativebridge.GenerateProcessToProcessBridge;
 import org.graalvm.nativebridge.ReceiverMethod;
 import org.graalvm.nativebridge.processor.test.AbstractService;
 import org.graalvm.nativebridge.processor.test.ExpectError;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
-@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class InvalidMethod5Test extends AbstractService {
-
-    @EndPointHandle final HSObject delegate;
-
-    InvalidMethod5Test(HSObject delegate) {
-        this.delegate = delegate;
-    }
+@GenerateProcessToProcessBridge(factory = ForeignServiceFactory.class)
+@GenerateHotSpotToNativeBridge(factory = ForeignServiceFactory.class)
+@GenerateNativeToNativeBridge(factory = ForeignServiceFactory.class)
+@GenerateNativeToHotSpotBridge(factory = ForeignServiceFactory.class)
+abstract class InvalidMethod5Test extends AbstractService implements ForeignObject {
 
     @Override
     public final boolean execute() {

@@ -547,6 +547,7 @@ public final class LinkResolver {
                 // version of the class file.
                 if (!resolved.isConstructor()) {
                     if (!symbolicHolder.isInterface() &&
+                                    currentKlass != null &&
                                     symbolicHolder != currentKlass &&
                                     currentKlass.getSuperClass() != null &&
                                     symbolicHolder != currentKlass.getSuperClass() &&

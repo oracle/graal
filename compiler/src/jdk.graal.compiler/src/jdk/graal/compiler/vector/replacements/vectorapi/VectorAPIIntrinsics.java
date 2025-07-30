@@ -40,7 +40,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.OptionalLazySymbol;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
-import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
@@ -50,6 +49,7 @@ import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIBinaryOpN
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIBlendNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIBroadcastIntNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPICompareNode;
+import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPICompressExpandOpNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIConvertNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIExtractNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIFromBitsCoercedNode;
@@ -91,9 +91,9 @@ public class VectorAPIIntrinsics {
     /**
      * Register the Vector API plugins.
      */
-    public static void registerPlugins(InvocationPlugins plugins, Replacements replacements) {
+    public static void registerPlugins(InvocationPlugins plugins) {
         String vectorSupportPackage = "jdk.internal.vm.vector";
-        Registration r = new Registration(plugins, vectorSupportPackage + ".Utils", replacements);
+        Registration r = new Registration(plugins, vectorSupportPackage + ".Utils");
         r.register(new InlineOnlyInvocationPlugin("isNonCapturingLambda", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
@@ -111,7 +111,7 @@ public class VectorAPIIntrinsics {
         });
 
         String vectorSupportName = vectorSupportPackage + ".VectorSupport";
-        r = new Registration(plugins, vectorSupportName, replacements);
+        r = new Registration(plugins, vectorSupportName);
 
         /* Types of vectors and related data. */
         OptionalLazySymbol vectorSpecies = new OptionalLazySymbol(vectorSupportName + "$VectorSpecies");
@@ -138,6 +138,7 @@ public class VectorAPIIntrinsics {
         OptionalLazySymbol vectorBroadcastIntOp = new OptionalLazySymbol(vectorSupportName + "$VectorBroadcastIntOp");
         OptionalLazySymbol vectorConvertOp = new OptionalLazySymbol(vectorSupportName + "$VectorConvertOp");
         OptionalLazySymbol vectorRearrangeOp = new OptionalLazySymbol(vectorSupportName + "$VectorRearrangeOp");
+        OptionalLazySymbol compressExpandOperation = new OptionalLazySymbol(vectorSupportName + "$CompressExpandOperation");
         OptionalLazySymbol vectorMaskOp = new OptionalLazySymbol(vectorSupportName + "$VectorMaskOp");
 
         r.register(new InlineOnlyInvocationPlugin("fromBitsCoerced", Class.class, Class.class, int.class, long.class, int.class, vectorSpecies, fromBitsCoercedOperation) {
@@ -397,6 +398,16 @@ public class VectorAPIIntrinsics {
                 ValueNode mask = m.isNullConstant() ? m : b.nullCheckedValue(m);
                 MacroParams params = MacroParams.of(b, targetMethod, returnStamp, vClass, shClass, mClass, eClass, length, b.nullCheckedValue(v), b.nullCheckedValue(sh), mask, defaultImpl);
                 b.addPush(JavaKind.Object, VectorAPIRearrangeOpNode.create(params, b));
+                return true;
+            }
+        });
+
+        r.register(new InlineOnlyInvocationPlugin("compressExpandOp", int.class, Class.class, Class.class, Class.class, int.class, vector, vectorMask, compressExpandOperation) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver type, ValueNode opr, ValueNode vClass, ValueNode mClass, ValueNode eClass, ValueNode length,
+                            ValueNode v, ValueNode m, ValueNode defaultImpl) {
+                MacroParams params = MacroParams.of(b, targetMethod, opr, vClass, mClass, eClass, length, v.isNullConstant() ? v : b.nullCheckedValue(v), b.nullCheckedValue(m), defaultImpl);
+                b.addPush(JavaKind.Object, VectorAPICompressExpandOpNode.create(params, b));
                 return true;
             }
         });

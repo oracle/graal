@@ -26,8 +26,6 @@ package jdk.graal.compiler.core.test;
 
 import static jdk.graal.compiler.debug.DebugContext.BASIC_LEVEL;
 
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -44,7 +42,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.VerifyPhase;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
@@ -53,6 +50,7 @@ import jdk.graal.compiler.test.GraalTest.MethodSource;
 import jdk.graal.compiler.truffle.PerformanceInformationHandler;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.phases.inlining.CallTree;
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
@@ -111,8 +109,8 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
         }
     }
 
-    private static final Set<Integer> DebugLevels = new HashSet<>(
-                    Arrays.asList(DebugContext.ENABLED_LEVEL, BASIC_LEVEL, DebugContext.INFO_LEVEL, DebugContext.VERBOSE_LEVEL, DebugContext.DETAILED_LEVEL, DebugContext.VERY_DETAILED_LEVEL));
+    private static final Set<Integer> DebugLevels = CollectionsUtil.setOf(DebugContext.ENABLED_LEVEL, BASIC_LEVEL, DebugContext.INFO_LEVEL, DebugContext.VERBOSE_LEVEL,
+                    DebugContext.DETAILED_LEVEL, DebugContext.VERY_DETAILED_LEVEL);
 
     /**
      * The set of methods allowed to call a {@code Debug.dump(...)} method with the {@code level}
@@ -123,7 +121,7 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
      * outlined by {@link DebugContext#BASIC_LEVEL}. If you add a *justified* graph dump at this
      * level, then update the allow list.
      */
-    private static final Set<MethodSource> BasicLevelStructuredGraphDumpAllowList = Set.of(
+    private static final Set<MethodSource> BasicLevelStructuredGraphDumpAllowList = CollectionsUtil.setOf(
                     MethodSource.of(BasePhase.class, "dumpAfter"),
                     MethodSource.of(BasePhase.class, "dumpBefore"),
                     MethodSource.of(GraalCompiler.class, "emitFrontEnd"),
@@ -148,7 +146,7 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
      * outlined by {@link DebugContext#INFO_LEVEL}. If you add a *justified* graph dump at this
      * level, then update the allow list.
      */
-    private static final Set<MethodSource> InfoLevelStructuredGraphDumpAllowList = Set.of(
+    private static final Set<MethodSource> InfoLevelStructuredGraphDumpAllowList = CollectionsUtil.setOf(
                     MethodSource.of(GraalCompiler.class, "emitFrontEnd"),
                     MethodSource.of(BasePhase.class, "dumpAfter"),
                     MethodSource.of(ReplacementsImpl.GraphMaker.class, "makeGraph"),

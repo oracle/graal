@@ -338,7 +338,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract long gcCount();
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/gc/shared/genArguments.cpp#L195-L310")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/share/gc/shared/genArguments.cpp#L190-L305")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/gc/parallel/psYoungGen.cpp#L146-L168")
     protected SizeParameters computeSizeParameters(SizeParameters existing) {
         UnsignedWord minYoungSpaces = minSpaceSize(); // eden
@@ -349,7 +349,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         UnsignedWord heapSizeLimit = UnsignedUtils.max(alignDown(getHeapSizeLimit()), minAllSpaces);
 
         UnsignedWord maxHeap;
-        long optionMax = SubstrateGCOptions.MaxHeapSize.getValue();
+        long optionMax = getMaximumHeapSizeOptionValue();
         if (optionMax > 0L) {
             maxHeap = Word.unsigned(optionMax);
         } else {
@@ -416,6 +416,10 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
     protected UnsignedWord getYoungSizeLimit(UnsignedWord maxHeap) {
         return maxHeap.subtract(minSpaceSize());
+    }
+
+    protected long getMaximumHeapSizeOptionValue() {
+        return SubstrateGCOptions.MaxHeapSize.getValue();
     }
 
     protected UnsignedWord getInitialHeapSize() {

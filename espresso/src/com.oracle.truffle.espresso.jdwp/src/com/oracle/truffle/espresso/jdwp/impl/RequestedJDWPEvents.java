@@ -95,13 +95,13 @@ public final class RequestedJDWPEvents {
                 Object thread = stepInfo.getGuestThread();
                 switch (stepInfo.getDepth()) {
                     case SteppingConstants.INTO:
-                        callback.stepInto(thread, filter);
+                        callback.step(thread, filter, DebuggerCommand.Kind.STEP_INTO);
                         break;
                     case SteppingConstants.OVER:
-                        callback.stepOver(thread, filter);
+                        callback.step(thread, filter, DebuggerCommand.Kind.STEP_OVER);
                         break;
                     case SteppingConstants.OUT:
-                        callback.stepOut(thread, filter);
+                        callback.step(thread, filter, DebuggerCommand.Kind.STEP_OUT);
                         break;
                 }
                 break;

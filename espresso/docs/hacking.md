@@ -82,7 +82,35 @@ $ cd ../vm
 $ mx --dy /espresso,/sulong maven-deploy --tags=public --all-suites --all-distribution-types --version-suite=sdk --suppress-javadoc
 ```
 
-You can now depend on the jars using a version like `24.2.0-SNAPSHOT`.
+You can now depend on the jars using a version like `24.2.1-SNAPSHOT`.
+
+For embedding, there is a jar containing all the necessary JDK resources (classes, libraries, config files, etc.).
+This jar is made available to espresso through the truffle [resource API](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getInternalResource(java.lang.String)).
+It is the mx distribution called `ESPRESSO_RUNTIME_RESOURCES` and is published on maven as `org.graalvm.espresso:espresso-runtime-resources-$RuntimeResourceId` where `$RuntimeResourceId` identifies the type and version of the included JDK.
+For example `org.graalvm.espresso:espresso-runtime-resources-jdk21` contain Oracle JDK 21.
+`ESPRESSO_RUNTIME_RESOURCES` contains the JDK specified through `ESPRESSO_JAVA_HOME` as well as the optional llvm bits specified in `ESPRESSO_LLVM_JAVA_HOME`.
+
+Since we might want to distribute these resources for multiple JDK version, it is possible to produce additional runtime resource jars.
+This is done by setting `EXTRA_ESPRESSO_JAVA_HOMES` and optionally `EXTRA_ESPRESSO_LLVM_JAVA_HOMES`.
+Those are lists of java homes separated by a path separator.
+If `EXTRA_ESPRESSO_LLVM_JAVA_HOMES` is specified it should contain the same number of entries and in the same order as `EXTRA_ESPRESSO_JAVA_HOMES`.
+The JDKs set in `ESPRESSO_JAVA_HOME` and `EXTRA_ESPRESSO_JAVA_HOMES` should all have different versions.
+
+For example to produce jdk21 and jk25 resource in addition to the version of `ESPRESSO_JAVA_HOME`:
+```bash
+$ export ESPRESSO_JAVA_HOME=/path/to/jdk26
+$ export ESPRESSO_LLVM_JAVA_HOME=/path/to/jdk26-llvm
+$ export EXTRA_ESPRESSO_JAVA_HOMES=/path/to/jdk21:/path/to/jdk25
+$ export EXTRA_ESPRESSO_LLVM_JAVA_HOMES=/path/to/jdk21-llvm:/path/to/jdk25-llvm
+# subsequent build and maven-deploy operation will now publish
+# * org.graalvm.espresso:espresso-runtime-resources-jdk21
+# * org.graalvm.espresso:espresso-runtime-resources-jdk25
+# * org.graalvm.espresso:espresso-runtime-resources-jdk26
+```
+
+The `org.graalvm.espresso:java` maven dependency automatically depends on the "main" runtime resource (the one from `ESPRESSO_JAVA_HOME`).
+In order to use a different version in an embedding, an explicit dependency to `org.graalvm.espresso:espresso-runtime-resources-$RuntimeResourceId` should be added.
+The context should also be created with `java.RuntimeResourceId` set to the desired version (e.g., `"jdk21"`).
 
 ## `mx espresso-embedded ...`
 
@@ -113,11 +141,42 @@ $ mx espresso --java.JavaHome=/path/to/java/11/home -version
 
 ## Limitations
 
+### Linux
+
 Espresso relies on glibc's [dlmopen](https://man7.org/linux/man-pages/man3/dlopen.3.html) to run on HotSpot, but this approach has limitations that lead to crashes e.g. `libnio.so: undefined symbol: fstatat64` . Some of these limitations can be by avoided by defining `LD_DEBUG=unused` e.g.
 
 ```bash
 $ LD_DEBUG=unused mx espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.Tetris
 ```
+
+### macOS
+
+On macOS there is nothing like `dlmopen` available, therefore `jvm-ce` does not work. However, there is another mode available where libraries can be executed via Sulong (internally called `nfi-llvm`). This requires the OpenJDK libraries to be compiled with the Sulong toolchain, such builds are available through `mx fetch-jdk` with a `-llvm` suffix. Unfortunately this mode is only supported on `darwin-amd64`, so on an Apple Silicon machine the `x86_64` emulator Rosetta 2 must be used:
+
+```bash
+$ arch -arch x86_64 zsh
+
+$ export MX_PYTHON=`xcode-select -p`/usr/bin/python3
+$ file $MX_PTYHON
+/Applications/Xcode16.2.app/Contents/Developer/usr/bin/python3: Mach-O universal binary with 2 architectures: [x86_64:Mach-O 64-bit executable x86_64] [arm64:Mach-O 64-bit executable arm64]
+/Applications/Xcode16.2.app/Contents/Developer/usr/bin/python3 (for architecture x86_64):	Mach-O 64-bit executable x86_64
+/Applications/Xcode16.2.app/Contents/Developer/usr/bin/python3 (for architecture arm64):	Mach-O 64-bit executable arm64
+
+$ # the important part above is that there is also a Mach-O included for x86_64
+
+$ cd $graal/espresso
+$ mx fetch-jdk # fetch JDK latest, 21 and 21-llvm
+
+$ export ESPRESSO_JAVA_HOME=<JDK21 path for amd64>
+$ export LLVM_JAVA_HOME=<JDK21-llvm path for amd64>
+$ export JAVA_HOME=<JDK-latest path for amd64>
+
+$ # Note: ESPRESSO_JAVA_HOME and LLVM_JAVA_HOME must match regarding version.
+
+$ mx --env jvm-ce-llvm build
+
+```
+
 
 ## _Espressoⁿ_ Java-ception
 

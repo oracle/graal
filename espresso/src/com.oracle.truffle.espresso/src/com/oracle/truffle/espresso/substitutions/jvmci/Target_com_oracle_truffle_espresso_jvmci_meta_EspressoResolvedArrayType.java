@@ -47,7 +47,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedArrayT
             throw meta.throwIllegalArgumentExceptionBoundary();
         }
         Klass baseKlass = base.getMirrorKlass(meta);
-        ArrayKlass arrayKlass = baseKlass.getArrayClass(dimensionsDelta);
+        ArrayKlass arrayKlass = baseKlass.getArrayKlass(dimensionsDelta);
         return arrayKlass.mirror();
     }
 }
