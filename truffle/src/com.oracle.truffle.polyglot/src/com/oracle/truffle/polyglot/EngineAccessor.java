@@ -2119,8 +2119,12 @@ final class EngineAccessor extends Accessor {
         @Override
         public Thread createLanguageSystemThread(Object polyglotLanguageContext, Runnable runnable, ThreadGroup threadGroup) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
+            PolyglotContextImpl currentContext = PolyglotFastThreadLocals.getContext(null);
+            if (currentContext == null && Thread.currentThread() instanceof LanguageSystemThread systemThread) {
+                currentContext = systemThread.polyglotContext;
+            }
             // Ensure that thread is entered in correct context
-            if (PolyglotContextImpl.requireContext() != languageContext.context) {
+            if (currentContext != languageContext.context) {
                 throw new IllegalStateException("Not entered in an Env's context.");
             }
             return new LanguageSystemThread(languageContext, runnable, threadGroup);
