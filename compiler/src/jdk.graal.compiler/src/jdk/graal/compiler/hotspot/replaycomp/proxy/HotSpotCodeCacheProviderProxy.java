@@ -43,8 +43,6 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
-//JaCoCo Exclude
-
 public final class HotSpotCodeCacheProviderProxy extends HotSpotCodeCacheProvider implements CompilationProxy {
     private final InvocationHandler handler;
 
