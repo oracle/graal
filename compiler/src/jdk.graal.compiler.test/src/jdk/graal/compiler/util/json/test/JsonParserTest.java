@@ -35,6 +35,7 @@ import org.junit.Test;
 import jdk.graal.compiler.util.json.JsonFormatter;
 import jdk.graal.compiler.util.json.JsonParser;
 import jdk.graal.compiler.util.json.JsonParserException;
+import jdk.vm.ci.meta.TriState;
 
 public class JsonParserTest {
 
@@ -185,6 +186,30 @@ public class JsonParserTest {
                 new JsonParser(source).parseAllowedKeys(List.of("foo"));
                 Assert.fail("Should have failed to parse: " + source);
             } catch (JsonParserException ignored) {
+            }
+        }
+    }
+
+    @Test
+    public void parserExceptionsAtEOF() throws IOException {
+        for (String input : List.of("", "[", "{", "{\"", "{\"a", "{\"a\"", "{\"a\":", "[\"a\",", "tru", "nul", "fals")) {
+            try {
+                new JsonParser(input).parse();
+                Assert.fail("The input string is not a valid JSON.");
+            } catch (JsonParserException exception) {
+                Assert.assertEquals(TriState.TRUE, exception.isAtEOF());
+            }
+        }
+    }
+
+    @Test
+    public void parserExceptionsBeforeEOF() throws IOException {
+        for (String input : List.of("true??", "[?,", "{\"a\",\"b\"}")) {
+            try {
+                new JsonParser(input).parse();
+                Assert.fail("The input string is not a valid JSON.");
+            } catch (JsonParserException exception) {
+                Assert.assertEquals(TriState.FALSE, exception.isAtEOF());
             }
         }
     }

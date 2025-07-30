@@ -36,7 +36,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
+import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -63,8 +63,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      */
     public static final OptionValues INJECTED_OPTIONVALUES = null;
 
-    GraalHotSpotVMConfig(HotSpotVMConfigStore store) {
-        super(store);
+    GraalHotSpotVMConfig(HotSpotVMConfigAccess access, Platform platform) {
+        super(access, platform);
 
         int logMinObjAlignment = logMinObjAlignment();
         assert narrowOopShift <= logMinObjAlignment : Assertions.errorMessageContext("narrowOopShift", narrowOopShift, "logMinObjAlignment", logMinObjAlignment);

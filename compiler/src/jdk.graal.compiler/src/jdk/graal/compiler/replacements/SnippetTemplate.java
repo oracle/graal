@@ -2917,19 +2917,34 @@ public class SnippetTemplate {
         return buf.append(')').toString();
     }
 
+    /**
+     * {@code true} if encoded snippets are in use in a hosted context. This is needed to disable
+     * assertions that are not supported with encoded snippets. {@code EncodedSnippets} is not
+     * referencable from this context, so this is the only way to check this fact.
+     */
+    private static volatile boolean hostedEncodedSnippets = false;
+
+    /**
+     * Notifies snippet templates whether snippets are encoded in a hosted context. If {@code true},
+     * this call disables assertions that are not supported with encoded snippets.
+     *
+     * @param value whether snippets are encoded in a hosted context
+     */
+    public static void setHostedEncodedSnippets(boolean value) {
+        hostedEncodedSnippets = value;
+    }
+
     private static boolean checkTemplate(MetaAccessProvider metaAccess, Arguments args, ResolvedJavaMethod method) {
         Signature signature = method.getSignature();
         int offset = args.info.hasReceiver() ? 1 : 0;
         for (int i = offset; i < args.info.getParameterCount(); i++) {
             if (args.info.isConstantParameter(i)) {
                 JavaKind kind = signature.getParameterKind(i - offset);
-                assert inRuntimeCode() || checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
-
+                assert inRuntimeCode() || hostedEncodedSnippets || checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
             } else if (args.info.isVarargsParameter(i)) {
                 assert args.values[i] instanceof Varargs : Assertions.errorMessage(args.values[i], args, method);
                 Varargs varargs = (Varargs) args.values[i];
-                assert inRuntimeCode() || checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
-
+                assert inRuntimeCode() || hostedEncodedSnippets || checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
             } else if (args.info.isNonNullParameter(i)) {
                 assert checkNonNull(method, args.info.getParameterName(i), args.values[i]);
             }
