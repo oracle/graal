@@ -2947,6 +2947,7 @@ mx_benchmark.add_bm_suite(SpecJbb2015BenchmarkSuite())
 _baristaConfig = {
     "benchmarks": {
         "vanilla-hello-world": {},
+        "dropwizard-hello-world": {},
         "micronaut-hello-world": {},
         "micronaut-shopcart": {},
         "micronaut-similarity": {},
