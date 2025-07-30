@@ -184,6 +184,12 @@ public class TRegexOptions {
     public static final int TRegexQuantifierUnrollLimitGroup = 6;
 
     /**
+     * Quantified groups whose node count is greater that this threshold will not be considered for
+     * quantifier unrolling.
+     */
+    public static final int TRegexQuantifierUnrollLimitGroupNodeCount = 100;
+
+    /**
      * Bailout threshold for number of capture groups.
      */
     public static final int TRegexMaxNumberOfCaptureGroups = Short.MAX_VALUE;

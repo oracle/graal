@@ -7,6 +7,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-66839: Deprecate `Location#isFinal()` as it always returns false.
 * GR-67702: Specialization DSL: For nodes annotated with `@GenerateInline`, inlining warnings emitted for `@Cached SomeNode helper` expressions are now suppressed if the helper node class is explicitly annotated with `@GenerateInline(false)`, or is not a DSL node. This avoids unnecessary warnings if inlining for a node was explicitly disabled, and makes it possible to remove `@Cached(inline = false)` in most cases.
 * GR-68165: `DynamicObjectLibrary#setDynamicType` transitions are now weak, like `DynamicObjectLibrary#putConstant` transitions.
+* GR-67821: `TruffleLanguage.Env#createSystemThread` is now allowed to be be called from a system thread now without an explicitly entered context.
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.

@@ -57,4 +57,17 @@ public final class MathUtil {
         }
         return x + 1;
     }
+
+    public static int saturatingAdd(int x, int y) {
+        int sum = x + y;
+        return sum < 0 ? Integer.MAX_VALUE : sum;
+    }
+
+    public static int saturatingMul(int x, int y) {
+        long r = (long) x * (long) y;
+        if ((int) r != r) {
+            return Integer.MAX_VALUE;
+        }
+        return (int) r;
+    }
 }

@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleThreadBuilder;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -220,6 +222,21 @@ public interface JDWPContext {
      * @return the Ids instance for maintaining guest language objects to unique ID.
      */
     Ids<Object> getIds();
+
+    /**
+     * Creates a new system thread.
+     *
+     * @return {@link Env#createSystemThread(java.lang.Runnable)}.
+     */
+    public Thread createSystemThread(Runnable runnable);
+
+    /**
+     * Creates a new polyglot thread bound to the Espresso language context.
+     *
+     * @return {@link Env#newTruffleThreadBuilder(java.lang.Runnable)}.{@link TruffleThreadBuilder#build()
+     *         build()}.
+     */
+    public Thread createPolyglotThread(Runnable runnable);
 
     /**
      * @param string guest language string object
