@@ -44,6 +44,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageInfo;
@@ -315,7 +316,11 @@ public final class LibGraalFeature implements Feature {
 
     private void registerHostedOnlyElements(BeforeAnalysisAccess access, AnnotatedElement... elements) {
         for (AnnotatedElement element : elements) {
-            if (element.getAnnotation(HostedOnly.class) != null) {
+            HostedOnly annotation = element.getAnnotation(HostedOnly.class);
+            if (annotation == null) {
+                continue;
+            }
+            if (annotation.unlessTrue().isEmpty() || !Boolean.parseBoolean(GraalServices.getSavedProperty(annotation.unlessTrue()))) {
                 access.registerReachabilityHandler(new HostedOnlyElementCallback(element, reachedHostedOnlyElements), element);
             }
         }
