@@ -84,10 +84,11 @@ public class InputStringGeneratorTests extends RegexTestBase {
     }
 
     void testInputStringGenerator(String pattern) {
-        testInputStringGenerator(pattern, "", getEngineOptions(), getTRegexEncoding(), rng.nextLong(), compileRegex(pattern, ""));
+        testInputStringGenerator(pattern, "", getEngineOptions(), getTRegexEncoding(), rng.nextLong());
     }
 
-    private void testInputStringGenerator(String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding, long rngSeed, Value compiledRegex) {
+    private void testInputStringGenerator(String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding, long rngSeed) {
+        Value compiledRegex = compileRegex(pattern, flags);
         Value generator = getGenerator(pattern, flags, options, encoding);
         for (int i = 0; i < 20; i++) {
             Value input = generator.execute(rngSeed + i);
@@ -102,7 +103,7 @@ public class InputStringGeneratorTests extends RegexTestBase {
     }
 
     private Value getGenerator(String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding) {
-        Source.Builder builder = sourceBuilder(pattern, flags, options, encoding).option("regexDummyLang.GenerateInput", "true");
+        Source.Builder builder = sourceBuilder(pattern, flags, options(options), encoding).option("regexDummyLang.GenerateInput", "true");
         try {
             return context.parse(builder.build());
         } catch (IOException e) {

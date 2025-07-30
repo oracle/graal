@@ -26,10 +26,6 @@ suite = {
         "subdir": True,
       },
       {
-        "name" : "regex",
-        "subdir": True
-      },
-      {
         "name" : "sdk",
         "subdir": True
       }
@@ -464,7 +460,6 @@ suite = {
         "truffle:TRUFFLE_TEST",
         "truffle:TRUFFLE_COMPILER",
         "truffle:TRUFFLE_RUNTIME",
-        "regex:TREGEX",
       ],
       "exclude" : [
         "mx:JUNIT",
