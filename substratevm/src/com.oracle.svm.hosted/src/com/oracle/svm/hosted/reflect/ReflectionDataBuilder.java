@@ -303,7 +303,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         if (allowForName) {
-            classForNameSupport.registerClass(condition, clazz, ClassLoaderFeature.getRuntimeClassLoader(clazz.getClassLoader()));
+            classForNameSupport.registerClass(condition, clazz, ClassLoaderFeature.getRuntimeClassLoader(clazz.getClassLoader()), preserved);
 
             if (!MissingRegistrationUtils.throwMissingRegistrationErrors()) {
                 /*
@@ -327,7 +327,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public void registerClassLookupException(AccessCondition condition, String typeName, Throwable t) {
-        runConditionalInAnalysisTask(condition, (cnd) -> classForNameSupport.registerExceptionForClass(cnd, typeName, t));
+        runConditionalInAnalysisTask(condition, (cnd) -> classForNameSupport.registerExceptionForClass(cnd, typeName, t, false));
     }
 
     @Override
@@ -338,7 +338,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             } catch (ClassNotFoundException e) {
                 classForNameSupport.registerNegativeQuery(cnd, typeName);
             } catch (Throwable t) {
-                classForNameSupport.registerExceptionForClass(cnd, typeName, t);
+                classForNameSupport.registerExceptionForClass(cnd, typeName, t, preserved);
             }
         });
     }
@@ -485,6 +485,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 conditionalValue = newConditionalValue;
                 registered = true;
             }
+        } else {
+            conditionalValue.getConditions().reportReregistered(preserved);
         }
         if (!queriedOnly) {
             /* queryOnly methods are conditioned by the type itself */
@@ -604,11 +606,19 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private record AllDeclaredFieldsQuery(AccessCondition condition, boolean queriedOnly, Class<?> clazz) {
     }
 
-    private Set<AllDeclaredFieldsQuery> existingAllDeclaredFieldsQuery = ConcurrentHashMap.newKeySet();
+    // Tracks types that have had all declared fields registered for reflection.
+    // The boolean value in the map tracks whether the registration was preserved.
+    private Map<AllDeclaredFieldsQuery, Boolean> existingAllDeclaredFieldsQuery = new ConcurrentHashMap<>();
 
     public void registerAllDeclaredFieldsQuery(AccessCondition condition, boolean queriedOnly, boolean preserved, Class<?> clazz) {
         final var query = new AllDeclaredFieldsQuery(condition, queriedOnly, clazz);
-        if (!existingAllDeclaredFieldsQuery.contains(query)) {
+        /*
+         * Register the query if it was never registered, or if it was registered by preserve but
+         * preserved == false (re-register to unmark the fields as preserved). This limits
+         * registration to at most twice per class.
+         */
+        if (!existingAllDeclaredFieldsQuery.containsKey(query) ||
+                        existingAllDeclaredFieldsQuery.get(query) && !preserved) {
             runConditionalInAnalysisTask(condition, (cnd) -> {
                 setQueryFlag(clazz, ALL_DECLARED_FIELDS_FLAG);
                 try {
@@ -617,7 +627,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     registerLinkageError(clazz, e, fieldLookupExceptions);
                 }
             });
-            existingAllDeclaredFieldsQuery.add(query);
+            existingAllDeclaredFieldsQuery.put(query, preserved);
         }
     }
 
@@ -644,7 +654,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         boolean exists = classFields.containsKey(analysisField);
         boolean shouldRegisterReachabilityHandler = classFields.isEmpty();
         var cndValue = classFields.computeIfAbsent(analysisField, _ -> new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(preserved), reflectField));
-        if (!exists) {
+        if (exists) {
+            cndValue.getConditions().reportReregistered(preserved);
+        } else {
             registerTypesForField(analysisField, reflectField, queriedOnly);
 
             /*

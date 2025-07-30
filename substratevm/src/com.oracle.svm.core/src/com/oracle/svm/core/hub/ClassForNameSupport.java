@@ -178,18 +178,18 @@ public final class ClassForNameSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerClass(Class<?> clazz, ClassLoader runtimeClassLoader) {
-        registerClass(AccessCondition.unconditional(), clazz, runtimeClassLoader);
+        registerClass(AccessCondition.unconditional(), clazz, runtimeClassLoader, false);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerClass(AccessCondition condition, Class<?> clazz, ClassLoader runtimeClassLoader) {
+    public void registerClass(AccessCondition condition, Class<?> clazz, ClassLoader runtimeClassLoader, boolean preserved) {
         assert !clazz.isPrimitive() : "primitive classes cannot be looked up by name";
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return; // must be defined at runtime before it can be looked up
         }
         String name = clazz.getName();
         if (respectClassLoader()) {
-            registerKnownClassName(condition, name);
+            registerKnownClassName(condition, name, preserved);
             Class<?> elemental = clazz;
             while (elemental.isArray()) {
                 elemental = elemental.getComponentType();
@@ -206,10 +206,10 @@ public final class ClassForNameSupport {
                                 currentValue == NEGATIVE_QUERY ||
                                 currentValue == clazz) {
                     currentValue = clazz;
-                    var cond = updateConditionalValue(existingEntry, currentValue, condition);
+                    var cond = updateConditionalValue(existingEntry, currentValue, condition, preserved);
                     addKnownClass(name, cond);
                 } else if (currentValue instanceof Throwable) { // failed at linking time
-                    var cond = updateConditionalValue(existingEntry, currentValue, condition);
+                    var cond = updateConditionalValue(existingEntry, currentValue, condition, preserved);
                     /*
                      * If the class has already been seen as throwing an error, we don't overwrite
                      * this error. Nevertheless, we have to update the set of conditionals to be
@@ -242,23 +242,24 @@ public final class ClassForNameSupport {
     }
 
     public static ConditionalRuntimeValue<Object> updateConditionalValue(ConditionalRuntimeValue<Object> existingConditionalValue, Object newValue,
-                    AccessCondition additionalCondition) {
+                    AccessCondition additionalCondition, boolean preserved) {
         if (existingConditionalValue == null) {
-            return new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(additionalCondition, false), newValue);
+            return new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(additionalCondition, preserved), newValue);
         } else {
             existingConditionalValue.getConditions().addCondition(additionalCondition);
+            existingConditionalValue.getConditions().reportReregistered(preserved);
             existingConditionalValue.updateValue(newValue);
             return existingConditionalValue;
         }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerExceptionForClass(AccessCondition condition, String className, Throwable t) {
+    public void registerExceptionForClass(AccessCondition condition, String className, Throwable t, boolean preserved) {
         if (RuntimeClassLoading.isSupported()) {
             return;
         }
         if (respectClassLoader()) {
-            registerKnownClassName(condition, className);
+            registerKnownClassName(condition, className, preserved);
             synchronized (knownExceptions) {
                 knownExceptions.put(className, t);
             }
@@ -270,7 +271,7 @@ public final class ClassForNameSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerNegativeQuery(AccessCondition condition, String className) {
         if (respectClassLoader()) {
-            registerKnownClassName(condition, className);
+            registerKnownClassName(condition, className, false);
         } else {
             /*
              * If the class is not accessible by the builder class loader, but was already
@@ -281,14 +282,15 @@ public final class ClassForNameSupport {
         }
     }
 
-    private void registerKnownClassName(AccessCondition condition, String className) {
+    private void registerKnownClassName(AccessCondition condition, String className, boolean preserved) {
         assert respectClassLoader();
         synchronized (knownClassNames) {
             RuntimeConditionSet existingConditions = knownClassNames.get(className);
             if (existingConditions == null) {
-                knownClassNames.put(className, RuntimeConditionSet.createHosted(condition, false));
+                knownClassNames.put(className, RuntimeConditionSet.createHosted(condition, preserved));
             } else {
                 existingConditions.addCondition(condition);
+                existingConditions.reportReregistered(preserved);
             }
         }
     }
@@ -440,6 +442,25 @@ public final class ClassForNameSupport {
         } else {
             return conditionalClass.getConditions();
         }
+    }
+
+    public static boolean isPreserved(Class<?> jClass) {
+        Objects.requireNonNull(jClass);
+        String jClassName = jClass.getName();
+        if (respectClassLoader()) {
+            RuntimeConditionSet conditionSet = getConditionForName(jClassName);
+            if (conditionSet == null) {
+                return false;
+            }
+            return conditionSet.preserved();
+        }
+        for (var singleton : layeredSingletons()) {
+            ConditionalRuntimeValue<Object> conditionalClass = singleton.knownClasses.get(jClassName);
+            if (conditionalClass != null) {
+                return conditionalClass.getConditions().preserved();
+            }
+        }
+        return false;
     }
 
     public static boolean isRegisteredClass(String className) {

@@ -37,7 +37,7 @@ import org.graalvm.nativeimage.Platforms;
  * @param <T> type of the stored value.
  */
 public final class ConditionalRuntimeValue<T> {
-    RuntimeConditionSet conditions;
+    final RuntimeConditionSet conditions;
     volatile T value;
 
     public ConditionalRuntimeValue(RuntimeConditionSet conditions, T value) {

@@ -71,18 +71,20 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      * Error indices are less than {@link #NO_DATA}.
      */
     public static final int FIRST_ERROR_INDEX = NO_DATA - 1;
-    public static final int NO_METHOD_METADATA = -1;
+    private static final int NO_METHOD_METADATA = -1;
     public static final int NULL_OBJECT = -1;
-    public static final int COMPLETE_FLAG_INDEX = 31;
+    private static final int COMPLETE_FLAG_INDEX = 31;
     public static final int COMPLETE_FLAG_MASK = 1 << COMPLETE_FLAG_INDEX;
-    public static final int IN_HEAP_FLAG_INDEX = 30;
+    private static final int IN_HEAP_FLAG_INDEX = 30;
     public static final int IN_HEAP_FLAG_MASK = 1 << IN_HEAP_FLAG_INDEX;
-    public static final int HIDING_FLAG_INDEX = 29;
+    private static final int HIDING_FLAG_INDEX = 29;
     public static final int HIDING_FLAG_MASK = 1 << HIDING_FLAG_INDEX;
-    public static final int NEGATIVE_FLAG_INDEX = 28;
+    private static final int NEGATIVE_FLAG_INDEX = 28;
     public static final int NEGATIVE_FLAG_MASK = 1 << NEGATIVE_FLAG_INDEX;
+    private static final int PRESERVED_FLAG_INDEX = 27;
+    public static final int PRESERVED_FLAG_MASK = 1 << PRESERVED_FLAG_INDEX;
     /* single lookup flags are filled before encoding */
-    public static final int ALL_FLAGS_MASK = COMPLETE_FLAG_MASK | IN_HEAP_FLAG_MASK | HIDING_FLAG_MASK | NEGATIVE_FLAG_MASK;
+    public static final int ALL_FLAGS_MASK = COMPLETE_FLAG_MASK | IN_HEAP_FLAG_MASK | HIDING_FLAG_MASK | NEGATIVE_FLAG_MASK | PRESERVED_FLAG_MASK;
 
     public static final int ALL_FIELDS_FLAG = 1 << 16;
     public static final int ALL_DECLARED_FIELDS_FLAG = 1 << 17;
@@ -275,6 +277,11 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         return (modifiers & NEGATIVE_FLAG_MASK) != 0;
     }
 
+    @Override
+    public boolean isPreserved(int modifiers) {
+        return (modifiers & PRESERVED_FLAG_MASK) != 0;
+    }
+
     public static boolean isErrorIndex(int index) {
         return index < NO_DATA;
     }
@@ -347,8 +354,9 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         int modifiers = buf.getUVInt();
         boolean inHeap = (modifiers & IN_HEAP_FLAG_MASK) != 0;
         boolean complete = (modifiers & COMPLETE_FLAG_MASK) != 0;
+        boolean preserved = (modifiers & PRESERVED_FLAG_MASK) != 0;
 
-        RuntimeConditionSet conditions = decodeConditions(buf, layerId);
+        RuntimeConditionSet conditions = decodeConditions(buf, layerId, preserved);
         if (inHeap) {
             Field field = (Field) decodeObject(buf, layerId);
             if (publicOnly && !Modifier.isPublic(field.getModifiers())) {
@@ -402,9 +410,9 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         return reflectOnly ? reflectField : new FieldDescriptor(reflectField);
     }
 
-    private static RuntimeConditionSet decodeConditions(UnsafeArrayTypeReader buf, int layerId) {
+    private static RuntimeConditionSet decodeConditions(UnsafeArrayTypeReader buf, int layerId, boolean preserved) {
         var conditionTypes = decodeArray(buf, Class.class, _ -> decodeType(buf, layerId), layerId);
-        return RuntimeConditionSet.createDecoded(conditionTypes, false);
+        return RuntimeConditionSet.createDecoded(conditionTypes, preserved);
     }
 
     /**
@@ -514,7 +522,8 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         int modifiers = buf.getUVInt();
         boolean inHeap = (modifiers & IN_HEAP_FLAG_MASK) != 0;
         boolean complete = (modifiers & COMPLETE_FLAG_MASK) != 0;
-        RuntimeConditionSet conditions = decodeConditions(buf, layerId);
+        boolean preserved = (modifiers & PRESERVED_FLAG_MASK) != 0;
+        RuntimeConditionSet conditions = decodeConditions(buf, layerId, preserved);
         if (inHeap) {
             Executable executable = (Executable) decodeObject(buf, layerId);
             if (publicOnly && !Modifier.isPublic(executable.getModifiers())) {

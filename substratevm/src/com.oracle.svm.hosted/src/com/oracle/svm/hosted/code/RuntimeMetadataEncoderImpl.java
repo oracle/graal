@@ -35,6 +35,7 @@ import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.HIDING_FLAG_MA
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.IN_HEAP_FLAG_MASK;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.NEGATIVE_FLAG_MASK;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.NULL_OBJECT;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.PRESERVED_FLAG_MASK;
 import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
 import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.AccessibleObjectMetadata;
 import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.ClassMetadata;
@@ -451,7 +452,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         AnnotationValue[] annotations = registerAnnotationValues(analysisField);
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisField);
 
-        registerField(declaringType, reflectField, new FieldMetadata(conditions, declaringType, name, type, modifiers, trustedFinal, signature, annotations, typeAnnotations, offset, deletedReason));
+        registerField(declaringType, reflectField, new FieldMetadata(conditions, declaringType, name, type, modifiers, trustedFinal, signature, annotations,
+                        typeAnnotations, offset, deletedReason));
     }
 
     @Override
@@ -965,6 +967,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         modifiers |= field.heapObject != null ? IN_HEAP_FLAG_MASK : 0;
         modifiers |= field.hiding ? HIDING_FLAG_MASK : 0;
         modifiers |= field.negative ? NEGATIVE_FLAG_MASK : 0;
+        modifiers |= field.conditions.preserved() ? PRESERVED_FLAG_MASK : 0;
         buf.putUV(modifiers);
         encodeConditions(buf, field.conditions);
 
@@ -1000,6 +1003,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         modifiers |= executable.heapObject != null ? IN_HEAP_FLAG_MASK : 0;
         modifiers |= isHiding ? HIDING_FLAG_MASK : 0;
         modifiers |= executable.negative ? NEGATIVE_FLAG_MASK : 0;
+        modifiers |= executable.conditions.preserved() ? PRESERVED_FLAG_MASK : 0;
         buf.putUV(modifiers);
 
         encodeConditions(buf, executable.conditions);
