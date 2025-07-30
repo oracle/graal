@@ -50,8 +50,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
 
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.api.Vector128Ops;
 import org.graalvm.wasm.exception.Failure;
@@ -59,6 +57,8 @@ import org.graalvm.wasm.exception.WasmException;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -71,7 +71,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
     @TruffleBoundary
     private ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64) {
         super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64, false);
-        this.dynamicBuffer = allocateStatic(initialSize * MEMORY_PAGE_SIZE);
+        this.dynamicBuffer = allocateBuffer(initialSize * MEMORY_PAGE_SIZE);
     }
 
     @TruffleBoundary
@@ -101,14 +101,23 @@ final class ByteArrayWasmMemory extends WasmMemory {
             invokeGrowCallback();
             return previousSize;
         } else if (compareUnsigned(extraPageSize, maxAllowedSize()) <= 0 && compareUnsigned(previousSize + extraPageSize, maxAllowedSize()) <= 0) {
-            // Condition above and limit on maxAllowedSize (see
-            // ByteArrayWasmMemory#MAX_ALLOWED_SIZE) ensure computation of targetByteSize does not
-            // overflow.
-            final long targetByteSize = multiplyExact(addExact(previousSize, extraPageSize), MEMORY_PAGE_SIZE);
+            /*
+             * Condition above and limit on maxAllowedSize (see
+             * ByteArrayWasmMemory#MAX_ALLOWED_SIZE) ensure computation of targetByteSize does not
+             * overflow.
+             */
+            final long targetPageSize = addExact(previousSize, extraPageSize);
+            final long targetByteSize = multiplyExact(targetPageSize, MEMORY_PAGE_SIZE);
             final byte[] currentBuffer = buffer();
-            allocate(targetByteSize);
-            System.arraycopy(currentBuffer, 0, buffer(), 0, currentBuffer.length);
-            currentMinSize = previousSize + extraPageSize;
+            final byte[] newBuffer;
+            try {
+                newBuffer = allocateBuffer(targetByteSize);
+            } catch (WasmException oome) {
+                return -1;
+            }
+            System.arraycopy(currentBuffer, 0, newBuffer, 0, currentBuffer.length);
+            dynamicBuffer = newBuffer;
+            currentMinSize = targetPageSize;
             invokeGrowCallback();
             return previousSize;
         } else {
@@ -119,7 +128,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
     @ExportMessage
     @TruffleBoundary
     public void reset() {
-        allocate(declaredMinSize * MEMORY_PAGE_SIZE);
+        dynamicBuffer = allocateBuffer(declaredMinSize * MEMORY_PAGE_SIZE);
         currentMinSize = declaredMinSize;
     }
 
@@ -1091,17 +1100,9 @@ final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @TruffleBoundary
-    private void allocate(long byteSize) {
-        dynamicBuffer = null;
-        dynamicBuffer = allocateStatic(byteSize);
-    }
-
-    @TruffleBoundary
-    private static byte[] allocateStatic(long byteSize) {
-        assert byteSize <= Integer.MAX_VALUE : byteSize;
-        final int effectiveByteSize = (int) byteSize;
+    private static byte[] allocateBuffer(long byteSize) {
         try {
-            return new byte[effectiveByteSize];
+            return new byte[Math.toIntExact(byteSize)];
         } catch (OutOfMemoryError error) {
             throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
         }

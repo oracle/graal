@@ -47,7 +47,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.ClassNameSupport;
-import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -414,7 +413,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
         }
         if (MetadataTracer.enabled()) {
             // NB: the early returns above ensure we do not trace calls with bad type args.
-            MetadataTracer.singleton().traceReflectionType(className);
+            MetadataTracer.singleton().traceReflectionType(ClassNameSupport.reflectionNameToTypeName(className));
         }
         return result == NEGATIVE_QUERY ? new ClassNotFoundException(className) : result;
     }
@@ -502,10 +501,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
     public static boolean canUnsafeInstantiateAsInstance(DynamicHub hub) {
         Class<?> clazz = DynamicHub.toClass(hub);
         if (MetadataTracer.enabled()) {
-            ConfigurationType type = MetadataTracer.singleton().traceReflectionType(clazz.getName());
-            if (type != null) {
-                type.setUnsafeAllocated();
-            }
+            MetadataTracer.singleton().traceUnsafeAllocatedType(clazz);
         }
         RuntimeConditionSet conditionSet = null;
         for (var singleton : layeredSingletons()) {

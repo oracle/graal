@@ -69,7 +69,7 @@ abstract class Transition {
 
     public abstract boolean isDirect();
 
-    protected boolean hasConstantLocation() {
+    protected boolean isWeak() {
         return false;
     }
 
@@ -127,7 +127,7 @@ abstract class Transition {
         }
 
         @Override
-        protected boolean hasConstantLocation() {
+        protected boolean isWeak() {
             return getProperty().getLocation().isConstant();
         }
     }
@@ -245,6 +245,11 @@ abstract class Transition {
         }
 
         @Override
+        protected boolean isWeak() {
+            return true;
+        }
+
+        @Override
         public String toString() {
             return String.format("objectType(%s)", getObjectType());
         }
@@ -296,7 +301,7 @@ abstract class Transition {
         }
 
         @Override
-        protected boolean hasConstantLocation() {
+        protected boolean isWeak() {
             return getPropertyBefore().getLocation().isConstant() || getPropertyAfter().getLocation().isConstant();
         }
     }

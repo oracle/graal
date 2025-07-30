@@ -319,10 +319,29 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         }
     }
 
+    /**
+     * Sets the address and killed slots/registers of this foreign call linkage. This linkage should
+     * not have an address yet, and the new address must not be {@code 0L}.
+     *
+     * @param newAddress the new address of the linkage
+     * @param newTemporaries the new killed slots and registers
+     */
+    public void finalizeExternally(long newAddress, Value[] newTemporaries) {
+        GraalError.guarantee(!hasAddress(), "the linkage should not be finalized yet");
+        GraalError.guarantee(newAddress != 0L, "the updated linkage must have an address");
+        address = newAddress;
+        temporaries = newTemporaries.clone();
+    }
+
     @Override
     public long getAddress() {
         assert address != 0L : "address not yet finalized: " + this;
         return address;
+    }
+
+    @Override
+    public boolean hasAddress() {
+        return address != 0L;
     }
 
     @Override
