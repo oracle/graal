@@ -53,6 +53,7 @@ public class WebImageJSHeapBreakdownProvider extends HeapBreakdownProvider {
      */
     @Override
     protected void calculate(FeatureImpl.BeforeImageWriteAccessImpl access, boolean resourcesAreReachable) {
+        HeapBreakdownEntry.imageHeapPartitions = access.getImage().getHeap().getLayouter().getPartitions();
         long totalByteSize = 0;
         WebImageJSProviders providers = (WebImageJSProviders) ImageSingletons.lookup(WebImageProviders.class);
         ConstantIdentityMapping identityMapping = providers.typeControl().getConstantMap().identityMapping;
