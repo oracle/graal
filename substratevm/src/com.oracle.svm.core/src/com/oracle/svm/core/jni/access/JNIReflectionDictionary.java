@@ -43,7 +43,6 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
-import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
@@ -274,10 +273,9 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
 
     private static JNIAccessibleMethod getDeclaredMethod(Class<?> classObject, JNIAccessibleMethodDescriptor descriptor, String dumpLabel) {
         if (MetadataTracer.enabled()) {
-            ConfigurationType clazzType = MetadataTracer.singleton().traceJNIType(classObject.getName());
-            if (clazzType != null) {
-                clazzType.addMethod(descriptor.getNameConvertToString(), descriptor.getSignatureConvertToString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
-            }
+            MetadataTracer.singleton().traceJNIType(classObject);
+            MetadataTracer.singleton().traceMethodAccess(classObject, descriptor.getNameConvertToString(), descriptor.getSignatureConvertToString(),
+                            ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
         }
         boolean foundClass = false;
         for (var dictionary : layeredSingletons()) {
@@ -335,10 +333,8 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
 
     private static JNIAccessibleField getDeclaredField(Class<?> classObject, CharSequence name, boolean isStatic, String dumpLabel) {
         if (MetadataTracer.enabled()) {
-            ConfigurationType clazzType = MetadataTracer.singleton().traceJNIType(classObject.getName());
-            if (clazzType != null) {
-                clazzType.addField(name.toString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED, false);
-            }
+            MetadataTracer.singleton().traceJNIType(classObject);
+            MetadataTracer.singleton().traceFieldAccess(classObject, name.toString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
         }
         boolean foundClass = false;
         for (var dictionary : layeredSingletons()) {
