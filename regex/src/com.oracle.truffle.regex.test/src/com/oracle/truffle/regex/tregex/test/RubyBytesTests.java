@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import java.util.Map;
+
 import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.regex.tregex.string.Encodings;
-
-import java.util.Map;
 
 public class RubyBytesTests extends RegexTestBase {
 
