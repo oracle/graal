@@ -748,7 +748,11 @@ def gate_truffle_native_tck_wasm(tasks):
                 mx.abort("Cannot resolve the `wasm:WASM` language distribution. To resolve this, import the wasm suite using `--dynamicimports /wasm`.")
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                _svm_truffle_tck(native_image, 'wasm', wasm_language)
+                _svm_truffle_tck(native_image, 'wasm', wasm_language,
+                                 # native-image sets -Djdk.internal.lambda.disableEagerInitialization=true by default,
+                                 # which breaks Vector API's isNonCapturingLambda assertion. We override this property
+                                 # for the GraalWasm Truffle Native TCK.
+                                 additional_options=['-Djdk.internal.lambda.disableEagerInitialization=false'])
 
 def gate_maven_downloader(tasks):
     with Task('Maven Downloader prepare maven repo', tasks, tags=[VmGateTasks.maven_downloader]) as t:
