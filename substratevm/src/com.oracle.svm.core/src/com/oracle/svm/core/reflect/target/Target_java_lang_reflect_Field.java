@@ -86,7 +86,7 @@ public final class Target_java_lang_reflect_Field {
     boolean override;
 
     @Alias //
-    Target_java_lang_reflect_Field root;
+    public Target_java_lang_reflect_Field root;
 
     @Alias
     native Target_java_lang_reflect_Field copy();

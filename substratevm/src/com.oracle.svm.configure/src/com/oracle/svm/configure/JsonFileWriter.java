@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.trace;
+package com.oracle.svm.configure;
 
 import java.io.BufferedWriter;
 import java.io.Closeable;
@@ -97,6 +97,10 @@ public class JsonFileWriter implements Closeable {
     }
 
     private static void printValue(JsonWriter json, Object value) throws IOException {
+        if (value instanceof JsonPrintable printable) {
+            printable.printJson(json);
+            return;
+        }
         Object s = null;
         if (value instanceof byte[]) {
             s = Base64.getEncoder().encodeToString((byte[]) value);

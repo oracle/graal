@@ -68,7 +68,7 @@ public final class ReflectionObjectFactory {
                     byte[] annotations, byte[] parameterAnnotations, Object accessor, byte[] rawParameters, byte[] typeAnnotations) {
         Target_java_lang_reflect_Constructor ctor = new Target_java_lang_reflect_Constructor();
         ctor.constructor(declaringClass, parameterTypes, exceptionTypes, modifiers, -1, signature, annotations, parameterAnnotations);
-        ctor.constructorAccessor = (Target_jdk_internal_reflect_ConstructorAccessor) accessor;
+        ctor.constructorAccessorFromMetadata = (Target_jdk_internal_reflect_ConstructorAccessor) accessor;
         SubstrateUtil.cast(ctor, Target_java_lang_reflect_Executable.class).rawParameters = rawParameters;
         Target_java_lang_reflect_AccessibleObject accessibleObject = SubstrateUtil.cast(ctor, Target_java_lang_reflect_AccessibleObject.class);
         accessibleObject.typeAnnotations = typeAnnotations;

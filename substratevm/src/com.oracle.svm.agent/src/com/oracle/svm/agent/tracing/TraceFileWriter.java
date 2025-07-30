@@ -31,7 +31,7 @@ import org.graalvm.collections.EconomicMap;
 
 import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.agent.tracing.core.TracingResultWriter;
-import com.oracle.svm.configure.trace.JsonFileWriter;
+import com.oracle.svm.configure.JsonFileWriter;
 
 public class TraceFileWriter extends Tracer implements TracingResultWriter {
     private final JsonFileWriter jsonFileWriter;
