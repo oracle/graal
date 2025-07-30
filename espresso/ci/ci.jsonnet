@@ -9,7 +9,7 @@
   vm_guard_includes: [],
 
   local espresso_compiler_stub_gate = common.eclipse + common.jdt + common.predicates(true, true, false) +
-   common.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='gate-espresso-compiler-stub-style-jdkLatest-linux-amd64', imports='/substratevm') + {
+   common.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='gate-espresso-compiler-stub-style-jdkLatest-linux-amd64', imports='/substratevm', mx_args=['--native-images=false']) + {
     setup+: [
       ['cd', "../espresso-compiler-stub"],
     ],
@@ -28,8 +28,8 @@
   },
 
   local _builds = common.builds + [
-    common.jdkLatest_gate_linux_amd64 + espresso_compiler_stub_gate,
-    common.jdkLatest_gate_linux_amd64 + espresso_shared_gate,
+    common.jdkLatest_tier1_linux_amd64 + espresso_compiler_stub_gate,
+    common.jdkLatest_tier1_linux_amd64 + espresso_shared_gate,
     // Benchmarks
     // AWFY peak perf. benchmarks
     common.jdk21_weekly_bench_linux    + common.espresso_benchmark('jvm-ce-llvm', 'awfy:*'                                        , extra_args=['--vm.Xmx1g', '--vm.Xms1g'])         + {name: 'weekly-bench-espresso-jvm-ce-awfy-jdk21onLatest-linux-amd64'},
