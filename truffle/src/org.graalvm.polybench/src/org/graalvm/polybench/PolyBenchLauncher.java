@@ -24,14 +24,6 @@
  */
 package org.graalvm.polybench;
 
-import org.graalvm.launcher.AbstractLanguageLauncher;
-import org.graalvm.options.OptionCategory;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyArray;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -46,6 +38,14 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.logging.Handler;
+
+import org.graalvm.launcher.AbstractLanguageLauncher;
+import org.graalvm.options.OptionCategory;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyArray;
 
 /**
  * See help.txt.
@@ -493,13 +493,15 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             if (evalSourceOnly) {
                 log("::: Iterations skipped :::");
             } else {
+                Workload workload = lookup(context, evalResult.languageId, evalResult.value, "run");
+
                 log("::: Running warmup :::");
-                repeatIterations(context, evalResult.languageId, evalResult.sourceName, evalResult.value, true, config.warmupIterations);
+                repeatIterations(context, workload, evalResult.sourceName, true, config.warmupIterations);
                 log("");
 
                 log("::: Running :::");
                 config.metric.reset();
-                repeatIterations(context, evalResult.languageId, evalResult.sourceName, evalResult.value, false, config.iterations);
+                repeatIterations(context, workload, evalResult.sourceName, false, config.iterations);
                 log("");
             }
 
@@ -520,8 +522,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         return String.format("%.2f", v);
     }
 
-    private void repeatIterations(Context context, String languageId, String name, Object evalSource, boolean warmup, int iterations) {
-        Workload workload = lookup(context, languageId, evalSource, "run");
+    private void repeatIterations(Context context, Workload workload, String name, boolean warmup, int iterations) {
         // Enter explicitly to avoid context switches for each iteration.
         context.enter();
         try {
