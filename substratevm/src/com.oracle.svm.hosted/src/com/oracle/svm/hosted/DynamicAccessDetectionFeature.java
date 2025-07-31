@@ -108,7 +108,6 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
                     "java.lang.ClassLoader.loadClass",
                     "java.lang.foreign.Linker.nativeLinker");
 
-    public static final String GRAAL_SUBPATH = File.separator + "graal" + File.separator;
     public static final String TRACK_ALL = "all";
 
     private static final String OUTPUT_DIR_NAME = "dynamic-access";
