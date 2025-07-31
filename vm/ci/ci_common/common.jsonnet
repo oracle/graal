@@ -467,7 +467,7 @@ local devkits = graal_common.devkits;
 
   linux_deploy: self.deploy_build + {
     packages+: {
-      maven: '>=3.3.9',
+      maven: '==3.5.3',
     },
   },
 

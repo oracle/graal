@@ -83,7 +83,7 @@
     name: 'gate-external-mvn-simplelanguage-' + self.jdk_name,
     packages+: {
       maven: "==3.3.9",
-      ruby: ">=2.1.0",
+      ruby: "==3.0.2",
     },
     mx_cmd: ["mx"],
     run+: [

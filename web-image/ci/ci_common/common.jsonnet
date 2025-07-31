@@ -54,7 +54,7 @@ local node_map = {
 
   maven: {
     packages+: {
-      maven: '>=3.6.3',
+      maven: '==3.9.10',
     },
   },
 

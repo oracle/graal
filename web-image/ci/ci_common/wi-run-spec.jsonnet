@@ -34,7 +34,7 @@ local os_arch_jdk_mixin(mapping) = r.task_spec(r.evaluate_late({
 
   docker_ol8: {
     docker: {
-      image: 'phx.ocir.io/oraclelabs2/c_graal/buildslave:buildslave_ol8',
+      image: 'buildslave_ol8',
       mount_modules: true,
     },
   },

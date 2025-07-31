@@ -35,7 +35,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     components+: ["truffle"],
     timelimit: '30:00',
     packages+: {
-      maven: '>=3.3.9',
+      maven: '==3.5.3',
     },
     name: self.targets[0] + '-vm-ce-truffle-maven-downloader-labs' + self.jdk_name + '-linux-amd64',
   },
