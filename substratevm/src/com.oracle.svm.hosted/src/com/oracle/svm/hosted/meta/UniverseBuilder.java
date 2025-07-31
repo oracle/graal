@@ -187,7 +187,7 @@ public class UniverseBuilder {
 
             // see SharedMethod#getIndirectCallTarget for more information
             if (!SubstrateOptions.useClosedTypeWorldHubLayout()) {
-                OpenTypeWorldFeature.computeIndirectCallTargets(hUniverse, hUniverse.methods);
+                OpenTypeWorldFeature.singleton().computeIndirectCallTargets(hUniverse, hUniverse.methods);
             } else {
                 hUniverse.methods.forEach((aMethod, hMethod) -> {
                     assert aMethod.isOriginalMethod();
@@ -839,7 +839,7 @@ public class UniverseBuilder {
                         assert currentLayer < layerNum : Assertions.errorMessage(currentLayer, layerNum);
                         offsets = layeredStaticFieldSupport.getFutureLayerOffsets(field, layerNum);
                     }
-                    if (field.getStorageKind() == JavaKind.Object) {
+                    if (field.getStorageKind().isObject()) {
                         field.setLocation(NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Object, offsets.nextObjectField)), layerNum);
                         offsets.nextObjectField += 1;
                     } else {

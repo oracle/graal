@@ -136,7 +136,7 @@ public class HostedStaticFieldSupportImpl implements StaticFieldsSupport.HostedS
         } else {
             AnalysisField aField = (AnalysisField) field;
             return switch (LayeredStaticFieldSupport.singleton().getAssignmentStatus(aField)) {
-                case UNDECIDED -> getCurrentLayerNumber();
+                case UNSPECIFIED -> getCurrentLayerNumber();
                 case PRIOR_LAYER -> LayeredStaticFieldSupport.singleton().getPriorInstalledLayerNum(aField);
                 case APP_LAYER_REQUESTED, APP_LAYER_DEFERRED -> LayeredStaticFieldSupport.getAppLayerNumber();
             };

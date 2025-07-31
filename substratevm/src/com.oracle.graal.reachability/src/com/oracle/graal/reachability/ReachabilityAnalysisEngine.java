@@ -284,6 +284,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
 
     @Override
     public boolean finish() throws InterruptedException {
+        assert isInitialized();
         do {
             runReachability();
             assert executor.getPostedOperations() == 0 : executor.getPostedOperations();
