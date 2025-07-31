@@ -377,6 +377,13 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         # Added by BaristaNativeImageCommand
         return []
 
+    def extra_image_build_argument(self, benchmark, args):
+        extra_image_build_args = []
+        if benchmark == "quarkus-tika":
+            # Band-aid solution for class initizalization deadlock due to org.openxmlformats.schemas.drawingml.x2006 (GR-59899)
+            extra_image_build_args += ["-H:NumberOfThreads=1"]
+        return extra_image_build_args + super().extra_image_build_argument(benchmark, args)
+
     def build_assertions(self, benchmark: str, is_gate: bool) -> List[str]:
         # We cannot enable assertions along with emitting a build report for layered images, due to GR-65751
         if self.stages_info.current_stage.is_layered():
