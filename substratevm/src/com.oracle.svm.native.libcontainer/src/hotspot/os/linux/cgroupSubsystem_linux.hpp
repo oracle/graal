@@ -138,7 +138,7 @@ class CgroupController: public CHeapObj<mtInternal> {
      * for the null terminating character. Callers must ensure that the buffer
      * is appropriately in-scope and of sufficient size.
      *
-     * returns: false if any error occured. true otherwise and the passed
+     * returns: false if any error occurred. true otherwise and the passed
      * in buffer will contain the first buf_size - 1 characters of the string
      * or up to the first new line character ('\n') whichever comes first.
      */

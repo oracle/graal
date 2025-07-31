@@ -1505,7 +1505,7 @@ suite = {
               "libexec",
               "lib/objects-Release",
               "include/mlir*",
-              # Windows libarary excludes
+              # Windows library excludes
               "lib/*.lib",
             ]
           },

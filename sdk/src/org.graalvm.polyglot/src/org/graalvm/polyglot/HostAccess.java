@@ -510,7 +510,7 @@ public final class HostAccess {
     /**
      * Creates a new builder that allows to create a custom host access policy based of a preset
      * configuration. The preset configuration is copied and used as a template for the returned
-     * buidler. The builder configuration needs to be completed using the {@link Builder#build()
+     * builder. The builder configuration needs to be completed using the {@link Builder#build()
      * method}.
      *
      * @since 19.0

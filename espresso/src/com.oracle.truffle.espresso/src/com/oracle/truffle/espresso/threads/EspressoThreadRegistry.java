@@ -61,7 +61,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
 
     /**
      * Contains a mapping from host thread ID to guest thread object. The object at index 0 is an
-     * Integer which corresponds to the offset we need to substract to the thread ID to get the
+     * Integer which corresponds to the offset we need to subtract to the thread ID to get the
      * index of the corresponding guest thread. The referenced array might change, but its contents
      * will not. Obtaining the reference locally and working with the local variable storing it thus
      * corresponds to obtaining a snapshot of the state.

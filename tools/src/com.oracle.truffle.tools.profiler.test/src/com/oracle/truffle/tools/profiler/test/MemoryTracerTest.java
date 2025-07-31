@@ -119,7 +119,7 @@ public class MemoryTracerTest extends AbstractProfilerTest {
             Assert.assertEquals("Nested allocations found!", 0, node.getChildren().size());
         }
 
-        Assert.assertEquals("Incorect number of events!", 1, node.getPayload().getEvents().size());
+        Assert.assertEquals("Incorrect number of events!", 1, node.getPayload().getEvents().size());
 
         tracer.clearData();
 
@@ -151,7 +151,7 @@ public class MemoryTracerTest extends AbstractProfilerTest {
             Assert.assertEquals("Nested allocations found!", 0, node.getChildren().size());
         }
 
-        Assert.assertEquals("Incorect number of events!", 1, node.getPayload().getEvents().size());
+        Assert.assertEquals("Incorrect number of events!", 1, node.getPayload().getEvents().size());
 
         tracer.clearData();
 
