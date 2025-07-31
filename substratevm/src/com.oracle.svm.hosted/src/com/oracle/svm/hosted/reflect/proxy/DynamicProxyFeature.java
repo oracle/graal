@@ -43,6 +43,7 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
+import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 
 @AutomaticallyRegisteredFeature
 public final class DynamicProxyFeature implements InternalFeature {
@@ -62,6 +63,7 @@ public final class DynamicProxyFeature implements InternalFeature {
          * SerializationFeature
          */
         ImageSingletons.add(ProxyRegistry.class, proxyRegistry);
+        ImageSingletons.add(RuntimeProxyRegistrySupport.class, proxyRegistry);
     }
 
     @Override

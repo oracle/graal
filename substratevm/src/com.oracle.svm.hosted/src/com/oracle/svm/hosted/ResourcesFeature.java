@@ -208,6 +208,15 @@ public class ResourcesFeature implements InternalFeature {
             }
         }
 
+        @Override
+        public void addResource(ConfigurationCondition condition, Module module, String resourcePath, Object origin) {
+            abortIfSealed();
+            registerConditionalConfiguration(condition, cnd -> {
+                addResourceEntry(module, resourcePath, origin);
+                addCondition(condition, module, resourcePath);
+            });
+        }
+
         /* Adds single resource defined with its module and name */
         @Override
         public void addResourceEntry(Module module, String resourcePath, Object origin) {

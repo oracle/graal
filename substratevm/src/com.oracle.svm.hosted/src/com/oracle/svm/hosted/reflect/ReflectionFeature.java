@@ -44,7 +44,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
-import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
+import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
@@ -315,7 +315,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         aUniverse = access.getUniverse();
         var conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(), ClassInitializationSupport.singleton());
         reflectionData.duringSetup(access.getMetaAccess(), aUniverse);
-        RuntimeProxyCreationSupport proxyRegistry = ImageSingletons.lookup(RuntimeProxyCreationSupport.class);
+        RuntimeProxyRegistrySupport proxyRegistry = ImageSingletons.lookup(RuntimeProxyRegistrySupport.class);
         RuntimeSerializationSupport<ConfigurationCondition> serializationSupport = RuntimeSerializationSupport.singleton();
         RuntimeJNIAccessSupport jniSupport = SubstrateOptions.JNI.getValue() ? ImageSingletons.lookup(RuntimeJNIAccessSupport.class) : null;
         ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(ConfigurationFile.REFLECTION, true, conditionResolver, reflectionData, proxyRegistry,
