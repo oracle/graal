@@ -63,6 +63,10 @@ public abstract sealed class TypeEntry permits StructureTypeEntry, PrimitiveType
         this.typeSignatureForCompressed = typeSignatureForCompressed;
     }
 
+    public void seal() {
+        // nothing to do here
+    }
+
     public long getTypeSignature() {
         return typeSignature;
     }

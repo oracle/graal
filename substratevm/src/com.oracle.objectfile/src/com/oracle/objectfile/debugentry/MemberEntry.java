@@ -54,6 +54,10 @@ public abstract class MemberEntry {
         this.modifiers = modifiers;
     }
 
+    public void seal() {
+        // nothing to do here
+    }
+
     public String getFileName() {
         if (fileEntry != null) {
             return fileEntry.fileName();

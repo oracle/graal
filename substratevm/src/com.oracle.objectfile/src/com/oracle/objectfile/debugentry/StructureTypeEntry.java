@@ -26,9 +26,9 @@
 
 package com.oracle.objectfile.debugentry;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
  * An intermediate type that provides behaviour for managing fields. This unifies code for handling
@@ -38,7 +38,7 @@ public abstract sealed class StructureTypeEntry extends TypeEntry permits ArrayT
     /**
      * Details of fields located in this instance.
      */
-    private final ConcurrentSkipListSet<FieldEntry> fields;
+    private List<FieldEntry> fields;
 
     /**
      * The type signature of this types' layout. The layout of a type contains debug info of fields
@@ -52,18 +52,37 @@ public abstract sealed class StructureTypeEntry extends TypeEntry permits ArrayT
         super(typeName, size, classOffset, typeSignature, compressedTypeSignature);
         this.layoutTypeSignature = layoutTypeSignature;
 
-        this.fields = new ConcurrentSkipListSet<>(Comparator.comparingInt(FieldEntry::getOffset));
+        this.fields = new ArrayList<>();
+    }
+
+    @Override
+    public void seal() {
+        super.seal();
+        assert fields instanceof ArrayList<FieldEntry> : "StructureTypeEntry should only be sealed once";
+        fields = fields.stream().sorted(Comparator.comparingInt(FieldEntry::getOffset)).toList();
     }
 
     public long getLayoutTypeSignature() {
         return layoutTypeSignature;
     }
 
+    /**
+     * Add a field to the structure type entry.
+     * <p>
+     * This is only called during debug info generation. No more fields are added to this
+     * {@code StructureTypeEntry} when writing debug info to the object file.
+     *
+     * @param field the {@code FieldEntry} to add
+     */
     public void addField(FieldEntry field) {
-        fields.add(field);
+        assert fields instanceof ArrayList<FieldEntry> : "Can only add fields before a StructureTypeEntry is sealed.";
+        synchronized (fields) {
+            fields.add(field);
+        }
     }
 
     public List<FieldEntry> getFields() {
-        return List.copyOf(fields);
+        assert !(fields instanceof ArrayList<FieldEntry>) : "Can only access fields after a StructureTypeEntry is sealed.";
+        return fields;
     }
 }

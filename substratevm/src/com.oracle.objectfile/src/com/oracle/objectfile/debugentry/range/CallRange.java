@@ -26,11 +26,9 @@
 
 package com.oracle.objectfile.debugentry.range;
 
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.stream.Stream;
 
 import com.oracle.objectfile.debugentry.LocalEntry;
@@ -43,30 +41,41 @@ public class CallRange extends Range {
      * The direct callees whose ranges are wholly contained in this range. Empty if this is a leaf
      * range.
      */
-    private Set<Range> callees = Set.of();
+    private List<Range> callees;
 
     protected CallRange(PrimaryRange primary, MethodEntry methodEntry, Map<LocalEntry, LocalValueEntry> localInfoList, int lo, int hi, int line, CallRange caller, int depth) {
         super(primary, methodEntry, localInfoList, lo, hi, line, caller, depth);
+        this.callees = new ArrayList<>();
+    }
+
+    @Override
+    public void seal() {
+        super.seal();
+        assert callees instanceof ArrayList<Range> : "CallRange should only be sealed once";
+        callees = callees.stream().sorted().toList();
+        callees.forEach(Range::seal);
+
     }
 
     @Override
     public List<Range> getCallees() {
-        return List.copyOf(callees);
+        assert !(callees instanceof ArrayList<Range>) : "Can only access callee ranges after a CallRange is sealed.";
+        return callees;
     }
 
     @Override
     public Stream<Range> rangeStream() {
+        assert !(callees instanceof ArrayList<Range>) : "Can only access callee ranges after a CallRange is sealed.";
         return Stream.concat(super.rangeStream(), callees.stream().flatMap(Range::rangeStream));
     }
 
     protected void addCallee(Range callee) {
+        assert callees instanceof ArrayList<Range> : "Can only add callee ranges before a CallRange is sealed";
         assert this.contains(callee);
         assert callee.getCaller() == this;
-
-        if (callees.isEmpty()) {
-            callees = new TreeSet<>(Comparator.comparing(Range::getLoOffset));
+        synchronized (callees) {
+            callees.add(callee);
         }
-        callees.add(callee);
     }
 
     @Override
@@ -75,6 +84,9 @@ public class CallRange extends Range {
     }
 
     public void removeCallee(Range callee) {
-        callees.remove(callee);
+        assert callees instanceof ArrayList<Range> : "Can only remove callee ranges before a CallRange is sealed";
+        synchronized (callees) {
+            callees.remove(callee);
+        }
     }
 }

@@ -27,6 +27,7 @@
 package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfRangeListEntry;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
@@ -95,15 +96,14 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeRangeLists(DebugContext context, byte[] buffer, int p) {
-        Cursor entryCursor = new Cursor(p);
+        int pos = p;
 
-        instanceClassWithCompilationStream().forEachOrdered(classEntry -> {
-            int pos = entryCursor.get();
+        for (ClassEntry classEntry : getInstanceClassesWithCompilation()) {
             setCodeRangesIndex(classEntry, pos);
             /* Write range list for a class */
-            entryCursor.set(writeRangeList(context, classEntry, buffer, pos));
-        });
-        return entryCursor.get();
+            pos = writeRangeList(context, classEntry, buffer, pos);
+        }
+        return pos;
     }
 
     private int writeRangeList(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
@@ -114,18 +114,16 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
         pos = writeRangeListEntry(DwarfRangeListEntry.DW_RLE_base_address, buffer, pos);
         pos = writeCodeOffset(base, buffer, pos);
 
-        Cursor cursor = new Cursor(pos);
-        classEntry.compiledMethods().forEach(compiledMethodEntry -> {
-            cursor.set(writeRangeListEntry(DwarfRangeListEntry.DW_RLE_offset_pair, buffer, cursor.get()));
+        for (CompiledMethodEntry compiledMethodEntry : classEntry.compiledMethods()) {
+            pos = writeRangeListEntry(DwarfRangeListEntry.DW_RLE_offset_pair, buffer, pos);
 
             long loOffset = compiledMethodEntry.primary().getLo() - base;
             long hiOffset = compiledMethodEntry.primary().getHi() - base;
-            log(context, "  [0x%08x] lo 0x%x (%s)", cursor.get(), loOffset, compiledMethodEntry.primary().getFullMethodNameWithParams());
-            cursor.set(writeULEB(loOffset, buffer, cursor.get()));
-            log(context, "  [0x%08x] hi 0x%x", cursor.get(), hiOffset);
-            cursor.set(writeULEB(hiOffset, buffer, cursor.get()));
-        });
-        pos = cursor.get();
+            log(context, "  [0x%08x] lo 0x%x (%s)", pos, loOffset, compiledMethodEntry.primary().getFullMethodNameWithParams());
+            pos = writeULEB(loOffset, buffer, pos);
+            log(context, "  [0x%08x] hi 0x%x", pos, hiOffset);
+            pos = writeULEB(hiOffset, buffer, pos);
+        }
         // write end marker
         pos = writeRangeListEntry(DwarfRangeListEntry.DW_RLE_end_of_list, buffer, pos);
         log(context, "  [0x%08x] ranges size 0x%x  for class %s", pos, pos - p, classEntry.getTypeName());

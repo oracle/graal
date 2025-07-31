@@ -26,18 +26,23 @@
 
 package com.oracle.objectfile.debugentry;
 
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.SortedSet;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 public class MethodEntry extends MemberEntry {
-    private final LocalEntry thisParam;
-    private final SortedSet<LocalEntry> paramInfos;
+
+    public record Local(LocalEntry localEntry, int line) {
+    }
+
+    private final List<LocalEntry> params;
     private final int lastParamSlot;
-    // local vars are accumulated as they are referenced sorted by slot, then name, then
-    // type name. we don't currently deal handle references to locals with no slot.
-    private final ConcurrentSkipListSet<LocalEntry> locals;
+
+    /*
+     * Locals are accumulated when they are seen when parsing frame states.
+     */
+    private List<Local> locals;
     private final boolean isDeopt;
     private boolean isInRange;
     private boolean isInlined;
@@ -47,25 +52,17 @@ public class MethodEntry extends MemberEntry {
     private final String symbolName;
 
     public MethodEntry(FileEntry fileEntry, int line, String methodName, StructureTypeEntry ownerType,
-                    TypeEntry valueType, int modifiers, SortedSet<LocalEntry> paramInfos, LocalEntry thisParam,
-                    String symbolName, boolean isDeopt, boolean isOverride, boolean isConstructor, int vtableOffset,
-                    int lastParamSlot, List<LocalEntry> locals) {
+                    TypeEntry valueType, int modifiers, List<LocalEntry> params, String symbolName, boolean isDeopt, boolean isOverride, boolean isConstructor,
+                    int vtableOffset, int lastParamSlot) {
         super(fileEntry, line, methodName, ownerType, valueType, modifiers);
-        this.paramInfos = paramInfos;
-        this.thisParam = thisParam;
+        this.params = params;
         this.symbolName = symbolName;
         this.isDeopt = isDeopt;
         this.isOverride = isOverride;
         this.isConstructor = isConstructor;
         this.vtableOffset = vtableOffset;
         this.lastParamSlot = lastParamSlot;
-
-        this.locals = new ConcurrentSkipListSet<>(Comparator.comparingInt(LocalEntry::slot).thenComparing(LocalEntry::name).thenComparingLong(le -> le.type().getTypeSignature()));
-        /*
-         * Sort by line and add all locals, such that the methods locals only contain the lowest
-         * line number.
-         */
-        locals.stream().sorted(Comparator.comparingInt(LocalEntry::getLine)).forEach(this.locals::add);
+        this.locals = new ArrayList<>();
 
         /*
          * Flags to identify compiled methods. We set inRange if there is a compilation for this
@@ -74,6 +71,14 @@ public class MethodEntry extends MemberEntry {
          */
         this.isInRange = false;
         this.isInlined = false;
+    }
+
+    @Override
+    public void seal() {
+        super.seal();
+        assert locals instanceof ArrayList<Local> : "MethodEntry should only be sealed once";
+        // Sort and trim locals list.
+        locals = locals.stream().sorted(Comparator.comparingInt(Local::line).thenComparing(Local::localEntry)).toList();
     }
 
     public String getMethodName() {
@@ -88,48 +93,51 @@ public class MethodEntry extends MemberEntry {
     }
 
     public List<TypeEntry> getParamTypes() {
-        return paramInfos.stream().map(LocalEntry::type).toList();
+        return params.stream().map(LocalEntry::type).toList();
     }
 
     public List<LocalEntry> getParams() {
-        return List.copyOf(paramInfos);
+        return params;
     }
 
-    public LocalEntry getThisParam() {
-        return thisParam;
+    public boolean isThisParam(LocalEntry param) {
+        assert param != null && params.contains(param);
+        return !isStatic() && param.slot() == 0;
     }
 
     /**
-     * Returns the local entry for a given name slot and type entry. Decides with the slot number
-     * whether this is a parameter or local variable.
-     *
+     * Looks up a {@code LocalEntry} in this method. Decides by slot number whether this is a
+     * parameter or local variable. This method will only return a {@code LocalEntry} that is stored
+     * in either {@link #params} or {@link #locals}.
      * <p>
-     * Local variable might not be contained in this method entry. Creates a new local entry in
-     * {@link #locals} with the given parameters.
+     * We can get either of three results:
+     * <ol>
+     * <li>Invalid {@code LocalEntry}: Either negative slot or no match parameter found.</li>
+     * <li>Parameter {@code LocalEntry}: 0 < slot <= {@link #lastParamSlot} and part of
+     * {@link #params}.</li>
+     * <li>Local Variable {@code LocalEntry}: slot > {@link #lastParamSlot}.</li>
+     * </ol>
      * <p>
-     * For locals, we also make sure that the line information is the lowest line encountered in
-     * local variable lookups. If a new lower line number is encountered for an existing local
-     * entry, we update the line number in the local entry.
+     * If a local was previously not known it is added to {@link #locals} with the given line.
+     * Otherwise, we check if the line in {@link #locals} is lower than the given line for the local
+     * variable.
+     * <p>
+     * This is only called during debug info generation. No more locals are added to this
+     * {@code MethodEntry} when writing debug info to the object file.
      * 
-     * @param name the given name
-     * @param slot the given slot
-     * @param type the given {@code TypeEntry}
+     * @param localEntry the {@code LocalEntry} to lookup
      * @param line the given line
      * @return the local entry stored in {@link #locals}
      */
-    public LocalEntry lookupLocalEntry(String name, int slot, TypeEntry type, int line) {
-        if (slot < 0) {
+    public LocalEntry getOrAddLocalEntry(LocalEntry localEntry, int line) {
+        assert locals instanceof ArrayList<Local> : "Can only add locals before a MethodEntry is sealed.";
+        if (localEntry.slot() < 0) {
             return null;
         }
 
-        if (slot <= lastParamSlot) {
-            if (thisParam != null) {
-                if (thisParam.slot() == slot && thisParam.name().equals(name) && thisParam.type().equals(type)) {
-                    return thisParam;
-                }
-            }
-            for (LocalEntry param : paramInfos) {
-                if (param.slot() == slot && param.name().equals(name) && param.type().equals(type)) {
+        if (localEntry.slot() <= lastParamSlot) {
+            for (LocalEntry param : params) {
+                if (param.equals(localEntry)) {
                     return param;
                 }
             }
@@ -139,19 +147,13 @@ public class MethodEntry extends MemberEntry {
              * unique if it has different slot, name, and/or type. If the local is already
              * contained, we might update the line number to the lowest occurring line number.
              */
-            LocalEntry local = new LocalEntry(name, type, slot, line);
-            if (!locals.add(local)) {
-                /*
-                 * Fetch local from locals list. This iterates over all locals to create the head
-                 * set and then takes the last value.
-                 */
-                local = locals.headSet(local, true).last();
-                // Update line number if a lower one was encountered.
-                if (local.getLine() > line) {
-                    local.setLine(line);
+            Local local = new Local(localEntry, line);
+            synchronized (locals) {
+                if (locals.stream().noneMatch(l -> l.localEntry.equals(localEntry)) || locals.removeIf(l -> l.localEntry.equals(localEntry) && l.line > line)) {
+                    locals.add(local);
                 }
             }
-            return local;
+            return localEntry;
         }
 
         /*
@@ -165,8 +167,9 @@ public class MethodEntry extends MemberEntry {
         return null;
     }
 
-    public List<LocalEntry> getLocals() {
-        return List.copyOf(locals);
+    public List<Local> getLocals() {
+        assert !(locals instanceof ArrayList<Local>) : "Can only access locals after a MethodEntry is sealed.";
+        return locals;
     }
 
     public int getLastParamSlot() {
@@ -174,7 +177,7 @@ public class MethodEntry extends MemberEntry {
     }
 
     public boolean isStatic() {
-        return thisParam == null;
+        return Modifier.isStatic(getModifiers());
     }
 
     public boolean isDeopt() {

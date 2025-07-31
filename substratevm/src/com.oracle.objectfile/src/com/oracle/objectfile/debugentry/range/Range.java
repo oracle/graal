@@ -27,7 +27,6 @@
 package com.oracle.objectfile.debugentry.range;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,8 +37,6 @@ import com.oracle.objectfile.debugentry.FileEntry;
 import com.oracle.objectfile.debugentry.LocalEntry;
 import com.oracle.objectfile.debugentry.LocalValueEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
-import com.oracle.objectfile.debugentry.StackValueEntry;
-import com.oracle.objectfile.debugentry.TypeEntry;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -100,7 +97,7 @@ public abstract class Range implements Comparable<Range> {
     /**
      * Mapping of local entries to subranges they occur in.
      */
-    private final Map<LocalEntry, List<Range>> varRangeMap = new HashMap<>();
+    private Map<LocalEntry, List<Range>> varRangeMap = null;
 
     /**
      * Create a primary range representing the root of the subrange tree for a top level compiled
@@ -157,42 +154,27 @@ public abstract class Range implements Comparable<Range> {
         this.localValueInfos = localValueInfos;
     }
 
+    public void seal() {
+        // nothing to do here
+    }
+
     /**
      * Splits an initial range at the given stack decrement point. The lower split will stay as is
      * with its high offset reduced to the stack decrement point. The higher split starts at the
      * stack decrement point and has updated local value entries for the parameters in the then
      * extended stack.
-     * 
+     *
+     * @param splitLocalValueInfos the localValueInfos for the split off range
      * @param stackDecrement the offset to split the range at
-     * @param frameSize the frame size after the split
-     * @param preExtendFrameSize the frame size before the split
      * @return the higher split, that has been split off the original {@code Range}
      */
-    public Range split(int stackDecrement, int frameSize, int preExtendFrameSize) {
+    public Range split(Map<LocalEntry, LocalValueEntry> splitLocalValueInfos, int stackDecrement) {
         // This should be for an initial range extending beyond the stack decrement.
         assert loOffset == 0 && loOffset < stackDecrement && stackDecrement < hiOffset : "invalid split request";
 
-        Map<LocalEntry, LocalValueEntry> splitLocalValueInfos = new HashMap<>();
-
-        for (var localInfo : localValueInfos.entrySet()) {
-            if (localInfo.getValue() instanceof StackValueEntry stackValue) {
-                /*
-                 * Need to redefine the value for this param using a stack slot value that allows
-                 * for the stack being extended by framesize. however we also need to remove any
-                 * adjustment that was made to allow for the difference between the caller SP and
-                 * the pre-extend callee SP because of a stacked return address.
-                 */
-                int adjustment = frameSize - preExtendFrameSize;
-                splitLocalValueInfos.put(localInfo.getKey(), new StackValueEntry(stackValue.stackSlot() + adjustment));
-            } else {
-                splitLocalValueInfos.put(localInfo.getKey(), localInfo.getValue());
-            }
-        }
-
-        Range splitRange = Range.createSubrange(primary, methodEntry, splitLocalValueInfos, stackDecrement, hiOffset, line, caller, isLeaf());
+        int splitHiOffset = hiOffset;
         hiOffset = stackDecrement;
-
-        return splitRange;
+        return Range.createSubrange(primary, methodEntry, splitLocalValueInfos, stackDecrement, splitHiOffset, line, caller, isLeaf());
     }
 
     public boolean contains(Range other) {
@@ -263,16 +245,13 @@ public abstract class Range implements Comparable<Range> {
         }
         builder.append(getMethodName());
         if (includeParams) {
-            builder.append("(");
-            List<TypeEntry> paramTypes = methodEntry.getParamTypes();
-            if (paramTypes != null) {
-                String prefix = "";
-                for (TypeEntry t : paramTypes) {
-                    builder.append(prefix);
-                    builder.append(t.getTypeName());
-                    prefix = ", ";
+            methodEntry.getParamTypes().forEach(t -> {
+                if (!builder.isEmpty()) {
+                    builder.append(", ");
                 }
-            }
+                builder.append(t.getTypeName());
+            });
+            builder.insert(0, '(');
             builder.append(')');
         }
         return builder.toString();
@@ -293,10 +272,14 @@ public abstract class Range implements Comparable<Range> {
 
     @Override
     public int compareTo(Range other) {
-        return Comparator.comparingLong(Range::getLo)
-                        .thenComparingLong(Range::getHi)
-                        .thenComparingInt(Range::getLine)
-                        .compare(this, other);
+        int cmp = Long.compare(getLo(), other.getLo());
+        if (cmp == 0) {
+            cmp = Long.compare(getHi(), other.getHi());
+        }
+        if (cmp == 0) {
+            return Integer.compare(line, other.line);
+        }
+        return cmp;
     }
 
     public String getFileName() {
@@ -330,6 +313,10 @@ public abstract class Range implements Comparable<Range> {
         return depth;
     }
 
+    public Map<LocalEntry, LocalValueEntry> getLocalValueInfos() {
+        return localValueInfos;
+    }
+
     /**
      * Returns the subranges grouped by local entries in the subranges. If the map is empty, it
      * first tries to populate the map with its callees {@link #localValueInfos}.
@@ -337,12 +324,15 @@ public abstract class Range implements Comparable<Range> {
      * @return a mapping from local entries to subranges
      */
     public Map<LocalEntry, List<Range>> getVarRangeMap() {
-        if (varRangeMap.isEmpty()) {
+        if (varRangeMap == null) {
+            varRangeMap = new HashMap<>();
             for (Range callee : getCallees()) {
                 for (LocalEntry local : callee.localValueInfos.keySet()) {
                     varRangeMap.computeIfAbsent(local, l -> new ArrayList<>()).add(callee);
                 }
             }
+            // Trim var range map.
+            varRangeMap = Map.copyOf(varRangeMap);
         }
 
         return varRangeMap;

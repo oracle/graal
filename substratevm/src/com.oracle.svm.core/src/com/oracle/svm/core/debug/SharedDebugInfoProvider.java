@@ -34,11 +34,12 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedSet;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.word.WordBase;
 
@@ -209,22 +210,25 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * An index map that holds all unique dir entries used for file entries in the
      * {@link #fileIndex}.
      */
-    private final ConcurrentHashMap<Path, DirEntry> dirIndex = new ConcurrentHashMap<>();
+    private final EconomicMap<Path, DirEntry> dirIndex = EconomicMap.create();
 
     /**
      * An index map that holds all unique file entries used for type entries and method entries in
      * the {@link #typeIndex} and {@link #methodIndex}.
      */
-    private final ConcurrentHashMap<Path, FileEntry> fileIndex = new ConcurrentHashMap<>();
+    private final EconomicMap<Path, FileEntry> fileIndex = EconomicMap.create();
 
     /**
      * An index map that holds all unique loader entries used for type entries in the
      * {@link #typeIndex}.
      */
-    private final ConcurrentHashMap<String, LoaderEntry> loaderIndex = new ConcurrentHashMap<>();
+    private final EconomicMap<String, LoaderEntry> loaderIndex = EconomicMap.create();
 
     /**
      * An index map that holds all unique type entries except the {@link #headerTypeEntry}.
+     * <p>
+     * This is a {@code ConcurrentHashMap} instead of a {@code EconomicMap} because it is
+     * performance critical.
      */
     private final ConcurrentHashMap<SharedType, TypeEntry> typeIndex = new ConcurrentHashMap<>();
 
@@ -232,12 +236,28 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * An index map that holds all unique method entries used for type entries compiled method
      * entries in the {@link #typeIndex} and {@link #compiledMethodIndex}.
      */
-    private final ConcurrentHashMap<SharedMethod, MethodEntry> methodIndex = new ConcurrentHashMap<>();
+    private final EconomicMap<SharedMethod, MethodEntry> methodIndex = EconomicMap.create();
 
     /**
      * An index map that holds all unique compiled method entries.
      */
-    private final ConcurrentHashMap<CompilationIdentifier, CompiledMethodEntry> compiledMethodIndex = new ConcurrentHashMap<>();
+    private final EconomicMap<CompilationIdentifier, CompiledMethodEntry> compiledMethodIndex = EconomicMap.create();
+
+    /**
+     * An index map that holds all unique local entries.
+     * <p>
+     * This is a {@code ConcurrentHashMap} instead of a {@code EconomicMap} because it is
+     * performance critical.
+     */
+    private final ConcurrentHashMap<LocalEntry, LocalEntry> localEntryIndex = new ConcurrentHashMap<>();
+
+    /**
+     * An index map that holds all unique local value entries.
+     * <p>
+     * This is a {@code ConcurrentHashMap} instead of a {@code EconomicMap} because it is
+     * performance critical.
+     */
+    private final ConcurrentHashMap<LocalValueEntry, LocalValueEntry> localValueEntryIndex = new ConcurrentHashMap<>();
 
     /**
      * The header type entry which is used as a super class of {@link Object} in the debug info. It
@@ -365,11 +385,9 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     /**
      * Collect all type entries in {@link #typeIndex} plus the {@link #headerTypeEntry} sorted by
      * type signature.
-     *
      * <p>
      * This method only gets called after all reachable types, fields, and methods are processed and
      * all type entries have been created.
-     *
      * <p>
      * This ensures that type entries are ordered when processed for the debug info object file.
      *
@@ -377,8 +395,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      *         {@link #installDebugInfo}.
      */
     @Override
-    public SortedSet<TypeEntry> typeEntries() {
-        SortedSet<TypeEntry> typeEntries = new TreeSet<>(Comparator.comparingLong(TypeEntry::getTypeSignature));
+    public List<TypeEntry> typeEntries() {
+        List<TypeEntry> typeEntries = new ArrayList<>();
         /*
          * The header type entry does not have an underlying HostedType, so we cant put it into the
          * type index and have to add it manually.
@@ -397,7 +415,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             }
         }
 
-        return typeEntries;
+        return typeEntries.stream().sorted(Comparator.comparingLong(TypeEntry::getTypeSignature)).toList();
     }
 
     /**
@@ -412,30 +430,28 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * This ensures that compiled method entries are ordered when processed for the debug info
      * object file.
      *
-     * @return A {@code SortedSet} of all compiled method entries found and registered in
+     * @return A {@code List} of all compiled method entries found and registered in
      *         {@link #installDebugInfo}.
      */
     @Override
-    public SortedSet<CompiledMethodEntry> compiledMethodEntries() {
-        SortedSet<CompiledMethodEntry> compiledMethodEntries = new TreeSet<>(
-                        Comparator.comparing(CompiledMethodEntry::primary).thenComparingLong(compiledMethodEntry -> compiledMethodEntry.ownerType().getTypeSignature()));
-
-        compiledMethodEntries.addAll(compiledMethodIndex.values());
-
-        return compiledMethodEntries;
+    public List<CompiledMethodEntry> compiledMethodEntries() {
+        return StreamSupport.stream(compiledMethodIndex.getValues().spliterator(), false)
+                        .sorted(Comparator.comparing(CompiledMethodEntry::primary).thenComparingLong(compiledMethodEntry -> compiledMethodEntry.ownerType().getTypeSignature()))
+                        .toList();
     }
 
     /**
      * This installs debug info into the index maps for all entries in {@link #typeInfo},
-     * {@link #codeInfo}, and {@link #dataInfo}.
-     *
+     * {@link #codeInfo}, and {@link #dataInfo}. After all debug entries are produced the debug
+     * entries are trimmed to save memory. Debug entries are only produced and linked up within this
+     * function.
      * <p>
      * If logging with a {@link DebugContext} is enabled, this is done sequential, otherwise in
      * parallel.
      */
     @Override
     @SuppressWarnings("try")
-    public void installDebugInfo() {
+    public final void installDebugInfo() {
         // we can only meaningfully provide logging if debug info is produced sequentially
         Stream<SharedType> typeStream = debug.isLogEnabledForMethod() ? typeInfo() : typeInfo().parallel();
         Stream<Pair<SharedMethod, CompilationResult>> codeStream = debug.isLogEnabledForMethod() ? codeInfo() : codeInfo().parallel();
@@ -458,6 +474,15 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         } catch (Throwable e) {
             throw debug.handle(e);
         }
+
+        /*
+         * After producing debug info, trim all debug entries to save memory. All debug entries are
+         * produced at this point and no more debug entries should be added later. It is enough to
+         * trim all types as all other debug entries are reachable from them.
+         */
+        headerTypeEntry.seal();
+        foreignMethodListClassEntry.seal();
+        typeIndex.values().parallelStream().forEach(TypeEntry::seal);
     }
 
     /**
@@ -621,7 +646,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             }
 
             CompiledMethodEntry compiledMethodEntry = createCompilationInfo(methodEntry, method, compilation);
-            if (compiledMethodIndex.putIfAbsent(compilation.getCompilationId(), compiledMethodEntry) == null) {
+            CompiledMethodEntry oldCompiledMethodEntry = synchronizedPutIfAbsent(compiledMethodIndex, compilation.getCompilationId(), compiledMethodEntry);
+            if (oldCompiledMethodEntry == null) {
                 // CompiledMethodEntry was added to the index, now we need to process the
                 // compilation.
                 if (debug.isLogEnabled()) {
@@ -632,7 +658,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             } else {
                 // The compilation entry was created in the meantime, so we return the one unique
                 // type.
-                return compiledMethodIndex.get(compilation.getCompilationId());
+                return oldCompiledMethodEntry;
             }
         } catch (Throwable e) {
             throw debug.handle(e);
@@ -665,56 +691,93 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
                 frameSizeChanges.add(sizeChange);
             }
         }
-        return frameSizeChanges;
+        // No more frame size changes will be added.
+        return List.copyOf(frameSizeChanges);
+    }
+
+    /**
+     * Creates a new {@code MethodEntry}.
+     * 
+     * @param method the {@code SharedMethod} to process
+     * @return the corresponding {@code MethodEntry}
+     */
+    @SuppressWarnings("try")
+    private MethodEntry createMethodEntry(SharedMethod method) {
+        FileEntry fileEntry = lookupFileEntry(method);
+
+        LineNumberTable lineNumberTable = method.getLineNumberTable();
+        int line = lineNumberTable == null ? 0 : lineNumberTable.getLineNumber(0);
+
+        String methodName = getMethodName(method);
+        TypeEntry t = lookupTypeEntry((SharedType) method.getDeclaringClass());
+        if (!(t instanceof StructureTypeEntry)) {
+            // we can only install a foreign function pointer for a structured type
+            // use a dummy type to process function pointers
+            assert t instanceof PointerToTypeEntry;
+            t = foreignMethodListClassEntry;
+        }
+        StructureTypeEntry ownerType = (StructureTypeEntry) t;
+        TypeEntry valueType = lookupTypeEntry((SharedType) method.getSignature().getReturnType(null));
+        int modifiers = method.getModifiers();
+
+        /*
+         * Check the local variable table for parameters. If the params are not in the table, we
+         * create synthetic ones from the method signature.
+         */
+        List<LocalEntry> params = getParamEntries(method);
+        int lastParamSlot = params.isEmpty() ? -1 : params.getLast().slot();
+
+        String symbolName = getSymbolName(method);
+        int vTableOffset = getVTableOffset(method);
+
+        boolean isOverride = isOverride(method);
+        boolean isDeopt = method.isDeoptTarget();
+        boolean isConstructor = method.isConstructor();
+
+        return new MethodEntry(fileEntry, line, methodName, ownerType,
+                        valueType, modifiers, params, symbolName, isDeopt, isOverride, isConstructor,
+                        vTableOffset, lastParamSlot);
+    }
+
+    /**
+     * Processes a newly created {@code MethodEntry} created in {@link #createMethodEntry}.
+     *
+     * @param method the given method
+     * @param methodEntry the {@code MethodEntry} to process
+     */
+    @SuppressWarnings("try")
+    private void processMethodEntry(SharedMethod method, MethodEntry methodEntry) {
+        methodEntry.getOwnerType().addMethod(methodEntry);
+        // look for locals in the methods local variable table
+        addLocalEntries(method, methodEntry);
     }
 
     /**
      * Installs a method info that was not found in {@link #lookupMethodEntry}.
-     * 
+     *
      * @param method the {@code SharedMethod} to process
      * @return the corresponding {@code MethodEntry}
      */
     @SuppressWarnings("try")
     private MethodEntry installMethodEntry(SharedMethod method) {
         try (DebugContext.Scope s = debug.scope("DebugInfoMethod")) {
-            FileEntry fileEntry = lookupFileEntry(method);
-
-            LineNumberTable lineNumberTable = method.getLineNumberTable();
-            int line = lineNumberTable == null ? 0 : lineNumberTable.getLineNumber(0);
-
-            String methodName = getMethodName(method);
-            TypeEntry t = lookupTypeEntry((SharedType) method.getDeclaringClass());
-            if (!(t instanceof StructureTypeEntry)) {
-                // we can only install a foreign function pointer for a structured type
-                // use a dummy type to process function pointers
-                assert t instanceof PointerToTypeEntry;
-                t = foreignMethodListClassEntry;
+            if (debug.isLogEnabled()) {
+                debug.log(DebugContext.INFO_LEVEL, "Register method %s of class %s", getMethodName(method), method.getDeclaringClass().getName());
             }
-            StructureTypeEntry ownerType = (StructureTypeEntry) t;
-            TypeEntry valueType = lookupTypeEntry((SharedType) method.getSignature().getReturnType(null));
-            int modifiers = method.getModifiers();
 
-            /*
-             * Check the local variable table for parameters. If the params are not in the table, we
-             * create synthetic ones from the method signature.
-             */
-            SortedSet<LocalEntry> paramInfos = getParamEntries(method, line);
-            int lastParamSlot = paramInfos.isEmpty() ? -1 : paramInfos.getLast().slot();
-            LocalEntry thisParam = Modifier.isStatic(modifiers) ? null : paramInfos.removeFirst();
-
-            // look for locals in the methods local variable table
-            List<LocalEntry> locals = getLocalEntries(method, lastParamSlot);
-
-            String symbolName = getSymbolName(method);
-            int vTableOffset = getVTableOffset(method);
-
-            boolean isOverride = isOverride(method);
-            boolean isDeopt = method.isDeoptTarget();
-            boolean isConstructor = method.isConstructor();
-
-            return methodIndex.computeIfAbsent(method, m -> new MethodEntry(fileEntry, line, methodName, ownerType,
-                            valueType, modifiers, paramInfos, thisParam, symbolName, isDeopt, isOverride, isConstructor,
-                            vTableOffset, lastParamSlot, locals));
+            MethodEntry methodEntry = createMethodEntry(method);
+            MethodEntry oldMethodEntry = synchronizedPutIfAbsent(methodIndex, method, methodEntry);
+            if (oldMethodEntry == null) {
+                // The method entry was added to the type index, now we need to process the method.
+                if (debug.isLogEnabled()) {
+                    debug.log(DebugContext.INFO_LEVEL, "Process method %s of class %s", getMethodName(method), method.getDeclaringClass().getName());
+                }
+                processMethodEntry(method, methodEntry);
+                return methodEntry;
+            } else {
+                // The method entry was created in the meantime, so we return the one unique type.
+                return oldMethodEntry;
+            }
         } catch (Throwable e) {
             throw debug.handle(e);
         }
@@ -734,7 +797,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             }
 
             TypeEntry typeEntry = createTypeEntry(type);
-            if (typeIndex.putIfAbsent(type, typeEntry) == null) {
+            TypeEntry oldTypeEntry = typeIndex.putIfAbsent(type, typeEntry);
+            if (oldTypeEntry == null) {
                 // TypeEntry was added to the type index, now we need to process the type.
                 if (debug.isLogEnabled()) {
                     debug.log(DebugContext.INFO_LEVEL, "Process type %s ", type.getName());
@@ -743,7 +807,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
                 return typeEntry;
             } else {
                 // The type entry was created in the meantime, so we return the one unique type.
-                return typeIndex.get(type);
+                return oldTypeEntry;
             }
         } catch (Throwable e) {
             throw debug.handle(e);
@@ -860,24 +924,21 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * processes them into {@code LocalEntry} objects.
      * 
      * @param method method to fetch locals from
-     * @param lastParamSlot the highest slot number of the methods params
-     * @return a list of locals in the methods local variable table
+     * @param methodEntry the {@code MethodEntry} to add the locals to
      */
-    private List<LocalEntry> getLocalEntries(SharedMethod method, int lastParamSlot) {
-        List<LocalEntry> localEntries = new ArrayList<>();
-
+    private void addLocalEntries(SharedMethod method, MethodEntry methodEntry) {
         LineNumberTable lnt = method.getLineNumberTable();
         LocalVariableTable lvt = method.getLocalVariableTable();
 
         // we do not have any information on local variables
         if (lvt == null) {
-            return localEntries;
+            return;
         }
 
         SharedType ownerType = (SharedType) method.getDeclaringClass();
         for (Local local : lvt.getLocals()) {
             // check if this is a local (slot is after last param slot)
-            if (local != null && local.getSlot() > lastParamSlot) {
+            if (local != null && local.getSlot() > methodEntry.getLastParamSlot()) {
                 // we have a local with a known name, type and slot
                 String name = local.getName();
                 SharedType type = (SharedType) local.getType().resolve(ownerType);
@@ -885,11 +946,9 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
                 int bciStart = local.getStartBCI();
                 int line = lnt == null ? 0 : lnt.getLineNumber(bciStart);
                 TypeEntry typeEntry = lookupTypeEntry(type);
-                localEntries.add(new LocalEntry(name, typeEntry, slot, line));
+                methodEntry.getOrAddLocalEntry(lookupLocalEntry(name, typeEntry, slot), line);
             }
         }
-
-        return localEntries;
     }
 
     /**
@@ -901,20 +960,19 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * parameters name from there, otherwise a name is generated.
      *
      * @param method method to fetch parameters from
-     * @param line first line of the method in its source file
-     * @return a {@code SortedSet} of parameters in the methods signature
+     * @return a {@code Map} of parameters to source lines in the methods signature
      */
-    private SortedSet<LocalEntry> getParamEntries(SharedMethod method, int line) {
+    private List<LocalEntry> getParamEntries(SharedMethod method) {
         Signature signature = method.getSignature();
         int parameterCount = signature.getParameterCount(false);
-        SortedSet<LocalEntry> paramInfos = new TreeSet<>(Comparator.comparingInt(LocalEntry::slot));
+        List<LocalEntry> paramInfos = new ArrayList<>();
         LocalVariableTable lvt = method.getLocalVariableTable();
         int slot = 0;
         SharedType ownerType = (SharedType) method.getDeclaringClass();
         if (!method.isStatic()) {
             JavaKind kind = ownerType.getJavaKind();
             assert kind == JavaKind.Object : "must be an object";
-            paramInfos.add(new LocalEntry("this", lookupTypeEntry(ownerType), slot, line));
+            paramInfos.add(lookupLocalEntry("this", lookupTypeEntry(ownerType), slot));
             slot += kind.getSlotCount();
         }
         for (int i = 0; i < parameterCount; i++) {
@@ -932,10 +990,10 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             JavaKind kind = paramType.getJavaKind();
             JavaKind storageKind = paramType.getStorageKind();
             String name = local != null ? local.getName() : "__" + storageKind.getJavaName() + i;
-            paramInfos.add(new LocalEntry(name, lookupTypeEntry(paramType), slot, line));
+            paramInfos.add(lookupLocalEntry(name, lookupTypeEntry(paramType), slot));
             slot += kind.getSlotCount();
         }
-        return paramInfos;
+        return paramInfos.stream().sorted().toList();
     }
 
     /**
@@ -985,10 +1043,9 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         if (method == null) {
             return null;
         }
-        MethodEntry methodEntry = methodIndex.get(method);
+        MethodEntry methodEntry = synchronizedGet(methodIndex, method);
         if (methodEntry == null) {
             methodEntry = installMethodEntry(method);
-            methodEntry.getOwnerType().addMethod(methodEntry);
         }
         return methodEntry;
 
@@ -1007,7 +1064,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         if (method == null) {
             return null;
         }
-        CompiledMethodEntry compiledMethodEntry = compiledMethodIndex.get(compilation.getCompilationId());
+        CompiledMethodEntry compiledMethodEntry = synchronizedGet(compiledMethodIndex, compilation.getCompilationId());
         if (compiledMethodEntry == null) {
             compiledMethodEntry = installCompilationInfo(methodEntry, method, compilation);
         }
@@ -1059,7 +1116,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         if (loaderName == null || loaderName.isEmpty()) {
             return NULL_LOADER_ENTRY;
         }
-        return loaderIndex.computeIfAbsent(loaderName, LoaderEntry::new);
+        return synchronizedComputeIfAbsent(loaderIndex, loaderName, LoaderEntry::new);
     }
 
     /**
@@ -1117,7 +1174,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         DirEntry dirEntry = lookupDirEntry(dirPath);
 
         /* Reuse any existing entry if available. */
-        FileEntry fileEntry = fileIndex.computeIfAbsent(fullFilePath, path -> new FileEntry(fileName.toString(), dirEntry));
+        FileEntry fileEntry = synchronizedComputeIfAbsent(fileIndex, fullFilePath, path -> new FileEntry(fileName.toString(), dirEntry));
         assert dirPath == null || fileEntry.dirEntry() != null && fileEntry.dirEntry().path().equals(dirPath);
         return fileEntry;
     }
@@ -1131,7 +1188,41 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * @return the corresponding {@code FileEntry}
      */
     protected DirEntry lookupDirEntry(Path dirPath) {
-        return dirIndex.computeIfAbsent(dirPath == null ? EMPTY_PATH : dirPath, DirEntry::new);
+        Path path = dirPath == null ? EMPTY_PATH : dirPath;
+        return synchronizedComputeIfAbsent(dirIndex, path, DirEntry::new);
+    }
+
+    /**
+     * Lookup a {@code LocalEntry}.
+     *
+     * @param localEntry the {@code LocalEntry} to lookup
+     * @return the {@code LocalEntry} from the lookup map
+     */
+    protected LocalEntry lookupLocalEntry(LocalEntry localEntry) {
+        return localEntryIndex.computeIfAbsent(localEntry, le -> le);
+    }
+
+    /**
+     * Lookup a {@code LocalEntry} by name, type, and slot.
+     *
+     * @param name the name of the local
+     * @param typeEntry the type of the local
+     * @param slot the slot of the local
+     * @return the {@code LocalEntry} from the lookup map
+     */
+    protected LocalEntry lookupLocalEntry(String name, TypeEntry typeEntry, int slot) {
+        return lookupLocalEntry(new LocalEntry(name, typeEntry, slot));
+    }
+
+    /**
+     * Lookup a {@code LocalValueEntry}. This can either be a register, stack, constant value. This
+     * allows to reuse the same entries for multiple ranges.
+     * 
+     * @param localValueEntry the {@code LocalValueEntry} to lookup
+     * @return the {@code LocalValueEntry} from the lookup map
+     */
+    protected LocalValueEntry lookupLocalValueEntry(LocalValueEntry localValueEntry) {
+        return localValueEntryIndex.computeIfAbsent(localValueEntry, lve -> lve);
     }
 
     /* Other helper functions. */
@@ -1248,7 +1339,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
          * splitting at the extent point with the stack offsets adjusted in the new info.
          */
         if (locProducer.usesStack() && firstLocationOffset > stackDecrement) {
-            Range splitLocationInfo = locationInfo.split(stackDecrement, compilation.getTotalFrameSize(), PRE_EXTEND_FRAME_SIZE);
+            Range splitLocationInfo = splitLocationInfo(locationInfo, stackDecrement, compilation.getTotalFrameSize(), PRE_EXTEND_FRAME_SIZE);
             if (debug.isLogEnabled()) {
                 debug.log(DebugContext.DETAILED_LEVEL, "Split synthetic Location Info : %s (0, %d) (%d, %d)", methodEntry.getMethodName(),
                                 locationInfo.getLoOffset() - 1, locationInfo.getLoOffset(), locationInfo.getHiOffset() - 1);
@@ -1256,6 +1347,42 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             locationInfos.addFirst(splitLocationInfo);
         }
         locationInfos.addFirst(locationInfo);
+    }
+
+    /**
+     * Initiates splitting of an initial location information. Calculates the new local variable
+     * information for the higher split and then splits off at the end of the range. The lower part
+     * will stay as is except for a lowered high address to make room for the split off location
+     * info.
+     *
+     * @param locationInfo the location info to split
+     * @param stackDecrement the offset to split at
+     * @param frameSize the frame size after the split
+     * @param preExtendFrameSize the frame size before the split
+     * @return the higher split, that has been split off the original location info
+     */
+    public Range splitLocationInfo(Range locationInfo, int stackDecrement, int frameSize, int preExtendFrameSize) {
+        // This should be for an initial range extending beyond the stack decrement.
+        assert locationInfo.getLoOffset() == 0 && locationInfo.getLoOffset() < stackDecrement && stackDecrement < locationInfo.getHiOffset() : "invalid split request";
+
+        Map<LocalEntry, LocalValueEntry> splitLocalValueInfos = new HashMap<>();
+
+        for (var localInfo : locationInfo.getLocalValueInfos().entrySet()) {
+            if (localInfo.getValue() instanceof StackValueEntry stackValue) {
+                /*
+                 * Need to redefine the value for this param using a stack slot value that allows
+                 * for the stack being extended by framesize. however we also need to remove any
+                 * adjustment that was made to allow for the difference between the caller SP and
+                 * the pre-extend callee SP because of a stacked return address.
+                 */
+                int adjustment = frameSize - preExtendFrameSize;
+                splitLocalValueInfos.put(localInfo.getKey(), lookupLocalValueEntry(new StackValueEntry(stackValue.stackSlot() + adjustment)));
+            } else {
+                splitLocalValueInfos.put(localInfo.getKey(), localInfo.getValue());
+            }
+        }
+
+        return locationInfo.split(Map.copyOf(splitLocalValueInfos), stackDecrement);
     }
 
     /**
@@ -1268,19 +1395,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      */
     private Map<LocalEntry, LocalValueEntry> initSyntheticInfoList(ParamLocationProducer locProducer, MethodEntry methodEntry) {
         HashMap<LocalEntry, LocalValueEntry> localValueInfos = new HashMap<>();
-        // Create synthetic this param info
-        if (methodEntry.getThisParam() != null) {
-            JavaValue value = locProducer.thisLocation();
-            LocalEntry thisParam = methodEntry.getThisParam();
-            if (debug.isLogEnabled()) {
-                debug.log(DebugContext.DETAILED_LEVEL, "local[0] %s type %s slot %d", thisParam.name(), thisParam.type().getTypeName(), thisParam.slot());
-                debug.log(DebugContext.DETAILED_LEVEL, "  =>  %s", value);
-            }
-            LocalValueEntry localValueEntry = createLocalValueEntry(value, PRE_EXTEND_FRAME_SIZE);
-            if (localValueEntry != null) {
-                localValueInfos.put(thisParam, localValueEntry);
-            }
-        }
         // Iterate over all params and create synthetic param info for each
         int paramIdx = 0;
         for (LocalEntry param : methodEntry.getParams()) {
@@ -1295,7 +1409,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             }
             paramIdx++;
         }
-        return localValueInfos;
+        return Map.copyOf(localValueInfos);
     }
 
     /**
@@ -1340,18 +1454,9 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             this.usesStack = false;
         }
 
-        JavaValue thisLocation() {
-            assert !method.isStatic();
-            return unpack(callingConvention.getArgument(0));
-        }
-
         JavaValue paramLocation(int paramIdx) {
-            assert paramIdx < method.getSignature().getParameterCount(false);
-            int idx = paramIdx;
-            if (!method.isStatic()) {
-                idx++;
-            }
-            return unpack(callingConvention.getArgument(idx));
+            assert paramIdx < method.getSignature().getParameterCount(!method.isStatic());
+            return unpack(callingConvention.getArgument(paramIdx));
         }
 
         private JavaValue unpack(AllocatableValue value) {
@@ -1582,7 +1687,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
                      * Lookup a LocalEntry from the MethodEntry. If the LocalEntry was already read
                      * upfront from the local variable table, the LocalEntry already exists.
                      */
-                    LocalEntry localEntry = methodEntry.lookupLocalEntry(name, slot, typeEntry, line);
+                    LocalEntry localEntry = methodEntry.getOrAddLocalEntry(lookupLocalEntry(name, typeEntry, slot), line);
                     LocalValueEntry localValueEntry = createLocalValueEntry(value, frameSize);
                     if (localEntry != null && localValueEntry != null) {
                         localInfos.put(localEntry, localValueEntry);
@@ -1593,7 +1698,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             }
         }
 
-        return localInfos;
+        return Map.copyOf(localInfos);
     }
 
     /**
@@ -1607,19 +1712,19 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     private LocalValueEntry createLocalValueEntry(JavaValue value, int frameSize) {
         switch (value) {
             case RegisterValue registerValue -> {
-                return new RegisterValueEntry(registerValue.getRegister().number);
+                return lookupLocalValueEntry(new RegisterValueEntry(registerValue.getRegister().number));
             }
             case StackSlot stackValue -> {
                 int stackSlot = frameSize == 0 ? stackValue.getRawOffset() : stackValue.getOffset(frameSize);
-                return new StackValueEntry(stackSlot);
+                return lookupLocalValueEntry(new StackValueEntry(stackSlot));
             }
             case JavaConstant constantValue -> {
                 if (constantValue instanceof PrimitiveConstant || constantValue.isNull()) {
-                    return new ConstantValueEntry(-1, constantValue);
+                    return lookupLocalValueEntry(new ConstantValueEntry(-1, constantValue));
                 } else {
                     long heapOffset = objectOffset(constantValue);
                     if (heapOffset >= 0) {
-                        return new ConstantValueEntry(heapOffset, constantValue);
+                        return lookupLocalValueEntry(new ConstantValueEntry(heapOffset, constantValue));
                     }
                 }
                 return null;
@@ -1765,5 +1870,71 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      */
     private static boolean skipPos(BytecodePosition pos) {
         return pos.getBCI() == -1 && pos instanceof NodeSourcePosition sourcePos && sourcePos.isSubstitution();
+    }
+
+    /**
+     * Perform a synchronized {@code computeIfAbsent} on an {@code EconomicMap}.
+     * <p>
+     * Compared to a {@code ConcurrentHashMap}, this allows the debug info generator to use a more
+     * memory efficient {@code EconomicMap}. Therefore, EconomicHashMaps with synchronization are
+     * preferred here over ConcurrentHashMaps to reduce the memory overhead of debug info generation
+     * at native image build-time while still having comparable performance (for most of the index
+     * maps). The most performance critical maps that see more traffic will use the less memory
+     * efficient ConcurrentHashMaps instead.
+     * 
+     * @param map the {@code EconomicMap} to perform {@code computeIfAbsent} on
+     * @param key the key to look for
+     * @param mappingFunction the function producing the value for a given key
+     * @return the value for the given key in the {@code EconomicMap}
+     */
+    private static <K, V> V synchronizedComputeIfAbsent(EconomicMap<K, V> map, K key, Function<? super K, ? extends V> mappingFunction) {
+        V oldValue;
+        V newValue;
+        synchronized (map) {
+            oldValue = map.get(key);
+        }
+        if (oldValue == null) {
+            newValue = mappingFunction.apply(key);
+            synchronized (map) {
+                oldValue = map.putIfAbsent(key, newValue);
+            }
+            if (oldValue == null) {
+                return newValue;
+            }
+        }
+        return oldValue;
+    }
+
+    /**
+     * Wraps {@link EconomicMap#get} in a synchronized context and returns the result.
+     * <p>
+     * Used for synchronized access to {@code EconomicMaps} for memory efficiency, see
+     * {@link #synchronizedComputeIfAbsent}.
+     *
+     * @param map the {@code EconomicMap} to perform {@code get} on
+     * @param key the key to look for
+     * @return the result of {@link EconomicMap#get} on the given {@code EconomicMap}
+     */
+    private static <K, V> V synchronizedGet(EconomicMap<K, V> map, K key) {
+        synchronized (map) {
+            return map.get(key);
+        }
+    }
+
+    /**
+     * Wraps {@link EconomicMap#putIfAbsent} in a synchronized context and returns the result.
+     * <p>
+     * Used for synchronized access to {@code EconomicMaps} for memory efficiency, see
+     * {@link #synchronizedComputeIfAbsent}.
+     *
+     * @param map the {@code EconomicMap} to perform {@code putIfAbsent} on
+     * @param key the key to look for
+     * @param value the value to add if the key is absent
+     * @return the result of {@link EconomicMap#putIfAbsent} on the given {@code EconomicMap}
+     */
+    private static <K, V> V synchronizedPutIfAbsent(EconomicMap<K, V> map, K key, V value) {
+        synchronized (map) {
+            return map.putIfAbsent(key, value);
+        }
     }
 }

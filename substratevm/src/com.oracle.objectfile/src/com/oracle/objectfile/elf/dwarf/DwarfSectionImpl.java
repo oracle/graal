@@ -28,9 +28,9 @@ package com.oracle.objectfile.elf.dwarf;
 
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.BuildDependency;
@@ -40,13 +40,13 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.FieldEntry;
 import com.oracle.objectfile.debugentry.ForeignStructTypeEntry;
 import com.oracle.objectfile.debugentry.HeaderTypeEntry;
 import com.oracle.objectfile.debugentry.LocalEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.PointerToTypeEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
-import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.elf.ELFMachine;
@@ -67,34 +67,6 @@ import jdk.graal.compiler.debug.DebugContext;
  * A class from which all DWARF debug sections inherit providing common behaviours.
  */
 public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
-    // auxiliary class used to track byte array positions
-    protected static class Cursor {
-        private int pos;
-
-        public Cursor() {
-            this(0);
-        }
-
-        public Cursor(int p) {
-            assert p >= 0;
-            set(p);
-        }
-
-        public void set(int p) {
-            assert p >= 0;
-            pos = p;
-        }
-
-        public int add(int d) {
-            assert pos + d >= 0;
-            pos += d;
-            return pos;
-        }
-
-        public int get() {
-            return pos;
-        }
-    }
 
     protected final DwarfDebugInfo dwarfSections;
     protected boolean debug = false;
@@ -750,48 +722,48 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     protected static final byte[] scratch = new byte[10];
 
     /**
-     * Retrieve a stream of all types notified via the DebugTypeInfo API.
+     * Retrieve a list of all types notified via the DebugTypeInfo API.
      * 
-     * @return a stream of all types notified via the DebugTypeInfo API.
+     * @return a list of all types notified via the DebugTypeInfo API.
      */
-    protected Stream<TypeEntry> typeStream() {
-        return dwarfSections.getTypes().stream();
+    protected List<TypeEntry> getTypes() {
+        return dwarfSections.getTypes();
     }
 
     /**
-     * Retrieve a stream of all primitive types notified via the DebugTypeInfo API.
+     * Retrieve a list of all primitive types notified via the DebugTypeInfo API.
      * 
-     * @return a stream of all primitive types notified via the DebugTypeInfo API.
+     * @return a list of all primitive types notified via the DebugTypeInfo API.
      */
-    protected Stream<PrimitiveTypeEntry> primitiveTypeStream() {
-        return dwarfSections.getPrimitiveTypes().stream();
+    protected List<PrimitiveTypeEntry> getPrimitiveTypes() {
+        return dwarfSections.getPrimitiveTypes();
     }
 
     /**
-     * Retrieve a stream of all pointer types notified via the DebugTypeInfo API.
+     * Retrieve a list of all pointer types notified via the DebugTypeInfo API.
      *
-     * @return a stream of all pointer types notified via the DebugTypeInfo API.
+     * @return a list of all pointer types notified via the DebugTypeInfo API.
      */
-    protected Stream<PointerToTypeEntry> pointerTypeStream() {
-        return dwarfSections.getPointerTypes().stream();
+    protected List<PointerToTypeEntry> getPointerTypes() {
+        return dwarfSections.getPointerTypes();
     }
 
     /**
-     * Retrieve a stream of all pointer types notified via the DebugTypeInfo API.
+     * Retrieve a list of all pointer types notified via the DebugTypeInfo API.
      *
-     * @return a stream of all pointer types notified via the DebugTypeInfo API.
+     * @return a list of all pointer types notified via the DebugTypeInfo API.
      */
-    protected Stream<ForeignStructTypeEntry> foreignStructTypeStream() {
-        return dwarfSections.getForeignStructTypes().stream();
+    protected List<ForeignStructTypeEntry> getForeignStructTypes() {
+        return dwarfSections.getForeignStructTypes();
     }
 
     /**
-     * Retrieve a stream of all array types notified via the DebugTypeInfo API.
+     * Retrieve a list of all array types notified via the DebugTypeInfo API.
      * 
-     * @return a stream of all array types notified via the DebugTypeInfo API.
+     * @return a list of all array types notified via the DebugTypeInfo API.
      */
-    protected Stream<ArrayTypeEntry> arrayTypeStream() {
-        return dwarfSections.getArrayTypes().stream();
+    protected List<ArrayTypeEntry> getArrayTypes() {
+        return dwarfSections.getArrayTypes();
     }
 
     /**
@@ -804,45 +776,26 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     /**
-     * Retrieve the entry for the void type.
-     *
-     * @return the entry for the void type.
-     */
-    protected TypeEntry voidType() {
-        return dwarfSections.lookupVoidType();
-    }
-
-    /**
-     * Retrieve a stream of all instance classes, including interfaces and enums, notified via the
+     * Retrieve a list of all instance classes, including interfaces and enums, notified via the
      * DebugTypeInfo API.
      *
-     * @return a stream of all instance classes notified via the DebugTypeInfo API.
+     * @return a list of all instance classes notified via the DebugTypeInfo API.
      */
-    protected Stream<ClassEntry> instanceClassStream() {
-        return dwarfSections.getInstanceClasses().stream();
-    }
-
-    protected Stream<ClassEntry> instanceClassWithCompilationStream() {
-        return dwarfSections.getInstanceClassesWithCompilation().stream();
-    }
-
-    /**
-     * Retrieve a stream of all compiled methods notified via the DebugTypeInfo API.
-     *
-     * @return a stream of all compiled methods notified via the DebugTypeInfo API.
-     */
-    protected Stream<CompiledMethodEntry> compiledMethodsStream() {
-        return dwarfSections.getCompiledMethods().stream();
-    }
-
-    /**
-     * Retrieve an iterable for all instance classes, including interfaces and enums, notified via
-     * the DebugTypeInfo API.
-     * 
-     * @return an iterable for all instance classes notified via the DebugTypeInfo API.
-     */
-    protected Iterable<? extends ClassEntry> getInstanceClasses() {
+    protected List<ClassEntry> getInstanceClasses() {
         return dwarfSections.getInstanceClasses();
+    }
+
+    protected List<ClassEntry> getInstanceClassesWithCompilation() {
+        return dwarfSections.getInstanceClassesWithCompilation();
+    }
+
+    /**
+     * Retrieve a list of all compiled methods notified via the DebugTypeInfo API.
+     *
+     * @return a list of all compiled methods notified via the DebugTypeInfo API.
+     */
+    protected List<CompiledMethodEntry> getCompiledMethods() {
+        return dwarfSections.getCompiledMethods();
     }
 
     protected int debugStringIndex(String str) {
@@ -923,15 +876,15 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return dwarfSections.getLinePrologueSize(classEntry);
     }
 
-    protected void setFieldDeclarationIndex(StructureTypeEntry entry, String fieldName, int pos) {
-        dwarfSections.setFieldDeclarationIndex(entry, fieldName, pos);
+    protected void setFieldDeclarationIndex(FieldEntry fieldEntry, int pos) {
+        dwarfSections.setFieldDeclarationIndex(fieldEntry, pos);
     }
 
-    protected int getFieldDeclarationIndex(StructureTypeEntry entry, String fieldName) {
+    protected int getFieldDeclarationIndex(FieldEntry fieldEntry) {
         if (!contentByteArrayCreated()) {
             return 0;
         }
-        return dwarfSections.getFieldDeclarationIndex(entry, fieldName);
+        return dwarfSections.getFieldDeclarationIndex(fieldEntry);
     }
 
     protected void setMethodDeclarationIndex(MethodEntry methodEntry, int pos) {

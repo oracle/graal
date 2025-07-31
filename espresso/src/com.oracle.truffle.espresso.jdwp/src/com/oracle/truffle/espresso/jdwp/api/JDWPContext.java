@@ -399,11 +399,12 @@ public interface JDWPContext {
     /**
      * Returns the bci of the next bytecode instruction within the current frame
      *
-     * @param callerRoot the root node of the caller frame
+     * @param method the current method
+     * @param rawNode the current node
      * @param frame the frame to read the current bci from
      * @return the bci of the next instruction
      */
-    int getNextBCI(RootNode callerRoot, Frame frame);
+    int getNextBCI(MethodRef method, Node rawNode, Frame frame);
 
     /**
      * Returns the current BCI or -1 if the BCI cannot be read.
@@ -412,7 +413,7 @@ public interface JDWPContext {
      * @param frame the frame to read the bci from
      * @return the BCI or -1
      */
-    long readBCIFromFrame(RootNode root, Frame frame);
+    int readBCIFromFrame(RootNode root, Frame frame);
 
     /**
      * Returns a {@link CallFrame} representation of the location of
@@ -478,7 +479,7 @@ public interface JDWPContext {
      * @param frame the current frame
      * @return the current bci
      */
-    long getBCI(Node rawNode, Frame frame);
+    int getBCI(Node rawNode, Frame frame);
 
     /**
      * Returns the instrumentable delegate node for the language root node or <code>rootNode</code>

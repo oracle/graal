@@ -1322,7 +1322,7 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"10\"}}]," +
                                                  "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":28,\"lineNumber\":8}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":12,\"lineNumber\":8}," +
                                                  "\"url\":\"" + srcURL + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"factorial\"," +
                                                  "\"scopeChain\":[{\"name\":\"factorial\",\"type\":\"local\",\"object\":{\"description\":\"factorial\",\"type\":\"object\",\"objectId\":\"11\"}}," +
@@ -1347,7 +1347,7 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"16\"}}]," +
                                                  "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":14,\"lineNumber\":2}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":2}," +
                                                  "\"url\":\"" + srcURL + "\"}]}," +
                         "\"id\":5}\n"));
         tester.sendMessage("{\"id\":6,\"method\":\"Debugger.resume\"}");
