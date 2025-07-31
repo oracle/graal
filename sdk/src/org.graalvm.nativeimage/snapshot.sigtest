@@ -232,6 +232,10 @@ meth public abstract void fatalError()
 meth public abstract void flush()
 meth public abstract void log(org.graalvm.nativeimage.c.type.CCharPointer,org.graalvm.word.UnsignedWord)
 
+CLSS public final org.graalvm.nativeimage.MissingForeignRegistrationError
+cons public init(java.lang.String)
+supr java.lang.LinkageError
+
 CLSS public final org.graalvm.nativeimage.MissingJNIRegistrationError
 cons public init(java.lang.String,java.lang.Class<?>,java.lang.Class<?>,java.lang.String,java.lang.String)
 meth public java.lang.Class<?> getDeclaringClass()
