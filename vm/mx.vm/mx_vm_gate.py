@@ -600,8 +600,10 @@ def gate_python(tasks):
             python_suite.extensions.run_python_unittests(python_svm_image_path)
 
 
-def _svm_truffle_tck(native_image, language_id, language_distribution=None, fail_on_error=True):
+def _svm_truffle_tck(native_image, language_id, language_distribution=None, fail_on_error=True, additional_options=None):
     assert language_distribution, 'Language_distribution must be given'
+    if additional_options is None:
+        additional_options = []
     dists = [
         mx.distribution('substratevm:SVM_TRUFFLE_TCK'),
         language_distribution
@@ -631,7 +633,7 @@ def _svm_truffle_tck(native_image, language_id, language_distribution=None, fail
             f'-H:TruffleTCKPermissionsReportFile={report_file}',
             f'-H:Path={svmbuild}',
             '--add-exports=org.graalvm.truffle.runtime/com.oracle.truffle.runtime=ALL-UNNAMED'
-        ]) + [
+        ] + additional_options) + [
             'com.oracle.svm.truffle.tck.MockMain'
         ]
         if excludes:
