@@ -158,7 +158,7 @@ public abstract class WebImageWasmCodeGen extends WebImageCodeGen {
      * {@link AbstractImage#getImageHeapSize()}).
      */
     public long getImageHeapSize() {
-        return getLayout().getImageHeapSize();
+        return getLayout().getSize();
     }
 
     /**
@@ -170,7 +170,7 @@ public abstract class WebImageWasmCodeGen extends WebImageCodeGen {
      * This number is mainly used to get the total heap size for image heap breakdown statistics.
      */
     public long getFullImageHeapSize() {
-        return getLayout().getImageHeapSize();
+        return getLayout().getSize();
     }
 
     @Override

@@ -813,7 +813,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (!VMThreads.singleton().verifyIsCurrentThread(thread) || !VMThreads.isAttached(thread)) {
             throw VMError.shouldNotReachHere("A call from native code to Java code provided the wrong JNI environment or the wrong IsolateThread. " +
                             "The JNI environment / IsolateThread is a thread-local data structure and must not be shared between threads.");
-
         }
         return CEntryPointErrors.NO_ERROR;
     }

@@ -175,7 +175,7 @@ public class WasmHeap extends Heap {
     }
 
     @Override
-    protected List<Class<?>> getAllClasses() {
+    protected List<Class<?>> getClassesInImageHeap() {
         /* Two threads might race to set classList, but they compute the same result. */
         if (classList == null) {
             ArrayList<Class<?>> list = new ArrayList<>(imageHeapInfo.dynamicHubCount);
@@ -190,16 +190,6 @@ public class WasmHeap extends Heap {
     @Uninterruptible(reason = "Necessary to return a reasonably consistent value (a GC can change the queried values).")
     public UnsignedWord getUsedBytes() {
         return Word.unsigned(WasmAllocation.getObjectSize());
-    }
-
-    @Override
-    public UnsignedWord getImageHeapReservedBytes() {
-        throw VMError.shouldNotReachHere("Native Memory Tracking is not supported");
-    }
-
-    @Override
-    public UnsignedWord getImageHeapCommittedBytes() {
-        throw VMError.shouldNotReachHere("Native Memory Tracking is not supported");
     }
 
     private static final class ClassListBuilderVisitor implements MemoryWalker.ImageHeapRegionVisitor, ObjectVisitor {
@@ -253,8 +243,13 @@ public class WasmHeap extends Heap {
     }
 
     @Override
-    public int getPreferredAddressSpaceAlignment() {
-        throw VMError.shouldNotReachHere("WasmHeap.getPreferredAddressSpaceAlignment");
+    public int getHeapBaseAlignment() {
+        return 1;
+    }
+
+    @Override
+    public int getImageHeapAlignment() {
+        return 1;
     }
 
     @Override

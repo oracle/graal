@@ -285,7 +285,7 @@ struct SharedLayerSnapshot {
   nextConstantId @3 :ConstantId;
   staticPrimitiveFieldsConstantId @4 :ConstantId;
   staticObjectFieldsConstantId @5 :ConstantId;
-  imageHeapSize @6 :Int64;
+  imageHeapEndOffset @6 :Int64;
   constantsToRelink @7 :List(ConstantId);
   types @8 :List(PersistedAnalysisType);
   methods @9 :List(PersistedAnalysisMethod);

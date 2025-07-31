@@ -46,11 +46,13 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.registry.TypeIDs;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
@@ -91,7 +93,7 @@ import jdk.graal.compiler.word.Word;
  * |----------------------------|
  * | information per field      |
  * |----------------------------|
- * | u1 type             |
+ * | u1 type                    |
  * | uv fieldNameIndex          |
  * | uv location                |
  * |----------------------------|
@@ -132,7 +134,6 @@ public class HeapDumpMetadata {
 
         int totalFieldCount = 0;
         int totalFieldNameCount = 0;
-        int maxTypeId = Integer.MIN_VALUE;
 
         /*
          * First read all encoded data arrays to determine how large of data structures to allocate.
@@ -147,10 +148,10 @@ public class HeapDumpMetadata {
             totalFieldCount += NativeCoder.readInt(stream);
             NativeCoder.readInt(stream); // class count
             totalFieldNameCount += NativeCoder.readInt(stream);
-            maxTypeId = Integer.max(Pack200Coder.readUVAsInt(stream), maxTypeId);
         }
         fieldNameCount = totalFieldNameCount;
-        classInfoCount = maxTypeId + 1;
+        /* Allocating a contiguous array may be a problem with class unloading, see GR-68380. */
+        classInfoCount = TypeIDs.singleton().getNumTypeIds();
 
         /*
          * Precompute a few small data structures so that the heap dumping code can access the
@@ -190,7 +191,6 @@ public class HeapDumpMetadata {
             NativeCoder.readInt(stream); // field count
             int classCount = NativeCoder.readInt(stream);
             int currentFieldNameCount = NativeCoder.readInt(stream);
-            Pack200Coder.readUVAsInt(stream); // maxTypeId
 
             /* Read the classes and fields. */
             int fieldIndex = 0;
@@ -237,6 +237,19 @@ public class HeapDumpMetadata {
         /* Store the DynamicHubs in their corresponding ClassInfo structs. */
         computeHubDataVisitor.initialize();
         Heap.getHeap().walkImageHeapObjects(computeHubDataVisitor);
+        Metaspace.singleton().walkObjects(computeHubDataVisitor);
+
+        /*
+         * Classes that are loaded at runtime don't have any declared fields at the moment. This
+         * needs to be changed once GR-60069 is merged.
+         */
+        for (int i = TypeIDs.singleton().getFirstRuntimeTypeId(); i < classInfoCount; i++) {
+            ClassInfo classInfo = getClassInfo(i);
+            if (ClassInfoAccess.isValid(classInfo)) {
+                classInfo.setStaticFieldCount(0);
+                classInfo.setInstanceFieldCount(0);
+            }
+        }
 
         /* Compute the size of the instance fields per class. */
         for (int i = 0; i < classInfoCount; i++) {
@@ -471,7 +484,7 @@ public class HeapDumpMetadata {
 
         @Override
         public void visitObject(Object o) {
-            if (o instanceof DynamicHub hub) {
+            if (o instanceof DynamicHub hub && hub.isLoaded()) {
                 ClassInfo classInfo = HeapDumpMetadata.singleton().getClassInfo(hub.getTypeID());
                 assert classInfo.getHub() == null;
                 classInfo.setHub(hub);

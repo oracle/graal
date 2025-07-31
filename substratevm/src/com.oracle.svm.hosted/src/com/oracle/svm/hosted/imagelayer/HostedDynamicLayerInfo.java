@@ -271,4 +271,16 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
 
         return new HostedDynamicLayerInfo(layerNumber, codeSectionStartSymbol, libNames, previousLayerDelayedMethodSymbols, previousLayerDelayedMethodIds);
     }
+
+    @Override
+    public int getPreviousMaxTypeId() {
+        SVMImageLayerLoader loader = HostedImageLayerBuildingSupport.singleton().getLoader();
+        return loader.getMaxTypeId();
+    }
+
+    @Override
+    public long getPreviousImageHeapEndOffset() {
+        SVMImageLayerLoader loader = HostedImageLayerBuildingSupport.singleton().getLoader();
+        return loader.getImageHeapEndOffset();
+    }
 }

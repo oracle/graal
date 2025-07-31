@@ -102,7 +102,8 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
     private final SnippetInfo postWriteBarrierSnippet;
     private final SnippetInfo arrayRangePostWriteBarrierSnippet;
 
-    BarrierSnippets(OptionValues options, Providers providers) {
+    @SuppressWarnings("this-escape")
+    public BarrierSnippets(OptionValues options, Providers providers) {
         super(options, providers);
 
         this.postWriteBarrierSnippet = snippet(providers, BarrierSnippets.class, "postWriteBarrierSnippet", CARD_REMEMBERED_SET_LOCATION);
