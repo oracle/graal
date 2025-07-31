@@ -2,11 +2,6 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
-## Version 26.0
-* GR-65048: Introduced `InternalResource.OS.UNSUPPORTED` and `InternalResource.CPUArchitecture.UNSUPPORTED` to represent unsupported platforms. Execution on unsupported platforms must be explicitly enabled using the system property `-Dpolyglot.engine.allowUnsupportedPlatform=true`. If this property is not set, calls to `OS.getCurrent()` or `CPUArchitecture.getCurrent()` will throw an `IllegalStateException` when running on an unsupported platform. `InternalResource` implementations should handle the unsupported platform and describe possible steps in the error message on how to proceed.
-* GR-66839: Deprecate `Location#isFinal()` as it always returns false.
-* GR-67821: `TruffleLanguage.Env#createSystemThread` is now allowed to be be called from a system thread now without an explicitly entered context.
-
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.
 * GR-61493 Added `RootNode.prepareForCall` which allows root nodes to prepare themselves for use as a call target (or to validate whether they can be used as a call target).
@@ -35,9 +30,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-64594 Bytecode DSL: Added `@GenerateBytecode(..., additionalAssertions=true)` to enable additional assertions for Bytecode DSL implementation bugs. This feature can also be enabled with `-A.truffle.dsl.AdditionalAssertions=true` at Java source compile time. These assertions are intentionally disabled by default, as they can lead to slow-downs even when assertions are disabled.
 * GR-65428 JDK specific optimizations when building Truffle languages with native-image are now enabled by default, even if the truffle-enterprise.jar is not provided on the class or module-path.
 * GR-38296 Removed the deprecated `BytecodeOSRNode.copyIntoOSRFrame` hook that does not declare a `targetMetadata` parameter.
-
 * GR-65616 Added `ExactMath.truncateToUnsignedInt(float)` and `ExactMath.truncateToUnsignedLong(double)` methods that remove the decimal part (round toward zero) of a floating point (float or double) value and convert it to a saturated unsigned integer (int or long) value. These methods are intrinsic candidates.
 * GR-65616 Added `ExactMath.unsignedToFloat(long)` and `ExactMath.unsignedToDouble(long)` methods to convert an unsigned `long` to the closest `float` and `double` value, respectively. These methods are intrinsic candidates.
+* GR-67821: `TruffleLanguage.Env#createSystemThread` is now allowed to be be called from a system thread now without an explicitly entered context.
 
 ## Version 24.2.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.
