@@ -1140,7 +1140,7 @@ public final class DebuggerSession implements Closeable {
         // Fake the caller context
         Caller caller = findCurrentCaller(this, includeInternal);
         SuspendedContext context = SuspendedContext.create(caller.node, ((SteppingStrategy.Unwind) s).unwind);
-        doSuspend(context, SuspendAnchor.AFTER, caller.frame, insertableNode, false, true);
+        doSuspend(context, SuspendAnchor.BEFORE, caller.frame, insertableNode, false, true);
     }
 
     static Caller findCurrentCaller(DebuggerSession session, boolean includeInternal) {

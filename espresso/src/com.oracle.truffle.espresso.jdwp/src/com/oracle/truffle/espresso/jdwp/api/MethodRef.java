@@ -231,7 +231,7 @@ public interface MethodRef {
      *
      * @return last bci
      */
-    long getLastBCI();
+    int getLastBCI();
 
     /**
      * Determines if the method is a constructor.
