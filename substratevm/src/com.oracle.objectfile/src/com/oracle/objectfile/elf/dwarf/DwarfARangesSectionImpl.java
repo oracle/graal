@@ -26,6 +26,7 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
+import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
@@ -84,9 +85,10 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
          * Where N is the number of compiled methods.
          */
         assert !contentByteArrayCreated();
-        int byteCount = instanceClassWithCompilationStream()
-                        .mapToInt(classEntry -> entrySize(classEntry.compiledMethods().size()))
-                        .sum();
+        int byteCount = 0;
+        for (ClassEntry classEntry : getInstanceClassesWithCompilation()) {
+            byteCount += entrySize(classEntry.compiledMethods().size());
+        }
         byte[] buffer = new byte[byteCount];
         super.setContent(buffer);
     }
@@ -109,24 +111,24 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
         assert contentByteArrayCreated();
         byte[] buffer = getContent();
         int size = buffer.length;
-        Cursor cursor = new Cursor();
+        int pos = 0;
 
         enableLog(context);
 
-        log(context, "  [0x%08x] DEBUG_ARANGES", cursor.get());
-        instanceClassWithCompilationStream().forEachOrdered(classEntry -> {
-            int lengthPos = cursor.get();
+        log(context, "  [0x%08x] DEBUG_ARANGES", pos);
+        for (ClassEntry classEntry : getInstanceClassesWithCompilation()) {
+            int lengthPos = pos;
             log(context, "  [0x%08x] class %s CU 0x%x", lengthPos, classEntry.getTypeName(), getCUIndex(classEntry));
-            cursor.set(writeHeader(getCUIndex(classEntry), buffer, cursor.get()));
-            classEntry.compiledMethods().forEach(compiledMethodEntry -> {
-                cursor.set(writeARange(context, compiledMethodEntry, buffer, cursor.get()));
-            });
+            pos = writeHeader(getCUIndex(classEntry), buffer, pos);
+            for (CompiledMethodEntry compiledMethodEntry : classEntry.compiledMethods()) {
+                pos = writeARange(context, compiledMethodEntry, buffer, pos);
+            }
             // write two terminating zeroes
-            cursor.set(writeLong(0, buffer, cursor.get()));
-            cursor.set(writeLong(0, buffer, cursor.get()));
-            patchLength(lengthPos, buffer, cursor.get());
-        });
-        assert cursor.get() == size;
+            pos = writeLong(0, buffer, pos);
+            pos = writeLong(0, buffer, pos);
+            patchLength(lengthPos, buffer, pos);
+        }
+        assert pos == size;
     }
 
     private int writeHeader(int cuIndex, byte[] buffer, int p) {

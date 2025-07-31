@@ -40,7 +40,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.RawPointerTo;
 
@@ -113,12 +112,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * time.
  */
 class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
-    protected final NativeImageHeap heap;
-    protected final NativeImageCodeCache codeCache;
-    protected final NativeLibraries nativeLibs;
+    private final NativeImageHeap heap;
+    private final NativeImageCodeCache codeCache;
+    private final NativeLibraries nativeLibs;
+    private final SourceManager debugInfoSourceManager;
 
-    protected final int primitiveStartOffset;
-    protected final int referenceStartOffset;
+    private final int primitiveStartOffset;
+    private final int referenceStartOffset;
     private final Set<HostedMethod> allOverrides;
 
     NativeImageDebugInfoProvider(DebugContext debug, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess,
@@ -127,6 +127,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         this.heap = heap;
         this.codeCache = codeCache;
         this.nativeLibs = nativeLibs;
+        this.debugInfoSourceManager = new SourceManager();
 
         /* Offsets need to be adjusted relative to the heap base plus partition-specific offset. */
         NativeImageHeap.ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields());
@@ -441,21 +442,16 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
 
             if (debug.isLogEnabled()) {
                 debug.log("typename %s adding %s method %s %s(%s)%n", classEntry.getTypeName(), methodEntry.getModifiersString(), methodEntry.getValueType().getTypeName(), methodEntry.getMethodName(),
-                                formatParams(methodEntry.getThisParam(), methodEntry.getParams()));
+                                formatParams(methodEntry.getParams()));
             }
         }
     }
 
-    private static String formatParams(LocalEntry thisParam, List<LocalEntry> paramInfo) {
+    private static String formatParams(List<LocalEntry> paramInfo) {
         if (paramInfo.isEmpty()) {
             return "";
         }
         StringBuilder builder = new StringBuilder();
-        if (thisParam != null) {
-            builder.append(thisParam.type().getTypeName());
-            builder.append(' ');
-            builder.append(thisParam.name());
-        }
         for (LocalEntry param : paramInfo) {
             if (!builder.isEmpty()) {
                 builder.append(", ");
@@ -994,9 +990,8 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     @SuppressWarnings("try")
     public FileEntry lookupFileEntry(ResolvedJavaType type) {
         Class<?> clazz = OriginalClassProvider.getJavaClass(type);
-        SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
         try (DebugContext.Scope s = debug.scope("DebugFileInfo", type)) {
-            Path filePath = sourceManager.findAndCacheSource(type, clazz, debug);
+            Path filePath = debugInfoSourceManager.findAndCacheSource(type, clazz, debug);
             if (filePath != null) {
                 return lookupFileEntry(filePath);
             }

@@ -155,11 +155,11 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeMethodFrames(byte[] buffer, int p) {
-        Cursor cursor = new Cursor(p);
-        compiledMethodsStream().forEach(compiledMethod -> {
-            cursor.set(writeMethodFrame(compiledMethod, buffer, cursor.get()));
-        });
-        return cursor.get();
+        int pos = p;
+        for (CompiledMethodEntry compiledMethod : getCompiledMethods()) {
+            pos = writeMethodFrame(compiledMethod, buffer, pos);
+        }
+        return pos;
     }
 
     protected abstract int writeFDEs(int frameSize, List<FrameSizeChangeEntry> frameSizeInfos, byte[] buffer, int pos);

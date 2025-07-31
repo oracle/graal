@@ -26,11 +26,12 @@
 
 package com.oracle.objectfile.debugentry;
 
+import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import com.oracle.objectfile.debugentry.range.Range;
 
@@ -53,26 +54,32 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
     /**
      * Details of methods located in this instance.
      */
-    private final ConcurrentSkipListSet<MethodEntry> methods;
+    private List<MethodEntry> methods;
     /**
      * A list recording details of all normal compiled methods included in this class sorted by
      * ascending address range. Note that the associated address ranges are disjoint and contiguous.
      */
-    private final ConcurrentSkipListSet<CompiledMethodEntry> compiledMethods;
+    private List<CompiledMethodEntry> compiledMethods;
 
     /**
-     * A list of all files referenced from info associated with this class, including info detailing
-     * inline method ranges.
+     * A map of all files referenced from info associated with this class, including info detailing
+     * inline method ranges. Each unique file is mapped to its 1-based index in this class.
      */
-    private final ConcurrentSkipListSet<FileEntry> files;
-    private final Map<FileEntry, Integer> indexedFiles = new HashMap<>();
+    private Map<FileEntry, Integer> indexedFiles = null;
+    /**
+     * The list of all files referenced from this class.
+     */
+    private List<FileEntry> files;
 
     /**
-     * A list of all directories referenced from info associated with this class, including info
-     * detailing inline method ranges.
+     * A map of all directories referenced from info associated with this class, including info
+     * detailing inline method ranges. Each unique dir is mapped to its 1-based index in this class.
      */
-    private final ConcurrentSkipListSet<DirEntry> dirs;
-    private final Map<DirEntry, Integer> indexedDirs = new HashMap<>();
+    private Map<DirEntry, Integer> indexedDirs = null;
+    /**
+     * The list of all dirs referenced from this class.
+     */
+    private List<DirEntry> dirs;
 
     public ClassEntry(String typeName, int size, long classOffset, long typeSignature,
                     long compressedTypeSignature, long layoutTypeSignature,
@@ -81,20 +88,60 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
         this.superClass = superClass;
         this.fileEntry = fileEntry;
         this.loader = loader;
-        this.methods = new ConcurrentSkipListSet<>(Comparator.comparingInt(MethodEntry::getModifiers).thenComparingInt(MethodEntry::getLine).thenComparing(MethodEntry::getSymbolName));
-        this.compiledMethods = new ConcurrentSkipListSet<>(Comparator.comparing(CompiledMethodEntry::primary));
-        this.files = new ConcurrentSkipListSet<>(Comparator.comparing(FileEntry::fileName).thenComparing(file -> file.dirEntry().path()));
-        this.dirs = new ConcurrentSkipListSet<>(Comparator.comparing(DirEntry::path));
+        this.methods = new ArrayList<>();
+        this.compiledMethods = new ArrayList<>();
+        this.files = new ArrayList<>();
+        this.dirs = new ArrayList<>();
 
         addFile(fileEntry);
     }
 
+    @Override
+    public void seal() {
+        super.seal();
+        assert methods instanceof ArrayList<MethodEntry> && compiledMethods instanceof ArrayList<CompiledMethodEntry> &&
+                        files instanceof ArrayList<FileEntry> && indexedFiles == null && dirs instanceof ArrayList<DirEntry> &&
+                        indexedDirs == null : "ClassEntry should only be sealed once";
+        methods = List.copyOf(methods);
+        methods.forEach(MethodEntry::seal);
+
+        compiledMethods = compiledMethods.stream().sorted(Comparator.comparing(CompiledMethodEntry::primary)).toList();
+        compiledMethods.forEach(CompiledMethodEntry::seal);
+        compiledMethods.stream()
+                        .flatMap(cm -> cm.topDownRangeStream(true).map(Range::getFileEntry))
+                        .distinct()
+                        .forEach(this::addFile);
+
+        files = files.stream().distinct().toList();
+        indexedFiles = IntStream.range(0, files.size())
+                        .boxed()
+                        .collect(Collectors.toUnmodifiableMap(i -> files.get(i), i -> i + 1));
+
+        dirs = dirs.stream().distinct().toList();
+        indexedDirs = IntStream.range(0, dirs.size())
+                        .boxed()
+                        .collect(Collectors.toUnmodifiableMap(i -> dirs.get(i), i -> i + 1));
+    }
+
+    /**
+     * Adds and indexes a file entry and the corresponding dir entry for this class entry.
+     * <p>
+     * This is only called during debug info generation. No more files are added to this
+     * {@code ClassEntry} when writing debug info to the object file.
+     * 
+     * @param addFileEntry the file entry to add
+     */
     private void addFile(FileEntry addFileEntry) {
+        assert files instanceof ArrayList<FileEntry> && dirs instanceof ArrayList<DirEntry> : "Can only add files and dirs before a ClassEntry is sealed.";
         if (addFileEntry != null && !addFileEntry.fileName().isEmpty()) {
-            files.add(addFileEntry);
+            synchronized (files) {
+                files.add(addFileEntry);
+            }
             DirEntry addDirEntry = addFileEntry.dirEntry();
             if (addDirEntry != null && !addDirEntry.getPathString().isEmpty()) {
-                dirs.add(addDirEntry);
+                synchronized (dirs) {
+                    dirs.add(addDirEntry);
+                }
             }
         }
     }
@@ -112,26 +159,34 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
 
     /**
      * Add a method to the class entry and store its file entry.
+     * <p>
+     * This is only called during debug info generation. No more methods are added to this
+     * {@code ClassEntry} when writing debug info to the object file.
      *
      * @param methodEntry the {@code MethodEntry} to add
      */
     public void addMethod(MethodEntry methodEntry) {
+        assert methods instanceof ArrayList<MethodEntry> : "Can only add methods before a ClassEntry is sealed.";
         addFile(methodEntry.getFileEntry());
-        methods.add(methodEntry);
+        synchronized (methods) {
+            methods.add(methodEntry);
+        }
     }
 
     /**
      * Add a compiled method to the class entry and store its file entry and the file entries of
      * inlined methods.
+     * <p>
+     * This is only called during debug info generation. No more compiled methods are added to this
+     * {@code ClassEntry} when writing debug info to the object file.
      *
      * @param compiledMethodEntry the {@code CompiledMethodEntry} to add
      */
     public void addCompiledMethod(CompiledMethodEntry compiledMethodEntry) {
-        addFile(compiledMethodEntry.primary().getFileEntry());
-        for (Range range : compiledMethodEntry.topDownRangeStream().toList()) {
-            addFile(range.getFileEntry());
+        assert compiledMethods instanceof ArrayList<CompiledMethodEntry> : "Can only add compiled methods before a ClassEntry is sealed.";
+        synchronized (compiledMethods) {
+            compiledMethods.add(compiledMethodEntry);
         }
-        compiledMethods.add(compiledMethodEntry);
     }
 
     public String getFileName() {
@@ -173,28 +228,17 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
 
     /**
      * Returns the file index of a given file entry within this class entry.
-     *
      * <p>
-     * The first time a file entry is fetched, this produces a file index that is used for further
-     * index lookups. The file index is only created once. Therefore, this method must be used only
-     * after debug info generation is finished and no more file entries can be added to this class
-     * entry.
-     * 
+     * This method is only called once all debug info entries are produced, the class entry and the
+     * file index was generated.
+     *
      * @param file the given file entry
      * @return the index of the file entry
      */
     public int getFileIdx(FileEntry file) {
-        if (file == null || files.isEmpty() || !files.contains(file)) {
+        assert indexedFiles != null : "Can only request file index after a ClassEntry is sealed.";
+        if (file == null || !indexedFiles.containsKey(file)) {
             return 0;
-        }
-
-        // Create a file index for all files in this class entry
-        if (indexedFiles.isEmpty()) {
-            int index = 1;
-            for (FileEntry f : getFiles()) {
-                indexedFiles.put(f, index);
-                index++;
-            }
         }
 
         return indexedFiles.get(file);
@@ -214,28 +258,17 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
 
     /**
      * Returns the dir index of a given dir entry within this class entry.
-     *
      * <p>
-     * The first time a dir entry is fetched, this produces a dir index that is used for further
-     * index lookups. The dir index is only created once. Therefore, this method must be used only
-     * after debug info generation is finished and no more dir entries can be added to this class
-     * entry.
+     * This method is only called once all debug info entries are produced, the class entry and the
+     * dir index was generated.
      *
      * @param dir the given dir entry
      * @return the index of the dir entry
      */
     public int getDirIdx(DirEntry dir) {
-        if (dir == null || dir.getPathString().isEmpty() || dirs.isEmpty() || !dirs.contains(dir)) {
+        assert indexedDirs != null : "Can only request dir index after a ClassEntry is sealed.";
+        if (dir == null || !indexedDirs.containsKey(dir)) {
             return 0;
-        }
-
-        // Create a dir index for all dirs in this class entry
-        if (indexedDirs.isEmpty()) {
-            int index = 1;
-            for (DirEntry d : getDirs()) {
-                indexedDirs.put(d, index);
-                index++;
-            }
         }
 
         return indexedDirs.get(dir);
@@ -246,15 +279,17 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
     }
 
     /**
-     * Retrieve a list of all compiled method entries for this class.
+     * Retrieve a list of all compiled method entries for this class, sorted by start address.
      *
-     * @return a list of all compiled method entries for this class.
+     * @return a {@code List} of all compiled method entries for this class
      */
     public List<CompiledMethodEntry> compiledMethods() {
-        return List.copyOf(compiledMethods);
+        assert !(compiledMethods instanceof ArrayList<CompiledMethodEntry>) : "Can only access compiled methods after a ClassEntry is sealed.";
+        return compiledMethods;
     }
 
     public boolean hasCompiledMethods() {
+        assert !(compiledMethods instanceof ArrayList<CompiledMethodEntry>) : "Can only access compiled methods after a ClassEntry is sealed.";
         return !compiledMethods.isEmpty();
     }
 
@@ -263,7 +298,8 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
     }
 
     public List<MethodEntry> getMethods() {
-        return List.copyOf(methods);
+        assert !(methods instanceof ArrayList<MethodEntry>) : "Can only access methods after a ClassEntry is sealed.";
+        return methods;
     }
 
     /**
@@ -274,7 +310,7 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
      */
     public long lowpc() {
         assert hasCompiledMethods();
-        return compiledMethods.first().primary().getLo();
+        return compiledMethods.getFirst().primary().getLo();
     }
 
     /**
@@ -284,9 +320,10 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
      *
      * @return the highest code section offset for compiled method code belonging to this class
      */
+    @SuppressWarnings("unused")
     public long hipc() {
         assert hasCompiledMethods();
-        return compiledMethods.last().primary().getHi();
+        return compiledMethods.getLast().primary().getHi();
     }
 
     /**
@@ -296,7 +333,8 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
      * @return a list of all referenced files
      */
     public List<FileEntry> getFiles() {
-        return List.copyOf(files);
+        assert !(files instanceof ArrayList<FileEntry>) : "Can only access files after a ClassEntry is sealed.";
+        return files;
     }
 
     /**
@@ -306,6 +344,7 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
      * @return a list of all referenced directories
      */
     public List<DirEntry> getDirs() {
-        return List.copyOf(dirs);
+        assert !(dirs instanceof ArrayList<DirEntry>) : "Can only access dir after a ClassEntry is sealed.";
+        return dirs;
     }
 }

@@ -26,7 +26,7 @@
 
 package com.oracle.objectfile.debugentry.range;
 
-import java.util.HashMap;
+import java.util.Map;
 
 import com.oracle.objectfile.debugentry.MethodEntry;
 
@@ -34,7 +34,7 @@ public class PrimaryRange extends CallRange {
     private final long codeOffset;
 
     protected PrimaryRange(MethodEntry methodEntry, int lo, int hi, int line, long codeOffset) {
-        super(null, methodEntry, new HashMap<>(), lo, hi, line, null, -1);
+        super(null, methodEntry, Map.of(), lo, hi, line, null, -1);
         this.codeOffset = codeOffset;
     }
 

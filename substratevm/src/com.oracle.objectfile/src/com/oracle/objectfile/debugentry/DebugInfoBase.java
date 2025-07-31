@@ -105,10 +105,6 @@ public abstract class DebugInfoBase {
      */
     private HeaderTypeEntry headerType;
     /**
-     * Handle on type entry for void type.
-     */
-    private TypeEntry voidType;
-    /**
      * Handle on class entry for java.lang.Object.
      */
     private ClassEntry objectClass;
@@ -172,11 +168,6 @@ public abstract class DebugInfoBase {
      * address translation.
      */
     public static final String COMPRESSED_PREFIX = "_z_.";
-    /**
-     * A prefix used for type signature generation to generate unique type signatures for type
-     * layout type units.
-     */
-    public static final String LAYOUT_PREFIX = "_layout_.";
 
     /**
      * The name of the type for header field hub which needs special case processing to remove tag
@@ -259,9 +250,6 @@ public abstract class DebugInfoBase {
         compiledMethods.addAll(debugInfoProvider.compiledMethodEntries());
         debugInfoProvider.typeEntries().forEach(typeEntry -> {
             types.add(typeEntry);
-            if (typeEntry.getTypeName().equals("void")) {
-                voidType = typeEntry;
-            }
             switch (typeEntry) {
                 case ArrayTypeEntry arrayTypeEntry -> arrayTypes.add(arrayTypeEntry);
                 case PrimitiveTypeEntry primitiveTypeEntry -> primitiveTypes.add(primitiveTypeEntry);
@@ -287,12 +275,6 @@ public abstract class DebugInfoBase {
         // this should only be looked up after all types have been notified
         assert headerType != null;
         return headerType;
-    }
-
-    public TypeEntry lookupVoidType() {
-        // this should only be looked up after all types have been notified
-        assert voidType != null;
-        return voidType;
     }
 
     public ClassEntry lookupObjectClass() {
