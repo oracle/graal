@@ -22,7 +22,7 @@
 #
 
 suite = {
-    "mxversion": "7.55.2",
+    "mxversion": "7.58.0",
     "name": "espresso",
     "version" : "26.0.0",
     "release" : False,

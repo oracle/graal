@@ -117,7 +117,10 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   },
 
   // generic targets
-  gate:            {targets+: ['gate'], timelimit: "1:00:00"},
+  tier1:           {targets+: ['tier1'],               notify_groups:: ['espresso']},
+  tier2:           {targets+: ['tier2'],               notify_groups:: ['espresso']},
+  tier3:           {targets+: ['tier3'],               notify_groups:: ['espresso']},
+  tier4:           {targets+: ['tier4'],               notify_groups:: ['espresso']},
   postMerge:       {targets+: ['post-merge'],          notify_groups:: ['espresso']},
   dailyBench:      {targets+: ['bench', 'daily'],      notify_groups:: ['espresso']},
   daily:           {targets+: ['daily'],               notify_groups:: ['espresso']},
@@ -148,11 +151,12 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
 
   // precise targets and capabilities
-  jdk21_gate_linux_amd64        : self.gate          + self.linux_amd64_21,
-  jdk21_gate_linux_aarch64      : self.gate          + self.linux_aarch64_21,
-  jdk21_gate_darwin_amd64       : self.gate          + self.darwin_amd64_21,
-  jdk21_gate_darwin_aarch64     : self.gate          + self.darwin_aarch64_21,
-  jdk21_gate_windows_amd64      : self.gate          + self.windows_21,
+  jdk21_tier1_linux_amd64       : self.tier1         + self.linux_amd64_21,
+  jdk21_tier2_linux_amd64       : self.tier2         + self.linux_amd64_21,
+  jdk21_tier3_linux_amd64       : self.tier3         + self.linux_amd64_21,
+  jdk21_tier3_linux_aarch64     : self.tier3         + self.linux_aarch64_21,
+  jdk21_tier3_darwin_aarch64    : self.tier3         + self.darwin_aarch64_21,
+  jdk21_tier4_linux_amd64       : self.tier4         + self.linux_amd64_21,
   jdk21_bench_linux             : self.bench         + self.linux_amd64_21 + self.x52,
   jdk21_bench_darwin            : self.bench         + self.darwin_amd64_21,
   jdk21_bench_windows           : self.bench         + self.windows_21,
@@ -188,11 +192,13 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk21_on_demand_bench_darwin  : self.onDemandBench + self.darwin_amd64_21,
   jdk21_on_demand_bench_windows : self.onDemandBench + self.windows_21,
 
-  jdk25_gate_linux_amd64        : self.gate          + self.linux_amd64_25,
-  jdk25_gate_linux_aarch64      : self.gate          + self.linux_aarch64_25,
-  jdk25_gate_darwin_amd64       : self.gate          + self.darwin_amd64_25,
-  jdk25_gate_darwin_aarch64     : self.gate          + self.darwin_aarch64_25,
-  jdk25_gate_windows_amd64      : self.gate          + self.windows_25,
+  jdk25_tier1_linux_amd64       : self.tier1          + self.linux_amd64_25,
+  jdk25_tier2_linux_amd64       : self.tier2          + self.linux_amd64_25,
+  jdk25_tier3_linux_amd64       : self.tier3         + self.linux_amd64_25,
+  jdk25_tier3_linux_aarch64     : self.tier3         + self.linux_aarch64_25,
+  jdk25_tier3_darwin_aarch64    : self.tier3         + self.darwin_aarch64_25,
+  jdk25_tier4_linux_amd64       : self.tier4         + self.linux_amd64_25,
+  jdk25_tier4_linux_aarch64     : self.tier4         + self.linux_aarch64_25,
   jdk25_daily_linux_amd64       : self.daily         + self.linux_amd64_25,
   jdk25_daily_linux_aarch64     : self.daily         + self.linux_aarch64_25,
   jdk25_daily_darwin_amd64      : self.daily         + self.darwin_amd64_25,
@@ -200,8 +206,11 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk25_daily_windows_amd64     : self.daily         + self.windows_25,
   jdk25_weekly_linux_amd64      : self.weekly        + self.linux_amd64_25,
 
-  jdkLatest_gate_linux_amd64    : self.gate          + self.linux_amd64_latest,
+  jdkLatest_tier1_linux_amd64   : self.tier1         + self.linux_amd64_latest,
+  jdkLatest_tier2_linux_amd64   : self.tier2         + self.linux_amd64_latest,
+  jdkLatest_tier3_linux_amd64   : self.tier3         + self.linux_amd64_latest,
   jdkLatest_daily_linux_amd64   : self.daily         + self.linux_amd64_latest,
+  jdkLatest_daily_linux_aarch64 : self.daily         + self.linux_aarch64_latest,
   jdkLatest_weekly_linux_amd64  : self.weekly        + self.linux_amd64_latest,
   jdkLatest_weekly_linux_aarch64: self.weekly        + self.linux_aarch64_latest,
 
@@ -341,7 +350,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   local _builds = [
     // Gates
-    that.jdk21_gate_linux_amd64 + that.eclipse + that.jdt + that.predicates(false, false, false) + that.espresso_gate(allow_warnings=false, tags='style,fullbuild,imports', timelimit='35:00', name='gate-espresso-style-jdk21onLatest-linux-amd64'),
+    that.jdk21_tier1_linux_amd64 + that.eclipse + that.jdt + that.predicates(false, false, false) + that.espresso_gate(allow_warnings=false, tags='style,fullbuild,imports', timelimit='35:00', name='gate-espresso-style-jdk21onLatest-linux-amd64'),
   ],
 
   builds: utils.add_defined_in(_builds, std.thisFile),
