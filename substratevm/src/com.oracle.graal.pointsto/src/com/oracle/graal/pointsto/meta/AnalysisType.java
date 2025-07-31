@@ -30,7 +30,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -171,7 +170,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     private final AnalysisType[] interfaces;
     private AnalysisMethod[] declaredMethods;
-    private Set<AnalysisMethod> dispatchTableMethods;
 
     /* isArray is an expensive operation so we eagerly compute it */
     private final boolean isArray;
@@ -1387,63 +1385,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AnalysisMethod[] getDeclaredConstructors(boolean forceLink) {
         GraalError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
         return universe.lookup(wrapped.getDeclaredConstructors(forceLink));
-    }
-
-    public boolean isOpenTypeWorldDispatchTableMethodsCalculated() {
-        return dispatchTableMethods != null;
-    }
-
-    public Set<AnalysisMethod> getOpenTypeWorldDispatchTableMethods() {
-        Objects.requireNonNull(dispatchTableMethods);
-        return dispatchTableMethods;
-    }
-
-    /*
-     * Calculates all methods in this class which should be included in its dispatch table.
-     */
-    public Set<AnalysisMethod> getOrCalculateOpenTypeWorldDispatchTableMethods() {
-        if (dispatchTableMethods != null) {
-            return dispatchTableMethods;
-        }
-        if (isPrimitive()) {
-            dispatchTableMethods = Set.of();
-            return dispatchTableMethods;
-        }
-        if (getWrapped() instanceof BaseLayerType) {
-            // GR-58587 implement proper support.
-            dispatchTableMethods = Set.of();
-            return dispatchTableMethods;
-        }
-
-        var resultSet = new HashSet<AnalysisMethod>();
-        for (ResolvedJavaMethod m : getWrapped().getDeclaredMethods(false)) {
-            assert !m.isConstructor() : Assertions.errorMessage("Unexpected constructor", m);
-            if (m.isStatic()) {
-                /* Only looking at member methods */
-                continue;
-            }
-            try {
-                AnalysisMethod aMethod = universe.lookup(m);
-                assert aMethod != null : m;
-                resultSet.add(aMethod);
-            } catch (UnsupportedFeatureException t) {
-                /*
-                 * Methods which are deleted or not available on this platform will throw an error
-                 * during lookup - ignore and continue execution
-                 *
-                 * Note it is not simple to create a check to determine whether calling
-                 * universe#lookup will trigger an error by creating an analysis object for a type
-                 * not supported on this platform, as creating a method requires, in addition to the
-                 * types of its return type and parameters, all of the super types of its return and
-                 * parameters to be created as well.
-                 */
-            }
-        }
-
-        // ensure result is fully visible across threads
-        VarHandle.storeStoreFence();
-        dispatchTableMethods = resultSet;
-        return dispatchTableMethods;
     }
 
     @Override
