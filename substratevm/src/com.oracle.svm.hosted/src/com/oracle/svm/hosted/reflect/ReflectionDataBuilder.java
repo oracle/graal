@@ -202,7 +202,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public void register(ConfigurationCondition condition, boolean unsafeInstantiated, Class<?> clazz) {
-        Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
+        Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "reflection"));
         runConditionalInAnalysisTask(condition, (cnd) -> {
             registerClass(cnd, clazz, unsafeInstantiated, true);
             if (FutureDefaultsOptions.completeReflectionTypes()) {
@@ -375,7 +375,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... executables) {
-        requireNonNull(executables, "executable");
+        requireNonNull(executables, "executable", "reflection");
         runConditionalInAnalysisTask(condition, (cnd) -> registerMethods(cnd, queriedOnly, executables));
     }
 
@@ -554,7 +554,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields) {
-        requireNonNull(fields, "field");
+        requireNonNull(fields, "field", "reflection");
         runConditionalInAnalysisTask(condition, (cnd) -> registerFields(cnd, false, fields));
     }
 
@@ -1389,16 +1389,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         return conditionalElements.values().stream()
                         .map(Map::size)
                         .reduce(0, Integer::sum);
-    }
-
-    private static void requireNonNull(Object[] values, String kind) {
-        for (Object value : values) {
-            Objects.requireNonNull(value, () -> nullErrorMessage(kind));
-        }
-    }
-
-    private static String nullErrorMessage(String kind) {
-        return "Cannot register null value as " + kind + " for reflection. Please ensure that all values you register are not null.";
     }
 
     public static class TestBackdoor {

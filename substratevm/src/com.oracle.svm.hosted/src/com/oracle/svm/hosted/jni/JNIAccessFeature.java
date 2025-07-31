@@ -228,14 +228,14 @@ public class JNIAccessFeature implements Feature {
         @Override
         public void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
             assert !unsafeAllocated : "unsafeAllocated can be only set via Unsafe.allocateInstance, not via JNI.";
-            Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
+            Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "JNI access"));
             abortIfSealed();
             registerConditionalConfiguration(condition, (cnd) -> newClasses.add(clazz));
         }
 
         @Override
         public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... executables) {
-            requireNonNull(executables, "executable");
+            requireNonNull(executables, "executable", "JNI access");
             abortIfSealed();
             if (!queriedOnly) {
                 registerConditionalConfiguration(condition, (cnd) -> newMethods.addAll(Arrays.asList(executables)));
@@ -244,7 +244,7 @@ public class JNIAccessFeature implements Feature {
 
         @Override
         public void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields) {
-            requireNonNull(fields, "field");
+            requireNonNull(fields, "field", "JNI access");
             abortIfSealed();
             registerConditionalConfiguration(condition, (cnd) -> registerFields(finalIsWritable, fields));
         }
@@ -757,15 +757,5 @@ public class JNIAccessFeature implements Feature {
              */
             return false;
         }
-    }
-
-    private static void requireNonNull(Object[] values, String kind) {
-        for (Object value : values) {
-            Objects.requireNonNull(value, () -> nullErrorMessage(kind));
-        }
-    }
-
-    private static String nullErrorMessage(String kind) {
-        return "Cannot register null value as " + kind + " for JNI access. Please ensure that all values you register are not null.";
     }
 }

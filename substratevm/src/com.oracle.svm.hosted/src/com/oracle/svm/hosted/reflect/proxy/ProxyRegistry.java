@@ -91,4 +91,9 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements B
     private static void warning(List<String> interfaceNames, String reason) {
         LogUtils.warning("Cannot register dynamic proxy for interface list: %s. Reason: %s.", String.join(", ", interfaceNames), reason);
     }
+
+    @Override
+    protected String nullErrorMessage(String kind) {
+        return "Cannot register null value as " + kind + ". Please ensure that all values you register are not null.";
+    }
 }

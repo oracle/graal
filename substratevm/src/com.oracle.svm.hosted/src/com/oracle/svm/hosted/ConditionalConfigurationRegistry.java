@@ -107,6 +107,16 @@ public abstract class ConditionalConfigurationRegistry {
         pendingReachabilityHandlers.clear();
     }
 
+    protected void requireNonNull(Object[] values, String kind, String accessKind) {
+        for (Object value : values) {
+            Objects.requireNonNull(value, () -> nullErrorMessage(kind, accessKind));
+        }
+    }
+
+    protected String nullErrorMessage(String elementKind, String accessKind) {
+        return "Cannot register null value as " + elementKind + " for " + accessKind + ". Please ensure that all values you register are not null.";
+    }
+
     public void setHostVM(SVMHost hostVM) {
         this.hostVM = hostVM;
     }
@@ -114,5 +124,4 @@ public abstract class ConditionalConfigurationRegistry {
     public SVMHost getHostVM() {
         return hostVM;
     }
-
 }
