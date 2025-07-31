@@ -50,7 +50,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
-import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
+import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
@@ -198,7 +198,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
 
         final RuntimeReflectionSupport reflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
         final RuntimeResourceSupport<ConfigurationCondition> resources = RuntimeResourceSupport.singleton();
-        final RuntimeProxyCreationSupport proxy = ImageSingletons.lookup(RuntimeProxyCreationSupport.class);
+        final RuntimeProxyRegistrySupport proxy = ImageSingletons.lookup(RuntimeProxyRegistrySupport.class);
         final RuntimeSerializationSupport<ConfigurationCondition> serialization = RuntimeSerializationSupport.singleton();
         final ConfigurationCondition always = ConfigurationCondition.alwaysTrue();
 
@@ -217,7 +217,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
             /* Register every single-interface proxy */
             // GR-62293 can't register proxies from jdk modules.
             if (c.getModule() == null && c.isInterface()) {
-                proxy.addProxyClass(always, c);
+                proxy.registerProxy(always, c);
             }
 
             try {

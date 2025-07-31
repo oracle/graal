@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,33 +38,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage.hosted;
+package org.graalvm.nativeimage.impl;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
-
-/**
- * This class can be used to make creating dynamic proxy classes at run time valid.
- *
- * @since 22.3
- */
-@Platforms(Platform.HOSTED_ONLY.class)
-public final class RuntimeProxyCreation {
-
-    /**
-     * Enables registering specifications of {@link java.lang.reflect.Proxy} classes during the
-     * image build so that matching proxy objects can be created at runtime. The proxy class is
-     * fully specified by the interfaces it implements.
-     *
-     * @since 22.3
-     */
-    public static void register(Class<?>... interfaces) {
-        ImageSingletons.lookup(RuntimeProxyRegistrySupport.class).registerProxy(ConfigurationCondition.alwaysTrue(), interfaces);
-    }
-
-    private RuntimeProxyCreation() {
-    }
+public interface RuntimeProxyRegistrySupport {
+    Class<?> registerProxy(ConfigurationCondition condition, Class<?>... interfaces);
 }
