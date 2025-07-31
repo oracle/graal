@@ -84,7 +84,7 @@ microbenchmarks = [
 
 def get_jdk(forBuild=False):
     if not forBuild and mx.suite('compiler', fatalIfMissing=False):
-        return mx.get_jdk(tag='jvmci')
+        return mx.get_jdk(tag='graalvm')
     else:
         return mx.get_jdk()
 
@@ -125,24 +125,28 @@ def wabt_test_args():
 
 
 def graal_wasm_gate_runner(args, tasks):
+    unittest_args = []
+    if mx.suite('compiler', fatalIfMissing=False) is not None:
+        unittest_args = ["--use-graalvm"]
+
     with Task("BuildAll", tasks, tags=[GraalWasmDefaultTags.buildall]) as t:
         if t:
             mx.build(["--all"])
 
     with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest], report=True) as t:
         if t:
-            unittest([*wabt_test_args(), "WasmTestSuite"], test_report_tags={'task': t.title})
-            unittest([*wabt_test_args(), "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + [*wabt_test_args(), "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + [*wabt_test_args(), "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
 
     with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest], report=True) as t:
         if t:
-            unittest(["--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + ["--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
 
     with Task("CoverageTests", tasks, tags=[GraalWasmDefaultTags.coverage], report=True) as t:
         if t:
-            unittest([*wabt_test_args(), "-Dwasmtest.coverageMode=true", "WasmTestSuite"], test_report_tags={'task': t.title})
-            unittest([*wabt_test_args(), "-Dwasmtest.coverageMode=true", "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
-            unittest(["-Dwasmtest.coverageMode=true", "--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + [*wabt_test_args(), "-Dwasmtest.coverageMode=true", "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + [*wabt_test_args(), "-Dwasmtest.coverageMode=true", "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + ["-Dwasmtest.coverageMode=true", "--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
 
     # This is a gate used to test that all the benchmarks return the correct results. It does not upload anything,
     # and does not run on a dedicated machine.
