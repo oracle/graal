@@ -47,10 +47,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.util.UserError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -71,7 +73,6 @@ import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.ConfigurationTypeResolver;
@@ -310,6 +311,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
     @Override
     public void registerIncludingAssociatedClasses(ConfigurationCondition condition, Class<?> clazz) {
+        Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "serialization"));
         registerIncludingAssociatedClasses(condition, clazz, new HashSet<>());
     }
 
@@ -365,7 +367,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     @Override
     public void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName) {
         abortIfSealed();
-
+        Objects.requireNonNull(lambdaCapturingClassName, () -> nullErrorMessage("lambda capturing class", "serialization"));
         Class<?> lambdaCapturingClass = typeResolver.resolveType(lambdaCapturingClassName);
         if (lambdaCapturingClass == null || lambdaCapturingClass.isPrimitive() || lambdaCapturingClass.isArray()) {
             return;
@@ -407,6 +409,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     @Override
     public void register(ConfigurationCondition condition, Class<?> serializationTargetClass) {
         abortIfSealed();
+        Objects.requireNonNull(serializationTargetClass, () -> nullErrorMessage("class", "serialization"));
         registerConditionalConfiguration(condition, (cnd) -> {
             /*
              * Register class for reflection as it is needed when the class-value itself is
