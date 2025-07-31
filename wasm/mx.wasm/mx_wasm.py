@@ -187,6 +187,12 @@ class WasmUnittestConfig(mx_unittest.MxUnittestConfig):
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.wasm/*=com.oracle.truffle.wasm.debugtests']
         return (vmArgs, mainClass, mainClassArgs)
 
+    def processDeps(self, deps):
+        super().processDeps(deps)
+        truffle_runtime_dist_names = mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=True, use_enterprise=True)
+        mx.logv(f"Adding Truffle runtime distributions {', '.join(truffle_runtime_dist_names)} to unittest dependencies.")
+        deps.update((mx.distribution(d) for d in truffle_runtime_dist_names))
+
 
 mx_unittest.register_unittest_config(WasmUnittestConfig())
 
@@ -658,7 +664,7 @@ def wasm(args, **kwargs):
     mx_truffle.enable_sun_misc_unsafe(vmArgs)
 
     path_args = mx.get_runtime_jvm_args([
-        "TRUFFLE_API",
+        *mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=True, use_enterprise=True),
         "WASM",
         "WASM_LAUNCHER",
     ] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
