@@ -28,9 +28,9 @@ import java.util.function.BooleanSupplier;
 
 import com.oracle.svm.core.FutureDefaultsOptions;
 
-public class JDKInitializedAtRunTime implements BooleanSupplier {
+public class FileSystemProvidersInitializedAtRunTime implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return FutureDefaultsOptions.isJDKInitializedAtRunTime();
+        return FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime();
     }
 }

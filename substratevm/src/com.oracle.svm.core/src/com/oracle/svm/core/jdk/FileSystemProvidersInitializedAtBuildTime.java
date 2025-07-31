@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jdk;
 
-/**
- * This package contains "legacy" substitutions and features that are required to support
- * initializing certain parts of the JDK at image build time. Those parts of the JDK are planned to
- * be initialized at run time in the {@linkplain com.oracle.svm.core.FutureDefaultsOptions future}.
- * Once run time initialization is the default, this package will be removed.
- */
-package com.oracle.svm.core.jdk.buildtimeinit;
+import java.util.function.BooleanSupplier;
+
+import com.oracle.svm.core.FutureDefaultsOptions;
+
+public class FileSystemProvidersInitializedAtBuildTime implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return !FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime();
+    }
+}
