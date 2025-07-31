@@ -547,6 +547,11 @@ public final class DebuggerController implements ContextsListener {
         }
     }
 
+    public void suspendHere(Node node) {
+        boolean success = debuggerSession.suspendHere(node);
+        assert success : "Immediate suspend was not successful, must be called on language execution thread";
+    }
+
     public void suspend(Object guestThread) {
         SimpleLock suspendLock = getSuspendLock(guestThread);
         synchronized (suspendLock) {
