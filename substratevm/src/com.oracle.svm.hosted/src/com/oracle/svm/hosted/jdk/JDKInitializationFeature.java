@@ -85,6 +85,8 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("javax.tools", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.xml", JDK_CLASS_REASON);
 
+        rci.initializeAtBuildTime("jdk.management.jfr.internal.FlightRecorderMXBeanProvider$SingleMBeanComponent", "Ends up in the image heap with -H:Preserve=all");
+
         rci.initializeAtBuildTime("jdk.internal", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.jfr", "Needed for Native Image substitutions");
         rci.initializeAtRunTime("jdk.jfr.snippets.Snippets$HelloWorld", "Fails build-time initialization");
@@ -107,6 +109,7 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("sun.invoke", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.launcher", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.management", JDK_CLASS_REASON);
+        rci.initializeAtRunTime("sun.management.ManagementFactoryHelper$PlatformLoggingImpl", "Holds instances of LoggingMXBeanAccess");
         rci.initializeAtBuildTime("sun.misc", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.net", JDK_CLASS_REASON);
 
@@ -195,6 +198,7 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("com.sun.crypto.provider", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.security.auth", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.security.jgss", JDK_CLASS_REASON);
+        rci.initializeAtRunTime("sun.security.jgss.wrapper.Krb5Util", "Holds the cleaner thread");
         rci.initializeAtBuildTime("com.sun.security.cert.internal.x509", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.security.ntlm", JDK_CLASS_REASON);
 
