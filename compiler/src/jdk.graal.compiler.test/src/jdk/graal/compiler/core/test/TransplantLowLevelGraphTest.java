@@ -34,6 +34,8 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.phases.HighTier;
+import jdk.graal.compiler.debug.DebugCloseable;
+import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
 import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -68,7 +70,7 @@ public class TransplantLowLevelGraphTest extends GraalCompilerTest {
         System.clearProperty("GraalUnitTest");
     }
 
-    TestSnippets.TransplantTestSnippets.Templates transplantTestSnippets;
+    private static TestSnippets.TransplantTestSnippets.Templates transplantTestSnippets;
 
     @SuppressWarnings("this-escape")
     public TransplantLowLevelGraphTest() {
@@ -76,7 +78,11 @@ public class TransplantLowLevelGraphTest extends GraalCompilerTest {
         OptionValues opt = getInitialOptions();
 
         // ensure that the snippets are registered
-        transplantTestSnippets = new TestSnippets.TransplantTestSnippets.Templates(opt, p);
+        if (transplantTestSnippets == null) {
+            try (DebugCloseable _ = ((HotSpotReplacementsImpl) p.getReplacements()).extendEncodedSnippets(opt)) {
+                transplantTestSnippets = new TestSnippets.TransplantTestSnippets.Templates(opt, p);
+            }
+        }
     }
 
     @Override

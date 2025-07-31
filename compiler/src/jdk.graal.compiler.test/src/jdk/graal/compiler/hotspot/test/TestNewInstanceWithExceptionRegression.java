@@ -70,7 +70,7 @@ public class TestNewInstanceWithExceptionRegression extends SubprocessTest {
             } catch (Throwable e) {
                 throw GraalError.shouldNotReachHere(e);
             }
-        }, "-Xmx32m");
+        }, "-Xmx64m");
     }
 
 }

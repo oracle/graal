@@ -45,7 +45,6 @@ import java.util.Formatter;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
@@ -568,22 +567,6 @@ public class SnippetTemplate {
         }
     }
 
-    protected static class LazySnippetInfo extends SnippetInfo {
-        protected final AtomicReference<SnippetParameterInfo> lazy = new AtomicReference<>(null);
-
-        protected LazySnippetInfo(ResolvedJavaMethod method, ResolvedJavaMethod original, LocationIdentity[] privateLocations, Object receiver, Snippet.SnippetType type) {
-            super(method, original, privateLocations, receiver, type);
-        }
-
-        @Override
-        protected SnippetParameterInfo info() {
-            if (lazy.get() == null) {
-                lazy.compareAndSet(null, new SnippetParameterInfo(method));
-            }
-            return lazy.get();
-        }
-    }
-
     public static class EagerSnippetInfo extends SnippetInfo {
         protected final SnippetParameterInfo snippetParameterInfo;
 
@@ -955,12 +938,8 @@ public class SnippetTemplate {
             }
             providers.getReplacements().registerSnippet(javaMethod, original, receiver, GraalOptions.TrackNodeSourcePosition.getValue(options), options);
             LocationIdentity[] privateLocations = GraalOptions.SnippetCounters.getValue(options) ? SnippetCounterNode.addSnippetCounters(initialPrivateLocations) : initialPrivateLocations;
-            if (inRuntimeCode() || GraalOptions.EagerSnippets.getValue(options)) {
-                SnippetParameterInfo snippetParameterInfo = providers.getReplacements().getSnippetParameterInfo(javaMethod);
-                return new EagerSnippetInfo(javaMethod, original, privateLocations, receiver, snippetParameterInfo, type);
-            } else {
-                return new LazySnippetInfo(javaMethod, original, privateLocations, receiver, type);
-            }
+            SnippetParameterInfo snippetParameterInfo = providers.getReplacements().getSnippetParameterInfo(javaMethod);
+            return new EagerSnippetInfo(javaMethod, original, privateLocations, receiver, snippetParameterInfo, type);
         }
 
         /**
@@ -2917,34 +2896,17 @@ public class SnippetTemplate {
         return buf.append(')').toString();
     }
 
-    /**
-     * {@code true} if encoded snippets are in use in a hosted context. This is needed to disable
-     * assertions that are not supported with encoded snippets. {@code EncodedSnippets} is not
-     * referencable from this context, so this is the only way to check this fact.
-     */
-    private static volatile boolean hostedEncodedSnippets = false;
-
-    /**
-     * Notifies snippet templates whether snippets are encoded in a hosted context. If {@code true},
-     * this call disables assertions that are not supported with encoded snippets.
-     *
-     * @param value whether snippets are encoded in a hosted context
-     */
-    public static void setHostedEncodedSnippets(boolean value) {
-        hostedEncodedSnippets = value;
-    }
-
     private static boolean checkTemplate(MetaAccessProvider metaAccess, Arguments args, ResolvedJavaMethod method) {
         Signature signature = method.getSignature();
         int offset = args.info.hasReceiver() ? 1 : 0;
         for (int i = offset; i < args.info.getParameterCount(); i++) {
             if (args.info.isConstantParameter(i)) {
                 JavaKind kind = signature.getParameterKind(i - offset);
-                assert inRuntimeCode() || hostedEncodedSnippets || checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
+                assert inRuntimeCode() || checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
             } else if (args.info.isVarargsParameter(i)) {
                 assert args.values[i] instanceof Varargs : Assertions.errorMessage(args.values[i], args, method);
                 Varargs varargs = (Varargs) args.values[i];
-                assert inRuntimeCode() || hostedEncodedSnippets || checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
+                assert inRuntimeCode() || checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
             } else if (args.info.isNonNullParameter(i)) {
                 assert checkNonNull(method, args.info.getParameterName(i), args.values[i]);
             }

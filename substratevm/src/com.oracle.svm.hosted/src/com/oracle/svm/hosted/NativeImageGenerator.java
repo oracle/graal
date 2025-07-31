@@ -348,13 +348,7 @@ public class NativeImageGenerator {
         this.featureHandler = new FeatureHandler();
         this.optionProvider = optionProvider;
         this.reporter = reporter;
-        /*
-         * Substrate VM parses all graphs, including snippets, early. We do not support bytecode
-         * parsing at run time.
-         */
-        optionProvider.getHostedValues().put(GraalOptions.EagerSnippets, true);
         optionProvider.getHostedValues().put(CompilationAlarm.Options.CompilationNoProgressPeriod, 0D);
-        optionProvider.getRuntimeValues().put(GraalOptions.EagerSnippets, true);
 
         if (!optionProvider.getHostedValues().containsKey(BciBlockMapping.Options.MaxDuplicationFactor)) {
             /*

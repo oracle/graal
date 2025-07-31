@@ -579,7 +579,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 } catch (InvalidInstalledCodeException e) {
                     throw GraalError.shouldNotReachHere(e);
                 }
-            }, "-Xmx32m");
+            }, "-Xmx64m");
         }
     }
 
@@ -592,7 +592,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 } catch (InvalidInstalledCodeException e) {
                     throw GraalError.shouldNotReachHere(e);
                 }
-            }, "-Xmx32m");
+            }, "-Xmx64m");
         }
     }
 
@@ -605,7 +605,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 } catch (Throwable e) {
                     throw GraalError.shouldNotReachHere(e);
                 }
-            }, "-Xmx32m");
+            }, "-Xmx64m");
         }
     }
 
@@ -618,7 +618,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 } catch (Throwable e) {
                     throw GraalError.shouldNotReachHere(e);
                 }
-            }, "-Xmx32m");
+            }, "-Xmx64m");
         }
     }
 
@@ -631,7 +631,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 } catch (Throwable e) {
                     throw GraalError.shouldNotReachHere(e);
                 }
-            }, "-Xmx32m");
+            }, "-Xmx64m");
         }
     }
 
@@ -644,7 +644,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 } catch (Throwable e) {
                     throw GraalError.shouldNotReachHere(e);
                 }
-            }, "-Xmx32m");
+            }, "-Xmx64m");
         }
     }
 
@@ -657,7 +657,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 } catch (Throwable e) {
                     throw GraalError.shouldNotReachHere(e);
                 }
-            }, "-Xmx32m");
+            }, "-Xmx64m");
         }
     }
 }
