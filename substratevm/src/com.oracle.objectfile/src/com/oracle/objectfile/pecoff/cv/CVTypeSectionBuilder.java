@@ -117,7 +117,7 @@ class CVTypeSectionBuilder {
          * If we've never seen the class or only defined it as a forward reference, define it now.
          */
         if (typeRecord != null && typeRecord.type == LF_CLASS && !((CVTypeRecord.CVClassRecord) typeRecord).isForwardRef()) {
-            log("buildType() type %s(%s) is known %s", typeEntry.getTypeName(), typeEntry.getClass().getTypeName(); typeRecord);
+            log("buildType() type %s(%s) is known %s", typeEntry.getTypeName(), typeEntry.getClass().getTypeName(), typeRecord);
         } else {
             log("buildType() %s %s size=%d - begin", typeEntry.getClass().getTypeName(), typeEntry.getTypeName(), typeEntry.getSize());
             switch (typeEntry) {

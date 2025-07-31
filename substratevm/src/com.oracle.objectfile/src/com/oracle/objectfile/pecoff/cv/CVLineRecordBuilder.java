@@ -59,16 +59,16 @@ public class CVLineRecordBuilder {
      */
     CVLineRecord build(CompiledMethodEntry entry) {
         this.compiledEntry = entry;
-        Range primaryRange = compiledEntry.getPrimary();
+        Range primaryRange = compiledEntry.primary();
 
         debug("DEBUG_S_LINES linerecord for 0x%05x file: %s:%d", primaryRange.getLo(), primaryRange.getFileName(), primaryRange.getLine());
         this.lineRecord = new CVLineRecord(cvDebugInfo, primaryRange.getSymbolName());
         debug("CVLineRecord.computeContents: processing primary range %s", primaryRange);
 
         processRange(primaryRange);
-        Iterator<SubRange> iterator = compiledEntry.leafRangeIterator();
+        Iterator<Range> iterator = compiledEntry.leafRangeStream().iterator();
         while (iterator.hasNext()) {
-            SubRange subRange = iterator.next();
+            Range subRange = iterator.next();
             debug("CVLineRecord.computeContents: processing range %s", subRange);
             processRange(subRange);
         }

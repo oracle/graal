@@ -50,11 +50,11 @@ public class TemporaryBuildDirectoryProviderImpl implements TemporaryBuildDirect
         if (tempDirectory == null) {
             try {
                 if (tempDirectoryOptionValue == null) {
-                    tempDirectory = Files.createTempDirectory("SVM-");
+                    tempDirectory = Files.createTempDirectory("SXX-");
                     deleteTempDirectory = true;
                 } else {
-                    tempDirectory = tempDirectoryOptionValue.resolve("SVM-" + TimeUtils.currentTimeMillis());
-                    assert !Files.exists(tempDirectory);
+                    tempDirectory = tempDirectoryOptionValue.resolve("SVM-" + 0);
+                    //assert !Files.exists(tempDirectory);
                     Files.createDirectories(tempDirectory);
                 }
             } catch (IOException ex) {
