@@ -1056,6 +1056,11 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             /* Create the frame. */
             super.enter(crb);
 
+            /*
+             * Synthesize the parameters for the deopt stub. This needs to be done after enter() to
+             * avoid overwriting register values that it might save to the stack.
+             */
+
             /* Pass the general purpose and floating point registers to the deopt stub. */
             Register secondParameter = ValueUtil.asRegister(callingConvention.getArgument(1));
             masm.mov(64, secondParameter, gpReturnReg);

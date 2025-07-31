@@ -1364,11 +1364,16 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
              * Keep the return address slot. The correct return address is written in the stub
              * itself (read more there). The original return address is stored in the deopt slot.
              *
-             * Keeping the return address also ensures that the stack pointer is aligned properly.
+             * Keeping this slot also ensures that the stack pointer is aligned properly.
              */
             asm.subq(registerConfig.getFrameRegister(), FrameAccess.returnAddressSize());
 
             super.enter(tasm);
+
+            /*
+             * Synthesize the parameters for the deopt stub. This needs to be done after enter() to
+             * avoid overwriting register values that it might save to the stack.
+             */
 
             /* Pass the address of the frame to deoptimize as first argument. */
             asm.leaq(firstArgument, new AMD64Address(frameRegister, tasm.frameMap.totalFrameSize()));
