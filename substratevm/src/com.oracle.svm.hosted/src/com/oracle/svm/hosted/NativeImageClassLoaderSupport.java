@@ -1180,14 +1180,8 @@ public final class NativeImageClassLoaderSupport {
 
     public void setTrackAllDynamicAccess(ValueWithOrigin<String> valueWithOrigin) {
         var origin = new IncludeOptionsSupport.ExtendedOptionWithOrigin(new IncludeOptionsSupport.ExtendedOption("", DynamicAccessDetectionFeature.TRACK_ALL), valueWithOrigin);
-        classpath().stream()
-                        .map(Path::toString)
-                        .filter(path -> !path.contains(DynamicAccessDetectionFeature.GRAAL_SUBPATH))
-                        .forEach(entry -> dynamicAccessSelectors.addClassPathEntry(entry, origin));
-        modulepath().stream()
-                        .map(Path::toString)
-                        .filter(path -> !path.contains(DynamicAccessDetectionFeature.GRAAL_SUBPATH))
-                        .forEach(entry -> dynamicAccessSelectors.addModule(entry, origin));
+        getModulePathsFinder().findAll().forEach(m -> dynamicAccessSelectors.addModule(m.descriptor().name(), origin));
+        dynamicAccessSelectors.addModule(ALL_UNNAMED, origin);
     }
 
     public Stream<Class<?>> getClassesToIncludeUnconditionally() {
