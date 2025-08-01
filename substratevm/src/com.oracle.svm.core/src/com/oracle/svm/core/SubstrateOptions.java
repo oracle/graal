@@ -913,7 +913,7 @@ public class SubstrateOptions {
     @Option(help = "file:doc-files/NeverInlineHelp.txt", type = OptionType.Debug)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> NeverInline = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
-    @Option(help = "file:doc-files/NeverInlineTrivialHelp.txt")//
+    @Option(help = "file:doc-files/NeverInlineHelp.txt")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> NeverInlineTrivial = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Maximum number of nodes in a method so that it is considered trivial.")//
