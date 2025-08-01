@@ -31,6 +31,9 @@ import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * A wrapper method that can be unwrapped to an original host VM method.
+ */
 public interface OriginalMethodProvider {
 
     /**

@@ -27,7 +27,6 @@
 package com.oracle.graal.pointsto.api;
 
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -63,6 +62,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -371,19 +371,48 @@ public abstract class HostVM {
     }
 
     /**
-     * This method should only be used by the {@code ClassInclusionPolicy} to determine which fields
-     * should be included in the shared layer.
+     * Determine if the type is supported by the host VM and should be processed by the analysis.
      */
     @SuppressWarnings("unused")
-    public boolean isFieldIncluded(BigBang bb, Field field) {
+    public boolean isSupportedOriginalType(BigBang bb, ResolvedJavaType type) {
         return true;
     }
 
     /**
-     * See {@link HostVM#isFieldIncluded(BigBang, Field)}.
+     * Determine if the method is supported by the host VM and should be processed by the analysis.
      */
     @SuppressWarnings("unused")
-    public boolean isFieldIncluded(BigBang bb, AnalysisField field) {
+    public boolean isSupportedAnalysisMethod(BigBang bb, AnalysisMethod method) {
+        return true;
+    }
+
+    /**
+     * Determine if the method is supported by the host VM and should be processed by the analysis.
+     */
+    @SuppressWarnings("unused")
+    public boolean isSupportedOriginalMethod(BigBang bb, ResolvedJavaMethod method) {
+        return true;
+    }
+
+    /**
+     * Determine if the field is supported by the host VM and should be processed by the analysis.
+     */
+    @SuppressWarnings("unused")
+    public boolean isSupportedAnalysisField(BigBang bb, AnalysisField field) {
+        return true;
+    }
+
+    /**
+     * Determine if the field is supported by the host VM and should be processed by the analysis.
+     */
+    @SuppressWarnings("unused")
+    public boolean isSupportedOriginalField(BigBang bb, ResolvedJavaField field) {
+        return true;
+    }
+
+    /** Determine if field should be included in the shared layer. */
+    @SuppressWarnings("unused")
+    public boolean isFieldIncludedInSharedLayer(ResolvedJavaField field) {
         return true;
     }
 

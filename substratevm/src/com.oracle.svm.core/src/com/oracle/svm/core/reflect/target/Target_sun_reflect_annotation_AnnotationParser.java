@@ -47,7 +47,7 @@ import sun.reflect.annotation.ExceptionProxy;
 
 /**
  * Substitutions in this class are required to adapt the JDK encoding for annotations to our
- * modified version of it. See {@code ReflectionMetadataEncoderImpl.encodeAnnotations()} for a
+ * modified version of it. See {@code RuntimeMetadataEncoderImpl.encodeAnnotations()} for a
  * description of the changes and the rationale behind them.
  */
 @TargetClass(AnnotationParser.class)

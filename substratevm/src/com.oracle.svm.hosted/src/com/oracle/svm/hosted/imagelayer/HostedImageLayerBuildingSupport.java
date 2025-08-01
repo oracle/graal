@@ -188,7 +188,6 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                 IncludeOptionsSupport.parseIncludeSelector(layerCreateArg, valueWithOrigin, layerSelectors, option, layerCreatePossibleOptions());
             }
 
-            SubstrateOptions.UseBaseLayerInclusionPolicy.update(values, true);
             SubstrateOptions.ClosedTypeWorld.update(values, false);
             if (SubstrateOptions.imageLayerEnabledHandler != null) {
                 SubstrateOptions.imageLayerEnabledHandler.onOptionEnabled(values);

@@ -100,7 +100,7 @@ public class FactoryMethodSupport {
 
         AnalysisMethod aMethod = aMetaAccess.getUniverse().lookup(factoryMethod);
         if (HostedImageLayerBuildingSupport.buildingSharedLayer()) {
-            aMetaAccess.getUniverse().getBigbang().registerMethodForBaseImage(aMethod);
+            aMetaAccess.getUniverse().getBigbang().tryRegisterMethodForBaseImage(aMethod);
         }
         return aMethod;
     }
