@@ -26,7 +26,9 @@ import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
@@ -42,6 +44,29 @@ public final class Target_java_lang_Module {
      * As of JDK 15+, The native signature for these VM methods changed. These substitutions bypass
      * the native linking of these methods to their 'JVM_*' counterparts.
      */
+
+    /*
+    @Substitution(hasReceiver = true)
+    @TruffleBoundary
+    @JavaType(internalName = "Ljava/lang/Module;") static StaticObject implAddEnableNativeAccess(@JavaType(internalName = "Ljava/lang/Module;") StaticObject self) {
+        // no-op (TODO: add some sort of webimage context filter)
+        return self;
+    }
+
+     */
+
+    @EspressoSubstitutions(type = "Ljava/lang/Module$EnableNativeAccess;")
+    public static final class EnableNativeAccess {
+        @Substitution
+        public static boolean isNativeAccessEnabled(@JavaType(internalName = "Ljava/lang/Module;") StaticObject target) {
+            return true; // TODO
+        }
+
+        @Substitution
+        public static boolean trySetEnableNativeAccess(@JavaType(internalName = "Ljava/lang/Module;") StaticObject target) {
+            return true; // TODO
+        }
+    }
 
     @Substitution
     @TruffleBoundary

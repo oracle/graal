@@ -32,6 +32,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.nio.LongBuffer;
+import java.nio.MappedByteBuffer;
+import java.nio.ShortBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -91,6 +98,24 @@ final class Target_org_graalvm_shadowed_com_google_common_jimfs_JimfsPath {
         return new File(toString());
     }
 }
+
+/*
+@TargetClass(className = "org.graalvm.shadowed.com.google.common.jimfs.JimfsFileChannel")
+final class Target_org_graalvm_shadowed_com_google_common_jimfs_JimfsFileChannel {
+
+
+   // Note: This needs to be a subclass IOException so that BasicImageReader in Espresso fails gracefully.
+   // In jimfs this would be an UnsupportedOperationException, which is not caught in Espresso.
+   // The operation is not supported because MappedByteBuffer is an abstract class inheriting from the sealed class Buffer,
+   // and thus cannot be implemented.
+
+
+    @Substitute
+    public MappedByteBuffer map(FileChannel.MapMode mode, long position, long size) throws IOException {
+        throw new IOException("cannot map jimfs file");
+    }
+}
+*/
 
 @TargetClass(java.io.FileInputStream.class)
 final class Target_java_io_FileInputStream_Web {
@@ -275,7 +300,16 @@ final class Target_java_nio_file_FileSystems_DefaultFileSystemHolder_Web {
     }
 
 }
-
+// TODO: delete again; I thought FileSystems.getDefault() does not always return the same one
+/*
+@TargetClass(className = "sun.nio.fs.DefaultFileSystemProvider")
+final class Target_sun_nio_fs_DefaultFileSystemProvider_Web {
+    @Substitute
+    public static FileSystem theFileSystem() {
+        return WebImageNIOFileSystemProvider.INSTANCE.getFileSystem(null);
+    }
+}
+*/
 @TargetClass(className = "sun.nio.fs.AbstractFileSystemProvider")
 @SuppressWarnings("all")
 final class Target_sun_nio_fs_AbstractFileSystemProvider_Web {

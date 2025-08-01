@@ -60,6 +60,8 @@ import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 import com.oracle.svm.webimage.platform.WebImagePlatform;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 import org.graalvm.nativeimage.ProcessProperties;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 /*
  * Checkstyle: stop method name check

@@ -279,6 +279,7 @@ public interface InternalResource {
             Properties fileList = loadFileList(source);
             for (var e : fileList.entrySet()) {
                 Path resource = Path.of((String) e.getKey());
+                if(resource.getFileName().endsWith(".DS_Store")) continue; // resolves 'could not find metadata file' problem on mac; DO NOT CHECK IN
                 Set<PosixFilePermission> attrs = parseAttrs((String) e.getValue());
                 if (resource.isAbsolute()) {
                     throw new IllegalArgumentException("The file list must contain only relative paths, but the absolute path " + resource + " was given.");
