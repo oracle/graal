@@ -25,9 +25,27 @@
 #include "jvm_windows.h"
 #include "mokapot.h"
 
-JNIEXPORT void * JNICALL JVM_GetThreadInterruptEvent(void) {
-    UNIMPLEMENTED(JVM_GetThreadInterruptEvent);
-    return NULL;
+JNIEXPORT void JNICALL mokapotSetThreadInterrupted(void* interrupt_event_ptr, jboolean interrupted) {
+  HANDLE interrupt_event = (HANDLE) interrupt_event_ptr;
+  if (interrupted) {
+    SetEvent(interrupt_event);
+  } else {
+    ResetEvent(interrupt_event);
+  }
+}
+
+JNIEXPORT void* JNICALL mokapotCreateInterruptedEvent(void) {
+  return CreateEvent(NULL, TRUE, FALSE, NULL);
+}
+
+JNIEXPORT void JNICALL mokapotDestroyInterruptedEvent(void* interrupt_event_ptr) {
+  HANDLE interrupt_event = (HANDLE) interrupt_event_ptr;
+  CloseHandle(interrupt_event);
+}
+
+JNIEXPORT void* JNICALL JVM_GetThreadInterruptEvent(void) {
+  IMPLEMENTED(JVM_GetThreadInterruptEvent);
+  return (*getEnv())->JVM_GetThreadInterruptEvent();
 }
 
 #endif /* defined(_WIN32) */
