@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 
+import com.oracle.svm.core.util.UserError;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -42,6 +43,7 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 public abstract class ConditionalConfigurationRegistry {
     private Feature.BeforeAnalysisAccess beforeAnalysisAccess;
     private SVMHost hostVM;
+    private boolean sealed = false;
     protected AnalysisUniverse universe;
     private final Map<Class<?>, Collection<Runnable>> pendingReachabilityHandlers = new ConcurrentHashMap<>();
     private final Set<ConditionalTask> pendingConditionalTasks = ConcurrentHashMap.newKeySet();
@@ -115,6 +117,24 @@ public abstract class ConditionalConfigurationRegistry {
 
     protected String nullErrorMessage(String elementKind, String accessKind) {
         return "Cannot register null value as " + elementKind + " for " + accessKind + ". Please ensure that all values you register are not null.";
+    }
+
+    public void sealed() {
+        sealed = true;
+    }
+
+    public boolean isSealed() {
+        return sealed;
+    }
+
+    public void abortIfSealed() {
+        /*
+         * The UserError needs a cause argument to print out the stack trace, so users can see
+         * exactly where the exception occurred.
+         */
+        if (sealed) {
+            throw UserError.abort(new IllegalStateException(), "All elements must be registered for runtime access before the analysis has completed.");
+        }
     }
 
     public void setHostVM(SVMHost hostVM) {

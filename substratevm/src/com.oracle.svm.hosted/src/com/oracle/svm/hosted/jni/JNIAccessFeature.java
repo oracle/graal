@@ -165,9 +165,8 @@ public class JNIAccessFeature implements Feature {
         }
     }
 
-    private JNIRuntimeAccessibilitySupportImpl runtimeSupport;
+    private JNIRuntimeAccessibilitySupportImpl runtimeSupport = new JNIRuntimeAccessibilitySupportImpl();
 
-    private boolean sealed = false;
     private final Map<String, JNICallTrampolineMethod> trampolineMethods = new ConcurrentHashMap<>();
     private final Map<ResolvedSignature<ResolvedJavaType>, JNIJavaCallWrapperMethod> javaCallWrapperMethods = new ConcurrentHashMap<>();
     private final Map<ResolvedSignature<ResolvedJavaType>, JNIJavaCallVariantWrapperGroup> callVariantWrappers = new ConcurrentHashMap<>();
@@ -191,10 +190,6 @@ public class JNIAccessFeature implements Feature {
         public static final HostedOptionKey<Boolean> PrintJNIMethods = new HostedOptionKey<>(false);
     }
 
-    private void abortIfSealed() {
-        UserError.guarantee(!sealed, "Classes, methods and fields must be registered for JNI access before the analysis has completed.");
-    }
-
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         // Ensure that KnownOffsets is fully initialized before we access it
@@ -207,7 +202,6 @@ public class JNIAccessFeature implements Feature {
 
         JNIReflectionDictionary.create();
 
-        runtimeSupport = new JNIRuntimeAccessibilitySupportImpl();
         ImageSingletons.add(RuntimeJNIAccessSupport.class, runtimeSupport);
 
         ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
@@ -347,7 +341,7 @@ public class JNIAccessFeature implements Feature {
     }
 
     public JNINativeLinkage makeLinkage(String declaringClass, String name, String descriptor) {
-        UserError.guarantee(!sealed,
+        UserError.guarantee(!runtimeSupport.isSealed(),
                         "All linkages for JNI calls must be created before the analysis has completed.%nOffending class: %s name: %s descriptor: %s",
                         declaringClass, name, descriptor);
 
@@ -539,9 +533,9 @@ public class JNIAccessFeature implements Feature {
     @Override
     @SuppressWarnings("unused")
     public void afterAnalysis(AfterAnalysisAccess access) {
-        sealed = true;
+        runtimeSupport.sealed();
         if (wereElementsAdded()) {
-            abortIfSealed();
+            runtimeSupport.abortIfSealed();
         }
 
         int numClasses = 0;

@@ -52,7 +52,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.core.util.UserError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -283,7 +282,6 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     private final Method disableSerialConstructorChecks;
     private final Method superHasAccessibleConstructor;
     private final Method packageEquals;
-    private boolean sealed;
     private final ProxyRegistry proxyRegistry;
     private List<Runnable> pendingConstructorRegistrations;
 
@@ -305,12 +303,9 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         ImageSingletons.add(SerializationSupport.class, serializationSupport);
     }
 
-    private void abortIfSealed() {
-        UserError.guarantee(!sealed, "Too late to add classes for serialization. Registration must happen in a Feature before the analysis has finished.");
-    }
-
     @Override
     public void registerIncludingAssociatedClasses(ConfigurationCondition condition, Class<?> clazz) {
+        abortIfSealed();
         Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "serialization"));
         registerIncludingAssociatedClasses(condition, clazz, new HashSet<>());
     }
@@ -388,6 +383,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
     @Override
     public void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces) {
+        abortIfSealed();
         registerConditionalConfiguration(condition, (cnd) -> {
             Class<?> proxyClass = proxyRegistry.createProxyClassForSerialization(implementedInterfaces);
             register(cnd, proxyClass);
@@ -569,7 +565,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     public void afterAnalysis() {
-        sealed = true;
+        sealed();
     }
 
     private static void registerForDeserialization(ConfigurationCondition cnd, Class<?> serializationTargetClass) {

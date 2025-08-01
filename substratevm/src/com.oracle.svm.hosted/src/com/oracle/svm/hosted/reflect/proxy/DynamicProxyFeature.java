@@ -95,4 +95,9 @@ public final class DynamicProxyFeature implements InternalFeature {
             throw proxyFallback;
         }
     }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        proxyRegistry.sealed();
+    }
 }
