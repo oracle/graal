@@ -829,7 +829,9 @@ public class SVMHost extends HostVM {
             return false;
         }
 
-        return SubstrateOptions.NeverInline.getValue().values().stream().anyMatch(re -> MethodFilter.parse(re).matches(method));
+        return SubstrateOptions.NeverInline.getValue().values().stream()
+                        .map(MethodFilter::parse)
+                        .anyMatch(filter -> filter.matches(method));
     }
 
     private InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy(MultiMethod.MultiMethodKey multiMethodKey) {
@@ -1108,7 +1110,10 @@ public class SVMHost extends HostVM {
                 return true;
             }
         }
-        return false;
+        if (!SubstrateOptions.NeverInlineTrivial.hasBeenSet()) {
+            return false;
+        }
+        return SubstrateOptions.NeverInlineTrivial.getValue().values().stream().anyMatch(re -> MethodFilter.parse(re).matches(callee));
     }
 
     private static boolean shouldEvaluateNeverInlineTrivialOnlyWith(Class<?>[] onlyWith) {

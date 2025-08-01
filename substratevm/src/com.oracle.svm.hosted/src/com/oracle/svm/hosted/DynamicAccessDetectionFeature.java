@@ -99,7 +99,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         }
     }
 
-    private static final Set<String> neverInlineMethods = Set.of(
+    private static final Set<String> neverInlineTrivialMethods = Set.of(
                     "java.lang.invoke.MethodHandles$Lookup.unreflectGetter",
                     "java.lang.invoke.MethodHandles$Lookup.unreflectSetter",
                     "java.io.ObjectInputStream.readObject",
@@ -363,8 +363,8 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
             }
         });
         if (!classLoaderSupport.dynamicAccessSelectorsEmpty()) {
-            for (String method : neverInlineMethods) {
-                SubstrateOptions.NeverInline.update(hostedValues, method);
+            for (String method : neverInlineTrivialMethods) {
+                SubstrateOptions.NeverInlineTrivial.update(hostedValues, method);
             }
         }
     }
