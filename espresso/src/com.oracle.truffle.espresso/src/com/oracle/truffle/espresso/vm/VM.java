@@ -196,6 +196,9 @@ public final class VM extends NativeEnv {
 
     private final @Pointer TruffleObject getJavaVM;
     private final @Pointer TruffleObject mokapotAttachThread;
+    private final @Pointer TruffleObject mokapotSetThreadInterrupted;
+    private final @Pointer TruffleObject mokapotCreateInterruptedEvent;
+    private final @Pointer TruffleObject mokapotDestroyInterruptedEvent;
     private final @Pointer TruffleObject mokapotCaptureState;
     private final @Pointer TruffleObject getPackageAt;
 
@@ -234,12 +237,38 @@ public final class VM extends NativeEnv {
         }
     }
 
+    public boolean needsThreadInterruptedNotification() {
+        return mokapotSetThreadInterrupted != null;
+    }
+
+    @TruffleBoundary
+    public void notifyThreadInterrupted(StaticObject guestThread, boolean interrupted) {
+        assert needsThreadInterruptedNotification();
+        try {
+            TruffleObject event = (TruffleObject) getMeta().HIDDEN_INTERRUPTED_EVENT.getHiddenObject(guestThread);
+            assert event != null;
+            getUncached().execute(mokapotSetThreadInterrupted, event, interrupted);
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere("setThreadInterrupted failed", e);
+        }
+    }
+
     public Management getManagement() {
         return management;
     }
 
     public @Pointer TruffleObject getJavaLibrary() {
         return javaLibrary;
+    }
+
+    public Object createInterruptedEvent() {
+        try {
+            TruffleObject ptr = (TruffleObject) getUncached().execute(mokapotCreateInterruptedEvent);
+            assert getUncached().isPointer(ptr);
+            return ptr;
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere("mokapotAttachThread failed", e);
+        }
     }
 
     public static final class GlobalFrameIDs {
@@ -328,6 +357,18 @@ public final class VM extends NativeEnv {
             mokapotAttachThread = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "mokapotAttachThread",
                             NativeSignature.create(NativeType.VOID, NativeType.POINTER));
+
+            mokapotSetThreadInterrupted = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                            "mokapotSetThreadInterrupted",
+                            NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.BOOLEAN), false, true);
+
+            mokapotCreateInterruptedEvent = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                            "mokapotCreateInterruptedEvent",
+                            NativeSignature.create(NativeType.POINTER), false, true);
+
+            mokapotDestroyInterruptedEvent = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                            "mokapotDestroyInterruptedEvent",
+                            NativeSignature.create(NativeType.VOID, NativeType.POINTER), false, true);
 
             mokapotCaptureState = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "mokapotCaptureState",
@@ -1578,6 +1619,16 @@ public final class VM extends NativeEnv {
             t.printStackTrace();
         } finally {
             context.unregisterThread(currentThread);
+        }
+        if (mokapotDestroyInterruptedEvent != null) {
+            TruffleObject event = (TruffleObject) getMeta().HIDDEN_INTERRUPTED_EVENT.getHiddenObject(currentThread);
+            if (event != null) {
+                try {
+                    getUncached().execute(mokapotDestroyInterruptedEvent, event);
+                } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                    throw EspressoError.shouldNotReachHere("mokapotDetachThread failed", e);
+                }
+            }
         }
 
         return JNI_OK;
@@ -3523,6 +3574,12 @@ public final class VM extends NativeEnv {
     public static @JavaType(internalName = "Ljdk/internal/vm/ThreadSnapshot;") StaticObject JVM_CreateThreadSnapshot(@SuppressWarnings("unused") @JavaType(Thread.class) StaticObject thread,
                     @Inject Meta meta) {
         throw meta.throwException(meta.java_lang_UnsupportedOperationException);
+    }
+
+    @VmImpl
+    public static @Pointer TruffleObject JVM_GetThreadInterruptEvent(@Inject EspressoContext context, @Inject Meta meta) {
+        StaticObject currentThread = context.getCurrentPlatformThread();
+        return (TruffleObject) meta.HIDDEN_INTERRUPTED_EVENT.getHiddenObject(currentThread);
     }
 
     // endregion threads

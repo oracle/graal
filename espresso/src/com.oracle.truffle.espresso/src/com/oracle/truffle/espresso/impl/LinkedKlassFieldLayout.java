@@ -217,6 +217,7 @@ final class LinkedKlassFieldLayout {
                         }),
                         entry(Types.java_lang_Thread, new HiddenField[]{
                                         new HiddenField(Names.HIDDEN_INTERRUPTED, Types._boolean, VersionRange.lower(13), NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_INTERRUPTED_EVENT, Types.java_lang_Object, EspressoLanguage::needsInterruptedEvent, NO_ADDITIONAL_FLAGS),
                                         new HiddenField(Names.HIDDEN_HOST_THREAD),
                                         new HiddenField(Names.HIDDEN_ESPRESSO_MANAGED, Types._boolean, VersionRange.ALL, NO_ADDITIONAL_FLAGS),
                                         new HiddenField(Names.HIDDEN_TO_NATIVE_LOCK, Types.java_lang_Object, VersionRange.ALL, Constants.ACC_FINAL),

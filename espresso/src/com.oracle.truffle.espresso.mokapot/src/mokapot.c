@@ -103,6 +103,7 @@ JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetc
   #define INIT__(name) \
       functions->name = fetch_by_name(#name, (void*)&name);
   VM_METHOD_LIST(INIT__)
+  PD_VM_METHOD_LIST(INIT__)
   #undef INIT_
 
   // Persist Moka env in TLS.

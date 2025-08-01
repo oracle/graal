@@ -801,6 +801,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         return maxStackTraceDepth;
     }
 
+    @SuppressWarnings("static-method")
+    public boolean needsInterruptedEvent() {
+        return OS.getCurrent() == OS.Windows;
+    }
+
     public final class DisableSingleStepping implements AutoCloseable {
 
         private final boolean steppingDisabled;

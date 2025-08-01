@@ -380,6 +380,13 @@ typedef uint64_t julong;
     V(JVM_IsStaticallyLinked)   \
     V(JVM_CreateThreadSnapshot)
 
+#if defined(_WIN32)
+#define PD_VM_METHOD_LIST(V) \
+    V(JVM_GetThreadInterruptEvent)
+#else
+#define PD_VM_METHOD_LIST(V)
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -397,6 +404,8 @@ JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetRTLD_DEFAULT(void);
 JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetProcessHandle(void);
 
 JNIEXPORT const char* JNICALL getPackageAt(const char* const* packages, int at);
+
+MokapotEnv* getEnv(void);
 
 #ifdef __cplusplus
 } // extern "C"
@@ -1018,6 +1027,8 @@ jobject (*JVM_TakeVirtualThreadListToUnblock)(JNIEnv* env, jclass ignored);
 jboolean(*JVM_IsStaticallyLinked)(void);
 
 jobject(*JVM_CreateThreadSnapshot)(JNIEnv* env, jobject thread);
+
+void * (*JVM_GetThreadInterruptEvent)(void);
 };
 
 struct MokapotEnv_ {
