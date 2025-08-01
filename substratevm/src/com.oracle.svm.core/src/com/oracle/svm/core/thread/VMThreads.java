@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 
 import java.util.EnumSet;
@@ -272,6 +273,8 @@ public abstract class VMThreads implements InitialLayerOnlyImageSingleton {
 
         IsolateThread isolateThread = (IsolateThread) UnsignedUtils.roundUp(memory, alignment);
         unalignedIsolateThreadMemoryTL.set(isolateThread, memory);
+        /* Set to the sentinel value denoting the thread is detached. */
+        nextTL.set(isolateThread, isolateThread);
         return isolateThread;
     }
 
@@ -518,6 +521,59 @@ public abstract class VMThreads implements InitialLayerOnlyImageSingleton {
         PlatformThreads.afterThreadExit(CurrentIsolate.getCurrentThread());
     }
 
+    /**
+     * Waits in native code until the given thread is detached and therefore no longer executing any
+     * Java code. This method may only be used while a teardown is in progress. Otherwise, races
+     * like the following can happen:
+     * <ul>
+     * <li>thread A detaches</li>
+     * <li>thread B attaches and reuses the native memory of {@link IsolateThread} A for its own
+     * {@link IsolateThread} data structure</li>
+     * <li>thread C waits until thread A detaches, sees {@link IsolateThread} B in the thread list,
+     * and assumes that it is thread A</li>
+     * </ul>
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void waitInNativeUntilDetached(IsolateThread thread) {
+        assert thread.isNonNull();
+        assert thread != CurrentIsolate.getCurrentThread();
+        assert isTearingDown();
+        waitInNativeUntilDetached0(thread);
+    }
+
+    @Uninterruptible(reason = "Must not stop while in native.")
+    @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode.")
+    private static void waitInNativeUntilDetached0(IsolateThread thread) {
+        CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
+        waitInNativeUntilDetached1(thread);
+        CFunctionEpilogueNode.cFunctionEpilogue(StatusSupport.STATUS_IN_NATIVE);
+    }
+
+    @Uninterruptible(reason = "Must not stop while in native.")
+    @NeverInline("Provide a return address for the Java frame anchor.")
+    private static void waitInNativeUntilDetached1(IsolateThread detachingThread) {
+        // this method may only access native memory or data in the image heap
+        VMThreads.THREAD_MUTEX.lockNoTransition();
+        try {
+            while (contains(detachingThread)) {
+                VMThreads.THREAD_LIST_CONDITION.blockNoTransition();
+            }
+        } finally {
+            VMThreads.THREAD_MUTEX.unlock();
+        }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static boolean contains(IsolateThread thread) {
+        assert THREAD_MUTEX.isOwner();
+        for (IsolateThread t = VMThreads.firstThread(); t.isNonNull(); t = VMThreads.nextThread(t)) {
+            if (t == thread) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Uninterruptible(reason = "Only uninterruptible code may be executed after VMThreads#threadExit.")
     public void waitUntilDetachedThreadsExitedOnOSLevel() {
         cleanupExitedOsThreads();
@@ -585,8 +641,13 @@ public abstract class VMThreads implements InitialLayerOnlyImageSingleton {
         return false;
     }
 
+    /**
+     * Be careful with this method. Usually, the {@link IsolateThread} will be freed once the thread
+     * detaches (so, its memory can contain garbage or might not be accessible at all).
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean verifyThreadIsAttached(IsolateThread thread) {
+    public static boolean isAttached(IsolateThread thread) {
+        /* For a detached thread, next points to itself. */
         return nextThread(thread) != thread;
     }
 

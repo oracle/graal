@@ -671,14 +671,17 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     private static int tearDownIsolate() {
         try {
             /* Execute interruptible code. */
-            if (!initiateTearDownIsolateInterruptibly()) {
-                return CEntryPointErrors.UNSPECIFIED;
-            }
+            initiateTearDownIsolateInterruptibly();
 
             /* After threadExit(), only uninterruptible code may be executed. */
             RecurringCallbackSupport.suspendCallbackTimer("Execution of arbitrary code is prohibited during the last teardown steps.");
 
-            /* Shut down VM thread. */
+            /* Wait until the reference handler thread detaches (it was already stopped earlier). */
+            if (ReferenceHandler.useDedicatedThread()) {
+                ReferenceHandlerThread.waitUntilDetached();
+            }
+
+            /* Shut down VM operation thread. */
             if (VMOperationControl.useDedicatedVMOperationThread()) {
                 VMOperationControl.shutdownAndDetachVMOperationThread();
             }
@@ -717,15 +720,20 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
     }
 
-    @Uninterruptible(reason = "Tear-down in progress - still safe to execute interruptible Java code.", calleeMustBe = false)
-    private static boolean initiateTearDownIsolateInterruptibly() {
+    @Uninterruptible(reason = "Tear-down in progress - still safe to execute interruptible Java code.", callerMustBe = true, calleeMustBe = false)
+    private static void initiateTearDownIsolateInterruptibly() {
         RuntimeSupport.executeTearDownHooks();
-        if (!PlatformThreads.tearDownOtherThreads()) {
-            return false;
+        PlatformThreads.tearDownOtherThreads();
+        /*
+         * At this point, only the current thread, the VM operation thread, and the reference
+         * handler thread are still running.
+         */
+        if (ReferenceHandler.useDedicatedThread()) {
+            ReferenceHandlerThread.initiateShutdown();
         }
 
         VMThreads.singleton().threadExit();
-        return true;
+        /* After threadExit(), only uninterruptible code may be executed. */
     }
 
     @Snippet(allowMissingProbabilities = true)
@@ -802,7 +810,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static int verifyIsolateThread(IsolateThread thread) {
         VMError.guarantee(CurrentIsolate.getCurrentThread() == thread, "Threads must match for the call below");
-        if (!VMThreads.singleton().verifyIsCurrentThread(thread) || !VMThreads.singleton().verifyThreadIsAttached(thread)) {
+        if (!VMThreads.singleton().verifyIsCurrentThread(thread) || !VMThreads.isAttached(thread)) {
             throw VMError.shouldNotReachHere("A call from native code to Java code provided the wrong JNI environment or the wrong IsolateThread. " +
                             "The JNI environment / IsolateThread is a thread-local data structure and must not be shared between threads.");
 

@@ -24,18 +24,22 @@
  */
 package com.oracle.svm.core.heap;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.lang.ref.Reference;
 
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.ref.CleanerFactory;
 
 public final class ReferenceHandler {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean useDedicatedThread() {
         int automaticReferenceHandling = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling);
         return ReferenceHandlerThread.isSupported() && IsolateArgumentParser.singleton().getBooleanOptionValue(automaticReferenceHandling);
