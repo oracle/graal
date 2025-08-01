@@ -71,6 +71,14 @@ suite = {
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
                 ]
             },
+            {
+                "name": "polybenchmarks",
+                "version": "f7c8e4d31ba21a353494adef2ef0b7da66114143",
+                "dynamic": True,
+                "urls": [
+                    {"url": "https://github.com/graalvm/polybenchmarks.git", "kind": "git"},
+                ]
+            },
         ]
     },
     "distributions": {
