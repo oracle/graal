@@ -59,6 +59,7 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -206,12 +207,14 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
         private final Lookup implLookup = ReflectionUtil.readStaticField(MethodHandles.Lookup.class, "IMPL_LOOKUP");
 
-        private final AnalysisMetaAccess analysisMetaAccess;
-        private final AnalysisUniverse universe;
+        private AnalysisMetaAccess analysisMetaAccess;
 
-        RuntimeForeignAccessSupportImpl(AnalysisMetaAccess analysisMetaAccess, AnalysisUniverse analysisUniverse) {
-            this.analysisMetaAccess = analysisMetaAccess;
-            this.universe = analysisUniverse;
+        RuntimeForeignAccessSupportImpl() {
+        }
+
+        void duringSetup(AnalysisMetaAccess metaAccess, AnalysisUniverse analysisUniverse) {
+            this.analysisMetaAccess = metaAccess;
+            setUniverse(analysisUniverse);
         }
 
         @Override
@@ -220,7 +223,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
             try {
                 LinkerOptions linkerOptions = LinkerOptions.forDowncall(desc, options);
                 SharedDesc sharedDesc = new SharedDesc(desc, linkerOptions);
-                registerConditionalConfiguration(condition, _ -> universe.getBigbang().postTask(_ -> createStub(DowncallStubFactory.INSTANCE, sharedDesc)));
+                runConditionalTask(condition, _ -> createStub(DowncallStubFactory.INSTANCE, sharedDesc));
             } catch (IllegalArgumentException e) {
                 throw UserError.abort(e, "Could not register downcall");
             }
@@ -232,7 +235,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
             try {
                 LinkerOptions linkerOptions = LinkerOptions.forUpcall(desc, options);
                 SharedDesc sharedDesc = new SharedDesc(desc, linkerOptions);
-                registerConditionalConfiguration(condition, _ -> universe.getBigbang().postTask(_ -> createStub(UpcallStubFactory.INSTANCE, sharedDesc)));
+                runConditionalTask(condition, _ -> createStub(UpcallStubFactory.INSTANCE, sharedDesc));
             } catch (IllegalArgumentException e) {
                 throw UserError.abort(e, "Could not register upcall");
             }
@@ -256,11 +259,11 @@ public class ForeignFunctionsFeature implements InternalFeature {
             try {
                 LinkerOptions linkerOptions = LinkerOptions.forUpcall(desc, options);
                 DirectUpcallDesc directUpcallDesc = new DirectUpcallDesc(target, directMethodHandleDesc, desc, linkerOptions);
-                registerConditionalConfiguration(condition, _ -> universe.getBigbang().postTask(_ -> {
-                    RuntimeReflection.register(method);
+                runConditionalTask(condition, _ -> {
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), false, method);
                     createStub(UpcallStubFactory.INSTANCE, directUpcallDesc.toSharedDesc());
                     createStub(DirectUpcallStubFactory.INSTANCE, directUpcallDesc);
-                }));
+                });
             } catch (IllegalArgumentException e) {
                 throw UserError.abort(e, "Could not register direct upcall");
             }
@@ -383,7 +386,8 @@ public class ForeignFunctionsFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess access) {
         abiUtils = AbiUtils.create();
         foreignFunctionsRuntime = new ForeignFunctionsRuntime(abiUtils);
-
+        accessSupport = new RuntimeForeignAccessSupportImpl();
+        ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
         ImageSingletons.add(AbiUtils.class, abiUtils);
         ImageSingletons.add(ForeignSupport.class, foreignFunctionsRuntime);
         ImageSingletons.add(ForeignFunctionsRuntime.class, foreignFunctionsRuntime);
@@ -392,8 +396,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         var access = (FeatureImpl.DuringSetupAccessImpl) a;
-        accessSupport = new RuntimeForeignAccessSupportImpl(access.getMetaAccess(), access.getUniverse());
-        ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
+        accessSupport.duringSetup(access.getMetaAccess(), access.getUniverse());
         if (SubstrateOptions.isSharedArenaSupportEnabled()) {
             ImageSingletons.add(SharedArenaSupport.class, new SharedArenaSupportImpl());
         }
