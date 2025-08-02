@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.truffle.hotspot.aarch64;
 
+import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.SHENANDOAH_LOAD_BARRIER;
 import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.Z_LOAD_BARRIER;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.meta.JavaKind.Object;
@@ -38,10 +39,12 @@ import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.hotspot.aarch64.AArch64HotSpotBackend;
 import jdk.graal.compiler.hotspot.aarch64.AArch64HotSpotMove;
+import jdk.graal.compiler.hotspot.aarch64.shenandoah.AArch64HotSpotShenandoahLoadRefBarrierOp;
 import jdk.graal.compiler.hotspot.aarch64.z.AArch64HotSpotZBarrierSetLIRGenerator;
 import jdk.graal.compiler.hotspot.meta.HotSpotRegistersProvider;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.asm.EntryPointDecorator;
+import jdk.graal.compiler.nodes.gc.shenandoah.ShenandoahLoadRefBarrierNode;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
 import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
 import jdk.graal.compiler.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory;
@@ -56,7 +59,7 @@ public class AArch64TruffleCallBoundaryInstrumentationFactory extends TruffleCal
         return new TruffleEntryPointDecorator(compilerConfig, config, registers) {
             @Override
             public void emitEntryPoint(CompilationResultBuilder crb, boolean beforeFrameSetup) {
-                if (beforeFrameSetup == (config.gc == HotSpotGraalRuntime.HotSpotGC.Z)) {
+                if (beforeFrameSetup == (config.gc == HotSpotGraalRuntime.HotSpotGC.Z || config.gc == HotSpotGraalRuntime.HotSpotGC.Shenandoah)) {
                     // The Z load barrier must be performed after the nmethod entry barrier which is
                     // part of the frame setup. The other GCs don't have a read barrier so it's
                     // safe to do this dispatch before the frame is set up.
@@ -72,15 +75,28 @@ public class AArch64TruffleCallBoundaryInstrumentationFactory extends TruffleCal
                     Label doProlog = new Label();
                     if (config.useCompressedOops) {
                         CompressEncoding encoding = config.getOopEncoding();
-                        masm.ldr(32, spillRegister, AArch64Address.createImmediateAddress(32, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, thisRegister, installedCodeOffset));
+                        AArch64Address address = AArch64Address.createImmediateAddress(32, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, thisRegister, installedCodeOffset);
+                        masm.ldr(32, spillRegister, address);
                         Register base = encoding.hasBase() ? registers.getHeapBaseRegister() : null;
                         AArch64HotSpotMove.UncompressPointer.emitUncompressCode(masm, spillRegister, spillRegister, base, encoding, true);
+                        if (config.gc == HotSpotGraalRuntime.HotSpotGC.Shenandoah) {
+                            Register thread = registers.getThreadRegister();
+                            ForeignCallLinkage callTarget = crb.getForeignCalls().lookupForeignCall(SHENANDOAH_LOAD_BARRIER);
+                            AArch64HotSpotShenandoahLoadRefBarrierOp.emitCode(config, crb, masm, null, thread, spillRegister, spillRegister, address, callTarget,
+                                            ShenandoahLoadRefBarrierNode.ReferenceStrength.STRONG, false);
+                        }
                     } else {
                         AArch64Address address = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, thisRegister, installedCodeOffset);
                         masm.ldr(64, spillRegister, address);
                         if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
                             ForeignCallLinkage callTarget = crb.getForeignCalls().lookupForeignCall(Z_LOAD_BARRIER);
                             AArch64HotSpotZBarrierSetLIRGenerator.emitLoadBarrier(crb, masm, config, spillRegister, callTarget, address, null, false, false);
+                        }
+                        if (config.gc == HotSpotGraalRuntime.HotSpotGC.Shenandoah) {
+                            Register thread = registers.getThreadRegister();
+                            ForeignCallLinkage callTarget = crb.getForeignCalls().lookupForeignCall(SHENANDOAH_LOAD_BARRIER);
+                            AArch64HotSpotShenandoahLoadRefBarrierOp.emitCode(config, crb, masm, null, thread, spillRegister, spillRegister, address, callTarget,
+                                            ShenandoahLoadRefBarrierNode.ReferenceStrength.STRONG, false);
                         }
                     }
                     masm.ldr(64, spillRegister, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, spillRegister, entryPointOffset));
