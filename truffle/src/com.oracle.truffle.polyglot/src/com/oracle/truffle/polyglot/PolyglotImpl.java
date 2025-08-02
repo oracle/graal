@@ -45,11 +45,9 @@ import static com.oracle.truffle.api.source.Source.CONTENT_NONE;
 import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.lang.ref.Reference;
@@ -58,7 +56,6 @@ import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashMap;
@@ -74,6 +71,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.impl.TruffleVersions;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
@@ -127,22 +125,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     static final Object SECRET = new Object();
     static final Object[] EMPTY_ARGS = new Object[0];
 
-    static final String TRUFFLE_VERSION;
-    static {
-        if (Boolean.getBoolean("polyglotimpl.DisableVersionChecks")) {
-            TRUFFLE_VERSION = null;
-        } else {
-            InputStream in = PolyglotImpl.class.getResourceAsStream("/META-INF/graalvm/org.graalvm.truffle/version");
-            if (in == null) {
-                throw new InternalError("Truffle API must have a version file.");
-            }
-            try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-                TRUFFLE_VERSION = r.readLine();
-            } catch (IOException ioe) {
-                throw new InternalError(ioe);
-            }
-        }
-    }
+    /*
+     * Accessed reflectively by TruffleBaseFeature.
+     */
+    static final String TRUFFLE_VERSION = TruffleVersions.TRUFFLE_API_VERSION == null ? null : TruffleVersions.TRUFFLE_API_VERSION.toString();
 
     private final PolyglotSourceDispatch sourceDispatch = new PolyglotSourceDispatch(this);
     private final PolyglotSourceSectionDispatch sourceSectionDispatch = new PolyglotSourceSectionDispatch(this);

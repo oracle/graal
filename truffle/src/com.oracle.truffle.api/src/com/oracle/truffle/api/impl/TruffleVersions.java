@@ -38,33 +38,50 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.runtime;
+package com.oracle.truffle.api.impl;
 
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.home.Version;
 
-import java.io.PrintStream;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
-public final class VersionCheckFeature implements Feature {
+/**
+ * Provides support for verifying compatibility between the Truffle API, Truffle compiler, and
+ * Truffle SubstrateVM feature versions.
+ */
+public final class TruffleVersions {
 
-    @Override
-    public String getURL() {
-        return "https://github.com/oracle/graal/tree/master/truffle/src/com.oracle.truffle.runtime/src/com/oracle/truffle/runtime/VersionCheckFeature.java";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Ensures compatibility between the Truffle optimized runtime and the native-image builder";
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        String result = VersionCheck.checkSVMVersion();
-        if (result != null) {
-            // GR-67329: Exceptions thrown by features do not include their error messages in the
-            // native-image output
-            PrintStream out = System.err;
-            out.printf("[%s] %s", getClass().getName(), result);
-            throw new IllegalStateException(result);
+    public static final int MIN_JDK_VERSION = 21;
+    public static final int MAX_JDK_VERSION = 29;
+    public static final Version MIN_COMPILER_VERSION = Version.create(23, 1, 2);
+    public static final Version NEXT_VERSION_UPDATE = Version.create(29, 1);
+    public static final Version TRUFFLE_API_VERSION;
+    static {
+        if (isVersionCheckEnabled()) {
+            InputStream in = TruffleVersions.class.getResourceAsStream("/META-INF/graalvm/org.graalvm.truffle/version");
+            if (in == null) {
+                throw new InternalError("Truffle API must have a version file.");
+            }
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+                TRUFFLE_API_VERSION = Version.parse(r.readLine());
+            } catch (IOException ioe) {
+                throw new InternalError(ioe);
+            }
+        } else {
+            TRUFFLE_API_VERSION = null;
         }
+    }
+
+    private TruffleVersions() {
+    }
+
+    /**
+     * Determines whether version checks are currently enabled.
+     */
+    public static boolean isVersionCheckEnabled() {
+        return !Boolean.getBoolean("polyglotimpl.DisableVersionChecks");
     }
 }
