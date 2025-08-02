@@ -564,27 +564,19 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             super(compilationId, lir, frameMapBuilder, registerAllocationConfig, callingConvention);
             this.method = method;
 
-            /*
-             * Besides for methods with callee saved registers, we reserve additional stack space
-             * for lazyDeoptStub too. This is necessary because the lazy deopt stub might read
-             * callee-saved register values in the callee of the function to be deoptimized, thus
-             * that stack space must not be overwritten by the lazy deopt stub.
-             */
-            if (method.hasCalleeSavedRegisters() || method.getDeoptStubType() == Deoptimizer.StubType.LazyEntryStub) {
+            if (method.hasCalleeSavedRegisters()) {
                 AMD64CalleeSavedRegisters calleeSavedRegisters = AMD64CalleeSavedRegisters.singleton();
                 FrameMap frameMap = ((FrameMapBuilderTool) frameMapBuilder).getFrameMap();
                 int registerSaveAreaSizeInBytes = calleeSavedRegisters.getSaveAreaSize();
                 StackSlot calleeSaveArea = frameMap.allocateStackMemory(registerSaveAreaSizeInBytes, frameMap.getTarget().wordSize);
 
-                if (method.hasCalleeSavedRegisters()) {
-                    /*
-                     * The offset of the callee save area must be fixed early during image
-                     * generation. It is accessed when compiling methods that have a call with
-                     * callee-saved calling convention. Here we verify that offset computed earlier
-                     * is the same as the offset actually reserved.
-                     */
-                    calleeSavedRegisters.verifySaveAreaOffsetInFrame(calleeSaveArea.getRawOffset());
-                }
+                /*
+                 * The offset of the callee save area must be fixed early during image generation.
+                 * It is accessed when compiling methods that have a call with callee-saved calling
+                 * convention. Here we verify that offset computed earlier is the same as the offset
+                 * actually reserved.
+                 */
+                calleeSavedRegisters.verifySaveAreaOffsetInFrame(calleeSaveArea.getRawOffset());
             }
 
             if (method.canDeoptimize() || method.isDeoptTarget()) {
@@ -1344,9 +1336,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     }
 
     /**
-     * Generates the prologue of a
-     * {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#EagerEntryStub} or
-     * {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#LazyEntryStub} method.
+     * Generates the prologue of a {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#EntryStub}
+     * method.
      */
     protected static class DeoptEntryStubContext extends SubstrateAMD64FrameContext {
         protected DeoptEntryStubContext(SharedMethod method, CallingConvention callingConvention) {
@@ -1357,33 +1348,39 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         public void enter(CompilationResultBuilder tasm) {
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
             RegisterConfig registerConfig = tasm.frameMap.getRegisterConfig();
+            Register frameRegister = registerConfig.getFrameRegister();
             Register gpReturnReg = registerConfig.getReturnRegister(JavaKind.Long);
             Register fpReturnReg = registerConfig.getReturnRegister(JavaKind.Double);
-
             Register firstArgument = ValueUtil.asRegister(callingConvention.getArgument(0));
             assert !firstArgument.equals(gpReturnReg) : "overwriting return register";
+
             /*
              * Since this is the target for all deoptimizations we must mark the start of this
              * routine as an indirect target.
              */
             asm.maybeEmitIndirectTargetMarker();
 
+            /*
+             * Keep the return address slot. The correct return address is written in the stub
+             * itself (read more there). The original return address is stored in the deopt slot.
+             *
+             * Keeping this slot also ensures that the stack pointer is aligned properly.
+             */
+            asm.subq(registerConfig.getFrameRegister(), FrameAccess.returnAddressSize());
+
+            super.enter(tasm);
+
+            /*
+             * Synthesize the parameters for the deopt stub. This needs to be done after enter() to
+             * avoid overwriting register values that it might save to the stack.
+             */
+
             /* Pass the address of the frame to deoptimize as first argument. */
-            asm.movq(firstArgument, registerConfig.getFrameRegister());
+            asm.leaq(firstArgument, new AMD64Address(frameRegister, tasm.frameMap.totalFrameSize()));
 
             /* Copy the original return registers values into the argument registers. */
             asm.movq(ValueUtil.asRegister(callingConvention.getArgument(1)), gpReturnReg);
             asm.movdq(ValueUtil.asRegister(callingConvention.getArgument(2)), fpReturnReg);
-
-            /*
-             * Keep the return address slot. This keeps the stack walkable, which is crucial for the
-             * interruptible phase of lazy deoptimization. (The return address points to the deopt
-             * stub, while the original return address is stored in the deopt slot.)
-             *
-             * This also ensures that the stack pointer is aligned properly.
-             */
-            asm.subq(registerConfig.getFrameRegister(), FrameAccess.returnAddressSize());
-            super.enter(tasm);
         }
     }
 
@@ -1392,7 +1389,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
      * method.
      *
      * Note no special handling is necessary for CFI as this will be a direct call from the
-     * {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#EagerEntryStub}.
+     * {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#EntryStub}.
      */
     protected static class DeoptExitStubContext extends SubstrateAMD64FrameContext {
         protected DeoptExitStubContext(SharedMethod method, CallingConvention callingConvention) {
@@ -1918,7 +1915,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     }
 
     protected FrameContext createFrameContext(SharedMethod method, Deoptimizer.StubType stubType, CallingConvention callingConvention) {
-        if (stubType == Deoptimizer.StubType.EagerEntryStub || stubType == Deoptimizer.StubType.LazyEntryStub) {
+        if (stubType == Deoptimizer.StubType.EntryStub) {
             return new DeoptEntryStubContext(method, callingConvention);
         } else if (stubType == Deoptimizer.StubType.ExitStub) {
             return new DeoptExitStubContext(method, callingConvention);
