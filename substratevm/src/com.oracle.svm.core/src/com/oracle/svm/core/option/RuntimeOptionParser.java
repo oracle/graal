@@ -215,7 +215,7 @@ public final class RuntimeOptionParser implements DuplicableImageSingleton {
             // Checkstyle: Allow raw info or warning printing - end
             String deprecationMessage = descriptor.getDeprecationMessage();
             if (deprecationMessage != null && !deprecationMessage.isEmpty()) {
-                log.string(": ").string(deprecationMessage);
+                log.string(": ").string(deprecationMessage).string(".");
             }
             log.newline();
         }
