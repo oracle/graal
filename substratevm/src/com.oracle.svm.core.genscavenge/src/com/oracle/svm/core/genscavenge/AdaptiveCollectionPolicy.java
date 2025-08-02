@@ -30,7 +30,6 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -45,13 +44,14 @@ import jdk.graal.compiler.word.Word;
  * its base class {@code AdaptiveSizePolicy}. Method and variable names have been kept mostly the
  * same for comparability.
  */
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+2/src/hotspot/share/gc/shared/adaptiveSizePolicy.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+7/src/hotspot/share/gc/shared/adaptiveSizePolicy.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+1/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+8/src/hotspot/share/gc/parallel/psParallelCompact.cpp#L954-L1167")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+5/src/hotspot/share/gc/parallel/psScavenge.cpp#L319-L634")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+26/src/hotspot/share/gc/shared/gc_globals.hpp#L303-L407")
+// GR-68417: adopt "JDK-8338977: Parallel: Improve heap resizing heuristics"
+// @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+2/src/hotspot/share/gc/shared/adaptiveSizePolicy.hpp")
+// @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+7/src/hotspot/share/gc/shared/adaptiveSizePolicy.cpp")
+// @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+1/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.hpp")
+// @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.cpp")
+// @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+8/src/hotspot/share/gc/parallel/psParallelCompact.cpp#L954-L1167")
+// @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+5/src/hotspot/share/gc/parallel/psScavenge.cpp#L319-L634")
+// @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+26/src/hotspot/share/gc/shared/gc_globals.hpp#L303-L407")
 class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
     /*
