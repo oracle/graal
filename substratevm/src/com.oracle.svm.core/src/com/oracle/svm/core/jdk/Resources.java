@@ -132,15 +132,15 @@ public final class Resources implements MultiLayeredImageSingleton {
     private final EconomicMap<RequestedPattern, RuntimeConditionSet> requestedPatterns = ImageHeapMap.createNonLayeredMap();
 
     /**
-     * The string representation of {@link ModuleResourceKey} that are already registered in
-     * previous layers. Since the {@link ModuleResourceKey} contains a reference to a
+     * The string representation of {@link ModuleNameResourceKey} that are already registered in
+     * previous layers. Since the {@link ModuleInstanceResourceKey} contains a reference to a
      * {@link Module}, the {@link Module} name is used instead of the object itself in the string
-     * representation. This works under the assumption that all modules have a different unique name
-     * in Layered Images. More details can be found in
-     * {@link Resources#getModuleResourceKeyString(ModuleResourceKey)}.
+     * representation. This works under the assumption (enforced by
+     * LayeredModuleSingleton.setPackages) that all modules have a different unique name in Layered
+     * Images.
      *
-     * The boolean associated to each {@link ModuleResourceKey} is true if the registered value is
-     * complete and false in the case of a negative query.
+     * The boolean associated to each {@link ModuleNameResourceKey} is true if the registered value
+     * is complete and false in the case of a negative query.
      */
     @Platforms(Platform.HOSTED_ONLY.class) //
     private final Map<String, Boolean> previousLayerResources;
@@ -155,7 +155,65 @@ public final class Resources implements MultiLayeredImageSingleton {
     public record RequestedPattern(String module, String resource) {
     }
 
-    public record ModuleResourceKey(Module module, String resource) {
+    public interface ModuleResourceKey {
+        Module getModule();
+
+        String getModuleName();
+
+        Object module();
+
+        String resource();
+    }
+
+    /**
+     * In standalone images, the module object is the {@link Module} reference itself.
+     */
+    public record ModuleInstanceResourceKey(Module module, String resource) implements ModuleResourceKey {
+        public ModuleInstanceResourceKey {
+            assert !ImageLayerBuildingSupport.buildingImageLayer() : "The ModuleInstanceResourceKey should only be used in standalone images.";
+        }
+
+        @Override
+        public Module getModule() {
+            return module;
+        }
+
+        @Override
+        public String getModuleName() {
+            if (module == null) {
+                return null;
+            }
+            return module.getName();
+        }
+    }
+
+    /**
+     * In Layered Image, only the module name is stored in the record.
+     */
+    public record ModuleNameResourceKey(Object module, String resource) implements ModuleResourceKey {
+        public ModuleNameResourceKey {
+            /*
+             * A null module in the ModuleResourceKey represents any unnamed module, meaning that
+             * only one marker (null) is needed for all of them and that if the module is not null,
+             * it is named (see Resources.createStorageKey). This string representation relies on
+             * the assumption (enforced by LayeredModuleSingleton.setPackages) that a layered image
+             * build cannot contain two modules with the same name, so Module#getName() is
+             * guaranteed to be unique for layered images.
+             */
+            assert module == null || module instanceof Module : "The ModuleNameResourceKey constructor should only be called with a Module as first argument";
+            assert ImageLayerBuildingSupport.buildingImageLayer() : "The ModuleNameResourceKey should only be used in layered images.";
+            module = (module != null) ? ((Module) module).getName() : module;
+        }
+
+        @Override
+        public Module getModule() {
+            throw VMError.shouldNotReachHere("Accessing the module instance of the ModuleResourceKey is not supported in layered images.");
+        }
+
+        @Override
+        public String getModuleName() {
+            return (String) module;
+        }
     }
 
     /**
@@ -251,7 +309,7 @@ public final class Resources implements MultiLayeredImageSingleton {
                 m = currentLayer().hostedToRuntimeModuleMapper.apply(m);
             }
         }
-        return new ModuleResourceKey(m, resourceName);
+        return ImageLayerBuildingSupport.buildingImageLayer() ? new ModuleNameResourceKey(m, resourceName) : new ModuleInstanceResourceKey(m, resourceName);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class) //
@@ -262,9 +320,8 @@ public final class Resources implements MultiLayeredImageSingleton {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static Set<String> getIncludedResourcesModules() {
         return StreamSupport.stream(currentLayer().resources.getKeys().spliterator(), false)
-                        .map(ModuleResourceKey::module)
+                        .map(ModuleResourceKey::getModuleName)
                         .filter(Objects::nonNull)
-                        .map(Module::getName)
                         .collect(Collectors.toSet());
     }
 
@@ -282,21 +339,8 @@ public final class Resources implements MultiLayeredImageSingleton {
         }
     }
 
-    private static String getModuleResourceKeyString(ModuleResourceKey m) {
-        /*
-         * A null module in the ModuleResourceKey represents any unnamed module, meaning that only
-         * one marker is needed for all of them and that if the module is not null, it is named (see
-         * Resources.createStorageKey). This string representation relies on the assumption that a
-         * layered image build cannot contain two modules with the same name, so Module#getName() is
-         * guaranteed to be unique for layered images.
-         */
-        String moduleName = m.module == null ? LayeredModuleSingleton.ALL_UNNAMED_MODULE_NAME : m.module.getName();
-        return moduleName + m.resource;
-    }
-
     private void addResource(ModuleResourceKey key, ConditionalRuntimeValue<ResourceStorageEntryBase> entry) {
-        String moduleResourceKeyString = getModuleResourceKeyString(key);
-        Boolean previousLayerData = previousLayerResources.get(moduleResourceKeyString);
+        Boolean previousLayerData = ImageLayerBuildingSupport.buildingImageLayer() ? previousLayerResources.get(key.toString()) : null;
         if (previousLayerData == null || (!previousLayerData && entry.getValueUnconditionally() != NEGATIVE_QUERY_MARKER)) {
             resources.put(key, entry);
         }
@@ -721,7 +765,7 @@ public final class Resources implements MultiLayeredImageSingleton {
 
         var cursor = resources.getEntries();
         while (cursor.advance()) {
-            resourceKeys.add(getModuleResourceKeyString(cursor.getKey()));
+            resourceKeys.add(cursor.getKey().toString());
             boolean isNegativeQuery = cursor.getValue().getValueUnconditionally() == NEGATIVE_QUERY_MARKER;
             resourceRegistrationStates.add(!isNegativeQuery);
         }

@@ -29,6 +29,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.nodes.LoadImageSingletonNode;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 public abstract class LoadImageSingletonFactory {
@@ -45,6 +47,10 @@ public abstract class LoadImageSingletonFactory {
         Class<?> getLoadType();
 
         SingletonAccessInfo getAccessInfo();
+
+        boolean isApplicationLayerConstant();
+
+        ConstantNode asApplicationLayerConstant(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflectionProvider);
     }
 
     protected abstract LoadImageSingletonData getApplicationLayerOnlyImageSingletonInfo(Class<?> clazz);
