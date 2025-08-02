@@ -31,6 +31,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-57827) Security providers can now be initialized at run time (instead of build time) when using the option `--future-defaults=all` or `--future-defaults=run-time-initialized-jdk`.
   Run-time initialization of security providers helps reduce image heap size by avoiding unnecessary objects inclusion.
 * (GR-48191) Enable registration of lambda classes for reflection and serialization in _reachability-metadata.json_. The format is described [here](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/ReachabilityMetadata.md#reflection).
+* (GR-65773) Integrate Foreign Function and Memory (FFM) API metadata into _reachability-metadata.json_.
 
 ## GraalVM for JDK 24 (Internal Version 24.2.0)
 * (GR-59717) Added `DuringSetupAccess.registerObjectReachabilityHandler` to allow registering a callback that is executed when an object of a specified type is marked as reachable during heap scanning.

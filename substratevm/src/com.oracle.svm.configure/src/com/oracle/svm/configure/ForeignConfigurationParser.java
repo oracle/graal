@@ -47,7 +47,11 @@ public abstract class ForeignConfigurationParser<FD, LO> extends ConfigurationPa
 
     @Override
     public void parseAndRegister(Object json, URI origin) {
-        var topLevel = asMap(json, "first level of document must be a map");
+        var foreignJson = getFromGlobalFile(json, FOREIGN_KEY);
+        if (foreignJson == null) {
+            return;
+        }
+        var topLevel = asMap(foreignJson, "first level of document must be a map");
         checkAttributes(topLevel, "foreign methods categories", List.of(), List.of("downcalls", "upcalls", "directUpcalls"));
 
         var downcalls = asList(topLevel.get("downcalls", List.of()), "downcalls must be an array of function descriptor and linker options");
