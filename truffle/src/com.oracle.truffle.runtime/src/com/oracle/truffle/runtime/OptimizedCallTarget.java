@@ -369,7 +369,14 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     protected OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         assert sourceCallTarget == null || sourceCallTarget.sourceCallTarget == null : "Cannot create a clone of a cloned CallTarget";
         this.sourceCallTarget = sourceCallTarget;
-        this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
+        /*
+         * Don't share the source's speculation log. Different splits of the same call target can be
+         * very different. Moreover, the signatures used for speculations of the deopt cycle
+         * detection algorithm don't include call target ids, so two same compilations of two
+         * different splits of the same call target would produce a false positive if the
+         * speculation log was shared.
+         */
+        this.speculationLog = null;
         this.rootNode = rootNode;
         this.engine = OptimizedTVMCI.getEngineData(rootNode);
         this.resetCompilationProfile();
