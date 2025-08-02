@@ -600,8 +600,10 @@ def gate_python(tasks):
             python_suite.extensions.run_python_unittests(python_svm_image_path)
 
 
-def _svm_truffle_tck(native_image, language_id, language_distribution=None, fail_on_error=True):
+def _svm_truffle_tck(native_image, language_id, language_distribution=None, fail_on_error=True, additional_options=None):
     assert language_distribution, 'Language_distribution must be given'
+    if additional_options is None:
+        additional_options = []
     dists = [
         mx.distribution('substratevm:SVM_TRUFFLE_TCK'),
         language_distribution
@@ -631,7 +633,7 @@ def _svm_truffle_tck(native_image, language_id, language_distribution=None, fail
             f'-H:TruffleTCKPermissionsReportFile={report_file}',
             f'-H:Path={svmbuild}',
             '--add-exports=org.graalvm.truffle.runtime/com.oracle.truffle.runtime=ALL-UNNAMED'
-        ]) + [
+        ] + additional_options) + [
             'com.oracle.svm.truffle.tck.MockMain'
         ]
         if excludes:
@@ -718,7 +720,11 @@ def gate_truffle_native_tck_wasm(tasks):
                 mx.abort("Cannot resolve the `wasm:WASM` language distribution. To resolve this, import the wasm suite using `--dynamicimports /wasm`.")
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                _svm_truffle_tck(native_image, 'wasm', wasm_language)
+                _svm_truffle_tck(native_image, 'wasm', wasm_language,
+                                 # native-image sets -Djdk.internal.lambda.disableEagerInitialization=true by default,
+                                 # which breaks Vector API's isNonCapturingLambda assertion. We override this property
+                                 # for the GraalWasm Truffle Native TCK.
+                                 additional_options=['-Djdk.internal.lambda.disableEagerInitialization=false'])
 
 def gate_maven_downloader(tasks):
     with Task('Maven Downloader prepare maven repo', tasks, tags=[VmGateTasks.maven_downloader]) as t:
