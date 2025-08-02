@@ -59,6 +59,7 @@ import com.oracle.svm.core.collections.RingBuffer;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizedFrame.RelockObjectData;
 import com.oracle.svm.core.deopt.DeoptimizedFrame.VirtualFrame;
+import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -87,6 +88,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.util.TypeConversion;
+import jdk.graal.compiler.lir.asm.FrameContext;
 import jdk.graal.compiler.nodes.UnreachableNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.word.BarrieredAccess;
@@ -100,106 +102,100 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
 /**
  * Performs deoptimization. The method to deoptimize (= the source method) is either a specialized
- * runtime compiled method or an image compiled test method with the {@link Specialize} annotation.
- * The target method is always an image compiled method.
+ * runtime compiled method or an AOT-compiled test method with the {@link Specialize} annotation.
+ * The target method is always an AOT-compiled method.
  * <p>
- * Deoptimization is not limited to a single method. It can be done for all deoptimizable methods in
+ * Deoptimization is not limited to a single method. It can be done for all deoptimizable methods on
  * the call stack. A method is deoptimizable if {@link FrameInfoQueryResult deoptimization
  * information} is available.
  * <p>
  * Deoptimization can happen eagerly or lazily. For eager deoptimization, a {@link DeoptimizedFrame}
- * is constructed immediately and pinned, whereas for lazy deoptimization, the
- * {@link DeoptimizedFrame} is not constructed until immediately before it is installed (and
- * therefore does not need to be pinned).
+ * is constructed immediately and pinned and only installed on the stack later, whereas for lazy
+ * deoptimization, the {@link DeoptimizedFrame} is not constructed until immediately before it is
+ * installed. Eager deoptimization enables immediately freeing the code metadata needed for
+ * constructing the {@link DeoptimizedFrame}, while lazy deoptimization requires keeping it, but
+ * does not need the {@link DeoptimizedFrame} to stay allocated and pinned for potentially lengthy
+ * periods of time, which is typically preferable especially when many frames might be deoptimized
+ * at once. The stack slot at SP[0] of a deoptimizable method is reserved for deoptimization, and
+ * can be used freely by lazy and eager deoptimization.
  * <p>
- * The stack slot at SP[0] is reserved for deoptimization, and can be used freely by lazy and eager
- * deoptimization.
+ * With both eager and lazy deoptimization, returns to a deoptimized method are intercepted to enter
+ * the deopt stub. Alternatively, {@link ExceptionUnwind} can "far-return" directly to the deopt
+ * stub for dispatching an exception while unwinding the stack, in which case the exception object
+ * will be passed as if it was the return value from the callee.
  * <p>
- * Eager Deoptimization is done in two steps:
+ * Eager deoptimization is done in two steps:
  * <ol>
- * <li>A call to {@link #deoptimizeInRange} walks the stack and for each method to deoptimize it
- * builds a {@link DeoptimizedFrame}. This handle contains all constants and materialized objects
- * which are needed to build the deoptimization target frames. It is stored at SP[0] (directly above
- * the return address). The return address (to the deoptimized method) is replaced by a pointer to
- * {@link #eagerDeoptStub}.
- *
- * <pre>
- *    top of stack (lowest address)
- *
- *    | ...                                   |
- *    +---------------------------------------+-------------
- *    |                                       | frame of the
- *    |---------------------------------------| callee of
- *    | return address (points to deoptStub)  | deopt method
- *    +---------------------------------------+-------------
- *    | pointer to DeoptimizedFrame           | frame of the
- *    |---------------------------------------| deopt method
- *    | outgoing stack parameters             |
- *    |---------------------------------------|
- *    |                                       |
- *    +---------------------------------------+-------------
- *    | ...                                   |
- * </pre>
+ * <li>A call to {@link #deoptimizeInRange} walks the stack, and for each method to deoptimize, it
+ * builds a {@link DeoptimizedFrame}. This object contains all constants and materialized objects
+ * which are needed to build the deoptimization target frames. A reference to it is stored at SP[0]
+ * (directly above the callee's return address). The callee's return address (to the deoptimized
+ * method) is replaced by {@link #eagerDeoptStub}. (Find a diagram of the stack further below.)
  * <p>
  * From now on, the frame of the deoptimized method is no longer valid and the GC will ignore it.
- * Instead the GC will also visit the pointer to the {@link DeoptimizedFrame}. In other words: the
- * frame of the deoptimized method is "replaced" by a single entry, a pointer to
+ * Instead, the GC will also visit the reference to the {@link DeoptimizedFrame}. In other words:
+ * the frame of the deoptimized method is "replaced" by a single entry, a reference to
  * {@link DeoptimizedFrame}, which contains all objects which are needed by the deoptimization
  * targets.
  * <p>
  * There is one exception: outgoing primitive parameters of a deoptimized method may still be
- * accessed by a called method, even after the first step of eager deoptimization is done. Note that
- * this does not apply to outgoing object parameters as those are always copied to registers at the
+ * accessed by the callee, even after the first step of eager deoptimization is done. Note that this
+ * does not apply to outgoing object parameters as those are always copied to registers at the
  * beginning of the called method to avoid problems with the GC.</li>
- * <p>
- * <li>Now when a called method will return to a deoptimized method, the eager deopt stub will be
- * called instead. It reads the {@link DeoptimizedFrame} handle and replaces the deoptimized
- * method's frame with the frame(s) of the deopt target method(s). Note that the eager deopt stub is
+ * <li>Now when a callee would return to a deoptimized method, the eager deopt stub will be entered
+ * instead. It reads the {@link DeoptimizedFrame} reference and replaces the deoptimized method's
+ * frame with the frame(s) of the deopt target method(s). Note that the eager deopt stub is
  * completely allocation free.</li>
  * </ol>
  *
  * <p>
- * Lazy Deoptimization is also done in two steps:
+ * Lazy deoptimization is also done in two steps:
  * <ol>
- * <li>During the first step, we patch the frame's return address to the return address of a lazy
- * deopt stub. Depending on whether the method being deoptimized returns an object or a primitive,
- * this return address either points to {@link #lazyDeoptStubObjectReturn} or
- * {@link #lazyDeoptStubPrimitiveReturn}. The stack slot that is used to store the
- * {@link DeoptimizedFrame} in eager deoptimization is instead used to store the original return
- * address, which points somewhere into the deopt source method.
+ * <li>During the first step, we only patch the callee's return address to point to a lazy deopt
+ * stub. Depending on whether the method being deoptimized returns an object or a primitive value,
+ * that stub is either {@link #lazyDeoptStubObjectReturn} or {@link #lazyDeoptStubPrimitiveReturn}.
+ * The reserved stack slot that is used to store the {@link DeoptimizedFrame} in eager
+ * deoptimization is instead used to store the original return address, which points somewhere into
+ * the deopt source method.
+ * <p>
+ * Stack walks and GC will now visit this frame that is pending lazy deoptimization as if it was a
+ * normal stack frame, with the only difference being that the original return address is taken from
+ * the reserved stack slot.</li>
+ * <li>When a callee returns to the method pending lazy deoptimization, it instead enters one of the
+ * lazy deopt stubs, which in turn invokes {@link #lazyDeoptStubCore}. This method performs all the
+ * necessary operations to construct a {@link DeoptimizedFrame} just like the first step of eager
+ * deoptimization. The process of constructing the frame is interruptible and involves allocation,
+ * therefore if {@code gpReturnValue} contains an object reference, it must be explicitly turned
+ * into an object reference so that the GC is aware of said reference.
+ * <p>
+ * The frame is then copied onto the stack in {@link #rewriteStackStub}.</li>
+ * </ol>
+ * The stack at the time of entering a deopt stub looks as follows. Because while returning, the
+ * stack pointer has already moved above potential callee-saved arguments and the return address,
+ * they must be considered stale because they could have been overwritten by an interrupt or signal
+ * handler (despite a safe zone guaranteed by the ABI which could not be large enough).
  *
  * <pre>
  *    top of stack (lowest address)
  *
- *    | ...                                       |
- *    +-------------------------------------------+-------------
- *    |                                           | frame of the
- *    |-------------------------------------------| callee of
- *    | return address (points to lazyDeoptStub)  | deopt method
- *    +-------------------------------------------+-------------
- *    | original return address                   | frame of the
- *    |-------------------------------------------| deopt method
- *    | outgoing stack parameters                 |
- *    |-------------------------------------------|
- *    |                                           |
- *    +-------------------------------------------+-------------
- *    | ...                                       |
+ *    :                  ...                  :
+ *    +---------------------------------------+-------------
+ *    | ...                                   |
+ *    |---------------------------------------| frame of the callee of deopt'ed method,
+ *    | potential callee-saved arguments      |  stale on deopt stub entry
+ *    |---------------------------------------|
+ *    | return address (to deopt stub)        |
+ *    +---------------------------------------+-------------  <== stack pointer on deopt stub entry
+ *    | deopt reserved slot                   |
+ *    |  eager deopt: DeoptimizedFrame object |
+ *    |  lazy deopt:  original return address |
+ *    |---------------------------------------| frame of the deopt'ed method
+ *    | outgoing stack parameters             |
+ *    |---------------------------------------|
+ *    | ...                                   |
+ *    +---------------------------------------+-------------
+ *    :                  ...                  :
  * </pre>
- * 
- * Stack walks and GC will now visit this frame that is pending lazy deoptimization as if it was a
- * normal stack frame, with the only difference being that the original return address is stored in
- * a different slot.</li>
- * <li>
- * <p>
- * When a method returns to this method pending lazy deoptimization, it instead calls one of the
- * lazy deopt stubs, which leads to {@link #lazyDeoptStubCore}. This method performs all the
- * necessary operations to construct a {@link DeoptimizedFrame} just like the first step of eager
- * deoptimization. The process of constructing the frame is interruptible and involves allocation,
- * therefore if {@code gpReturnValue} contains an object reference, it must be turned into an object
- * reference so that the GC is aware of said reference.
- * <p>
- * The frame is then copied onto the stack in {@link #rewriteStackStub}.</li>
- * </ol>
  */
 public final class Deoptimizer {
     private static final int MAX_DEOPTIMIZATION_EVENT_PRINT_LENGTH = 1000;
@@ -284,8 +280,8 @@ public final class Deoptimizer {
     }
 
     /**
-     * If true, the GC is called during deoptimization. The deoptimizer allocates some objects (in
-     * the first step), so GC must work inside the deoptimizer.
+     * If true, the GC is called during deoptimization. The deoptimizer allocates some objects,
+     * which requires GC to work. This is only set to true for testing.
      */
     public static boolean testGCinDeoptimizer = false;
 
@@ -664,7 +660,7 @@ public final class Deoptimizer {
 
     /**
      * Invalidates the {@link InstalledCode} of the method of the given frame. The method must be a
-     * runtime compiled method, since there is no {@link InstalledCode} for native image methods.
+     * runtime compiled method, since there is no {@link InstalledCode} for AOT-compiled methods.
      */
     public static void invalidateMethodOfFrame(IsolateThread thread, Pointer sp, SpeculationReason speculation) {
         VMError.guarantee(thread == CurrentIsolate.getCurrentThread());
@@ -754,15 +750,7 @@ public final class Deoptimizer {
         /**
          * Custom prologue: save all of the architecture's return registers onto the stack.
          */
-        EagerEntryStub,
-
-        /**
-         * Custom prologue: same custom Prologue as the EagerEntryStub, but we also reserve some
-         * additional memory on the stack when this stub is entered, because the lazyDeoptStub might
-         * need to access callee-saved values in the frame of the callee of the method to be
-         * deoptimized.
-         */
-        LazyEntryStub,
+        EntryStub,
 
         /**
          * Custom prologue: set the stack pointer to the first method parameter.
@@ -812,9 +800,49 @@ public final class Deoptimizer {
         return pointer != Word.nullPointer();
     }
 
-    @DeoptStub(stubType = StubType.LazyEntryStub)
+    /**
+     * Entry point for the lazy deopt stub. The parameters are computed with instructions generated
+     * in this method's prologue by a backend-specific {@link FrameContext}. See the class-level
+     * documentation for more context and a diagram of the stack.
+     * <p>
+     * This method uses {@link StubCallingConvention} for when the callee (the return of which is
+     * intercepted) also uses stub calling convention. In that case, the callee (rather than the
+     * caller) has initially saved the values of registers, and these values are required for
+     * constructing the deopt frame. The values have already been restored to their registers before
+     * the return to this stub, and using stub calling convention here saves them again to the same
+     * expected locations.
+     * <p>
+     * Usually, the saved register values would still be present below the stack pointer, but could
+     * also have been overwritten by an interrupt or signal handler. The ABI might guarantee a safe
+     * zone below the stack pointer to prevent this, but such zones are typically also not large
+     * enough to fit all saved registers, especially with vector registers.
+     * <p>
+     * If the callee does not use stub calling convention, this method unnecessarily saves
+     * registers, but it avoids having additional stubs and selecting between them and should not
+     * have significant impact.
+     * <p>
+     *
+     * @param originalStackPointer the original stack pointer of the deoptimized method (points to
+     *            the {@link DeoptimizedFrame} object).
+     * @param gpReturnValue This is the value which was stored in the general purpose return
+     *            register when the deopt stub was reached. It must be restored to the register
+     *            before completion of the stub.
+     * @param fpReturnValue This is the value which was stored in the floating point return register
+     *            when the deopt stub was reached. It must be restored to the register before
+     *            completion of the stub.
+     */
+    @StubCallingConvention
+    @DeoptStub(stubType = StubType.EntryStub)
     @Uninterruptible(reason = "Rewriting stack; gpReturnValue holds object reference.")
     public static UnsignedWord lazyDeoptStubObjectReturn(Pointer originalStackPointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
+        /*
+         * Establish the correct return address for this stub to make the stack walkable. The return
+         * address could have been overwritten by an interrupt or signal handler if the ABI doesn't
+         * guarantee a safe zone below the stack pointer.
+         */
+        CodePointer returnAddress = DeoptimizationSupport.getLazyDeoptStubObjectReturnPointer();
+        FrameAccess.singleton().writeReturnAddress(CurrentIsolate.getCurrentThread(), originalStackPointer, returnAddress);
+
         try {
             assert PointerUtils.isAMultiple(KnownIntrinsics.readStackPointer(), Word.unsigned(ConfigurationValues.getTarget().stackAlignment));
             assert Options.LazyDeoptimization.getValue();
@@ -837,9 +865,15 @@ public final class Deoptimizer {
         }
     }
 
-    @DeoptStub(stubType = StubType.LazyEntryStub)
+    /** See {@link #lazyDeoptStubObjectReturn}. */
+    @StubCallingConvention
+    @DeoptStub(stubType = StubType.EntryStub)
     @Uninterruptible(reason = "Rewriting stack.")
     public static UnsignedWord lazyDeoptStubPrimitiveReturn(Pointer originalStackPointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
+        /* Establish the correct return address for this stub to make the stack walkable. */
+        CodePointer returnAddress = DeoptimizationSupport.getLazyDeoptStubPrimitiveReturnPointer();
+        FrameAccess.singleton().writeReturnAddress(CurrentIsolate.getCurrentThread(), originalStackPointer, returnAddress);
+
         /*
          * Note: when we dispatch an exception, we enter lazyDeoptStubObjectReturn instead, since
          * that involves returning an exception object.
@@ -953,43 +987,18 @@ public final class Deoptimizer {
     }
 
     /**
-     * Performs the second step of deoptimization: the actual rewriting of a deoptimized method's
-     * frame.
-     * <p>
-     * The pointer to the deopt stub code was installed in the return address slot by
-     * {@link #deoptimizeInRange}. Therefore the stub is "called" when a method wants to return to a
-     * deoptimized method.
-     * <p>
-     * When {@link #eagerDeoptStub} is "called", the stack looks like this:
-     *
-     * <pre>
-     *    :                                :   highest stack address
-     *    |                                |
-     *    |                                |   frame of the
-     *    +--------------------------------+   deoptimized method
-     *    | pointer to DeoptimizedFrame    |
-     *    +--------------------------------+--------- no return address between the frames!
-     *    |                                |
-     *    |                                |   frame of
-     *    |                                |   {@link #eagerDeoptStub}
-     *    :     ...                        :
-     * </pre>
-     *
-     * The instructions to compute the parameters must be generated in this method's prologue by a
-     * backend-specific FrameContext class.
-     *
-     * @param originalStackPointer the original stack pointer of the deoptimized method (points to
-     *            the {@link DeoptimizedFrame} object).
-     * @param gpReturnValue This is the value which was stored in the general purpose return
-     *            register when the deopt stub was reached. It must be restored to the register
-     *            before completion of the stub.
-     * @param fpReturnValue This is the value which was stored in the floating point return register
-     *            when the deopt stub was reached. It must be restored to the register before
-     *            completion of the stub.
+     * See {@link #lazyDeoptStubObjectReturn} for context, but note that here, the deoptimized frame
+     * has already been prepared and only needs to be written to the stack. For the same reason,
+     * this stub is fully uninterruptible because no allocations are needed, and does not use
+     * {@link StubCallingConvention}, because access to any callee-saved registers is not required.
      */
-    @DeoptStub(stubType = StubType.EagerEntryStub)
+    @DeoptStub(stubType = StubType.EntryStub)
     @Uninterruptible(reason = "Frame holds Objects in unmanaged storage.")
     public static UnsignedWord eagerDeoptStub(Pointer originalStackPointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
+        /* Establish the correct return address for this stub to make the stack walkable. */
+        CodePointer returnAddress = DeoptimizationSupport.getEagerDeoptStubPointer();
+        FrameAccess.singleton().writeReturnAddress(CurrentIsolate.getCurrentThread(), originalStackPointer, returnAddress);
+
         try {
             assert PointerUtils.isAMultiple(KnownIntrinsics.readStackPointer(), Word.unsigned(ConfigurationValues.getTarget().stackAlignment));
             VMError.guarantee(VMThreads.StatusSupport.isStatusJava(), "Deopt stub execution must not be visible to other threads.");
@@ -1105,9 +1114,6 @@ public final class Deoptimizer {
         installLazyDeoptStubReturnAddress(targetInfo.getDeoptReturnValueIsObject(), deoptState.sourceSp, deoptState.targetThread);
     }
 
-    /**
-     * Deoptimizes a source frame eagerly.
-     */
     private DeoptimizedFrame deoptSourceFrameEagerly(CodePointer pc, boolean ignoreNonDeoptimizable) {
         if (!canBeDeoptimized(sourceChunk.getFrameInfo())) {
             if (ignoreNonDeoptimizable) {
@@ -1344,7 +1350,7 @@ public final class Deoptimizer {
     }
 
     /**
-     * Constructs the frame entries for the deopimization target method.
+     * Constructs the frame entries for the deoptimization target method.
      *
      * @param targetInfo The bytecode frame (+ some other info) of the target.
      * @param sourceFrame The bytecode frame of the source.
