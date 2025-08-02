@@ -36,6 +36,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.jdwp.impl.BreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.impl.ClassPrepareRequest;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
@@ -161,13 +162,13 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     @TruffleBoundary
-    public boolean onFieldModification(FieldRef field, Object receiver, Object value) {
+    public boolean onFieldModification(FieldRef field, Node node, Object receiver, Object value) {
         boolean active = false;
         for (FieldBreakpoint info : field.getFieldBreakpointInfos()) {
             if (info.isModificationBreakpoint()) {
                 // OK, tell the Debug API to suspend the thread now
                 debuggerController.prepareFieldBreakpoint(new FieldBreakpointEvent((FieldBreakpointInfo) info, receiver, value));
-                debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
+                debuggerController.suspendHere(node);
                 active = true;
             }
         }
@@ -176,13 +177,13 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     @TruffleBoundary
-    public boolean onFieldAccess(FieldRef field, Object receiver) {
+    public boolean onFieldAccess(FieldRef field, Node node, Object receiver) {
         boolean active = false;
         for (FieldBreakpoint info : field.getFieldBreakpointInfos()) {
             if (info.isAccessBreakpoint()) {
                 // OK, tell the Debug API to suspend the thread now
                 debuggerController.prepareFieldBreakpoint(new FieldBreakpointEvent((FieldBreakpointInfo) info, receiver));
-                debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
+                debuggerController.suspendHere(node);
                 active = true;
             }
         }
@@ -191,7 +192,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     @TruffleBoundary
-    public boolean onMethodEntry(MethodRef method, Object scope) {
+    public boolean onMethodEntry(MethodRef method, Node node, Object scope) {
         boolean active = false;
         // collect variable information from scope
         List<MethodVariable> variables = new ArrayList<>(1);
@@ -216,7 +217,7 @@ public final class VMEventListenerImpl implements VMEventListener {
             if (hook.onMethodEnter(method, variables.toArray(new MethodVariable[variables.size()]))) {
                 // OK, tell the Debug API to suspend the thread now
                 debuggerController.prepareMethodBreakpoint(new MethodBreakpointEvent((MethodBreakpointInfo) hook, null));
-                debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
+                debuggerController.suspendHere(node);
                 active = true;
 
                 switch (hook.getKind()) {
@@ -236,13 +237,13 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     @TruffleBoundary
-    public boolean onMethodReturn(MethodRef method, Object returnValue) {
+    public boolean onMethodReturn(MethodRef method, Node node, Object returnValue) {
         boolean active = false;
         for (MethodHook hook : method.getMethodHooks()) {
             if (hook.onMethodExit(method, returnValue)) {
                 // OK, tell the Debug API to suspend the thread now
                 debuggerController.prepareMethodBreakpoint(new MethodBreakpointEvent((MethodBreakpointInfo) hook, returnValue));
-                debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
+                debuggerController.suspendHere(node);
                 active = true;
 
                 switch (hook.getKind()) {
