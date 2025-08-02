@@ -34,6 +34,7 @@ import java.util.function.Supplier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -46,6 +47,11 @@ public class BundleSerializationUtils {
      * bundles can be resolved this way, except from the {@link java.text.BreakIterator}. In the
      * future, it can be extended with a fallback to user defined bundles by using the handleKeySet
      * and handleGetObject methods.
+     * <p>
+     * {@link BundleContentSubstitutedLocalizationSupport} depends on the ability the extract the
+     * contents of resource bundles, and we currently do so via the lookup field. If we failed to
+     * extract the content, we would get a runtime crash when trying to look up the content from our
+     * substitutions.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("unchecked")
@@ -63,7 +69,18 @@ public class BundleSerializationUtils {
                 clazz = clazz.getSuperclass();
             }
         }
-        throw VMError.shouldNotReachHere("Failed to extract content for " + bundle + " of type " + bundle.getClass());
+        /*
+         * The list of tested classes could be collected above, but we only need it in case of an
+         * unlikely failure, therefore we do not want to pollute the fast path with it.
+         */
+        var testedClasses = new ArrayList<Class<?>>();
+        for (Class<?> testedClass = bundle.getClass().getSuperclass(); testedClass != null && ResourceBundle.class.isAssignableFrom(testedClass); testedClass = testedClass.getSuperclass()) {
+            testedClasses.add(testedClass);
+        }
+        /* See the method's javadoc for more details. */
+        throw VMError.shouldNotReachHere("Failed to extract the content for " + bundle + " of type " + bundle.getClass() +
+                        ". Did not find the `lookup` field in any of the super classes of " + bundle.getClass() + " " + testedClasses +
+                        ". This most likely means that the internal implementation of resource bundles in JDK has changed and is now incompatible with our resource bundle handling.");
     }
 
     public record SerializedContent(String text, int[] indices) {
