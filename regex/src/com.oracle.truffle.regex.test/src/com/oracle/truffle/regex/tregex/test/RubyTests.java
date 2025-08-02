@@ -422,9 +422,9 @@ public class RubyTests extends RegexTestBase {
 
     @Test
     public void recursiveSubexpressionCalls() {
-        expectUnsupported("(a\\g<1>?)(b\\g<2>?)", "");
-        expectUnsupported("(?<a>a\\g<b>?)(?<b>b\\g<a>?)", "");
-        expectUnsupported("a\\g<0>?", "");
+        expectUnsupported("(a\\g<1>?)(b\\g<2>?)");
+        expectUnsupported("(?<a>a\\g<b>?)(?<b>b\\g<a>?)");
+        expectUnsupported("a\\g<0>?");
     }
 
     @Test
@@ -540,7 +540,7 @@ public class RubyTests extends RegexTestBase {
 
     @Test
     public void gr41489() {
-        expectUnsupported("\\((?>[^)(]+|\\g<0>)*\\)", "");
+        expectUnsupported("\\((?>[^)(]+|\\g<0>)*\\)");
     }
 
     @Test

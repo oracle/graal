@@ -408,8 +408,9 @@ public abstract class NFATraversalRegexASTVisitor {
      * @return the quantifier index or -1 if no guards are needed.
      */
     protected int needsMaintainGuard() {
-        Group parentQuant = root.getParentQuantifier();
-        Group otherParent = cur.getParentQuantifier();
+        assert cur instanceof Term;
+        Group parentQuant = root.getQuantifiedParentGroup();
+        Group otherParent = ((Term) cur).getQuantifiedParentGroup();
         if (parentQuant != null && parentQuant.equals(otherParent)) {
             for (long guard : transitionGuardsCanonicalized) {
                 if (TransitionGuard.isQuantifierOp(guard)) {

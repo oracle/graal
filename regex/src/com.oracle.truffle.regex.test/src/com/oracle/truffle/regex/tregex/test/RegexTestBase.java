@@ -260,8 +260,8 @@ public abstract class RegexTestBase {
         // print(pattern, input, fromIndex, result, groupCount, captureGroupBoundsAndLastGroup);
     }
 
-    void expectUnsupported(String pattern, String flags) {
-        expectUnsupported(pattern, flags, Collections.emptyMap());
+    void expectUnsupported(String pattern) {
+        expectUnsupported(pattern, "", Collections.emptyMap());
     }
 
     void expectUnsupported(String pattern, String flags, Map<String, String> options) {
