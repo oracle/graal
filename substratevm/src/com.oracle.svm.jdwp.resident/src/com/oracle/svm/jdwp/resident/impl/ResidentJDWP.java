@@ -45,7 +45,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
@@ -398,7 +397,9 @@ public final class ResidentJDWP implements JDWP {
             mutex.unlock();
         }
         ids = Arrays.copyOf(ids, i);
-        Log.log().string("getAllThreadIds(): " + Arrays.toString(ids)).newline();
+        if (LOGGER.isLoggable()) {
+            LOGGER.log("getAllThreadIds(): " + Arrays.toString(ids));
+        }
         return ids;
     }
 
