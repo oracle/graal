@@ -115,7 +115,9 @@ def javavm_build_args():
         result += mx_sdk_vm_impl.svm_experimental_options(['-H:+DumpThreadStacksOnSignal', '-H:+CopyLanguageResources'])
     if mx_sdk_vm_ng.get_bootstrap_graalvm_version() >= mx.VersionSpec("25.0"):
         result.append('-H:-IncludeLanguageResources')
-    if mx.is_linux() and mx.get_os_variant() != "musl":
+    if mx.is_linux() and (mx.get_os_variant() != "musl" and mx_subst.path_substitutions.substitute("<multitarget_libc_selection>") == "glibc"):
+        # Currently only enabled if the native image build runs on glibc and also targets glibc.
+        # In practice it's enough that host and target are matching, but we do not get this info out of mx.
         result += [
             '-Dpolyglot.image-build-time.PreinitializeContexts=java',
             '-Dpolyglot.image-build-time.PreinitializeContextsWithNative=true',
