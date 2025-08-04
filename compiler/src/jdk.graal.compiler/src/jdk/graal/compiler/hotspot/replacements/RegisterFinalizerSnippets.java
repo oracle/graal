@@ -78,7 +78,7 @@ public class RegisterFinalizerSnippets implements Snippets {
         public void lower(RegisterFinalizerNode node, LoweringTool tool) {
             assert !(node instanceof LoweredRegisterFinalizerNode) : Assertions.errorMessage(node);
             StructuredGraph graph = node.graph();
-            Arguments args = new Arguments(registerFinalizerSnippet, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(registerFinalizerSnippet, graph, tool.getLoweringStage());
             args.add("thisObj", node.getValue());
             SnippetTemplate template = template(tool, node, args);
             template.instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);

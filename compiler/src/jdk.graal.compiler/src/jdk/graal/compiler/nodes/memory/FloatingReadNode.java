@@ -30,9 +30,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.word.LocationIdentity;
 
-import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.memory.BarrierType;
-import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
@@ -40,7 +38,6 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.lir.gen.ReadBarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GuardedValueNode;
@@ -54,7 +51,6 @@ import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
@@ -62,7 +58,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * relative location. This node does not null check the object.
  */
 @NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = CYCLES_2, size = SIZE_1)
-public class FloatingReadNode extends FloatingAccessNode implements LIRLowerableAccess, Canonicalizable {
+public class FloatingReadNode extends FloatingAccessNode implements Canonicalizable {
     public static final NodeClass<FloatingReadNode> TYPE = NodeClass.create(FloatingReadNode.class);
 
     @OptionalInput(Memory) MemoryKill lastLocationAccess;
@@ -128,16 +124,6 @@ public class FloatingReadNode extends FloatingAccessNode implements LIRLowerable
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        LIRKind readKind = gen.getLIRGeneratorTool().getLIRKind(stamp(NodeView.DEFAULT));
-        if (getBarrierType() != BarrierType.NONE && gen.getLIRGeneratorTool().getBarrierSet() instanceof ReadBarrierSetLIRGeneratorTool barrierSet) {
-            gen.setResult(this, barrierSet.emitBarrieredLoad(gen.getLIRGeneratorTool(), readKind, gen.operand(address), null, MemoryOrderMode.PLAIN, getBarrierType()));
-        } else {
-            gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitLoad(readKind, gen.operand(address), null, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT));
-        }
-    }
-
-    @Override
     public Node canonical(CanonicalizerTool tool) {
         if (!tool.canonicalizeReads()) {
             return this;
@@ -149,7 +135,7 @@ public class FloatingReadNode extends FloatingAccessNode implements LIRLowerable
         }
         if (getAddress().hasMoreThanOneUsage() && lastLocationAccess instanceof WriteNode) {
             WriteNode write = (WriteNode) lastLocationAccess;
-            if (write.getAddress() == getAddress() && write.getAccessStamp(NodeView.DEFAULT).isCompatible(getAccessStamp(NodeView.DEFAULT))) {
+            if (write.getAddress() == getAddress() && write.getAccessStamp(NodeView.DEFAULT).isCompatible(stamp(NodeView.DEFAULT))) {
                 // Same memory location with no intervening write
                 return write.value();
             }
@@ -242,11 +228,6 @@ public class FloatingReadNode extends FloatingAccessNode implements LIRLowerable
         MemoryKill lla = getLastLocationAccess();
         assert lla != null || getLocationIdentity().isImmutable() : "lastLocationAccess of " + this + " shouldn't be null for mutable location identity " + getLocationIdentity();
         return super.verifyNode();
-    }
-
-    @Override
-    public Stamp getAccessStamp(NodeView view) {
-        return stamp(view);
     }
 
     /**

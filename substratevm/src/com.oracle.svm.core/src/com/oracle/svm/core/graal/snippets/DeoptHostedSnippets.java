@@ -212,7 +212,7 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
             }
 
             StructuredGraph graph = node.graph();
-            Arguments args = new Arguments(deopt, graph.getGuardsStage(), loweringStage);
+            Arguments args = new Arguments(deopt, graph, loweringStage);
             args.add("reason", node.getReason());
             args.add("mustNotAllocate", mustNotAllocate(graph.method()));
             args.add("message", message);

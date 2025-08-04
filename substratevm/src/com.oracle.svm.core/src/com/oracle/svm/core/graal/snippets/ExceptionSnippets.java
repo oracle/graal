@@ -99,7 +99,7 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
                  */
                 return;
             }
-            Arguments args = new Arguments(unwind, node.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(unwind, node.graph(), tool.getLoweringStage());
             args.add("exception", node.exception());
             args.add("fromMethodWithCalleeSavedRegisters", ((SharedMethod) node.graph().method()).hasCalleeSavedRegisters());
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
