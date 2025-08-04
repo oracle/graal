@@ -348,13 +348,13 @@ final class InternalResourceCache {
             Collections.addAll(requiredComponentIds, components);
             Set<String> requiredLanguageIds = new HashSet<>(LanguageCache.languages().keySet());
             requiredLanguageIds.retainAll(requiredComponentIds);
-            Set<String> requiredInstrumentIds = InstrumentCache.load().stream().map(InstrumentCache::getId).collect(Collectors.toSet());
+            Set<String> requiredInstrumentIds = new HashSet<>(InstrumentCache.load().keySet());
             requiredInstrumentIds.retainAll(requiredComponentIds);
             requiredComponentIds.removeAll(requiredLanguageIds);
             requiredComponentIds.removeAll(requiredInstrumentIds);
             if (!requiredComponentIds.isEmpty()) {
                 Set<String> installedComponents = new TreeSet<>(LanguageCache.languages().keySet());
-                InstrumentCache.load().stream().map(InstrumentCache::getId).forEach(installedComponents::add);
+                installedComponents.addAll(InstrumentCache.load().keySet());
                 throw new IllegalArgumentException(String.format("Components with ids %s are not installed. Installed components are: %s.",
                                 String.join(", ", requiredComponentIds),
                                 String.join(", ", installedComponents)));
@@ -467,7 +467,7 @@ final class InternalResourceCache {
                 consumer.visit(language.getId(), language.getResources());
             }
         }
-        for (InstrumentCache instrument : InstrumentCache.load()) {
+        for (InstrumentCache instrument : InstrumentCache.load().values()) {
             Collection<InternalResourceCache> resources = instrument.getResources();
             if (!resources.isEmpty()) {
                 consumer.visit(instrument.getId(), resources);
