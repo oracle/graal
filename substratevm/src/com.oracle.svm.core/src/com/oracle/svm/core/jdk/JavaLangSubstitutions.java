@@ -611,8 +611,8 @@ final class Target_java_lang_NullPointerException {
     }
 
     @Substitute
-    @SuppressWarnings("static-method")
-    private String getExtendedNPEMessage() {
+    @SuppressWarnings({"static-method", "unused"})
+    private String getExtendedNPEMessage(int stackOffset, int searchSlot) {
         return null;
     }
 }
