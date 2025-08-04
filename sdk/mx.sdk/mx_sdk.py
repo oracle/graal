@@ -341,6 +341,10 @@ mx.addJDKFactory('graalvm', mx.get_jdk(tag='default').javaCompliance, GraalVMJDK
 def maven_deploy_public_repo_dir():
     return os.path.join(_suite.get_mx_output_dir(), 'public-maven-repo')
 
+@mx.command(_suite.name, 'maven-deploy-public-repo-dir')
+def print_maven_deploy_public_repo_dir(args):
+    print(maven_deploy_public_repo_dir())
+
 @mx.command(_suite.name, 'maven-deploy-public')
 def maven_deploy_public(args, licenses=None, deploy_snapshots=True):
     """Helper to simplify deploying all public Maven dependendencies into the mxbuild directory"""
