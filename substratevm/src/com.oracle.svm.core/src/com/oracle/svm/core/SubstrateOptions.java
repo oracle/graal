@@ -359,7 +359,9 @@ public class SubstrateOptions {
              * precision of implicit stack traces. But for optimized release builds, including pgo
              * builds, it is a valuable image size reduction.
              */
-            SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, newLevel == OptimizationLevel.O3);
+            if (!values.containsKey(SubstrateOptions.ReduceImplicitExceptionStackTraceInformation)) {
+                SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, newLevel == OptimizationLevel.O3);
+            }
 
             GraalOptions.OptimizeLongJumps.update(values, !newLevel.isOneOf(OptimizationLevel.O0, OptimizationLevel.BUILD_TIME));
 
@@ -375,18 +377,18 @@ public class SubstrateOptions {
     };
 
     public static void configureOs(EconomicMap<OptionKey<?>, Object> values) {
-        enable(GraalOptions.ReduceCodeSize, values);
-        enable(ReduceImplicitExceptionStackTraceInformation, values);
-        enable(GraalOptions.OptimizeLongJumps, values);
+        enableForOs(GraalOptions.ReduceCodeSize, values);
+        enableForOs(ReduceImplicitExceptionStackTraceInformation, values);
+        enableForOs(GraalOptions.OptimizeLongJumps, values);
 
         /*
          * Remove all loop optimizations that can increase code size, i.e., duplicate a loop body
          * somehow.
          */
-        disable(GraalOptions.LoopPeeling, values);
-        disable(GraalOptions.LoopUnswitch, values);
-        disable(GraalOptions.FullUnroll, values);
-        disable(GraalOptions.PartialUnroll, values);
+        disableForOs(GraalOptions.LoopPeeling, values);
+        disableForOs(GraalOptions.LoopUnswitch, values);
+        disableForOs(GraalOptions.FullUnroll, values);
+        disableForOs(GraalOptions.PartialUnroll, values);
 
         /*
          * Do not align code to further reduce code size.
@@ -396,17 +398,17 @@ public class SubstrateOptions {
         GraalOptions.IsolatedLoopHeaderAlignment.update(values, 0);
         // We cannot check for architecture at the moment because ImageSingletons has not been
         // initialized yet
-        disable(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
+        disableForOs(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
 
         /*
          * Do not run PEA - it can fan out allocations too much.
          */
-        disable(GraalOptions.PartialEscapeAnalysis, values);
+        disableForOs(GraalOptions.PartialEscapeAnalysis, values);
 
         /*
          * Do not fan out division.
          */
-        disable(GraalOptions.OptimizeDiv, values);
+        disableForOs(GraalOptions.OptimizeDiv, values);
 
         /*
          * Do more conditional elimination.
@@ -416,14 +418,22 @@ public class SubstrateOptions {
         /*
          * Every dead code elimination should be non-optional
          */
-        disable(DeadCodeEliminationPhase.Options.ReduceDCE, values);
+        disableForOs(DeadCodeEliminationPhase.Options.ReduceDCE, values);
     }
 
-    public static void disable(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
+    /**
+     * Sets {@code key} to false in {@code values} as a consequence of {@code -Os} having been
+     * specified. This silently overrides any existing value for {@code key} in {@code values}.
+     */
+    public static void disableForOs(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
         key.update(values, false);
     }
 
-    public static void enable(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
+    /**
+     * Sets {@code key} to true in {@code values} as a consequence of {@code -Os} having been
+     * specified. This silently overrides any existing value for {@code key} in {@code values}.
+     */
+    public static void enableForOs(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
         key.update(values, true);
     }
 
