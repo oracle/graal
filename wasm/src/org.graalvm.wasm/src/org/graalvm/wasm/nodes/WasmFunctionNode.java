@@ -372,9 +372,6 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this, REPORT_LOOP_STRIDE)) {
                             Object result = BytecodeOSRNode.tryOSR(this, offset, new WasmOSRInterpreterState(stackPointer, lineIndex), null, frame);
                             if (result != null) {
-                                if (backEdgeCounter.count > 0) {
-                                    LoopNode.reportLoopCount(this, backEdgeCounter.count);
-                                }
                                 return result;
                             }
                         }
