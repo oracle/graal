@@ -52,6 +52,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.APIOption;
@@ -512,7 +513,19 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
 
     @Option(help = "Provide debuginfo for runtime-compiled code.")//
-    public static final HostedOptionKey<Boolean> RuntimeDebugInfo = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> RuntimeDebugInfo = new HostedOptionKey<>(false, SubstrateOptions::validateRuntimeDebugInfo);
+
+    private static void validateRuntimeDebugInfo(HostedOptionKey<Boolean> optionKey) {
+        if (optionKey.getValue()) {
+            if (!useDebugInfoGeneration()) {
+                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option can only be enabled if debug info generation is enabled ('-g')");
+            } else if (!OS.LINUX.isCurrent()) {
+                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option is only supported on Linux.");
+            } else if (!RuntimeCompilation.isEnabled()) {
+                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option only works if run-time compilation support is enabled.");
+            }
+        }
+    }
 
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)", stability = OptionStability.STABLE)//
     @BundleMember(role = BundleMember.Role.Input)//
