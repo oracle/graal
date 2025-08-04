@@ -404,12 +404,18 @@ public class PointsToStats {
      */
     private static long getTypeStateMemorySize(TypeState typeState) {
         var shallowSize = getObjectSize(typeState);
-        if (!(typeState instanceof MultiTypeState multi)) {
-            return shallowSize;
-        }
-        var bitsetSize = getObjectSize(multi.typesBitSet);
-        var wordArraySize = getObjectSize(TypeStateUtils.extractBitSetField(multi.typesBitSet));
-        return shallowSize + bitsetSize + wordArraySize;
+        return switch (typeState) {
+            case MultiTypeStateWithBitSet multi -> {
+                var bitsetSize = getObjectSize(multi.typesBitSet);
+                var wordArraySize = getObjectSize(TypeStateUtils.extractBitSetField(multi.typesBitSet));
+                yield shallowSize + bitsetSize + wordArraySize;
+            }
+            case MultiTypeStateWithArray multi -> {
+                var arraySize = getObjectSize(multi.getTypeIdArray());
+                yield shallowSize + arraySize;
+            }
+            default -> shallowSize;
+        };
     }
 
     private static long getObjectSize(Object object) {
@@ -439,7 +445,7 @@ public class PointsToStats {
         /* Use explicit order for the final report. */
         var typeStateOrder = List.of(EmptyTypeState.class, NullTypeState.class, PrimitiveConstantTypeState.class, AnyPrimitiveTypeState.class, SingleTypeState.class,
                         ContextSensitiveSingleTypeState.class, ConstantTypeState.class,
-                        MultiTypeState.class, ContextSensitiveMultiTypeState.class);
+                        MultiTypeStateWithBitSet.class, MultiTypeStateWithArray.class, ContextSensitiveMultiTypeState.class);
         var totalFreq = 0L;
         var totalSize = 0L;
         for (var typeStateClass : typeStateOrder) {
