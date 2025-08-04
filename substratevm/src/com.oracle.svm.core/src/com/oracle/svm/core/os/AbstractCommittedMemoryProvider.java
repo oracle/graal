@@ -128,11 +128,15 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
     @Override
     public UnsignedWord getCollectedHeapAddressSpaceSize() {
         /* Only a part of the address space is available for the collected Java heap. */
-        UnsignedWord reservedAddressSpace = getReservedAddressSpaceSize();
+        UnsignedWord reservedForJavaHeap = getReservedAddressSpaceSize().subtract(getReservedMetaspaceSize());
         UnsignedWord imageHeapSize = Heap.getHeap().getImageHeapReservedBytes();
-        assert reservedAddressSpace.aboveThan(imageHeapSize);
-        return reservedAddressSpace.subtract(imageHeapSize);
+        assert reservedForJavaHeap.aboveThan(imageHeapSize);
+        return reservedForJavaHeap.subtract(imageHeapSize);
     }
 
+    /** The total number of bytes reserved for the whole address space. */
     protected abstract UnsignedWord getReservedAddressSpaceSize();
+
+    /** The number of address space bytes that are reserved for the metaspace. */
+    protected abstract UnsignedWord getReservedMetaspaceSize();
 }

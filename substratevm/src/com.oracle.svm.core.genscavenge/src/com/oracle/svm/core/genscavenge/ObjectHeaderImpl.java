@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -345,12 +347,13 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Override
-    public void verifyDynamicHubOffsetInImageHeap(long offsetFromHeapBase) {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void verifyDynamicHubOffset(long offsetFromHeapBase) {
         long referenceSizeMask = getReferenceSize() == Integer.BYTES ? 0xFFFF_FFFFL : -1L;
         long encoded = (offsetFromHeapBase << numReservedExtraHubBits) & referenceSizeMask;
         boolean shiftLosesInformation = (encoded >>> numReservedExtraHubBits != offsetFromHeapBase);
         if (shiftLosesInformation) {
-            throw VMError.shouldNotReachHere("Hub is too far from heap base for encoding in object header: " + offsetFromHeapBase);
+            throw VMError.shouldNotReachHere("Hub is too far from heap base for encoding in object header");
         }
     }
 

@@ -64,11 +64,6 @@ public class WebImageNopAllocationSupport implements GCAllocationSupport {
     }
 
     @Override
-    public ForeignCallDescriptor getNewDynamicHub() {
-        throw GraalError.unimplementedOverride();
-    }
-
-    @Override
     public boolean useTLAB() {
         throw GraalError.unimplementedOverride();
     }
