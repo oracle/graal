@@ -221,7 +221,6 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
                         new MethodSignature("getResourceAsStream", String.class)));
         resourceMethodSignatures.put(Class.class, Set.of(
                         new MethodSignature("getResource", String.class),
-
                         new MethodSignature("getResourceAsStream", String.class)));
 
         foreignMethodSignatures.put(Linker.class, Set.of(
