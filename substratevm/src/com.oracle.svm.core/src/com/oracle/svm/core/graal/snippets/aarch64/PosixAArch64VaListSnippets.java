@@ -177,7 +177,7 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
     protected class VaListInitializationSnippetsLowering implements NodeLoweringProvider<VaListInitializationNode> {
         @Override
         public void lower(VaListInitializationNode node, LoweringTool tool) {
-            Arguments args = new Arguments(vaListInitialization, node.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(vaListInitialization, node.graph(), tool.getLoweringStage());
             args.add("vaList", node.getVaList());
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
@@ -205,7 +205,7 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
                     // getStackKind() should be at least int
                     throw VMError.shouldNotReachHereUnexpectedInput(node.getStackKind()); // ExcludeFromJacocoGeneratedReport
             }
-            Arguments args = new Arguments(snippet, node.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(snippet, node.graph(), tool.getLoweringStage());
             args.add("vaList", node.getVaList());
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }

@@ -684,7 +684,7 @@ public class MonitorSnippets implements Snippets {
 
         public void lower(CheckFastPathMonitorEnterNode checkFastPathMonitorEnterNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             StructuredGraph graph = checkFastPathMonitorEnterNode.graph();
-            Arguments args = new Arguments(checkMonitorenter, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(checkMonitorenter, graph, tool.getLoweringStage());
             // Speculation.equals is too weak so it can incorrectly cache snippet graphs so just
             // disable caching of these graphs.
             args.setCacheable(false);
@@ -742,7 +742,7 @@ public class MonitorSnippets implements Snippets {
             GraalError.guarantee(!monitorenterNode.getMonitorId().isEliminated(), "current monitor is eliminated: %s", monitorenterNode);
             GraalError.guarantee(verifyLockOrder(monitorenterNode), "locks are disordered: %s", monitorenterNode);
 
-            Arguments args = new Arguments(monitorenter, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(monitorenter, graph, tool.getLoweringStage());
             args.add("object", monitorenterNode.object());
             args.add("hub", Objects.requireNonNull(monitorenterNode.getObjectData()));
             args.add("lockDepth", monitorenterNode.getMonitorId().getLockDepth());
@@ -758,7 +758,7 @@ public class MonitorSnippets implements Snippets {
         public void lower(MonitorExitNode monitorexitNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             StructuredGraph graph = monitorexitNode.graph();
 
-            Arguments args = new Arguments(monitorexit, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(monitorexit, graph, tool.getLoweringStage());
             args.add("object", monitorexitNode.object());
             args.add("lockDepth", monitorexitNode.getMonitorId().getLockDepth());
             args.add("threadRegister", registers.getThreadRegister());
@@ -833,7 +833,7 @@ public class MonitorSnippets implements Snippets {
                         invoke.setStateAfter(graph.add(stateAfter));
                         graph.addBeforeFixed(ret, invoke);
 
-                        Arguments args = new Arguments(checkCounter, graph.getGuardsStage(), tool.getLoweringStage());
+                        Arguments args = new Arguments(checkCounter, graph, tool.getLoweringStage());
                         args.add("errMsg", new CStringConstant(msg));
                         inlineeGraph = template(tool, invoke, args).copySpecializedGraph(graph.getDebug());
                         InliningUtil.inline(invoke, inlineeGraph, false, null);

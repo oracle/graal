@@ -69,7 +69,7 @@ public abstract class IdentityHashCodeSnippets implements Snippets {
 
         public void lower(IdentityHashCodeNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
-            Arguments args = new Arguments(identityHashCodeSnippet, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(identityHashCodeSnippet, graph, tool.getLoweringStage());
             args.add("thisObj", node.object());
             SnippetTemplate template = template(tool, node, args);
             template.instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);

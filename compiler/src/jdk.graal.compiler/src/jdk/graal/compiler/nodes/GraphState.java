@@ -561,6 +561,10 @@ public final class GraphState {
         return guardsStage == GuardsStage.FIXED_DEOPTS && isAfterStage(StageFlag.GUARD_LOWERING);
     }
 
+    public boolean allowsFloatingReads() {
+        return isAfterStage(StageFlag.FLOATING_READS) && isBeforeStage(StageFlag.FIXED_READS);
+    }
+
     /**
      * Configure the graph to only allow explicit exception edges without floating guard nodes. That
      * is the graph:

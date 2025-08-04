@@ -115,7 +115,7 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
 
         public void lower(TruffleSafepointNode node, LoweringTool tool, ResolvedJavaMethod javaMethod) {
             StructuredGraph graph = node.graph();
-            Arguments args = new Arguments(pollSnippet, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(pollSnippet, graph, tool.getLoweringStage());
             ValueNode method = ConstantNode.forConstant(tool.getStampProvider().createMethodStamp(), javaMethod.getEncoding(), tool.getMetaAccess(), graph);
             args.add("method", method);
             args.add("node", node.location());

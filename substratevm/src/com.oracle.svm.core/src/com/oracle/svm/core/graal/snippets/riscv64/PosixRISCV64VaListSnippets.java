@@ -175,7 +175,7 @@ final class PosixRISCV64VaListSnippets extends SubstrateTemplates implements Sni
                     // getStackKind() should be at least int
                     throw VMError.shouldNotReachHereUnexpectedInput(node.getStackKind()); // ExcludeFromJacocoGeneratedReport
             }
-            Arguments args = new Arguments(snippet, node.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(snippet, node.graph(), tool.getLoweringStage());
             args.add("vaListPointer", node.getVaList());
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
