@@ -49,6 +49,7 @@ import com.oracle.graal.pointsto.typestate.SingleTypeState;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.typestore.ArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.FieldTypeStore;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.graal.compiler.options.OptionValues;
@@ -72,6 +73,8 @@ public abstract class AnalysisPolicy {
     protected final boolean useConservativeUnsafeAccess;
     private final int parsingContextMaxDepth;
     private final boolean trackAccessChain;
+    protected final int multiTypeStateArrayBitSetThreshold;
+    protected final int multiTypeStateArrayBitSetIntersectionSpeculationThreshold;
 
     public AnalysisPolicy(OptionValues options) {
         this.options = options;
@@ -88,6 +91,11 @@ public abstract class AnalysisPolicy {
         useConservativeUnsafeAccess = PointstoOptions.UseConservativeUnsafeAccess.getValue(options);
         trackAccessChain = PointstoOptions.TrackAccessChain.getValue(options);
         parsingContextMaxDepth = PointstoOptions.ParsingContextMaxDepth.getValue(options);
+        multiTypeStateArrayBitSetThreshold = PointstoOptions.MultiTypeStateArrayBitSetThreshold.getValue(options);
+        multiTypeStateArrayBitSetIntersectionSpeculationThreshold = PointstoOptions.MultiTypeStateArrayBitSetIntersectionSpeculationThreshold.getValue(options);
+        AnalysisError.guarantee(multiTypeStateArrayBitSetIntersectionSpeculationThreshold >= multiTypeStateArrayBitSetThreshold,
+                        "The MultiTypeStateArrayBitSetIntersectionSpeculationThreshold (%d) should always be larger than MultiTypeStateArrayBitSetThreshold (%d)",
+                        multiTypeStateArrayBitSetIntersectionSpeculationThreshold, multiTypeStateArrayBitSetThreshold);
     }
 
     public abstract boolean isContextSensitiveAnalysis();
@@ -305,5 +313,21 @@ public abstract class AnalysisPolicy {
      */
     protected static boolean areTypesCompatibleForSystemArraycopy(AnalysisType srcType, AnalysisType dstType) {
         return dstType.isAssignableFrom(srcType) || srcType.isAssignableFrom(dstType);
+    }
+
+    /**
+     * @return The maximum number of types represented in {@link MultiTypeState} as an array before
+     *         converting to bitset-based implementation.
+     */
+    public int multiTypeStateArrayBitSetThreshold() {
+        return multiTypeStateArrayBitSetThreshold;
+    }
+
+    /**
+     * @return The maximum number of types on which the analysis should speculate that the result
+     *         will be small enough to be array-based.
+     */
+    public int multiTypeStateArrayBitSetIntersectionSpeculationThreshold() {
+        return multiTypeStateArrayBitSetIntersectionSpeculationThreshold;
     }
 }
