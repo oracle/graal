@@ -502,7 +502,7 @@ public class Linker {
                                     importedModuleName, importedMemoryName, instance.name()));
                 }
                 final WasmModule importedModule = importedInstance.module();
-                if (importedModule.exportedMemories().size() == 0) {
+                if (importedModule.exportedMemories().isEmpty()) {
                     throw WasmException.create(Failure.UNKNOWN_IMPORT,
                                     String.format("The imported module '%s' does not export any memories, so cannot resolve memory '%s' imported in module '%s'.",
                                                     importedModuleName, importedMemoryName, instance.name()));
@@ -791,7 +791,7 @@ public class Linker {
                 } else {
                     final WasmModule importedModule = importedInstance.module();
                     final String importedTableName = importDescriptor.memberName();
-                    if (importedModule.exportedTables().size() == 0) {
+                    if (importedModule.exportedTables().isEmpty()) {
                         throw WasmException.create(Failure.UNKNOWN_IMPORT,
                                         String.format("The imported module '%s' does not export any tables, so cannot resolve table '%s' imported in module '%s'.",
                                                         importedModuleName, importedTableName, instance.name()));
