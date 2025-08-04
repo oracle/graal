@@ -1048,10 +1048,9 @@ public class Linker {
 
             @Override
             public boolean equals(Object object) {
-                if (!(object instanceof ExportGlobalSym)) {
+                if (!(object instanceof ExportGlobalSym that)) {
                     return false;
                 }
-                final ExportGlobalSym that = (ExportGlobalSym) object;
                 return this.moduleName.equals(that.moduleName) && this.globalName.equals(that.globalName);
             }
         }
@@ -1076,10 +1075,9 @@ public class Linker {
 
             @Override
             public boolean equals(Object object) {
-                if (!(object instanceof InitializeGlobalSym)) {
+                if (!(object instanceof InitializeGlobalSym that)) {
                     return false;
                 }
-                final InitializeGlobalSym that = (InitializeGlobalSym) object;
                 return this.globalIndex == that.globalIndex && this.moduleName.equals(that.moduleName);
             }
         }
@@ -1139,10 +1137,9 @@ public class Linker {
 
             @Override
             public boolean equals(Object object) {
-                if (!(object instanceof ExportFunctionSym)) {
+                if (!(object instanceof ExportFunctionSym that)) {
                     return false;
                 }
-                final ExportFunctionSym that = (ExportFunctionSym) object;
                 return this.moduleName.equals(that.moduleName) && this.functionName.equals(that.functionName);
             }
         }
@@ -1170,10 +1167,9 @@ public class Linker {
 
             @Override
             public boolean equals(Object object) {
-                if (!(object instanceof ImportMemorySym)) {
+                if (!(object instanceof ImportMemorySym that)) {
                     return false;
                 }
-                final ImportMemorySym that = (ImportMemorySym) object;
                 return this.moduleName.equals(that.moduleName) && this.importDescriptor.equals(that.importDescriptor) && this.memoryIndex == that.memoryIndex;
             }
         }
@@ -1198,10 +1194,9 @@ public class Linker {
 
             @Override
             public boolean equals(Object object) {
-                if (!(object instanceof ExportMemorySym)) {
+                if (!(object instanceof ExportMemorySym that)) {
                     return false;
                 }
-                final ExportMemorySym that = (ExportMemorySym) object;
                 return this.moduleName.equals(that.moduleName) && this.memoryName.equals(that.memoryName);
             }
         }
@@ -1226,10 +1221,9 @@ public class Linker {
 
             @Override
             public boolean equals(Object object) {
-                if (!(object instanceof DataSym)) {
+                if (!(object instanceof DataSym that)) {
                     return false;
                 }
-                final DataSym that = (DataSym) object;
                 return this.dataSegmentId == that.dataSegmentId && this.moduleName.equals(that.moduleName);
             }
         }
@@ -1254,10 +1248,9 @@ public class Linker {
 
             @Override
             public boolean equals(Object object) {
-                if (!(object instanceof ImportTableSym)) {
+                if (!(object instanceof ImportTableSym that)) {
                     return false;
                 }
-                final ImportTableSym that = (ImportTableSym) object;
                 return this.moduleName.equals(that.moduleName) && this.importDescriptor.equals(that.importDescriptor);
             }
         }
@@ -1282,10 +1275,9 @@ public class Linker {
 
             @Override
             public boolean equals(Object object) {
-                if (!(object instanceof ExportTableSym)) {
+                if (!(object instanceof ExportTableSym that)) {
                     return false;
                 }
-                final ExportTableSym that = (ExportTableSym) object;
                 return this.moduleName.equals(that.moduleName) && this.tableName.equals(that.tableName);
             }
         }
@@ -1310,10 +1302,9 @@ public class Linker {
 
             @Override
             public boolean equals(Object object) {
-                if (!(object instanceof ElemSym)) {
+                if (!(object instanceof ElemSym that)) {
                     return false;
                 }
-                final ElemSym that = (ElemSym) object;
                 return this.elemSegmentId == that.elemSegmentId && this.moduleName.equals(that.moduleName);
             }
         }
