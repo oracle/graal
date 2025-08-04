@@ -49,6 +49,8 @@ public enum NmtCategory {
     JvmStat("jvmstat"),
     /** Java Virtual Machine Tool Interface. */
     JVMTI("JVMTI"),
+    /** Metaspace objects. */
+    Metaspace("Metaspace"),
     /** NMT itself. */
     NMT("Native Memory Tracking"),
     /** Profile-guided optimizations. */

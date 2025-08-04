@@ -35,44 +35,40 @@ class HeapChunkLogging {
     private static final int MAX_CHUNKS_TO_PRINT = 64 * 1024;
 
     public static void logChunks(Log log, AlignedHeapChunk.AlignedHeader firstChunk, String shortSpaceName, boolean isToSpace) {
-        if (firstChunk.isNonNull()) {
-            int i = 0;
-            AlignedHeapChunk.AlignedHeader chunk = firstChunk;
-            while (chunk.isNonNull() && i < MAX_CHUNKS_TO_PRINT) {
-                Pointer bottom = AlignedHeapChunk.getObjectsStart(chunk);
-                Pointer top = HeapChunk.getTopPointer(chunk);
-                Pointer end = AlignedHeapChunk.getObjectsEnd(chunk);
+        int i = 0;
+        AlignedHeapChunk.AlignedHeader chunk = firstChunk;
+        while (chunk.isNonNull() && i < MAX_CHUNKS_TO_PRINT) {
+            Pointer bottom = AlignedHeapChunk.getObjectsStart(chunk);
+            Pointer top = HeapChunk.getTopPointer(chunk);
+            Pointer end = AlignedHeapChunk.getObjectsEnd(chunk);
 
-                logChunk(log, chunk, bottom, top, end, true, shortSpaceName, isToSpace);
+            logChunk(log, chunk, bottom, top, end, true, shortSpaceName, isToSpace);
 
-                chunk = HeapChunk.getNext(chunk);
-                i++;
-            }
-            if (chunk.isNonNull()) {
-                assert i == MAX_CHUNKS_TO_PRINT;
-                log.newline().string("... (truncated)");
-            }
+            chunk = HeapChunk.getNext(chunk);
+            i++;
+        }
+        if (chunk.isNonNull()) {
+            assert i == MAX_CHUNKS_TO_PRINT;
+            log.newline().string("... (truncated)");
         }
     }
 
     public static void logChunks(Log log, UnalignedHeapChunk.UnalignedHeader firstChunk, String shortSpaceName, boolean isToSpace) {
-        if (firstChunk.isNonNull()) {
-            int i = 0;
-            UnalignedHeapChunk.UnalignedHeader chunk = firstChunk;
-            while (chunk.isNonNull() && i < MAX_CHUNKS_TO_PRINT) {
-                Pointer bottom = UnalignedHeapChunk.getObjectStart(chunk);
-                Pointer top = HeapChunk.getTopPointer(chunk);
-                Pointer end = UnalignedHeapChunk.getObjectEnd(chunk);
+        int i = 0;
+        UnalignedHeapChunk.UnalignedHeader chunk = firstChunk;
+        while (chunk.isNonNull() && i < MAX_CHUNKS_TO_PRINT) {
+            Pointer bottom = UnalignedHeapChunk.getObjectStart(chunk);
+            Pointer top = HeapChunk.getTopPointer(chunk);
+            Pointer end = UnalignedHeapChunk.getObjectEnd(chunk);
 
-                logChunk(log, chunk, bottom, top, end, false, shortSpaceName, isToSpace);
+            logChunk(log, chunk, bottom, top, end, false, shortSpaceName, isToSpace);
 
-                chunk = HeapChunk.getNext(chunk);
-                i++;
-            }
-            if (chunk.isNonNull()) {
-                assert i == MAX_CHUNKS_TO_PRINT;
-                log.newline().string("... (truncated)");
-            }
+            chunk = HeapChunk.getNext(chunk);
+            i++;
+        }
+        if (chunk.isNonNull()) {
+            assert i == MAX_CHUNKS_TO_PRINT;
+            log.newline().string("... (truncated)");
         }
     }
 

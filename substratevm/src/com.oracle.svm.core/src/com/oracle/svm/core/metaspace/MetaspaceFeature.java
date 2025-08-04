@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.snippets;
+package com.oracle.svm.core.metaspace;
 
-import org.graalvm.word.UnsignedWord;
+import org.graalvm.nativeimage.ImageSingletons;
 
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
-import jdk.graal.compiler.word.Word;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 
 /**
- * Used to abstract the GC-specific part of the allocation functionality, e.g., how does the TLAB
- * look like in detail.
+ * A {@link Metaspace} is only needed if {@link RuntimeClassLoading} is supported (which is not the
+ * default).
  */
-public interface GCAllocationSupport {
-    ForeignCallDescriptor getNewInstanceStub();
-
-    ForeignCallDescriptor getNewArrayStub();
-
-    ForeignCallDescriptor getNewStoredContinuationStub();
-
-    ForeignCallDescriptor getNewPodInstanceStub();
-
-    boolean useTLAB();
-
-    boolean shouldAllocateInTLAB(UnsignedWord size, boolean isArray);
-
-    Word getTLABInfo();
-
-    int tlabTopOffset();
-
-    int tlabEndOffset();
+@AutomaticallyRegisteredFeature
+public class MetaspaceFeature implements InternalFeature {
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (!ImageSingletons.contains(Metaspace.class)) {
+            ImageSingletons.add(Metaspace.class, new NoMetaspace());
+        }
+    }
 }

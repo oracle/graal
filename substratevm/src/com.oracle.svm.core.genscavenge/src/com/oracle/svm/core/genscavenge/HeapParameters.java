@@ -132,7 +132,7 @@ public final class HeapParameters {
     }
 
     @Fold
-    static UnsignedWord getAlignedHeapChunkAlignment() {
+    public static UnsignedWord getAlignedHeapChunkAlignment() {
         return getAlignedHeapChunkSize();
     }
 
