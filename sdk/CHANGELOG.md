@@ -10,6 +10,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-65404 Remove `PolyglotLauncher` as it is no longer used.
 * GR-63009: The WebAssembly (Wasm) language is now available as a polyglot isolate.
 * GR-63009: JavaScript polyglot isolate now includes support for the WebAssembly (Wasm) language.
+* GR-68613: JavaScript polyglot isolate now includes support for the WebAssembly (Wasm) language.
 
 ## Version 25.0.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.
