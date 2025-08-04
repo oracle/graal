@@ -1474,6 +1474,7 @@ public class NativeImage {
             finalImageClasspath.addAll(finalImageProvidedJars);
         }
         finalImageProvidedJars.forEach(this::processClasspathNativeImageMetaInf);
+        imageBuilderJavaArgs.add("-D" + SharedConstants.IMAGE_PROVIDED_JARS_ENV_VARIABLE + "=" + String.join(File.pathSeparator, finalImageProvidedJars.stream().map(Path::toString).toList()));
 
         if (!config.buildFallbackImage()) {
             Optional<ArgumentEntry> fallbackThresholdEntry = getHostedOptionArgument(imageBuilderArgs, oHFallbackThreshold);
