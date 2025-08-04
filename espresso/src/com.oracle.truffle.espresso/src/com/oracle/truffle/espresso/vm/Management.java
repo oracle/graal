@@ -215,13 +215,12 @@ public final class Management extends NativeEnv {
      * GetOptionalSupport and initOptionalSupportFields.
      */
     private OptionalSupportRecord getOptionalSupportRecord() {
-        ThreadMXBean hostBean = getHostThreadMXBean();
         return new OptionalSupportRecord(
                         /* compTimeMonitoringSupport */ false,
                         /* threadContentionMonitoringSupport */ false,
-                        /* currentThreadCpuTimeSupport */ hostBean.isCurrentThreadCpuTimeSupported(),
-                        /* otherThreadCpuTimeSupport */ hostBean.isThreadCpuTimeSupported(),
-                        /* threadAllocatedMemorySupport */ false,
+                        /* currentThreadCpuTimeSupport */ isCurrentThreadCpuTimeSupported(),
+                        /* otherThreadCpuTimeSupport */ isThreadCpuTimeSupported(),
+                        /* threadAllocatedMemorySupport */ isThreadAllocatedMemorySupported(),
                         /* remoteDiagnosticCommandsSupport */ false,
                         /* objectMonitorUsageSupport */ false,
                         /* synchronizerUsageSupport */ false);
@@ -264,19 +263,51 @@ public final class Management extends NativeEnv {
         if (!isSupportedManagementVersion(version)) {
             return RawPointer.nullInstance();
         }
-        if (managementPtr == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            managementPtr = initializeAndGetEnv(initializeManagementContext, version);
-            managementVersion = version;
-            assert getUncached().isPointer(managementPtr);
-            assert managementPtr != null && !getUncached().isNull(managementPtr);
-        } else if (version != managementVersion) {
+        if (!initializeManagement(version) && version != managementVersion) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getContext().getLogger().warning("Asking for a different management version that previously requested.\n" +
                             "Previously requested: " + managementVersion + ", currently requested: " + version);
             return RawPointer.nullInstance();
         }
         return managementPtr;
+    }
+
+    private boolean initializeManagement(int version) {
+        if (managementPtr != null) {
+            return false;
+        }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        managementPtr = initializeAndGetEnv(initializeManagementContext, version);
+        managementVersion = version;
+        assert getUncached().isPointer(managementPtr);
+        assert managementPtr != null && !getUncached().isNull(managementPtr);
+
+        // start in the same state as hotspot
+        if (isThreadCpuTimeSupported()) {
+            JMM_THREAD_CPU_TIME_state = true;
+        }
+        if (isThreadAllocatedMemorySupported()) {
+            JMM_THREAD_ALLOCATED_MEMORY_state = true;
+        }
+        return true;
+    }
+
+    private boolean isThreadCpuTimeSupported() {
+        ThreadMXBean hostBean = getHostThreadMXBean();
+        return hostBean.isThreadCpuTimeSupported() && hostBean.isThreadCpuTimeEnabled();
+    }
+
+    private boolean isCurrentThreadCpuTimeSupported() {
+        ThreadMXBean hostBean = getHostThreadMXBean();
+        return hostBean.isCurrentThreadCpuTimeSupported() && hostBean.isThreadCpuTimeEnabled();
+    }
+
+    private boolean isThreadAllocatedMemorySupported() {
+        ThreadMXBean hostBean = getHostThreadMXBean();
+        if (!(hostBean instanceof com.sun.management.ThreadMXBean hostBeanEx)) {
+            return false;
+        }
+        return hostBeanEx.isThreadAllocatedMemorySupported() && hostBeanEx.isThreadAllocatedMemoryEnabled();
     }
 
     public void dispose() {
@@ -398,13 +429,21 @@ public final class Management extends NativeEnv {
 
     private StaticObject findThreadById(StaticObject[] activeThreads, long id) {
         StaticObject thread = StaticObject.NULL;
-        for (int j = 0; j < activeThreads.length; ++j) {
-            if (getThreadAccess().getThreadId(activeThreads[j]) == id) {
-                thread = activeThreads[j];
+        for (StaticObject activeThread : activeThreads) {
+            if (getThreadAccess().getThreadId(activeThread) == id) {
+                thread = activeThread;
                 break;
             }
         }
         return thread;
+    }
+
+    private Thread findHostThreadByGuestPlatformThreadId(StaticObject[] activeThreads, long id) {
+        StaticObject guestThread = findThreadById(activeThreads, id);
+        if (StaticObject.isNull(guestThread) || getThreadAccess().isVirtualThread(guestThread) || !getThreadAccess().isAlive(guestThread)) {
+            return null;
+        }
+        return getThreadAccess().getHost(guestThread);
     }
 
     private void fillThreadInfos(StaticObject[] threads, StaticObject infoArray, int maxDepth, EspressoLanguage language, Meta meta, Node node) {
@@ -875,13 +914,26 @@ public final class Management extends NativeEnv {
 
     @ManagementImpl
     public long GetOneThreadAllocatedMemory(long threadId) {
-        StaticObject[] activeThreads = getContext().getActiveThreads();
-        StaticObject thread = findThreadById(activeThreads, threadId);
-        if (StaticObject.isNull(thread)) {
-            return -1L;
+        Thread hostThread;
+        if (threadId == 0) {
+            hostThread = Thread.currentThread();
         } else {
+            StaticObject[] activeThreads = getContext().getActiveThreads();
+            hostThread = findHostThreadByGuestPlatformThreadId(activeThreads, threadId);
+            if (hostThread == null) {
+                return -1L;
+            }
+        }
+        return getHostThreadAllocatedBytes(hostThread);
+    }
+
+    private long getHostThreadAllocatedBytes(Thread hostThread) {
+        ThreadMXBean hostBean = getHostThreadMXBean();
+        if (!(hostBean instanceof com.sun.management.ThreadMXBean hostBeanEx)) {
             return 0L;
         }
+        long hostId = EspressoThreadRegistry.getThreadId(hostThread);
+        return hostBeanEx.getThreadAllocatedBytes(hostId);
     }
 
     @ManagementImpl
@@ -901,11 +953,12 @@ public final class Management extends NativeEnv {
 
         for (int i = 0; i < ids.length(language); i++) {
             long id = getInterpreterToVM().getArrayLong(language, i, ids);
-            StaticObject thread = findThreadById(activeThreads, id);
-            if (StaticObject.isNull(thread)) {
+            Thread hostThread = findHostThreadByGuestPlatformThreadId(activeThreads, id);
+            if (hostThread == null) {
                 getInterpreterToVM().setArrayLong(language, -1L, i, sizeArray);
             } else {
-                getInterpreterToVM().setArrayLong(language, 0L, i, sizeArray);
+                long value = getHostThreadAllocatedBytes(hostThread);
+                getInterpreterToVM().setArrayLong(language, value, i, sizeArray);
             }
         }
     }
@@ -958,11 +1011,10 @@ public final class Management extends NativeEnv {
             return withSysTime ? hostBean.getThreadCpuTime(id) : hostBean.getThreadUserTime(id);
         }
         StaticObject[] activeThreads = getContext().getActiveThreads();
-        StaticObject thread = findThreadById(activeThreads, threadId);
-        if (StaticObject.isNull(thread) || getThreadAccess().isVirtualThread(thread) || !getThreadAccess().isAlive(thread)) {
+        Thread host = findHostThreadByGuestPlatformThreadId(activeThreads, threadId);
+        if (host == null) {
             return -1;
         }
-        Thread host = getThreadAccess().getHost(thread);
         long hostId = EspressoThreadRegistry.getThreadId(host);
         return withSysTime ? hostBean.getThreadCpuTime(hostId) : hostBean.getThreadUserTime(hostId);
     }
