@@ -41,9 +41,12 @@ import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.ImageHeapList;
 import com.oracle.svm.core.util.VMError;
@@ -97,7 +100,8 @@ public class GCCause {
 }
 
 @AutomaticallyRegisteredImageSingleton
-class GCCauseSupport implements InitialLayerOnlyImageSingleton {
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
+class GCCauseSupport {
     final List<GCCause> gcCauses = ImageHeapList.create(GCCause.class, null);
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -120,16 +124,6 @@ class GCCauseSupport implements InitialLayerOnlyImageSingleton {
         if (existing != null && existing != gcCause) {
             throw VMError.shouldNotReachHere("Two GCCause objects have the same id " + id + ": " + gcCause.getName() + ", " + existing.getName());
         }
-    }
-
-    @Override
-    public boolean accessibleInFutureLayers() {
-        return true;
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
     }
 }
 

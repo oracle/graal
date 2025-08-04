@@ -139,7 +139,7 @@ public class SVMImageLayerSingletonLoader {
         if (constantId != -1) {
             return imageLayerBuildingSupport.getLoader().getOrCreateConstant(constantId);
         }
-        throw UserError.abort("Unable to load InitialLayerOnlyImageSingleton: %s. Please override accessibleInFutureLayers if you want this singleton to be reachable in future layers.", key);
+        throw UserError.abort("Unable to load InitialLayerOnlyImageSingleton: %s", key);
     }
 
     public Class<?> lookupClass(boolean optional, String className) {
