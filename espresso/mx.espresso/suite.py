@@ -175,6 +175,7 @@ suite = {
                 "java.logging",
                 "jdk.unsupported", # sun.misc.Signal
                 "java.management",
+                "jdk.management",
             ],
             "uses": [
                 "com.oracle.truffle.espresso.ffi.NativeAccess.Provider",
