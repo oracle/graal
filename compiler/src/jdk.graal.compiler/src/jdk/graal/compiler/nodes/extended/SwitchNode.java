@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,8 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import java.util.Arrays;
+
+import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -76,6 +78,7 @@ public abstract class SwitchNode extends ControlSplitNode {
     // do not change the contents of keySuccessors, nor of profileData.getKeyProbabilities()
     protected final int[] keySuccessors;
     protected SwitchProbabilityData profileData;
+    protected EconomicMap<AbstractBeginNode, Double> successorProbabilityCache;
 
     /**
      * Index of the {@link #successors} field in {@link SwitchNode}'s
@@ -124,10 +127,26 @@ public abstract class SwitchNode extends ControlSplitNode {
 
     @Override
     public double probability(AbstractBeginNode successor) {
+        if (successorProbabilityCache != null && successorProbabilityCache.containsKey(successor)) {
+            double cachedProbability = successorProbabilityCache.get(successor);
+            assert computeProbability(successor) == cachedProbability : Assertions.errorMessage("Different results for cached versus real probability", cachedProbability,
+                            computeProbability(successor));
+            return cachedProbability;
+        }
+        if (successorProbabilityCache == null) {
+            successorProbabilityCache = EconomicMap.create();
+        }
+        double sum = computeProbability(successor);
+        successorProbabilityCache.put(successor, sum);
+        return sum;
+    }
+
+    private double computeProbability(AbstractBeginNode successor) {
         double sum = 0;
+        double[] keyProbabilities = getKeyProbabilities();
         for (int i = 0; i < keySuccessors.length; i++) {
             if (successors.get(keySuccessors[i]) == successor) {
-                sum += getKeyProbabilities()[i];
+                sum += keyProbabilities[i];
             }
         }
         return sum;
@@ -135,6 +154,7 @@ public abstract class SwitchNode extends ControlSplitNode {
 
     @Override
     public boolean setProbability(AbstractBeginNode successor, BranchProbabilityData successorProfileData) {
+        invalidateProbabilityCache();
         double newProbability = successorProfileData.getDesignatedSuccessorProbability();
         assert newProbability <= 1.0 && newProbability >= 0.0 : newProbability;
 
@@ -169,6 +189,9 @@ public abstract class SwitchNode extends ControlSplitNode {
     }
 
     public void setProfileData(SwitchProbabilityData profileData) {
+        if (successorProbabilityCache != null) {
+            successorProbabilityCache.clear();
+        }
         this.profileData = profileData;
         assert assertProbabilities();
     }
@@ -244,6 +267,7 @@ public abstract class SwitchNode extends ControlSplitNode {
 
     public void setBlockSuccessor(int i, AbstractBeginNode s) {
         successors.set(i, s);
+        invalidateProbabilityCache();
     }
 
     public int blockSuccessorCount() {
@@ -359,8 +383,6 @@ public abstract class SwitchNode extends ControlSplitNode {
         graph().removeSplit(this, blockSuccessor(survivingEdge));
     }
 
-    public abstract Stamp getValueStampForSuccessor(AbstractBeginNode beginNode);
-
     @Override
     public NodeCycles estimatedNodeCycles() {
         if (keyCount() == 1) {
@@ -392,4 +414,70 @@ public abstract class SwitchNode extends ControlSplitNode {
     public int[] getKeySuccessors() {
         return keySuccessors.clone();
     }
+
+    @Override
+    public void beforeEncode() {
+        // purge the cache, we will build it newly after decoding
+        successorProbabilityCache = null;
+    }
+
+    private void invalidateProbabilityCache() {
+        if (successorProbabilityCache != null) {
+            /*
+             * Setting the probability of a single successor requires rebalancing the probabilities
+             * of all other successors to ensure the sum remains consistent (i.e., normalized to
+             * 1.0). Thus, the entire cache needs invalidation.
+             */
+            successorProbabilityCache.clear();
+        }
+    }
+
+    public Stamp getValueStampForSuccessor(AbstractBeginNode beginNode, EconomicMap<AbstractBeginNode, Stamp> successorStampCache) {
+        if (successorStampCache.containsKey(beginNode)) {
+            Stamp cachedStamp = successorStampCache.get(beginNode);
+            if (Assertions.assertionsEnabled()) {
+                Stamp computedStamp = computeSuccessorStamp(beginNode);
+                assert cachedStamp == null && computedStamp == null || cachedStamp != null && cachedStamp.equals(computedStamp) : Assertions.errorMessage("Stamp must be equal", cachedStamp,
+                                computedStamp);
+            }
+            return cachedStamp;
+        }
+        Stamp result = computeSuccessorStamp(beginNode);
+        successorStampCache.put(beginNode, result);
+        return result;
+    }
+
+    public final Stamp computeSuccessorStamp(AbstractBeginNode beginNode) {
+        Stamp result = null;
+        if (beginNode != defaultSuccessor()) {
+            for (int i = 0; i < keyCount(); i++) {
+                if (keySuccessor(i) == beginNode) {
+                    if (result == null) {
+                        result = stampAtKeySuccessor(i);
+                    } else {
+                        result = result.meet(stampAtKeySuccessor(i));
+                    }
+                }
+            }
+        }
+        // if we cannot compute a better stamp use the stamp of the value
+        return result == null ? genericSuccessorStamp() : result;
+    }
+
+    public abstract Stamp genericSuccessorStamp();
+
+    public final void getAllSuccessorValueStamps(EconomicMap<AbstractBeginNode, Stamp> cacheInto) {
+        for (int i = 0; i < keyCount(); i++) {
+            AbstractBeginNode beginNode = keySuccessor(i);
+            if (beginNode != this.defaultSuccessor()) {
+                if (!cacheInto.containsKey(beginNode)) {
+                    cacheInto.put(beginNode, stampAtKeySuccessor(i));
+                } else {
+                    cacheInto.put(beginNode, cacheInto.get(beginNode).meet(stampAtKeySuccessor(i)));
+                }
+            }
+        }
+    }
+
+    protected abstract Stamp stampAtKeySuccessor(int i);
 }

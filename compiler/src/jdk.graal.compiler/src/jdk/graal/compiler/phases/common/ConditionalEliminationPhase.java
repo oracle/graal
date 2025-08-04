@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -430,6 +430,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
         private final ConditionalEliminationUtil.GuardFolding guardFolding;
         protected final ArrayDeque<ConditionalEliminationUtil.GuardedCondition> conditions;
         private final boolean processFieldAccess;
+        protected EconomicMap<AbstractBeginNode, Stamp> successorStampCache;
         private final List<RebuildPiData> piCache = new ArrayList<>(8);
         private final EconomicSet<Pair<Stamp, Stamp>> joinedStamps = EconomicSet.create();
 
@@ -834,6 +835,18 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
 
                 if (node instanceof MergeNode) {
                     introducePisForPhis((MergeNode) node);
+                }
+
+                if (node instanceof SwitchNode switchNode) {
+                    /*
+                     * Since later in this phase we will be visiting all control split successors
+                     * the operation of computing successor stamps for switch nodes can be quite
+                     * costly. Thus, we already compute and cache all eagerly here.
+                     */
+                    if (successorStampCache == null) {
+                        successorStampCache = EconomicMap.create();
+                    }
+                    switchNode.getAllSuccessorValueStamps(successorStampCache);
                 }
 
                 if (node instanceof AbstractBeginNode) {
@@ -1280,7 +1293,10 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
         protected void processIntegerSwitch(AbstractBeginNode beginNode, IntegerSwitchNode integerSwitchNode) {
             ValueNode value = integerSwitchNode.value();
             if (maybeMultipleUsages(value)) {
-                Stamp stamp = integerSwitchNode.getValueStampForSuccessor(beginNode);
+                if (successorStampCache == null) {
+                    successorStampCache = EconomicMap.create();
+                }
+                Stamp stamp = integerSwitchNode.getValueStampForSuccessor(beginNode, successorStampCache);
                 if (stamp != null) {
                     registerNewStamp(value, stamp, beginNode);
                 }
@@ -1293,7 +1309,10 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                 LoadHubNode loadHub = (LoadHubNode) hub;
                 ValueNode value = loadHub.getValue();
                 if (maybeMultipleUsages(value)) {
-                    Stamp stamp = typeSwitch.getValueStampForSuccessor(beginNode);
+                    if (successorStampCache == null) {
+                        successorStampCache = EconomicMap.create();
+                    }
+                    Stamp stamp = typeSwitch.getValueStampForSuccessor(beginNode, successorStampCache);
                     if (stamp != null) {
                         registerNewStamp(value, stamp, beginNode);
                     }

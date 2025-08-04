@@ -1894,4 +1894,10 @@ public abstract class Node implements Cloneable, Formattable {
         return nodeClass.cycles();
     }
 
+    /**
+     * Special tasks to perform on a node before it is encoded.
+     */
+    public void beforeEncode() {
+        // intentionally left empty
+    }
 }

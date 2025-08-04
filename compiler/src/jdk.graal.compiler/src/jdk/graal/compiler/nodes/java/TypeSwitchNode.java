@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -219,19 +219,16 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
     }
 
     @Override
-    public Stamp getValueStampForSuccessor(AbstractBeginNode beginNode) {
-        Stamp result = null;
-        if (beginNode != defaultSuccessor()) {
-            for (int i = 0; i < keyCount(); i++) {
-                if (keySuccessor(i) == beginNode) {
-                    if (result == null) {
-                        result = StampFactory.objectNonNull(TypeReference.createExactTrusted(typeAt(i)));
-                    } else {
-                        result = result.meet(StampFactory.objectNonNull(TypeReference.createExactTrusted(typeAt(i))));
-                    }
-                }
-            }
+    protected Stamp stampAtKeySuccessor(int i) {
+        return StampFactory.objectNonNull(TypeReference.createExactTrusted(typeAt(i)));
+    }
+
+    @Override
+    public Stamp genericSuccessorStamp() {
+        if (value instanceof LoadHubNode lh) {
+            return lh.getValue().stamp(NodeView.DEFAULT);
         }
-        return result;
+        // if we do not see the load hub give up and don't bother computing the default stamp
+        return null;
     }
 }
