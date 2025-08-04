@@ -189,14 +189,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     }
 
     // region OSR support
-    private static final class WasmOSRInterpreterState {
-        final int stackPointer;
-        final int line;
-
-        WasmOSRInterpreterState(int stackPointer, int line) {
-            this.stackPointer = stackPointer;
-            this.line = line;
-        }
+    private record WasmOSRInterpreterState(int stackPointer, int line) {
     }
 
     @Override
