@@ -34,13 +34,9 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 
 /**
  * In additional to the traditional singleton model, i.e. a key-value map whose lookups are constant
- * folded within generated code, we provide two additional options:
+ * folded within generated code, we provide one additional option:
  *
  * <ul>
- * <li>{@link ApplicationLayerOnlyImageSingleton}: Instead of having a per-layer singleton, all
- * {@link ImageSingletons#lookup} calls refer to a single singleton which will be created in the
- * application layer.</li>
- *
  * <li>{@link MultiLayeredImageSingleton}: {@link ImageSingletons#lookup} should no longer be used.
  * Instead, there is the method {@link MultiLayeredImageSingleton#getAllLayers} which returns an
  * array with the image singletons corresponding to this key for all layers. The length of this
@@ -52,10 +48,9 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
  * {@link ImageLayerBuildingSupport} for a description of the different layer names.</li>
  * </ul>
  *
- * Note the unique behavior of {@link ApplicationLayerOnlyImageSingleton} applies only when building
- * a layered image. Calling {@link MultiLayeredImageSingleton#getAllLayers} during a traditional
- * build requires the singleton to be installed in the build and will return an array of length 1
- * containing that singleton.
+ * Calling {@link MultiLayeredImageSingleton#getAllLayers} during a traditional build requires the
+ * singleton to be installed in the build and will return an array of length 1 containing that
+ * singleton.
  *
  * Currently, when using these special singleton types there are additional restrictions:
  *
@@ -65,8 +60,6 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
  * between Class<->singleton object</li>
  * <li>{@link ImageSingletons#add} must be called before the analysis phase (i.e. these image
  * singletons cannot be added at a later point)</li>
- * <li>{@link ApplicationLayerOnlyImageSingleton}s can only be installed in the application
- * layer</li>
  * </ol>
  */
 public interface LayeredImageSingleton {

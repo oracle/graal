@@ -58,7 +58,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LoadImageSingletonFactory;
-import com.oracle.svm.core.layeredimagesingleton.ApplicationLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
@@ -99,8 +98,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Tracks metadata about {@link MultiLayeredImageSingleton} and
- * {@link ApplicationLayerOnlyImageSingleton} singletons so that they can be properly referenced as
- * needed.
+ * {@link SingletonLayeredInstallationKind#APP_LAYER_ONLY} singletons so that they can be properly
+ * referenced as needed.
  */
 @AutomaticallyRegisteredFeature
 public class LoadImageSingletonFeature implements InternalFeature, FeatureSingleton, UnsavedSingleton {
@@ -241,7 +240,8 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
                          */
                         Class<?> key = slotInfo.keyClass();
                         var singleton = layeredImageSingletonSupport.lookup(key, true, false);
-                        assert singleton.getClass().equals(key) : String.format("We currently require %s to match their key. Key %s, Singleton: %s", ApplicationLayerOnlyImageSingleton.class, key,
+                        assert singleton.getClass().equals(key) : String.format("We currently require %s to match their key. Key %s, Singleton: %s",
+                                        SingletonLayeredInstallationKind.InstallationKind.APP_LAYER_ONLY, key,
                                         singleton);
                         applicationLayerEmbeddedRoots.add(singleton);
                     }
@@ -369,7 +369,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
 
     /**
      * Ensure all objects needed for {@link MultiLayeredImageSingleton}s and
-     * {@link ApplicationLayerOnlyImageSingleton}s are installed in the heap.
+     * {@link SingletonLayeredInstallationKind#APP_LAYER_ONLY}s are installed in the heap.
      */
     private void addInitialObjects(NativeImageHeap heap, HostedUniverse hUniverse) {
         String addReason = "Read via the layered image singleton support";
