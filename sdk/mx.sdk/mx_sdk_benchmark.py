@@ -287,6 +287,27 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         return code, out, dims
 
 
+# The uncompressed file from perf script is ~25x bigger than the compressed file
+ADJUSTED_ITERS_FOR_PERF = {
+    "renaissance": {
+        "finagle-chirper": 10, # Default: 90 iters, 7GB compressed perf file
+        "fj-kmeans": 15, # Default: 30 iters, 520MB compressed perf file
+        "scala-stm-bench7": 20, # Default: 60 iters, 840MB compressed perf file
+        "philosophers": 10, # Default: 30 iters, 900MB compressed perf file
+        "akka-uct": 5, # Default: 24 iters, 2GB compressed perf file
+        "finagle-http": 5 # Default: 12 iters, 1.3GB compressed perf file
+    },
+    "dacapo": {
+        "sunflow": 15 # Default: 49 iters, 1.2GB compressed perf file
+    }
+}
+
+NUM_ITERS_FLAG_NAME = {
+    "renaissance": "-r",
+    "dacapo": "-n"
+}
+
+
 class NativeImageBenchmarkConfig:
     def __init__(self, vm: NativeImageVM, bm_suite: BenchmarkSuite | NativeImageBenchmarkMixin, args):
         self.bm_suite = bm_suite
@@ -308,6 +329,11 @@ class NativeImageBenchmarkConfig:
                                                                      not (vm.safepoint_sampler or vm.pgo_sampler_only or vm.pgo_use_perf))
         self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args,
                                                                                  list(image_run_args))
+        if vm.pgo_use_perf and self.benchmark_suite_name in ADJUSTED_ITERS_FOR_PERF and self.benchmark_name in ADJUSTED_ITERS_FOR_PERF[self.benchmark_suite_name]:
+            # For some benches the number of iters in the instrument-run stage is too much for perf, the generated files are too large.
+            desired_iters = ADJUSTED_ITERS_FOR_PERF[self.benchmark_suite_name][self.benchmark_name]
+            mx.log(f"Adjusting number of iters for instrument-run stage to {desired_iters}")
+            self.extra_profile_run_args = adjust_arg_with_number(NUM_ITERS_FLAG_NAME[self.benchmark_suite_name], desired_iters, self.extra_profile_run_args)
         self.params = ['extra-image-build-argument', 'extra-jvm-arg', 'extra-run-arg', 'extra-agent-run-arg',
                        'extra-profile-run-arg',
                        'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
@@ -1560,7 +1586,7 @@ class NativeImageVM(GraalVm):
         image_run_cmd += self.config.extra_jvm_args
         image_run_cmd += self.config.extra_profile_run_args
         if self.pgo_use_perf:
-            image_run_cmd = ['perf', 'record', '-o', f'{self.config.perf_data_path}', '--call-graph', 'fp,2048', '--freq=999'] + image_run_cmd
+            image_run_cmd = ['perf', 'record', '-o', f'{self.config.perf_data_path}', '--call-graph', 'fp', '--freq=999'] + image_run_cmd
 
         with self.get_stage_runner() as s:
             if self.pgo_use_perf:
@@ -3732,6 +3758,15 @@ def strip_args_with_number(strip_args, args):
     for strip_arg in strip_args:
         result = _strip_arg_with_number_gen(strip_arg, result)
     return list(result)
+
+def adjust_arg_with_number(arg_name, new_value: int, user_args):
+    """
+    Sets the argument value of `arg_name` in `user_args` with `new_value`.
+    If `arg_name` is already present in `user_args`, the value will be replaced.
+    If `arg_name` is not already present, the argument and corresponding value will be added.
+    """
+
+    return [arg_name, str(new_value)] + strip_args_with_number(arg_name, user_args)
 
 class PerfInvokeProfileCollectionStrategy(Enum):
     """
