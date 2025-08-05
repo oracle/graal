@@ -107,7 +107,8 @@ final class Target_jdk_internal_misc_Signal_Web {
     }
 
     @Substitute
-    public static synchronized Signal.Handler handle(Signal sig, Signal.Handler handler) throws IllegalArgumentException {
+    @SuppressWarnings("unused")
+    public static Signal.Handler handle(Signal sig, Signal.Handler handler) throws IllegalArgumentException {
         throw new IllegalArgumentException("cannot register signal handles in webimage.");
     }
 }
