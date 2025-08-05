@@ -28,12 +28,15 @@ import static jdk.graal.compiler.phases.common.CanonicalizerPhase.CanonicalizerF
 import static jdk.graal.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.DEAD_PHI_CYCLE_DETECTION;
 import static jdk.graal.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.GVN;
 import static jdk.graal.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.READ_CANONICALIZATION;
+import static jdk.graal.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.SINGLE_SHOT;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Optional;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Pair;
 
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
@@ -47,6 +50,7 @@ import jdk.graal.compiler.graph.Graph.Mark;
 import jdk.graal.compiler.graph.Graph.NodeEventListener;
 import jdk.graal.compiler.graph.Graph.NodeEventScope;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeBitMap;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeFlood;
 import jdk.graal.compiler.graph.NodeWorkList;
@@ -60,16 +64,20 @@ import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.GuardNode;
+import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PhiNode;
+import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.StartNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.VirtualState;
 import jdk.graal.compiler.nodes.WithExceptionNode;
+import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
@@ -125,7 +133,20 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
          * loop phi cycles and delete them.
          * {@link CanonicalizerPhase#isDeadLoopPhiCycle(PhiNode, NodeFlood)} for details.
          */
-        DEAD_PHI_CYCLE_DETECTION;
+        DEAD_PHI_CYCLE_DETECTION,
+
+        /**
+         * Determines whether the canonicalizer should operate in {@code SINGLE_SHOT_MODE}. In this
+         * mode, each alive node is visited and processed for canonicalization exactly once. This
+         * means order dependent canonicalizations might be missed. This is typically handled by
+         * applying multiple SINGLE_SHOT canonicalizations during a single compile.
+         *
+         * This specialized mode is designed to optimize compile time by avoiding repeated
+         * processing of nodes, but it must be used with caution as it may impact the performance of
+         * canonicalization under certain conditions. Ensure thorough testing and validation before
+         * using this mode.
+         */
+        SINGLE_SHOT;
     }
 
     protected static final int MAX_ITERATION_PER_NODE = 10;
@@ -195,6 +216,10 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         return new CanonicalizerPhase(null, defaultFeatures());
     }
 
+    public static CanonicalizerPhase createSingleShot() {
+        return new CanonicalizerPhase(null, EnumSet.allOf(CanonicalizerFeature.class));
+    }
+
     public static CanonicalizerPhase createWithoutReadCanonicalization() {
         return new CanonicalizerPhase(defaultFeaturesWithout(READ_CANONICALIZATION));
     }
@@ -204,7 +229,9 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     }
 
     private static EnumSet<CanonicalizerFeature> defaultFeatures() {
-        return EnumSet.allOf(CanonicalizerFeature.class);
+        var features = EnumSet.allOf(CanonicalizerFeature.class);
+        features.remove(SINGLE_SHOT);
+        return features;
     }
 
     private static EnumSet<CanonicalizerFeature> defaultFeaturesWithout(CanonicalizerFeature feature) {
@@ -350,11 +377,27 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             }
         };
 
+        NodeBitMap singleShotList = null;
+        if (features.contains(SINGLE_SHOT)) {
+            singleShotList = graph.createNodeBitMap();
+        }
+
+        NodeBitMap piSameGuardCombination = null;
         try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
             for (Node n : tool.workList) {
-                processNode(n, tool);
+                processNode(n, tool, singleShotList);
                 ++sum;
+                if (n.isAlive() && n instanceof PiNode pi && pi.getGuard() != null && pi.getGuard().asNode().getUsageCount() > 1) {
+                    if (piSameGuardCombination == null) {
+                        piSameGuardCombination = graph.createNodeBitMap();
+                    }
+                    piSameGuardCombination.markAndGrow(pi.getGuard().asNode());
+                }
             }
+        }
+
+        if (piSameGuardCombination != null) {
+            processGuardPiPairs(piSameGuardCombination);
         }
 
         EconomicSet<PhiNode> phiPostProcessingWorkList = null;
@@ -410,6 +453,52 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         }
         return sum;
 
+    }
+
+    /**
+     * Processes pairs of {@link PiNode} instances sharing the same guard to canonicalize and
+     * replace redundant nodes. Iterates through guards and their usages, identifying pairs for
+     * simplification using {@link PiNode#tryImproveWithOtherPi}.
+     *
+     * @param piSameGuardCombination a {@link NodeBitMap} of guard nodes whose associated
+     *            {@link PiNode} usages are to be processed.
+     */
+    private static void processGuardPiPairs(NodeBitMap piSameGuardCombination) {
+        // process all of them once and then process all usages once
+        for (Node n : piSameGuardCombination) {
+            GuardingNode guard = (GuardingNode) n;
+            if (!guard.asNode().isAlive()) {
+                continue;
+            }
+            ArrayList<Pair<Node, Node>> piReplacement = null;
+            for (Node usage1 : guard.asNode().usages()) {
+                if (usage1 instanceof PiNode p1) {
+                    for (Node usage2 : guard.asNode().usages()) {
+                        if (usage1 == usage2) {
+                            continue;
+                        }
+                        if (usage2 instanceof PiNode p2) {
+                            ValueNode canonByOtherPi = PiNode.tryImproveWithOtherPi(p1, p2);
+                            if (canonByOtherPi != null) {
+                                if (piReplacement == null) {
+                                    piReplacement = new ArrayList<>();
+                                }
+                                piReplacement.add(Pair.create(p1, canonByOtherPi));
+                            }
+                        }
+                    }
+                }
+            }
+            if (piReplacement != null) {
+                for (Pair<Node, Node> pair : piReplacement) {
+                    Node original = pair.getLeft();
+                    Node replacement = pair.getRight();
+                    if (original.isAlive() && replacement.isAlive()) {
+                        original.replaceAndDelete(replacement);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -496,7 +585,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     /**
      * @return true if the graph was changed.
      */
-    private boolean processNode(Node node, Tool tool) {
+    private boolean processNode(Node node, Tool tool, NodeBitMap singleShotList) {
         if (!node.isAlive()) {
             return false;
         }
@@ -506,6 +595,22 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, CanonicalizerPhase.class, "UnusedNodeRemoval", node);
             return true;
         }
+        if (singleShotList != null) {
+            // we do not trust indirect canonicalization to be done properly if a node is only
+            // single shot
+            boolean canSingleShot = !(node instanceof Node.InputsChangedCanonicalization || node instanceof Node.IndirectInputChangedCanonicalization);
+            // certain logic node constructs like LogicNegation need cleanups so code generation is
+            // possible
+            canSingleShot = canSingleShot && !(node instanceof IfNode || node instanceof ConditionalNode);
+            if (canSingleShot) {
+                if (singleShotList.isMarkedAndGrow(node)) {
+                    return false;
+                } else {
+                    singleShotList.markAndGrow(node);
+                }
+            }
+        }
+
         NodeClass<?> nodeClass = node.getNodeClass();
         if (tryCanonicalize(node, nodeClass, tool)) {
             return true;
