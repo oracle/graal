@@ -381,11 +381,7 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
         }
         path = javaHome().resolve(MODULES_IMAGE);
         if (Files.isReadable(path)) {
-            // if(Files.isDirectory(path)) { // TODO: check in into seperate PR maybe?
-            //     bootClassPathVersion(BootClassPathType.EXPLODED);
-            // } else {
-                bootClassPathVersion(BootClassPathType.IMAGE);
-            // }
+            bootClassPathVersion(BootClassPathType.IMAGE);
             List<Path> paths = new ArrayList<>(1);
             paths.add(path);
             return paths;

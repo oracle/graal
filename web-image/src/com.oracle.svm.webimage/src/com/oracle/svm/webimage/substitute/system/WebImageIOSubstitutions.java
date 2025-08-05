@@ -32,13 +32,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.DoubleBuffer;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
-import java.nio.LongBuffer;
-import java.nio.MappedByteBuffer;
-import java.nio.ShortBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -100,6 +93,7 @@ final class Target_org_graalvm_shadowed_com_google_common_jimfs_JimfsPath {
 }
 
 /*
+// TODO: remove after discussing where to put change
 @TargetClass(className = "org.graalvm.shadowed.com.google.common.jimfs.JimfsFileChannel")
 final class Target_org_graalvm_shadowed_com_google_common_jimfs_JimfsFileChannel {
 
@@ -300,16 +294,7 @@ final class Target_java_nio_file_FileSystems_DefaultFileSystemHolder_Web {
     }
 
 }
-// TODO: delete again; I thought FileSystems.getDefault() does not always return the same one
-/*
-@TargetClass(className = "sun.nio.fs.DefaultFileSystemProvider")
-final class Target_sun_nio_fs_DefaultFileSystemProvider_Web {
-    @Substitute
-    public static FileSystem theFileSystem() {
-        return WebImageNIOFileSystemProvider.INSTANCE.getFileSystem(null);
-    }
-}
-*/
+
 @TargetClass(className = "sun.nio.fs.AbstractFileSystemProvider")
 @SuppressWarnings("all")
 final class Target_sun_nio_fs_AbstractFileSystemProvider_Web {
