@@ -6,6 +6,7 @@
   local tools      = import "ci_common/tools.libsonnet",
   local sg         = import "ci_common/svm-gate.libsonnet",
   local run_spec   = import "../../ci/ci_common/run-spec.libsonnet",
+  local check_no_timelimit = (import '../../ci/ci_common/run-spec-tools.libsonnet').check_no_timelimit,
   local galahad    = import "../../ci/ci_common/galahad-common.libsonnet",
   local exclude    = run_spec.exclude,
 
@@ -85,7 +86,7 @@
   local os_arch_jdk_mixin = task_spec(run_spec.evaluate_late({
     // this starts with _ on purpose so that it will be evaluated first
     "_os_arch_jdk": function(b)
-      tools.delete_timelimit(jdk_name_to_dict[b.jdk] + default_os_arch(b)[b.os][b.arch])
+      check_no_timelimit(jdk_name_to_dict[b.jdk] + default_os_arch(b)[b.os][b.arch])
   })),
 
   local all_jobs = {
