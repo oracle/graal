@@ -2,7 +2,7 @@ local ci_common = import '../../../ci/ci_common/common.jsonnet';
 local r = import '../../../ci/ci_common/run-spec.libsonnet';
 local common = import 'common.jsonnet';
 
-local delete_timelimit = (import '../../../ci/ci_common/run-spec-tools.libsonnet').delete_timelimit;
+local check_no_timelimit = (import '../../../ci/ci_common/run-spec-tools.libsonnet').check_no_timelimit;
 
 // Supported JDKs for jobs
 local jdk_name_to_dict = {
@@ -12,7 +12,7 @@ local jdk_name_to_dict = {
 local os_arch_jdk_mixin(mapping) = r.task_spec(r.evaluate_late({
   // this starts with _ on purpose so that it will be evaluated first
   _os_arch_jdk: function(b)
-    delete_timelimit(jdk_name_to_dict[b.jdk] + mapping(b)[b.os][b.arch]),
+    check_no_timelimit(jdk_name_to_dict[b.jdk] + mapping(b)[b.os][b.arch]),
 }));
 
 {
