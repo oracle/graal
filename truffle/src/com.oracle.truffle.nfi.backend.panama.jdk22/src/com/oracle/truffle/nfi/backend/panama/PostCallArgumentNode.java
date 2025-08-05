@@ -68,22 +68,7 @@ abstract class PostCallArgumentNode extends Node {
             getArrayElementLayoutNode = GetArrayElementLayoutNode.create(type.type);
         }
 
-        final boolean isHostObject(Object value) {
-            return PanamaNFIContext.get(this).env.isHostObject(value);
-        }
-
-        final Object asHostObject(Object value) {
-            return PanamaNFIContext.get(this).env.asHostObject(value);
-        }
-
-        @Specialization(guards = {"isHostObject(originalValue)", "elementLayout != null"})
-        void doHostObject(@SuppressWarnings("unused") Object originalValue, MemorySegment convertedValue,
-                        @Bind("asHostObject(originalValue)") Object hostObject,
-                        @Bind("getArrayElementLayoutNode.execute(hostObject)") ValueLayout elementLayout) {
-            doCopy(hostObject, convertedValue, elementLayout);
-        }
-
-        @Specialization(guards = {"!isHostObject(originalValue)", "elementLayout != null"})
+        @Specialization(guards = "elementLayout != null")
         void doArray(Object originalValue, MemorySegment convertedValue,
                         @Bind("getArrayElementLayoutNode.execute(originalValue)") ValueLayout elementLayout) {
             doCopy(originalValue, convertedValue, elementLayout);

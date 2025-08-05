@@ -262,22 +262,7 @@ abstract class ArgumentNode extends Node {
             getArrayElementLayoutNode = GetArrayElementLayoutNode.create(type.type);
         }
 
-        final boolean isHostObject(Object value) {
-            return PanamaNFIContext.get(this).env.isHostObject(value);
-        }
-
-        final Object asHostObject(Object value) {
-            return PanamaNFIContext.get(this).env.asHostObject(value);
-        }
-
-        @Specialization(guards = {"isHostObject(value)", "elementLayout != null"})
-        MemorySegment doHostObject(Arena arena, @SuppressWarnings("unused") Object value,
-                        @Bind("asHostObject(value)") Object hostObject,
-                        @Bind("getArrayElementLayoutNode.execute(hostObject)") ValueLayout elementLayout) {
-            return doCopy(arena, hostObject, elementLayout);
-        }
-
-        @Specialization(guards = {"!isHostObject(value)", "elementLayout != null"})
+        @Specialization(guards = "elementLayout != null")
         MemorySegment doArray(Arena arena, Object value,
                         @Bind("getArrayElementLayoutNode.execute(value)") ValueLayout elementLayout) {
             return doCopy(arena, value, elementLayout);

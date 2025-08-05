@@ -49,6 +49,7 @@ import java.util.Collection;
 
 import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -178,6 +179,8 @@ public class ArrayNFITest extends NFITest {
 
     @Test
     public void testSumArrayWrapped(@Inject(CreateAndSumArray.class) CallTarget callTarget) {
+        // Panama backend does not support wrapped arrays
+        Assume.assumeFalse("panama".equals(TEST_BACKEND));
         Object array = Array.newInstance(javaType, 5);
         Object wrappedArray = runWithPolyglot.getTruffleTestEnv().asGuestValue(array);
         testSumArray(callTarget, array, wrappedArray);

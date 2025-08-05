@@ -101,7 +101,7 @@ final class PanamaType {
     }
 
     public boolean needsArena() {
-        return isArray | type == NativeSimpleType.STRING;
+        return isArray || type == NativeSimpleType.STRING;
     }
 
     public ArgumentNode createArgumentNode() {

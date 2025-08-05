@@ -106,8 +106,6 @@ abstract class FunctionExecuteNode extends Node {
 
     abstract static class SignatureExecuteNode extends RootNode {
 
-        private static final PostCallArgumentNode[] EMPTY_POST_CALL_NODE_ARRAY = new PostCallArgumentNode[0];
-
         final CachedSignatureInfo signatureInfo;
         @Children ArgumentNode[] argNodes;
         @Children PostCallArgumentNode[] postCallArgNodes;
@@ -132,8 +130,6 @@ abstract class FunctionExecuteNode extends Node {
                 for (int i = 0; i < argNodes.length; i++) {
                     postCallArgNodes[i] = argTypes[i].createPostCallArgumentNode();
                 }
-            } else {
-                this.postCallArgNodes = EMPTY_POST_CALL_NODE_ARRAY;
             }
         }
 
@@ -176,14 +172,18 @@ abstract class FunctionExecuteNode extends Node {
                 } catch (UnsupportedTypeException ex) {
                     throw silenceException(RuntimeException.class, ex);
                 }
-
-                Object result = signatureInfo.execute(signature, convertedArgs, address, this);
-                for (int i = 0; i < postCallArgNodes.length; i++) {
-                    if (postCallArgNodes[i] != null) {
-                        postCallArgNodes[i].execute(args[i], convertedArgs[i]);
+                try {
+                    return signatureInfo.execute(signature, convertedArgs, address, this);
+                } finally {
+                    if (postCallArgNodes != null) {
+                        for (int i = 0; i < postCallArgNodes.length; i++) {
+                            if (postCallArgNodes[i] != null) {
+                                postCallArgNodes[i].execute(args[i], convertedArgs[i]);
+                            }
+                        }
                     }
                 }
-                return result;
+
             } finally {
                 if (needsArena) {
                     arena.close();
