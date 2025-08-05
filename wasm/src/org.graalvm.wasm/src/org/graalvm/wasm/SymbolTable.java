@@ -149,62 +149,27 @@ public abstract class SymbolTable {
         }
     }
 
-    public static class TableInfo {
-        /**
-         * Lower bound on table size.
-         */
-        public final int initialSize;
-
-        /**
-         * Upper bound on table size.
-         * <p>
-         * <em>Note:</em> this is the upper bound defined by the module. A table instance might have
-         * a lower internal max allowed size in practice.
-         */
-        public final int maximumSize;
-
-        /**
-         * The element type of the table.
-         */
-        public final byte elemType;
-
-        public TableInfo(int initialSize, int maximumSize, byte elemType) {
-            this.initialSize = initialSize;
-            this.maximumSize = maximumSize;
-            this.elemType = elemType;
-        }
+    /**
+     * @param initialSize Lower bound on table size.
+     * @param maximumSize Upper bound on table size.
+     *            <p>
+     *            <em>Note:</em> this is the upper bound defined by the module. A table instance
+     *            might have a lower internal max allowed size in practice.
+     * @param elemType The element type of the table.
+     */
+    public record TableInfo(int initialSize, int maximumSize, byte elemType) {
     }
 
-    public static class MemoryInfo {
-        /**
-         * Lower bound on memory size (in pages of 64 kiB).
-         */
-        public final long initialSize;
-
-        /**
-         * Upper bound on memory size (in pages of 64 kiB).
-         * <p>
-         * <em>Note:</em> this is the upper bound defined by the module. A memory instance might
-         * have a lower internal max allowed size in practice.
-         */
-        public final long maximumSize;
-
-        /**
-         * If the memory uses index type 64.
-         */
-        public final boolean indexType64;
-
-        /**
-         * Whether the memory is shared (modifications are visible to other threads).
-         */
-        public final boolean shared;
-
-        public MemoryInfo(long initialSize, long maximumSize, boolean indexType64, boolean shared) {
-            this.initialSize = initialSize;
-            this.maximumSize = maximumSize;
-            this.indexType64 = indexType64;
-            this.shared = shared;
-        }
+    /**
+     * @param initialSize Lower bound on memory size (in pages of 64 kiB).
+     * @param maximumSize Upper bound on memory size (in pages of 64 kiB).
+     *            <p>
+     *            <em>Note:</em> this is the upper bound defined by the module. A memory instance
+     *            might have a lower internal max allowed size in practice.
+     * @param indexType64 If the memory uses index type 64.
+     * @param shared Whether the memory is shared (modifications are visible to other threads).
+     */
+    public record MemoryInfo(long initialSize, long maximumSize, boolean indexType64, boolean shared) {
     }
 
     /**
@@ -985,7 +950,7 @@ public abstract class SymbolTable {
 
     void addTable(int index, int minSize, int maxSize, byte elemType, boolean referenceTypes) {
         if (!referenceTypes) {
-            assertTrue(importedTables.size() == 0, "A table has already been imported in the module.", Failure.MULTIPLE_TABLES);
+            assertTrue(importedTables.isEmpty(), "A table has already been imported in the module.", Failure.MULTIPLE_TABLES);
             assertTrue(tableCount == 0, "A table has already been declared in the module.", Failure.MULTIPLE_TABLES);
         }
         ensureTableCapacity(index);
@@ -1089,7 +1054,7 @@ public abstract class SymbolTable {
 
     void addMemory(int index, long minSize, long maxSize, boolean indexType64, boolean shared, boolean multiMemory) {
         if (!multiMemory) {
-            assertTrue(importedMemories.size() == 0, "A memory has already been imported in the module.", Failure.MULTIPLE_MEMORIES);
+            assertTrue(importedMemories.isEmpty(), "A memory has already been imported in the module.", Failure.MULTIPLE_MEMORIES);
             assertTrue(memoryCount == 0, "A memory has already been declared in the module.", Failure.MULTIPLE_MEMORIES);
         }
         ensureMemoryCapacity(index);
