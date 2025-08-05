@@ -329,7 +329,7 @@ public class ShenandoahBarrierSet implements BarrierSet {
                 if (!base.stamp(NodeView.DEFAULT).isObjectStamp()) {
                     GraalError.guarantee(read.getBarrierType() == BarrierType.NONE, "no barrier for non-heap read: %s", read);
                 } else {
-                    GraalError.guarantee(read.getBarrierType() == BarrierType.READ, "missing barriers for heap read: %s", read);
+                    GraalError.guarantee(read.getBarrierType() == BarrierType.FIELD, "missing barriers for heap read: %s", read);
                 }
             } else if (node instanceof AddressableMemoryAccess access) {
                 if (access.getBarrierType() != BarrierType.NONE) {
