@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -167,6 +168,7 @@ import com.oracle.svm.core.option.OptionClassFilter;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.LayeredHostedImageHeapMapCollector;
 import com.oracle.svm.core.util.LayeredImageHeapMapStore;
@@ -568,7 +570,7 @@ public class NativeImageGenerator {
 
         try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
                         DebugCloseable featureCleanup = () -> featureHandler.forEachFeature(Feature::cleanup)) {
-            setupNativeImage(options, entryPoints, javaMainSupport, harnessSubstitutions, debug);
+            setupNativeImage(options, entryPoints, javaMainSupport, imageName, harnessSubstitutions, debug);
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
             if (returnAfterAnalysis) {
@@ -923,9 +925,10 @@ public class NativeImageGenerator {
 
     @SuppressWarnings("try")
     protected void setupNativeImage(OptionValues options, Map<Method, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport,
-                    SubstitutionProcessor harnessSubstitutions, DebugContext debug) {
+                    String imageName, SubstitutionProcessor harnessSubstitutions, DebugContext debug) {
         try (Indent ignored = debug.logAndIndent("setup native-image builder")) {
             try (StopTimer ignored1 = TimerCollection.createTimerAndStart(TimerCollection.Registry.SETUP)) {
+                installDefaultExceptionHandler(options, imageName);
                 SubstrateTargetDescription target = createTarget();
                 ImageSingletons.add(Platform.class, loader.platform);
                 ImageSingletons.add(SubstrateTargetDescription.class, target);
@@ -1119,6 +1122,30 @@ public class NativeImageGenerator {
 
             ProgressReporter.singleton().printInitializeEnd(featureHandler.getUserSpecificFeatures(), loader);
         }
+    }
+
+    /**
+     * We install a default uncaught exception handler to make sure that the image build terminates
+     * if an uncaught exception is encountered on <b>any</b> thread. As an unexpectedly failing
+     * thread could theoretically cause a deadlock if another thread was waiting for its result, we
+     * preventively terminate the build via {@link System#exit}.
+     */
+    private void installDefaultExceptionHandler(OptionValues options, String imageName) {
+        /*
+         * A flag to make sure we run the reporting only once even if multiple uncaught exceptions
+         * are encountered.
+         */
+        var reportStarted = new AtomicBoolean();
+        Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
+            if (reportStarted.compareAndSet(false, true)) {
+                /*
+                 * Call into the ProgressReporter to provide error reporting as if the throwable was
+                 * thrown on the main thread.
+                 */
+                reporter.printEpilog(Optional.of(imageName), Optional.of(NativeImageGenerator.this), loader, NativeImageGeneratorRunner.BuildOutcome.FAILED, Optional.of(throwable), options);
+                System.exit(ExitStatus.BUILDER_ERROR.getValue());
+            }
+        });
     }
 
     protected void registerEntryPointStubs(Map<Method, CEntryPointData> entryPoints) {
