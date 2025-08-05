@@ -25,10 +25,13 @@
 package com.oracle.svm.core.layeredimagesingleton;
 
 import java.util.Collection;
+import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -49,7 +52,9 @@ public interface LayeredImageSingletonSupport {
 
     Collection<Class<?>> getMultiLayeredImageSingletonKeys();
 
-    Collection<Class<?>> getFutureLayerAccessibleImageSingletonKeys();
+    Set<Object> getSingletonsWithTrait(SingletonLayeredInstallationKind.InstallationKind kind);
+
+    void forbidNewTraitInstallations(SingletonLayeredInstallationKind.InstallationKind kind);
 
     void freezeLayeredImageSingletonMetadata();
 

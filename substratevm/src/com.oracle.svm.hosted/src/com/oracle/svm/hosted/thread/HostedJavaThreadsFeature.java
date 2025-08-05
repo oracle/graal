@@ -41,10 +41,10 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaThreadsFeature;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.traits.BuiltinTraits;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -246,7 +246,7 @@ class ReachableThreadGroup {
 }
 
 @AutomaticallyRegisteredImageSingleton
-@SingletonTraits(access = BuiltinTraits.BuildtimeAccessOnly.class, layeredCallbacks = HostedJavaThreadsMetadata.LayeredCallbacks.class, layeredInstallationKind = SingletonLayeredInstallationKind.Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = HostedJavaThreadsMetadata.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
 class HostedJavaThreadsMetadata {
     long maxThreadId;
     int maxAutonumber;

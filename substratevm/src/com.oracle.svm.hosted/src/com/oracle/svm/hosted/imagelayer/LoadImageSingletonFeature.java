@@ -68,6 +68,7 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredAllowNullEntries;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -194,6 +195,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
         loader = (SVMImageLayerLoader) universe.getImageLayerLoader();
 
         LayeredImageSingletonSupport layeredImageSingletonSupport = LayeredImageSingletonSupport.singleton();
+        layeredImageSingletonSupport.forbidNewTraitInstallations(SingletonLayeredInstallationKind.InstallationKind.INITIAL_LAYER_ONLY);
         layeredImageSingletonSupport.freezeLayeredImageSingletonMetadata();
 
         Consumer<Object[]> multiLayerEmbeddedRootsRegistration = (objArray) -> {
@@ -217,8 +219,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
             /*
              * Make sure all image singletons accessible in future layers are persisted.
              */
-            for (Class<?> key : layeredImageSingletonSupport.getFutureLayerAccessibleImageSingletonKeys()) {
-                var singleton = layeredImageSingletonSupport.lookup(key, true, false);
+            for (var singleton : layeredImageSingletonSupport.getSingletonsWithTrait(SingletonLayeredInstallationKind.InstallationKind.INITIAL_LAYER_ONLY)) {
                 ImageHeapConstant constant = (ImageHeapConstant) universe.getSnippetReflection().forObject(singleton);
                 SVMImageLayerSnapshotUtil.forcePersistConstant(constant);
             }

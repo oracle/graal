@@ -1168,14 +1168,19 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerVMConfigurationPlugins(InvocationPlugins plugins) {
+        // captured values to reduce the number of dynamic singleton lookups
+        boolean imageLayer = ImageLayerBuildingSupport.buildingImageLayer();
+        boolean sharedLayer = ImageLayerBuildingSupport.buildingSharedLayer();
+        boolean extensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
+        LayeredImageSingletonSupport layeredSingletonSupport = LayeredImageSingletonSupport.singleton();
+
         Registration r = new Registration(plugins, ImageSingletons.class);
         r.register(new RequiredInvocationPlugin("contains", Class.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<?> key = constantObjectParameter(b, targetMethod, 0, Class.class, classNode);
                 boolean result = ImageSingletons.contains(key);
-                if (!result && ImageLayerBuildingSupport.buildingImageLayer()) {
-                    // GR-66793 add detection for initial layer only image singleton
+                if (!result && imageLayer) {
                     if (ApplicationLayerOnlyImageSingleton.isAssignableFrom(key) || MultiLayeredImageSingleton.class.isAssignableFrom(key)) {
                         /*
                          * ApplicationLayerOnlyImageSingletons and the array representation of a
@@ -1185,6 +1190,12 @@ public class SubstrateGraphBuilderPlugins {
                          * created in the application layer or produce a buildtime error.
                          */
                         result = true;
+                    } else if (extensionLayer) {
+                        /*
+                         * Initial layer only image singletons are installed in the initial layer,
+                         * but can be accessed from all extension layers.
+                         */
+                        result = layeredSingletonSupport.isInitialLayerOnlyImageSingleton(key);
                     }
                 }
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(result));
@@ -1196,10 +1207,9 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<?> key = constantObjectParameter(b, targetMethod, 0, Class.class, classNode);
 
-                var layeredSingletonSupport = LayeredImageSingletonSupport.singleton();
-                if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                if (imageLayer) {
                     if (ApplicationLayerOnlyImageSingleton.isAssignableFrom(key) &&
-                                    ImageLayerBuildingSupport.buildingSharedLayer()) {
+                                    sharedLayer) {
                         /*
                          * This singleton is only installed in the application layer heap. All other
                          * layers looks refer to this singleton.
@@ -1208,7 +1218,7 @@ public class SubstrateGraphBuilderPlugins {
                         return true;
                     }
 
-                    if (ImageLayerBuildingSupport.buildingExtensionLayer() && layeredSingletonSupport.isInitialLayerOnlyImageSingleton(key)) {
+                    if (extensionLayer && layeredSingletonSupport.isInitialLayerOnlyImageSingleton(key)) {
                         /*
                          * This singleton is only installed in the initial layer heap. When allowed,
                          * all other layers lookups refer to this singleton.
