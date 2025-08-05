@@ -763,6 +763,7 @@ Currently, the following languages are available as polyglot isolates:
 |-------------------------------|----------------|
 | JavaScript (`js-isolate`)     | 23.1           |
 | Python (`python-isolate`)     | 24.1           |
+| Wasm (`wasm-isolate`)         | 25.0           |
 
 We plan to add support for more languages in future versions.
 
