@@ -27,6 +27,7 @@ package com.oracle.svm.webimage.substitute.system;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
+import jdk.internal.misc.Signal;
 
 @TargetClass(className = "jdk.internal.misc.VM")
 @SuppressWarnings("unused")
@@ -53,6 +54,61 @@ final class Target_jdk_internal_misc_VM_Web {
             return -1;
         }
         return diff * 1_000_000_000 + nanos;
+    }
+}
+
+@TargetClass(className = "jdk.internal.misc.Signal")
+final class Target_jdk_internal_misc_Signal_Web {
+
+    /**
+     * Uses POSIX signal numbers. May be incomplete, extend as necessary.
+     * <p>
+     * Signals are not supported in Web Image, but instances of {@code Signal} may still exist, so
+     * this method must return something.
+     * <p>
+     * Signal numbers taken from {@code man 7 signal} for the intel architecture.
+     */
+    @Substitute
+    private static int findSignal0(String sigName) {
+        return switch (sigName) {
+            case "HUP" -> 1;
+            case "INT" -> 2;
+            case "QUIT" -> 3;
+            case "ILL" -> 4;
+            case "TRAP" -> 5;
+            case "ABRT" -> 6;
+            case "BUS" -> 7;
+            case "FPE" -> 8;
+            case "KILL" -> 9;
+            case "USR1" -> 10;
+            case "SEGV" -> 11;
+            case "USR2" -> 12;
+            case "PIPE" -> 13;
+            case "ALRM" -> 14;
+            case "TERM" -> 15;
+            case "STKFLT" -> 16;
+            case "CHLD" -> 17;
+            case "CONT" -> 18;
+            case "STOP" -> 19;
+            case "TSTP" -> 20;
+            case "TTIN" -> 21;
+            case "TTOU" -> 22;
+            case "URG" -> 23;
+            case "XCPU" -> 24;
+            case "XFSZ" -> 25;
+            case "VTALRM" -> 26;
+            case "PROF" -> 27;
+            case "WINCH" -> 28;
+            case "IO" -> 29;
+            case "PWR" -> 30;
+            case "SYS" -> 31;
+            default -> -1;
+        };
+    }
+
+    @Substitute
+    public static synchronized Signal.Handler handle(Signal sig, Signal.Handler handler) throws IllegalArgumentException {
+        throw new IllegalArgumentException("cannot register signal handles in webimage.");
     }
 }
 
