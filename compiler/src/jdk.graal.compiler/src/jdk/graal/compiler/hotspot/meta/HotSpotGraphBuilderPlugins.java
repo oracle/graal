@@ -1141,14 +1141,7 @@ public class HotSpotGraphBuilderPlugins {
                 return arch instanceof AArch64;
             }
         });
-        r.register(new StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin() {
-            @Override
-            public boolean isGraalOnly() {
-                // On AArch64 HotSpot, this intrinsic is not implemented and
-                // UseVectorizedHashCodeIntrinsic defaults to false.
-                return arch instanceof AArch64;
-            }
-        });
+        r.register(new StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin());
     }
 
     private static void registerReferencePlugins(InvocationPlugins plugins) {
