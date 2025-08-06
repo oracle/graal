@@ -33,6 +33,7 @@ import gdb
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__))))
 
 from gdb_helper import *
+import re
 
 
 # requires the gdb patch to be available
@@ -95,13 +96,21 @@ class TestRuntimeDeopt(unittest.TestCase):
             else:
                 self.assertIn('SubstrateOptimizedCallTarget = {...}, __1=java.lang.Object[5] = {...})', backtrace)
                 self.assertIn('SubstrateOptimizedCallTargetInstalledCode::doInvoke', backtrace)
-
-            self.assertNotIn('??', backtrace)
-            self.assertNotIn('Unknown Frame at', backtrace)
         else:
             # must be lazy deopt frame
-            # we can't be sure it is handled properly, but at least it should show up as lazy deopt frame in the backtrace
-            self.assertIn('[LAZY DEOPT FRAME] at', backtrace)
+            self.assertIn('[LAZY DEOPT FRAME]', backtrace)
+
+            if 'SubstrateEnterpriseOptimizedCallTarget' in backtrace:
+                # check if we still see the parameters of the lazily deoptimized method on the backtrace
+                self.assertRegex(backtrace, re.compile(rf'0x{hex_pattern} in \[LAZY DEOPT FRAME\] .* \(callTarget={value_pattern}, args={value_pattern}, __Object2={value_pattern}, __int3={value_pattern}, __int4={value_pattern}, __boolean5={value_pattern}\)'))
+            else:
+                # must be a SubstrateOptimizedCallTarget
+                self.assertIn('SubstrateOptimizedCallTarget', backtrace)
+                self.assertRegex(backtrace, re.compile(rf'0x{hex_pattern} in \[LAZY DEOPT FRAME\] .* \(this={value_pattern}, originalArguments={value_pattern}\)'))
+
+        # the backtrace should contain no unknown frames
+        self.assertNotIn('??', backtrace)
+        self.assertNotIn('Unknown Frame at', backtrace)
 
     # the js deopt test uses the jsvm-library
     # so the debugging symbols come from the js shared library
@@ -117,7 +126,7 @@ class TestRuntimeDeopt(unittest.TestCase):
             self.assertNotIn('<unknown type in <in-memory@', backtrace)
         else:
             self.assertIn('com.oracle.truffle.runtime.OptimizedCallTarget::profiledPERoot', backtrace)
-            self.assertIn('(this=<optimized out>, originalArguments=)', backtrace)
+            self.assertIn('(this=<optimized out>, originalArguments=', backtrace)
             self.assertNotIn('this=<unknown type in <in-memory@', backtrace)
 
 

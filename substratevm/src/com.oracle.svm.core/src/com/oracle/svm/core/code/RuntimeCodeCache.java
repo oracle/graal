@@ -292,9 +292,9 @@ public class RuntimeCodeCache {
     }
 
     private void continueInvalidation(CodeInfo info, boolean removeNow) {
-        InstalledCodeObserverSupport.removeObservers(RuntimeCodeInfoAccess.getCodeObserverHandles(info));
         if (removeNow) {
             /* If removeNow, then the CodeInfo is immediately removed from the code cache. */
+            InstalledCodeObserverSupport.removeObservers(RuntimeCodeInfoAccess.getCodeObserverHandles(info));
             removeFromCodeCache(info);
             RuntimeCodeInfoHistory.singleton().logInvalidate(info);
         } else {

@@ -141,7 +141,7 @@ public final class InstalledCodeObserverSupport {
             for (int i = 0; i < length; i++) {
                 InstalledCodeObserverHandle handle = NonmovableArrays.getWord(observerHandles, i);
                 if (handle.isNonNull()) {
-                    getAccessor(handle).releaseOnTearDown(handle);
+                    getAccessor(handle).release(handle);
                     NonmovableArrays.setWord(observerHandles, i, Word.nullPointer());
                 }
             }
