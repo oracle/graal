@@ -74,7 +74,6 @@ public abstract class LanguageLauncherBase extends Launcher {
     private static final String WEBSITE_HEADER = "[website]";
 
     private static Engine tempEngine;
-    private boolean seenPolyglot;
     private VersionAction versionAction = VersionAction.None;
 
     static Engine getTempEngine() {
@@ -167,10 +166,6 @@ public abstract class LanguageLauncherBase extends Launcher {
         return instruments;
     }
 
-    final boolean isPolyglot() {
-        return seenPolyglot;
-    }
-
     final void setupContextBuilder(Context.Builder builder) {
         Path logFile = getLogFile();
         if (logFile != null) {
@@ -214,7 +209,7 @@ public abstract class LanguageLauncherBase extends Launcher {
     protected boolean parseCommonOption(String defaultOptionPrefix, Map<String, String> polyglotOptions, boolean experimentalOptions, String arg) {
         switch (arg) {
             case "--polyglot":
-                seenPolyglot = true;
+                // the default, just ignore it
                 break;
             case "--version:graalvm":
                 versionAction = VersionAction.PrintAndExit;
