@@ -1485,6 +1485,12 @@ public final class ObjectKlass extends Klass {
         getContext().getClassHierarchyOracle().registerNewKlassVersion(klassVersion);
 
         incrementKlassRedefinitionCount();
+        // Update the class modifiers in the guest for jdk 25+,
+        // but only call out to the guest if they have changed.
+        if (getContext().getJavaVersion().java25OrLater() && oldVersion.getClassModifiers() != klassVersion.getClassModifiers()) {
+            // update the guest value class modifiers
+            getMeta().java_lang_Class_modifiers.setChar(mirror(), (char) klassVersion.getClassModifiers());
+        }
         oldVersion.assumption.invalidate();
     }
 
