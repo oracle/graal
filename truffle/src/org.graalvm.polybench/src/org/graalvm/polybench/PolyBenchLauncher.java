@@ -302,11 +302,6 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
     }
 
     @Override
-    protected String[] getDefaultLanguages() {
-        return new String[0];
-    }
-
-    @Override
     protected void printHelp(OptionCategory maxCategory) {
         try {
             InputStream inputStream = PolyBenchLauncher.class.getResource("help.txt").openStream();

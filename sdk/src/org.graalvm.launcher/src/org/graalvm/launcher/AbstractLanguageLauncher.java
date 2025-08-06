@@ -289,14 +289,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
         validateArguments(polyglotOptions);
         argumentsProcessingDone();
 
-        Context.Builder builder;
-        if (isPolyglot()) {
-            builder = Context.newBuilder().options(polyglotOptions);
-        } else {
-            builder = Context.newBuilder(getDefaultLanguages()).options(polyglotOptions);
-        }
-
-        builder.allowAllAccess(true);
+        Context.Builder builder = Context.newBuilder().allowAllAccess(true).options(polyglotOptions);
         setupContextBuilder(builder);
 
         launch(builder);
@@ -305,16 +298,16 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
     /**
      * Process command line arguments by either saving the necessary state or adding it to the
      * {@code polyglotOptions}. Any unrecognized arguments should be accumulated and returned as a
-     * list. VM (--jvm/--native/--polyglot/--vm.*) and polyglot options (--language.option or
-     * --option) should be returned as unrecognized arguments to be automatically parsed and
-     * validated by {@link Launcher#parsePolyglotOption(String, Map, boolean, String)}.
-     *
+     * list. VM (--jvm/--native/--vm.*) and polyglot options (--language.option or --option) should
+     * be returned as unrecognized arguments to be automatically parsed and validated by
+     * {@link Launcher#parsePolyglotOption(String, Map, boolean, String)}.
+     * <p>
      * The {@code arguments} should not be modified, but doing so also has no effect.
-     *
+     * <p>
      * {@code polyglotOptions.put()} can be used to set launcher-specific default values when they
      * do not match the OptionKey's default.
-     *
-     * The {@code preprocessArguments} implementations can use {@link Engine} to inspect the the
+     * <p>
+     * The {@code preprocessArguments} implementations can use {@link Engine} to inspect the
      * installed {@link Engine#getLanguages() guest languages} and {@link Engine#getInstruments()
      * instruments}. But creating a {@link Context} or inspecting {@link Engine#getOptions() engine
      * options} is forbidden.
@@ -396,12 +389,15 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
     }
 
     /**
-     * The return value specifies what languages should be available by default when not using
-     * --polyglot. Note that TruffleLanguage.Registration#dependentLanguages() should be preferred
-     * in most cases.
+     * The return value used to specify what languages should be available by default when not using
+     * --polyglot. --polyglot is default since 26.0 so this is no longer used. Note that
+     * TruffleLanguage.Registration#dependentLanguages() should be preferred in most cases.
      *
+     * @deprecated no longer has any effect, all languages are always available for
+     *             AbstractLanguageLauncher.
      * @return an array of required language ids
      */
+    @Deprecated(since = "26.0")
     protected String[] getDefaultLanguages() {
         return new String[]{getLanguageId()};
     }
