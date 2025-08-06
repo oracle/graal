@@ -478,12 +478,12 @@ public class SnippetTemplate {
      * method that needs to be computed only once. The {@link SnippetInfo} should be created once
      * per snippet and then cached.
      */
-    public abstract static class SnippetInfo {
+    public static final class SnippetInfo {
 
-        protected final ResolvedJavaMethod method;
-        protected final ResolvedJavaMethod original;
-        protected final LocationIdentity[] privateLocations;
-        protected final Object receiver;
+        private final ResolvedJavaMethod method;
+        private final ResolvedJavaMethod original;
+        private final LocationIdentity[] privateLocations;
+        private final Object receiver;
 
         public Object getReceiver() {
             return receiver;
@@ -512,20 +512,22 @@ public class SnippetTemplate {
 
         private final TimerKey creationTimer;
 
-        protected final Snippet.SnippetType type;
+        private final Snippet.SnippetType type;
 
-        protected abstract SnippetParameterInfo info();
+        private final SnippetParameterInfo snippetParameterInfo;
 
-        protected SnippetInfo(ResolvedJavaMethod method, ResolvedJavaMethod original, LocationIdentity[] privateLocations, Object receiver, Snippet.SnippetType type) {
+        private SnippetInfo(ResolvedJavaMethod method, ResolvedJavaMethod original, LocationIdentity[] privateLocations, Object receiver, SnippetParameterInfo snippetParameterInfo,
+                        Snippet.SnippetType type) {
             this.method = method;
             this.original = original;
             this.privateLocations = privateLocations;
-            instantiationCounter = DebugContext.counter("SnippetInstantiationCount[%s]", method.getName());
-            instantiationTimer = DebugContext.timer("SnippetInstantiationTime[%s]", method.getName());
-            creationCounter = DebugContext.counter("SnippetCreationCount[%s]", method.getName());
-            creationTimer = DebugContext.timer("SnippetCreationTime[%s]", method.getName());
+            this.instantiationCounter = DebugContext.counter("SnippetInstantiationCount[%s]", method.getName());
+            this.instantiationTimer = DebugContext.timer("SnippetInstantiationTime[%s]", method.getName());
+            this.creationCounter = DebugContext.counter("SnippetCreationCount[%s]", method.getName());
+            this.creationTimer = DebugContext.timer("SnippetCreationTime[%s]", method.getName());
             this.receiver = receiver;
             this.type = type;
+            this.snippetParameterInfo = snippetParameterInfo;
         }
 
         public boolean isPrivateLocation(LocationIdentity identity) {
@@ -542,47 +544,32 @@ public class SnippetTemplate {
         }
 
         public int getParameterCount() {
-            return info().getParameterCount();
+            return snippetParameterInfo.getParameterCount();
         }
 
         public boolean isConstantParameter(int paramIdx) {
-            return info().isConstantParameter(paramIdx);
+            return snippetParameterInfo.isConstantParameter(paramIdx);
         }
 
         public boolean isVarargsParameter(int paramIdx) {
-            return info().isVarargsParameter(paramIdx);
+            return snippetParameterInfo.isVarargsParameter(paramIdx);
         }
 
         public boolean isNonNullParameter(int paramIdx) {
-            return info().isNonNullParameter(paramIdx);
+            return snippetParameterInfo.isNonNullParameter(paramIdx);
         }
 
         public String getParameterName(int paramIdx) {
-            return info().getParameterName(paramIdx);
+            return snippetParameterInfo.getParameterName(paramIdx);
+        }
+
+        public SnippetInfo copyWith(ResolvedJavaMethod newMethod) {
+            return new SnippetInfo(newMethod, original, privateLocations, receiver, snippetParameterInfo, type);
         }
 
         @Override
         public String toString() {
             return getClass().getSimpleName() + ":" + method.format("%h.%n");
-        }
-    }
-
-    public static class EagerSnippetInfo extends SnippetInfo {
-        protected final SnippetParameterInfo snippetParameterInfo;
-
-        protected EagerSnippetInfo(ResolvedJavaMethod method, ResolvedJavaMethod original, LocationIdentity[] privateLocations, Object receiver, SnippetParameterInfo snippetParameterInfo,
-                        Snippet.SnippetType type) {
-            super(method, original, privateLocations, receiver, type);
-            this.snippetParameterInfo = snippetParameterInfo;
-        }
-
-        @Override
-        protected SnippetParameterInfo info() {
-            return snippetParameterInfo;
-        }
-
-        public EagerSnippetInfo copyWith(ResolvedJavaMethod newMethod) {
-            return new EagerSnippetInfo(newMethod, original, privateLocations, receiver, snippetParameterInfo, type);
         }
     }
 
@@ -939,7 +926,7 @@ public class SnippetTemplate {
             providers.getReplacements().registerSnippet(javaMethod, original, receiver, GraalOptions.TrackNodeSourcePosition.getValue(options), options);
             LocationIdentity[] privateLocations = GraalOptions.SnippetCounters.getValue(options) ? SnippetCounterNode.addSnippetCounters(initialPrivateLocations) : initialPrivateLocations;
             SnippetParameterInfo snippetParameterInfo = providers.getReplacements().getSnippetParameterInfo(javaMethod);
-            return new EagerSnippetInfo(javaMethod, original, privateLocations, receiver, snippetParameterInfo, type);
+            return new SnippetInfo(javaMethod, original, privateLocations, receiver, snippetParameterInfo, type);
         }
 
         /**

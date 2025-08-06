@@ -529,7 +529,7 @@ public class SymbolicSnippetEncoder {
         // Ensure a few well known types are available
         lookupSnippetType(GraalHotSpotVMConfig.class);
         lookupSnippetType(NamedLocationIdentity.class);
-        lookupSnippetType(SnippetTemplate.EagerSnippetInfo.class);
+        lookupSnippetType(SnippetTemplate.SnippetInfo.class);
         lookupSnippetType(ForeignCallStub.class);
         lookupSnippetType(HotSpotSpeculationLog.HotSpotSpeculation.class);
 
