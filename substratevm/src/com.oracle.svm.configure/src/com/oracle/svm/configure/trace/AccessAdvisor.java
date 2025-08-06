@@ -112,6 +112,8 @@ public final class AccessAdvisor {
         // BytecodeDescriptor calls Class.forName
         internalCallerFilter.addOrGetChildren("sun.invoke.util.BytecodeDescriptor", ConfigurationFilter.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("sun.launcher.**", ConfigurationFilter.Inclusion.Exclude);
+        // LoggingMXBeanAccess calls Class.forName
+        internalCallerFilter.addOrGetChildren("sun.management.ManagementFactoryHelper$LoggingMXBeanAccess", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.misc.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.net.**", ConfigurationFilter.Inclusion.Exclude);
         // Uses constructor reflection on exceptions
