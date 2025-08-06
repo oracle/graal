@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -169,10 +169,6 @@ public abstract class LanguageLauncherBase extends Launcher {
 
     final boolean isPolyglot() {
         return seenPolyglot;
-    }
-
-    final void setPolyglot(boolean polyglot) {
-        seenPolyglot = polyglot;
     }
 
     final void setupContextBuilder(Context.Builder builder) {

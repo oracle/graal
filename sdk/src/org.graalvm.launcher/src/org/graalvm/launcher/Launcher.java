@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1215,14 +1215,14 @@ public abstract class Launcher {
     @SuppressWarnings("unused")
     @Deprecated(since = "20.3")
     protected final void maybeNativeExec(List<String> args, boolean isPolyglotLauncher, Map<String, String> polyglotOptions) {
-        maybeNativeExec(args, args, isPolyglotLauncher);
+        maybeNativeExec(args, args, false);
     }
 
     /**
      * Possibly re-executes the launcher when JVM or polyglot mode is requested; call only if
      * {@link #isAOT()} is true. If the result is to run native, then it applies VM options on the
      * current process.
-     *
+     * <p>
      * The method parses the {@code unrecognizedArgs} for --jvm/--native/--polyglot flags and --vm.*
      * options. If JVM mode is requested, it execs a Java process configured with supported JVM
      * parameters and system properties over this process - in this case, the method does not return
@@ -1232,17 +1232,17 @@ public abstract class Launcher {
      * @param unrecognizedArgs a subset of {@code originalArgs} that was not recognized by
      *            {@link AbstractLanguageLauncher#preprocessArguments(List, Map)}. All arguments
      *            recognized by maybeExec are removed from the list.
-     * @param isPolyglotLauncher whether this is the {@link PolyglotLauncher} (bin/polyglot)
+     * @param isPolyglotLauncher no longer used, always false
      * @since 20.0
      */
-    protected final void maybeNativeExec(List<String> originalArgs, List<String> unrecognizedArgs, boolean isPolyglotLauncher) {
+    protected final void maybeNativeExec(List<String> originalArgs, List<String> unrecognizedArgs, @SuppressWarnings("unused") boolean isPolyglotLauncher) {
         if (!IS_AOT) {
             return;
         }
-        maybeExec(originalArgs, unrecognizedArgs, isPolyglotLauncher, getDefaultVMType(), false);
+        maybeExec(originalArgs, unrecognizedArgs, getDefaultVMType(), false);
     }
 
-    void maybeExec(List<String> originalArgs, List<String> unrecognizedArgs, boolean isPolyglotLauncher, VMType defaultVmType, boolean thinLauncher) {
+    void maybeExec(List<String> originalArgs, List<String> unrecognizedArgs, VMType defaultVmType, boolean thinLauncher) {
         assert isAOT();
         VMType vmType = null;
         boolean polyglot = false;
@@ -1299,7 +1299,7 @@ public abstract class Launcher {
                 jvmArgs.add('-' + vmOption);
             }
 
-            if (!isPolyglotLauncher && polyglot) {
+            if (polyglot) {
                 applicationArgs.add(0, "--polyglot");
             }
             assert !isStandalone();
@@ -1329,7 +1329,7 @@ public abstract class Launcher {
              */
             VMRuntime.initialize();
 
-            if (!isPolyglotLauncher && polyglot) {
+            if (polyglot) {
                 assert jvmArgs.isEmpty();
                 if (isStandalone()) {
                     throw abort("--polyglot option is only supported when this launcher is part of a GraalVM.");
