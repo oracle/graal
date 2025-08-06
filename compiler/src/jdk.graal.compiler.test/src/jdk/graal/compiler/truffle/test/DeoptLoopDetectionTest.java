@@ -108,6 +108,48 @@ public class DeoptLoopDetectionTest {
     }
 
     @Test
+    public void testAlwaysDeoptNoInvalidate() {
+        AssertionError expectedError = Assert.assertThrows(AssertionError.class, () -> assertDeoptLoop(new BaseRootNode() {
+            @CompilerDirectives.TruffleBoundary
+            static void boundaryMethod() {
+
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                int arg = (int) frame.getArguments()[0];
+                int threshold = TruffleCompilerOptions.DeoptCycleDetectionThreshold.getDefaultValue();
+                if (arg < threshold) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                }
+                // call boundary method to prevent compiler from moving the following deoptimization
+                // up
+                boundaryMethod();
+                CompilerDirectives.transferToInterpreter();
+                return null;
+            }
+        }, "alwaysDeoptNoInvalidate", new Consumer<CallTarget>() {
+            int i;
+
+            @Override
+            public void accept(CallTarget callTarget) {
+                callTarget.call(i++);
+                if (i == TruffleCompilerOptions.DeoptCycleDetectionThreshold.getDefaultValue() + 1) {
+                    /*
+                     * Invalidate the target that was just deoptimized (but not invalidated) by
+                     * transferToInterpreter. The exact same compilation is then repeated in the
+                     * next iteration, but because deoptimize nodes with deoptimization action
+                     * "None" (like the one used for transferToInterpreter) don't trigger deopt loop
+                     * detection, no deopt loop should be detected.
+                     */
+                    ((OptimizedCallTarget) callTarget).invalidate("Force one more recompile");
+                }
+            }
+        }, 1));
+        Assert.assertEquals("No deopt loop detected after " + MAX_EXECUTIONS + " executions", expectedError.getMessage());
+    }
+
+    @Test
     public void testLocalDeopt() {
         assertDeoptLoop(new BaseRootNode() {
 
