@@ -58,9 +58,8 @@ public class SnippetCountersTest extends GraalCompilerTest {
         HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) getReplacements();
         try (DebugCloseable _ = replacements.suppressEncodedSnippets()) {
             OptionValues options = new OptionValues(getInitialOptions(), GraalOptions.SnippetCounters, true);
-            try (DebugCloseable _ = replacements.extendEncodedSnippets(options)) {
-                getReplacements().registerSnippetTemplateCache(new TestSnippets.CounterTestSnippets.Templates(options, getProviders()));
-            }
+            replacements.registerSnippetTemplateCache(new TestSnippets.CounterTestSnippets.Templates(options, getProviders()));
+            replacements.encode(options);
             counters = new TestSnippets.CounterTestSnippets.TestSnippetCounters(SnippetCounter.Group::new);
             executeActual(getResolvedJavaMethod("testedMethod"), null);
             Assert.assertEquals(1L, counters.increments.value());

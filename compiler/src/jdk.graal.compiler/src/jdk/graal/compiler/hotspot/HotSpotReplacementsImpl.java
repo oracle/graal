@@ -191,7 +191,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
         assert method.isStatic() || receiver != null : "must have a constant type for the receiver";
         if (!isAfterSnippetEncoding()) {
-            assert !snippetRegistrationClosed || System.getProperty("GraalUnitTest") != null : "Cannot register snippet after registration is closed: " + method.format("%H.%n(%p)");
+            assert !snippetRegistrationClosed : "Cannot register snippet after registration is closed: " + method.format("%H.%n(%p)");
             if (registeredSnippets.add(method)) {
                 try (DebugCloseable ignored = ReplayCompilationSupport.enterSnippetContext(getProviders())) {
                     snippetEncoder.registerSnippet(method, original, receiver, trackNodeSourcePosition);
@@ -248,21 +248,9 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     /**
-     * Opens a scope in which additional snippets can be registered, re-encoding all snippets when
-     * the scope is closed. For testing purposes.
-     *
-     * @param options option values
-     * @return the scope in which additional snippets should be registered
-     */
-    @LibGraalSupport.HostedOnly
-    public DebugCloseable extendEncodedSnippets(OptionValues options) {
-        setEncodedSnippets(null);
-        return () -> encode(options);
-    }
-
-    /**
-     * Opens a scope without encoded snippets, restoring the previous encoded snippets when the
-     * scope is closed. For testing purposes.
+     * Opens a scope without encoded snippets, in which additional snippets can be registered and
+     * encoded. The previous encoded snippets are restored when the scope is closed. Useful for
+     * testing.
      *
      * @return a scope without encoded snippets
      */

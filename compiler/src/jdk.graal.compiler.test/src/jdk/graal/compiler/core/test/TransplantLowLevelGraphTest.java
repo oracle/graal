@@ -31,6 +31,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.test.Graal;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.phases.HighTier;
@@ -50,39 +51,30 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.TestSnippets;
 import jdk.graal.compiler.replacements.TestSnippets.TransplantTestSnippets;
 import jdk.graal.compiler.replacements.nodes.LateLoweredNode;
+import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class TransplantLowLevelGraphTest extends GraalCompilerTest {
+    private static DebugCloseable snippetScope;
+
+    private static TestSnippets.TransplantTestSnippets.Templates transplantTestSnippets;
 
     @BeforeClass
     public static void setup() {
-        /**
-         * Ensure snippets can be registered in a test setup running jargraal only.
-         */
-        System.setProperty("GraalUnitTest", "true");
+        Providers providers = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders();
+        OptionValues options = getInitialOptions();
+        HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) providers.getReplacements();
+        snippetScope = replacements.suppressEncodedSnippets();
+        transplantTestSnippets = new TestSnippets.TransplantTestSnippets.Templates(options, providers);
+        replacements.encode(options);
     }
 
     @AfterClass
     public static void teardown() {
-        System.clearProperty("GraalUnitTest");
-    }
-
-    private static TestSnippets.TransplantTestSnippets.Templates transplantTestSnippets;
-
-    @SuppressWarnings("this-escape")
-    public TransplantLowLevelGraphTest() {
-        Providers p = getProviders();
-        OptionValues opt = getInitialOptions();
-
-        // ensure that the snippets are registered
-        if (transplantTestSnippets == null) {
-            try (DebugCloseable _ = ((HotSpotReplacementsImpl) p.getReplacements()).extendEncodedSnippets(opt)) {
-                transplantTestSnippets = new TestSnippets.TransplantTestSnippets.Templates(opt, p);
-            }
-        }
+        snippetScope.close();
     }
 
     @Override
