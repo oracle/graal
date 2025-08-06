@@ -377,7 +377,6 @@ def maven_deploy_public(args, licenses=None, deploy_snapshots=True):
     mx.log(f'mx maven-deploy {" ".join(deploy_args)}')
     mx.maven_deploy(deploy_args)
     mx.log(f'Deployed Maven artefacts to {path}')
-    return path
 
 @mx.command(_suite.name, 'nativebridge-benchmark')
 def nativebridge_benchmark(args):
