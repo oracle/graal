@@ -24,9 +24,11 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
-import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
+import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
+
+import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -45,8 +47,6 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.WithExceptionNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -76,10 +76,6 @@ public abstract class MacroWithExceptionNode extends WithExceptionNode implement
     protected final InvokeKind invokeKind;
     protected final StampPair returnStamp;
 
-    protected ResolvedJavaMethod originalTargetMethod;
-    protected StampPair originalReturnStamp;
-    @Input NodeInputList<ValueNode> originalArguments;
-
     @SuppressWarnings("this-escape")
     protected MacroWithExceptionNode(NodeClass<? extends MacroWithExceptionNode> c, MacroNode.MacroParams p) {
         super(c, p.returnStamp != null ? p.returnStamp.getTrustedStamp() : null);
@@ -91,7 +87,6 @@ public abstract class MacroWithExceptionNode extends WithExceptionNode implement
         this.invokeKind = p.invokeKind;
         assert !isPlaceholderBci(p.bci);
         assert MacroInvokable.assertArgumentCount(this);
-        this.originalArguments = new NodeInputList<>(this);
     }
 
     @Override
@@ -133,21 +128,6 @@ public abstract class MacroWithExceptionNode extends WithExceptionNode implement
     @Override
     public StampPair getReturnStamp() {
         return returnStamp;
-    }
-
-    @Override
-    public NodeInputList<ValueNode> getOriginalArguments() {
-        return originalArguments;
-    }
-
-    @Override
-    public ResolvedJavaMethod getOriginalTargetMethod() {
-        return originalTargetMethod;
-    }
-
-    @Override
-    public StampPair getOriginalReturnStamp() {
-        return originalReturnStamp;
     }
 
     @Override
@@ -214,11 +194,4 @@ public abstract class MacroWithExceptionNode extends WithExceptionNode implement
         return LocationIdentity.any();
     }
 
-    @Override
-    public void addMethodHandleInfo(ResolvedMethodHandleCallTargetNode methodHandle) {
-        assert originalArguments.size() == 0 && originalReturnStamp == null & originalTargetMethod == null : this;
-        originalReturnStamp = methodHandle.originalReturnStamp;
-        originalTargetMethod = methodHandle.originalTargetMethod;
-        originalArguments.addAll(methodHandle.originalArguments);
-    }
 }
