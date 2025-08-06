@@ -400,7 +400,7 @@ public interface InternalResource {
             String resourceName = getResourceName(source);
             Path parent = target.getParent();
             if (parent == null) {
-                throw CompilerDirectives.shouldNotReachHere("RelativeResourcePath must be non-empty.");
+                throw new AssertionError("RelativeResourcePath must be non-empty.");
             }
             Files.createDirectories(parent);
             try (BufferedInputStream in = new BufferedInputStream(getResourceStream(resourceName))) {
@@ -546,7 +546,7 @@ public interface InternalResource {
         public static OS getCurrent() {
             String os = System.getProperty("os.name");
             if (os == null) {
-                throw CompilerDirectives.shouldNotReachHere("The 'os.name' system property is not set.");
+                throw new AssertionError("The 'os.name' system property is not set.");
             } else if (os.equalsIgnoreCase("linux")) {
                 return LINUX;
             } else if (os.equalsIgnoreCase("mac os x") || os.equalsIgnoreCase("darwin")) {
@@ -620,7 +620,7 @@ public interface InternalResource {
         public static CPUArchitecture getCurrent() {
             String arch = System.getProperty("os.arch");
             if (arch == null) {
-                throw CompilerDirectives.shouldNotReachHere("The 'os.arch' system property is not set.");
+                throw new AssertionError("The 'os.arch' system property is not set.");
             }
             return switch (arch) {
                 case "amd64", "x86_64" -> AMD64;
