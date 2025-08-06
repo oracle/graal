@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
-import static jdk.vm.ci.amd64.AMD64Kind.QWORD;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VEXTRACTI128;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVDQU32;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VPBROADCASTD;
@@ -51,6 +49,8 @@ import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.ZMM;
 import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.pointerConstant;
 import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
+import static jdk.vm.ci.amd64.AMD64Kind.QWORD;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.EnumSet;
 
@@ -67,7 +67,6 @@ import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.ArrayDataPointerConstant;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -311,65 +310,66 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
         // }
         // SINGLE SCALAR
         // @formatter:on
-        masm.cmplAndJcc(cnt1, 32, ConditionFlag.Less, labelShortUnrolledBegin, false);
-        // cnt1 >= 32 && generate_vectorized_loop
-        masm.xorl(index, index);
-        // vresult = IntVector.zero(I256);
-        for (int idx = 0; idx < 4; idx++) {
-            masm.vpxor(vresult[idx], vresult[idx], vresult[idx], YMM);
-        }
-        // vnext = IntVector.broadcast(I256, power_of_31_backwards[0]);
-        Register bound = tmp2;
-        Register next = tmp3;
-        masm.leaq(tmp2, recordExternalAddress(crb, powersOf31));
-        masm.movl(next, new AMD64Address(tmp2));
-        masm.movdl(vnext, next);
-        masm.emit(VPBROADCASTD, vnext, vnext, YMM);
+        if (supportsAVX2AndYMM()) {
+            masm.cmplAndJcc(cnt1, 32, ConditionFlag.Less, labelShortUnrolledBegin, false);
+            // cnt1 >= 32 && generate_vectorized_loop
+            masm.xorl(index, index);
+            // vresult = IntVector.zero(I256);
+            for (int idx = 0; idx < 4; idx++) {
+                masm.vpxor(vresult[idx], vresult[idx], vresult[idx], YMM);
+            }
+            // vnext = IntVector.broadcast(I256, power_of_31_backwards[0]);
+            Register bound = tmp2;
+            Register next = tmp3;
+            masm.leaq(tmp2, recordExternalAddress(crb, powersOf31));
+            masm.movl(next, new AMD64Address(tmp2));
+            masm.movdl(vnext, next);
+            masm.emit(VPBROADCASTD, vnext, vnext, YMM);
 
-        // index = 0;
-        // bound = cnt1 & ~(32 - 1);
-        masm.movl(bound, cnt1);
-        masm.andl(bound, ~(32 - 1));
-        // for (; index < bound; index += 32) {
-        masm.bind(labelUnrolledVectorLoopBegin);
-        // result *= next;
-        masm.imull(result, next);
-        /*
-         * Load the next 32 data elements into 4 vector registers. By grouping the loads and
-         * fetching from memory up front (loop fission), out-of-order execution can hopefully do a
-         * better job of prefetching, while also allowing subsequent instructions to be executed
-         * while data are still being fetched.
-         */
-        for (int idx = 0; idx < 4; idx++) {
-            loadVector(masm, vtmp[idx], new AMD64Address(ary1, index, stride, 8 * idx * elsize), elsize * 8);
-        }
-        // vresult = vresult * vnext + ary1[index+8*idx:index+8*idx+7];
-        for (int idx = 0; idx < 4; idx++) {
-            masm.emit(VPMULLD, vresult[idx], vresult[idx], vnext, YMM);
-            arraysHashcodeElvcast(masm, vtmp[idx], arrayKind);
-            masm.emit(VPADDD, vresult[idx], vresult[idx], vtmp[idx], YMM);
-        }
-        // index += 32;
-        masm.addl(index, 32);
-        // index < bound;
-        masm.cmplAndJcc(index, bound, ConditionFlag.Less, labelUnrolledVectorLoopBegin, false);
-        // }
+            // index = 0;
+            // bound = cnt1 & ~(32 - 1);
+            masm.movl(bound, cnt1);
+            masm.andl(bound, ~(32 - 1));
+            // for (; index < bound; index += 32) {
+            masm.bind(labelUnrolledVectorLoopBegin);
+            // result *= next;
+            masm.imull(result, next);
+            /*
+             * Load the next 32 data elements into 4 vector registers. By grouping the loads and
+             * fetching from memory up front (loop fission), out-of-order execution can hopefully do
+             * a better job of prefetching, while also allowing subsequent instructions to be
+             * executed while data are still being fetched.
+             */
+            for (int idx = 0; idx < 4; idx++) {
+                loadVector(masm, vtmp[idx], new AMD64Address(ary1, index, stride, 8 * idx * elsize), elsize * 8);
+            }
+            // vresult = vresult * vnext + ary1[index+8*idx:index+8*idx+7];
+            for (int idx = 0; idx < 4; idx++) {
+                masm.emit(VPMULLD, vresult[idx], vresult[idx], vnext, YMM);
+                arraysHashcodeElvcast(masm, vtmp[idx], arrayKind);
+                masm.emit(VPADDD, vresult[idx], vresult[idx], vtmp[idx], YMM);
+            }
+            // index += 32;
+            masm.addl(index, 32);
+            // index < bound;
+            masm.cmplAndJcc(index, bound, ConditionFlag.Less, labelUnrolledVectorLoopBegin, false);
+            // }
 
-        masm.leaq(ary1, new AMD64Address(ary1, bound, stride));
-        masm.subl(cnt1, bound);
-        // release bound
+            masm.leaq(ary1, new AMD64Address(ary1, bound, stride));
+            masm.subl(cnt1, bound);
+            // release bound
 
-        // vresult *= IntVector.fromArray(I256, power_of_31_backwards, 1);
-        masm.leaq(tmp2, recordExternalAddress(crb, powersOf31));
-        for (int idx = 0; idx < 4; idx++) {
-            loadVector(masm, vcoef[idx], new AMD64Address(tmp2, 0x04 + idx * JavaKind.Int.getByteCount() * 8), JavaKind.Int.getByteCount() * 8);
-            masm.emit(VPMULLD, vresult[idx], vresult[idx], vcoef[idx], YMM);
+            // vresult *= IntVector.fromArray(I256, power_of_31_backwards, 1);
+            masm.leaq(tmp2, recordExternalAddress(crb, powersOf31));
+            for (int idx = 0; idx < 4; idx++) {
+                loadVector(masm, vcoef[idx], new AMD64Address(tmp2, 0x04 + idx * JavaKind.Int.getByteCount() * 8), JavaKind.Int.getByteCount() * 8);
+                masm.emit(VPMULLD, vresult[idx], vresult[idx], vcoef[idx], YMM);
+            }
+            // result += vresult.reduceLanes(ADD);
+            for (int idx = 0; idx < 4; idx++) {
+                reduceI(masm, YMM.getBytes() / JavaKind.Int.getByteCount(), result, result, vresult[idx], vtmp[(idx * 2 + 0) % 4], vtmp[(idx * 2 + 1) % 4]);
+            }
         }
-        // result += vresult.reduceLanes(ADD);
-        for (int idx = 0; idx < 4; idx++) {
-            reduceI(masm, YMM.getBytes() / JavaKind.Int.getByteCount(), result, result, vresult[idx], vtmp[(idx * 2 + 0) % 4], vtmp[(idx * 2 + 1) % 4]);
-        }
-
         // } else if (cnt1 < 32) {
 
         masm.bind(labelShortUnrolledBegin);
