@@ -558,6 +558,13 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
             mx.rmtree(self.subject.output_dir(), ignore_errors=True)
 
 
+class GraalVmWatProject(WatProject):
+    def getSourceDir(self):
+        return os.path.join(self.dir, self.subDir)
+
+    def isBenchmarkProject(self):
+        return True
+
 #
 # Launchers and other components.
 #

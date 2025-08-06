@@ -1,3 +1,0 @@
-DYNAMIC_IMPORTS=/substratevm,/wasm
-COMPONENTS=PolyBench Launcher,PolyBench Instruments,Native Image,GraalWasm,LibGraal
-NATIVE_IMAGES=polybench,lib:jvmcicompiler

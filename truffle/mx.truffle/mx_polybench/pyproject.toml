@@ -1,0 +1,7 @@
+[tool.black]
+line-length = 120
+# Require black version 23 for formatting.
+# Black's code style can change for major versions (beginning of the calendar
+# year), to ensure a consistent code-style, the version is fixed to a major
+# version.
+required-version = '23'

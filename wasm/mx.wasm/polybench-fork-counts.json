@@ -1,0 +1,7 @@
+{
+  "polybench:interpreter/deltablue.wasm": 5,
+  "polybench:interpreter/fibonacci.wasm": 0,
+  "polybench:interpreter/richards.wasm": 5,
+  "polybench:interpreter/sieve.wasm": 5,
+  "polybench:interpreter/vector-int-add-mul.wasm": 5
+}
