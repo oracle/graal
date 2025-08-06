@@ -20,17 +20,106 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
+import os
 import re
 from abc import ABCMeta, abstractmethod
 
 import mx
 import mx_benchmark
 import mx_espresso
+import mx_jardistribution
+import mx_polybench
 
 from mx_benchmark import GuestVm, JavaVm, OutputCapturingJavaVm
 from mx_sdk_benchmark import _daCapoScalaConfig
 
 _suite = mx.suite('espresso')
+
+
+def mx_register_dynamic_suite_constituents(register_project, register_distribution):
+    benchmark_dist = _suite.dependency("ESPRESSO_POLYBENCH_BENCHMARKS")
+    polybench_benchmarks = os.path.join(_suite.dir, 'benchmarks', 'interpreter')
+    for f in os.listdir(polybench_benchmarks):
+        if os.path.isdir(os.path.join(polybench_benchmarks, f)) and not f.startswith("."):
+            main_class = os.path.basename(f)
+            simple_name = main_class.split(".")[-1]
+
+            project_name = 'benchmarks.interpreter.espresso.' + simple_name.lower()
+            register_project(mx.JavaProject(
+                suite=_suite,
+                subDir=None,
+                srcDirs=[os.path.join(_suite.dir, 'benchmarks', 'interpreter', main_class)],
+                deps=[],
+                name=project_name,
+                d=os.path.join(_suite.dir, 'benchmarks', 'interpreter', main_class),
+                javaCompliance='11+',
+                workingSets=None,
+                testProject=True,
+                eclipseformat=False,
+                skipVerifyImports=True,
+                # javac and JDT both produce warnings on these sources. suppress javac warnings and avoid JDT.
+                forceJavac=True,
+                checkstyleProj=project_name,
+                **{
+                    "javac.lint.overrides": "none",
+                }
+            ))
+
+            dist_name = 'ESPRESSO_POLYBENCH_BENCHMARK_' + simple_name.upper()
+            jar_dist = mx_jardistribution.JARDistribution(
+                suite=_suite,
+                subDir=None,
+                srcDirs=[''],
+                sourcesPath=None,
+                deps=[project_name],
+                mainClass=main_class,
+                name=dist_name,
+                path='',
+                platformDependent=False,
+                distDependencies=[],
+                javaCompliance='11+',
+                excludedLibs=[],
+                workingSets=None,
+                theLicense=None,
+                testDistribution=True,
+                maven=False,
+            )
+            register_distribution(jar_dist)
+
+            benchmark_dist.layout[f'./interpreter/{simple_name}.jar'] = [
+                f'dependency:{dist_name}/*.jar']
+            benchmark_dist.buildDependencies.append(dist_name)
+
+    espresso_runtime_resources_distribution = mx_espresso.espresso_runtime_resources_distribution()
+    mx_polybench.register_polybench_language(mx_suite=_suite, language="espresso",
+                                             distributions=["ESPRESSO", "ESPRESSO_LIBS_RESOURCES",
+                                                            espresso_runtime_resources_distribution, "truffle:TRUFFLE_NFI_LIBFFI"])
+
+    def espresso_polybench_runner(polybench_run: mx_polybench.PolybenchRunFunction, tags) -> None:
+        if "gate" in tags:
+            polybench_run(["--jvm", "interpreter/*.jar", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
+            polybench_run(["--native", "interpreter/*.jar", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
+        if "benchmark" in tags:
+            polybench_run(["--jvm", "interpreter/*.jar", "--experimental-options", "--engine.Compilation=false"])
+            polybench_run(["--native", "interpreter/*.jar", "--experimental-options", "--engine.Compilation=false"])
+            polybench_run(["--jvm", "interpreter/*.jar"])
+            polybench_run(["--native", "interpreter/*.jar"])
+            polybench_run(["--jvm", "interpreter/*.jar", "--metric=metaspace-memory"])
+            polybench_run(["--jvm", "interpreter/*.jar", "--metric=application-memory"])
+            polybench_run(["--jvm", "interpreter/*.jar", "--metric=allocated-bytes", "-w", "40", "-i", "10", "--experimental-options", "--engine.Compilation=false"])
+            polybench_run(["--native", "interpreter/*.jar", "--metric=allocated-bytes", "-w", "40", "-i", "10", "--experimental-options", "--engine.Compilation=false"])
+            polybench_run(["--jvm", "interpreter/*.jar", "--metric=allocated-bytes", "-w", "40", "-i", "10"])
+            polybench_run(["--native", "interpreter/*.jar", "--metric=allocated-bytes", "-w", "40", "-i", "10"])
+        if "instructions" in tags:
+            assert mx_polybench.is_enterprise()
+            fork_count_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "polybench-fork-counts.json")
+            polybench_run(["--native", "interpreter/*.jar", "--metric=instructions", "--experimental-options", "--engine.Compilation=false",
+                           "--mx-benchmark-args", "--fork-count-file", fork_count_file])
+
+    mx_polybench.register_polybench_benchmark_suite(mx_suite=_suite, name="espresso", languages=["espresso"],
+                                                    benchmark_distribution=benchmark_dist.name,
+                                                    benchmark_file_filter=".*jar", runner=espresso_polybench_runner,
+                                                    tags={"gate", "benchmark", "instructions"})
 
 
 class EspressoStandaloneVm(OutputCapturingJavaVm, metaclass=ABCMeta):

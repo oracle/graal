@@ -440,10 +440,7 @@ class NativeImageBenchmarkConfig:
         return ['--emit=build-report'] if is_gate and graalvm_edition == "ee" else []
 
     def get_executable_name_and_output_dir_for_stage(self, stage: Stage, vm: NativeImageVM) -> Tuple[str, Path]:
-        # Form executable name
-        unique_suite_name = f"{self.bm_suite.benchSuiteName()}-{self.bm_suite.version().replace('.', '-')}" if self.bm_suite.version() != 'unknown' else self.bm_suite.benchSuiteName()
-        executable_name = (
-                unique_suite_name + '-' + self.benchmark_name).lower() if self.benchmark_name else unique_suite_name.lower()
+        executable_name = self.compute_executable_name()
         is_shared_library = stage is not None and stage.is_layered() and stage.layer_info.is_shared_library
         if is_shared_library:
             # Shared library layers have to start with 'lib' and are differentiated with the layer index
@@ -451,11 +448,23 @@ class NativeImageBenchmarkConfig:
 
         # Form output directory
         root_dir = Path(
-            self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False,
+            self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('sdk').get_output_root(platformDependent=False,
                                                                                              jdkDependent=False)).absolute()
         output_dir = root_dir / "native-image-benchmarks" / f"{executable_name}-{vm.config_name()}"
 
         return executable_name, output_dir
+
+    def compute_executable_name(self) -> str:
+        result = self.bm_suite.executable_name()
+        if result is not None:
+            return result
+
+        parts = [self.bm_suite.benchSuiteName()]
+        if self.bm_suite.version() != "unknown":
+            parts.append(self.bm_suite.version().replace(".", "-"))
+        if self.benchmark_name:
+            parts.append(self.benchmark_name.replace(os.sep, "_"))
+        return "-".join(parts).lower()
 
     def get_build_output_json_file(self, stage: StageName) -> Path:
         """
@@ -1808,6 +1817,11 @@ class NativeImageVM(GraalVm):
             for layer in benchmark_layers:
                 layered_stages.append(Stage(s.stage_name, layer))
         return layered_stages
+
+
+# Adds JAVA_HOME VMs so benchmarks can run on GraalVM binaries without building them first.
+for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'upx', 'upx-g1gc', 'quickbuild', 'quickbuild-g1gc']:
+    mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', java_home_config), _suite, 5)
 
 
 class ObjdumpSectionRule(mx_benchmark.StdOutRule):
@@ -4195,6 +4209,10 @@ class NativeImageBenchmarkMixin(object):
 
     def get_stage_env(self) -> Optional[dict]:
         """Return the environment to be used when executing a stage."""
+        return None
+
+    def executable_name(self) -> Optional[str]:
+        """Override to allow suites to control the executable name used in image builds."""
         return None
 
 
