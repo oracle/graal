@@ -74,6 +74,8 @@ def test():
 
     isolates = os.environ.get('debuginfotest_isolates', 'no') == 'yes'
 
+    layered = os.environ.get('debuginfotest_layered', 'no') == 'yes'
+
     arch = os.environ.get('debuginfotest_arch', 'amd64')
 
     print(f"Testing with isolates {'enabled' if isolates else 'disabled'}!")
@@ -595,13 +597,18 @@ def test():
     execute("delete breakpoints")
     # Set breakpoint at method with inline and not-inlined invocation in same line
     exec_string = execute("break hello.Hello::inlineFrom")
-    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: file hello/Hello\.java, line {digits_pattern}."
+    if layered:
+        rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: hello\.Hello::inlineFrom\. \({digits_pattern} locations\)"
+    else:
+        rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: file hello/Hello\.java, line {digits_pattern}."
     checker = Checker('break inlineFrom', rexp)
     checker.check(exec_string, skip_fails=False)
 
     exec_string = execute("info break")
-    rexp = [
-        fr"{digits_pattern}{spaces_pattern}breakpoint{spaces_pattern}keep{spaces_pattern}y{spaces_pattern}{address_pattern} in hello\.Hello::inlineFrom\(\) at hello/Hello\.java:131"]
+    if layered:
+        rexp = [fr"{wildcard_pattern}y{spaces_pattern}{address_pattern} in hello\.Hello::inlineFrom\(\) at hello/Hello\.java:131"]
+    else:
+        rexp = [fr"{digits_pattern}{spaces_pattern}breakpoint{spaces_pattern}keep{spaces_pattern}y{spaces_pattern}{address_pattern} in hello\.Hello::inlineFrom\(\) at hello/Hello\.java:131"]
     checker = Checker('info break inlineFrom', rexp)
     checker.check(exec_string)
 
@@ -661,6 +668,11 @@ def test():
         fr"#12{spaces_pattern}hello\.Hello::inlineFrom{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:133",
         fr"#13{spaces_pattern}hello\.Hello::main{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:{main_inlinefrom:d}"]
     checker = Checker('backtrace in recursive inlineTo', rexp)
+    # This test does not work with -O0 in graal-enterprise
+    # This is because the compilation for inlineTo contains the same source line (160) twice in what GDB figures to be the same lexical context.
+    # GDB has an "optimization" that if it finds the same line twice in the same lexical context, it just takes the first as breakpoint and drops all other occasions of this line.
+    # To make this work, we would need to create an artificial lexical context that splits occasions of the same source line into different lexical contexts in GDB while still having the same symbols.
+    #
     checker.check(exec_string, skip_fails=False)
 
     execute("delete breakpoints")
@@ -872,8 +884,8 @@ def test():
     exec_string = execute("backtrace 3")
     rexp = [
         fr"#0{spaces_pattern}hello\.Hello::lambda\$(static\$)?0{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:222",
-        fr"#1{spaces_pattern}{address_pattern} in hello\.Hello\$\$Lambda((\${digits_pattern}/0x)|(\$)|(\.0x|/0x))?{hex_digits_pattern}::get{wildcard_pattern} at hello/Hello\.java:259",
-        fr"#2{spaces_pattern}hello\.Hello::main{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:259"]
+        fr"#1{spaces_pattern}{address_pattern} in hello\.Hello\$\$Lambda((\${digits_pattern}/0x)|(\$)|(\.0x|/0x))?{hex_digits_pattern}::get{wildcard_pattern}",
+        fr"#2{spaces_pattern} hello\.Hello::main{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:259"]
     checker = Checker('backtrace in lambda', rexp)
     checker.check(exec_string, skip_fails=False)
 
