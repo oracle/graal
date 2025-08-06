@@ -331,6 +331,7 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
             masm.movl(bound, cnt1);
             masm.andl(bound, ~(32 - 1));
             // for (; index < bound; index += 32) {
+            masm.align(preferredLoopAlignment(crb));
             masm.bind(labelUnrolledVectorLoopBegin);
             // result *= next;
             masm.imull(result, next);
