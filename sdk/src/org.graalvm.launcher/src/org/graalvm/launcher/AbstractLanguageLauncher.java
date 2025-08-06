@@ -122,7 +122,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
     protected final void launch(String[] args) {
         try {
             try {
-                launch(new ArrayList<>(Arrays.asList(args)), null, true);
+                launch(new ArrayList<>(Arrays.asList(args)));
             } catch (AbortException e) {
                 throw e;
             } catch (PolyglotException e) {
@@ -260,15 +260,12 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
 
     protected static final boolean IS_LIBPOLYGLOT = Boolean.getBoolean("graalvm.libpolyglot");
 
-    final void launch(List<String> args, Map<String, String> defaultOptions, boolean doNativeSetup) {
+    final void launch(List<String> args) {
         List<String> originalArgs = Collections.unmodifiableList(new ArrayList<>(args));
 
-        Map<String, String> polyglotOptions = defaultOptions;
-        if (polyglotOptions == null) {
-            polyglotOptions = new HashMap<>();
-        }
+        Map<String, String> polyglotOptions = new HashMap<>();
 
-        if (isAOT() && doNativeSetup) {
+        if (isAOT()) {
             System.setProperty("org.graalvm.launcher.languageId", getLanguageId());
         }
 
@@ -278,7 +275,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
             validateVmArguments(originalArgs, unrecognizedArgs);
         }
 
-        if (isAOT() && doNativeSetup && !IS_LIBPOLYGLOT) {
+        if (isAOT() && !IS_LIBPOLYGLOT) {
             assert nativeAccess != null;
             maybeExec(originalArgs, unrecognizedArgs, getDefaultVMType(), jniLaunch);
         }
