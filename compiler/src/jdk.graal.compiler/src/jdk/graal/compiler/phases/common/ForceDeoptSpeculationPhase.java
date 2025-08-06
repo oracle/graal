@@ -115,7 +115,7 @@ public class ForceDeoptSpeculationPhase extends BasePhase<CoreProviders> {
             if (node instanceof DynamicDeoptimizeNode) {
                 throw new GraalError("%s must be disabled to use this phase", DynamicDeoptimizeNode.class.getSimpleName());
             }
-            if (node instanceof DeoptimizeNode deopt) {
+            if (node instanceof DeoptimizeNode deopt && deopt.getAction() != DeoptimizationAction.None) {
                 if (deopt.getSpeculation().equals(NO_SPECULATION)) {
                     SpeculationLog.Speculation speculation = createSpeculation(graph, signature, deopt);
                     deopt.setSpeculation(speculation);
@@ -139,12 +139,14 @@ public class ForceDeoptSpeculationPhase extends BasePhase<CoreProviders> {
                 JavaConstant spec = implicitNullCheck.getDeoptSpeculation();
                 SpeculationLog.Speculation speculation = spec != null ? context.getMetaAccess().decodeSpeculation(spec, speculationLog) : NO_SPECULATION;
                 if (speculation.equals(NO_SPECULATION)) {
-                    spec = context.getMetaAccess().encodeSpeculation(createSpeculation(graph, signature, implicitNullCheck));
                     JavaConstant actionAndReason = implicitNullCheck.getDeoptReasonAndAction();
-                    if (actionAndReason == null) {
-                        actionAndReason = context.getMetaAccess().encodeDeoptActionAndReason(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NullCheckException, 0);
+                    if (actionAndReason == null || context.getMetaAccess().decodeDeoptAction(actionAndReason) != DeoptimizationAction.None) {
+                        spec = context.getMetaAccess().encodeSpeculation(createSpeculation(graph, signature, implicitNullCheck));
+                        if (actionAndReason == null) {
+                            actionAndReason = context.getMetaAccess().encodeDeoptActionAndReason(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NullCheckException, 0);
+                        }
+                        implicitNullCheck.setImplicitDeoptimization(actionAndReason, spec);
                     }
-                    implicitNullCheck.setImplicitDeoptimization(actionAndReason, spec);
                 }
             }
         }
