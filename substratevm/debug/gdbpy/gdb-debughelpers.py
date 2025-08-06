@@ -1637,7 +1637,7 @@ class SVMFrameUnwinder(gdb.unwinder.Unwinder):
         self.lazy_deopt_stub_object_adr = None
         self.svm_util = svm_util
 
-    def __call__(self, pending_frame: gdb.Frame):
+    def __call__(self, pending_frame: gdb.PendingFrame):
         if self.eager_deopt_stub_adr is None:
             self.eager_deopt_stub_adr = SVMUtil.get_eager_deopt_stub_adr()
             self.lazy_deopt_stub_primitive_adr = SVMUtil.get_lazy_deopt_stub_primitive_adr()
@@ -1656,20 +1656,23 @@ class SVMFrameUnwinder(gdb.unwinder.Unwinder):
                 source_frame_size = encoded_frame_size & ~self.svm_util.frame_size_status_mask
 
                 # Now find the register-values for the caller frame
-                unwind_info = pending_frame.create_unwind_info(gdb.unwinder.FrameId(sp, pc))
                 caller_sp = sp + int(source_frame_size)
-                unwind_info.add_saved_register('sp', gdb.Value(caller_sp))
                 # try to fetch return address directly from stack
                 caller_pc = gdb.Value(caller_sp - 8).cast(self.svm_util.stack_type.pointer()).dereference()
+
+                # Build the unwind info
+                unwind_info = pending_frame.create_unwind_info(gdb.unwinder.FrameId(caller_sp, caller_pc))
+                unwind_info.add_saved_register('sp', gdb.Value(caller_sp))
                 unwind_info.add_saved_register('pc', gdb.Value(caller_pc))
                 return unwind_info
             elif int(pc) == self.lazy_deopt_stub_primitive_adr or int(pc) == self.lazy_deopt_stub_object_adr:
-                # Now find the register-values for the caller frame
-                # We only have the original pc for lazy deoptimization -> unwind to original pc with same sp
-                # This is the best guess we can make without knowing the return address and frame size of the lazily deoptimized frame
+                # We only need the original pc for lazy deoptimization -> unwind to original pc with same sp
+                # Since this is lazy deoptimization we can still use the debug frame info at the current sp
+                caller_pc = sp.cast(self.svm_util.stack_type.pointer()).dereference()
+
+                # build the unwind info
                 unwind_info = pending_frame.create_unwind_info(gdb.unwinder.FrameId(sp, pc))
                 unwind_info.add_saved_register('sp', gdb.Value(sp))
-                caller_pc = sp.cast(self.svm_util.stack_type.pointer()).dereference()
                 unwind_info.add_saved_register('pc', gdb.Value(caller_pc))
                 return unwind_info
         except Exception as ex:
@@ -1696,18 +1699,26 @@ class SVMFrameFilter:
             self.lazy_deopt_stub_primitive_adr = SVMUtil.get_lazy_deopt_stub_primitive_adr()
             self.lazy_deopt_stub_object_adr = SVMUtil.get_lazy_deopt_stub_object_adr()
 
+        lazy_deopt = False
         for frame in frame_iter:
             frame = frame.inferior_frame()
             pc = int(frame.pc())
             if pc == self.eager_deopt_stub_adr:
-                yield SVMFrameEagerDeopt(self.svm_util, frame)
+                yield SVMFrameEagerDeopt(frame, self.svm_util)
             elif pc == self.lazy_deopt_stub_primitive_adr or pc == self.lazy_deopt_stub_object_adr:
-                yield SVMFrameLazyDeopt(self.svm_util, frame)
+                lazy_deopt = True
+                continue  # the next frame is the one with the corrected pc
             else:
-                yield SVMFrame(frame)
+                yield SVMFrame(frame, lazy_deopt)
+                lazy_deopt = False
 
 
 class SVMFrame(FrameDecorator):
+
+    def __init__(self, frame: gdb.Frame, lazy_deopt: bool):
+        super().__init__(frame)
+        self.__lazy_deopt = lazy_deopt
+
     def function(self) -> str:
         frame = self.inferior_frame()
         if not frame.name():
@@ -1725,7 +1736,8 @@ class SVMFrame(FrameDecorator):
         else:
             eclipse_filename = ''
 
-        return func_name + eclipse_filename
+        prefix = '[LAZY DEOPT FRAME] ' if self.__lazy_deopt else ''
+        return prefix + func_name + eclipse_filename
 
 
 class SymValueWrapper:
@@ -1741,9 +1753,9 @@ class SymValueWrapper:
         return self.sym
 
 
-class SVMFrameEagerDeopt(SVMFrame):
+class SVMFrameEagerDeopt(FrameDecorator):
 
-    def __init__(self, svm_util: SVMUtil, frame: gdb.Frame):
+    def __init__(self, frame: gdb.Frame, svm_util: SVMUtil):
         super().__init__(frame)
 
         # fetch deoptimized frame from stack
@@ -1825,25 +1837,6 @@ class SVMFrameEagerDeopt(SVMFrame):
 
     def frame_locals(self):
         return None
-
-
-class SVMFrameLazyDeopt(SVMFrame):
-
-    def __init__(self, svm_util: SVMUtil, frame: gdb.Frame):
-        super().__init__(frame)
-
-        # fetch deoptimized frame from stack
-        sp = frame.read_register('sp')
-        real_pc = sp.cast(svm_util.stack_type.pointer()).dereference().cast(svm_util.stack_type.pointer())
-        self.__gdb_text = str(real_pc)
-        self.__svm_util = svm_util
-
-    def function(self) -> str:
-        if self.__gdb_text is None:
-            # we have no more information about the frame
-            return '[LAZY DEOPT FRAME ...]'
-
-        return '[LAZY DEOPT FRAME] at ' + self.__gdb_text
 
 
 try:
