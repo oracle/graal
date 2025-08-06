@@ -115,51 +115,54 @@ public class PrettyPrinterTest {
     @NeverInline("For testing purposes")
     static void testPrimitive(byte b, Byte bObj, short s, Short sObj, char c, Character cObj, int i, Integer iObj, long l, Long lObj,
                     float f, Float fObj, double d, Double dObj, boolean x, Boolean xObj) {
-        System.out.print("");
+        blackhole(b, bObj, s, sObj, c, cObj, i, iObj, l, lObj, f, fObj, d, dObj, x, xObj);
     }
 
     @SuppressWarnings("unused")
     @NeverInline("For testing purposes")
     static void testString(String nullStr, String emptyStr, String str, String uStr1, String uStr2, String uStr3, String uStr4, String uStr5, String str0) {
-        System.out.print("");
+        blackhole(nullStr, emptyStr, str, uStr1, uStr2, uStr3, uStr4, uStr5, str0);
     }
 
     @SuppressWarnings("unused")
     @NeverInline("For testing purposes")
     static void testArray(int[] ia, Object[] oa, String[] sa) {
-        System.out.print("");
+        blackhole(ia, oa, sa);
     }
 
     @SuppressWarnings("unused")
     @NeverInline("For testing purposes")
     static void testObject(ExampleClass object, ExampleClass recObject) {
-        System.out.print("");
+        blackhole(object, recObject);
     }
 
     @SuppressWarnings("unused")
     @NeverInline("For testing purposes")
     static void testArrayList(ArrayList<String> strList, List<Object> mixedList, ArrayList<Object> nullList) {
-        System.out.print("");
+        blackhole(strList, mixedList, nullList);
     }
 
     @SuppressWarnings("unused")
     @NeverInline("For testing purposes")
     static void testHashMap(HashMap<String, String> strMap, Map<Object, Object> mixedMap) {
-        System.out.print("");
+        blackhole(strMap, mixedMap);
     }
 
     @SuppressWarnings("unused")
     @NeverInline("For testing purposes")
     static void testLambda(Function<String, String> lambda) {
-        System.out.print("");
+        blackhole(lambda);
     }
 
     @SuppressWarnings("unused")
     @NeverInline("For testing purposes")
     static void testClassType(Class<?> clazz, Holder dyn) {
-        System.out.print("");
-        System.out.print(staticHolder.c);
-        System.out.print(staticHolder.o);
+        blackhole(clazz, dyn, staticHolder.c, staticHolder.o);
+    }
+
+    @NeverInline("For testing.")
+    @SuppressWarnings("unused")
+    static void blackhole(Object... value) {
     }
 
     static ExampleClass setupExampleObject(boolean recursive) {

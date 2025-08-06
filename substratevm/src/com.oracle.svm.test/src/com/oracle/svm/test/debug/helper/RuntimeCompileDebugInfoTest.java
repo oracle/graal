@@ -219,9 +219,6 @@ public class RuntimeCompileDebugInfoTest {
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, RegisterMethodsFeature.class, false,
                             "jdk.internal.vm.ci",
                             "jdk.vm.ci.code");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, RegisterMethodsFeature.class, false,
-                            "jdk.graal.compiler",
-                            "jdk.graal.compiler.api.directives", "jdk.graal.compiler.word");
         }
 
         @Override
