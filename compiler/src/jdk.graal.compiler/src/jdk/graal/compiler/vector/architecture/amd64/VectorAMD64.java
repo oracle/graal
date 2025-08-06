@@ -431,9 +431,15 @@ public final class VectorAMD64 extends VectorArchitecture {
         return Math.min(maxPhysicalSize, maxDesiredSize);
     }
 
-    public void updateMaxVectorSizeForArchitecture(AMD64 newArch) {
+    /**
+     * To be called only when (re-)configuring the compiler for an SVM runtime compilation. Resets
+     * precomputed values stored in this vector architecture instance for the now known runtime
+     * target architecture.
+     */
+    public void updateForRuntimeArchitecture(AMD64 newArch) {
         this.cachedMaxVectorLength = 0;  // force recomputation
         this.maxVectorSize = maxVectorSizeForArchitecture(newArch);
+        this.vectorAPITypeTable = null;
     }
 
     /**
