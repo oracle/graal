@@ -147,23 +147,23 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("java.awt.font.JavaAWTFontAccessImpl", "Required for sun.text.bidi.BidiBase.NumericShapings");
 
         /* FileSystemProviders related */
-        if (FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
-            rci.initializeAtRunTime("java.nio.file.spi", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
-            rci.initializeAtRunTime("sun.nio.fs", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+        if (FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime()) {
+            rci.initializeAtRunTime("java.nio.file.spi", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
+            rci.initializeAtRunTime("sun.nio.fs", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
 
-            rci.initializeAtRunTime("java.nio.file.FileSystems", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
-            rci.initializeAtRunTime("java.nio.file.FileSystems$DefaultFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("java.nio.file.FileSystems", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
+            rci.initializeAtRunTime("java.nio.file.FileSystems$DefaultFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
 
-            rci.initializeAtRunTime("java.util.zip.ZipFile$Source", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
-            rci.initializeAtRunTime("java.util.zip.ZipFile$Source", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("java.util.zip.ZipFile$Source", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
+            rci.initializeAtRunTime("java.util.zip.ZipFile$Source", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
 
-            rci.initializeAtRunTime("java.io.FileSystem", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
-            rci.initializeAtRunTime("java.io.FileSystem$CurrentWorkingDirectoryHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
-            rci.initializeAtRunTime("java.io.UnixFileSystem", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
-            rci.initializeAtRunTime("java.io.WindowsFileSystem", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("java.io.FileSystem", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
+            rci.initializeAtRunTime("java.io.FileSystem$CurrentWorkingDirectoryHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
+            rci.initializeAtRunTime("java.io.UnixFileSystem", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
+            rci.initializeAtRunTime("java.io.WindowsFileSystem", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
 
             /* Holder for the default file system. */
-            rci.initializeAtRunTime("com.oracle.svm.core.jdk.runtimeinit.DefaultFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("com.oracle.svm.core.jdk.runtimeinit.DefaultFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
 
             /*
              * The following need to be build-time initialized because they can end up in the image
@@ -175,24 +175,16 @@ public class JDKInitializationFeature implements InternalFeature {
              * Require explicit initializeAtBuildTime because the sun.nio.fs is registered for
              * run-time initialization.
              */
-            rci.initializeAtBuildTime("sun.nio.fs.UnixPath", "Allow UnixPath objects in the image heap (" + FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON + ")");
-            rci.initializeAtBuildTime("sun.nio.fs.WindowsPath", "Allow WindowsPath objects in the image heap (" + FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON + ")");
+            rci.initializeAtBuildTime("sun.nio.fs.UnixPath", "Allow UnixPath objects in the image heap (" + FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON + ")");
+            rci.initializeAtBuildTime("sun.nio.fs.WindowsPath", "Allow WindowsPath objects in the image heap (" + FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON + ")");
 
             /* JrtFS support. */
-            rci.initializeAtBuildTime("jdk.internal.jrtfs.SystemImage", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtBuildTime("jdk.internal.jrtfs.SystemImage", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
         }
 
-        /* XML-related */
-        if (FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
-            // GR-50683 should remove this part
-            rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
-            rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
-            rci.initializeAtBuildTime("com.sun.org.slf4j.internal", JDK_CLASS_REASON);
-        } else {
-            rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
-            rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
-            rci.initializeAtBuildTime("com.sun.org.slf4j.internal", JDK_CLASS_REASON);
-        }
+        rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.org.slf4j.internal", JDK_CLASS_REASON);
 
         /* Security services */
         rci.initializeAtBuildTime("com.sun.crypto.provider", JDK_CLASS_REASON);
@@ -232,7 +224,7 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("sun.security.validator", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.x509", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.jndi", JDK_CLASS_REASON);
-        if (!FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+        if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
             rci.initializeAtBuildTime("sun.security.pkcs11", JDK_CLASS_REASON);
             rci.initializeAtBuildTime("sun.security.smartcardio", JDK_CLASS_REASON);
             rci.initializeAtBuildTime("com.sun.security.sasl", JDK_CLASS_REASON);
