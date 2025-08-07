@@ -1,4 +1,4 @@
-Enable options that are planned to become defaults in future releases. Comma-separated list can contain 'all', 'treat-name-as-type', 'run-time-initialize-security-providers', 'run-time-initialize-file-system-providers', and 'none'.
+Enable options that are planned to become defaults in future releases. Comma-separated list can contain 'all', 'run-time-initialize-jdk', 'complete-reflection-types', 'run-time-initialize-security-providers', 'run-time-initialize-file-system-providers', and 'none'.
 
 The preferred way to use this option is '--future-defaults=all'. The meaning of each possible option is as follows:
   1. 'all' is the preferred option, and it enables all other behaviors.
