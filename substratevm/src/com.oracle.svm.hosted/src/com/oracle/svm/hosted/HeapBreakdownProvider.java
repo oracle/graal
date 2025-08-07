@@ -147,7 +147,7 @@ public class HeapBreakdownProvider {
 
         /* Extract byte[] for Strings. */
         if (stringByteArrayTotalSize > 0) {
-            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX + "java.lang.String"), stringByteArrayTotalSize, stringByteArrayTotalCount);
+            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX + "string data"), stringByteArrayTotalSize, stringByteArrayTotalCount);
         }
         /* Extract byte[] for code info. */
         List<Integer> codeInfoByteArrayLengths = CodeInfoTable.getCurrentLayerImageCodeCache().getTotalByteArrayLengths();
@@ -215,7 +215,8 @@ public class HeapBreakdownProvider {
         int count;
 
         public HeapBreakdownEntry(HostedClass hostedClass) {
-            this(hostedClass.toJavaName(true));
+            this(ProgressReporter.moduleNamePrefix(hostedClass.getJavaClass().getModule()) +
+                            ProgressReporter.Utils.truncateFQN(hostedClass.toJavaName(true), 40));
         }
 
         public HeapBreakdownEntry(String name) {

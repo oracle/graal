@@ -31,6 +31,7 @@ import java.io.PrintWriter;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
+import java.security.CodeSource;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -75,6 +76,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.ClassForNameSupport;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -639,13 +641,50 @@ public class ProgressReporter {
         }
     }
 
+    private record BreakDownClassifier(Package javaPackage, Module javaModule, String location) {
+        static BreakDownClassifier of(Class<?> clazz) {
+            return new BreakDownClassifier(clazz.getPackage(), clazz.getModule(), sourcePath(clazz));
+        }
+
+        private static String sourcePath(Class<?> clazz) {
+            CodeSource codeSource = clazz.getProtectionDomain().getCodeSource();
+            if (codeSource != null && codeSource.getLocation() != null) {
+                String path = codeSource.getLocation().getPath();
+                // Use String API to determine basename of path to handle both / and \.
+                return path.substring(Math.max(path.lastIndexOf('/') + 1, path.lastIndexOf('\\') + 1));
+            }
+            return null;
+        }
+
+        @Override
+        public String toString() {
+            String locationSuffix = location == null ? "" : " (" + Utils.truncateName(location, 14) + ")";
+            return moduleNamePrefix(javaModule) + Utils.truncateFQN(javaPackage.getName(), 22) + locationSuffix;
+        }
+
+    }
+
+    static String moduleNamePrefix(Module javaModule) {
+        if (!javaModule.isNamed()) {
+            return "";
+        }
+        if (javaModule.equals(DynamicHub.class.getModule())) {
+            return "VM ";
+        }
+        return Utils.truncateFQN(javaModule.getName(), 19) + "/";
+    }
+
     private void printBreakdowns() {
         if (!SubstrateOptions.BuildOutputBreakdowns.getValue()) {
             return;
         }
         l().printLineSeparator();
-        Map<String, Long> codeBreakdown = CodeBreakdownProvider.getAndClear();
-        Iterator<Entry<String, Long>> packagesBySize = codeBreakdown.entrySet().stream()
+        Map<BreakDownClassifier, Long> codeBreakdown = CodeBreakdownProvider.getAndClear().entrySet().stream()
+                        .collect(Collectors.groupingBy(
+                                        entry -> BreakDownClassifier.of(entry.getKey()),
+                                        Collectors.summingLong(entry -> entry.getValue())));
+
+        Iterator<Entry<BreakDownClassifier, Long>> packagesBySize = codeBreakdown.entrySet().stream()
                         .sorted(Entry.comparingByValue(Comparator.reverseOrder())).iterator();
 
         HeapBreakdownProvider heapBreakdown = HeapBreakdownProvider.singleton();
@@ -663,10 +702,9 @@ public class ProgressReporter {
         for (int i = 0; i < MAX_NUM_BREAKDOWN; i++) {
             String codeSizePart = "";
             if (packagesBySize.hasNext()) {
-                Entry<String, Long> e = packagesBySize.next();
-                String className = Utils.truncateClassOrPackageName(e.getKey());
-                codeSizePart = String.format("%9s %s", ByteFormattingUtil.bytesToHuman(e.getValue()), className);
-                printedCodeBytes += e.getValue();
+                Entry<BreakDownClassifier, Long> entry = packagesBySize.next();
+                codeSizePart = String.format("%9s %s", ByteFormattingUtil.bytesToHuman(entry.getValue()), entry.getKey());
+                printedCodeBytes += entry.getValue();
                 printedCodeItems++;
             }
 
@@ -676,7 +714,7 @@ public class ProgressReporter {
                 String className = e.label.renderToString(linkStrategy);
                 // Do not truncate special breakdown items, they can contain links.
                 if (e.label instanceof HeapBreakdownProvider.SimpleHeapObjectKindName) {
-                    className = Utils.truncateClassOrPackageName(className);
+                    className = Utils.truncateFQN(className);
                 }
                 long byteSize = e.byteSize;
                 heapSizePart = String.format("%9s %s", ByteFormattingUtil.bytesToHuman(byteSize), className);
@@ -920,9 +958,10 @@ public class ProgressReporter {
         return (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
     }
 
-    private static final class Utils {
+    static final class Utils {
         private static final double MILLIS_TO_SECONDS = 1000d;
         private static final double NANOS_TO_SECONDS = 1000d * 1000d * 1000d;
+        public static final String TRUNCATION_PLACEHOLDER = "~";
 
         private static double millisToSeconds(double millis) {
             return millis / MILLIS_TO_SECONDS;
@@ -937,39 +976,50 @@ public class ProgressReporter {
         }
 
         private static String stringFilledWith(int size, String fill) {
-            return new String(new char[size]).replace("\0", fill);
+            return fill.repeat(size);
         }
 
         private static double toPercentage(long part, long total) {
             return part / (double) total * 100;
         }
 
-        private static String truncateClassOrPackageName(String classOrPackageName) {
-            int classNameLength = classOrPackageName.length();
-            int maxLength = CHARACTERS_PER_LINE / 2 - 10;
+        private static String truncateName(String name, int maxLength) {
+            int length = name.length();
+            if (length <= maxLength) {
+                return name;
+            }
+            return TRUNCATION_PLACEHOLDER + name.substring(length - maxLength + TRUNCATION_PLACEHOLDER.length(), length);
+        }
+
+        private static String truncateFQN(String fqn) {
+            return truncateFQN(fqn, CHARACTERS_PER_LINE / 2 - 10);
+        }
+
+        static String truncateFQN(String fqn, int maxLength) {
+            int classNameLength = fqn.length();
             if (classNameLength <= maxLength) {
-                return classOrPackageName;
+                return fqn;
             }
             StringBuilder sb = new StringBuilder();
             int currentDot = -1;
             while (true) {
-                int nextDot = classOrPackageName.indexOf('.', currentDot + 1);
+                int nextDot = fqn.indexOf('.', currentDot + 1);
                 if (nextDot < 0) { // Not more dots, handle the rest and return.
-                    String rest = classOrPackageName.substring(currentDot + 1);
+                    String rest = fqn.substring(currentDot + 1);
                     int sbLength = sb.length();
                     int restLength = rest.length();
                     if (sbLength + restLength <= maxLength) {
                         sb.append(rest);
                     } else {
                         int remainingSpaceDivBy2 = (maxLength - sbLength) / 2;
-                        sb.append(rest, 0, remainingSpaceDivBy2 - 1).append("~").append(rest, restLength - remainingSpaceDivBy2, restLength);
+                        sb.append(rest, 0, remainingSpaceDivBy2 - 1).append(TRUNCATION_PLACEHOLDER).append(rest, restLength - remainingSpaceDivBy2, restLength);
                     }
                     break;
                 }
-                sb.append(classOrPackageName.charAt(currentDot + 1)).append('.');
+                sb.append(fqn.charAt(currentDot + 1)).append('.');
                 if (sb.length() + (classNameLength - nextDot) <= maxLength) {
                     // Rest fits maxLength, append and return.
-                    sb.append(classOrPackageName.substring(nextDot + 1));
+                    sb.append(fqn.substring(nextDot + 1));
                     break;
                 }
                 currentDot = nextDot;
