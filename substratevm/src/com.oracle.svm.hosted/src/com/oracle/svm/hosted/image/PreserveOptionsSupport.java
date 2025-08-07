@@ -103,6 +103,8 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
                     "jdk.security.auth",
                     "jdk.crypto.cryptoki",
                     "java.logging",
+                    "jdk.management",
+                    "java.management",
                     "java.naming",
                     "jdk.naming.dns",
                     "jdk.httpserver",
