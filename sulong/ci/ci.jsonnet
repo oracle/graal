@@ -70,22 +70,22 @@ local sc = (import "ci_common/sulong-common.jsonnet");
   },
 
   regular_builds:: [
-    $.sulong + tier1 + $.common(style=true) + sc.labsjdkLatest + sc.linux_amd64 + sc.style + { name: "gate-sulong-style-jdk-latest-linux-amd64" },
-    $.sulong + tier1 + $.common(style=true) + sc.labsjdkLatest + sc.linux_amd64 + sc.fullbuild + { name: "gate-sulong-fullbuild-jdk-latest-linux-amd64" },
-    $.sulong + tier2 + $.common(standalone=true) + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,sulongMisc,parser") + $.sulong_test_toolchain + { name: "gate-sulong-misc-parser-jdk-latest-linux-amd64" },
+    $.sulong + tier1 + $.common(style=true) + sc.labsjdkLatest + sc.linux_amd64 + sc.style + { name: "gate-sulong-style-jdk-latest-linux-amd64", timelimit: "30:00" },
+    $.sulong + tier1 + $.common(style=true) + sc.labsjdkLatest + sc.linux_amd64 + sc.fullbuild + { name: "gate-sulong-fullbuild-jdk-latest-linux-amd64", timelimit: "30:00" },
+    $.sulong + tier2 + $.common(standalone=true) + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,sulongMisc,parser") + $.sulong_test_toolchain + { name: "gate-sulong-misc-parser-jdk-latest-linux-amd64", timelimit: "30:00" },
     $.sulong + tier2 + $.common() + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_c") + { name: "gate-sulong-gcc_c-jdk-latest-linux-amd64", timelimit: "45:00" },
     $.sulong + tier2 + $.common() + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_cpp") + { name: "gate-sulong-gcc_cpp-jdk-latest-linux-amd64", timelimit: "45:00" },
 
     $.sulong + sc.daily + $.common() + sc.labsjdkLatest + sc.darwin_amd64 + sc.llvmBundled + sc.gateTags(basicTags) + { name: "daily-sulong-basic-nwcc-llvm-jdk-latest-darwin-amd64", timelimit: "0:45:00", capabilities+: ["ram16gb"] },
 
-    $.sulong + tier2 + $.common() + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTags) + { name: "gate-sulong-basic-nwcc-llvm-jdk-latest-linux-amd64" },
+    $.sulong + tier2 + $.common() + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTags) + { name: "gate-sulong-basic-nwcc-llvm-jdk-latest-linux-amd64", timelimit: "30:00" },
 
     $.sulong + tier3 + $.common() + sc.labsjdkLatest + sc.linux_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-llvm-jdk-latest-linux-aarch64", timelimit: "30:00" },
 
     $.sulong + tier3 + $.common() + sc.labsjdkLatest + sc.darwin_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-llvm-jdk-latest-darwin-aarch64", timelimit: "30:00" },
 
     $.sulong + sc.post_merge + $.common() + sc.labsjdkLatest + sc.windows_amd64 + sc.llvmBundled + sc.gateTags("build,sulongStandalone,interop") + { name: "gate-sulong-standalone-interop-jdk-latest-windows-amd64", timelimit: "1:00:00" },
-    $.sulong + tier3 + $.common() + sc.labsjdkLatest + sc.windows_amd64 + sc.llvmBundled + sc.gateTags("build,nwcc,llvm") + { name: "gate-sulong-nwcc-llvm-jdk-latest-windows-amd64" },
+    $.sulong + tier3 + $.common() + sc.labsjdkLatest + sc.windows_amd64 + sc.llvmBundled + sc.gateTags("build,nwcc,llvm") + { name: "gate-sulong-nwcc-llvm-jdk-latest-windows-amd64", timelimit: "30:00" },
     $.sulong + sc.post_merge + $.common() + sc.labsjdkLatest + sc.windows_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_c") + { name: "gate-sulong-gcc_c-jdk-latest-windows-amd64", timelimit: "45:00" },
     $.sulong + sc.post_merge + $.common() + sc.labsjdkLatest + sc.windows_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_cpp") + { name: "gate-sulong-gcc_cpp-jdk-latest-windows-amd64", timelimit: "45:00" },
   ],

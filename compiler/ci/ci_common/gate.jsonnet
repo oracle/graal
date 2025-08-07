@@ -226,28 +226,28 @@
   local tier1_jobs = {
     # Style jobs need to stay on a JDK compatible with all the style
     # checking tools (SpotBugs, Checkstyle, Eclipse formatter etc).
-    "compiler-style-labsjdk-latest-linux-amd64": {},
+    "compiler-style-labsjdk-latest-linux-amd64": t("30:00"),
   },
 
   # Candidates for Tier2 jobs. In CE, these will be dailies.
   local tier2_jobs = {
-    "compiler-unittest_compiler-labsjdk-latest-linux-amd64": {},
-    "compiler-unittest_truffle-labsjdk-latest-linux-amd64": {},
-    "compiler-ctw-labsjdk-latest-linux-amd64": {},
-    "compiler-ctw_economy-labsjdk-latest-linux-amd64": {},
-    "compiler-benchmarktest-labsjdk-latest-linux-amd64": {},
+    "compiler-unittest_compiler-labsjdk-latest-linux-amd64": t("30:00"),
+    "compiler-unittest_truffle-labsjdk-latest-linux-amd64": t("30:00"),
+    "compiler-ctw-labsjdk-latest-linux-amd64": t("30:00"),
+    "compiler-ctw_economy-labsjdk-latest-linux-amd64": t("30:00"),
+    "compiler-benchmarktest-labsjdk-latest-linux-amd64": t("30:00"),
   },
 
   # Candidates for Tier3 jobs. In CE, these will be dailies.
   local tier3_jobs = {
-    "compiler-unittest_compiler-labsjdk-latest-darwin-aarch64": {},
-    "compiler-unittest_truffle-labsjdk-latest-darwin-aarch64": {},
-    "compiler-unittest_compiler-labsjdk-latest-linux-aarch64": {},
-    "compiler-unittest_truffle-labsjdk-latest-linux-aarch64": {},
+    "compiler-unittest_compiler-labsjdk-latest-darwin-aarch64": t("30:00"),
+    "compiler-unittest_truffle-labsjdk-latest-darwin-aarch64": t("30:00"),
+    "compiler-unittest_compiler-labsjdk-latest-linux-aarch64": t("30:00"),
+    "compiler-unittest_truffle-labsjdk-latest-linux-aarch64": t("30:00"),
 
-    "compiler-unittest_compiler_zgc-labsjdk-latest-linux-amd64": {},
+    "compiler-unittest_compiler_zgc-labsjdk-latest-linux-amd64": t("30:00"),
 
-    "compiler-truffle_xcomp-labsjdk-latest-linux-amd64": {},
+    "compiler-truffle_xcomp-labsjdk-latest-linux-amd64": t("30:00"),
   },
 
   # Candidates for gate jobs. In CE, these will be dailies instead of gates.
@@ -283,33 +283,33 @@
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local dailies = {
-    "compiler-test-labsjdk-latest-darwin-amd64": {},
-    "compiler-test-labsjdk-latest-windows-amd64": {},
+    "compiler-test-labsjdk-latest-darwin-amd64": t("30:00"),
+    "compiler-test-labsjdk-latest-windows-amd64": t("30:00"),
 
-    "compiler-test_zgc-labsjdk-latest-darwin-aarch64": {},
-    "compiler-test_zgc-labsjdk-latest-darwin-amd64": {},
-    "compiler-test_zgc-labsjdk-latest-linux-aarch64": {},
-    "compiler-test_zgc-labsjdk-latest-linux-amd64": {},
+    "compiler-test_zgc-labsjdk-latest-darwin-aarch64": t("30:00"),
+    "compiler-test_zgc-labsjdk-latest-darwin-amd64": t("30:00"),
+    "compiler-test_zgc-labsjdk-latest-linux-aarch64": t("30:00"),
+    "compiler-test_zgc-labsjdk-latest-linux-amd64": t("30:00"),
 
-    "compiler-ctw-labsjdk-latest-darwin-aarch64": {},
-    "compiler-ctw-labsjdk-latest-darwin-amd64": {},
-    "compiler-ctw-labsjdk-latest-linux-aarch64": {},
-    "compiler-ctw-labsjdk-latest-windows-amd64": {},
+    "compiler-ctw-labsjdk-latest-darwin-aarch64": t("30:00"),
+    "compiler-ctw-labsjdk-latest-darwin-amd64": t("30:00"),
+    "compiler-ctw-labsjdk-latest-linux-aarch64": t("30:00"),
+    "compiler-ctw-labsjdk-latest-windows-amd64": t("30:00"),
 
-    "compiler-ctw_zgc-labsjdk-latest-linux-amd64": {},
+    "compiler-ctw_zgc-labsjdk-latest-linux-amd64": t("30:00"),
 
-    "compiler-ctw_economy-labsjdk-latest-darwin-aarch64": {},
-    "compiler-ctw_economy-labsjdk-latest-darwin-amd64": {},
-    "compiler-ctw_economy-labsjdk-latest-linux-aarch64": {},
-    "compiler-ctw_economy-labsjdk-latest-windows-amd64": {},
+    "compiler-ctw_economy-labsjdk-latest-darwin-aarch64": t("30:00"),
+    "compiler-ctw_economy-labsjdk-latest-darwin-amd64": t("30:00"),
+    "compiler-ctw_economy-labsjdk-latest-linux-aarch64": t("30:00"),
+    "compiler-ctw_economy-labsjdk-latest-windows-amd64": t("30:00"),
 
-    "compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": {},
+    "compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": t("30:00"),
 
-    "compiler-bootstrap_full-labsjdk-latest-linux-amd64": {},
-    "compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": {},
+    "compiler-bootstrap_full-labsjdk-latest-linux-amd64": t("30:00"),
+    "compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": t("30:00"),
 
-    "compiler-benchmarktest_zgc-labsjdk-latest-linux-amd64": {},
-    "compiler-truffle_xcomp_zgc-labsjdk-latest-linux-amd64": {},
+    "compiler-benchmarktest_zgc-labsjdk-latest-linux-amd64": t("30:00"),
+    "compiler-truffle_xcomp_zgc-labsjdk-latest-linux-amd64": t("30:00"),
   }
   + $.as_dailies(gate_jobs)
   + $.as_dailies(tier1_jobs)
@@ -328,11 +328,11 @@
       logs+: ["*/graal_dumps/*/*_failure.log"],
     },
 
-    "compiler-test_vec16-labsjdk-latest-linux-amd64": {},
-    "compiler-test_avx0-labsjdk-latest-linux-amd64": {},
-    "compiler-test_avx1-labsjdk-latest-linux-amd64": {},
+    "compiler-test_vec16-labsjdk-latest-linux-amd64": t("30:00"),
+    "compiler-test_avx0-labsjdk-latest-linux-amd64": t("30:00"),
+    "compiler-test_avx1-labsjdk-latest-linux-amd64": t("30:00"),
 
-    "compiler-test_jtt_phaseplan_fuzzing-labsjdk-latest-linux-amd64": {
+    "compiler-test_jtt_phaseplan_fuzzing-labsjdk-latest-linux-amd64":  t("30:00") + {
       notify_groups: [],
       notify_emails: ["gergo.barany@oracle.com"],
     },
@@ -340,15 +340,15 @@
     "compiler-benchmarktest-labsjdk-latestDebug-linux-amd64": t("6:00:00"),
     "compiler-benchmarktest-labsjdk-latestDebug-darwin-aarch64": t("6:00:00"),
 
-    "compiler-coverage*": {},
+    "compiler-coverage*": t("30:00"),
 
-    "compiler-test_serialgc-labsjdk-latest-linux-amd64": {},
-    "compiler-test_serialgc-labsjdk-latest-linux-aarch64": {},
-    "compiler-test_serialgc-labsjdk-latest-darwin-amd64": {},
-    "compiler-test_serialgc-labsjdk-latest-darwin-aarch64": {},
+    "compiler-test_serialgc-labsjdk-latest-linux-amd64": t("30:00"),
+    "compiler-test_serialgc-labsjdk-latest-linux-aarch64": t("30:00"),
+    "compiler-test_serialgc-labsjdk-latest-darwin-amd64": t("30:00"),
+    "compiler-test_serialgc-labsjdk-latest-darwin-aarch64": t("30:00"),
 
-    "compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-amd64": {},
-    "compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-aarch64": {},
+    "compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-amd64": t("30:00"),
+    "compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-aarch64": t("30:00"),
   },
 
   # This map defines overrides and field extensions for monthly builds.
