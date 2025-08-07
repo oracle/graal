@@ -572,7 +572,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
     /**
      * The argument setting the maximum heap space of the subprocess.
      */
-    public static String MAX_HEAP_SPACE_ARG = "-Xmx64m";
+    public static final String MAX_HEAP_SPACE_ARG = "-Xmx64m";
 
     public static class TestNewInstanceWithException1 extends TestNewInstanceWithException {
 
