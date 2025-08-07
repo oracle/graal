@@ -44,9 +44,8 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.meta.HostedType;
-
-import com.oracle.svm.hosted.phases.DynamicAccessDetectionPhase;
 import com.oracle.svm.hosted.phases.AnalyzeJavaHomeAccessPhase;
+import com.oracle.svm.hosted.phases.DynamicAccessDetectionPhase;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -149,13 +148,14 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
     @Override
     protected void setInvokeProfiles(Invoke invoke, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile) {
         if (needsProfiles(invoke.asNode().graph())) {
-            ((SubstrateMethodCallTargetNode) invoke.callTarget()).setProfiles(typeProfile, methodProfile);
+            ((SubstrateMethodCallTargetNode) invoke.callTarget()).setProfiles(typeProfile, typeProfile, methodProfile, methodProfile);
         }
     }
 
-    protected void setInvokeProfiles(Invoke invoke, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile, JavaTypeProfile staticTypeProfile) {
+    protected void setInvokeProfiles(Invoke invoke, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile, JavaTypeProfile staticTypeProfile, JavaMethodProfile staticMethodProfile) {
         if (needsProfiles(invoke.asNode().graph())) {
-            ((SubstrateMethodCallTargetNode) invoke.callTarget()).setProfiles(typeProfile, methodProfile, staticTypeProfile);
+            SubstrateMethodCallTargetNode substrateCallTarget = (SubstrateMethodCallTargetNode) invoke.callTarget();
+            substrateCallTarget.setProfiles(typeProfile, staticTypeProfile, methodProfile, staticMethodProfile);
         }
     }
 
