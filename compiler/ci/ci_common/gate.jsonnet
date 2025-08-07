@@ -226,28 +226,28 @@
   local tier1_jobs = {
     # Style jobs need to stay on a JDK compatible with all the style
     # checking tools (SpotBugs, Checkstyle, Eclipse formatter etc).
-    "compiler-style-labsjdk-latest-linux-amd64": {},
+    "compiler-style-labsjdk-latest-linux-amd64": t("30:00"),
   },
 
   # Candidates for Tier2 jobs. In CE, these will be dailies.
   local tier2_jobs = {
-    "compiler-unittest_compiler-labsjdk-latest-linux-amd64": {},
-    "compiler-unittest_truffle-labsjdk-latest-linux-amd64": {},
-    "compiler-ctw-labsjdk-latest-linux-amd64": {},
-    "compiler-ctw_economy-labsjdk-latest-linux-amd64": {},
-    "compiler-benchmarktest-labsjdk-latest-linux-amd64": {},
+    "compiler-unittest_compiler-labsjdk-latest-linux-amd64": t("30:00"),
+    "compiler-unittest_truffle-labsjdk-latest-linux-amd64": t("30:00"),
+    "compiler-ctw-labsjdk-latest-linux-amd64": t("30:00"),
+    "compiler-ctw_economy-labsjdk-latest-linux-amd64": t("30:00"),
+    "compiler-benchmarktest-labsjdk-latest-linux-amd64": t("30:00"),
   },
 
   # Candidates for Tier3 jobs. In CE, these will be dailies.
   local tier3_jobs = {
-    "compiler-unittest_compiler-labsjdk-latest-darwin-aarch64": {},
-    "compiler-unittest_truffle-labsjdk-latest-darwin-aarch64": {},
-    "compiler-unittest_compiler-labsjdk-latest-linux-aarch64": {},
-    "compiler-unittest_truffle-labsjdk-latest-linux-aarch64": {},
+    "compiler-unittest_compiler-labsjdk-latest-darwin-aarch64": t("30:00"),
+    "compiler-unittest_truffle-labsjdk-latest-darwin-aarch64": t("30:00"),
+    "compiler-unittest_compiler-labsjdk-latest-linux-aarch64": t("30:00"),
+    "compiler-unittest_truffle-labsjdk-latest-linux-aarch64": t("30:00"),
 
-    "compiler-unittest_compiler_zgc-labsjdk-latest-linux-amd64": {},
+    "compiler-unittest_compiler_zgc-labsjdk-latest-linux-amd64": t("30:00"),
 
-    "compiler-truffle_xcomp-labsjdk-latest-linux-amd64": {},
+    "compiler-truffle_xcomp-labsjdk-latest-linux-amd64": t("30:00"),
   },
 
   # Candidates for gate jobs. In CE, these will be dailies instead of gates.
