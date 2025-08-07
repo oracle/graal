@@ -339,6 +339,10 @@ public class EncodedSnippets {
         }
         NodePlugin[] nodePlugins = null;
         if (!inRuntimeCode() && GraalOptions.SnippetCounters.getValue(options)) {
+            /*
+             * SnippetCounters are supported on jargraal, but they require a plugin to fold the
+             * loads of SnippetCounter objects during decoding.
+             */
             nodePlugins = new NodePlugin[]{new SnippetCounterFoldingPlugin()};
         }
 
@@ -378,7 +382,12 @@ public class EncodedSnippets {
         for (ConstantNode constant : result.getNodes().filter(ConstantNode.class).snapshot()) {
             if (constant.asConstant() instanceof SnippetObjectConstant snippetConstant) {
                 if (!inRuntimeCode() && snippetConstant.asObject(SnippetCounter.class) != null) {
-                    ConstantNode replacement = result.unique(ConstantNode.forConstant(asHotSpotConstant(snippetConstant, snippetReflection), metaAccess));
+                    /*
+                     * Convert SnippetCounter objects wrapped in SnippetObjectConstants to HotSpot
+                     * constants (when snippet counters are enabled on jargraal).
+                     */
+                    ConstantNode replacement = ConstantNode.forConstant(SnippetCounterFoldingPlugin.asHotSpotConstant(snippetConstant, snippetReflection), metaAccess);
+                    replacement = result.unique(replacement);
                     constant.replace(result, replacement);
                 } else {
                     throw new InternalError(constant.toString(Verbosity.Debugger));
@@ -426,19 +435,8 @@ public class EncodedSnippets {
     }
 
     /**
-     * Converts a snippet object constant to a HotSpot constant.
-     *
-     * @param snippetConstant the snippet constant
-     * @param snippetReflection snippet reflection
-     * @return the HotSpot constant
-     */
-    @LibGraalSupport.HostedOnly
-    private static JavaConstant asHotSpotConstant(SnippetObjectConstant snippetConstant, SnippetReflectionProvider snippetReflection) {
-        return snippetReflection.forObject(snippetConstant.asObject(Object.class));
-    }
-
-    /**
      * Performs constant folding of snippet counter code during snippet decoding on jargraal.
+     * Folding the loads allows the SnippetCounterNode_add plugin to succeed.
      */
     @LibGraalSupport.HostedOnly
     private static final class SnippetCounterFoldingPlugin implements NodePlugin {
@@ -454,6 +452,17 @@ public class EncodedSnippets {
         @Override
         public boolean handleLoadStaticField(GraphBuilderContext b, ResolvedJavaField field) {
             return tryConstantFold(b, field, null);
+        }
+
+        /**
+         * Converts a snippet object constant to a HotSpot constant.
+         *
+         * @param snippetConstant the snippet constant
+         * @param snippetReflection snippet reflection
+         * @return the HotSpot constant
+         */
+        private static JavaConstant asHotSpotConstant(SnippetObjectConstant snippetConstant, SnippetReflectionProvider snippetReflection) {
+            return snippetReflection.forObject(snippetConstant.asObject(Object.class));
         }
 
         private static boolean tryConstantFold(GraphBuilderContext b, ResolvedJavaField field, JavaConstant receiver) {
