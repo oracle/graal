@@ -2015,7 +2015,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         def _get_extra_jvm_args():
             image_config = self.subject.native_image_config
             extra_jvm_args = mx.list_to_cmd_line(image_config.extra_jvm_args)
-            if isinstance(self.subject.component, mx_sdk.GraalVmTruffleComponent) or image_config.is_polyglot:
+            if isinstance(self.subject.component, mx_sdk.GraalVmTruffleComponent):
                 extra_jvm_args = ' '.join([extra_jvm_args, '--enable-native-access=org.graalvm.truffle'])
                 # GR-59703: Migrate sun.misc.* usages.
                 if mx.VersionSpec("23.0.0") <= mx.get_jdk(tag='default').version:
@@ -2194,8 +2194,6 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         ] + svm_experimental_options(experimental_build_args) + [
             '--macro:' + GraalVmNativeProperties.macro_name(self.subject.native_image_config), # last to allow overrides
         ]
-        if self.subject.native_image_config.is_polyglot:
-            build_args += ["--macro:truffle", "--language:all"]
         return build_args
 
 
