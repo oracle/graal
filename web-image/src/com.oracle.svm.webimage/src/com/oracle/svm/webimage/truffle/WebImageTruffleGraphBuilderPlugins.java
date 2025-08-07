@@ -170,6 +170,26 @@ public class WebImageTruffleGraphBuilderPlugins {
                 return false;
             }
         });
+        r.register(new InlineOnlyInvocationPlugin("runByteSwapS1", nodeType,
+                        byte[].class, long.class, boolean.class,
+                        byte[].class, long.class, boolean.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                            ValueNode arrayA, ValueNode offsetA, ValueNode isNativeA,
+                            ValueNode arrayB, ValueNode offsetB, ValueNode isNativeB, ValueNode length) {
+                return false;
+            }
+        });
+        r.register(new InlineOnlyInvocationPlugin("runByteSwapS2", nodeType,
+                        byte[].class, long.class, boolean.class,
+                        byte[].class, long.class, boolean.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                            ValueNode arrayA, ValueNode offsetA, ValueNode isNativeA,
+                            ValueNode arrayB, ValueNode offsetB, ValueNode isNativeB, ValueNode length) {
+                return false;
+            }
+        });
         r.register(new InlineOnlyInvocationPlugin("runCalcStringAttributesLatin1", nodeType, byte[].class, long.class, int.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
