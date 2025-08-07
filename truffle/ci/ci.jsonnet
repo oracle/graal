@@ -240,6 +240,7 @@
         ["mx", "benchmark", "truffle:*", "--", "--jvm", "server", "--jvm-config", "graal-core", "--", "com.oracle.truffle", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1"],
       ],
       targets: ["gate"],
+      timelimit: "30:00",
     },
   ],
 
