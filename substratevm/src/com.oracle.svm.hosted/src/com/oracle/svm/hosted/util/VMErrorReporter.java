@@ -66,14 +66,7 @@ public final class VMErrorReporter {
         pw.println("## Stack Trace");
         pw.println();
         pw.println("```java");
-        Throwable current = t;
-        while (current != null) {
-            t.printStackTrace(pw);
-            current = current.getCause();
-            if (current != null) {
-                pw.println("Caused by:");
-            }
-        }
+        t.printStackTrace(pw);
         pw.println("```");
     }
 
