@@ -341,6 +341,10 @@ mx.addJDKFactory('graalvm', mx.get_jdk(tag='default').javaCompliance, GraalVMJDK
 def maven_deploy_public_repo_dir():
     return os.path.join(_suite.get_mx_output_dir(), 'public-maven-repo')
 
+@mx.command(_suite.name, 'maven-deploy-public-repo-dir')
+def print_maven_deploy_public_repo_dir(args):
+    print(maven_deploy_public_repo_dir())
+
 @mx.command(_suite.name, 'maven-deploy-public')
 def maven_deploy_public(args, licenses=None, deploy_snapshots=True):
     """Helper to simplify deploying all public Maven dependendencies into the mxbuild directory"""
@@ -373,7 +377,6 @@ def maven_deploy_public(args, licenses=None, deploy_snapshots=True):
     mx.log(f'mx maven-deploy {" ".join(deploy_args)}')
     mx.maven_deploy(deploy_args)
     mx.log(f'Deployed Maven artefacts to {path}')
-    return path
 
 @mx.command(_suite.name, 'nativebridge-benchmark')
 def nativebridge_benchmark(args):
