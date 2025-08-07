@@ -388,7 +388,7 @@ final class Target_java_lang_reflect_Array {
     private static Object newArray(Class<?> componentType, int length)
                     throws NegativeArraySizeException {
         if (MetadataTracer.enabled()) {
-            MetadataTracer.singleton().traceReflectionType(DynamicHub.fromClass(componentType).getArrayHub().getName());
+            MetadataTracer.singleton().traceReflectionArrayType(componentType);
         }
         return KnownIntrinsics.unvalidatedNewArray(componentType, length);
     }

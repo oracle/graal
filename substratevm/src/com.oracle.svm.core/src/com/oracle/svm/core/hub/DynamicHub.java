@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.hub;
 
-import static com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import static com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
@@ -93,7 +92,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.configure.ClassNameSupport;
-import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.core.BuildPhaseProvider.CompileQueueFinished;
@@ -711,7 +709,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     private void checkClassFlag(int mask, String methodName) {
         if (MetadataTracer.enabled()) {
-            traceClassFlagQuery(mask);
+            MetadataTracer.singleton().traceReflectionType(toClass(this));
         }
         if (throwMissingRegistrationErrors() && !(isClassFlagSet(mask) && getConditions().satisfied())) {
             MissingReflectionRegistrationUtils.reportClassQuery(DynamicHub.toClass(this), methodName);
@@ -733,30 +731,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     private static boolean isClassFlagSet(int mask, ReflectionMetadata reflectionMetadata) {
         return reflectionMetadata != null && (reflectionMetadata.classFlags & mask) != 0;
-    }
-
-    private void traceClassFlagQuery(int mask) {
-        ConfigurationType type = MetadataTracer.singleton().traceReflectionType(getName());
-        if (type == null) {
-            return;
-        }
-        // TODO (GR-64765): We over-approximate member accessibility here because we don't trace
-        // accesses. Once we trace accesses, it will suffice to register the class for reflection.
-        switch (mask) {
-            case ALL_FIELDS_FLAG -> type.setAllPublicFields(ConfigurationMemberAccessibility.ACCESSED);
-            case ALL_DECLARED_FIELDS_FLAG -> type.setAllDeclaredFields(ConfigurationMemberAccessibility.ACCESSED);
-            case ALL_METHODS_FLAG -> type.setAllPublicMethods(ConfigurationMemberAccessibility.ACCESSED);
-            case ALL_DECLARED_METHODS_FLAG -> type.setAllDeclaredMethods(ConfigurationMemberAccessibility.ACCESSED);
-            case ALL_CONSTRUCTORS_FLAG -> type.setAllPublicConstructors(ConfigurationMemberAccessibility.ACCESSED);
-            case ALL_DECLARED_CONSTRUCTORS_FLAG -> type.setAllDeclaredConstructors(ConfigurationMemberAccessibility.ACCESSED);
-            case ALL_CLASSES_FLAG -> type.setAllPublicClasses();
-            case ALL_DECLARED_CLASSES_FLAG -> type.setAllDeclaredClasses();
-            case ALL_RECORD_COMPONENTS_FLAG -> type.setAllRecordComponents();
-            case ALL_PERMITTED_SUBCLASSES_FLAG -> type.setAllPermittedSubclasses();
-            case ALL_NEST_MEMBERS_FLAG -> type.setAllNestMembers();
-            case ALL_SIGNERS_FLAG -> type.setAllSigners();
-            default -> throw VMError.shouldNotReachHere("unknown class flag " + mask);
-        }
     }
 
     /** Executed at runtime. */
@@ -1346,19 +1320,13 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private void traceFieldLookup(String fieldName, Field field, boolean publicOnly) {
         ConfigurationMemberDeclaration declaration = publicOnly ? ConfigurationMemberDeclaration.PRESENT : ConfigurationMemberDeclaration.DECLARED;
         if (field != null) {
-            // register declaring type and field
-            ConfigurationType declaringType = MetadataTracer.singleton().traceReflectionType(field.getDeclaringClass().getName());
-            if (declaringType != null) {
-                declaringType.addField(fieldName, declaration, false);
-            }
+            // register declaring type (registers all fields for lookup)
+            MetadataTracer.singleton().traceReflectionType(field.getDeclaringClass());
             // register receiver type
-            MetadataTracer.singleton().traceReflectionType(getName());
+            MetadataTracer.singleton().traceReflectionType(toClass(this));
         } else {
             // register receiver type and negative field query
-            ConfigurationType receiverType = MetadataTracer.singleton().traceReflectionType(getName());
-            if (receiverType != null) {
-                receiverType.addField(fieldName, declaration, false);
-            }
+            MetadataTracer.singleton().traceFieldAccess(toClass(this), fieldName, declaration);
         }
     }
 
@@ -1431,33 +1399,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private void traceMethodLookup(String methodName, Class<?>[] parameterTypes, Executable method, boolean publicOnly) {
         ConfigurationMemberDeclaration declaration = publicOnly ? ConfigurationMemberDeclaration.PRESENT : ConfigurationMemberDeclaration.DECLARED;
         if (method != null) {
-            // register declaring type and method
-            ConfigurationType declaringType = MetadataTracer.singleton().traceReflectionType(method.getDeclaringClass().getName());
-            if (declaringType != null) {
-                declaringType.addMethod(methodName, toInternalSignature(parameterTypes), declaration);
-            }
+            // register declaring type (registers all methods for lookup)
+            MetadataTracer.singleton().traceReflectionType(method.getDeclaringClass());
             // register receiver type
-            MetadataTracer.singleton().traceReflectionType(getName());
+            MetadataTracer.singleton().traceReflectionType(toClass(this));
         } else {
             // register receiver type and negative method query
-            ConfigurationType receiverType = MetadataTracer.singleton().traceReflectionType(getName());
-            if (receiverType != null) {
-                receiverType.addMethod(methodName, toInternalSignature(parameterTypes), declaration, ConfigurationMemberAccessibility.QUERIED);
-            }
+            MetadataTracer.singleton().traceMethodAccess(toClass(this), methodName, SignatureUtil.toInternalSignature(parameterTypes), declaration);
         }
-    }
-
-    private static String toInternalSignature(Class<?>[] classes) {
-        List<String> names;
-        if (classes == null) {
-            names = List.of();
-        } else {
-            names = new ArrayList<>(classes.length);
-            for (Class<?> aClass : classes) {
-                names.add(aClass.getName());
-            }
-        }
-        return SignatureUtil.toInternalSignature(names);
     }
 
     private boolean allElementsRegistered(boolean publicOnly, int allDeclaredElementsFlag, int allPublicElementsFlag) {
@@ -1975,16 +1924,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             throw new UnsupportedOperationException(new IllegalArgumentException());
         }
         if (MetadataTracer.enabled()) {
-            MetadataTracer.singleton().traceReflectionType(arrayTypeName());
+            MetadataTracer.singleton().traceReflectionArrayType(toClass(this));
         }
         if (companion.arrayHub == null || (throwMissingRegistrationErrors() && !ClassForNameSupport.isRegisteredClass(ClassNameSupport.getArrayReflectionName(getName())))) {
-            MissingReflectionRegistrationUtils.reportClassAccess(arrayTypeName());
+            MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]");
         }
         return companion.arrayHub;
-    }
-
-    private String arrayTypeName() {
-        return getTypeName() + "[]";
     }
 
     @KeepOriginal

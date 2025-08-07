@@ -465,8 +465,16 @@ public class ConfigurationType implements JsonPrintable {
         }
     }
 
+    public synchronized boolean isSerializable() {
+        return serializable;
+    }
+
     public synchronized void setSerializable() {
         serializable = true;
+    }
+
+    public synchronized boolean isJniAccessible() {
+        return typeJniAccessible;
     }
 
     public synchronized void setJniAccessible() {

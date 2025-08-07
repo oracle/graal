@@ -31,6 +31,7 @@ import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.svm.configure.JsonFileWriter;
 import com.oracle.svm.configure.filters.ConfigurationFilter;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
 
