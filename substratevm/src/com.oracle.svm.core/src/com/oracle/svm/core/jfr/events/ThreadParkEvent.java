@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,10 +37,21 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.monitor.JavaMonitor;
 
 public class ThreadParkEvent {
     public static void emit(long startTicks, Object obj, boolean isAbsolute, long time) {
         if (HasJfrSupport.get()) {
+            /*
+             * Skip emission if corresponding JavaMonitorWait or JavaMonitorEnter events are already
+             * emitted (this is an internal park).
+             */
+            if (obj != null) {
+                Class<?> clazz = obj.getClass();
+                if (clazz.equals(JavaMonitor.class) || (clazz.getEnclosingClass() != null && clazz.getEnclosingClass().isAssignableFrom(JavaMonitor.class))) {
+                    return;
+                }
+            }
             emit0(startTicks, obj, isAbsolute, time);
         }
     }
