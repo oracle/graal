@@ -184,12 +184,6 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
     private Set<AccessibleObjectMetadata> heapData = new HashSet<>();
 
-    private Map<AccessibleObject, byte[]> annotationsEncodings = new HashMap<>();
-    private Map<Executable, byte[]> parameterAnnotationsEncodings = new HashMap<>();
-    private Map<Method, byte[]> annotationDefaultEncodings = new HashMap<>();
-    private Map<AccessibleObject, byte[]> typeAnnotationsEncodings = new HashMap<>();
-    private Map<Executable, byte[]> reflectParametersEncodings = new HashMap<>();
-
     public RuntimeMetadataEncoderImpl(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders) {
         this.snippetReflection = snippetReflection;
         this.encoders = encoders;
@@ -279,31 +273,6 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         orderedElements.addAll(metadata.values());
         orderedElements.addAll(trailingElements);
         return orderedElements;
-    }
-
-    @Override
-    public byte[] getAnnotationsEncoding(AccessibleObject object) {
-        return annotationsEncodings.get(object);
-    }
-
-    @Override
-    public byte[] getParameterAnnotationsEncoding(Executable object) {
-        return parameterAnnotationsEncodings.get(object);
-    }
-
-    @Override
-    public byte[] getAnnotationDefaultEncoding(Method object) {
-        return annotationDefaultEncodings.get(object);
-    }
-
-    @Override
-    public byte[] getTypeAnnotationsEncoding(AccessibleObject object) {
-        return typeAnnotationsEncodings.get(object);
-    }
-
-    @Override
-    public byte[] getReflectParametersEncoding(Executable object) {
-        return reflectParametersEncodings.get(object);
     }
 
     @Override
@@ -856,38 +825,32 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
                 hub.setReflectionMetadata(fieldsIndex, methodsIndex, constructorsIndex, recordComponentsIndex, classFlags);
             }
         }
+
+        EncodedRuntimeMetadataSupplierImpl encodings = EncodedRuntimeMetadataSupplierImpl.create();
         for (AccessibleObjectMetadata metadata : heapData) {
             AccessibleObject heapObject = snippetReflection.asObject(AccessibleObject.class, metadata.heapObject);
-            annotationsEncodings.put(heapObject, encodeAnnotations(metadata.annotations));
-            typeAnnotationsEncodings.put(heapObject, encodeTypeAnnotations(metadata.typeAnnotations));
+            encodings.annotationsEncodings.put(heapObject, encodeAnnotations(metadata.annotations));
+            encodings.typeAnnotationsEncodings.put(heapObject, encodeTypeAnnotations(metadata.typeAnnotations));
             if (metadata instanceof ExecutableMetadata em) {
-                parameterAnnotationsEncodings.put((Executable) heapObject, encodeParameterAnnotations(em.parameterAnnotations));
+                encodings.parameterAnnotationsEncodings.put((Executable) heapObject, encodeParameterAnnotations(em.parameterAnnotations));
                 if (em.reflectParameters != null) {
-                    reflectParametersEncodings.put((Executable) heapObject, encodeReflectParameters(em.reflectParameters));
+                    encodings.reflectParametersEncodings.put((Executable) heapObject, encodeReflectParameters(em.reflectParameters));
                 }
                 if (metadata instanceof MethodMetadata mmd) {
-                    annotationDefaultEncodings.put((Method) heapObject, encodeAnnotationDefault(mmd.annotationDefault));
+                    encodings.annotationDefaultEncodings.put((Method) heapObject, encodeAnnotationDefault(mmd.annotationDefault));
                 }
             }
         }
         install(buf);
         /* Enable field recomputers in reflection objects to see the computed values */
-        EncodedRuntimeMetadataSupplierImpl supplierImpl = new EncodedRuntimeMetadataSupplierImpl(annotationsEncodings, parameterAnnotationsEncodings, annotationDefaultEncodings,
-                        typeAnnotationsEncodings, reflectParametersEncodings);
+        ImageSingletons.add(EncodedRuntimeMetadataSupplier.class, encodings);
         clearDataAfterEncoding();
-        ImageSingletons.add(EncodedRuntimeMetadataSupplier.class, supplierImpl);
     }
 
     /**
      * After the buffer has been created and installed, all other data can be cleaned.
      */
     private void clearDataAfterEncoding() {
-        this.annotationsEncodings = null;
-        this.parameterAnnotationsEncodings = null;
-        this.annotationDefaultEncodings = null;
-        this.typeAnnotationsEncodings = null;
-        this.reflectParametersEncodings = null;
-
         this.sortedTypes = null;
         this.classData = null;
         this.fieldData = null;
@@ -1411,11 +1374,19 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
      * Container for data required in later phases. Cleaner separation, rest of
      * RuntimeMetadataEncoderImpl can be cleaned after encoding.
      */
-    public record EncodedRuntimeMetadataSupplierImpl(Map<AccessibleObject, byte[]> annotationsEncodings,
+    record EncodedRuntimeMetadataSupplierImpl(Map<AccessibleObject, byte[]> annotationsEncodings,
                     Map<Executable, byte[]> parameterAnnotationsEncodings,
                     Map<Method, byte[]> annotationDefaultEncodings,
                     Map<AccessibleObject, byte[]> typeAnnotationsEncodings,
                     Map<Executable, byte[]> reflectParametersEncodings) implements EncodedRuntimeMetadataSupplier {
+        static EncodedRuntimeMetadataSupplierImpl create() {
+            return new EncodedRuntimeMetadataSupplierImpl(
+                            new HashMap<>(),  // annotationsEncodings
+                            new HashMap<>(),  // parameterAnnotationsEncodings
+                            new HashMap<>(),  // annotationDefaultEncodings
+                            new HashMap<>(),  // typeAnnotationsEncodings
+                            new HashMap<>()); // reflectParametersEncodings
+        }
 
         @Override
         public byte[] getAnnotationsEncoding(AccessibleObject object) {
