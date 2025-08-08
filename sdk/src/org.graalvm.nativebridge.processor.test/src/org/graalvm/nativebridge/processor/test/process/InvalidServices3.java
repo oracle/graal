@@ -62,3 +62,10 @@ final class InvalidServices3Factory2 {
 abstract class InvalidServices3Service implements ForeignObject, Service {
 
 }
+
+/*
+ * In Mx JavaProjects, a class must share its name with the Java source file to allow correct
+ * up-to-date status checking.
+ */
+public class InvalidServices3 {
+}
