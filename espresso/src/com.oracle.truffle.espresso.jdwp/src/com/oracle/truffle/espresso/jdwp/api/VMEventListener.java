@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.jdwp.api;
 import com.oracle.truffle.espresso.jdwp.impl.BreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.impl.ClassPrepareRequest;
 import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointEvent;
+import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.impl.MethodBreakpointEvent;
 import com.oracle.truffle.espresso.jdwp.impl.RequestFilter;
 import com.oracle.truffle.espresso.jdwp.impl.SocketConnection;
@@ -56,6 +57,10 @@ public interface VMEventListener extends VMListener {
     void addBreakpointRequest(int requestId, BreakpointInfo info);
 
     void removeBreakpointRequest(int requestId);
+
+    void addFieldRequest(FieldBreakpointInfo info);
+
+    void removeFieldRequest(int requestId, FieldRef field);
 
     void stepCompleted(SteppingInfo info, CallFrame currentFrame);
 
