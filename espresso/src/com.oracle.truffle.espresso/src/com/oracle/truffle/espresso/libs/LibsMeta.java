@@ -47,6 +47,7 @@ public final class LibsMeta implements ContextAccess {
     public final ObjectKlass sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator;
     public final Field sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator_HIDDEN_HOST_REFERENCE;
     public final Method sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator_init;
+
     // libzip
     public final ObjectKlass java_util_zip_CRC32;
     public final Field HIDDEN_CRC32;
@@ -55,9 +56,21 @@ public final class LibsMeta implements ContextAccess {
     public final Field java_util_zip_Inflater_outputConsumed;
     public final ObjectKlass java_util_zip_DataFormatException;
 
+    // libjava
+    public final ObjectKlass java_lang_ProcessHandleImpl$Info;
+    public final Field java_lang_ProcessHandleImpl$Info_command;
+    public final Field java_lang_ProcessHandleImpl$Info_commandLine;
+    public final Field java_lang_ProcessHandleImpl$Info_arguments;
+    public final Field java_lang_ProcessHandleImpl$Info_startTime;
+    public final Field java_lang_ProcessHandleImpl$Info_totalTime;
+    public final Field java_lang_ProcessHandleImpl$Info_user;
+    public final ObjectKlass java_lang_SecurityManager;
+    public final Field java_lang_SecurityManager_initialized;
+
     // libnet
     public final ObjectKlass java_net_NetworkInterface;
     public final LibNetMeta net;
+
     // Checkstyle: resume field name check
 
     @Override
@@ -91,6 +104,21 @@ public final class LibsMeta implements ContextAccess {
         java_util_zip_DataFormatException = knownKlass(EspressoSymbols.Types.java_util_zip_DataFormatException);
         java_util_zip_Inflater_inputConsumed = java_util_zip_Inflater.requireDeclaredField(EspressoSymbols.Names.inputConsumed, EspressoSymbols.Types._int);
         java_util_zip_Inflater_outputConsumed = java_util_zip_Inflater.requireDeclaredField(EspressoSymbols.Names.outputConsumed, EspressoSymbols.Types._int);
+
+        // libjava
+        java_lang_ProcessHandleImpl$Info = knownKlass(EspressoSymbols.Types.java_lang_ProcessHandleImpl$Info);
+        java_lang_ProcessHandleImpl$Info_command = java_lang_ProcessHandleImpl$Info.requireDeclaredField(EspressoSymbols.Names.command, EspressoSymbols.Types.java_lang_String);
+        java_lang_ProcessHandleImpl$Info_commandLine = java_lang_ProcessHandleImpl$Info.requireDeclaredField(EspressoSymbols.Names.commandLine, EspressoSymbols.Types.java_lang_String);
+        java_lang_ProcessHandleImpl$Info_arguments = java_lang_ProcessHandleImpl$Info.requireDeclaredField(EspressoSymbols.Names.arguments, EspressoSymbols.Types.java_lang_String_array);
+        java_lang_ProcessHandleImpl$Info_startTime = java_lang_ProcessHandleImpl$Info.requireDeclaredField(EspressoSymbols.Names.startTime, EspressoSymbols.Types._long);
+        java_lang_ProcessHandleImpl$Info_totalTime = java_lang_ProcessHandleImpl$Info.requireDeclaredField(EspressoSymbols.Names.totalTime, EspressoSymbols.Types._long);
+        java_lang_ProcessHandleImpl$Info_user = java_lang_ProcessHandleImpl$Info.requireDeclaredField(EspressoSymbols.Names.user, EspressoSymbols.Types.java_lang_String);
+        java_lang_SecurityManager = knownKlass(EspressoSymbols.Types.java_lang_SecurityManager);
+        if (context.getJavaVersion().java25OrLater()) {
+            java_lang_SecurityManager_initialized = null;
+        } else {
+            java_lang_SecurityManager_initialized = java_lang_SecurityManager.requireDeclaredField(EspressoSymbols.Names.initialized, EspressoSymbols.Types._boolean);
+        }
 
         // libnet
         java_net_NetworkInterface = knownKlass(EspressoSymbols.Types.java_net_NetworkInterface);

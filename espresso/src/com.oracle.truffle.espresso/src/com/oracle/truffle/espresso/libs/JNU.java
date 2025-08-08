@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,24 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.substitutions.standard;
+package com.oracle.truffle.espresso.libs;
 
-import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
-import com.oracle.truffle.espresso.substitutions.Substitution;
-import com.oracle.truffle.espresso.substitutions.libs.EspressoLibsFilter;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
-@EspressoSubstitutions
-public final class Target_java_lang_VirtualThread {
-    private Target_java_lang_VirtualThread() {
+/**
+ * A class to guarantee consistency when encoding and decoding bytes to strings between the guest
+ * and host world.
+ *
+ * The guest gets its charSet for encoding and decoding from System.getProperty("sun.jnu.encoding").
+ * We substitute this with the charSet specified in this class. Then on the host side, we just
+ * simply use the same charSet.
+ */
+public class JNU {
+    private static final Charset charSet = StandardCharsets.UTF_8;
+
+    public static Charset getCharSet() {
+        return charSet;
     }
 
-    @Substitution
-    public static void unblockVirtualThreads() {
-        // no-op: loom continuations are not supported
-    }
-
-    @Substitution(languageFilter = EspressoLibsFilter.class)
-    public static void registerNatives() {
-        // no-op: loom continuations are not supported
+    public static String getString(byte[] arr, int index, int length) {
+        return new String(arr, index, length, charSet);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,24 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.substitutions.standard;
+package com.oracle.truffle.espresso.libs.libjava.impl;
 
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
+import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.Substitution;
-import com.oracle.truffle.espresso.substitutions.libs.EspressoLibsFilter;
+import com.oracle.truffle.espresso.vm.StackWalk;
 
-@EspressoSubstitutions
-public final class Target_java_lang_VirtualThread {
-    private Target_java_lang_VirtualThread() {
-    }
-
+@EspressoSubstitutions(type = "Ljava/lang/StackStreamFactory;")
+public final class Target_java_lang_StackStreamFactory {
     @Substitution
-    public static void unblockVirtualThreads() {
-        // no-op: loom continuations are not supported
-    }
-
-    @Substitution(languageFilter = EspressoLibsFilter.class)
-    public static void registerNatives() {
-        // no-op: loom continuations are not supported
+    public static boolean checkStackWalkModes(@Inject Meta meta) {
+        try {
+            return StackWalk.synchronizedConstants(meta);
+        } catch (AssertionError e) {
+            return false;
+        }
     }
 }

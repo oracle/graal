@@ -49,9 +49,12 @@ public class LibsState {
 
     private final StrongHandles<Inflater> handle2Inflater = new StrongHandles<>();
 
+    private final EspressoContext context;
+
     public final LibsStateNet net;
 
     public LibsState(EspressoContext context, LibsMeta lMeta) {
+        this.context = context;
         this.net = (context.getEnv().isSocketIOAllowed()) ? new LibsStateNet(context, lMeta) : null;
     }
 
@@ -79,6 +82,12 @@ public class LibsState {
     private static EspressoException throwInternalError() {
         Meta meta = EspressoContext.get(null).getMeta();
         return meta.throwExceptionWithMessage(meta.java_lang_InternalError, "the provided handle doesn't correspond to an Inflater");
+    }
+
+    public void checkCreateProcessAllowed() {
+        if (!context.getEnv().isCreateProcessAllowed()) {
+            throw Throw.throwSecurityException("process creation is not allowed!", context);
+        }
     }
 
     public final class LibsStateNet {
