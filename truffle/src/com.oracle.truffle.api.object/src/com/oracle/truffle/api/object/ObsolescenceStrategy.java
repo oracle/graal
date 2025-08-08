@@ -417,7 +417,7 @@ final class ObsolescenceStrategy extends ExtLayoutStrategy {
     }
 
     private static void setPropertyInternal(Property toProperty, DynamicObject toObject, Object value) {
-        ((ExtLocation) toProperty.getLocation()).set(toObject, value, false, true);
+        ((LocationImpl) toProperty.getLocation()).set(toObject, value, false, true);
     }
 
     private boolean checkForObsoleteShapeAndMigrate(DynamicObject store) {
@@ -474,7 +474,7 @@ final class ObsolescenceStrategy extends ExtLayoutStrategy {
                 } else {
                     ShapeImpl newShape = rebuildObsoleteShape(oldShape, owningShape);
                     Property newPropertyAfterReshape = newShape.getProperty(oldProperty.getKey());
-                    if (((LocationImpl) newPropertyAfterReshape.getLocation()).canStore(value)) {
+                    if (newPropertyAfterReshape.getLocation().canStore(value)) {
                         return newShape;
                     } else {
                         oldShape = newShape;

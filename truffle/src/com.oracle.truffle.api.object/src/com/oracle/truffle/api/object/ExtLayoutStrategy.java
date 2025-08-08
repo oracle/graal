@@ -82,25 +82,15 @@ abstract class ExtLayoutStrategy extends LayoutStrategy {
 
     @Override
     protected int getLocationOrdinal(Location location) {
-        return ExtLocations.getLocationOrdinal(((ExtLocation) location));
+        return ((LocationImpl) location).getOrdinal();
     }
 
     @Override
     protected ShapeImpl removeProperty(ShapeImpl shape, Property property) {
-        if (property.getLocation() instanceof InstanceLocation) {
-            ((InstanceLocation) property.getLocation()).maybeInvalidateFinalAssumption();
+        if (property.getLocation() instanceof InstanceLocation instanceLocation) {
+            instanceLocation.maybeInvalidateFinalAssumption();
         }
         return super.removeProperty(shape, property);
-    }
-
-    @Override
-    protected ShapeImpl defineProperty(ShapeImpl oldShape, Object key, Object value, int propertyFlags, Property existing, int putFlags) {
-        return super.defineProperty(oldShape, key, value, propertyFlags, existing, putFlags);
-    }
-
-    @Override
-    protected ShapeImpl definePropertyGeneralize(ShapeImpl oldShape, Property oldProperty, Object value, int putFlags) {
-        return super.definePropertyGeneralize(oldShape, oldProperty, value, putFlags);
     }
 
     @Override

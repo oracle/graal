@@ -94,12 +94,12 @@ abstract class ExtAllocator extends BaseAllocator {
     }
 
     @Override
-    public ExtLocation constantLocation(Object value) {
+    public LocationImpl constantLocation(Object value) {
         return new ExtLocations.ConstantLocation(value);
     }
 
     @Override
-    public ExtLocation declaredLocation(Object value) {
+    public LocationImpl declaredLocation(Object value) {
         return new ExtLocations.DeclaredLocation(value);
     }
 

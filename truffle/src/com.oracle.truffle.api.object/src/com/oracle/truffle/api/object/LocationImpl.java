@@ -47,7 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 @SuppressWarnings("deprecation")
-abstract non-sealed class LocationImpl extends Location {
+abstract sealed class LocationImpl extends Location permits ExtLocations.InstanceLocation, ExtLocations.ValueLocation {
 
     protected LocationImpl() {
     }
@@ -166,16 +166,6 @@ abstract non-sealed class LocationImpl extends Location {
     }
 
     @Override
-    public boolean canStore(Object value) {
-        return true;
-    }
-
-    @SuppressWarnings("unused")
-    protected boolean canStoreFinal(DynamicObject store, Object value) {
-        return true;
-    }
-
-    @Override
     public boolean isConstant() {
         return false;
     }
@@ -280,16 +270,16 @@ abstract non-sealed class LocationImpl extends Location {
         setDouble(store, value, guard, init);
     }
 
-    protected boolean isIntLocation() {
-        return false;
+    protected final boolean isIntLocation() {
+        return this instanceof ExtLocations.IntLocation;
     }
 
-    protected boolean isLongLocation() {
-        return false;
+    protected final boolean isDoubleLocation() {
+        return this instanceof ExtLocations.DoubleLocation;
     }
 
-    protected boolean isDoubleLocation() {
-        return false;
+    protected final boolean isLongLocation() {
+        return this instanceof ExtLocations.LongLocation;
     }
 
     protected boolean isImplicitCastIntToLong() {
@@ -300,8 +290,8 @@ abstract non-sealed class LocationImpl extends Location {
         return false;
     }
 
-    protected boolean isObjectLocation() {
-        return false;
+    protected final boolean isObjectLocation() {
+        return this instanceof ExtLocations.ObjectLocation;
     }
 
     static boolean expectBoolean(Object value) throws UnexpectedResultException {
@@ -338,6 +328,8 @@ abstract non-sealed class LocationImpl extends Location {
 
     protected void clear(@SuppressWarnings("unused") DynamicObject store) {
     }
+
+    protected abstract int getOrdinal();
 
     @Override
     public Assumption getFinalAssumption() {
