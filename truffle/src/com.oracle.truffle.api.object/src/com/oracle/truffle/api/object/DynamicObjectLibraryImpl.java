@@ -84,12 +84,10 @@ abstract class DynamicObjectLibraryImpl {
     static final int KEY_LIMIT = 3;
 
     static boolean keyEquals(Object cachedKey, Object key) {
-        if (cachedKey instanceof String) {
-            return cachedKey == key || (key instanceof String && ((String) cachedKey).equals(key));
+        if (cachedKey instanceof String cachedKeyStr) {
+            return cachedKey == key || (key instanceof String keyStr && cachedKeyStr.equals(keyStr));
         } else if (cachedKey instanceof HiddenKey) {
             return key == cachedKey;
-        } else if (cachedKey instanceof Long) {
-            return key instanceof Long && ((Long) cachedKey).equals(key);
         } else {
             return cachedKey == key || keyEqualsBoundary(cachedKey, key);
         }

@@ -387,10 +387,7 @@ abstract class ExtLocations {
                 return false;
             }
             InstanceLocation other = (InstanceLocation) obj;
-            if (index != other.index) {
-                return false;
-            }
-            return true;
+            return index == other.index;
         }
 
         @Override
