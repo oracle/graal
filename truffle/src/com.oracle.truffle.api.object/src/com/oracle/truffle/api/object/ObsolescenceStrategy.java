@@ -417,11 +417,7 @@ final class ObsolescenceStrategy extends ExtLayoutStrategy {
     }
 
     private static void setPropertyInternal(Property toProperty, DynamicObject toObject, Object value) {
-        try {
-            ((ExtLocation) toProperty.getLocation()).set(toObject, value, false, true);
-        } catch (IncompatibleLocationException e) {
-            throw CompilerDirectives.shouldNotReachHere(e);
-        }
+        ((ExtLocation) toProperty.getLocation()).set(toObject, value, false, true);
     }
 
     private boolean checkForObsoleteShapeAndMigrate(DynamicObject store) {

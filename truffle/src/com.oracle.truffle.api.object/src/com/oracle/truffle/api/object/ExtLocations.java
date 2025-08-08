@@ -206,13 +206,13 @@ abstract class ExtLocations {
         }
 
         @Override
-        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) {
             if (!canStore(value)) {
                 if (init) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw new UnsupportedOperationException();
                 } else {
-                    throw incompatibleLocation();
+                    throw incompatibleLocationException();
                 }
             }
         }
@@ -624,12 +624,12 @@ abstract class ExtLocations {
         }
 
         @Override
-        protected void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
+        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
             boolean valueGuard = canStore(value);
             if (valueGuard) {
                 setObjectInternal(store, value, guard);
             } else {
-                throw incompatibleLocation();
+                throw incompatibleLocationException();
             }
         }
 
@@ -699,12 +699,12 @@ abstract class ExtLocations {
         }
 
         @Override
-        protected void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
+        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
             boolean condition = canStore(value);
             if (condition) {
                 setObjectInternal(store, value);
             } else {
-                throw incompatibleLocation();
+                throw incompatibleLocationException();
             }
         }
 
@@ -847,11 +847,11 @@ abstract class ExtLocations {
         }
 
         @Override
-        protected void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
+        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
             if (canStore(value)) {
                 setInt(store, (int) value, guard, init);
             } else {
-                throw incompatibleLocation();
+                throw incompatibleLocationException();
             }
         }
 
@@ -980,11 +980,11 @@ abstract class ExtLocations {
         }
 
         @Override
-        protected void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
+        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
             if (canStore(value)) {
                 setDouble(store, doubleValue(value), guard, init);
             } else {
-                throw incompatibleLocation();
+                throw incompatibleLocationException();
             }
         }
 
@@ -1081,11 +1081,11 @@ abstract class ExtLocations {
         }
 
         @Override
-        protected void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
+        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
             if (canStore(value)) {
                 setBoolean(store, (boolean) value, guard, init);
             } else {
-                throw incompatibleLocation();
+                throw incompatibleLocationException();
             }
         }
 
@@ -1139,11 +1139,11 @@ abstract class ExtLocations {
         }
 
         @Override
-        protected void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
+        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
             if (canStore(value)) {
                 setInt(store, (int) value, guard, init);
             } else {
-                throw incompatibleLocation();
+                throw incompatibleLocationException();
             }
         }
 
@@ -1208,11 +1208,11 @@ abstract class ExtLocations {
         }
 
         @Override
-        protected void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
+        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
             if (canStore(value)) {
                 setDouble(store, doubleValue(value), guard, init);
             } else {
-                throw incompatibleLocation();
+                throw incompatibleLocationException();
             }
         }
 
@@ -1334,11 +1334,11 @@ abstract class ExtLocations {
         }
 
         @Override
-        protected void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
+        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
             if (canStore(value)) {
                 setLong(store, longValue(value), guard, init);
             } else {
-                throw incompatibleLocation();
+                throw incompatibleLocationException();
             }
         }
 
@@ -1397,11 +1397,11 @@ abstract class ExtLocations {
         }
 
         @Override
-        protected void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
+        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
             if (canStore(value)) {
                 setLong(store, longValue(value), guard, init);
             } else {
-                throw incompatibleLocation();
+                throw incompatibleLocationException();
             }
         }
 
