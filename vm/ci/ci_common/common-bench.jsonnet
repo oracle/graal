@@ -230,6 +230,30 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
          ],
        }
   */
+  ] + [
+    # TruffleRuby polybench jobs
+    self.polybench_vm_gate('linux', 'amd64', 'ruby') + common.deps.truffleruby + {
+      environment+: {
+        RUBY_BENCHMARKS: 'true',
+      },
+      setup+: [
+        ['mx', '--dy', 'truffleruby', 'build']
+      ],
+      run+: [
+        self.polybench_wrap(['mx', '--dy', 'truffleruby', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'ruby:gate']),
+      ],
+    },
+    self.polybench_vm_daily('linux', 'amd64', 'ruby') + common.deps.truffleruby + {
+      environment+: {
+        RUBY_BENCHMARKS: 'true',
+      },
+      setup+: [
+        ['mx', '--dy', 'truffleruby', 'build']
+      ],
+      run+: [
+        self.polybench_wrap(['mx', '--dy', 'truffleruby', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'ruby:benchmark']),
+      ],
+    }
   ],
   # TODO (GR-60584): reimplement polybenchmarks jobs once polybench is unchained
 
