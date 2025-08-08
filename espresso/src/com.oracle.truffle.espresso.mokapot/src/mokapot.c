@@ -1728,7 +1728,7 @@ JNIEXPORT jboolean JNICALL JVM_IsForeignLinkerSupported(void) {
 
 JNIEXPORT jboolean JNICALL
 JVM_IsStaticallyLinked(void) {
-  UNIMPLEMENTED(JVM_IsStaticallyLinked);
+  IMPLEMENTED(JVM_IsStaticallyLinked);
   return JNI_FALSE;
 }
 
