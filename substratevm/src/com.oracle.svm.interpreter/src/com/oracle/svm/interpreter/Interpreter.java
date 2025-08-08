@@ -268,6 +268,7 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.interpreter.debug.DebuggerEvents;
 import com.oracle.svm.interpreter.debug.EventKind;
 import com.oracle.svm.interpreter.debug.SteppingControl;
@@ -283,17 +284,18 @@ import com.oracle.svm.interpreter.metadata.LookupSwitch;
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 import com.oracle.svm.interpreter.metadata.TableSwitch;
+import com.oracle.svm.interpreter.metadata.UnsupportedResolutionException;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaField;
+import jdk.vm.ci.meta.UnresolvedJavaMethod;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
@@ -1133,9 +1135,14 @@ public final class Interpreter {
                 JavaType catchType = null;
                 if (!toCheck.isCatchAll()) {
                     // exception handlers are similar to instanceof bytecodes, so we pass instanceof
-                    catchType = resolveTypeOrUnresolved(method, INSTANCEOF, (char) toCheck.catchTypeCPI());
-                    if (catchType instanceof UnresolvedJavaType) {
-                        // Exception type is not reachable, skip handler.
+                    catchType = resolveTypeOrNullIfUnresolvable(method, INSTANCEOF, (char) toCheck.catchTypeCPI());
+                    if (catchType == null) {
+                        /*
+                         * TODO(peterssen): GR-68575 Depending on the constraints, this should
+                         * either panic or just propagate the class resolution error. This happens
+                         * when there's a missing or purely symbolic entry in a pre-resolved
+                         * constant pool. Exception type is not reachable/resolvable, skip handler.
+                         */
                         continue;
                     }
                 }
@@ -1176,30 +1183,36 @@ public final class Interpreter {
             VMError.guarantee(opcode != LDC2_W);
             throw noClassDefFoundError(opcode, null);
         }
-        ConstantPool pool = getConstantPool(method);
-        Object constant = pool.lookupConstant(cpi);
-        if (constant instanceof PrimitiveConstant primitiveConstant) {
-            JavaKind kind = primitiveConstant.getJavaKind();
-            assert !kind.needsTwoSlots() || opcode == LDC2_W;
-            assert kind.needsTwoSlots() || (opcode == LDC || opcode == LDC_W);
-            switch (kind) {
-                case Int -> putInt(frame, top, primitiveConstant.asInt());
-                case Float -> putFloat(frame, top, primitiveConstant.asFloat());
-                case Long -> putLong(frame, top, primitiveConstant.asLong());
-                case Double -> putDouble(frame, top, primitiveConstant.asDouble());
-                default -> throw VMError.shouldNotReachHereAtRuntime();
+        InterpreterConstantPool pool = getConstantPool(method);
+        ConstantPool.Tag tag = pool.tagAt(cpi);
+        switch (tag) {
+            case INTEGER -> putInt(frame, top, pool.intAt(cpi));
+            case FLOAT -> putFloat(frame, top, pool.floatAt(cpi));
+            case LONG -> putLong(frame, top, pool.longAt(cpi));
+            case DOUBLE -> putDouble(frame, top, pool.doubleAt(cpi));
+            case CLASS -> {
+                InterpreterResolvedJavaType resolvedType = resolveType(method, opcode, cpi);
+                putObject(frame, top, resolvedType.getJavaClass());
             }
-        } else if (constant instanceof JavaType) {
-            InterpreterResolvedJavaType resolvedType = resolveType(method, opcode, cpi);
-            putObject(frame, top, resolvedType.getJavaClass());
-        } else if (constant instanceof ReferenceConstant<?> referenceConstant) {
-            VMError.guarantee(referenceConstant.isNonNull(), FAILURE_CONSTANT_NOT_PART_OF_IMAGE_HEAP);
-            Object constantValue = referenceConstant.getReferent();
-            putObject(frame, top, constantValue);
-        } else if (constant.equals(JavaConstant.NULL_POINTER)) {
-            putObject(frame, top, null);
-        } else {
-            throw VMError.unimplemented("LDC* constant pool type");
+            case STRING -> {
+                String string = pool.resolveStringAt(cpi);
+                putObject(frame, top, string);
+            }
+            case INVOKEDYNAMIC -> {
+                // TODO(peterssen): GR-68576 Storing the pre-resolved appendix in the CP is a
+                // workaround for the JDWP debugger until proper INVOKEDYNAMIC resolution is
+                // implemented.
+                Object appendix = pool.resolvedAt(cpi, null);
+                if (appendix instanceof ReferenceConstant<?> referenceConstant) {
+                    VMError.guarantee(referenceConstant.isNonNull(), FAILURE_CONSTANT_NOT_PART_OF_IMAGE_HEAP);
+                    Object constantValue = referenceConstant.getReferent();
+                    putObject(frame, top, constantValue);
+                } else {
+                    // Raw object.
+                    putObject(frame, top, appendix);
+                }
+            }
+            default -> throw VMError.unimplemented("LDC* constant pool type " + tag);
         }
     }
 
@@ -1220,16 +1233,16 @@ public final class Interpreter {
         if (opcode == INVOKEDYNAMIC) {
             int appendixCPI = BytecodeStream.readCPI4(code, curBCI) & 0xFFFF;
             if (appendixCPI != 0) {
-                JavaConstant appendixConstant = method.getConstantPool().lookupAppendix(appendixCPI, opcode);
+                Object appendixEntry = method.getConstantPool().resolvedAt(appendixCPI, method.getDeclaringClass());
                 Object appendix;
-                if (JavaConstant.NULL_POINTER.equals(appendixConstant)) {
+                if (JavaConstant.NULL_POINTER.equals(appendixEntry)) {
                     // The appendix is deliberately null.
                     appendix = null;
                 } else {
-                    if (appendixConstant instanceof ReferenceConstant<?> referenceConstant) {
+                    if (appendixEntry instanceof ReferenceConstant<?> referenceConstant) {
                         appendix = referenceConstant.getReferent();
                     } else {
-                        throw VMError.shouldNotReachHere("Unexpected INVOKEDYNAMIC appendix constant: " + appendixConstant);
+                        throw VMError.shouldNotReachHere("Unexpected INVOKEDYNAMIC appendix constant: " + appendixEntry);
                     }
                     if (appendix == null) {
                         throw SemanticJavaException.raise(new IncompatibleClassChangeError("INVOKEDYNAMIC appendix was not included in the image heap"));
@@ -1261,52 +1274,80 @@ public final class Interpreter {
 
     // region Class/Method/Field resolution
 
-    private static JavaType resolveTypeOrUnresolved(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
+    private static InterpreterResolvedJavaType resolveType(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
         assert opcode == INSTANCEOF || opcode == CHECKCAST || opcode == NEW || opcode == ANEWARRAY || opcode == MULTIANEWARRAY || opcode == LDC || opcode == LDC_W;
         if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, cpi == 0)) {
             throw noClassDefFoundError(opcode, null);
         }
-        return getConstantPool(method).lookupType(cpi, opcode);
-    }
-
-    private static InterpreterResolvedJavaType resolveType(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
-        JavaType javaType = resolveTypeOrUnresolved(method, opcode, cpi);
-        if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY, javaType instanceof InterpreterResolvedJavaType)) {
-            return (InterpreterResolvedJavaType) javaType;
+        try {
+            return getConstantPool(method).resolvedTypeAt(method.getDeclaringClass(), cpi);
+        } catch (UnsupportedResolutionException e) {
+            // CP does not support resolution, try to provide a hint of the non-resolvable entry.
+            UnresolvedJavaType missingType = null;
+            if (getConstantPool(method).peekCachedEntry(cpi) instanceof UnresolvedJavaType unresolvedJavaType) {
+                missingType = unresolvedJavaType;
+            }
+            throw noClassDefFoundError(opcode, missingType);
+        } catch (ClassFormatError e) {
+            // Out-of-bounds CPI or mis-matching tag.
+            throw SemanticJavaException.raise(e);
         }
-        throw noClassDefFoundError(opcode, javaType);
     }
 
-    private static JavaMethod resolveMethodOrUnresolved(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
+    private static InterpreterResolvedJavaType resolveTypeOrNullIfUnresolvable(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
+        assert opcode == INSTANCEOF || opcode == CHECKCAST || opcode == NEW || opcode == ANEWARRAY || opcode == MULTIANEWARRAY || opcode == LDC || opcode == LDC_W;
+        if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, cpi == 0)) {
+            return null; // CPI 0 is a marker for unresolvable AND unknown entry
+        }
+        try {
+            return getConstantPool(method).resolvedTypeAt(method.getDeclaringClass(), cpi);
+        } catch (UnsupportedResolutionException e) {
+            return null;
+        } catch (ClassFormatError e) {
+            // Out-of-bounds CPI or mis-matching tag.
+            // Unrelated to resolution, just propagate the error.
+            throw SemanticJavaException.raise(e);
+        }
+    }
+
+    private static InterpreterResolvedJavaMethod resolveMethod(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
         assert Bytecodes.isInvoke(opcode);
         if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, cpi == 0)) {
             throw noSuchMethodError(opcode, null);
         }
-        return getConstantPool(method).lookupMethod(cpi, opcode);
-    }
-
-    static InterpreterResolvedJavaMethod resolveMethod(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
-        JavaMethod javaMethod = resolveMethodOrUnresolved(method, opcode, cpi);
-        if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY, javaMethod instanceof InterpreterResolvedJavaMethod)) {
-            return (InterpreterResolvedJavaMethod) javaMethod;
+        try {
+            return getConstantPool(method).resolvedMethodAt(method.getDeclaringClass(), cpi);
+        } catch (UnsupportedResolutionException e) {
+            // CP does not support resolution, try to provide a hint of the non-resolvable entry.
+            UnresolvedJavaMethod missingMethod = null;
+            if (getConstantPool(method).peekCachedEntry(cpi) instanceof UnresolvedJavaMethod unresolvedJavaMethod) {
+                missingMethod = unresolvedJavaMethod;
+            }
+            throw noSuchMethodError(opcode, missingMethod);
+        } catch (ClassFormatError e) {
+            // Out-of-bounds CPI or mis-matching tag.
+            throw SemanticJavaException.raise(e);
         }
-        throw noSuchMethodError(opcode, javaMethod);
     }
 
-    private static JavaField resolveFieldOrUnresolved(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
+    private static InterpreterResolvedJavaField resolveField(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
         assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC;
         if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, cpi == 0)) {
             throw noSuchFieldError(opcode, null);
         }
-        return getConstantPool(method).lookupField(cpi, method, opcode);
-    }
-
-    private static InterpreterResolvedJavaField resolveField(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
-        JavaField javaField = resolveFieldOrUnresolved(method, opcode, cpi);
-        if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY, javaField instanceof InterpreterResolvedJavaField)) {
-            return (InterpreterResolvedJavaField) javaField;
+        try {
+            return getConstantPool(method).resolvedFieldAt(method.getDeclaringClass(), cpi);
+        } catch (UnsupportedResolutionException e) {
+            // CP does not support resolution, try to provide a hint of the non-resolvable entry.
+            UnresolvedJavaField missingField = null;
+            if (getConstantPool(method).peekCachedEntry(cpi) instanceof UnresolvedJavaField unresolvedJavaField) {
+                missingField = unresolvedJavaField;
+            }
+            throw noSuchFieldError(opcode, missingField);
+        } catch (ClassFormatError e) {
+            // Out of bounds CPI or mis-matching tag.
+            throw SemanticJavaException.raise(e);
         }
-        throw noSuchFieldError(opcode, javaField);
     }
 
     // endregion Class/Field/Method resolution
