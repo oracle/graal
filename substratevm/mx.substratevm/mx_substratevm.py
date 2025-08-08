@@ -1633,6 +1633,9 @@ libgraal_build_args = [
     '--enable-monitoring=heapdump',
     '-H:HeapDumpDefaultFilenamePrefix=libgraal_pid',
 
+    # Do not cripple exceptions in libgraal
+    '-H:-ReduceImplicitExceptionStackTraceInformation',
+
     # Generate a .bgv dump upon compilation failure
     '-H:+DumpOnError',
 
