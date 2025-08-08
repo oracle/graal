@@ -344,15 +344,16 @@ abstract class ExtLocations {
         @Override
         public final Assumption getFinalAssumption() {
             Assumption assumption = getFinalAssumptionField();
-            if (assumption == null) {
-                return initializeFinalAssumption();
-            } else {
+            if (assumption != null) {
                 return assumption;
             }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return initializeFinalAssumption();
         }
 
         @SuppressWarnings("unchecked")
         private Assumption initializeFinalAssumption() {
+            CompilerAsserts.neverPartOfCompilation();
             AtomicReferenceFieldUpdater<InstanceLocation, Assumption> updater = FINAL_ASSUMPTION_UPDATER;
             Assumption newAssumption = createFinalAssumption();
             if (updater.compareAndSet(this, null, newAssumption)) {
