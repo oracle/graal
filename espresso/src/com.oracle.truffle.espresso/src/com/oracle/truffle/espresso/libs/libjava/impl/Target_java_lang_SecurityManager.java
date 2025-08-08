@@ -22,40 +22,30 @@
  */
 package com.oracle.truffle.espresso.libs.libjava.impl;
 
-import java.lang.ref.Reference;
-
-import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.io.Throw;
+import com.oracle.truffle.espresso.libs.LibsMeta;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
-import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
+import com.oracle.truffle.espresso.substitutions.VersionFilter;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(value = Reference.class, group = LibJava.class)
-public final class Target_java_lang_Reference {
-    @Substitution
-    public static void waitForReferencePendingList(@Inject EspressoContext ctx) {
-        ctx.getVM().JVM_WaitForReferencePendingList();
-    }
+@SuppressWarnings("deprecated")
+@EspressoSubstitutions(value = SecurityManager.class, group = LibJava.class)
+public final class Target_java_lang_SecurityManager {
 
-    @Substitution(hasReceiver = true)
-    public static boolean refersTo0(@JavaType(Reference.class) StaticObject self, @JavaType(Object.class) StaticObject obj,
-                    @Inject SubstitutionProfiler profile, @Inject VM vm, @Inject Meta meta, @Inject EspressoLanguage language) {
-        return vm.JVM_ReferenceRefersTo(self, obj, profile, meta, language);
-    }
-
-    @Substitution
-    public static @JavaType(Reference.class) StaticObject getAndClearReferencePendingList(@Inject EspressoContext ctx) {
-        return ctx.getVM().JVM_GetAndClearReferencePendingList();
-    }
-
-    @Substitution(hasReceiver = true)
-    public static void clear0(@JavaType(Reference.class) StaticObject self, @Inject VM vm, @Inject SubstitutionProfiler profiler) {
-        vm.JVM_ReferenceClear(self, profiler);
+    @TruffleBoundary
+    @SuppressWarnings("deprecated")
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java21.class)
+    public static @JavaType(Class[].class) StaticObject getClassContext(@JavaType(SecurityManager.class) StaticObject self, @Inject VM vm, @Inject LibsMeta libsMeta, @Inject EspressoContext context) {
+        if (!libsMeta.java_lang_SecurityManager_initialized.getBoolean(self)) {
+            throw Throw.throwSecurityException("security manager not initialized", context);
+        }
+        return vm.JVM_GetClassContext();
     }
 }

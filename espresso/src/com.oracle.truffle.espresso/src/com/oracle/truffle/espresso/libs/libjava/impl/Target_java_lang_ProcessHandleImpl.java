@@ -22,40 +22,38 @@
  */
 package com.oracle.truffle.espresso.libs.libjava.impl;
 
-import java.lang.ref.Reference;
+import java.time.Instant;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.libs.InformationLeak;
+import com.oracle.truffle.espresso.libs.LibsState;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
-import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
-import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
-import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(value = Reference.class, group = LibJava.class)
-public final class Target_java_lang_Reference {
+@EspressoSubstitutions(type = "Ljava/lang/ProcessHandleImpl;", group = LibJava.class)
+public final class Target_java_lang_ProcessHandleImpl {
     @Substitution
-    public static void waitForReferencePendingList(@Inject EspressoContext ctx) {
-        ctx.getVM().JVM_WaitForReferencePendingList();
-    }
-
-    @Substitution(hasReceiver = true)
-    public static boolean refersTo0(@JavaType(Reference.class) StaticObject self, @JavaType(Object.class) StaticObject obj,
-                    @Inject SubstitutionProfiler profile, @Inject VM vm, @Inject Meta meta, @Inject EspressoLanguage language) {
-        return vm.JVM_ReferenceRefersTo(self, obj, profile, meta, language);
+    public static void initNative() {
+        // nop
     }
 
     @Substitution
-    public static @JavaType(Reference.class) StaticObject getAndClearReferencePendingList(@Inject EspressoContext ctx) {
-        return ctx.getVM().JVM_GetAndClearReferencePendingList();
+    public static long getCurrentPid0(@Inject EspressoContext ctx) {
+        return ctx.getInformationLeak().getPid();
     }
 
-    @Substitution(hasReceiver = true)
-    public static void clear0(@JavaType(Reference.class) StaticObject self, @Inject VM vm, @Inject SubstitutionProfiler profiler) {
-        vm.JVM_ReferenceClear(self, profiler);
+    @Substitution
+    @TruffleBoundary
+    public static long isAlive0(long pid, @Inject InformationLeak iL, @Inject LibsState libsState) {
+        libsState.checkCreateProcessAllowed();
+        ProcessHandle.Info info = iL.getProcessHandleInfo(pid);
+        if (info != null) {
+            return info.startInstant().map(Instant::toEpochMilli).orElse(-1L);
+        } else {
+            return -1;
+        }
     }
 }

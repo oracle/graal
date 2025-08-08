@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,24 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.substitutions.standard;
+package com.oracle.truffle.espresso.libs.libjava.impl;
 
+import java.io.Console;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.libs.InformationLeak;
+import com.oracle.truffle.espresso.libs.libjava.LibJava;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
+import com.oracle.truffle.espresso.substitutions.Inject;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
-import com.oracle.truffle.espresso.substitutions.libs.EspressoLibsFilter;
+import com.oracle.truffle.espresso.substitutions.VersionFilter;
 
-@EspressoSubstitutions
-public final class Target_java_lang_VirtualThread {
-    private Target_java_lang_VirtualThread() {
-    }
-
+@EspressoSubstitutions(value = Console.class, group = LibJava.class)
+public final class Target_java_io_Console {
     @Substitution
-    public static void unblockVirtualThreads() {
-        // no-op: loom continuations are not supported
+    @TruffleBoundary
+    public static boolean istty(@Inject InformationLeak iL) {
+        return iL.istty();
     }
 
-    @Substitution(languageFilter = EspressoLibsFilter.class)
-    public static void registerNatives() {
-        // no-op: loom continuations are not supported
+    @Substitution(languageFilter = VersionFilter.Java23OrEarlier.class)
+    public static @JavaType(String.class) StaticObject encoding(@Inject InformationLeak iL, @Inject Meta meta) {
+        String encoding = iL.consoleEncoding();
+        return meta.toGuestString(encoding);
     }
 }

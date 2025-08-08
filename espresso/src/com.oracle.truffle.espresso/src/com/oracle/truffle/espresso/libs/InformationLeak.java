@@ -22,7 +22,10 @@
  */
 package com.oracle.truffle.espresso.libs;
 
+import java.io.Console;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetSocketAddress;
@@ -42,15 +45,38 @@ import com.oracle.truffle.espresso.runtime.OS;
 /**
  * In the context of the EspressoLibs project, this class is designed to aggregate methods and
  * fields that potentially leak information about the host system. Depending on the context, leaking
- * such information might not be preferable due to security or privacy concerns.
+ * such information might not be preferable due to security or privacy concerns. However, it is
+ * assumed that permission checks are done in the caller's of InformationLeak. Please note it leaks
+ * host information, meaning return types should not be StaticObjects!
  */
 public class InformationLeak {
+    private static final Method IS_TERMINAL_METHOD = getIsTerminalMethod();
+
     private final EspressoContext context;
     private volatile boolean isIPv6Initialized = false;
     private boolean isIPv6Available = false;
 
     public InformationLeak(EspressoContext ctx) {
         this.context = ctx;
+    }
+
+    private static Method getIsTerminalMethod() {
+        try {
+            return Console.class.getMethod("isTerminal");
+        } catch (NoSuchMethodException e) {
+            return null;
+        }
+    }
+
+    public long getPid() {
+        return ProcessHandle.current().pid();
+    }
+
+    @TruffleBoundary
+    public ProcessHandle.Info getProcessHandleInfo(long pid) {
+        assert context.getEnv().isCreateProcessAllowed();
+        Optional<ProcessHandle> processHandle = ProcessHandle.of(pid);
+        return processHandle.map(ProcessHandle::info).orElse(null);
     }
 
     public boolean isIPv6Available() {
@@ -89,6 +115,34 @@ public class InformationLeak {
         } catch (IOException e) {
             throw Throw.throwIOException(e, context);
         }
+    }
+
+    public boolean istty() {
+        if (!(context.getEnv().in() == System.in && context.getEnv().out() == System.out)) {
+            return false;
+        }
+        Console console = System.console();
+        if (console == null) {
+            return false;
+        }
+        if (IS_TERMINAL_METHOD != null) {
+            try {
+                return (boolean) IS_TERMINAL_METHOD.invoke(console);
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                throw new Error(e);
+            }
+        } else {
+            return true;
+        }
+    }
+
+    public String consoleEncoding() {
+        if (OS.getCurrent() == OS.Windows) {
+            if (istty()) {
+                throw Throw.throwUnsupported("console encoding for windows is currently unimplemented", context);
+            }
+        }
+        return null;
     }
 
     @TruffleBoundary
