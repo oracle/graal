@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,24 +20,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.substitutions.standard;
+package com.oracle.truffle.espresso.libs.libjava.impl;
 
+import java.time.Instant;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.libs.InformationLeak;
+import com.oracle.truffle.espresso.libs.libjava.LibJava;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
+import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.Substitution;
-import com.oracle.truffle.espresso.substitutions.libs.EspressoLibsFilter;
 
-@EspressoSubstitutions
-public final class Target_java_lang_VirtualThread {
-    private Target_java_lang_VirtualThread() {
+@EspressoSubstitutions(type = "Ljava/lang/ProcessHandleImpl;", group = LibJava.class)
+public final class Target_java_lang_ProcessHandleImpl {
+    @Substitution
+    public static void initNative() {
+        // nop
     }
 
     @Substitution
-    public static void unblockVirtualThreads() {
-        // no-op: loom continuations are not supported
+    public static long getCurrentPid0(@Inject EspressoContext ctx) {
+        return ctx.getInformationLeak().getPid();
     }
 
-    @Substitution(languageFilter = EspressoLibsFilter.class)
-    public static void registerNatives() {
-        // no-op: we currently don't support virtual Threads
+    @Substitution
+    @TruffleBoundary
+    public static long isAlive0(long pid, @Inject InformationLeak iL) {
+        ProcessHandle.Info info = iL.getProcessHandleInfo(pid);
+        if (info != null) {
+            return info.startInstant().map(Instant::toEpochMilli).orElse(-1L);
+        } else {
+            return -1;
+        }
     }
 }

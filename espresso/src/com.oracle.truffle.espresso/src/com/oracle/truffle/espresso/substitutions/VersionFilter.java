@@ -225,4 +225,16 @@ public interface VersionFilter extends LanguageFilter {
             return version.java25OrLater();
         }
     }
+
+    final class Java9To21 implements VersionFilter {
+        public static final Java9To21 INSTANCE = new Java9To21();
+
+        private Java9To21() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java21OrEarlier() && version.java9OrLater();
+        }
+    }
 }

@@ -82,4 +82,15 @@ public final class Target_java_lang_StackStreamFactory_AbstractStackWalker {
                     @Inject VM vm) {
         return vm.JVM_MoreStackWalk(stream, mode, anchor, bufferSize - startIndex, startIndex, frames, lang, meta);
     }
+
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java9To21.class)
+    public static int fetchStackFrames(
+                    @JavaType(internalName = "Ljava/lang/StackStreamFactory;") StaticObject stream,
+                    long mode, long anchor, int batchsize, int startIndex,
+                    @JavaType(Object[].class) StaticObject frames,
+                    @Inject EspressoLanguage lang,
+                    @Inject Meta meta,
+                    @Inject VM vm) {
+        return vm.JVM_MoreStackWalk(stream, mode, anchor, batchsize, startIndex, frames, lang, meta);
+    }
 }

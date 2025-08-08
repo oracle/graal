@@ -182,6 +182,8 @@ public class EspressoSymbols {
         public static final Symbol<Type> sun_net_ConnectionResetException = SYMBOLS.putType("Lsun/net/ConnectionResetException;");
         public static final Symbol<Type> java_net_UnknownHostException = SYMBOLS.putType("Ljava/net/UnknownHostException;");
         public static final Symbol<Type> sun_nio_ch_IOStatus = SYMBOLS.putType("Lsun/nio/ch/IOStatus;");
+        // libjava
+        public static final Symbol<Type> java_lang_ProcessHandleImpl$Info = SYMBOLS.putType("Ljava/lang/ProcessHandleImpl$Info;");
         // libnio
         public static final Symbol<Type> sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream = SYMBOLS.putType("Lsun/nio/fs/TruffleFilteredDirectoryStream$ForeignDirectoryStream;");
         public static final Symbol<Type> sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator = SYMBOLS.putType("Lsun/nio/fs/TruffleFilteredDirectoryStream$ForeignIterator;");
@@ -809,6 +811,14 @@ public class EspressoSymbols {
         public static final Symbol<Name> UNSUPPORTED = SYMBOLS.putName("UNSUPPORTED");
         public static final Symbol<Name> THROWN = SYMBOLS.putName("THROWN");
         public static final Symbol<Name> UNSUPPORTED_CASE = SYMBOLS.putName("UNSUPPORTED_CASE");
+        // java.lang.ProcessHandleImpl$Info
+        public static final Symbol<Name> command = SYMBOLS.putName("command");
+        public static final Symbol<Name> commandLine = SYMBOLS.putName("commandLine");
+        public static final Symbol<Name> arguments = SYMBOLS.putName("arguments");
+        public static final Symbol<Name> startTime = SYMBOLS.putName("startTime");
+        public static final Symbol<Name> totalTime = SYMBOLS.putName("totalTime");
+        public static final Symbol<Name> user = SYMBOLS.putName("user");
+        public static final Symbol<Name> initialized = SYMBOLS.putName("initialized");
         // java.lang.invoke.*
         // CallSite
         public static final Symbol<Name> target = SYMBOLS.putName("target");

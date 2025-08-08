@@ -33,6 +33,7 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.StandardSocketOptions;
 import java.nio.channels.ServerSocketChannel;
+import java.util.Optional;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.io.Throw;
@@ -48,6 +49,16 @@ public class InformationLeak {
 
     public InformationLeak(EspressoContext ctx) {
         this.context = ctx;
+    }
+
+    public long getPid() {
+        return ProcessHandle.current().pid();
+    }
+
+    @TruffleBoundary
+    public ProcessHandle.Info getProcessHandleInfo(long pid) {
+        Optional<ProcessHandle> processHandle = ProcessHandle.of(pid);
+        return processHandle.map(ProcessHandle::info).orElse(null);
     }
 
     public void checkNetworkEnabled() {
@@ -84,6 +95,10 @@ public class InformationLeak {
         } catch (IOException e) {
             throw Throw.throwIOException(e, context);
         }
+    }
+
+    public boolean istty() {
+        return context.getEnv().in() == System.in && context.getEnv().out() == System.out;
     }
 
     @TruffleBoundary

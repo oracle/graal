@@ -30,6 +30,7 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.io.TruffleIO;
+import com.oracle.truffle.espresso.libs.JNU;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -78,7 +79,7 @@ public final class Target_java_lang_System {
 
         @Substitution
         @TruffleBoundary
-        public static @JavaType(String[].class) StaticObject platformProperties(@Inject EspressoContext ctx, @Inject TruffleIO io) {
+        public static @JavaType(String[].class) StaticObject platformProperties(@Inject EspressoContext ctx, @Inject TruffleIO io, @Inject JNU jnu) {
             // Import properties from host.
             Props props = new Props(ctx);
             String[] known = new String[props.fixedLength];
@@ -86,7 +87,7 @@ public final class Target_java_lang_System {
             known[props.userDirNdx] = java.lang.System.getProperty("user.dir");
             known[props.userNameNdx] = java.lang.System.getProperty("user.name");
 
-            known[props.sunJnuEncodingNdx] = java.lang.System.getProperty("sun.jnu.encoding");
+            known[props.sunJnuEncodingNdx] = jnu.getCharSet().toString();
             if (ctx.getJavaVersion().java21OrEarlier()) {
                 known[props.fileEncodingNdx] = java.lang.System.getProperty("file.encoding");
             }

@@ -22,40 +22,40 @@
  */
 package com.oracle.truffle.espresso.libs.libjava.impl;
 
-import java.lang.ref.Reference;
+import java.nio.charset.Charset;
+import java.util.Map;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.libs.JNU;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
-import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
-import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(value = Reference.class, group = LibJava.class)
-public final class Target_java_lang_Reference {
+@EspressoSubstitutions(type = "Ljava/lang/ProcessEnvironment;", group = LibJava.class)
+public final class Target_java_lang_ProcessEnvironment {
     @Substitution
-    public static void waitForReferencePendingList(@Inject EspressoContext ctx) {
-        ctx.getVM().JVM_WaitForReferencePendingList();
-    }
+    @TruffleBoundary
+    public static @JavaType(byte[][].class) StaticObject environ(@Inject EspressoContext ctx, @Inject JNU jnu) {
+        Charset charSet = jnu.getCharSet();
+        Map<String, String> truffleEnvironment = ctx.getEnv().getEnvironment();
+        int size = truffleEnvironment.size();
+        StaticObject[] environ = new StaticObject[size * 2];
 
-    @Substitution(hasReceiver = true)
-    public static boolean refersTo0(@JavaType(Reference.class) StaticObject self, @JavaType(Object.class) StaticObject obj,
-                    @Inject SubstitutionProfiler profile, @Inject VM vm, @Inject Meta meta, @Inject EspressoLanguage language) {
-        return vm.JVM_ReferenceRefersTo(self, obj, profile, meta, language);
-    }
+        int i = 0;
+        for (Map.Entry<String, String> entry : truffleEnvironment.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+            byte[] keyBytes = key.getBytes(charSet);
+            byte[] valueBytes = value.getBytes(charSet);
+            environ[i * 2] = ctx.getAllocator().wrapArrayAs(ctx.getMeta()._byte_array, keyBytes);
+            environ[i * 2 + 1] = ctx.getAllocator().wrapArrayAs(ctx.getMeta()._byte_array, valueBytes);
+            i++;
+        }
 
-    @Substitution
-    public static @JavaType(Reference.class) StaticObject getAndClearReferencePendingList(@Inject EspressoContext ctx) {
-        return ctx.getVM().JVM_GetAndClearReferencePendingList();
-    }
-
-    @Substitution(hasReceiver = true)
-    public static void clear0(@JavaType(Reference.class) StaticObject self, @Inject VM vm, @Inject SubstitutionProfiler profiler) {
-        vm.JVM_ReferenceClear(self, profiler);
+        return ctx.getAllocator().wrapArrayAs(ctx.getMeta()._byte_array.array(), environ);
     }
 }
