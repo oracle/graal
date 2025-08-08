@@ -48,7 +48,7 @@ import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -56,9 +56,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 @SuppressWarnings("deprecation")
 class Debug {
-    static final String INVALID = "!";
-    static final String BRANCH = "\u2443";
-    static final String LEAF = "\u22a5";
 
     private static Collection<ShapeImpl> allShapes;
 
@@ -73,42 +70,6 @@ class Debug {
 
     static Iterable<ShapeImpl> getAllShapes() {
         return allShapes;
-    }
-
-    static String dumpObject(DynamicObject object, int level, int levelStop) {
-        List<Property> properties = object.getShape().getPropertyListInternal(true);
-        StringBuilder sb = new StringBuilder(properties.size() * 10);
-        sb.append("{\n");
-        for (Property property : properties) {
-            indent(sb, level + 1);
-
-            sb.append(property.getKey());
-            sb.append('[').append(property.getLocation()).append(']');
-            Object value = property.getLocation().get(object, false);
-            if (value instanceof DynamicObject) {
-                if (level < levelStop) {
-                    value = dumpObject((DynamicObject) value, level + 1, levelStop);
-                } else {
-                    value = value.toString();
-                }
-            }
-            sb.append(": ");
-            sb.append(value);
-            if (property != properties.get(properties.size() - 1)) {
-                sb.append(",");
-            }
-            sb.append("\n");
-        }
-        indent(sb, level);
-        sb.append("}");
-        return sb.toString();
-    }
-
-    private static StringBuilder indent(StringBuilder sb, int level) {
-        for (int i = 0; i < level; i++) {
-            sb.append(' ');
-        }
-        return sb;
     }
 
     private static void dumpDOT() throws FileNotFoundException, UnsupportedEncodingException {
@@ -131,7 +92,9 @@ class Debug {
 
     interface DebugShapeVisitor<R> {
         default R visitShape(ShapeImpl shape) {
-            return visitShape(shape, Collections.unmodifiableMap(shape.getTransitionMapForRead()));
+            Map<Transition, ShapeImpl> snapshot = new LinkedHashMap<>();
+            shape.forEachTransition(snapshot::put);
+            return visitShape(shape, Collections.unmodifiableMap(snapshot));
         }
 
         R visitShape(ShapeImpl shape, Map<? extends Transition, ? extends ShapeImpl> transitions);

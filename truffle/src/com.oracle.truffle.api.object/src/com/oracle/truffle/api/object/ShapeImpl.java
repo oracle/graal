@@ -42,10 +42,8 @@ package com.oracle.truffle.api.object;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
@@ -431,21 +429,6 @@ abstract sealed class ShapeImpl extends Shape permits ShapeExt {
         return (StrongKeyWeakValueEntry<Object, ShapeImpl>) trans;
     }
 
-    /**
-     * @deprecated use {@link #forEachTransition(BiConsumer)} instead.
-     */
-    @Deprecated
-    public final Map<Transition, ShapeImpl> getTransitionMapForRead() {
-        Map<Transition, ShapeImpl> snapshot = new HashMap<>();
-        forEachTransition(new BiConsumer<Transition, ShapeImpl>() {
-            @Override
-            public void accept(Transition t, ShapeImpl s) {
-                snapshot.put(t, s);
-            }
-        });
-        return snapshot;
-    }
-
     public final void forEachTransition(BiConsumer<Transition, ShapeImpl> consumer) {
         Object trans = transitionMap;
         if (trans == null) {
@@ -586,10 +569,7 @@ abstract sealed class ShapeImpl extends Shape permits ShapeExt {
         if (this == other) {
             return true;
         }
-        if (this.getRoot() == getRoot()) {
-            return true;
-        }
-        return false;
+        return this.getRoot() == other.getRoot();
     }
 
     @TruffleBoundary
