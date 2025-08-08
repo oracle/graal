@@ -28,13 +28,18 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.nio.channels.SelectableChannel;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.Inflater;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.io.Throw;
+import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.jni.StrongHandles;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -84,6 +89,11 @@ public class LibsState {
     public final class LibsStateNet {
         private final EspressoContext context;
         private final LibsMeta lMeta;
+        // used for guestHandle to hostSelector
+        private final StrongHandles<Selector> handle2Selector = new StrongHandles<>();
+        // mapping from guestHandle and channelFD to SelectionKey and the reversed one
+        private final ConcurrentHashMap<Long, SelectionKey> hostSelectionKeys = new ConcurrentHashMap<>();
+        private final ConcurrentHashMap<SelectionKey, Integer> selectionKeysToFd = new ConcurrentHashMap<>();
 
         public LibsStateNet(EspressoContext context, LibsMeta lMeta) {
             this.context = context;
@@ -194,6 +204,78 @@ public class LibsState {
 
         public void setFDVal(@JavaType(FileDescriptor.class) StaticObject fd, int fdVal) {
             context.getTruffleIO().java_io_FileDescriptor_fd.setInt(fd, fdVal);
+        }
+
+        public void checkValidOps(SelectableChannel selectableChannel, int ops) {
+            if ((~selectableChannel.validOps() & ops) != 0) {
+                throw Throw.throwIOException("operations associated with SelectionKey are not valid", context);
+            }
+        }
+
+        @TruffleBoundary
+        public void putSelectionKey(int id, int fd, SelectionKey selKey) {
+            long key = ((long) id << 32) | (fd & 0xFFFFFFFFL);
+            SelectionKey previousSelKey = hostSelectionKeys.put(key, selKey);
+            Integer previousFd = selectionKeysToFd.put(selKey, fd);
+            // sanity check: SelectionKey <==> (SelectorId,ChannelFD)
+            assert previousSelKey == null || previousSelKey == selKey;
+            assert previousFd == null || previousFd == fd;
+        }
+
+        @TruffleBoundary
+        public SelectionKey getSelectionKey(int id, int fd) {
+            long key = ((long) id << 32) | (fd & 0xFFFFFFFFL);
+            return hostSelectionKeys.get(key);
+        }
+
+        @TruffleBoundary
+        public int getFdOfSelectionKey(SelectionKey key) {
+            return selectionKeysToFd.get(key);
+        }
+
+        @TruffleBoundary
+        public void removeSelectionKey(int id, int fd) {
+            long key = ((long) id << 32) | (fd & 0xFFFFFFFFL);
+            SelectionKey selKey = hostSelectionKeys.remove(key);
+            selectionKeysToFd.remove(selKey);
+        }
+
+        public long handlifySelector() {
+            try {
+                return handle2Selector.handlify(Selector.open());
+            } catch (IOException e) {
+                throw Throw.throwIOException(e, context);
+            }
+        }
+
+        public Selector getSelector(int selectorId) {
+            Selector selector = handle2Selector.getObject(selectorId);
+            if (selector == null) {
+                // Breaks the invariant that all ids are associated with a selector.
+                throw JavaSubstitution.shouldNotReachHere();
+            }
+            return selector;
+        }
+
+        /**
+         * If the fd is already registered with the selector it updates the interestOps and
+         * otherwise registers the fd with the selector.
+         */
+        public SelectionKey setInterestOpsOrRegister(int selectorId, int fd, int ops, TruffleIO io) {
+            Selector selector = getSelector(selectorId);
+            SelectionKey key = getSelectionKey(selectorId, fd);
+            if (key != null) {
+                checkValidOps(key.channel(), ops);
+                key.interestOps(ops);
+            } else {
+                key = io.register(fd, selector, ops);
+                putSelectionKey(selectorId, fd, key);
+            }
+            return key;
+        }
+
+        public void freeSelector(int selectorId) {
+            handle2Selector.freeHandle(selectorId);
         }
     }
 }

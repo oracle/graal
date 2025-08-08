@@ -47,9 +47,13 @@ import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.SelectableChannel;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.WritableByteChannel;
+import java.nio.channels.spi.AbstractSelectableChannel;
 import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
@@ -274,6 +278,19 @@ public final class TruffleIO implements ContextAccess {
             throw Throw.throwIOException(e, context);
         }
         return createFDforChannel(channelWrapper);
+    }
+
+    @TruffleBoundary
+    public void configureBlocking(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, boolean blocking) {
+        Channel channel = Checks.ensureOpen(getChannel(getFD(self, fdAccess)), getContext());
+        if (channel instanceof AbstractSelectableChannel selectableChannel) {
+            try {
+                selectableChannel.configureBlocking(blocking);
+            } catch (IOException e) {
+                throw Throw.throwIOException(e, context);
+            }
+        }
     }
 
     @TruffleBoundary
@@ -519,6 +536,54 @@ public final class TruffleIO implements ContextAccess {
     }
 
     /**
+     * Works as specified by {@link TruffleIO#register(StaticObject, FDAccess, Selector, int)} but
+     * with the raw int fd.
+     */
+    @TruffleBoundary
+    public SelectionKey register(int fd, Selector selector, int ops) {
+        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
+        if (channel instanceof AbstractSelectableChannel selectableChannel) {
+            try {
+                // selectableChannel.configureBlocking(false);
+                if (selectableChannel.isBlocking()) {
+                    throw Throw.throwIOException("Channel is blocking and thus can't be registered to a Selector", context);
+                }
+                context.getLibsState().net.checkValidOps(selectableChannel, ops);
+                return selectableChannel.register(selector, ops);
+            } catch (IOException e) {
+                throw Throw.throwIOException(e, context);
+            } catch (RuntimeException e) {
+                // the method shouldn't throw anything but an IOException
+                throw Throw.throwIOException("In a native method the following exception occurred: " + e.getClass().toString() + ": " + e.getMessage(), context);
+            }
+        } else {
+            throw JavaSubstitution.shouldNotReachHere();
+        }
+    }
+
+    /**
+     * Registers a file descriptor with a selector for the specified operations.
+     *
+     *
+     * <p>
+     * The file descriptor {@code fd} is associated with a channel, which must be an instance of
+     * {@link SelectableChannel}. If the channel is not selectable, an {@link IOException} is
+     * thrown.
+     * </p>
+     *
+     * @param self A file descriptor holder
+     * @param fdAccess How to get the file descriptor from the holder
+     * @param selector The selector to register with
+     * @param ops the operations to monitor (e.g., {@link SelectionKey#OP_READ},
+     *            {@link SelectionKey#OP_WRITE})
+     */
+    public SelectionKey register(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, Selector selector, int ops) {
+        int fd = getFD(getFileDesc(self, fdAccess));
+        return register(fd, selector, ops);
+    }
+
+    /**
      * Opens a file and associates it with the given file descriptor holder.
      *
      * @param self A file descriptor holder.
@@ -698,6 +763,21 @@ public final class TruffleIO implements ContextAccess {
             throw Throw.throwNonReadable(context);
         } catch (IOException e) {
             throw Throw.throwIOException(e, context);
+        }
+    }
+
+    /**
+     * @return whether the channel associated with the fd is in blocking mode.
+     */
+    @TruffleBoundary
+    public boolean isBlocking(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess) {
+        Channel channel = Checks.ensureOpen(getChannel(getFD(self, fdAccess)), getContext());
+        if (channel instanceof AbstractSelectableChannel selectableChannel) {
+            return selectableChannel.isBlocking();
+        } else {
+            // the fd isn't an AbstractSelectableChannel
+            throw JavaSubstitution.shouldNotReachHere();
         }
     }
 
