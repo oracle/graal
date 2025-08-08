@@ -285,6 +285,10 @@ public final class CallNode extends Node implements Comparable<CallNode> {
              */
             return;
         }
+        if (getDirectCallTarget() != null && !getDirectCallTarget().canBeInlined()) {
+            state = State.BailedOut;
+            return;
+        }
         assert state == State.Cutoff : "Cannot expand a non-cutoff node. Node is " + state;
         assert getParent() != null;
         state = State.Expanded;
