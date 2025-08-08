@@ -43,11 +43,11 @@ public final class Target_java_nio_BufferCleaner {
     static ReferenceQueue<Object> queue;
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    static Target_java_nio_BufferCleaner_CleaningThread cleaningThread;
+    static Thread cleaningThread;
 }
 
-@TargetClass(className = "java.nio.BufferCleaner", innerClass = "CleaningThread")
-final class Target_java_nio_BufferCleaner_CleaningThread {
+@TargetClass(className = "java.nio.BufferCleaner", innerClass = "CleaningRunnable")
+final class Target_java_nio_BufferCleaner_CleaningRunnable {
     @SuppressWarnings("static-method")
     @Substitute
     public void run() {
