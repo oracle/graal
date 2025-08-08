@@ -78,7 +78,7 @@ import com.oracle.truffle.api.object.Transition.ShareShapeTransition;
  * @see DynamicObject
  * @see Property
  */
-abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
+abstract sealed class ShapeImpl extends Shape permits ShapeExt {
     /** Shape and object flags. */
     protected final int flags;
 

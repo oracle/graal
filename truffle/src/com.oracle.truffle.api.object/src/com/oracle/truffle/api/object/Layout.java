@@ -55,7 +55,7 @@ abstract class Layout {
 
     public static final String OPTION_PREFIX = "truffle.object.";
 
-    private static final Iterable<LayoutFactory> LAYOUT_FACTORIES = List.of(new CoreLayoutFactory(), new ExtLayoutFactory());
+    private static final Iterable<LayoutFactory> LAYOUT_FACTORIES = List.of(new ExtLayoutFactory());
 
     private static final LayoutFactory LAYOUT_FACTORY = loadLayoutFactory();
 

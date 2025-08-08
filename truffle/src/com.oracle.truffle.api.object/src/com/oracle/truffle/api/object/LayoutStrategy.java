@@ -294,7 +294,7 @@ abstract class LayoutStrategy {
                 p = newProperty;
                 found = true;
             }
-            newShape = newShape.addProperty(newProperty);
+            newShape = newShape.addProperty(p);
         }
         assert found;
         assert newShape.isValid();

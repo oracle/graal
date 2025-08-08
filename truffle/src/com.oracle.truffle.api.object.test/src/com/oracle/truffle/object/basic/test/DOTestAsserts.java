@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.object.basic.test;
 
-import static org.hamcrest.CoreMatchers.either;
-import static org.hamcrest.CoreMatchers.endsWith;
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -57,7 +54,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.junit.Assert;
-import org.junit.Assume;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -144,33 +140,12 @@ public abstract class DOTestAsserts {
         }
     }
 
-    public static void assumeExtLayout() {
-        Shape shape = Shape.newBuilder().build();
-        assertThat("Unexpected Shape class name (the assertion may need to be updated if the code is refactored)",
-                        shape.getClass().getName(), either(endsWith("ShapeExt")).or(endsWith("ShapeBasic")));
-        Assume.assumeTrue("Test is specific to the Extended Dynamic Object Layout",
-                        shape.getClass().getName().endsWith("ShapeExt"));
-    }
-
-    public static Location assumeCoreLocation(Location location) {
-        Assume.assumeTrue(isCoreLocation(location));
-        return location;
-    }
-
-    public static boolean isCoreLocation(Location location) {
-        try {
-            Class<?> locationBaseClass = Class.forName("com.oracle.truffle.api.object.CoreLocation");
-            return locationBaseClass.isInstance(location);
-        } catch (ClassNotFoundException | IllegalArgumentException e) {
-            throw new AssertionError(e);
-        }
-    }
-
     public static void assertShape(String[] fields, Shape shape) {
         String shapeString = shapeLocationsToString(shape);
         // ignore trailing extra info in location strings.
-        String regex = Arrays.asList(fields).stream().map(Pattern::quote).collect(Collectors.joining("[^\"]*?", "\\{", "[^\"]*?\\}"));
-        assertTrue("expected " + Arrays.stream(fields).collect(Collectors.joining(", ", "{", "}")) + ", actual: " + shapeString, Pattern.matches(regex, shapeString));
+        String regex = Arrays.stream(fields).map(Pattern::quote).collect(Collectors.joining("[^\"]*?", "\\{", "[^\"]*?\\}"));
+        assertTrue("expected " + Arrays.stream(fields).collect(Collectors.joining(", ", "{", "}")) + ", actual: " + shapeString + ", regex: " + regex,
+                        Pattern.matches(regex, shapeString));
     }
 
     private static String shapeLocationsToString(Shape shape) {
@@ -182,7 +157,6 @@ public abstract class DOTestAsserts {
         sb.append("{");
         for (Iterator<Property> iterator = shape.getPropertyListInternal(false).iterator(); iterator.hasNext();) {
             Property p = iterator.next();
-            assumeCoreLocation(p.getLocation());
             sb.append("\"").append(p.getKey()).append("\":").append(p.getLocation());
             if (iterator.hasNext()) {
                 sb.append(",");

@@ -42,7 +42,6 @@ package com.oracle.truffle.object.ext.test;
 
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertObjectLocation;
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertPrimitiveLocation;
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.assumeExtLayout;
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeGetter;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -388,8 +387,6 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testTryMergeShapes() {
-        assumeExtLayout();
-
         // Assume (MaxMergeDepth >= 5)
         Shape emptyShape = Shape.newBuilder().allowImplicitCastIntToDouble(true).build();
 
@@ -439,8 +436,6 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testTryMergeShapes2() {
-        assumeExtLayout();
-
         // Assume (MaxMergeDepth >= 5 && MaxMergeDiff >= 2)
 
         Shape emptyShape = Shape.newBuilder().allowImplicitCastIntToDouble(true).build();
@@ -477,8 +472,6 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testBooleanLocationTypeAssumption() {
-        assumeExtLayout();
-
         Shape emptyShape = Shape.newBuilder().build();
 
         DynamicObject obj = new TestDynamicObject(emptyShape);
@@ -566,8 +559,6 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
      */
     @Test
     public void testPropertyAssumptionInvalidAfterReplace1() {
-        assumeExtLayout();
-
         Shape emptyShape = Shape.newBuilder().propertyAssumptions(true).build();
 
         int flag = 2;
@@ -602,8 +593,6 @@ public class ObjectModelRegressionTest extends AbstractParametrizedLibraryTest {
      */
     @Test
     public void testPropertyAssumptionInvalidAfterReplace2() {
-        assumeExtLayout();
-
         Shape emptyShape = Shape.newBuilder().propertyAssumptions(true).build();
 
         int flag = 2;

@@ -40,16 +40,18 @@
  */
 package com.oracle.truffle.api.object;
 
-import static com.oracle.truffle.api.object.ExtLayout.BooleanLocations;
-import static com.oracle.truffle.api.object.ExtLayout.DoubleLocations;
-import static com.oracle.truffle.api.object.ExtLayout.InObjectFields;
-import static com.oracle.truffle.api.object.ExtLayout.IntegerLocations;
-import static com.oracle.truffle.api.object.ExtLayout.LongLocations;
-import static com.oracle.truffle.api.object.ExtLayout.PrimitiveLocations;
 import static com.oracle.truffle.api.object.ExtLocations.DOUBLE_ARRAY_SLOT_SIZE;
 import static com.oracle.truffle.api.object.ExtLocations.INT_ARRAY_SLOT_SIZE;
 import static com.oracle.truffle.api.object.ExtLocations.LONG_ARRAY_SLOT_SIZE;
 import static com.oracle.truffle.api.object.ExtLocations.OBJECT_SLOT_SIZE;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.BooleanLocations;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.DoubleLocations;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.InObjectFields;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.IntegerLocations;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.LongLocations;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.NewFinalSpeculation;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.NewTypeSpeculation;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.PrimitiveLocations;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.object.ExtLocations.ATypedObjectArrayLocation;
@@ -190,7 +192,7 @@ abstract class ExtAllocator extends BaseAllocator {
     }
 
     private static TypeAssumption getTypeAssumption(Location oldLocation, Object value) {
-        if (ExtLayout.NewTypeSpeculation && allowTypeSpeculation(oldLocation, value)) {
+        if (NewTypeSpeculation && allowTypeSpeculation(oldLocation, value)) {
             if (value != NO_VALUE && oldLocation == null) {
                 if (AbstractObjectLocation.LAZY_ASSUMPTION) {
                     return null;
@@ -204,7 +206,7 @@ abstract class ExtAllocator extends BaseAllocator {
     }
 
     private static TypeAssumption getTypeAssumptionForTypeOrValue(Class<?> type, boolean nonNull, Location oldLocation, Object value) {
-        if (!ExtLayout.NewTypeSpeculation && !ExtLayout.NewFinalSpeculation && value == NO_VALUE) {
+        if (!NewTypeSpeculation && !NewFinalSpeculation && value == NO_VALUE) {
             if (oldLocation instanceof AbstractObjectLocation) {
                 return ((AbstractObjectLocation) oldLocation).getTypeAssumption();
             }
@@ -215,7 +217,7 @@ abstract class ExtAllocator extends BaseAllocator {
     }
 
     private static Assumption getFinalAssumption(Location oldLocation, boolean allowFinalSpeculation) {
-        if (ExtLayout.NewFinalSpeculation && allowFinalSpeculation) {
+        if (NewFinalSpeculation && allowFinalSpeculation) {
             if (oldLocation == null) {
                 if (InstanceLocation.LAZY_FINAL_ASSUMPTION) {
                     return null;

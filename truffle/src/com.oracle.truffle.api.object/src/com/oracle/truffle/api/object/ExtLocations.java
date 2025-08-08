@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.api.object;
 
-import static com.oracle.truffle.api.object.ExtLayout.UseVarHandle;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.UseVarHandle;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;

@@ -42,7 +42,6 @@ package com.oracle.truffle.object.ext.test;
 
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertObjectLocation;
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertPrimitiveLocation;
-import static com.oracle.truffle.object.basic.test.DOTestAsserts.assumeExtLayout;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -51,7 +50,6 @@ import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.List;
 
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -82,11 +80,6 @@ public class PolymorphicPrimitivesTest extends AbstractParametrizedLibraryTest {
 
     private static DynamicObject newInstance(Shape emptyShape) {
         return new TestDynamicObject(emptyShape);
-    }
-
-    @Before
-    public void before() {
-        assumeExtLayout();
     }
 
     @Test

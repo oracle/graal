@@ -47,7 +47,7 @@ import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.Assumption;
 
-class CoreLayoutFactory implements LayoutFactory {
+abstract class CoreLayoutFactory implements LayoutFactory {
 
     @Override
     public final Property createProperty(Object id, Location location, int flags) {
@@ -59,13 +59,9 @@ class CoreLayoutFactory implements LayoutFactory {
         return 10;
     }
 
-    protected void registerLayoutClass(Class<? extends DynamicObject> subclass, Lookup layoutLookup) {
-        DefaultLayout.registerLayoutClass(subclass, layoutLookup);
-    }
+    protected abstract void registerLayoutClass(Class<? extends DynamicObject> subclass, Lookup layoutLookup);
 
-    public LayoutImpl createLayout(Class<? extends DynamicObject> layoutClass, Lookup layoutLookup, int implicitCastFlags) {
-        return DefaultLayout.createCoreLayout(layoutClass, layoutLookup, implicitCastFlags);
-    }
+    public abstract LayoutImpl createLayout(Class<? extends DynamicObject> layoutClass, Lookup layoutLookup, int implicitCastFlags);
 
     @Override
     public final Shape createShape(Class<? extends DynamicObject> layoutClass,

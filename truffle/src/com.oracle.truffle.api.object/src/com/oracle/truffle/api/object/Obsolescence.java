@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.api.object;
 
+import static com.oracle.truffle.api.object.ObjectStorageOptions.MaxMergeDepth;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.MaxMergeDiff;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.function.BiConsumer;
@@ -102,7 +105,7 @@ abstract class Obsolescence {
             return null;
         } else if (thiz.getSharedData() != other.getSharedData()) {
             return null;
-        } else if (thiz.getDepth() >= ExtLayout.MaxMergeDepth) {
+        } else if (thiz.getDepth() >= MaxMergeDepth) {
             return null;
         } else if (thiz.getDepth() != other.getDepth()) {
             return null;
@@ -115,7 +118,7 @@ abstract class Obsolescence {
         ShapeImpl otherParent = other;
         Supplier<ShapeImpl> lastMergeResult = null;
         int diff = 0;
-        for (int i = 0; i < ExtLayout.MaxMergeDepth; i++) {
+        for (int i = 0; i < MaxMergeDepth; i++) {
             if (thisParent == otherParent) {
                 // found a common ancestor, so we are done
                 return lastMergeResult;
@@ -143,7 +146,7 @@ abstract class Obsolescence {
                 }
                 assert !thisLast.getLocation().equals(otherLast.getLocation());
                 if (!isLocationEquivalent(thisLast.getLocation(), otherLast.getLocation())) {
-                    if (++diff > ExtLayout.MaxMergeDiff) {
+                    if (++diff > MaxMergeDiff) {
                         // Bail out if too many locations differ since we would need multiple rounds
                         // of obsolescence to migrate to the (or a) more general shape.
                         // Also, not all locations are necessarily assignable in the same direction.

@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.object;
 
+import static com.oracle.truffle.api.object.ObjectStorageOptions.TraceReshape;
+
 import java.io.PrintStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -285,7 +287,7 @@ final class ObsolescenceStrategy extends ExtLayoutStrategy {
         final ShapeImpl offendingShape = affectedShapes.removeFirst();
         final ShapeImpl obsoletedBy = getObsoletedBy(offendingShape);
 
-        if (ExtLayout.TraceReshape) {
+        if (TraceReshape) {
             out().printf("RESHAPE\nGOOD ANCESTOR: %s\nOFFENDING SHAPE: %s\nOBSOLETED BY: %s\n",
                             goodAncestor.toStringLimit(TRACE_RESHAPE_LIMIT),
                             offendingShape.toStringLimit(TRACE_RESHAPE_LIMIT),
@@ -313,7 +315,7 @@ final class ObsolescenceStrategy extends ExtLayoutStrategy {
             throw STACK_OVERFLOW_ERROR;
         }
 
-        if (ExtLayout.TraceReshape) {
+        if (TraceReshape) {
             while (!goodAncestor.isValid()) {
                 goodAncestor = goodAncestor.getParent();
             }
@@ -358,7 +360,7 @@ final class ObsolescenceStrategy extends ExtLayoutStrategy {
         final ShapeImpl offendingShape = affectedShapes.removeFirst();
         final ShapeImpl obsoletedBy = getObsoletedBy(offendingShape);
 
-        if (ExtLayout.TraceReshape) {
+        if (TraceReshape) {
             out().printf("REBUILING SHAPE: %s\nGOOD ANCESTOR: %s\nOFFENDING SHAPE: %s\nOBSOLETED BY: %s\n",
                             oldShape.toStringLimit(TRACE_RESHAPE_LIMIT),
                             goodAncestor.toStringLimit(TRACE_RESHAPE_LIMIT),
@@ -374,7 +376,7 @@ final class ObsolescenceStrategy extends ExtLayoutStrategy {
             // shape should be valid, but we cannot assert this due to a possible race
         }
 
-        if (ExtLayout.TraceReshape) {
+        if (TraceReshape) {
             while (!goodAncestor.isValid()) {
                 goodAncestor = goodAncestor.getParent();
             }

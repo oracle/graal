@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.api.object;
 
-import static com.oracle.truffle.api.object.ObjectStorageOptions.booleanOption;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.UseVarHandle;
 
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandles;
@@ -59,21 +59,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 
 final class ExtLayout extends LayoutImpl {
-    public static final boolean TraceReshape = booleanOption(OPTION_PREFIX + "TraceReshape", false);
-    public static final boolean PrimitiveLocations = booleanOption(OPTION_PREFIX + "PrimitiveLocations", true);
-    public static final boolean IntegerLocations = booleanOption(OPTION_PREFIX + "IntegerLocations", true);
-    public static final boolean DoubleLocations = booleanOption(OPTION_PREFIX + "DoubleLocations", true);
-    public static final boolean LongLocations = booleanOption(OPTION_PREFIX + "LongLocations", true);
-    public static final boolean BooleanLocations = booleanOption(OPTION_PREFIX + "BooleanLocations", true);
-    public static final boolean InObjectFields = booleanOption(OPTION_PREFIX + "InObjectFields", true);
-    public static final boolean UseVarHandle = booleanOption(OPTION_PREFIX + "UseVarHandle", false);
-
-    public static final boolean NewFinalSpeculation = booleanOption(OPTION_PREFIX + "NewFinalSpeculation", true);
-    public static final boolean NewTypeSpeculation = booleanOption(OPTION_PREFIX + "NewTypeSpeculation", true);
-    /** Number of parent shapes to compare to check if compatible shapes can be merged. */
-    public static final int MaxMergeDepth = Integer.getInteger(OPTION_PREFIX + "MaxMergeDepth", 32);
-    /** Number of differing, compatible property locations allowed when merging shapes. */
-    public static final int MaxMergeDiff = Integer.getInteger(OPTION_PREFIX + "MaxMergeDiff", 2);
 
     private final ExtLayoutStrategy strategy;
     private final List<FieldInfo> objectFields;
