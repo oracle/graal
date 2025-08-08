@@ -31,17 +31,19 @@ import java.util.Iterator;
 import java.util.Objects;
 
 /**
- * This file must be compatible with 21+.
+ * DirectoryStream implementation by setting a host iterator and stream as hidden host reference
+ * then proxying all methods to the native world where we retrieve the host object and do the
+ * semantics of the function. Note this file must be compatible with 21+.
  */
 final class TruffleFilteredDirectoryStream implements DirectoryStream<Path> {
     private final TrufflePath truffleDir;
-    private final DirectoryStream<Object> stream;
+    private final DirectoryStream<String> stream;
     private final DirectoryStream.Filter<? super Path> filter;
 
     /**
-     * Thin wrapper for a foreign (host) {@code Iterator<Object>}, cannot have any fields.
+     * Thin wrapper for a foreign (host) {@code Iterator<String>}, cannot have any fields.
      */
-    private static final class ForeignIterator implements Iterator<Object> {
+    private static final class ForeignIterator implements Iterator<String> {
 
         private ForeignIterator() {
             // only foreign wrappers allowed
@@ -53,7 +55,7 @@ final class TruffleFilteredDirectoryStream implements DirectoryStream<Path> {
         }
 
         @Override
-        public Object next() {
+        public String next() {
             return next0(this);
         }
     }
@@ -61,7 +63,7 @@ final class TruffleFilteredDirectoryStream implements DirectoryStream<Path> {
     /**
      * Thin wrapper for a foreign (host) DirectoryStream, cannot have any fields.
      */
-    private static final class ForeignDirectoryStream implements DirectoryStream<Object> {
+    private static final class ForeignDirectoryStream implements DirectoryStream<String> {
 
         private ForeignDirectoryStream() {
             // only foreign wrappers
@@ -73,8 +75,8 @@ final class TruffleFilteredDirectoryStream implements DirectoryStream<Path> {
         }
 
         @Override
-        public Iterator<Object> iterator() {
-            return iterator0(this, ForeignIterator.class);
+        public Iterator<String> iterator() {
+            return iterator0(this);
         }
     }
 
@@ -82,10 +84,10 @@ final class TruffleFilteredDirectoryStream implements DirectoryStream<Path> {
         if (!Files.isDirectory(truffleDir)) {
             throw new NotDirectoryException(truffleDir.toString());
         }
-        return new TruffleFilteredDirectoryStream(truffleDir, directoryStream0(truffleDir, ForeignDirectoryStream.class), filter);
+        return new TruffleFilteredDirectoryStream(truffleDir, directoryStream0(truffleDir), filter);
     }
 
-    private TruffleFilteredDirectoryStream(TrufflePath dir, DirectoryStream<Object> stream, Filter<? super Path> filter) {
+    private TruffleFilteredDirectoryStream(TrufflePath dir, DirectoryStream<String> stream, Filter<? super Path> filter) {
         this.truffleDir = Objects.requireNonNull(dir);
         this.filter = Objects.requireNonNull(filter);
         this.stream = Objects.requireNonNull(stream);
@@ -94,7 +96,7 @@ final class TruffleFilteredDirectoryStream implements DirectoryStream<Path> {
 
     @Override
     public Iterator<Path> iterator() {
-        return MapFilterIterator.mapThenFilter(stream.iterator(), tf -> toTrufflePath0(tf, truffleDir.getTruffleFileSystem()),
+        return MapFilterIterator.mapThenFilter(stream.iterator(), tf -> new TrufflePath((TruffleFileSystem) truffleDir.getFileSystem(), truffleDir.resolve(tf).toString()),
                         path -> {
                             try {
                                 return filter.accept(path);
@@ -116,17 +118,15 @@ final class TruffleFilteredDirectoryStream implements DirectoryStream<Path> {
 
     // region native methods
 
-    private static native DirectoryStream<Object> directoryStream0(TrufflePath dir, Class<ForeignDirectoryStream> directoryStreamClass) throws IOException;
+    private static native DirectoryStream<String> directoryStream0(TrufflePath dir) throws IOException;
 
-    private static native boolean hasNext0(Iterator<Object> iterator);
+    private static native boolean hasNext0(Iterator<String> iterator);
 
-    private static native Object next0(Iterator<Object> iterator);
+    private static native String next0(Iterator<String> iterator);
 
-    private static native void close0(DirectoryStream<Object> directoryStream) throws IOException;
+    private static native void close0(DirectoryStream<String> directoryStream) throws IOException;
 
-    private static native Iterator<Object> iterator0(DirectoryStream<Object> directoryStream, Class<ForeignIterator> iteratorClass);
-
-    private static native TrufflePath toTrufflePath0(Object truffleFile, TruffleFileSystem truffleFileSystem);
+    private static native Iterator<String> iterator0(DirectoryStream<String> directoryStream);
 
     // endregion native methods
 }

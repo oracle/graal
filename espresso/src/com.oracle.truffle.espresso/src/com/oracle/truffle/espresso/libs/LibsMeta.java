@@ -38,7 +38,15 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 public final class LibsMeta implements ContextAccess {
     private final EspressoContext context;
     private final Meta meta;
+
     // Checkstyle: stop field name check
+    // libnio
+    public final ObjectKlass sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream;
+    public final Field sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream_HIDDEN_HOST_REFERENCE;
+    public final Method sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream_init;
+    public final ObjectKlass sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator;
+    public final Field sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator_HIDDEN_HOST_REFERENCE;
+    public final Method sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator_init;
     // libzip
     public final ObjectKlass java_util_zip_CRC32;
     public final Field HIDDEN_CRC32;
@@ -65,6 +73,17 @@ public final class LibsMeta implements ContextAccess {
         this.context = ctx;
         this.meta = context.getMeta();
 
+        // libnio
+        sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream = knownKlass(EspressoSymbols.Types.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream);
+        sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream_init = sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream.lookupDeclaredMethod(EspressoSymbols.Names._init_,
+                        EspressoSymbols.Signatures._void);
+        sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator = knownKlass(EspressoSymbols.Types.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator);
+        sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator_init = sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator.lookupDeclaredMethod(EspressoSymbols.Names._init_,
+                        EspressoSymbols.Signatures._void);
+        sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream_HIDDEN_HOST_REFERENCE = sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream.requireHiddenField(
+                        EspressoSymbols.Names.HIDDEN_HOST_REFERENCE);
+        sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator_HIDDEN_HOST_REFERENCE = sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator.requireHiddenField(
+                        EspressoSymbols.Names.HIDDEN_HOST_REFERENCE);
         // libzip
         java_util_zip_CRC32 = knownKlass(EspressoSymbols.Types.java_util_zip_CRC32);
         HIDDEN_CRC32 = diff().field(ALL, EspressoSymbols.Names.HIDDEN_CRC32, EspressoSymbols.Types._int).maybeHiddenfield(java_util_zip_CRC32);

@@ -40,12 +40,17 @@ import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.Channel;
 import java.nio.channels.Channels;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.DatagramChannel;
+import java.nio.channels.GatheringByteChannel;
 import java.nio.channels.NetworkChannel;
 import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
+import java.nio.channels.Pipe;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.ScatteringByteChannel;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.SelectableChannel;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.WritableByteChannel;
@@ -287,6 +292,19 @@ public final class TruffleIO implements ContextAccess {
     }
 
     /**
+     * See {@link SelectableChannel#configureBlocking(boolean)}.
+     */
+    @TruffleBoundary
+    public void configureBlocking(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, boolean blocking) {
+        try {
+            getSelectableChannel(self, fdAccess).configureBlocking(blocking);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    /**
      * See {@link InputStream#available()}.
      */
     @TruffleBoundary
@@ -294,6 +312,32 @@ public final class TruffleIO implements ContextAccess {
                     FDAccess fdAccess) {
         try {
             return Channels.newInputStream(getReadableChannel(self, fdAccess)).available();
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    /**
+     * Temporary Method to open a pipe (since we return a hostPipe here).
+     *
+     * @param blocking the blocking mode of the created pipe.
+     * @return Returns two file descriptors for a pipe encoded in a long. The read end of the pipe
+     *         is returned in the high 32 bits, while the write end is returned in the low 32 bits.
+     */
+    @TruffleBoundary
+    public long openPipe(boolean blocking) {
+        // opening the channel
+        try {
+            Pipe pipe = Pipe.open();
+            Pipe.SinkChannel sink = pipe.sink();
+            Pipe.SourceChannel source = pipe.source();
+            sink.configureBlocking(blocking);
+            source.configureBlocking(blocking);
+            ChannelWrapper channelWrapperSink = new ChannelWrapper(sink, 1);
+            ChannelWrapper channelWrapperSource = new ChannelWrapper(source, 1);
+            int sourceFd = createFDforChannel(channelWrapperSource);  // fd[0]
+            int sinkFd = createFDforChannel(channelWrapperSink);      // fd[1]
+            return ((long) sourceFd << 32) | (sinkFd & 0xFFFF_FFFFL);
         } catch (IOException e) {
             throw Throw.throwIOException(e, context);
         }
@@ -323,7 +367,6 @@ public final class TruffleIO implements ContextAccess {
         }
     }
 
-    @TruffleBoundary
     /**
      * Accepts a pending connection made to the server associated with the fd (if there is any). The
      * socket channel for the new connection will be returned in the SocketAddress argument array.
@@ -335,11 +378,13 @@ public final class TruffleIO implements ContextAccess {
      * @return 1 if everything went fine or {@link IOStatus_Sync#UNAVAILABLE} if there is no pending
      *         connection.
      */
+    @TruffleBoundary
     public int accept(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess, @JavaType(FileDescriptor.class) StaticObject newfd, SocketAddress[] ret) {
         ServerSocketChannel serverSocketChannel = getServerSocketChannel(self, fdAccess);
         try {
             // accept the connection
+            // todo (GR-69946) add uninterruptible support
             SocketChannel clientSocket = serverSocketChannel.accept();
             if (clientSocket == null) {
                 return this.ioStatusSync.UNAVAILABLE;
@@ -365,6 +410,7 @@ public final class TruffleIO implements ContextAccess {
     public boolean finishConnect(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess) {
         try {
+            // todo (GR-69946) add uninterruptible support
             return getSocketChannel(self, fdAccess).finishConnect();
         } catch (IOException e) {
             return false;
@@ -401,6 +447,7 @@ public final class TruffleIO implements ContextAccess {
     public boolean connect(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess, SocketAddress remote) {
         try {
+            // todo (GR-69946) add uninterruptible support
             return getSocketChannel(self, fdAccess).connect(remote);
         } catch (IOException e) {
             throw Throw.throwIOException(e, context);
@@ -600,13 +647,7 @@ public final class TruffleIO implements ContextAccess {
     public int writeBytes(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess,
                     ByteBuffer bytes) {
-        try {
-            return getWritableChannel(self, fdAccess).write(bytes);
-        } catch (NonWritableChannelException e) {
-            throw Throw.throwNonWritable(context);
-        } catch (IOException e) {
-            throw Throw.throwIOException(e, context);
-        }
+        return writeBytes(getFD(self, fdAccess), bytes);
     }
 
     /**
@@ -623,21 +664,97 @@ public final class TruffleIO implements ContextAccess {
     @TruffleBoundary
     public int writeBytes(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess,
-                    byte[] bytes,
-                    int off, int len) {
-        return writeBytes(getFD(self, fdAccess), bytes, off, len);
+                    byte[] bytes, int off, int len) {
+        try {
+            return writeBytes(self, fdAccess, ByteBuffer.wrap(bytes, off, len));
+        } catch (IndexOutOfBoundsException e) {
+            Meta meta = context.getMeta();
+            throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
+        }
     }
 
     /**
-     * Writes buffered bytes to the file associated with the given file descriptor.
-     *
-     * @see #writeBytes(StaticObject, FDAccess, byte[], int, int)
+     * @see TruffleIO#writeBytes(StaticObject, FDAccess, ByteBuffer)
      */
     @TruffleBoundary
     public int writeBytes(int fd,
-                    byte[] bytes,
-                    int off, int len) {
-        return writeBytesImpl(getWritableChannel(fd), bytes, off, len, context);
+                    ByteBuffer bytes) {
+        try {
+            WritableByteChannel writableChannel = getWritableChannel(fd);
+            return convertReturnVal(writableChannel.write(bytes), writableChannel);
+        } catch (ClosedByInterruptException e) {
+            // todo (GR-69946) add uninterruptible support
+            if (context.getThreadAccess().isGuestInterrupted(Thread.currentThread(), null)) {
+                throw Throw.throwIOException(e, context);
+            }
+            throw JavaSubstitution.unimplemented();
+        } catch (NonWritableChannelException e) {
+            throw Throw.throwNonWritable(context);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    /**
+     * Writes the content of the ByteBuffers to the file associated with the given file descriptor
+     * holder in the exact order of the ByteBuffers array.
+     *
+     * @param self The file descriptor holder.
+     * @param fdAccess How to get the file descriptor from the holder.
+     * @param buffers The ByteBuffer containing the bytes to write.
+     * @return The number of bytes written, possibly zero.
+     * @see java.nio.channels.GatheringByteChannel#write(ByteBuffer[])
+     */
+    @TruffleBoundary
+    public long writeByteBuffers(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess,
+                    ByteBuffer[] buffers) {
+        Channel channel = Checks.ensureOpen(getChannel(getFD(self, fdAccess)), getContext());
+        if (channel instanceof GatheringByteChannel gatheringByteChannel) {
+            try {
+                return gatheringByteChannel.write(buffers);
+            } catch (IOException e) {
+                throw Throw.throwIOException(e, context);
+            }
+        } else {
+            context.getLogger().warning(() -> "No GatheringByteChannel for writev operation!" + channel.getClass());
+            long ret = 0;
+            for (ByteBuffer buf : buffers) {
+                ret += writeBytes(self, fdAccess, buf);
+            }
+            return ret;
+        }
+    }
+
+    /**
+     * Reads the content of the file associated with the given file descriptor into the provided
+     * ByteBuffers sequentially.
+     *
+     * @param self The file descriptor holder.
+     * @param fdAccess How to get the file descriptor from the holder.
+     * @param buffers The ByteBuffers we read data into.
+     * @return The number of bytes written, possibly zero.
+     * @see java.nio.channels.ScatteringByteChannel#read(ByteBuffer)
+     */
+    @TruffleBoundary
+    public long readByteBuffers(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess,
+                    ByteBuffer[] buffers) {
+        Channel channel = Checks.ensureOpen(getChannel(getFD(self, fdAccess)), getContext());
+        if (channel instanceof ScatteringByteChannel scatteringByteChannel) {
+            try {
+                return scatteringByteChannel.read(buffers);
+            } catch (IOException e) {
+                throw Throw.throwIOException(e, context);
+            }
+        } else {
+            context.getLogger().warning(() -> "No ScatteringByteChannel for readv operation!" + channel.getClass());
+            long ret = 0;
+            for (ByteBuffer buf : buffers) {
+                ret += readBytes(self, fdAccess, buf);
+            }
+            return ret;
+        }
     }
 
     /**
@@ -661,7 +778,13 @@ public final class TruffleIO implements ContextAccess {
      */
     @TruffleBoundary
     public int readSingle(int fd) {
-        return readSingleImpl(getReadableChannel(fd), context);
+        byte[] b = new byte[1];
+        int bytesRead = readBytes(fd, ByteBuffer.wrap(b));
+        if (bytesRead == 1) {
+            return b[0] & 0xFF;
+        } else {
+            return bytesRead;
+        }
     }
 
     /**
@@ -681,7 +804,14 @@ public final class TruffleIO implements ContextAccess {
                     FDAccess fdAccess,
                     byte[] bytes,
                     int off, int len) {
-        return readBytes(getFD(self, fdAccess), bytes, off, len);
+        try {
+            return readBytes(self, fdAccess, ByteBuffer.wrap(bytes, off, len));
+        } catch (IndexOutOfBoundsException e) {
+            // The ByteBuffer.wrap may throw an IndexOutOfBoundsException. Since the byte array was
+            // provided by the guest, we will propagate the exception.
+            Meta meta = context.getMeta();
+            throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
+        }
     }
 
     /**
@@ -698,25 +828,26 @@ public final class TruffleIO implements ContextAccess {
     public int readBytes(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess,
                     ByteBuffer buffer) {
-        try {
-            return getReadableChannel(self, fdAccess).read(buffer);
-        } catch (NonReadableChannelException e) {
-            throw Throw.throwNonReadable(context);
-        } catch (IOException e) {
-            throw Throw.throwIOException(e, context);
-        }
+        return readBytes(getFD(self, fdAccess), buffer);
     }
 
     /**
-     * Reads a byte sequence from the file associated with the given file descriptor.
-     *
-     * @see #readBytes(StaticObject, FDAccess, byte[], int, int)
+     * @see TruffleIO#readBytes(StaticObject, FDAccess, byte[], int, int)
      */
     @TruffleBoundary
     public int readBytes(int fd,
-                    byte[] bytes,
-                    int off, int len) {
-        return readBytesImpl(getReadableChannel(fd), bytes, off, len, context);
+                    ByteBuffer buffer) {
+        try {
+            ReadableByteChannel readableChannel = getReadableChannel(fd);
+            return convertReturnVal(readableChannel.read(buffer), readableChannel);
+        } catch (NonReadableChannelException e) {
+            throw Throw.throwNonReadable(context);
+        } catch (ClosedByInterruptException e) {
+            // todo (GR-69946) add uninterruptible support
+            throw JavaSubstitution.unimplemented();
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
     }
 
     /**
@@ -1106,9 +1237,14 @@ public final class TruffleIO implements ContextAccess {
         try {
             Channel channel = path.newByteChannel(options, attributes);
             return open(path, channel);
-        } catch (IOException | UnsupportedOperationException | IllegalArgumentException | SecurityException e) {
-            // Guest code only ever expects FileNotFoundException.
-            throw Throw.throwFileNotFoundException(e, context);
+        } catch (IllegalArgumentException e) {
+            throw Throw.throwIllegalArgumentException(e.getMessage(), context);
+        } catch (UnsupportedOperationException e) {
+            throw Throw.throwUnsupported(e.getMessage(), context);
+        } catch (SecurityException e) {
+            throw Throw.throwSecurityException(e.getMessage(), context);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
         }
     }
 
@@ -1131,38 +1267,6 @@ public final class TruffleIO implements ContextAccess {
             nextFd = currentFd + 1;
         }
         return nextFd;
-    }
-
-    private static int readSingleImpl(ReadableByteChannel readableChannel, EspressoContext context) {
-        try {
-            byte[] b = new byte[1];
-            int bytesRead = readableChannel.read(ByteBuffer.wrap(b));
-            if (bytesRead == 1) {
-                return b[0] & 0xFF;
-            } else {
-                return context.getTruffleIO().ioStatusSync.EOF;
-            }
-        } catch (NonReadableChannelException e) {
-            throw Throw.throwNonReadable(context);
-        } catch (IOException e) {
-            throw Throw.throwIOException(e, context);
-        } catch (IndexOutOfBoundsException e) {
-            Meta meta = context.getMeta();
-            throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
-        }
-    }
-
-    private static int readBytesImpl(ReadableByteChannel readableChannel, byte[] b, int off, int len, EspressoContext context) {
-        try {
-            return readableChannel.read(ByteBuffer.wrap(b, off, len));
-        } catch (NonReadableChannelException e) {
-            throw Throw.throwNonReadable(context);
-        } catch (IOException e) {
-            throw Throw.throwIOException(e, context);
-        } catch (IndexOutOfBoundsException e) {
-            Meta meta = context.getMeta();
-            throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
-        }
     }
 
     private ReadableByteChannel getReadableChannel(@JavaType(Object.class) StaticObject self,
@@ -1232,9 +1336,35 @@ public final class TruffleIO implements ContextAccess {
         throw Throw.throwIOException("The fd does not refer to a ServerSocketChannel", context);
     }
 
-    private WritableByteChannel getWritableChannel(@JavaType(Object.class) StaticObject self,
+    private SelectableChannel getSelectableChannel(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess) {
-        return getWritableChannel(getFD(getFileDesc(self, fdAccess)));
+        return getSelectableChannel(getFD(getFileDesc(self, fdAccess)));
+    }
+
+    private SelectableChannel getSelectableChannel(int fd) {
+        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
+        if (channel instanceof SelectableChannel selectableChannel) {
+            return selectableChannel;
+        }
+        // SelectableChannel are backed by the host, thus it would be very suspicious if we reach
+        // here.
+        throw Throw.throwIOException("The fd does not refer to a SelectableChannel", context);
+    }
+
+    /**
+     * Handles the translation between the value returned by the java read/write and the expected
+     * return value of the native functions.
+     */
+    private int convertReturnVal(int n, Channel channel) {
+        /*
+         * In the native code, if the system call returns EAGAIN or EWOULDBLOCK they return
+         * ioStatusSync.UNAVAILABLE. To me EAGAIN or EWOULDBLOCK translates here to n = 0 on a
+         * non-blocking channel.
+         */
+        if (n == 0 && channel instanceof SelectableChannel selectableChannel) {
+            return selectableChannel.isBlocking() ? n : ioStatusSync.UNAVAILABLE;
+        }
+        return n;
     }
 
     private WritableByteChannel getWritableChannel(int fd) {
@@ -1243,20 +1373,6 @@ public final class TruffleIO implements ContextAccess {
             return writableByteChannel;
         }
         throw Throw.throwNonWritable(context);
-    }
-
-    private static int writeBytesImpl(WritableByteChannel writableChannel, byte[] b, int off, int len,
-                    EspressoContext context) {
-        try {
-            return writableChannel.write(ByteBuffer.wrap(b, off, len));
-        } catch (NonWritableChannelException e) {
-            throw Throw.throwNonWritable(context);
-        } catch (IOException e) {
-            throw Throw.throwIOException(e, context);
-        } catch (IndexOutOfBoundsException e) {
-            Meta meta = context.getMeta();
-            throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
-        }
     }
 
     private static long sizeImpl(SeekableByteChannel seekableChannel, EspressoContext context) {
