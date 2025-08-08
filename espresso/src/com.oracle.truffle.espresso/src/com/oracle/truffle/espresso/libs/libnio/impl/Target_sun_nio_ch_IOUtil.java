@@ -24,14 +24,15 @@ package com.oracle.truffle.espresso.libs.libnio.impl;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import com.oracle.truffle.espresso.io.Checks;
+import com.oracle.truffle.espresso.io.FDAccess;
 import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.libs.libnio.LibNio;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
-import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
@@ -71,14 +72,20 @@ public final class Target_sun_nio_ch_IOUtil {
     @Substitution
     @Throws(IOException.class)
     @SuppressWarnings("unused")
-    static long makePipe(boolean blocking) {
-        throw JavaSubstitution.unimplemented();
+    static long makePipe(boolean blocking, @Inject TruffleIO io) {
+        return io.openPipe(blocking);
     }
 
     @Substitution
     @Throws(IOException.class)
     static int write1(int fd, byte b, @Inject TruffleIO io) {
-        return io.writeBytes(fd, new byte[]{b}, 0, 1);
+        return io.writeBytes(fd, ByteBuffer.wrap(new byte[]{b}));
+    }
+
+    @Substitution
+    @Throws(IOException.class)
+    public static void configureBlocking(@JavaType(FileDescriptor.class) StaticObject fd, boolean blocking, @Inject TruffleIO io) {
+        io.configureBlocking(fd, FDAccess.forFileDescriptor(), blocking);
     }
 
     @Substitution
@@ -90,18 +97,20 @@ public final class Target_sun_nio_ch_IOUtil {
     @Substitution
     @Throws(IOException.class)
     static int drain1(int fd, @Inject TruffleIO io) {
-        int b = io.readSingle(fd);
-        if (b >= 0) {
-            return 1;
-        }
-        return 0;
-    }
+        /*
+         * We should only return the byte read or the interrupted flag by the documentation. The
+         * native code returns 0 if the fd was unavailable, or we reached EOF.
+         *
+         * More Detail about EOF: The native code usually converts the 0 returned by the read system
+         * call to IOS_EOF, which was avoided in this function, meaning just 0 is returned.
+         */
 
-    @Substitution
-    @Throws(IOException.class)
-    @SuppressWarnings("unused")
-    public static void configureBlocking(@JavaType(FileDescriptor.class) StaticObject fd, boolean blocking) {
-        throw JavaSubstitution.unimplemented();
+        int b = io.readSingle(fd);
+        if (b == io.ioStatusSync.UNAVAILABLE || b == io.ioStatusSync.EOF) {
+            return 0;
+        }
+        assert b >= 0 || b == io.ioStatusSync.INTERRUPTED;
+        return b;
     }
 
     @Substitution

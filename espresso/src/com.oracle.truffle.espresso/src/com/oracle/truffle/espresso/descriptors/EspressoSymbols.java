@@ -185,6 +185,9 @@ public class EspressoSymbols {
         public static final Symbol<Type> sun_nio_ch_IOStatus = SYMBOLS.putType("Lsun/nio/ch/IOStatus;");
         public static final Symbol<Type> java_net_spi_InetAddressResolver$LookupPolicy = SYMBOLS.putType("Ljava/net/spi/InetAddressResolver$LookupPolicy;");
         public static final Symbol<Type> sun_nio_ch_Net = SYMBOLS.putType("Lsun/nio/ch/Net;");
+        // libnio
+        public static final Symbol<Type> sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream = SYMBOLS.putType("Lsun/nio/fs/TruffleFilteredDirectoryStream$ForeignDirectoryStream;");
+        public static final Symbol<Type> sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator = SYMBOLS.putType("Lsun/nio/fs/TruffleFilteredDirectoryStream$ForeignIterator;");
         // URL class loader
         public static final Symbol<Type> java_net_URLClassLoader = SYMBOLS.putType("Ljava/net/URLClassLoader;");
         public static final Symbol<Type> java_net_URL = SYMBOLS.putType("Ljava/net/URL;");

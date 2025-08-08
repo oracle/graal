@@ -58,6 +58,10 @@ public final class Throw {
         throw context.getMeta().throwExceptionWithMessage(context.getTruffleIO().java_io_FileNotFoundException, message);
     }
 
+    public static EspressoException throwIllegalArgumentException(String message, EspressoContext context) {
+        throw context.getMeta().throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, message);
+    }
+
     public static EspressoException throwIOException(String message, EspressoContext context) {
         throw context.getMeta().throwExceptionWithMessage(context.getTruffleIO().java_io_IOException, message);
     }
@@ -70,6 +74,12 @@ public final class Throw {
         throw throwSocketException(getMessageBoundary(e), context);
     }
 
+    /**
+     * Exactly translates the host IOException and throws the corresponding guest exception.
+     * 
+     * @param e The host IOException to be translated and thrown.
+     * @return The corresponding guest exception.
+     */
     public static EspressoException throwIOException(IOException e, EspressoContext context) {
         Class<?> exceptionClass = e.getClass();
         String message = getMessageBoundary(e);
