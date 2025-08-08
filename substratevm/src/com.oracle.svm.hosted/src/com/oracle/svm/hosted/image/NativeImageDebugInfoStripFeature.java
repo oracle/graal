@@ -53,7 +53,12 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.StripDebugInfo.getValue();
+        /*
+         * Make sure this feature always runs for ELF object files to fix the object file's
+         * alignment with objcopy. This is a temporary workaround; a proper fix will be provided
+         * with GR-68594.
+         */
+        return SubstrateOptions.StripDebugInfo.getValue() || ObjectFile.getNativeFormat() == ObjectFile.Format.ELF;
     }
 
     @SuppressWarnings("try")
@@ -112,20 +117,35 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
             try {
                 Path outputDirectory = imagePath.getParent();
                 String imageFilePath = outputDirectory.resolve(imageName).toString();
-                if (SubstrateOptions.useDebugInfoGeneration()) {
-                    /* Generate a separate debug file before stripping the executable. */
-                    String debugInfoName = imageName + debugExtension;
-                    Path debugInfoFilePath = outputDirectory.resolve(debugInfoName);
-                    FileUtils.executeCommand(objcopyExe, "--only-keep-debug", imageFilePath, debugInfoFilePath.toString());
-                    BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, debugInfoFilePath);
-                    FileUtils.executeCommand(objcopyExe, "--add-gnu-debuglink=" + debugInfoFilePath, imageFilePath);
-                }
-                if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
-                    /* Strip debug info and local symbols. */
-                    FileUtils.executeCommand(objcopyExe, "--strip-all", imageFilePath);
+                if (SubstrateOptions.StripDebugInfo.getValue()) {
+                    if (SubstrateOptions.useDebugInfoGeneration()) {
+                        /* Generate a separate debug file before stripping the executable. */
+                        String debugInfoName = imageName + debugExtension;
+                        Path debugInfoFilePath = outputDirectory.resolve(debugInfoName);
+                        FileUtils.executeCommand(objcopyExe, "--only-keep-debug", imageFilePath, debugInfoFilePath.toString());
+                        BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, debugInfoFilePath);
+                        FileUtils.executeCommand(objcopyExe, "--add-gnu-debuglink=" + debugInfoFilePath, imageFilePath);
+                    }
+                    if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                        /* Strip debug info and local symbols. */
+                        FileUtils.executeCommand(objcopyExe, "--strip-all", imageFilePath);
+                    } else {
+                        /* Strip debug info only. */
+                        FileUtils.executeCommand(objcopyExe, "--strip-debug", imageFilePath);
+                    }
                 } else {
-                    /* Strip debug info only. */
-                    FileUtils.executeCommand(objcopyExe, "--strip-debug", imageFilePath);
+                    /*
+                     * Make sure the object file is properly aligned. This step creates a temporary
+                     * file and then destructively renames it to the original image file name. In
+                     * effect, the original native image object file is copied and replaced with the
+                     * output of objcopy.
+                     *
+                     * This is a temporary workaround; a proper fix will be provided with GR-68594.
+                     */
+                    FileUtils.executeCommand(objcopyExe, imageFilePath);
+
+                    /* Nothing was actually stripped here. */
+                    return false;
                 }
                 return true;
             } catch (IOException e) {
