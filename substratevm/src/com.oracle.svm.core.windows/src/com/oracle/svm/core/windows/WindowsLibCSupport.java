@@ -123,6 +123,12 @@ class WindowsLibCSupport implements LibCSupport {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int strncmp(CCharPointer s1, CCharPointer s2, UnsignedWord n) {
+        return WindowsLibC.strncmp(s1, s2, n);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int isdigit(int c) {
         return WindowsLibC.isdigit(c);
     }
