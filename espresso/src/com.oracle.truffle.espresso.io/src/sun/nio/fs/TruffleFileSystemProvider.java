@@ -53,6 +53,7 @@ import java.util.Set;
  * This file must be compatible with 21+.
  */
 class TruffleFileSystemProvider extends FileSystemProvider {
+    public static final int DEFAULT_FILE_PERMISSIONS_MASK = 511;
 
     static {
         // ensure 'nio' is loaded. Also loads 'net' as a side-effect.

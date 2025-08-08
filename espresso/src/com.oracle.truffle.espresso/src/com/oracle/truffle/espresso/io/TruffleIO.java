@@ -42,10 +42,13 @@ import java.nio.channels.Channel;
 import java.nio.channels.Channels;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.DatagramChannel;
+import java.nio.channels.GatheringByteChannel;
 import java.nio.channels.NetworkChannel;
 import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
+import java.nio.channels.Pipe;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.ScatteringByteChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
@@ -278,6 +281,32 @@ public final class TruffleIO implements ContextAccess {
             throw Throw.throwIOException(e, context);
         }
         return createFDforChannel(channelWrapper);
+    }
+
+    /**
+     * Temporary Method to open a pipe (since we return a HostPipe here).
+     *
+     * @param blocking the blocking mode of the created pipe.
+     * @return Returns two file descriptors for a pipe encoded in a long. The read end of the pipe
+     *         is returned in the high 32 bits, while the write end is returned in the low 32 bits.
+     */
+    @TruffleBoundary
+    public long openPipe(boolean blocking) {
+        // opening the channel
+        try {
+            Pipe pipe = Pipe.open();
+            Pipe.SinkChannel sink = pipe.sink();
+            Pipe.SourceChannel source = pipe.source();
+            sink.configureBlocking(blocking);
+            source.configureBlocking(blocking);
+            ChannelWrapper channelWrapperSink = new ChannelWrapper(sink, 1);
+            ChannelWrapper channelWrapperSource = new ChannelWrapper(source, 1);
+            int sourceFd = createFDforChannel(channelWrapperSource);  // fd[0]
+            int sinkFd = createFDforChannel(channelWrapperSink);      // fd[1]
+            return ((long) sourceFd << 32) | (sinkFd & 0xFFFFFFFFL);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
     }
 
     @TruffleBoundary
@@ -695,6 +724,69 @@ public final class TruffleIO implements ContextAccess {
                     byte[] bytes,
                     int off, int len) {
         return writeBytesImpl(getWritableChannel(fd), bytes, off, len, context);
+    }
+
+    /**
+     * Writes the content of the ByteBuffers to the file associated with the given file descriptor
+     * holder in the exact order of the ByteBuffers array.
+     *
+     * @param self The file descriptor holder.
+     * @param fdAccess How to get the file descriptor from the holder.
+     * @param buffers The ByteBuffer containing the bytes to write.
+     * @return The number of bytes written, possibly zero.
+     * @see java.nio.channels.GatheringByteChannel#write(ByteBuffer[])
+     */
+    @TruffleBoundary
+    public long writeByteBuffers(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess,
+                    ByteBuffer[] buffers) {
+        Channel channel = Checks.ensureOpen(getChannel(getFD(self, fdAccess)), getContext());
+        if (channel instanceof GatheringByteChannel gatheringByteChannel) {
+            try {
+                return gatheringByteChannel.write(buffers);
+            } catch (IOException e) {
+                throw Throw.throwIOException(e, context);
+            }
+        } else {
+            context.getLogger().warning(() -> "No GatheringByteChannel for writev operation!" + channel.getClass());
+            long ret = 0;
+            for (ByteBuffer buf : buffers) {
+                ret += writeBytes(self, fdAccess, buf);
+            }
+            return ret;
+        }
+    }
+
+    /**
+     * Reads the content of the file associated with the given file descriptor into the provided
+     * ByteBuffers sequentially.
+     *
+     * @param self The file descriptor holder.
+     * @param fdAccess How to get the file descriptor from the holder.
+     * @param buffers The ByteBuffers we read data into.
+     * @return The number of bytes written, possibly zero.
+     * @see java.nio.channels.ScatteringByteChannel#read(ByteBuffer)
+     */
+    @TruffleBoundary
+    public long readByteBuffers(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess,
+                    ByteBuffer[] buffers) {
+        StaticObject fileDesc = getFileDesc(self, fdAccess);
+        Channel channel = Checks.ensureOpen(getChannel(getFD(fileDesc)), getContext());
+        if (channel instanceof ScatteringByteChannel scatteringByteChannel) {
+            try {
+                return scatteringByteChannel.read(buffers);
+            } catch (IOException e) {
+                throw Throw.throwIOException(e, context);
+            }
+        } else {
+            context.getLogger().warning(() -> "No ScatteringByteChannel for readv operation!" + channel.getClass());
+            long ret = 0;
+            for (ByteBuffer buf : buffers) {
+                ret += readBytes(self, fdAccess, buf);
+            }
+            return ret;
+        }
     }
 
     /**

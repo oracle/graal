@@ -31,6 +31,8 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.ffi.Buffer;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
+import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.io.FDAccess;
 import com.oracle.truffle.espresso.io.Throw;
@@ -97,8 +99,9 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
 
     @Substitution
     @SuppressWarnings("unused")
-    public static int unmap0(long address, long length) {
-        throw JavaSubstitution.unimplemented();
+    public static int unmap0(long address, long length, @Inject NativeAccess nativeAccess) {
+        nativeAccess.freeMemory(RawPointer.create(address));
+        return 0;
     }
 
     @Substitution
@@ -196,8 +199,8 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
     @Substitution
     @Throws(IOException.class)
     @SuppressWarnings("unused")
-    public static void close0(@JavaType(FileDescriptor.class) StaticObject fd) {
-        throw JavaSubstitution.unimplemented();
+    public static void close0(@JavaType(FileDescriptor.class) StaticObject fd, @Inject TruffleIO io) {
+        io.close(fd, FDAccess.forFileDescriptor());
     }
 
     @Substitution
@@ -234,5 +237,11 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
     @SuppressWarnings("unused")
     public static int setDirect0(@JavaType(FileDescriptor.class) StaticObject fd, @JavaType(String.class) StaticObject path) {
         throw JavaSubstitution.unimplemented();
+    }
+
+    @Substitution
+    @Throws(IOException.class)
+    public static int available0(@JavaType(FileDescriptor.class) StaticObject fd, @Inject TruffleIO io) {
+        return io.available(fd, FDAccess.forFileDescriptor());
     }
 }

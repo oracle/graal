@@ -58,6 +58,10 @@ public final class Throw {
         throw context.getMeta().throwExceptionWithMessage(context.getTruffleIO().java_io_FileNotFoundException, message);
     }
 
+    public static EspressoException throwIllegalArgumentException(String message, EspressoContext context) {
+        throw context.getMeta().throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, message);
+    }
+
     public static EspressoException throwIOException(String message, EspressoContext context) {
         throw context.getMeta().throwExceptionWithMessage(context.getTruffleIO().java_io_IOException, message);
     }

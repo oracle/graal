@@ -26,12 +26,12 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 
 import com.oracle.truffle.espresso.io.Checks;
+import com.oracle.truffle.espresso.io.FDAccess;
 import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.libs.libnio.LibNio;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
-import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
@@ -71,14 +71,20 @@ public final class Target_sun_nio_ch_IOUtil {
     @Substitution
     @Throws(IOException.class)
     @SuppressWarnings("unused")
-    static long makePipe(boolean blocking) {
-        throw JavaSubstitution.unimplemented();
+    static long makePipe(boolean blocking, @Inject TruffleIO io) {
+        return io.openPipe(blocking);
     }
 
     @Substitution
     @Throws(IOException.class)
     static int write1(int fd, byte b, @Inject TruffleIO io) {
         return io.writeBytes(fd, new byte[]{b}, 0, 1);
+    }
+
+    @Substitution
+    @Throws(IOException.class)
+    public static void configureBlocking(@JavaType(FileDescriptor.class) StaticObject fd, boolean blocking, @Inject TruffleIO io) {
+        io.configureBlocking(fd, FDAccess.forFileDescriptor(), blocking);
     }
 
     @Substitution
@@ -95,13 +101,6 @@ public final class Target_sun_nio_ch_IOUtil {
             return 1;
         }
         return 0;
-    }
-
-    @Substitution
-    @Throws(IOException.class)
-    @SuppressWarnings("unused")
-    public static void configureBlocking(@JavaType(FileDescriptor.class) StaticObject fd, boolean blocking) {
-        throw JavaSubstitution.unimplemented();
     }
 
     @Substitution
