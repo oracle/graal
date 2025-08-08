@@ -144,6 +144,12 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
         return NotApplicable.unlessRunBefore(this, GraphState.StageFlag.HIGH_TIER_LOWERING, graphState);
     }
 
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(GraphState.StageFlag.VECTOR_API_EXPANSION);
+    }
+
     /**
      * A "connected component" of macro nodes connected by input/usage relationships or through phi
      * or proxy nodes.

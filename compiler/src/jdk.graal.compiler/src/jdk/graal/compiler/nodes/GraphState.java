@@ -262,7 +262,9 @@ public final class GraphState {
         builder.append(valueStringAsDiff(previous.frameStateVerification, this.frameStateVerification, "Frame state verification: ", ", "));
         builder.append(newFlagsToString(previous.futureRequiredStages, this.futureRequiredStages, "+", "Future required stages: "));
         builder.append(newFlagsToString(this.futureRequiredStages, previous.futureRequiredStages, "-", ""));
-        builder.setLength(builder.length() - 2);
+        if (builder.length() > 1) {
+            builder.setLength(builder.length() - 2);
+        }
         builder.append('}');
         return builder.toString();
     }
