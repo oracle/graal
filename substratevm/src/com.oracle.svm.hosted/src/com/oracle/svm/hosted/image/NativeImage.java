@@ -47,7 +47,6 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -58,8 +57,6 @@ import org.graalvm.nativeimage.c.CHeader.Header;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.type.CConst;
-import org.graalvm.nativeimage.c.type.CTypedef;
-import org.graalvm.nativeimage.c.type.CUnsigned;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -325,14 +322,16 @@ public abstract class NativeImage extends AbstractImage {
         return rm1Line - rm2Line;
     }
 
-    private static boolean isUnsigned(AnnotatedType type) {
-        var legacyCUnsigned = com.oracle.svm.core.c.CUnsigned.class;
-        return type.isAnnotationPresent(CUnsigned.class) || type.isAnnotationPresent(legacyCUnsigned);
-    }
+    private void writeMethodHeader(HostedMethod stubMethod, CSourceCodeWriter writer, boolean dynamic) {
+        assert Modifier.isStatic(stubMethod.getModifiers()) : "Published methods that go into the header must be static.";
 
-    private void writeMethodHeader(HostedMethod m, CSourceCodeWriter writer, boolean dynamic) {
-        assert Modifier.isStatic(m.getModifiers()) : "Published methods that go into the header must be static.";
-        CEntryPointData cEntryPointData = (CEntryPointData) m.getWrapped().getNativeEntryPointData();
+        /*
+         * Get the target method that will be invoked by the stub. We need its signature because the
+         * stub signature has different types (primitive instead of object types) and no metadata.
+         */
+        HostedMethod targetMethod = metaAccess.lookupJavaMethod(getMethod(stubMethod));
+
+        CEntryPointData cEntryPointData = (CEntryPointData) stubMethod.getWrapped().getNativeEntryPointData();
         String docComment = cEntryPointData.getDocumentation();
         if (docComment != null && !docComment.isEmpty()) {
             writer.appendln("/*");
@@ -344,13 +343,8 @@ public abstract class NativeImage extends AbstractImage {
             writer.append("typedef ");
         }
 
-        AnnotatedType annotatedReturnType = getAnnotatedReturnType(m);
-        writer.append(CSourceCodeWriter.toCTypeName(m,
-                        m.getSignature().getReturnType(),
-                        Optional.ofNullable(annotatedReturnType.getAnnotation(CTypedef.class)).map(CTypedef::name),
-                        false,
-                        isUnsigned(annotatedReturnType),
-                        metaAccess, nativeLibs));
+        var signature = targetMethod.getSignature();
+        writer.append(CSourceCodeWriter.toCTypeName(targetMethod, signature.getReturnType(), getAnnotatedReturnType(stubMethod), false, metaAccess, nativeLibs));
         writer.append(" ");
 
         String symbolName = cEntryPointData.getSymbolName();
@@ -362,19 +356,20 @@ public abstract class NativeImage extends AbstractImage {
         }
         writer.append("(");
 
-        String sep = "";
-        AnnotatedType[] annotatedParameterTypes = getAnnotatedParameterTypes(m);
-        Parameter[] parameters = m.getParameters();
-        assert parameters != null;
-        for (int i = 0; i < m.getSignature().getParameterCount(false); i++) {
-            writer.append(sep);
-            sep = ", ";
-            writer.append(CSourceCodeWriter.toCTypeName(m,
-                            m.getSignature().getParameterType(i),
-                            Optional.ofNullable(annotatedParameterTypes[i].getAnnotation(CTypedef.class)).map(CTypedef::name),
-                            annotatedParameterTypes[i].isAnnotationPresent(CConst.class),
-                            isUnsigned(annotatedParameterTypes[i]),
-                            metaAccess, nativeLibs));
+        /* Write the signature. */
+        int numParams = signature.getParameterCount(false);
+        AnnotatedType[] annotatedTypes = getAnnotatedParameterTypes(stubMethod);
+        Parameter[] parameters = targetMethod.getParameters();
+        assert annotatedTypes.length == numParams;
+        assert parameters.length == numParams;
+
+        for (int i = 0; i < numParams; i++) {
+            if (i > 0) {
+                writer.append(", ");
+            }
+
+            boolean isConst = annotatedTypes[i].isAnnotationPresent(CConst.class);
+            writer.append(CSourceCodeWriter.toCTypeName(targetMethod, signature.getParameterType(i), annotatedTypes[i], isConst, metaAccess, nativeLibs));
             if (parameters[i].isNamePresent()) {
                 writer.append(" ");
                 writer.append(parameters[i].getName());
@@ -396,14 +391,12 @@ public abstract class NativeImage extends AbstractImage {
 
     private Method getMethod(HostedMethod hostedMethod) {
         AnalysisMethod entryPoint = CEntryPointCallStubSupport.singleton().getMethodForStub(((CEntryPointCallStubMethod) hostedMethod.wrapped.wrapped));
-        Method method;
         try {
-            method = entryPoint.getDeclaringClass().getJavaClass().getDeclaredMethod(entryPoint.getName(),
+            return entryPoint.getDeclaringClass().getJavaClass().getDeclaredMethod(entryPoint.getName(),
                             MethodType.fromMethodDescriptorString(entryPoint.getSignature().toMethodDescriptor(), imageClassLoader).parameterArray());
         } catch (NoSuchMethodException e) {
             throw shouldNotReachHere(e);
         }
-        return method;
     }
 
     private boolean shouldWriteHeader(HostedMethod method) {
