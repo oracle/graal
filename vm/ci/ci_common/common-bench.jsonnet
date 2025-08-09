@@ -254,6 +254,24 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         self.polybench_wrap(['mx', '--dy', 'truffleruby', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'ruby:benchmark']),
       ],
     }
+  ] + [
+    # GraalPy polybench jobs
+    self.polybench_vm_gate('linux', 'amd64', 'python') + {
+      setup+: [
+        ['mx', '--dy', 'graalpython', 'build']
+      ],
+      run+: [
+        self.polybench_wrap(['mx', '--dy', 'graalpython', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'python:gate']),
+      ],
+    },
+    self.polybench_vm_daily('linux', 'amd64', 'python') + {
+      setup+: [
+        ['mx', '--dy', 'graalpython', 'build']
+      ],
+      run+: [
+        self.polybench_wrap(['mx', '--dy', 'graalpython', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'python:benchmark']),
+      ],
+    }
   ],
   # TODO (GR-60584): reimplement polybenchmarks jobs once polybench is unchained
 
