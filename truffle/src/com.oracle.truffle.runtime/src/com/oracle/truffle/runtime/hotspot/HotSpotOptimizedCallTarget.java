@@ -42,6 +42,8 @@ package com.oracle.truffle.runtime.hotspot;
 
 import java.lang.reflect.Method;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.compiler.TruffleCompiler;
 import com.oracle.truffle.runtime.EngineData;
@@ -97,24 +99,35 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     private static final Method setSpeculationLog;
 
     /**
-     * Reflective reference to {@code InstalledCode.invalidate(boolean deoptimize)} so that this
+     * Reflective reference to
+     * {@code InstalledCode.invalidate(boolean deoptimize, int invalidationReason)} so that this
      * code can be compiled against older JVMCI API.
      */
-    @SuppressWarnings("unused") private static final Method invalidateInstalledCode;
+    @SuppressWarnings("unused") private static final Method invalidateInstalledCodeWithReasonMethodRef;
+    @SuppressWarnings("unused") private static final Method invalidateInstalledCodeWithoutReasonMethodRef;
+
+    /**
+     * Reflective reference to {@code HotSpotNmethod.getInvalidationReason()} and
+     * {@code HotSpotNmethod.getInvalidationReasonDescription()} so that this code can be compiled
+     * against older JVMCI API.
+     */
+    @SuppressWarnings("unused") private static final Method getInvalidationReasonMethodRef;
+    @SuppressWarnings("unused") private static final Method getInvalidationReasonDescriptionMethodRef;
 
     static {
-        Method method = null;
+        setSpeculationLog = initialize(HotSpotNmethod.class, "setSpeculationLog", HotSpotSpeculationLog.class);
+        invalidateInstalledCodeWithReasonMethodRef = initialize(HotSpotNmethod.class, "invalidate", boolean.class, int.class);
+        invalidateInstalledCodeWithoutReasonMethodRef = initialize(InstalledCode.class, "invalidate", boolean.class);
+        getInvalidationReasonMethodRef = initialize(HotSpotNmethod.class, "getInvalidationReason");
+        getInvalidationReasonDescriptionMethodRef = initialize(HotSpotNmethod.class, "getInvalidationReasonDescription");
+    }
+
+    private static Method initialize(Class<?> clx, String methodName, Class<?>... args) {
         try {
-            method = HotSpotNmethod.class.getDeclaredMethod("setSpeculationLog", HotSpotSpeculationLog.class);
+            return clx.getDeclaredMethod(methodName, args);
         } catch (NoSuchMethodException e) {
+            return null;
         }
-        setSpeculationLog = method;
-        method = null;
-        try {
-            method = InstalledCode.class.getDeclaredMethod("invalidate", boolean.class);
-        } catch (NoSuchMethodException e) {
-        }
-        invalidateInstalledCode = method;
     }
 
     /**
@@ -122,20 +135,11 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
      */
     public void setInstalledCode(InstalledCode code) {
         assert code != null : "code must never become null";
-        InstalledCode oldCode = this.installedCode;
-        if (oldCode == code) {
+        if (this.installedCode == code) {
             return;
         }
 
-        if (oldCode != INVALID_CODE && invalidateInstalledCode != null) {
-            try {
-                invalidateInstalledCode.invoke(oldCode, false);
-            } catch (Error e) {
-                throw e;
-            } catch (Throwable throwable) {
-                throw new InternalError(throwable);
-            }
-        }
+        invalidateExistingCode();
 
         // A default nmethod can be called from entry points in the VM (e.g., Method::_code)
         // and so allowing it to be installed here would invalidate the truth of
@@ -174,9 +178,23 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
         }
     }
 
+    /**
+     * This method will reset the execution profile counters of this call target if the installed
+     * code was invalidated because it became cold.
+     *
+     * @return whether the currently installed code is valid/executable.
+     */
     @Override
     public boolean isValid() {
-        return installedCode.isValid();
+        boolean isValid = installedCode.isValid();
+        if (!isValid && installedCode != INVALID_CODE) {
+            if (getInvalidationReason() == ((HotSpotTruffleRuntime) runtime()).getColdMethodInvalidationReason()) {
+                invalidateExistingCode();
+                resetCompilationProfile();
+                runtime().getListener().onProfileReset(this);
+            }
+        }
+        return isValid;
     }
 
     @Override
@@ -195,4 +213,51 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
         return HotSpotTruffleRuntimeServices.getCompilationSpeculationLog(this);
     }
 
+    @Override
+    protected void notifyDeoptimized(VirtualFrame frame) {
+        runtime().getListener().onCompilationDeoptimized(this, frame, getInvalidationReasonDescription());
+    }
+
+    @TruffleBoundary
+    private void invalidateExistingCode() throws Error, InternalError {
+        if (this.installedCode != INVALID_CODE) {
+            try {
+                InstalledCode oldCode = this.installedCode;
+                if (invalidateInstalledCodeWithReasonMethodRef != null) {
+                    invalidateInstalledCodeWithReasonMethodRef.invoke(this.installedCode, false, ((HotSpotTruffleRuntime) runtime()).getJVMCIReplacedMethodInvalidationReason());
+                } else if (invalidateInstalledCodeWithoutReasonMethodRef != null) {
+                    invalidateInstalledCodeWithoutReasonMethodRef.invoke(oldCode, false);
+                }
+                this.installedCode = INVALID_CODE;
+            } catch (Error e) {
+                throw e;
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        }
+    }
+
+    @TruffleBoundary
+    private int getInvalidationReason() {
+        try {
+            if (getInvalidationReasonMethodRef != null) {
+                return (int) getInvalidationReasonMethodRef.invoke(this.installedCode);
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+        return 0;
+    }
+
+    @TruffleBoundary
+    private String getInvalidationReasonDescription() {
+        try {
+            if (getInvalidationReasonDescriptionMethodRef != null) {
+                return (String) getInvalidationReasonDescriptionMethodRef.invoke(this.installedCode);
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+        return null;
+    }
 }
