@@ -55,8 +55,8 @@ import jdk.graal.compiler.lir.aarch64.AArch64AddressValue;
 import jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayCompareToOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayCopyWithConversionsOp;
-import jdk.graal.compiler.lir.aarch64.AArch64ArrayFillOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayEqualsOp;
+import jdk.graal.compiler.lir.aarch64.AArch64ArrayFillOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayIndexOfOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayRegionCompareToOp;
 import jdk.graal.compiler.lir.aarch64.AArch64AtomicMove;
@@ -622,18 +622,24 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitArrayCopyWithConversion(Stride strideSrc, Stride strideDst, EnumSet<?> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length) {
-        append(new AArch64ArrayCopyWithConversionsOp(this, strideSrc, strideDst,
+        append(new AArch64ArrayCopyWithConversionsOp(this, strideSrc, strideDst, false,
                         emitConvertNullToZero(arrayDst), asAllocatable(offsetDst), emitConvertNullToZero(arraySrc), asAllocatable(offsetSrc), asAllocatable(length), null));
     }
 
     @Override
     public void emitArrayCopyWithConversion(EnumSet<?> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value dynamicStrides) {
-        append(new AArch64ArrayCopyWithConversionsOp(this, null, null,
+        append(new AArch64ArrayCopyWithConversionsOp(this, null, null, false,
                         emitConvertNullToZero(arrayDst), asAllocatable(offsetDst), emitConvertNullToZero(arraySrc), asAllocatable(offsetSrc), asAllocatable(length), asAllocatable(dynamicStrides)));
     }
 
     @Override
-    public void emitArrayFill(JavaKind kind, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value arrayBaseOffset, Value length, Value value) {
+    public void emitArrayCopyWithReverseBytes(Stride stride, EnumSet<?> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length) {
+        append(new AArch64ArrayCopyWithConversionsOp(this, stride, stride, true,
+                        emitConvertNullToZero(arrayDst), asAllocatable(offsetDst), emitConvertNullToZero(arraySrc), asAllocatable(offsetSrc), asAllocatable(length), null));
+    }
+
+    @Override
+    public void emitArrayFill(JavaKind kind, Value array, Value arrayBaseOffset, Value length, Value value) {
         append(new AArch64ArrayFillOp(kind, emitConvertNullToZero(array), asAllocatable(arrayBaseOffset), asAllocatable(length), asAllocatable(value)));
     }
 

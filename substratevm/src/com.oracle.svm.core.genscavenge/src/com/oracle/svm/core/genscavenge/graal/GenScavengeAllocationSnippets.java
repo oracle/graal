@@ -129,11 +129,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
             formatObject = snippet(providers, GenScavengeAllocationSnippets.class, "formatObjectSnippet");
             formatArray = snippet(providers, GenScavengeAllocationSnippets.class, "formatArraySnippet");
             formatStoredContinuation = ContinuationSupport.isSupported() ? snippet(providers, GenScavengeAllocationSnippets.class, "formatStoredContinuation") : null;
-            formatPod = Pod.RuntimeSupport.isPresent() ? snippet(providers,
-                            GenScavengeAllocationSnippets.class,
-                            "formatPodSnippet",
-                            NamedLocationIdentity.getArrayLocation(JavaKind.Byte))
-                            : null;
+            formatPod = Pod.RuntimeSupport.isPresent() ? snippet(providers, GenScavengeAllocationSnippets.class, "formatPodSnippet", NamedLocationIdentity.getArrayLocation(JavaKind.Byte)) : null;
         }
 
         public void registerLowering(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {

@@ -48,6 +48,7 @@ from collections import defaultdict
 import mx
 import mx_benchmark
 import mx_sdk_vm
+import mx_sdk_vm_ng
 import mx_truffle
 import mx_unittest
 import mx_util
@@ -83,7 +84,7 @@ microbenchmarks = [
 
 def get_jdk(forBuild=False):
     if not forBuild and mx.suite('compiler', fatalIfMissing=False):
-        return mx.get_jdk(tag='jvmci')
+        return mx.get_jdk(tag='graalvm')
     else:
         return mx.get_jdk()
 
@@ -91,6 +92,18 @@ def get_jdk(forBuild=False):
 def graalwasm_standalone_deps():
     include_truffle_runtime = not mx.env_var_to_bool("EXCLUDE_TRUFFLE_RUNTIME")
     return mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=include_truffle_runtime)
+
+def libwasmvm_build_args():
+    image_build_args = []
+    if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25"):
+        image_build_args.extend([
+            '--exclude-config',
+            r'wasm\.jar',
+            r'META-INF/native-image/org\.graalvm\.wasm/wasm-language/native-image\.properties',
+            '--initialize-at-build-time=org.graalvm.wasm',
+            '-H:MaxRuntimeCompileMethods=2000',
+        ])
+    return image_build_args
 
 #
 # Gate runners.
@@ -103,6 +116,14 @@ class GraalWasmDefaultTags:
     wasmbenchtest = "wasmbenchtest"
     coverage = "coverage"
 
+def mx_register_dynamic_suite_constituents(register_project, register_distribution):
+    if register_project and register_distribution:
+        isolate_build_options = []
+        meta_pom = [p for p in _suite.dists if p.name == 'WASM_POM'][0]
+        mx_truffle.register_polyglot_isolate_distributions(_suite, register_project, register_distribution,'wasm',
+                                        'src', meta_pom.name, meta_pom.maven_group_id(), meta_pom.theLicense,
+                                        isolate_build_options=isolate_build_options)
+
 
 def wabt_test_args():
     if not wabt_dir:
@@ -112,24 +133,28 @@ def wabt_test_args():
 
 
 def graal_wasm_gate_runner(args, tasks):
+    unittest_args = []
+    if mx.suite('compiler', fatalIfMissing=False) is not None:
+        unittest_args = ["--use-graalvm"]
+
     with Task("BuildAll", tasks, tags=[GraalWasmDefaultTags.buildall]) as t:
         if t:
             mx.build(["--all"])
 
     with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest], report=True) as t:
         if t:
-            unittest([*wabt_test_args(), "WasmTestSuite"], test_report_tags={'task': t.title})
-            unittest([*wabt_test_args(), "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + [*wabt_test_args(), "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + [*wabt_test_args(), "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
 
     with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest], report=True) as t:
         if t:
-            unittest(["--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + ["--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
 
     with Task("CoverageTests", tasks, tags=[GraalWasmDefaultTags.coverage], report=True) as t:
         if t:
-            unittest([*wabt_test_args(), "-Dwasmtest.coverageMode=true", "WasmTestSuite"], test_report_tags={'task': t.title})
-            unittest([*wabt_test_args(), "-Dwasmtest.coverageMode=true", "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
-            unittest(["-Dwasmtest.coverageMode=true", "--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + [*wabt_test_args(), "-Dwasmtest.coverageMode=true", "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + [*wabt_test_args(), "-Dwasmtest.coverageMode=true", "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest(unittest_args + ["-Dwasmtest.coverageMode=true", "--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
 
     # This is a gate used to test that all the benchmarks return the correct results. It does not upload anything,
     # and does not run on a dedicated machine.
@@ -168,7 +193,17 @@ class WasmUnittestConfig(mx_unittest.MxUnittestConfig):
         # limit heap memory to 4G, unless otherwise specified
         if not any(a.startswith('-Xm') for a in vmArgs):
             vmArgs += ['-Xmx4g']
+        # Export GraalWasm implementation to JUnit test runner
+        mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.wasm/*=org.graalvm.wasm.test']
+        mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.wasm/*=com.oracle.truffle.wasm.closedtestcases']
+        mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.wasm/*=com.oracle.truffle.wasm.debugtests']
         return (vmArgs, mainClass, mainClassArgs)
+
+    def processDeps(self, deps):
+        super().processDeps(deps)
+        truffle_runtime_dist_names = mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=True, use_enterprise=True)
+        mx.logv(f"Adding Truffle runtime distributions {', '.join(truffle_runtime_dist_names)} to unittest dependencies.")
+        deps.update((mx.distribution(d) for d in truffle_runtime_dist_names))
 
 
 mx_unittest.register_unittest_config(WasmUnittestConfig())
@@ -531,6 +566,13 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
             mx.rmtree(self.subject.output_dir(), ignore_errors=True)
 
 
+class GraalVmWatProject(WatProject):
+    def getSourceDir(self):
+        return os.path.join(self.dir, self.subDir)
+
+    def isBenchmarkProject(self):
+        return True
+
 #
 # Launchers and other components.
 #
@@ -641,12 +683,14 @@ def wasm(args, **kwargs):
     mx_truffle.enable_sun_misc_unsafe(vmArgs)
 
     path_args = mx.get_runtime_jvm_args([
-        "TRUFFLE_API",
-        "org.graalvm.wasm",
-        "org.graalvm.wasm.launcher",
+        *mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=True, use_enterprise=True),
+        "WASM",
+        "WASM_LAUNCHER",
     ] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
 
-    return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.launcher.WasmLauncher"] + wasmArgs, jdk=get_jdk(), **kwargs)
+    main_dist = mx.distribution('WASM_LAUNCHER')
+    main_class_arg = '--module=' + main_dist.get_declaring_module_name() + '/' + main_dist.mainClass if main_dist.use_module_path() else main_dist.mainClass
+    return mx.run_java(vmArgs + path_args + [main_class_arg] + wasmArgs, jdk=get_jdk(), **kwargs)
 
 @mx.command(_suite.name, "wasm-memory-layout")
 def wasm_memory_layout(args, **kwargs):

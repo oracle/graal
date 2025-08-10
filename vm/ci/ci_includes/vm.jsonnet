@@ -112,7 +112,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     },
 
     # Linux/AMD64
-    vm_common.graalvm_complete_build_deps('ce', 'linux', 'amd64', java_version='latest') + vm_common.linux_deploy + vm_common.vm_base('linux', 'amd64', 'gate') + vm_common.maven_deploy_base_functions.base_object('linux', 'amd64', dry_run=true, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
+    vm_common.graalvm_complete_build_deps('ce', 'linux', 'amd64', java_version='latest') + vm_common.linux_deploy + vm_common.vm_base('linux', 'amd64', 'gate') + vm_common.maven_deploy_base_functions.base_object('linux', 'amd64', dry_run=true, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local', other_platforms=['linux-aarch64', 'darwin-aarch64', 'windows-amd64']) + {
       name: 'gate-vm-maven-dry-run-linux-amd64',
       timelimit: '1:00:00',
     },
@@ -132,22 +132,22 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       notify_groups:: ['deploy'],
     },
     # Darwin/AMD64
-    vm_common.graalvm_complete_build_deps('ce', 'darwin', 'amd64', java_version='latest') + vm_common.darwin_deploy + vm_common.vm_base('darwin', 'amd64', 'gate', jdk_hint='Latest') + vm_common.maven_deploy_base_functions.base_object('darwin', 'amd64', dry_run=true, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
-      name: 'gate-vm-maven-dry-run-darwin-amd64',
-      timelimit: '1:00:00',
-    },
+    # We do not have a gate that executes a dry-run of Maven deployment for darwin/amd64. We just rely on the daily job defined below.
     vm_common.graalvm_complete_build_deps('ce', 'darwin', 'amd64', java_version='latest') + vm_common.darwin_deploy + vm_common.vm_base('darwin', 'amd64', 'daily', deploy=true, jdk_hint='Latest') + vm_common.maven_deploy_base_functions.base_object('darwin', 'amd64', dry_run=false, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
       name: 'daily-deploy-vm-maven-darwin-amd64',
+      capabilities+: ['darwin_bigsur'],
       timelimit: '1:00:00',
       notify_groups:: ['deploy'],
     },
     # Darwin/AARCH64
     vm_common.graalvm_complete_build_deps('ce', 'darwin', 'aarch64', java_version='latest') + vm_common.darwin_deploy + vm_common.vm_base('darwin', 'aarch64', 'gate') + vm_common.maven_deploy_base_functions.base_object('darwin', 'aarch64', dry_run=true, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
       name: 'gate-vm-maven-dry-run-darwin-aarch64',
+      capabilities+: ['darwin_bigsur'],
       timelimit: '1:00:00',
     },
     vm_common.graalvm_complete_build_deps('ce', 'darwin', 'aarch64', java_version='latest') + vm_common.darwin_deploy + vm_common.vm_base('darwin', 'aarch64', 'daily', deploy=true) + vm_common.maven_deploy_base_functions.base_object('darwin', 'aarch64', dry_run=false, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
       name: 'daily-deploy-vm-maven-darwin-aarch64',
+      capabilities+: ['darwin_bigsur'],
       timelimit: '1:00:00',
       notify_groups:: ['deploy'],
     },

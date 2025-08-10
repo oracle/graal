@@ -36,7 +36,6 @@ import jdk.graal.compiler.nodes.calc.RemNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -65,10 +64,4 @@ public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvid
             super.lower(n, tool);
         }
     }
-
-    @Override
-    public boolean supportsRounding() {
-        return ((AMD64) getTarget().arch).getFeatures().contains(AMD64.CPUFeature.SSE4_1);
-    }
-
 }

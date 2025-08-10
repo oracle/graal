@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,13 @@
  */
 package com.oracle.svm.interpreter;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import static com.oracle.svm.hosted.pltgot.GOTEntryAllocator.GOT_NO_ENTRY;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEDYNAMIC;
+import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEINTERFACE;
+import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKESPECIAL;
+import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKESTATIC;
+import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEVIRTUAL;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.EST_NO_ENTRY;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_NO_ENTRY;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_ONE_IMPL;
@@ -35,6 +40,7 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -65,7 +71,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.FunctionPointerHolder;
-import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -73,10 +78,12 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.DeoptimizationFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageGenerator;
+import com.oracle.svm.hosted.SymbolsFeature;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.image.NativeImageHeap;
@@ -113,6 +120,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
@@ -151,7 +159,8 @@ public class DebuggerFeature implements InternalFeature {
         return Arrays.asList(
                         DeoptimizationFeature.class,
                         InterpreterFeature.class,
-                        IdentityMethodAddressResolverFeature.class);
+                        IdentityMethodAddressResolverFeature.class,
+                        SymbolsFeature.class);
     }
 
     private static Class<?> getArgumentClass(GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, ValueNode arg) {
@@ -256,9 +265,18 @@ public class DebuggerFeature implements InternalFeature {
         return m.isReachable() || m.isDirectRootMethod() || m.isVirtualRootMethod();
     }
 
+    private static boolean isInvokeSpecial(AnalysisMethod method) {
+        boolean invokeSpecial = method.isConstructor();
+        if (!invokeSpecial) {
+            invokeSpecial = Modifier.isPrivate(method.getModifiers());
+        }
+        return invokeSpecial;
+    }
+
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) access;
+        MetaAccessProvider metaAccessProvider = accessImpl.getMetaAccess();
 
         boolean addedIndyHelper = false;
         for (AnalysisMethod m : accessImpl.getUniverse().getMethods()) {
@@ -307,12 +325,12 @@ public class DebuggerFeature implements InternalFeature {
                 methodsProcessedDuringAnalysis.add(method);
                 if (method.wrapped instanceof SubstitutionMethod subMethod && subMethod.isUserSubstitution()) {
                     if (subMethod.getOriginal().isNative()) {
-                        accessImpl.registerAsRoot(method, false, "compiled entry point of substitution needed for interpreter");
+                        accessImpl.registerAsRoot(method, isInvokeSpecial(method), "compiled entry point of substitution needed for interpreter");
                         continue;
                     }
                 }
                 byte[] code = method.getCode();
-                if (code == null) {
+                if (code == null || !InterpreterFeature.callableByInterpreter(method, metaAccessProvider)) {
                     continue;
                 }
                 AnalysisType declaringClass = method.getDeclaringClass();
@@ -328,26 +346,21 @@ public class DebuggerFeature implements InternalFeature {
                     accessImpl.registerAsUsed(declaringClass, "interpreter needs dynamic hub at runtime for this class");
                     access.requireAnalysisIteration();
                 }
+                InvocationPlugin invocationPlugin = accessImpl.getBigBang().getProviders(method).getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method,
+                                accessImpl.getBigBang().getOptions());
+                if (invocationPlugin != null) {
+                    // There's an invocation plugin for this method.
+                    continue;
+                }
+                boolean analyzeCallees = true;
                 for (int bci = 0; bci < BytecodeStream.endBCI(code); bci = BytecodeStream.nextBCI(code, bci)) {
                     int bytecode = BytecodeStream.currentBC(code, bci);
                     if (bytecode == INVOKEDYNAMIC) {
                         int targetMethodCPI = BytecodeStream.readCPI4(code, bci);
-                        JavaMethod targetMethod = method.getConstantPool().lookupMethod(targetMethodCPI, bytecode);
-                        /*
-                         * SVM optimizes away javac's INVOKDYNAMIC-based String concatenation e.g.
-                         * MH.makeConcatWithConstants(...) . The CP method entry remains unresolved.
-                         *
-                         * Only reachable call sites should have its method and appendix included in
-                         * the image, for now, ALL INVOKEDYNAMIC call sites of reachable methods are
-                         * included.
-                         */
-                        if (targetMethod instanceof UnresolvedJavaMethod) {
-                            method.getConstantPool().loadReferencedType(targetMethodCPI, bytecode);
-                            targetMethod = method.getConstantPool().lookupMethod(targetMethodCPI, bytecode);
-                        }
-                        if (targetMethod instanceof AnalysisMethod analysisMethod) {
-                            accessImpl.registerAsRoot(analysisMethod, true, "forced for indy support in interpreter");
-                            InterpreterUtil.log("[during analysis] force %s mark as reachable", targetMethod);
+                        AnalysisMethod analysisMethod = getAnalysisMethodAt(method.getConstantPool(), targetMethodCPI, bytecode);
+                        if (analysisMethod != null) {
+                            accessImpl.registerAsRoot(analysisMethod, false, "forced for indy support in interpreter");
+                            InterpreterUtil.log("[during analysis] force %s mark as reachable", analysisMethod);
                         }
 
                         JavaConstant appendixConstant = method.getConstantPool().lookupAppendix(targetMethodCPI, bytecode);
@@ -355,10 +368,63 @@ public class DebuggerFeature implements InternalFeature {
                             supportImpl.ensureConstantIsInImageHeap(snippetReflection, imageHeapConstant);
                         }
                     }
+                    if (analyzeCallees) {
+                        switch (bytecode) {
+                            /* GR-53540: Handle invokedyanmic too */
+                            case INVOKESPECIAL, INVOKESTATIC, INVOKEVIRTUAL, INVOKEINTERFACE -> {
+                                int originalCPI = BytecodeStream.readCPI(code, bci);
+
+                                try {
+                                    AnalysisMethod calleeMethod = getAnalysisMethodAt(method.getConstantPool(), originalCPI, bytecode);
+                                    if (calleeMethod == null || !calleeMethod.isReachable()) {
+                                        continue;
+                                    }
+
+                                    if (!InterpreterFeature.callableByInterpreter(calleeMethod, metaAccessProvider)) {
+                                        InterpreterUtil.log("[process invokes] cannot execute %s due to call-site (%s) @ bci=%s is not callable by interpreter%n", method.getName(), bci, calleeMethod);
+                                        if (method.getAnalyzedGraph() == null) {
+                                            accessImpl.registerAsRoot(method, isInvokeSpecial(method), "method handle for interpreter");
+                                            accessImpl.registerAsUsed(method.getDeclaringClass().getJavaClass());
+                                            access.requireAnalysisIteration();
+                                        }
+                                        if (method.reachableInCurrentLayer()) {
+                                            SubstrateCompilationDirectives.singleton().registerForcedCompilation(method);
+                                        }
+                                        analyzeCallees = false;
+                                        break;
+                                    }
+                                } catch (UnsupportedFeatureException | UserError.UserException e) {
+                                    InterpreterUtil.log("[process invokes] lookup in method %s failed due to:", method);
+                                    InterpreterUtil.log(e);
+                                    // ignore, call will fail at run-time if reached
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
         supportImpl.trimForcedReferencesInImageHeap();
+    }
+
+    private static AnalysisMethod getAnalysisMethodAt(ConstantPool constantPool, int targetMethodCPI, int bytecode) {
+        JavaMethod targetMethod = constantPool.lookupMethod(targetMethodCPI, bytecode);
+        /*
+         * SVM optimizes away javac's INVOKDYNAMIC-based String concatenation e.g.
+         * MH.makeConcatWithConstants(...) . The CP method entry remains unresolved.
+         *
+         * Only reachable call sites should have its method and appendix included in the image, for
+         * now, ALL INVOKEDYNAMIC call sites of reachable methods are included.
+         */
+        if (targetMethod instanceof UnresolvedJavaMethod) {
+            constantPool.loadReferencedType(targetMethodCPI, bytecode);
+            targetMethod = constantPool.lookupMethod(targetMethodCPI, bytecode);
+        }
+        if (targetMethod instanceof AnalysisMethod analysisMethod) {
+            return analysisMethod;
+        } else {
+            return null;
+        }
     }
 
     @Override
@@ -406,7 +472,7 @@ public class DebuggerFeature implements InternalFeature {
         for (HostedMethod hMethod : hUniverse.getMethods()) {
             AnalysisMethod aMethod = hMethod.getWrapped();
             if (isReachable(aMethod)) {
-                boolean needsMethodBody = InterpreterFeature.executableByInterpreter(aMethod);
+                boolean needsMethodBody = InterpreterFeature.executableByInterpreter(aMethod) && InterpreterFeature.callableByInterpreter(hMethod, hMetaAccess);
                 // Test if the methods needs to be compiled for execution in the interpreter:
                 if (aMethod.getAnalyzedGraph() != null && //
                                 (aMethod.wrapped instanceof SubstitutionMethod subMethod && subMethod.isUserSubstitution() ||
@@ -437,9 +503,6 @@ public class DebuggerFeature implements InternalFeature {
         for (HostedType hostedType : hUniverse.getTypes()) {
             iUniverse.mirrorSVMVTable(hostedType, objectType -> accessImpl.getHeapScanner().rescanField(objectType, vtableHolderField));
         }
-
-        HostedMethod methodNotCompiledHandler = hMetaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
-        InterpreterMethodPointerHolder.setMethodNotCompiledHandler(new MethodPointer(methodNotCompiledHandler));
 
         // Allow methods that call System.arraycopy to be interpreted.
         try {

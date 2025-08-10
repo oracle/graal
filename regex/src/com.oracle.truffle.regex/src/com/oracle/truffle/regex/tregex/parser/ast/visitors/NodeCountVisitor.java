@@ -57,7 +57,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
  */
 public class NodeCountVisitor extends DepthFirstTraversalRegexASTVisitor {
 
-    private int count = 0;
+    protected int count = 0;
 
     public int count(RegexASTNode runRoot) {
         count = 0;

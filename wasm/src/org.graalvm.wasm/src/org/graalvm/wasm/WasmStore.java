@@ -43,14 +43,17 @@ package org.graalvm.wasm;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.parser.bytecode.BytecodeParser;
 import org.graalvm.wasm.predefined.BuiltinModule;
 import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.interop.TruffleObject;
 
 /**
  * Holds shared (a.k.a. global) state that belongs to a module instantiation & linking context.
@@ -62,15 +65,13 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
  * {@link WasmContext}'s primary {@link WasmStore}, while modules instantiated through the
  * {@code module_instantiate} JS API each get their own private {@link WasmStore}.
  */
-public final class WasmStore {
+public final class WasmStore implements TruffleObject {
     private final WasmContext context;
     private final WasmLanguage language;
     private final MemoryRegistry memoryRegistry;
-    private final GlobalRegistry globals;
     private final TableRegistry tableRegistry;
     private final Linker linker;
     private final Map<String, WasmInstance> moduleInstances;
-    private WasmInstance mainModuleInstance;
     private final FdManager filesManager;
     private final WasmContextOptions contextOptions;
 
@@ -78,13 +79,11 @@ public final class WasmStore {
         this.context = context;
         this.language = language;
         this.contextOptions = context.getContextOptions();
-        this.globals = new GlobalRegistry();
         this.tableRegistry = new TableRegistry();
         this.memoryRegistry = new MemoryRegistry();
         this.moduleInstances = new LinkedHashMap<>();
         this.linker = new Linker();
         this.filesManager = context.fdManager();
-        instantiateBuiltinInstances();
     }
 
     public WasmContext context() {
@@ -101,10 +100,6 @@ public final class WasmStore {
 
     public MemoryRegistry memories() {
         return memoryRegistry;
-    }
-
-    public GlobalRegistry globals() {
-        return globals;
     }
 
     public TableRegistry tables() {
@@ -138,50 +133,56 @@ public final class WasmStore {
         return moduleInstances.get(name);
     }
 
-    /**
-     * Returns the first module evaluated in this context (not including built-in modules).
-     */
-    public WasmInstance lookupMainModule() {
-        return mainModuleInstance;
-    }
-
     public void register(WasmInstance instance) {
         if (moduleInstances.containsKey(instance.name())) {
             throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Context already contains an instance named '" + instance.name() + "'.");
         }
         moduleInstances.put(instance.name(), instance);
-        if (mainModuleInstance == null && !instance.isBuiltin()) {
-            mainModuleInstance = instance;
-        }
     }
 
-    private void instantiateBuiltinInstances() {
-        final String extraModuleValue = WasmOptions.Builtins.getValue(environment().getOptions());
-        if (extraModuleValue.isEmpty()) {
-            return;
+    public ImportValueSupplier instantiateBuiltinInstances() {
+        final Map<String, BuiltinModule> builtinModules = WasmOptions.Builtins.getValue(environment().getOptions());
+        var importValues = ImportValueSupplier.none();
+        if (builtinModules.isEmpty()) {
+            return importValues;
         }
-        final String[] moduleSpecs = extraModuleValue.split(",");
-        for (String moduleSpec : moduleSpecs) {
-            final String[] parts = moduleSpec.split(":");
-            if (parts.length > 2) {
-                throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Module specification '" + moduleSpec + "' is not valid.");
+        for (Map.Entry<String, BuiltinModule> entry : builtinModules.entrySet()) {
+            final String name = entry.getKey();
+            final BuiltinModule builtinModule = entry.getValue();
+
+            final WasmInstance importingModuleInstance = lookupImportingModuleInstance(name);
+            // only instantiate built-in modules that are actually imported
+            if (importingModuleInstance == null) {
+                continue;
             }
-            final String name = parts[0];
-            final String key = parts.length == 2 ? parts[1] : parts[0];
-            final WasmInstance module = BuiltinModule.createBuiltinInstance(language, this, name, key);
-            moduleInstances.put(name, module);
+            final WasmInstance builtinInstance = builtinModule.createInstance(language, this, name);
+            moduleInstances.put(name, builtinInstance);
+            if (builtinInstance.module().numImportedSymbols() != 0) {
+                // Link imports of the built-in module (WASIp1 memory) to the importing module.
+                importValues = importValues.andThen((importDesc, intoInstance) -> {
+                    if (intoInstance == builtinInstance) {
+                        try {
+                            return WebAssembly.instanceExport(importingModuleInstance, importDesc.memberName());
+                        } catch (WasmJsApiException e) {
+                            // fallthrough
+                        }
+                    }
+                    return null;
+                });
+            }
         }
+        return importValues;
     }
 
-    public WasmModule readModule(byte[] data, ModuleLimits moduleLimits) {
-        return readModule("Unnamed", data, moduleLimits);
-    }
-
-    public WasmModule readModule(String moduleName, byte[] data, ModuleLimits moduleLimits) {
-        final WasmModule module = WasmModule.create(moduleName, moduleLimits);
-        final BinaryParser reader = new BinaryParser(module, context, data);
-        reader.readModule();
-        return module;
+    private WasmInstance lookupImportingModuleInstance(String moduleName) {
+        for (WasmInstance instance : moduleInstances().values()) {
+            for (ImportDescriptor importDesc : instance.module().importedSymbols()) {
+                if (moduleName.equals(importDesc.moduleName())) {
+                    return instance;
+                }
+            }
+        }
+        return null;
     }
 
     @TruffleBoundary
@@ -199,9 +200,9 @@ public final class WasmStore {
         // Note: this is not a complete and correct instantiation as defined in
         // https://webassembly.github.io/spec/core/exec/modules.html#instantiation
         // For testing only.
-        BytecodeParser.resetGlobalState(this, instance.module(), instance);
+        BytecodeParser.resetGlobalState(instance.module(), instance);
         if (reinitMemory) {
-            BytecodeParser.resetMemoryState(this, instance.module(), instance);
+            BytecodeParser.resetMemoryState(instance.module(), instance);
             BytecodeParser.resetTableState(this, instance.module(), instance);
             Linker.runStartFunction(instance);
         }

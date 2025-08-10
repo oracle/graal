@@ -103,6 +103,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
@@ -650,9 +651,9 @@ public abstract class NativeImage extends AbstractImage {
      * accessors}, {@linkplain JNIAccessibleMethod JNI accessors} and in
      * {@link FunctionPointerHolder}.
      *
-     * With {@link SubstrateOptions#RelativeCodePointers}, virtual dispatch tables contain offsets
-     * relative to a code base address and so do not need to be patched at runtime, which also
-     * avoids the cost of private copies of memory pages with the patched values.
+     * With {@link SubstrateOptions#useRelativeCodePointers()}, virtual dispatch tables contain
+     * offsets relative to a code base address and so do not need to be patched at runtime, which
+     * also avoids the cost of private copies of memory pages with the patched values.
      *
      * With code offsets and layered images, however, the code base refers only to the initial
      * layer's code section, so we patch offsets to code from other layers to become relative to
@@ -666,18 +667,13 @@ public abstract class NativeImage extends AbstractImage {
      */
     private void markSiteOfRelocationToCode(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
         Object targetObject = info.getTargetObject();
-        assert targetObject instanceof MethodPointer || targetObject instanceof MethodOffset : "Wrong type for code relocation: " + targetObject.toString();
+        assert targetObject instanceof MethodRef : "Wrong type for code relocation: " + targetObject.toString();
 
         if (sectionImpl.getElement() == textSection) {
             validateNoDirectRelocationsInTextSection(info);
         }
 
-        ResolvedJavaMethod method;
-        if (targetObject instanceof MethodOffset methodOffset) {
-            method = methodOffset.getMethod();
-        } else {
-            method = ((MethodPointer) targetObject).getMethod();
-        }
+        ResolvedJavaMethod method = ((MethodRef) targetObject).getMethod();
         HostedMethod hMethod = (method instanceof HostedMethod) ? (HostedMethod) method : heap.hUniverse.lookup(method);
         boolean injectedNotCompiled = isInjectedNotCompiled(hMethod);
         HostedMethod target = getMethodRefTargetMethod(metaAccess, hMethod);
@@ -1129,6 +1125,18 @@ final class MethodPointerInvalidHandlerFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-        access.registerAsRoot(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD, true, "InvalidMethodPointerHandler, registered in " + MethodPointerInvalidHandlerFeature.class);
+        Method invalidCodeAddressHandler = getInvalidCodeAddressHandler();
+        if (invalidCodeAddressHandler != null) {
+            access.registerAsRoot(invalidCodeAddressHandler, true, "Registered in " + MethodPointerInvalidHandlerFeature.class);
+        }
+        access.registerAsRoot(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD, true, "Registered in " + MethodPointerInvalidHandlerFeature.class);
+    }
+
+    static Method getInvalidCodeAddressHandler() {
+        if (HostedImageLayerBuildingSupport.buildingExtensionLayer()) {
+            /* Code offset 0 is in the initial layer, where the handler is already present. */
+            return null;
+        }
+        return InvalidMethodPointerHandler.INVALID_CODE_ADDRESS_HANDLER_METHOD;
     }
 }

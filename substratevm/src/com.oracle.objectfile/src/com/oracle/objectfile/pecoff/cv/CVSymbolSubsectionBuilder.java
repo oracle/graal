@@ -26,17 +26,17 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R8;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MAX_PRIMITIVE;
+
+import java.lang.reflect.Modifier;
+
 import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.FieldEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debugentry.range.Range;
-
-import java.lang.reflect.Modifier;
-
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R8;
-import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MAX_PRIMITIVE;
 
 final class CVSymbolSubsectionBuilder {
 
@@ -68,8 +68,8 @@ final class CVSymbolSubsectionBuilder {
         /* Loop over all classes defined in this module. */
         for (TypeEntry typeEntry : cvDebugInfo.getTypes()) {
             /* Add type record for this entry. */
-            if (typeEntry.isClass()) {
-                buildClass((ClassEntry) typeEntry);
+            if (typeEntry instanceof ClassEntry classEntry) {
+                buildClass(classEntry);
             } else {
                 addTypeRecords(typeEntry);
             }
@@ -85,13 +85,13 @@ final class CVSymbolSubsectionBuilder {
     private void buildClass(ClassEntry classEntry) {
 
         /* Define all the functions in this class all functions defined in this class. */
-        classEntry.compiledEntries().forEach(this::buildFunction);
+        classEntry.compiledMethods().forEach(this::buildFunction);
 
         /* Define the class itself. */
         addTypeRecords(classEntry);
 
         /* Add manifested static fields as S_GDATA32 records. */
-        classEntry.fields().filter(CVSymbolSubsectionBuilder::isManifestedStaticField).forEach(f -> {
+        classEntry.getFields().stream().filter(CVSymbolSubsectionBuilder::isManifestedStaticField).forEach(f -> {
             int typeIndex = cvDebugInfo.getCVTypeSection().getIndexForPointer(f.getValueType());
             String displayName = CVNames.fieldNameToCodeViewName(f);
             if (cvDebugInfo.useHeapBase()) {
@@ -118,7 +118,7 @@ final class CVSymbolSubsectionBuilder {
      * @param compiledEntry compiled method for this function
      */
     private void buildFunction(CompiledMethodEntry compiledEntry) {
-        final Range primaryRange = compiledEntry.getPrimary();
+        final Range primaryRange = compiledEntry.primary();
 
         /* The name as it will appear in the debugger. */
         final String debuggerName = CVNames.methodNameToCodeViewName(primaryRange.getMethodEntry());
@@ -129,8 +129,8 @@ final class CVSymbolSubsectionBuilder {
         /* S_PROC32 add function definition. */
         int functionTypeIndex = addTypeRecords(compiledEntry);
         byte funcFlags = 0;
-        CVSymbolSubrecord.CVSymbolGProc32Record proc32 = new CVSymbolSubrecord.CVSymbolGProc32Record(cvDebugInfo, externalName, debuggerName, 0, 0, 0, primaryRange.getHi() - primaryRange.getLo(), 0,
-                        0, functionTypeIndex, (short) 0, funcFlags);
+        CVSymbolSubrecord.CVSymbolGProc32Record proc32 = new CVSymbolSubrecord.CVSymbolGProc32Record(cvDebugInfo, externalName, debuggerName, 0, 0, 0,
+                        primaryRange.getHiOffset() - primaryRange.getLoOffset(), 0, 0, functionTypeIndex, (short) 0, funcFlags);
         addSymbolRecord(proc32);
 
         /* S_FRAMEPROC add frame definitions. */
@@ -139,7 +139,7 @@ final class CVSymbolSubsectionBuilder {
         int localBP = 1 << 14; /* Local base pointer = SP (0=none, 1=sp, 2=bp 3=r13). */
         int paramBP = 1 << 16; /* Param base pointer = SP. */
         int frameFlags = asynceh + localBP + paramBP; /* NB: LLVM uses 0x14000. */
-        addSymbolRecord(new CVSymbolSubrecord.CVSymbolFrameProcRecord(cvDebugInfo, compiledEntry.getFrameSize(), frameFlags));
+        addSymbolRecord(new CVSymbolSubrecord.CVSymbolFrameProcRecord(cvDebugInfo, compiledEntry.frameSize(), frameFlags));
 
         /* TODO: add parameter definitions (types have been added already). */
         /* TODO: add local variables, and their types. */

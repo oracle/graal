@@ -58,7 +58,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -130,10 +129,7 @@ import com.oracle.truffle.espresso.vm.VM;
 
 import sun.misc.SignalHandler;
 
-public final class EspressoContext
-                implements RuntimeAccess<Klass, Method, Field> {
-    // MaxJavaStackTraceDepth is 1024 by default
-    public static final int DEFAULT_STACK_SIZE = 32;
+public final class EspressoContext implements RuntimeAccess<Klass, Method, Field> {
 
     private static final DebugTimer SPAWN_VM = DebugTimer.create("spawnVM");
     private static final DebugTimer SYSTEM_INIT = DebugTimer.create("system init", SPAWN_VM);
@@ -439,10 +435,6 @@ public final class EspressoContext
                 }
             } else {
                 getLanguage().tryInitializeJavaVersion(contextJavaVersion);
-            }
-
-            if (!contextJavaVersion.java21OrLater() && getEspressoEnv().RegexSubstitutions) {
-                logger.warning("UseTRegex is not available for context running Java version < 21");
             }
 
             // Spawn JNI first, then the VM.
@@ -901,7 +893,7 @@ public final class EspressoContext
     }
 
     public boolean advancedRedefinitionEnabled() {
-        return espressoEnv.JDWPOptions != null;
+        return espressoEnv.AdvancedRedefinition;
     }
 
     public TypeSymbols getTypes() {
@@ -1258,24 +1250,24 @@ public final class EspressoContext
         espressoEnv.getEventListener().onContendedMonitorEntered(obj);
     }
 
-    public boolean reportOnMethodEntry(Method.MethodVersion methodVersion, Object scope) {
+    public boolean reportOnMethodEntry(Method.MethodVersion methodVersion, Node node, Object scope) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onMethodEntry(methodVersion.getMethod(), scope);
+        return espressoEnv.getEventListener().onMethodEntry(methodVersion.getMethod(), node, scope);
     }
 
-    public boolean reportOnMethodReturn(Method.MethodVersion methodVersion, Object returnValue) {
+    public boolean reportOnMethodReturn(Method.MethodVersion methodVersion, Node node, Object returnValue) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onMethodReturn(methodVersion.getMethod(), returnValue);
+        return espressoEnv.getEventListener().onMethodReturn(methodVersion.getMethod(), node, returnValue);
     }
 
-    public boolean reportOnFieldModification(Field field, StaticObject receiver, Object value) {
+    public boolean reportOnFieldModification(Field field, Node node, StaticObject receiver, Object value) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onFieldModification(field, receiver, value);
+        return espressoEnv.getEventListener().onFieldModification(field, node, receiver, value);
     }
 
-    public boolean reportOnFieldAccess(Field field, StaticObject receiver) {
+    public boolean reportOnFieldAccess(Field field, Node node, StaticObject receiver) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onFieldAccess(field, receiver);
+        return espressoEnv.getEventListener().onFieldAccess(field, node, receiver);
     }
     // endregion VM event reporting
 
@@ -1321,11 +1313,6 @@ public final class EspressoContext
 
     public boolean interfaceMappingsEnabled() {
         return getEspressoEnv().getPolyglotTypeMappings().hasInterfaceMappings();
-    }
-
-    @Idempotent
-    public boolean regexSubstitutionsEnabled() {
-        return getEspressoEnv().RegexSubstitutions && getJavaVersion().java21OrLater();
     }
 
     public PolyglotTypeMappings getPolyglotTypeMappings() {

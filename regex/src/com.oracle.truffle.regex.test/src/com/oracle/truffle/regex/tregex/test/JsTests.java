@@ -689,6 +689,11 @@ public class JsTests extends RegexTestBase {
     }
 
     @Test
+    public void quantifierUnrollNFAExplosion() {
+        test("(?:\\3((?:[^]|.{0}|\\B|\ub9b5\\b|$){4,}){1,4})", "yim", "\ua3bb\n\n\u00a1\n\na\u2f77\n\n\ua3bb\n\n\u00a1\n\na\u2f77\n\n", 0, false);
+    }
+
+    @Test
     public void overlappingBq() {
         testBoolean("(?=a{2,4})[ab]{4,68}c", "", NEVER_UNROLL_OPT, "aabbbbbbbbbbbbbbbbbbbbbbc", 0, true);
     }

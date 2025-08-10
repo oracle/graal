@@ -160,6 +160,7 @@ fld public final static java.lang.String PROPERTY_IMAGE_CODE_VALUE_RUNTIME = "ru
 fld public final static java.lang.String PROPERTY_IMAGE_KIND_KEY = "org.graalvm.nativeimage.kind"
 fld public final static java.lang.String PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE = "executable"
 fld public final static java.lang.String PROPERTY_IMAGE_KIND_VALUE_SHARED_LIBRARY = "shared"
+fld public final static java.lang.String PROPERTY_NATIVE_IMAGE_PREFIX = "org.graalvm.nativeimage."
 meth public static boolean inImageBuildtimeCode()
 meth public static boolean inImageCode()
 meth public static boolean inImageRuntimeCode()
@@ -230,6 +231,10 @@ CLSS public abstract interface org.graalvm.nativeimage.LogHandler
 meth public abstract void fatalError()
 meth public abstract void flush()
 meth public abstract void log(org.graalvm.nativeimage.c.type.CCharPointer,org.graalvm.word.UnsignedWord)
+
+CLSS public final org.graalvm.nativeimage.MissingForeignRegistrationError
+cons public init(java.lang.String)
+supr java.lang.LinkageError
 
 CLSS public final org.graalvm.nativeimage.MissingJNIRegistrationError
 cons public init(java.lang.String,java.lang.Class<?>,java.lang.Class<?>,java.lang.String,java.lang.String)

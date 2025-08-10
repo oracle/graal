@@ -3544,6 +3544,17 @@ def _image_profiles(image):
             profiles += arg[prefix_len:].split(',')
     return profiles
 
+def _multitarget_libc_selection():
+    full_spec = mx_native.TargetSelection.get_selection()
+    if len(full_spec) > 1:
+        mx.logv(f"Multiple targets selected: {full_spec} (first one wins)")
+    full_spec = full_spec[0]
+    ret = full_spec.libc
+    if full_spec.variant is not None:
+        ret = f"{ret}-{full_spec.variant}"
+    return ret
+
+mx_subst.results_substitutions.register_no_arg('multitarget_libc_selection', _multitarget_libc_selection)
 
 def _no_licenses():
     return mx.get_opts().no_licenses or _env_var_to_bool('NO_LICENSES')

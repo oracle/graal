@@ -116,27 +116,13 @@ public class WasmInstantiator {
             if (importedGlobals.containsKey(globalIndex)) {
                 final ImportDescriptor globalDescriptor = importedGlobals.get(globalIndex);
                 linkActions.add((context, store, instance, imports) -> {
-                    instance.setGlobalAddress(globalIndex, SymbolTable.UNINITIALIZED_ADDRESS);
-                });
-                linkActions.add((context, store, instance, imports) -> {
                     store.linker().resolveGlobalImport(store, instance, globalDescriptor, globalIndex, globalValueType, globalMutability, imports);
                 });
             } else {
-                final boolean initialized = module.globalInitialized(globalIndex);
                 final byte[] initBytecode = module.globalInitializerBytecode(globalIndex);
                 final Object initialValue = module.globalInitialValue(globalIndex);
                 linkActions.add((context, store, instance, imports) -> {
-                    final GlobalRegistry registry = store.globals();
-                    final int address = registry.allocateGlobal();
-                    instance.setGlobalAddress(globalIndex, address);
-                });
-                linkActions.add((context, store, instance, imports) -> {
-                    if (initialized) {
-                        store.globals().store(globalValueType, instance.globalAddress(globalIndex), initialValue);
-                        store.linker().resolveGlobalInitialization(instance, globalIndex);
-                    } else {
-                        store.linker().resolveGlobalInitialization(store, instance, globalIndex, initBytecode);
-                    }
+                    store.linker().resolveGlobalInitialization(instance, globalIndex, initBytecode, initialValue);
                 });
             }
         }
@@ -158,8 +144,6 @@ public class WasmInstantiator {
             if (tableDescriptor != null) {
                 linkActions.add((context, store, instance, imports) -> {
                     instance.setTableAddress(tableIndex, SymbolTable.UNINITIALIZED_ADDRESS);
-                });
-                linkActions.add((context, store, instance, imports) -> {
                     store.linker().resolveTableImport(store, instance, tableDescriptor, tableIndex, tableMinSize, tableMaxSize, tableElemType, imports);
                 });
             } else {
@@ -267,7 +251,8 @@ public class WasmInstantiator {
                 }
                 final byte[] dataOffsetBytecode;
                 final long dataOffsetAddress;
-                if ((encoding & BytecodeBitEncoding.DATA_SEG_BYTECODE_OR_OFFSET_MASK) == BytecodeBitEncoding.DATA_SEG_BYTECODE) {
+                if ((encoding & BytecodeBitEncoding.DATA_SEG_BYTECODE_OR_OFFSET_MASK) == BytecodeBitEncoding.DATA_SEG_BYTECODE &&
+                                ((encoding & BytecodeBitEncoding.DATA_SEG_VALUE_MASK) != BytecodeBitEncoding.DATA_SEG_VALUE_UNDEFINED)) {
                     int dataOffsetBytecodeLength = (int) value;
                     dataOffsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + dataOffsetBytecodeLength);
                     effectiveOffset += dataOffsetBytecodeLength;
@@ -285,7 +270,7 @@ public class WasmInstantiator {
                     effectiveOffset++;
                     switch (memoryIndexEncoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_MASK) {
                         case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U6:
-                            memoryIndex = encoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_VALUE;
+                            memoryIndex = memoryIndexEncoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_VALUE;
                             break;
                         case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U8:
                             memoryIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);

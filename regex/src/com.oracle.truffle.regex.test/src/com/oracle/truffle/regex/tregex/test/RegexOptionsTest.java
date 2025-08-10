@@ -56,11 +56,11 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.flavor.js.ECMAScriptFlavor;
+import com.oracle.truffle.regex.flavor.python.PythonFlavor;
+import com.oracle.truffle.regex.flavor.ruby.RubyFlavor;
 import com.oracle.truffle.regex.test.dummylang.TRegexTestDummyLanguage;
-import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
-import com.oracle.truffle.regex.tregex.parser.flavors.MatchingMode;
-import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
-import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
+import com.oracle.truffle.regex.tregex.parser.MatchingMode;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class RegexOptionsTest extends RegexTestBase {

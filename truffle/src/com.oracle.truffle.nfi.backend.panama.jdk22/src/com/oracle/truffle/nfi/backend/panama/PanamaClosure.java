@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -242,24 +243,27 @@ final class PanamaClosure implements TruffleObject {
             NFIState nfiState = language.getNFIState();
             ErrorContext ctx = (ErrorContext) language.errorContext.get();
             nfiState.setNFIErrno(ctx.getNativeErrno());
-            try {
-                Object ret = callClosure.execute(frame);
-                if (interopLibrary.isNull(ret)) {
-                    return null;
-                }
-                return toJavaRet.execute(ret);
-            } catch (Throwable t) {
-                exceptionProfile.enter();
-                TruffleStackTrace.fillIn(t);
-                nfiState.setPendingException(t);
+            try (Arena arena = Arena.ofConfined()) {
+
                 try {
-                    return toJavaRet.execute("");
-                } catch (UnsupportedTypeException ex) {
-                    // toJavaRet expects a string, so this should always work
-                    throw CompilerDirectives.shouldNotReachHere();
+                    Object ret = callClosure.execute(frame);
+                    if (interopLibrary.isNull(ret)) {
+                        return null;
+                    }
+                    return toJavaRet.execute(arena, ret);
+                } catch (Throwable t) {
+                    exceptionProfile.enter();
+                    TruffleStackTrace.fillIn(t);
+                    nfiState.setPendingException(t);
+                    try {
+                        return toJavaRet.execute(arena, "");
+                    } catch (UnsupportedTypeException ex) {
+                        // toJavaRet expects a string, so this should always work
+                        throw CompilerDirectives.shouldNotReachHere();
+                    }
+                } finally {
+                    ctx.setNativeErrno(nfiState.getNFIErrno());
                 }
-            } finally {
-                ctx.setNativeErrno(nfiState.getNFIErrno());
             }
         }
     }
@@ -327,6 +331,7 @@ final class PanamaClosure implements TruffleObject {
 
         private GenericRetClosureRootNode(PanamaNFILanguage lang, CachedSignatureInfo signature, ClosureArgumentNode receiver) {
             super(lang);
+            assert !signature.retType.needsArena();
             callClosure = CallClosureNodeGen.create(signature, receiver);
             toJavaRet = signature.retType.createArgumentNode();
             interopLibrary = InteropLibrary.getFactory().createDispatched(4);
@@ -343,15 +348,15 @@ final class PanamaClosure implements TruffleObject {
             try {
                 Object ret = callClosure.execute(frame);
                 if (interopLibrary.isNull(ret)) {
-                    return toJavaRet.execute(0);
+                    return toJavaRet.execute(null, 0);
                 }
-                return toJavaRet.execute(ret);
+                return toJavaRet.execute(null, ret);
             } catch (Throwable t) {
                 exceptionProfile.enter();
                 TruffleStackTrace.fillIn(t);
                 nfiState.setPendingException(t);
                 try {
-                    return toJavaRet.execute(0);
+                    return toJavaRet.execute(null, 0);
                 } catch (UnsupportedTypeException e) {
                     // we expect 0 to be convertible to every type
                     throw CompilerDirectives.shouldNotReachHere();

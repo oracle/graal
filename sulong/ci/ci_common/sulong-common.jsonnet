@@ -89,17 +89,9 @@ local sulong_deps = common.deps.sulong;
     notify_groups:: ["sulong"],
   },
 
-  gate:: {
-    targets+: ["gate"],
-  },
-
-  daily:: $.sulong_notifications {
-    targets+: ["daily"],
-  },
-
-  weekly:: $.sulong_notifications {
-    targets+: ["weekly"],
-  },
+  post_merge:: $.sulong_notifications + common.frequencies.post_merge,
+  daily:: $.sulong_notifications + common.frequencies.daily,
+  weekly:: $.sulong_notifications + common.frequencies.weekly,
 
   mxCommand:: {
     extra_mx_args+:: [],
@@ -154,9 +146,12 @@ local sulong_deps = common.deps.sulong;
     gateTags:: std.split(tags, ","),
   },
 
-  style:: common.deps.eclipse + common.deps.jdt + common.deps.spotbugs + $.gateTags("style,fullbuild") + {
+  local strict_gate(tags) = $.gateTags(tags) + {
     extra_gate_args+:: ["--strict-mode"],
   },
+
+  style:: common.deps.eclipse + strict_gate("style"),
+  fullbuild:: common.deps.jdt + common.deps.spotbugs + strict_gate("fullbuild"),
 
   coverage(builds):: $.llvmBundled + $.requireGMP + $.mxGate + {
       local sameArchBuilds = std.filter(function(b) b.os == self.os && b.arch == self.arch, builds),

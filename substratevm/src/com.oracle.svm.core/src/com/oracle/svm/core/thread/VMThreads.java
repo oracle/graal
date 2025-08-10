@@ -24,9 +24,8 @@
  */
 package com.oracle.svm.core.thread;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
-
-import java.util.EnumSet;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -52,8 +51,6 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
-import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
@@ -68,6 +65,10 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -83,7 +84,7 @@ import jdk.vm.ci.aarch64.AArch64;
 /**
  * Utility methods for the manipulation and iteration of {@link IsolateThread}s.
  */
-public abstract class VMThreads implements InitialLayerOnlyImageSingleton {
+public abstract class VMThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static VMThreads singleton() {
@@ -272,6 +273,8 @@ public abstract class VMThreads implements InitialLayerOnlyImageSingleton {
 
         IsolateThread isolateThread = (IsolateThread) UnsignedUtils.roundUp(memory, alignment);
         unalignedIsolateThreadMemoryTL.set(isolateThread, memory);
+        /* Set to the sentinel value denoting the thread is detached. */
+        nextTL.set(isolateThread, isolateThread);
         return isolateThread;
     }
 
@@ -518,6 +521,59 @@ public abstract class VMThreads implements InitialLayerOnlyImageSingleton {
         PlatformThreads.afterThreadExit(CurrentIsolate.getCurrentThread());
     }
 
+    /**
+     * Waits in native code until the given thread is detached and therefore no longer executing any
+     * Java code. This method may only be used while a teardown is in progress. Otherwise, races
+     * like the following can happen:
+     * <ul>
+     * <li>thread A detaches</li>
+     * <li>thread B attaches and reuses the native memory of {@link IsolateThread} A for its own
+     * {@link IsolateThread} data structure</li>
+     * <li>thread C waits until thread A detaches, sees {@link IsolateThread} B in the thread list,
+     * and assumes that it is thread A</li>
+     * </ul>
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void waitInNativeUntilDetached(IsolateThread thread) {
+        assert thread.isNonNull();
+        assert thread != CurrentIsolate.getCurrentThread();
+        assert isTearingDown();
+        waitInNativeUntilDetached0(thread);
+    }
+
+    @Uninterruptible(reason = "Must not stop while in native.")
+    @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode.")
+    private static void waitInNativeUntilDetached0(IsolateThread thread) {
+        CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
+        waitInNativeUntilDetached1(thread);
+        CFunctionEpilogueNode.cFunctionEpilogue(StatusSupport.STATUS_IN_NATIVE);
+    }
+
+    @Uninterruptible(reason = "Must not stop while in native.")
+    @NeverInline("Provide a return address for the Java frame anchor.")
+    private static void waitInNativeUntilDetached1(IsolateThread detachingThread) {
+        // this method may only access native memory or data in the image heap
+        VMThreads.THREAD_MUTEX.lockNoTransition();
+        try {
+            while (contains(detachingThread)) {
+                VMThreads.THREAD_LIST_CONDITION.blockNoTransition();
+            }
+        } finally {
+            VMThreads.THREAD_MUTEX.unlock();
+        }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static boolean contains(IsolateThread thread) {
+        assert THREAD_MUTEX.isOwner();
+        for (IsolateThread t = VMThreads.firstThread(); t.isNonNull(); t = VMThreads.nextThread(t)) {
+            if (t == thread) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Uninterruptible(reason = "Only uninterruptible code may be executed after VMThreads#threadExit.")
     public void waitUntilDetachedThreadsExitedOnOSLevel() {
         cleanupExitedOsThreads();
@@ -585,8 +641,13 @@ public abstract class VMThreads implements InitialLayerOnlyImageSingleton {
         return false;
     }
 
+    /**
+     * Be careful with this method. Usually, the {@link IsolateThread} will be freed once the thread
+     * detaches (so, its memory can contain garbage or might not be accessible at all).
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean verifyThreadIsAttached(IsolateThread thread) {
+    public static boolean isAttached(IsolateThread thread) {
+        /* For a detached thread, next points to itself. */
         return nextThread(thread) != thread;
     }
 
@@ -676,11 +737,6 @@ public abstract class VMThreads implements InitialLayerOnlyImageSingleton {
         return false;
     }
 
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
-    }
-
     private static class DetachAllExternallyStartedThreadsExceptCurrentOperation extends JavaVMOperation {
         DetachAllExternallyStartedThreadsExceptCurrentOperation() {
             super(VMOperationInfos.get(DetachAllExternallyStartedThreadsExceptCurrentOperation.class, "Detach all externally started threads except current", SystemEffect.SAFEPOINT));
@@ -688,11 +744,11 @@ public abstract class VMThreads implements InitialLayerOnlyImageSingleton {
 
         @Override
         protected void operate() {
-            IsolateThread currentThread = CurrentIsolate.getCurrentThread();
+            IsolateThread operationThread = CurrentIsolate.getCurrentThread();
             IsolateThread thread = firstThread();
             while (thread.isNonNull()) {
                 IsolateThread next = nextThread(thread);
-                if (thread.notEqual(currentThread) && !wasStartedByCurrentIsolate(thread)) {
+                if (thread.notEqual(queuingThread) && thread.notEqual(operationThread) && !wasStartedByCurrentIsolate(thread)) {
                     /*
                      * The code below is similar to VMThreads.detachCurrentThread() except that it
                      * doesn't call VMThreads.threadExit(). We assume that this is tolerable
@@ -1064,7 +1120,8 @@ public abstract class VMThreads implements InitialLayerOnlyImageSingleton {
     public interface OSThreadId extends PointerBase {
     }
 
-    public static class ThreadLookup implements InitialLayerOnlyImageSingleton {
+    @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
+    public static class ThreadLookup {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public ComparableWord getThreadIdentifier() {
             return VMThreads.singleton().getCurrentOSThreadId();
@@ -1073,11 +1130,6 @@ public abstract class VMThreads implements InitialLayerOnlyImageSingleton {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean matchesThread(IsolateThread thread, ComparableWord identifier) {
             return OSThreadIdTL.get(thread).equal(identifier);
-        }
-
-        @Override
-        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-            return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
         }
     }
 }

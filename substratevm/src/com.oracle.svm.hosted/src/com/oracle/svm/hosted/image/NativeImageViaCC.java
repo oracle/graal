@@ -168,7 +168,7 @@ public abstract class NativeImageViaCC extends NativeImage {
 
             if (SubstrateOptions.useDebugInfoGeneration()) {
                 BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, SubstrateOptions.getDebugInfoSourceCacheRoot());
-                Path svmDebugHelper = Path.of(System.getProperty("java.home"), "lib/svm/debug/gdb-debughelpers.py");
+                Path svmDebugHelper = Path.of(System.getProperty("java.home"), "lib", "svm", "debug", "gdb-debughelpers.py");
                 if (Files.exists(svmDebugHelper)) {
                     Path svmDebugHelperCopy = imagePath.resolveSibling(svmDebugHelper.getFileName());
                     Files.copy(svmDebugHelper, svmDebugHelperCopy, StandardCopyOption.REPLACE_EXISTING);

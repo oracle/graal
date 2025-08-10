@@ -36,7 +36,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
+import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -63,8 +63,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      */
     public static final OptionValues INJECTED_OPTIONVALUES = null;
 
-    GraalHotSpotVMConfig(HotSpotVMConfigStore store) {
-        super(store);
+    GraalHotSpotVMConfig(HotSpotVMConfigAccess access, Platform platform) {
+        super(access, platform);
 
         int logMinObjAlignment = logMinObjAlignment();
         assert narrowOopShift <= logMinObjAlignment : Assertions.errorMessageContext("narrowOopShift", narrowOopShift, "logMinObjAlignment", logMinObjAlignment);
@@ -461,7 +461,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long deoptBlobUncommonTrap = getFieldValue("CompilerToVM::Data::SharedRuntime_deopt_blob_uncommon_trap", Long.class, "address");
 
     public final long updateBytesCRC32Stub = getFieldValue("StubRoutines::_updateBytesCRC32", Long.class, "address");
-    public final long crcTableAddress = getFieldValue("StubRoutines::_crc_table_adr", Long.class, "address");
+    public final long crcTableAddress = getFieldValue("CompilerToVM::Data::crc_table_addr", Long.class, "address");
 
     public final long md5ImplCompressMultiBlock = getFieldValue("StubRoutines::_md5_implCompressMB", Long.class, "address");
     public final long sha1ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha1_implCompressMB", Long.class, "address");
@@ -678,10 +678,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long jvmtiVThreadEnd = getAddress("SharedRuntime::notify_jvmti_vthread_end");
     public final long jvmtiVThreadMount = getAddress("SharedRuntime::notify_jvmti_vthread_mount");
     public final long jvmtiVThreadUnmount = getAddress("SharedRuntime::notify_jvmti_vthread_unmount");
-
-    public boolean supportJVMTIVThreadNotification() {
-        return jvmtiVThreadStart != 0L && jvmtiVThreadEnd != 0L && jvmtiVThreadMount != 0L && jvmtiVThreadUnmount != 0L;
-    }
 
     // JDK-8322630
     public final int icSpeculatedKlassOffset = getFieldOffset("CompiledICData::_speculated_klass", Integer.class, "uintptr_t");

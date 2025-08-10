@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core;
 
-import static com.oracle.svm.core.SubstrateOptions.DeprecatedOptions.TearDownFailureNanos;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
@@ -53,7 +52,6 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.APIOption;
@@ -169,7 +167,7 @@ public class SubstrateOptions {
     public static final String LAYER_OPTION_PREFIX = "-H:Layer"; // "--layer"
     public static final String LAYER_CREATE_OPTION = LAYER_OPTION_PREFIX + "Create"; // "-create"
     // @APIOption(name = LAYER_CREATE_OPTION) // use when non-experimental
-    @Option(help = "Experimental: Build a Native Image layer.")//
+    @Option(help = "Experimental: Build a Native Image layer. See NativeImageLayers.md for more info.")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> LayerCreate = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     // public static final String LAYER_USE_OPTION = LAYER_OPTION_PREFIX + "-use";
@@ -396,9 +394,9 @@ public class SubstrateOptions {
         ConcealedOptions.CodeAlignment.update(values, 1);
         GraalOptions.LoopHeaderAlignment.update(values, 0);
         GraalOptions.IsolatedLoopHeaderAlignment.update(values, 0);
-        if (ConfigurationValues.getTarget().arch instanceof AMD64) {
-            disable(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
-        }
+        // We cannot check for architecture at the moment because ImageSingletons has not been
+        // initialized yet
+        disable(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
 
         /*
          * Do not run PEA - it can fan out allocations too much.
@@ -513,6 +511,9 @@ public class SubstrateOptions {
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
 
+    @Option(help = "Provide debuginfo for runtime-compiled code.")//
+    public static final HostedOptionKey<Boolean> RuntimeDebugInfo = new HostedOptionKey<>(false);
+
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)", stability = OptionStability.STABLE)//
     @BundleMember(role = BundleMember.Role.Input)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> CLibraryPath = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
@@ -616,17 +617,13 @@ public class SubstrateOptions {
             }
         };
 
-        public static final String TEAR_DOWN_WARNING_NANOS_ERROR = "Can't set both TearDownWarningSeconds and TearDownWarningNanos at the same time. Use TearDownWarningSeconds.";
-        @Option(help = "The number of nanoseconds before and between which tearing down an isolate gives a warning message. 0 implies no warning.", //
+        @Option(help = "The number of nanoseconds that the isolate teardown can take before warnings are printed. Disabled if less or equal to 0.", //
                         deprecated = true, deprecationMessage = "Use -XX:TearDownWarningSeconds=<secs> instead")//
-        public static final RuntimeOptionKey<Long> TearDownWarningNanos = new RuntimeOptionKey<>(0L,
-                        (key) -> UserError.guarantee(!(key.hasBeenSet() && TearDownWarningSeconds.hasBeenSet()), TEAR_DOWN_WARNING_NANOS_ERROR),
-                        RelevantForCompilationIsolates);
+        public static final RuntimeOptionKey<Long> TearDownWarningNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
 
-        @Option(help = "The number of nanoseconds before tearing down an isolate gives a failure message and returns from a tear-down call. 0 implies no message.", //
-                        deprecated = true, deprecationMessage = "This call leaks resources. Instead, terminate java threads cooperatively, or use System#exit")//
+        @Option(help = "The number of nanoseconds that the isolate teardown can take before a fatal error is thrown. Disabled if less or equal to 0.", //
+                        deprecated = true, deprecationMessage = "Use -XX:TearDownFailureSeconds=<secs> instead")//
         public static final RuntimeOptionKey<Long> TearDownFailureNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
-
     }
 
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
@@ -651,12 +648,8 @@ public class SubstrateOptions {
         return maxJavaStackTraceDepth;
     }
 
-    public static void updateMaxJavaStackTraceDepth(EconomicMap<OptionKey<?>, Object> runtimeValues, int newValue) {
-        ConcealedOptions.MaxJavaStackTraceDepth.update(runtimeValues, newValue);
-    }
-
     /* Same option name and specification as the Java HotSpot VM. */
-    @Option(help = "Maximum total size of NIO direct-buffer allocations")//
+    @Option(help = "Maximum total size of NIO direct-buffer allocations", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Long> MaxDirectMemorySize = new RuntimeOptionKey<>(0L);
 
     @Option(help = "Verify naming conventions during image construction.")//
@@ -872,24 +865,18 @@ public class SubstrateOptions {
         }
     }
 
-    /*
-     * Isolate tear down options.
-     */
-    @Option(help = "The number of seconds before and between which tearing down an isolate gives a warning message. 0 implies no warning.")//
-    public static final RuntimeOptionKey<Long> TearDownWarningSeconds = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
-
     public static long getTearDownWarningNanos() {
-        if (TearDownWarningSeconds.hasBeenSet() && DeprecatedOptions.TearDownWarningNanos.hasBeenSet()) {
-            throw new IllegalArgumentException(DeprecatedOptions.TEAR_DOWN_WARNING_NANOS_ERROR);
+        if (ConcealedOptions.TearDownWarningSeconds.getValue() != 0) {
+            return TimeUtils.secondsToNanos(ConcealedOptions.TearDownWarningSeconds.getValue());
         }
-        if (DeprecatedOptions.TearDownWarningNanos.hasBeenSet()) {
-            return DeprecatedOptions.TearDownWarningNanos.getValue();
-        }
-        return TearDownWarningSeconds.getValue() * TimeUtils.nanosPerSecond;
+        return DeprecatedOptions.TearDownWarningNanos.getValue();
     }
 
     public static long getTearDownFailureNanos() {
-        return TearDownFailureNanos.getValue();
+        if (ConcealedOptions.TearDownFailureSeconds.getValue() != 0) {
+            return TimeUtils.secondsToNanos(ConcealedOptions.TearDownFailureSeconds.getValue());
+        }
+        return DeprecatedOptions.TearDownFailureNanos.getValue();
     }
 
     @Option(help = "Define the maximum number of stores for which the loop that zeroes out objects is unrolled.")//
@@ -914,6 +901,9 @@ public class SubstrateOptions {
     @LayerVerifiedOption(kind = Kind.Removed, severity = Severity.Warn, positional = false)//
     @Option(help = "file:doc-files/NeverInlineHelp.txt", type = OptionType.Debug)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> NeverInline = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
+
+    @Option(help = "file:doc-files/NeverInlineHelp.txt")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> NeverInlineTrivial = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Maximum number of nodes in a method so that it is considered trivial.")//
     public static final HostedOptionKey<Integer> MaxNodesInTrivialMethod = new HostedOptionKey<>(20);
@@ -1099,6 +1089,16 @@ public class SubstrateOptions {
         return useLIRBackend() && GenerateDebugInfo.getValue() > 0;
     }
 
+    @Option(help = "Number of threads used to generate debug info.") //
+    public static final HostedOptionKey<Integer> DebugInfoGenerationThreadCount = new HostedOptionKey<>(0, SubstrateOptions::validateDebugInfoGenerationThreadCount);
+
+    private static void validateDebugInfoGenerationThreadCount(HostedOptionKey<Integer> optionKey) {
+        int value = optionKey.getValue();
+        if (value < 0) {
+            throw UserError.invalidOptionValue(optionKey, value, "The value must be bigger than 0");
+        }
+    }
+
     @Option(help = "Directory under which to create source file cache for Application or GraalVM classes")//
     static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<>("sources");
 
@@ -1252,6 +1252,19 @@ public class SubstrateOptions {
                 throw UserError.invalidOptionValue(key, key.getValue(), "Dumping runtime compiled code is not supported on Windows.");
             }
         });
+
+        @Option(help = "Avoid linker relocations for code and instead emit address computations.", type = OptionType.Expert) //
+        @LayerVerifiedOption(severity = Severity.Error, kind = Kind.Changed, positional = false) //
+        public static final HostedOptionKey<Boolean> RelativeCodePointers = new HostedOptionKey<>(false, SubstrateOptions::validateRelativeCodePointers);
+
+        /** Use {@link SubstrateOptions#getTearDownWarningNanos()} instead. */
+        @Option(help = "The number of seconds that the isolate teardown can take before warnings are printed. Disabled if less or equal to 0.")//
+        public static final RuntimeOptionKey<Long> TearDownWarningSeconds = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
+
+        /** Use {@link SubstrateOptions#getTearDownFailureNanos()} instead. */
+        @Option(help = "The number of seconds that the isolate teardown can take before a fatal error is thrown. Disabled if less or equal to 0.")//
+        public static final RuntimeOptionKey<Long> TearDownFailureSeconds = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
+
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
@@ -1441,10 +1454,8 @@ public class SubstrateOptions {
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> Preserve = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Ignore classes or packages (comma separated) from the ones included with '-H:Preserve'. This can be used to workaround potential issues related to '-H:Preserve'.", type = OptionType.Debug) //
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IgnorePreserveForClasses = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
-
-    @Option(help = "Force include include all public types and methods that can be reached using normal Java access rules.")//
-    public static final HostedOptionKey<Boolean> UseBaseLayerInclusionPolicy = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IgnorePreserveForClasses = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @Option(help = "Support for calls via the Java Foreign Function and Memory API", type = Expert) //
     public static final HostedOptionKey<Boolean> ForeignAPISupport = new HostedOptionKey<>(true);
@@ -1465,15 +1476,23 @@ public class SubstrateOptions {
     @Option(help = "Enable support for Arena.ofShared ", type = Expert)//
     public static final HostedOptionKey<Boolean> SharedArenaSupport = new HostedOptionKey<>(false, key -> {
         if (key.getValue()) {
-            // GR-65268: Shared arenas cannot be used together with runtime compilations
-            UserError.guarantee(!RuntimeCompilation.isEnabled(), "Arena.ofShared is not supported with runtime compilations. " +
-                            "Replace usages of Arena.ofShared with Arena.ofAuto and disable shared arena support.");
+            UserError.guarantee(isForeignAPIEnabled(), "Support for Arena.ofShared is only available with foreign API support. " +
+                            "Enable foreign API support with %s",
+                            SubstrateOptionsParser.commandArgument(ForeignAPISupport, "+"));
+
             // GR-65162: Shared arenas cannot be used together with Vector API support
             UserError.guarantee(!VectorAPIEnabled.getValue(), "Support for Arena.ofShared is not available with Vector API support. " +
                             "Either disable Vector API support using %s or replace usages of Arena.ofShared with Arena.ofAuto and disable shared arena support.",
                             SubstrateOptionsParser.commandArgument(VectorAPISupport, "-"));
         }
     });
+
+    @Fold
+    public static boolean isSharedArenaSupportEnabled() {
+        // GR-65162: Shared arenas cannot be used together with Vector API support
+        return isForeignAPIEnabled() && SubstrateOptions.SharedArenaSupport.getValue() &&
+                        (SubstrateOptions.SharedArenaSupport.hasBeenSet() || !VectorAPIEnabled.getValue());
+    }
 
     @Option(help = "Assume new types cannot be added after analysis", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> ClosedTypeWorld = new HostedOptionKey<>(true) {
@@ -1547,13 +1566,9 @@ public class SubstrateOptions {
         return PrintClosedArenaUponThrow.getValue();
     }
 
-    @Option(help = "Avoid linker relocations for code and instead emit address computations.", type = OptionType.Expert) //
-    @LayerVerifiedOption(severity = Severity.Error, kind = Kind.Changed, positional = false) //
-    public static final HostedOptionKey<Boolean> RelativeCodePointers = new HostedOptionKey<>(false, SubstrateOptions::validateRelativeCodePointers);
-
     @Fold
     public static boolean useRelativeCodePointers() {
-        return RelativeCodePointers.getValue();
+        return ConcealedOptions.RelativeCodePointers.getValue();
     }
 
     private static void validateRelativeCodePointers(HostedOptionKey<Boolean> optionKey) {

@@ -80,4 +80,9 @@ public class OSCommittedMemoryProvider extends ChunkBasedCommittedMemoryProvider
         }
         return maxAddressSpaceSize;
     }
+
+    @Override
+    protected UnsignedWord getReservedMetaspaceSize() {
+        return Word.zero();
+    }
 }

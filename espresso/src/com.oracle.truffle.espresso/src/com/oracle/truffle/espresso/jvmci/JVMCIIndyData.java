@@ -33,6 +33,7 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytes;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -86,8 +87,12 @@ public final class JVMCIIndyData {
         return new Location(methods[callSiteIndex], bcis[callSiteIndex]);
     }
 
+    public static JVMCIIndyData maybeGetExisting(ObjectKlass klass, Meta meta) {
+        return (JVMCIIndyData) meta.HIDDEN_JVMCIINDY.getHiddenObject(klass.mirror());
+    }
+
     public static JVMCIIndyData getExisting(ObjectKlass klass, Meta meta) {
-        JVMCIIndyData hiddenObject = (JVMCIIndyData) meta.HIDDEN_JVMCIINDY.getHiddenObject(klass.mirror());
+        JVMCIIndyData hiddenObject = maybeGetExisting(klass, meta);
         assert hiddenObject != null;
         return hiddenObject;
     }
@@ -150,6 +155,17 @@ public final class JVMCIIndyData {
             bci = bs.nextBCI(bci);
         }
         return newCode;
+    }
+
+    public int recoverFullCpi(int callSiteIndex) {
+        Method method = methods[callSiteIndex];
+        int bci = bcis[callSiteIndex];
+        int cpi = Bytes.beU2(method.getOriginalCode(), bci + 1);
+        return encodeCPI4(cpi, callSiteIndex);
+    }
+
+    public int getLocationCount() {
+        return methods.length;
     }
 
     public record Location(Method method, char bci) {

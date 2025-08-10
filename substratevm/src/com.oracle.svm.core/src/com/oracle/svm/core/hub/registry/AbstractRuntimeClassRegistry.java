@@ -25,12 +25,16 @@
 package com.oracle.svm.core.hub.registry;
 
 import static com.oracle.svm.espresso.classfile.Constants.ACC_SUPER;
+import static com.oracle.svm.espresso.classfile.Constants.ACC_VALUE_BASED;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_ACC_WRITTEN_FLAGS;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,16 +42,22 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.graalvm.nativeimage.impl.ClassLoading;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.graal.meta.KnownOffsets;
+import com.oracle.svm.core.hub.CremaSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.core.hub.registry.SVMSymbols.SVMTypes;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ClassfileParser;
 import com.oracle.svm.espresso.classfile.ClassfileStream;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;
 import com.oracle.svm.espresso.classfile.ParserException;
+import com.oracle.svm.espresso.classfile.ParserField;
 import com.oracle.svm.espresso.classfile.ParserKlass;
+import com.oracle.svm.espresso.classfile.ParserMethod;
+import com.oracle.svm.espresso.classfile.attributes.Attribute;
 import com.oracle.svm.espresso.classfile.attributes.InnerClassesAttribute;
 import com.oracle.svm.espresso.classfile.attributes.NestHostAttribute;
 import com.oracle.svm.espresso.classfile.attributes.PermittedSubclassesAttribute;
@@ -226,6 +236,30 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         }
     }
 
+    private static List<Class<?>> transitiveSuperInterfaces(Class<?> superClass, Class<?>[] superInterfaces) {
+        HashSet<Class<?>> result = new HashSet<>();
+        Class<?> current = superClass;
+        while (current != null) {
+            for (Class<?> interfaceClass : current.getInterfaces()) {
+                collectInterfaces(interfaceClass, result);
+            }
+            current = current.getSuperclass();
+        }
+        for (Class<?> interfaceClass : superInterfaces) {
+            collectInterfaces(interfaceClass, result);
+        }
+        return new ArrayList<>(result);
+    }
+
+    private static void collectInterfaces(Class<?> interfaceClass, HashSet<Class<?>> result) {
+        // note that this is and must be called only _after_ class circularity detection
+        if (result.add(interfaceClass)) {
+            for (Class<?> superInterface : interfaceClass.getInterfaces()) {
+                collectInterfaces(superInterface, result);
+            }
+        }
+    }
+
     private Class<?> createClass(ParserKlass parsed, ClassDefinitionInfo info, Symbol<Type> type) {
         Symbol<Type> superKlassType = parsed.getSuperKlass();
         assert superKlassType != null; // j.l.Object is always AOT
@@ -261,12 +295,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         boolean isRecord = Modifier.isFinal(modifiers) && superClass == Record.class && parsed.getAttribute(RecordAttribute.NAME) != null;
         // GR-62320 This should be set based on build-time and run-time arguments.
         boolean assertionsEnabled = true;
-        // GR-59687 itable setup should set this
-        boolean declaresDefaultMethods = false;
-        boolean hasDefaultMethods = declaresDefaultMethods || hasInheritedDefaultMethods(superClass, superInterfaces);
         boolean isSealed = isSealed(parsed);
-
-        short flags = DynamicHub.makeFlags(false, isInterface, info.isHidden(), isRecord, assertionsEnabled, hasDefaultMethods, declaresDefaultMethods, isSealed, false, false, false, false);
 
         Object interfacesEncoding = null;
         if (superInterfaces.length == 1) {
@@ -279,10 +308,144 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             interfacesEncoding = superHubs;
         }
 
-        DynamicHub hub = DynamicHub.allocate(externalName, DynamicHub.fromClass(superClass), interfacesEncoding, null,
-                        sourceFile, modifiers, flags, getClassLoader(), nestHost, simpleBinaryName, enclosingClass, classSignature);
+        List<Class<?>> transitiveSuperInterfaces = transitiveSuperInterfaces(superClass, superInterfaces);
+        transitiveSuperInterfaces.sort(Comparator.comparing(c -> DynamicHub.fromClass(c).getTypeID()));
+
+        CremaSupport.CremaDispatchTable dispatchTable = CremaSupport.singleton().getDispatchTable(parsed, superClass, transitiveSuperInterfaces);
+
+        boolean declaresDefaultMethods = isInterface && declaresDefaultMethods(parsed);
+        boolean hasDefaultMethods = declaresDefaultMethods || hasInheritedDefaultMethods(superClass, superInterfaces);
+
+        boolean isLambdaFormHidden = false;
+        boolean isProxyClass = false;
+        short flags = DynamicHub.makeFlags(false, isInterface, info.isHidden(), isRecord, assertionsEnabled, hasDefaultMethods, declaresDefaultMethods, isSealed, false, isLambdaFormHidden, false,
+                        isProxyClass);
+
+        /*
+         * The dispatch table will look like:
+         * @formatter:off
+         * [vtable..., itable(I1)..., itable(I2)...]
+         *             ^ idx1         ^ idx2
+         * @formatter:on
+         * First compute idx* in interfaceIndices
+         */
+        int dispatchTableLength = dispatchTable.vtableLength();
+        int[] interfaceIndices = new int[transitiveSuperInterfaces.size()];
+        int i = 0;
+        for (Class<?> iface : transitiveSuperInterfaces) {
+            interfaceIndices[i++] = dispatchTableLength;
+            dispatchTableLength += dispatchTable.itableLength(iface);
+        }
+        /*
+         * Compute the type check slots depending on the kind of type
+         * @formatter:off
+         * ## Instance types
+         * [Object.id, Super1.id, ..., Current.id, I1.id, off1, I2.id, off2, ...]
+         * - display with all super classes from Object to self (included)
+         * - followed by transitive interfaces (ordered by type id)
+         * - each interface is followed by its itable offset
+         * ## Interface types
+         * [Object.id, I1.id, bad, I2.id, bad]
+         * - display with Object
+         * - followed by transitive interfaces (ordered by type id, including self)
+         * - using 0xBADD0D1DL as interface starting index
+         * @formatter:on
+         */
+        DynamicHub superHub = DynamicHub.fromClass(superClass);
+        int typeID = ClassRegistries.nextTypeId();
+        short numInterfacesTypes = (short) transitiveSuperInterfaces.size();
+        short numClassTypes;
+        short typeIDDepth;
+        if (isInterface) {
+            assert superHub.getNumClassTypes() == 1;
+            typeIDDepth = -1;
+            numClassTypes = 1;
+        } else {
+            int intDepth = superHub.getTypeIDDepth() + 1;
+            int intNumClassTypes = superHub.getNumClassTypes() + 1;
+            VMError.guarantee(intDepth == (short) intDepth, "Type depth overflow");
+            VMError.guarantee(intNumClassTypes == (short) intNumClassTypes, "Num class types overflow");
+            typeIDDepth = (short) intDepth;
+            numClassTypes = (short) intNumClassTypes;
+        }
+        int[] openTypeWorldTypeCheckSlots = new int[numClassTypes + (numInterfacesTypes * 2)];
+        int[] superOpenTypeWorldTypeCheckSlots = superHub.getOpenTypeWorldTypeCheckSlots();
+        System.arraycopy(superOpenTypeWorldTypeCheckSlots, 0, openTypeWorldTypeCheckSlots, 0, superHub.getNumClassTypes());
+        if (!isInterface) {
+            openTypeWorldTypeCheckSlots[numClassTypes - 1] = typeID;
+        }
+
+        i = 0;
+        long vTableBaseOffset = KnownOffsets.singleton().getVTableBaseOffset();
+        long vTableEntrySize = KnownOffsets.singleton().getVTableEntrySize();
+        for (Class<?> superInterface : transitiveSuperInterfaces) {
+            openTypeWorldTypeCheckSlots[i * 2 + numClassTypes] = DynamicHub.fromClass(superInterface).getTypeID();
+            int offset;
+            if (isInterface) {
+                offset = 0xBADD0D1D;
+            } else {
+                offset = Math.toIntExact(vTableBaseOffset + interfaceIndices[i] * vTableEntrySize);
+            }
+            openTypeWorldTypeCheckSlots[i * 2 + numClassTypes + 1] = offset;
+            i += 1;
+        }
+
+        int afterFieldsOffset;
+        if (isInterface) {
+            afterFieldsOffset = 0;
+        } else {
+            int superAfterFieldsOffset = CremaSupport.singleton().getAfterFieldsOffset(superHub);
+            // GR-60069: field layout
+            int numDeclaredInstanceFields = 0;
+            for (ParserField field : parsed.getFields()) {
+                if (!field.isStatic()) {
+                    numDeclaredInstanceFields += 1;
+                }
+            }
+            assert numDeclaredInstanceFields == 0;
+            afterFieldsOffset = Math.toIntExact(superAfterFieldsOffset);
+        }
+        boolean isValueBased = (parsed.getFlags() & ACC_VALUE_BASED) != 0;
+
+        // GR-62339
+        Module module = getClassLoader().getUnnamedModule();
+
+        checkNotHybrid(parsed);
+
+        DynamicHub hub = DynamicHub.allocate(externalName, superHub, interfacesEncoding, null,
+                        sourceFile, modifiers, flags, getClassLoader(), nestHost, simpleBinaryName, module, enclosingClass, classSignature,
+                        typeID, numClassTypes, typeIDDepth, numInterfacesTypes, openTypeWorldTypeCheckSlots, dispatchTableLength, afterFieldsOffset, isValueBased);
+
+        CremaSupport.singleton().fillDynamicHubInfo(hub, dispatchTable, transitiveSuperInterfaces, interfaceIndices);
 
         return DynamicHub.toClass(hub);
+    }
+
+    private static void checkNotHybrid(ParserKlass parsed) {
+        Attribute attribute = parsed.getAttribute(ParserNames.RuntimeVisibleAnnotations);
+        if (attribute == null) {
+            return;
+        }
+        ClassfileStream stream = new ClassfileStream(attribute.getData(), null);
+        int count = stream.readU2();
+        for (int j = 0; j < count; j++) {
+            int typeIndex = ClassfileParser.parseAnnotation(stream);
+            Symbol<?> annotType = parsed.getConstantPool().utf8At(typeIndex, "annotation type");
+            if (SVMTypes.com_oracle_svm_core_hub_Hybrid.equals(annotType)) {
+                throw new ClassFormatError("Cannot load @Hybrid classes at runtime");
+            }
+        }
+
+    }
+
+    private static boolean declaresDefaultMethods(ParserKlass parsed) {
+        for (ParserMethod method : parsed.getMethods()) {
+            int flags = method.getFlags();
+            if (!Modifier.isAbstract(flags) && !Modifier.isStatic(flags)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean isSealed(ParserKlass parsed) {

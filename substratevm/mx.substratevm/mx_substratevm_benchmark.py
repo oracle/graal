@@ -31,6 +31,7 @@ import zipfile
 import re
 import json
 import datetime
+import time
 from glob import glob
 from pathlib import Path
 from typing import List, Optional
@@ -42,7 +43,7 @@ import mx_sdk_benchmark
 from mx_benchmark import BenchmarkSuite, DataPoints, Rule, Vm, SingleBenchmarkExecutionContext
 from mx._impl.mx_codeowners import _load_toml_from_fd
 from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS, parse_prefixed_args
-from mx_util import StageName, Layer
+from mx_util import Stage, StageName, Layer
 
 _suite = mx.suite("substratevm")
 
@@ -215,13 +216,13 @@ class RenaissanceNativeImageBenchmarkSuite(mx_sdk_benchmark.RenaissanceBenchmark
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
         user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
         # remove -r X argument from image run args
-        return ['-r', '1'] + mx_sdk_benchmark.strip_args_with_number('-r', user_args)
+        return mx_sdk_benchmark.adjust_arg_with_number('-r', 1, user_args)
 
     def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
         user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args, should_strip_run_args)
         # remove -r X argument from image run args
         if should_strip_run_args:
-            extra_profile_run_args = ['-r', '1'] + mx_sdk_benchmark.strip_args_with_number('-r', user_args)
+            extra_profile_run_args = mx_sdk_benchmark.adjust_arg_with_number('-r', 1, user_args)
         else:
             extra_profile_run_args = user_args
 
@@ -377,6 +378,13 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         # Added by BaristaNativeImageCommand
         return []
 
+    def extra_image_build_argument(self, benchmark, args):
+        extra_image_build_args = []
+        if benchmark == "quarkus-tika":
+            # Band-aid solution for class initizalization deadlock due to org.openxmlformats.schemas.drawingml.x2006 (GR-59899)
+            extra_image_build_args += ["-H:NumberOfThreads=1"]
+        return extra_image_build_args + super().extra_image_build_argument(benchmark, args)
+
     def build_assertions(self, benchmark: str, is_gate: bool) -> List[str]:
         # We cannot enable assertions along with emitting a build report for layered images, due to GR-65751
         if self.stages_info.current_stage.is_layered():
@@ -466,7 +474,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
                 # Make agent run short
                 cmd += self._short_load_testing_phases()
                 # Add explicit agent stage args
-                cmd += suite._extra_run_options
+                cmd += self._energyTrackerExtraOptions(suite)
                 cmd += parse_prefixed_args("-Dnative-image.benchmark.extra-jvm-arg=", suite.execution_context.bmSuiteArgs)
                 cmd += parse_prefixed_args("-Dnative-image.benchmark.extra-agent-run-arg=", suite.execution_context.bmSuiteArgs)
                 return cmd
@@ -489,7 +497,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             ni_barista_cmd = [suite.baristaHarnessPath(), "--mode", "native", "--app-executable", app_image]
             if barista_workload is not None:
                 ni_barista_cmd.append(f"--config={barista_workload}")
-            ni_barista_cmd += suite.runArgs(suite.execution_context.bmSuiteArgs) + suite._extra_run_options
+            ni_barista_cmd += suite.runArgs(suite.execution_context.bmSuiteArgs) + self._energyTrackerExtraOptions(suite)
             ni_barista_cmd += parse_prefixed_args("-Dnative-image.benchmark.extra-jvm-arg=", suite.execution_context.bmSuiteArgs)
             if stage.is_instrument():
                 # Make instrument run short
@@ -654,7 +662,13 @@ class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
 
     def _vm_benchmarks_graalos_dir(self) -> Path:
         """Returns the path to the directory containing the applications that comprise the scenarios."""
-        return Path(mx.primary_suite().vc_dir) / "vm-benchmarks" / "graalos"
+        vm_enterprise_suite = next(filter(lambda suite: suite.name == "vm-enterprise", mx.suites()), None)
+        if vm_enterprise_suite is None:
+            raise ValueError(f"Failed to find the vm-enterprise suite on which {self.__class__.__name__} relies on for locating the graal-enterpise repository!")
+        vm_benchmarks_graalos_dir = Path(vm_enterprise_suite.vc_dir) / "vm-benchmarks" / "graalos"
+        if not vm_benchmarks_graalos_dir.is_dir():
+            raise ValueError(f"Failed to locate the benchmarks directory! No directory exists with path '{vm_benchmarks_graalos_dir}'!")
+        return vm_benchmarks_graalos_dir
 
     def _app_source_dir(self, app: str) -> Path:
         """Returns the path to the source code directory of the application."""
@@ -733,9 +747,6 @@ class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
 
     def default_stages(self) -> List[str]:
         return ["instrument-image", "instrument-run", "image", "run"]
-
-    def register_tracker(self, name, tracker_type):
-        mx.log(f"Ignoring the registration of '{name}' tracker as it was disabled for {self.__class__.__name__}.")
 
     def all_command_line_args_are_vm_args(self):
         return True
@@ -854,9 +865,6 @@ class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
         # We cannot enable assertions along with emitting a build report for layered images, due to GR-65751
         if self.stages_info.current_stage.is_layered():
             return []
-        # We cannot enable assertions for Micronaut Pegasus Function due to an AssertionError (see GR-67326)
-        if self._get_benchmark_config(benchmark)["app"] == "micronaut-pegasus-function":
-            return []
         return super().build_assertions(benchmark, is_gate)
 
     def rules(self, output, benchmarks, bmSuiteArgs) -> List[Rule]:
@@ -889,6 +897,17 @@ class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
         if self.stages_info.current_stage.is_image() and self._check_if_dataplane_scenario():
             self._ensure_dataplane_scenario_can_run()
         return retcode, out, dims
+
+    def run_stage(self, vm, stage: Stage, command, out, err, cwd, nonZeroIsFatal):
+        retcode = super().run_stage(vm, stage, command, out, err, cwd, nonZeroIsFatal)
+        if stage.stage_name == StageName.INSTRUMENT_RUN:
+            # GraalOS Load Tester can exit before the app images have shutdown and generated the profile
+            wait_for = 10
+            sleep_duration = 0.5
+            while wait_for >= 0 and not vm.config.profile_path.is_file():
+                time.sleep(sleep_duration)
+                wait_for -= sleep_duration
+        return retcode
 
     def _check_if_dataplane_scenario(self) -> bool:
         """Returns whether the scenario uses 'dataplane' deployment."""
@@ -992,12 +1011,17 @@ class GraalOSNativeImageBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite,
                 app_cmd += parse_prefixed_args("-Dnative-image.benchmark.extra-run-arg=", bmSuiteArgs)
 
             gos_cmd = [suite._gos_scenario_command(), f"{scenario}", "--local-load-testers", "--skip-upload"]
+            output_dir = suite.execution_context.virtual_machine.config.output_dir
+            gos_cmd += ["-p", f"extra_graalhost_dir_mounts='{output_dir}'"]
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
             gos_log_file_name = f"{timestamp}-gos-out.log"
-            gos_cmd += ["--log-to", f"stdout,file:{gos_log_file_name}"]
-            gos_cmd += suite.runArgs(bmSuiteArgs)
+            gos_log_file_path = output_dir / gos_log_file_name
+            gos_cmd += ["--log-to", f"stdout,file:{gos_log_file_path}"]
+            if suite.execution_context.virtual_machine.graalhost_graalos:
+                gos_cmd += ["-p", f"deployment='nginx-tinyinit-graalhost'"]
             app_cmd_str = " ".join(app_cmd)
             gos_cmd += ["-p", f"command=\"{app_cmd_str}\""]
+            gos_cmd += suite.runArgs(bmSuiteArgs)
             mx.log(f"Produced 'gos-scenario' command: '{' '.join(gos_cmd)}'")
             return gos_cmd
 
@@ -1098,7 +1122,6 @@ _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
 }
 
 _DACAPO_EXTRA_IMAGE_RUN_ARGS = {
-    'pmd':         ['--no-validation'],
     # JDK21 ForeignAPISupport is broken --- disable `enableMemorySegments` for now
     'lusearch':    ['-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false', '--no-validation'],
     'luindex':     ['-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false', '--no-validation'],
@@ -1190,7 +1213,7 @@ class DaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.DaCapoBenchmarkSuite, Bas
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
         user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
         # remove -n X argument from image run args
-        return ['-n', '1'] + mx_sdk_benchmark.strip_args_with_number('-n', user_args)
+        return mx_sdk_benchmark.adjust_arg_with_number('-n', 1, user_args)
 
     def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
         self.fixDataLocation()
@@ -1202,7 +1225,7 @@ class DaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.DaCapoBenchmarkSuite, Bas
 
         # remove -n X argument from image run args
         if should_strip_run_args:
-            return ['-n', '1'] + mx_sdk_benchmark.strip_args_with_number('-n', user_args)
+            return mx_sdk_benchmark.adjust_arg_with_number('-n', 1, user_args)
         else:
             return user_args
 
@@ -1347,13 +1370,13 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.ScalaDaCapoBenchmark
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
         user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
         # remove -n X argument from image run args
-        return mx_sdk_benchmark.strip_args_with_number('-n', user_args) + ['-n', '1']
+        return mx_sdk_benchmark.adjust_arg_with_number('-n', 1, user_args)
 
     def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
         user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args, should_strip_run_args)
         # remove -n X argument from image run args if the flag is true.
         if should_strip_run_args:
-            return mx_sdk_benchmark.strip_args_with_number('-n', user_args) + ['-n', '1']
+            return mx_sdk_benchmark.adjust_arg_with_number('-n', 1, user_args)
         else:
             return user_args
 

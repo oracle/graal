@@ -61,7 +61,7 @@ import org.junit.Test;
 import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
-import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlags;
+import com.oracle.truffle.regex.flavor.java.JavaFlags;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.EmptyArrays;
 

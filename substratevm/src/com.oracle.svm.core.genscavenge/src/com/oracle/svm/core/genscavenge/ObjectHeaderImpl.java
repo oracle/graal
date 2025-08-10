@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -331,15 +333,12 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     public long encodeHubPointerForImageHeap(ImageHeapObject obj, long hubOffsetFromHeapBase) {
         long header = hubOffsetFromHeapBase << numReservedExtraHubBits;
         assert (header & reservedHubBitsMask) == 0 : "Object header bits must be zero initially";
-        if (obj.getPartition() instanceof ChunkedImageHeapPartition partition) {
-            if (partition.isWritable() && HeapImpl.usesImageHeapCardMarking()) {
-                header |= REMSET_OR_MARKED1_BIT.rawValue();
-            }
-            if (partition.usesUnalignedObjects()) {
-                header |= UNALIGNED_BIT.rawValue();
-            }
-        } else {
-            assert obj.getPartition() instanceof FillerObjectDummyPartition;
+        ChunkedImageHeapPartition partition = (ChunkedImageHeapPartition) obj.getPartition();
+        if (partition.isWritable() && HeapImpl.usesImageHeapCardMarking()) {
+            header |= REMSET_OR_MARKED1_BIT.rawValue();
+        }
+        if (partition.usesUnalignedObjects()) {
+            header |= UNALIGNED_BIT.rawValue();
         }
         if (isIdentityHashFieldOptional()) {
             header |= (IDHASH_STATE_IN_FIELD.rawValue() << IDHASH_STATE_SHIFT);
@@ -348,12 +347,13 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Override
-    public void verifyDynamicHubOffsetInImageHeap(long offsetFromHeapBase) {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void verifyDynamicHubOffset(long offsetFromHeapBase) {
         long referenceSizeMask = getReferenceSize() == Integer.BYTES ? 0xFFFF_FFFFL : -1L;
         long encoded = (offsetFromHeapBase << numReservedExtraHubBits) & referenceSizeMask;
         boolean shiftLosesInformation = (encoded >>> numReservedExtraHubBits != offsetFromHeapBase);
         if (shiftLosesInformation) {
-            throw VMError.shouldNotReachHere("Hub is too far from heap base for encoding in object header: " + offsetFromHeapBase);
+            throw VMError.shouldNotReachHere("Hub is too far from heap base for encoding in object header");
         }
     }
 

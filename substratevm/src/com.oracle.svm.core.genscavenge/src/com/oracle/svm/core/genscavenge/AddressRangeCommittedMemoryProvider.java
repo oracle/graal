@@ -108,12 +108,11 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     protected static final int COMMIT_FAILED = 2;
 
     private static final OutOfMemoryError NODE_ALLOCATION_FAILED = new OutOfMemoryError("Could not allocate node for free list, OS may be out of memory.");
+    private static final OutOfMemoryError OUT_OF_METASPACE = new OutOfMemoryError("Could not allocate a metaspace chunk because the metaspace is exhausted.");
     private static final OutOfMemoryError ALIGNED_OUT_OF_ADDRESS_SPACE = new OutOfMemoryError("Could not allocate an aligned heap chunk because the heap address space is exhausted. " +
                     "Consider increasing the address space size (see option -XX:ReservedAddressSpaceSize).");
     private static final OutOfMemoryError UNALIGNED_OUT_OF_ADDRESS_SPACE = new OutOfMemoryError("Could not allocate an unaligned heap chunk because the heap address space is exhausted. " +
                     "Consider increasing the address space size (see option -XX:ReservedAddressSpaceSize).");
-    private static final OutOfMemoryError ALIGNED_COMMIT_FAILED = new OutOfMemoryError("Could not commit the memory for an aligned heap chunk, OS may be out of memory.");
-    private static final OutOfMemoryError UNALIGNED_COMMIT_FAILED = new OutOfMemoryError("Could not commit the memory for an unaligned heap chunk, OS may be out of memory.");
 
     /**
      * This mutex is used by the GC and the application. The application may hold this mutex only in
@@ -131,7 +130,8 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     protected FreeListNode unusedListHead;
     protected long unusedListCount;
 
-    protected UnsignedWord reservedSpaceSize;
+    protected UnsignedWord reservedAddressSpaceSize;
+    protected UnsignedWord reservedMetaspaceSize;
 
     protected Pointer collectedHeapBegin;
     protected UnsignedWord collectedHeapSize;
@@ -144,13 +144,16 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     @Override
     @Uninterruptible(reason = "Still being initialized.")
     public int initialize(WordPointer heapBasePointer, IsolateArguments arguments) {
-        UnsignedWord maxAddressSpaceSize = ReferenceAccess.singleton().getMaxAddressSpaceSize();
         UnsignedWord reserved = Word.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize)));
         if (reserved.equal(0)) {
-            /* Reserve a 32 GB address space, except if a larger heap size was specified. */
+            /*
+             * Reserve a 32 GB address space, except if a larger heap size was specified, or if the
+             * maximum address space size is less than that.
+             */
             UnsignedWord maxHeapSize = Word.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MaxHeapSize)));
-            reserved = UnsignedUtils.clamp(maxHeapSize, Word.unsigned(MIN_RESERVED_ADDRESS_SPACE_SIZE), maxAddressSpaceSize);
+            reserved = UnsignedUtils.max(maxHeapSize, Word.unsigned(MIN_RESERVED_ADDRESS_SPACE_SIZE));
         }
+        reserved = UnsignedUtils.min(reserved, ReferenceAccess.singleton().getMaxAddressSpaceSize());
 
         UnsignedWord alignment = unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
         WordPointer beginOut = StackValue.get(WordPointer.class);
@@ -211,7 +214,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     @SuppressWarnings("hiding")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected int initializeFields(Pointer spaceBegin, UnsignedWord reservedSpaceSize, Pointer collectedHeapBegin) {
-        this.reservedSpaceSize = reservedSpaceSize;
+        this.reservedAddressSpaceSize = reservedSpaceSize;
         this.collectedHeapBegin = collectedHeapBegin;
         this.collectedHeapSize = spaceBegin.add(reservedSpaceSize).subtract(collectedHeapBegin);
 
@@ -319,10 +322,36 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
 
     @Uninterruptible(reason = "Tear-down in progress.")
     protected int unmapAddressSpace(PointerBase heapBase) {
-        if (VirtualMemoryProvider.get().free(heapBase, reservedSpaceSize) != 0) {
+        if (VirtualMemoryProvider.get().free(heapBase, reservedAddressSpaceSize) != 0) {
             return CEntryPointErrors.FREE_ADDRESS_SPACE_FAILED;
         }
         return CEntryPointErrors.NO_ERROR;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public Pointer allocateMetaspaceChunk(UnsignedWord nbytes, UnsignedWord alignment) {
+        WordPointer allocOut = UnsafeStackValue.get(WordPointer.class);
+        int error = allocateInHeapAddressSpace(nbytes, alignment, allocOut);
+        if (error == NO_ERROR) {
+            if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+                NativeMemoryTracking.singleton().trackCommit(nbytes, NmtCategory.Metaspace);
+            }
+            return allocOut.read();
+        }
+        throw reportMetaspaceChunkAllocationFailed(error);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected OutOfMemoryError reportMetaspaceChunkAllocationFailed(int error) {
+        /* Explicitly don't use OutOfMemoryUtil as the metaspace is not part of the Java heap. */
+        if (error == OUT_OF_ADDRESS_SPACE) {
+            throw OUT_OF_METASPACE;
+        } else if (error == COMMIT_FAILED) {
+            throw METASPACE_CHUNK_COMMIT_FAILED;
+        } else {
+            throw VMError.shouldNotReachHereAtRuntime();
+        }
     }
 
     @Override
@@ -344,7 +373,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
         if (error == OUT_OF_ADDRESS_SPACE) {
             throw OutOfMemoryUtil.reportOutOfMemoryError(ALIGNED_OUT_OF_ADDRESS_SPACE);
         } else if (error == COMMIT_FAILED) {
-            throw OutOfMemoryUtil.reportOutOfMemoryError(ALIGNED_COMMIT_FAILED);
+            throw OutOfMemoryUtil.reportOutOfMemoryError(ALIGNED_CHUNK_COMMIT_FAILED);
         } else {
             throw VMError.shouldNotReachHereAtRuntime();
         }
@@ -369,7 +398,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
         if (error == OUT_OF_ADDRESS_SPACE) {
             throw OutOfMemoryUtil.reportOutOfMemoryError(UNALIGNED_OUT_OF_ADDRESS_SPACE);
         } else if (error == COMMIT_FAILED) {
-            throw OutOfMemoryUtil.reportOutOfMemoryError(UNALIGNED_COMMIT_FAILED);
+            throw OutOfMemoryUtil.reportOutOfMemoryError(UNALIGNED_CHUNK_COMMIT_FAILED);
         } else {
             throw VMError.shouldNotReachHereAtRuntime();
         }
@@ -697,7 +726,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     private void increaseBounds(FreeListNode node, Pointer otherStart, UnsignedWord otherSize) {
         assert getNodeEnd(node).equal(otherStart) || otherStart.add(otherSize).equal(node.getStart()) : "must be adjacent";
         assert UnsignedUtils.isAMultiple(otherSize, getGranularity());
-        assert otherSize.belowOrEqual(reservedSpaceSize);
+        assert otherSize.belowOrEqual(reservedAddressSpaceSize);
 
         Pointer newStart = PointerUtils.min(node.getStart(), otherStart);
         UnsignedWord newSize = node.getSize().add(otherSize);
@@ -706,7 +735,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected void trimBounds(FreeListNode fit, Pointer newStart, UnsignedWord newSize) {
-        assert newSize.belowOrEqual(reservedSpaceSize);
+        assert newSize.belowOrEqual(reservedAddressSpaceSize);
         assert fit.getStart().equal(newStart) && newSize.belowThan(fit.getSize()) ||
                         fit.getStart().belowThan(newStart) && getNodeEnd(fit).equal(newStart.add(newSize));
 
@@ -789,7 +818,12 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
 
     @Override
     public UnsignedWord getReservedAddressSpaceSize() {
-        return reservedSpaceSize;
+        return reservedAddressSpaceSize;
+    }
+
+    @Override
+    public UnsignedWord getReservedMetaspaceSize() {
+        return reservedMetaspaceSize;
     }
 
     /** Keeps track of unused memory. */

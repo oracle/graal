@@ -592,9 +592,10 @@ public final class InlineSupport {
          *
          * @since 23.0
          */
-        public static <T> ReferenceField<T> create(Lookup declaringLookup, String field, Class<T> valueClass) {
+        @SuppressWarnings({"cast", "rawtypes", "unchecked"})
+        public static <T> ReferenceField<T> create(Lookup declaringLookup, String field, Class<? super T> valueClass) {
             Class<?> lookupClass = declaringLookup.lookupClass();
-            return new ReferenceField<>(lookupClass, lookupClass, declaringLookup, field, valueClass);
+            return (ReferenceField<T>) new ReferenceField(lookupClass, lookupClass, declaringLookup, field, valueClass);
         }
     }
 

@@ -26,8 +26,6 @@ package com.oracle.svm.core.posix;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import java.util.EnumSet;
-
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -35,13 +33,16 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.log.StdErrWriter;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton(value = StdErrWriter.class)
-class PosixStdErrWriter implements StdErrWriter, InitialLayerOnlyImageSingleton {
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
+class PosixStdErrWriter implements StdErrWriter {
     private static final int STDERR_FD = 2;
 
     @Override
@@ -69,15 +70,5 @@ class PosixStdErrWriter implements StdErrWriter, InitialLayerOnlyImageSingleton 
         } finally {
             LibC.setErrno(savedErrno);
         }
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
-    }
-
-    @Override
-    public boolean accessibleInFutureLayers() {
-        return true;
     }
 }

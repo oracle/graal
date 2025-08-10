@@ -139,7 +139,7 @@ public class CInterfaceEnumTool {
         return kit.createInvokeWithExceptionAndUnwind(callTarget, kit.getFrameState(), invokeBci);
     }
 
-    public ValueNode startInvokeWithExceptionEnumToValue(HostedGraphKit kit, EnumInfo enumInfo, AnalysisType returnType, ValueNode arg) {
+    public InvokeWithExceptionNode startInvokeWithExceptionEnumToValue(HostedGraphKit kit, EnumInfo enumInfo, AnalysisType returnType, ValueNode arg) {
         int invokeBci = kit.bci();
         MethodCallTargetNode callTarget = createInvokeEnumToValue(kit, CallTargetFactory.from(kit), invokeBci, enumInfo, returnType, arg);
         return kit.startInvokeWithException(callTarget, kit.getFrameState(), invokeBci);
@@ -183,11 +183,14 @@ public class CInterfaceEnumTool {
         };
     }
 
-    public ValueNode createInvokeLookupEnum(HostedGraphKit kit, AnalysisType enumType, EnumInfo enumInfo, ValueNode arg) {
-        // Create the invocation of the actual target method: EnumRuntimeData.convertCToJava
+    public ValueNode createInvokeLookupEnum(HostedGraphKit kit, AnalysisType enumType, EnumInfo enumInfo, ValueNode arg, boolean allowInlining) {
+        // Invoke the conversion function (from long to enum)
         int invokeBci = kit.bci();
         MethodCallTargetNode callTarget = createInvokeLongToEnum(kit, CallTargetFactory.from(kit), invokeBci, enumInfo, arg);
         InvokeWithExceptionNode invoke = kit.createInvokeWithExceptionAndUnwind(callTarget, kit.getFrameState(), invokeBci);
+        if (!allowInlining) {
+            invoke.setUseForInlining(false);
+        }
 
         // Create the instanceof guard to narrow the return type for the analysis
         LogicNode instanceOfNode = kit.append(InstanceOfNode.createAllowNull(TypeReference.createExactTrusted(enumType), invoke, null, null));

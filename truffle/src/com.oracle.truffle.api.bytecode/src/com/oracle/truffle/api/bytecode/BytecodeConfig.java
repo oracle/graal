@@ -51,6 +51,9 @@ import com.oracle.truffle.api.instrumentation.Tag;
  * information (source sections, instrumentation instructions, etc.) should be materialized during
  * parsing. The interpreter memory footprint can be improved by omitting this information by default
  * and lazily re-parsing it when it is needed.
+ * <p>
+ * Instances of this class should be stored as static final constants. It is important for them to
+ * be constant so partial evaluation can detect when reparsing is unnecessary.
  *
  * @since 24.2
  */

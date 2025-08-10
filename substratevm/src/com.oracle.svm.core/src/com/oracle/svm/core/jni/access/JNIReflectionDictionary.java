@@ -43,7 +43,6 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
-import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
@@ -184,7 +183,7 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
             JNIAccessibleClass clazz = dictionary.classesByName.get(name);
             if (clazz == null && !ClassNameSupport.isValidJNIName(name.toString())) {
                 clazz = NEGATIVE_CLASS_LOOKUP;
-            } else if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+            } else if (MetadataTracer.enabled()) {
                 // trace if class exists (positive query) or name is valid (negative query)
                 MetadataTracer.singleton().traceJNIType(ClassNameSupport.jniNameToTypeName(name.toString()));
             }
@@ -273,6 +272,11 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
     }
 
     private static JNIAccessibleMethod getDeclaredMethod(Class<?> classObject, JNIAccessibleMethodDescriptor descriptor, String dumpLabel) {
+        if (MetadataTracer.enabled()) {
+            MetadataTracer.singleton().traceJNIType(classObject);
+            MetadataTracer.singleton().traceMethodAccess(classObject, descriptor.getNameConvertToString(), descriptor.getSignatureConvertToString(),
+                            ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
+        }
         boolean foundClass = false;
         for (var dictionary : layeredSingletons()) {
             JNIAccessibleClass clazz = dictionary.classesByClassObject.get(classObject);
@@ -280,12 +284,6 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
                 foundClass = true;
                 JNIAccessibleMethod method = clazz.getMethod(descriptor);
                 if (method != null) {
-                    if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
-                        ConfigurationType clazzType = MetadataTracer.singleton().traceJNIType(classObject.getName());
-                        if (clazzType != null) {
-                            clazzType.addMethod(descriptor.getNameConvertToString(), descriptor.getSignatureConvertToString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
-                        }
-                    }
                     return method;
                 }
             }
@@ -334,6 +332,10 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
     }
 
     private static JNIAccessibleField getDeclaredField(Class<?> classObject, CharSequence name, boolean isStatic, String dumpLabel) {
+        if (MetadataTracer.enabled()) {
+            MetadataTracer.singleton().traceJNIType(classObject);
+            MetadataTracer.singleton().traceFieldAccess(classObject, name.toString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
+        }
         boolean foundClass = false;
         for (var dictionary : layeredSingletons()) {
             JNIAccessibleClass clazz = dictionary.classesByClassObject.get(classObject);
@@ -341,12 +343,6 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
                 foundClass = true;
                 JNIAccessibleField field = clazz.getField(name);
                 if (field != null && (field.isStatic() == isStatic || field.isNegative())) {
-                    if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
-                        ConfigurationType clazzType = MetadataTracer.singleton().traceJNIType(classObject.getName());
-                        if (clazzType != null) {
-                            clazzType.addField(name.toString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED, false);
-                        }
-                    }
                     return field;
                 }
             }

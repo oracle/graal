@@ -144,12 +144,13 @@ struct PersistedAnalysisField {
   isRead @9 :Bool;
   isWritten @10 :Bool;
   isFolded @11 :Bool;
-  isStatic @12 :Bool;
-  isSynthetic @13 :Bool;
-  annotationList @14 :List(Annotation);
-  name @15 :Text;
-  priorInstalledLayerNum @16 :Int32;
-  assignmentStatus @17 :Int32;
+  isUnsafeAccessed @12 :Bool;
+  isStatic @13 :Bool;
+  isSynthetic @14 :Bool;
+  annotationList @15 :List(Annotation);
+  name @16 :Text;
+  priorInstalledLayerNum @17 :Int32;
+  assignmentStatus @18 :Int32;
 }
 
 struct CEntryPointLiteralReference {
@@ -169,9 +170,11 @@ struct ConstantReference {
     methodPointer :group {
       methodId @4 :MethodId;
     }
-    cEntryPointLiteralCodePointer @5 :CEntryPointLiteralReference;
-    cGlobalDataBasePointer @6 :Void;
-    methodOffset @7 :Void;
+    methodOffset :group {
+      methodId @5 :MethodId;
+    }
+    cEntryPointLiteralCodePointer @6 :CEntryPointLiteralReference;
+    cGlobalDataBasePointer @7 :Void;
   }
 }
 
@@ -239,6 +242,9 @@ struct ImageSingletonObject {
   id @0 :SingletonObjId;
   className @1 :Text;
   store @2 :List(KeyStoreEntry);
+  recreateClass @3 :Text;
+  # GR-66792 remove once no custom persist actions exist
+  recreateMethod @4 :Text;
 }
 
 struct Annotation {
@@ -301,7 +307,9 @@ struct StaticFinalFieldFoldingSingleton {
 
 struct LayeredRuntimeMetadataSingleton {
   methods @0 :List(MethodId);
-  fields @1 :List(FieldId);
+  methodStates @1 :List(Bool);
+  fields @2 :List(FieldId);
+  fieldStates @3 :List(Bool);
 }
 
 struct LayeredModule {

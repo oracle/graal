@@ -77,7 +77,7 @@ public abstract class SymbolTable {
     private static final int INITIAL_TYPE_SIZE = 128;
     private static final int INITIAL_FUNCTION_TYPES_SIZE = 128;
     private static final byte GLOBAL_MUTABLE_BIT = 0x01;
-    private static final byte GLOBAL_EXPORT_BIT = 0x02;
+    private static final byte GLOBAL_EXPORTED_BIT = 0x02;
     private static final byte GLOBAL_INITIALIZED_BIT = 0x04;
     private static final byte GLOBAL_IMPORTED_BIT = 0x10;
     private static final byte GLOBAL_FUNCTION_INITIALIZER_BIT = 0x20;
@@ -149,62 +149,27 @@ public abstract class SymbolTable {
         }
     }
 
-    public static class TableInfo {
-        /**
-         * Lower bound on table size.
-         */
-        public final int initialSize;
-
-        /**
-         * Upper bound on table size.
-         * <p>
-         * <em>Note:</em> this is the upper bound defined by the module. A table instance might have
-         * a lower internal max allowed size in practice.
-         */
-        public final int maximumSize;
-
-        /**
-         * The element type of the table.
-         */
-        public final byte elemType;
-
-        public TableInfo(int initialSize, int maximumSize, byte elemType) {
-            this.initialSize = initialSize;
-            this.maximumSize = maximumSize;
-            this.elemType = elemType;
-        }
+    /**
+     * @param initialSize Lower bound on table size.
+     * @param maximumSize Upper bound on table size.
+     *            <p>
+     *            <em>Note:</em> this is the upper bound defined by the module. A table instance
+     *            might have a lower internal max allowed size in practice.
+     * @param elemType The element type of the table.
+     */
+    public record TableInfo(int initialSize, int maximumSize, byte elemType) {
     }
 
-    public static class MemoryInfo {
-        /**
-         * Lower bound on memory size (in pages of 64 kiB).
-         */
-        public final long initialSize;
-
-        /**
-         * Upper bound on memory size (in pages of 64 kiB).
-         * <p>
-         * <em>Note:</em> this is the upper bound defined by the module. A memory instance might
-         * have a lower internal max allowed size in practice.
-         */
-        public final long maximumSize;
-
-        /**
-         * If the memory uses index type 64.
-         */
-        public final boolean indexType64;
-
-        /**
-         * Whether the memory is shared (modifications are visible to other threads).
-         */
-        public final boolean shared;
-
-        public MemoryInfo(long initialSize, long maximumSize, boolean indexType64, boolean shared) {
-            this.initialSize = initialSize;
-            this.maximumSize = maximumSize;
-            this.indexType64 = indexType64;
-            this.shared = shared;
-        }
+    /**
+     * @param initialSize Lower bound on memory size (in pages of 64 kiB).
+     * @param maximumSize Upper bound on memory size (in pages of 64 kiB).
+     *            <p>
+     *            <em>Note:</em> this is the upper bound defined by the module. A memory instance
+     *            might have a lower internal max allowed size in practice.
+     * @param indexType64 If the memory uses index type 64.
+     * @param shared Whether the memory is shared (modifications are visible to other threads).
+     */
+    public record MemoryInfo(long initialSize, long maximumSize, boolean indexType64, boolean shared) {
     }
 
     /**
@@ -325,6 +290,29 @@ public abstract class SymbolTable {
      * Number of globals in the module.
      */
     @CompilationFinal private int numGlobals;
+    /**
+     * Number of "external" (imported or exported) globals in the module.
+     */
+    @CompilationFinal private int numExternalGlobals;
+
+    /**
+     * A mapping between the indices of the globals and their corresponding global instance slot.
+     * Negative addresses point into the external globals array, where {@code index = -address-1},
+     * while 0 and positive addresses point into the internal globals array.
+     * <p>
+     * This array is monotonically populated from the left. Index i denotes the i-th global in this
+     * module. The value at index i denotes the address of the global in the memory space for all
+     * the globals of this module (see {@link GlobalRegistry}).
+     * <p>
+     * This mapping of global indices is done because, while the index and address spaces of the
+     * globals are module-specific, the address space of the globals is split up into two regions
+     * based on whether they have internal (local) or external (imported and/or exported) linkage.
+     * <p>
+     * Global addresses are assigned after the symbol table is fully parsed.
+     *
+     * @see #finishSymbolTable()
+     */
+    @CompilationFinal(dimensions = 1) private int[] globalAddresses;
 
     /**
      * Number of globals that need a bytecode initializer.
@@ -777,6 +765,7 @@ public abstract class SymbolTable {
         }
         if (imported) {
             flags |= GLOBAL_IMPORTED_BIT;
+            numExternalGlobals++;
         }
         if (initBytecode == null) {
             flags |= GLOBAL_FUNCTION_INITIALIZER_BIT;
@@ -791,22 +780,27 @@ public abstract class SymbolTable {
         globalTypes[2 * index + 1] = flags;
     }
 
+    /**
+     * Declares a non-imported global defined in this module. The global will be internal by
+     * default, but may be exported using {@link #exportGlobal}. Imported globals are declared using
+     * {@link #importGlobal} instead. This method may only be called during parsing, before linking.
+     */
     void declareGlobal(int index, byte valueType, byte mutability, boolean initialized, byte[] initBytecode, Object initialValue) {
+        assert initialized == (initBytecode == null) : index;
         allocateGlobal(index, valueType, mutability, initialized, false, initBytecode, initialValue);
         module().addLinkAction((context, store, instance, imports) -> {
-            final int address = store.globals().allocateGlobal();
-            instance.setGlobalAddress(index, address);
+            store.linker().resolveGlobalInitialization(instance, index, initBytecode, initialValue);
         });
     }
 
+    /**
+     * Declares an imported global. May be re-exported.
+     */
     void importGlobal(String moduleName, String globalName, int index, byte valueType, byte mutability) {
         final ImportDescriptor descriptor = new ImportDescriptor(moduleName, globalName, ImportIdentifier.GLOBAL, index, numImportedSymbols());
         importedGlobals.put(index, descriptor);
         importSymbol(descriptor);
         allocateGlobal(index, valueType, mutability, false, true, null, null);
-        module().addLinkAction((context, store, instance, imports) -> {
-            instance.setGlobalAddress(index, UNINITIALIZED_ADDRESS);
-        });
         module().addLinkAction((context, store, instance, imports) -> {
             store.linker().resolveGlobalImport(store, instance, descriptor, index, valueType, mutability, imports);
         });
@@ -829,8 +823,20 @@ public abstract class SymbolTable {
         return numGlobals;
     }
 
+    public int numInternalGlobals() {
+        return numGlobals - numExternalGlobals;
+    }
+
+    public int numExternalGlobals() {
+        return numExternalGlobals;
+    }
+
+    public final int globalAddress(int index) {
+        return globalAddresses[index];
+    }
+
     public byte globalMutability(int index) {
-        if ((globalTypes[2 * index + 1] & GLOBAL_MUTABLE_BIT) != 0) {
+        if ((globalFlags(index) & GLOBAL_MUTABLE_BIT) != 0) {
             return GlobalModifier.MUTABLE;
         } else {
             return GlobalModifier.CONSTANT;
@@ -845,12 +851,16 @@ public abstract class SymbolTable {
         return globalTypes[2 * index];
     }
 
+    private byte globalFlags(int index) {
+        return globalTypes[2 * index + 1];
+    }
+
     public boolean globalInitialized(int index) {
-        return (globalTypes[2 * index + 1] & GLOBAL_INITIALIZED_BIT) != 0;
+        return (globalFlags(index) & GLOBAL_INITIALIZED_BIT) != 0;
     }
 
     public byte[] globalInitializerBytecode(int index) {
-        if ((globalTypes[2 * index + 1] & GLOBAL_FUNCTION_INITIALIZER_BIT) != 0) {
+        if ((globalFlags(index) & GLOBAL_FUNCTION_INITIALIZER_BIT) != 0) {
             return null;
         } else {
             return globalInitializersBytecode[(int) globalInitializers[index]];
@@ -858,7 +868,7 @@ public abstract class SymbolTable {
     }
 
     public Object globalInitialValue(int index) {
-        if ((globalTypes[2 * index + 1] & GLOBAL_FUNCTION_INITIALIZER_BIT) != 0) {
+        if ((globalFlags(index) & GLOBAL_FUNCTION_INITIALIZER_BIT) != 0) {
             return globalInitializers[index];
         } else {
             return 0;
@@ -866,7 +876,15 @@ public abstract class SymbolTable {
     }
 
     public boolean globalImported(int index) {
-        return (globalTypes[2 * index + 1] & GLOBAL_IMPORTED_BIT) != 0;
+        return (globalFlags(index) & GLOBAL_IMPORTED_BIT) != 0;
+    }
+
+    public boolean globalExported(int index) {
+        return (globalFlags(index) & GLOBAL_EXPORTED_BIT) != 0;
+    }
+
+    public boolean globalExternal(int index) {
+        return (globalFlags(index) & (GLOBAL_IMPORTED_BIT | GLOBAL_EXPORTED_BIT)) != 0;
     }
 
     public EconomicMap<String, Integer> exportedGlobals() {
@@ -876,7 +894,10 @@ public abstract class SymbolTable {
     void exportGlobal(String name, int index) {
         checkNotParsed();
         exportSymbol(name);
-        globalTypes[2 * index + 1] |= GLOBAL_EXPORT_BIT;
+        if (!globalExternal(index)) {
+            numExternalGlobals++;
+        }
+        globalTypes[2 * index + 1] |= GLOBAL_EXPORTED_BIT;
         exportedGlobals.put(name, index);
         module().addLinkAction((context, store, instance, imports) -> {
             store.linker().resolveGlobalExport(instance.module(), name, index);
@@ -887,7 +908,6 @@ public abstract class SymbolTable {
         checkNotParsed();
         declareGlobal(index, valueType, mutability, true, null, value);
         exportGlobal(name, index);
-        module().addLinkAction((context, store, instance, imports) -> store.globals().store(valueType, instance.globalAddress(index), value));
     }
 
     private void ensureTableCapacity(int index) {
@@ -924,15 +944,13 @@ public abstract class SymbolTable {
         importSymbol(importedTable);
         module().addLinkAction((context, store, instance, imports) -> {
             instance.setTableAddress(index, UNINITIALIZED_ADDRESS);
-        });
-        module().addLinkAction((context, store, instance, imports) -> {
             store.linker().resolveTableImport(store, instance, importedTable, index, initSize, maxSize, elemType, imports);
         });
     }
 
     void addTable(int index, int minSize, int maxSize, byte elemType, boolean referenceTypes) {
         if (!referenceTypes) {
-            assertTrue(importedTables.size() == 0, "A table has already been imported in the module.", Failure.MULTIPLE_TABLES);
+            assertTrue(importedTables.isEmpty(), "A table has already been imported in the module.", Failure.MULTIPLE_TABLES);
             assertTrue(tableCount == 0, "A table has already been declared in the module.", Failure.MULTIPLE_TABLES);
         }
         ensureTableCapacity(index);
@@ -1036,7 +1054,7 @@ public abstract class SymbolTable {
 
     void addMemory(int index, long minSize, long maxSize, boolean indexType64, boolean shared, boolean multiMemory) {
         if (!multiMemory) {
-            assertTrue(importedMemories.size() == 0, "A memory has already been imported in the module.", Failure.MULTIPLE_MEMORIES);
+            assertTrue(importedMemories.isEmpty(), "A memory has already been imported in the module.", Failure.MULTIPLE_MEMORIES);
             assertTrue(memoryCount == 0, "A memory has already been declared in the module.", Failure.MULTIPLE_MEMORIES);
         }
         ensureMemoryCapacity(index);
@@ -1228,8 +1246,36 @@ public abstract class SymbolTable {
         return codeEntryCount;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public void removeFunctionReferences() {
+    /**
+     * Assigns global addresses and trims symbol table after parsing.
+     */
+    public void finishSymbolTable() {
+        CompilerAsserts.neverPartOfCompilation();
+        assignGlobalAddresses();
+        removeFunctionReferences();
+    }
+
+    private void assignGlobalAddresses() {
+        CompilerAsserts.neverPartOfCompilation();
+        assert numGlobals() == numInternalGlobals() + numExternalGlobals();
+        this.globalAddresses = new int[numGlobals];
+        int internalGlobalCount = 0;
+        int externalGlobalCount = 0;
+        for (int i = 0; i < numGlobals; i++) {
+            if (!globalExternal(i)) {
+                globalAddresses[i] = internalGlobalCount;
+                internalGlobalCount++;
+            } else {
+                globalAddresses[i] = -externalGlobalCount - 1;
+                externalGlobalCount++;
+            }
+        }
+        assert internalGlobalCount == numInternalGlobals();
+        assert externalGlobalCount == numExternalGlobals();
+    }
+
+    private void removeFunctionReferences() {
+        CompilerAsserts.neverPartOfCompilation();
         functionReferences = null;
     }
 }

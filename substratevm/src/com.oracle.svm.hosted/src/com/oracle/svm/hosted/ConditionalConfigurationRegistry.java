@@ -27,10 +27,12 @@ package com.oracle.svm.hosted;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
@@ -40,7 +42,29 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 public abstract class ConditionalConfigurationRegistry {
     private Feature.BeforeAnalysisAccess beforeAnalysisAccess;
     private SVMHost hostVM;
+    protected AnalysisUniverse universe;
     private final Map<Class<?>, Collection<Runnable>> pendingReachabilityHandlers = new ConcurrentHashMap<>();
+    private final Set<ConditionalTask> pendingConditionalTasks = ConcurrentHashMap.newKeySet();
+
+    record ConditionalTask(ConfigurationCondition condition, Consumer<ConfigurationCondition> task) {
+    }
+
+    protected void runConditionalTask(ConfigurationCondition condition, Consumer<ConfigurationCondition> task) {
+        if (universe != null) {
+            registerConditionalConfiguration(condition, (cnd) -> universe.getBigbang().postTask(debugContext -> task.accept(cnd)));
+        } else {
+            pendingConditionalTasks.add(new ConditionalTask(condition, task));
+            VMError.guarantee(universe == null, "There shouldn't be a race condition on Feature.duringSetup.");
+        }
+    }
+
+    protected void setUniverse(AnalysisUniverse analysisUniverse) {
+        this.universe = analysisUniverse;
+        for (var conditionalTask : pendingConditionalTasks) {
+            registerConditionalConfiguration(conditionalTask.condition, (cnd) -> universe.getBigbang().postTask(debug -> conditionalTask.task.accept(cnd)));
+        }
+        pendingConditionalTasks.clear();
+    }
 
     protected void registerConditionalConfiguration(ConfigurationCondition condition, Consumer<ConfigurationCondition> consumer) {
         Objects.requireNonNull(condition, "Cannot use null value as condition for conditional configuration. Please ensure that you register a non-null condition.");

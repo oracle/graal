@@ -608,7 +608,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         if (recommendInline && !node.isGenerateInline() && mode == ParseMode.DEFAULT && node.isGenerateCached()) {
 
-            AnnotationMirror annotation = getGenerateInlineAnnotation(node.getTemplateType());
+            AnnotationMirror annotation = getGenerateInlineAnnotation(node.getTemplateType().asType());
             if (annotation == null) {
 
                 NodeSizeEstimate estimate = computeInlinedSizeEstimate(FlatNodeGenFactory.createInlinedFields(node));
@@ -709,13 +709,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     }
 
                     if (!hasNodeParameter) {
-                        String nodeParameter;
-                        if (mode == ParseMode.EXPORTED_MESSAGE) {
-                            nodeParameter = String.format("@%s(\"$node\") Node node", getSimpleName(types.Bind));
-                        } else {
-                            nodeParameter = String.format("@%s(\"this\") Node node", getSimpleName(types.Bind));
-                        }
-
+                        String nodeParameter = String.format("@%s Node node", getSimpleName(types.Bind));
                         String message = String.format(
                                         "For this specialization with inlined cache parameters a '%s' parameter must be declared. " + //
                                                         "This parameter must be passed along to inlined cached values. " +
@@ -954,7 +948,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         VariableElement instanceField = getNodeFirstInstanceField(node.getTemplateType());
         if (instanceField != null) {
             if (emitErrors) {
-                node.addError(getGenerateInlineAnnotation(node.getTemplateType()), null, "Failed to generate code for @%s: The node must not declare any instance variables. " +
+                node.addError(getGenerateInlineAnnotation(node.getTemplateType().asType()), null, "Failed to generate code for @%s: The node must not declare any instance variables. " +
                                 "Found instance variable %s.%s. Remove instance variable to resolve this.",
                                 getSimpleName(types.GenerateInline),
                                 getSimpleName(instanceField.getEnclosingElement().asType()), instanceField.getSimpleName().toString());
@@ -1024,7 +1018,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     static boolean isGenerateInline(TypeElement templateType) {
-        AnnotationMirror annotation = getGenerateInlineAnnotation(templateType);
+        AnnotationMirror annotation = getGenerateInlineAnnotation(templateType.asType());
         Boolean value = Boolean.FALSE;
         if (annotation != null) {
             value = ElementUtils.getAnnotationValue(Boolean.class, annotation, "value");
@@ -1032,8 +1026,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return value;
     }
 
-    static AnnotationMirror getGenerateInlineAnnotation(TypeElement templateType) {
-        return findGenerateAnnotation(templateType.asType(), ProcessorContext.getInstance().getTypes().GenerateInline);
+    static AnnotationMirror getGenerateInlineAnnotation(TypeMirror type) {
+        return findGenerateAnnotation(type, ProcessorContext.getInstance().getTypes().GenerateInline);
     }
 
     public static AnnotationMirror findGenerateAnnotation(TypeMirror nodeType, DeclaredType annotationType) {
@@ -3767,13 +3761,15 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (declaresInline) {
                 cache.addError(cachedAnnotation, getAnnotationValue(cachedAnnotation, "inline"),
                                 "The cached node type does not support object inlining." + //
-                                                " Add @%s on the node type or disable inline using @%s(inline=false) to resolve this.",
+                                                " Add @%s or @%s(false) on the node type or disable inlining using @%s(inline=false) to resolve this.",
+                                getSimpleName(types.GenerateInline),
                                 getSimpleName(types.GenerateInline),
                                 getSimpleName(types.Cached));
-            } else if (node.isGenerateInline()) {
+            } else if (node.isGenerateInline() && NodeCodeGenerator.isSpecializedNode(cache.getParameter().getType()) && !isGenerateInlineFalse(cache)) {
                 cache.addSuppressableWarning(TruffleSuppressedWarnings.INLINING_RECOMMENDATION,
                                 "The cached node type does not support object inlining." + //
-                                                " Add @%s on the node type or disable inline using @%s(inline=false) to resolve this.",
+                                                " Add @%s or @%s(false) on the node type or disable inlining using @%s(inline=false) to resolve this.",
+                                getSimpleName(types.GenerateInline),
                                 getSimpleName(types.GenerateInline),
                                 getSimpleName(types.Cached));
                 inline = false;
@@ -4148,7 +4144,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
      * on. This enables that @Cached InlinedBranchProfile inlines by default even if a cached
      * version is generated and no warning is printed.
      */
-    private boolean forceInlineByDefault(CacheExpression cache) {
+    private static boolean forceInlineByDefault(CacheExpression cache) {
         AnnotationMirror cacheAnnotation = cache.getMessageAnnotation();
         TypeElement parameterType = ElementUtils.castTypeElement(cache.getParameter().getType());
         if (parameterType == null) {
@@ -4158,12 +4154,24 @@ public final class NodeParser extends AbstractParser<NodeData> {
         if (defaultCached && !hasDefaultCreateCacheMethod(parameterType.asType())) {
             return hasInlineMethod(cache);
         }
-        if (ElementUtils.isAssignable(parameterType.asType(), types.Node)) {
-            AnnotationMirror inlineAnnotation = getGenerateInlineAnnotation(parameterType);
+        if (NodeCodeGenerator.isSpecializedNode(parameterType.asType())) {
+            AnnotationMirror inlineAnnotation = getGenerateInlineAnnotation(parameterType.asType());
             if (inlineAnnotation != null) {
                 return getAnnotationValue(Boolean.class, inlineAnnotation, "value") &&
                                 getAnnotationValue(Boolean.class, inlineAnnotation, "inlineByDefault");
             }
+        }
+        return false;
+    }
+
+    private static boolean isGenerateInlineFalse(CacheExpression cache) {
+        TypeMirror type = cache.getParameter().getType();
+        if (!NodeCodeGenerator.isSpecializedNode(type)) {
+            return false;
+        }
+        AnnotationMirror inlineAnnotation = getGenerateInlineAnnotation(type);
+        if (inlineAnnotation != null && getAnnotationValue(Boolean.class, inlineAnnotation, "value") == false) {
+            return true;
         }
         return false;
     }

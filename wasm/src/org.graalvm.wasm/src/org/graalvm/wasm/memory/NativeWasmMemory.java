@@ -52,6 +52,7 @@ import java.lang.reflect.Field;
 import org.graalvm.wasm.MemoryContext;
 import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.api.Vector128Ops;
 import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -113,6 +114,17 @@ public final class NativeWasmMemory extends WasmMemory {
         }
     }
 
+    @TruffleBoundary
+    private long reallocate(long newBufferSize) {
+        try {
+            final long address = unsafe.reallocateMemory(startAddress, newBufferSize);
+            unsafe.setMemory(address + bufferSize, newBufferSize - bufferSize, (byte) 0);
+            return address;
+        } catch (OutOfMemoryError error) {
+            throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
+        }
+    }
+
     private static Deallocator registerDeallocator(NativeWasmMemory memory, MemoryContext memoryContext, long address) {
         var deallocator = new Deallocator(address);
         memoryContext.registerCleaner(memory, deallocator);
@@ -139,29 +151,27 @@ public final class NativeWasmMemory extends WasmMemory {
         } else if (Long.compareUnsigned(extraPageSize, maxAllowedSize()) <= 0 && Long.compareUnsigned(previousSize + extraPageSize, maxAllowedSize()) <= 0) {
             // Condition above and limit on maxAllowedSize (see NativeWasmMemory#MAX_ALLOWED_SIZE)
             // ensure computation of targetByteSize does not overflow.
-            final long targetByteSize = Math.multiplyExact(Math.addExact(previousSize, extraPageSize), MEMORY_PAGE_SIZE);
+            final long targetPageSize = Math.addExact(previousSize, extraPageSize);
+            final long targetByteSize = Math.multiplyExact(targetPageSize, MEMORY_PAGE_SIZE);
             if (Long.compareUnsigned(targetByteSize, bufferSize) > 0) {
                 try {
                     long newBufferSize = newBufferSize(targetByteSize);
-                    startAddress = updateDeallocatorAddress(unsafe.reallocateMemory(startAddress, newBufferSize));
-                    unsafe.setMemory(startAddress + bufferSize, newBufferSize - bufferSize, (byte) 0);
+                    startAddress = updateDeallocatorAddress(reallocate(newBufferSize));
                     bufferSize = newBufferSize;
-                } catch (OutOfMemoryError error) {
+                } catch (WasmException error) {
                     // Over-allocating failed, so try to allocate at least the amount of memory that
                     // was requested.
                     try {
                         long newBufferSize = targetByteSize;
-                        startAddress = updateDeallocatorAddress(unsafe.reallocateMemory(startAddress, newBufferSize));
-                        unsafe.setMemory(startAddress + bufferSize, newBufferSize - bufferSize, (byte) 0);
+                        startAddress = updateDeallocatorAddress(reallocate(newBufferSize));
                         bufferSize = newBufferSize;
-                    } catch (OutOfMemoryError errorAgain) {
-                        throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
+                    } catch (WasmException errorAgain) {
+                        return -1;
                     }
                 }
             }
-            final long updatedSize = previousSize + extraPageSize;
-            currentMinSize = updatedSize;
-            SIZE_FIELD.setVolatile(this, updatedSize);
+            currentMinSize = targetPageSize;
+            SIZE_FIELD.setVolatile(this, targetPageSize);
             invokeGrowCallback();
             return previousSize;
         } else {
@@ -283,11 +293,12 @@ public final class NativeWasmMemory extends WasmMemory {
     }
 
     @ExportMessage
-    public Vector128 load_i128(Node node, long address) {
+    public Object load_i128(Node node, long address) {
         validateAddress(node, address, Vector128.BYTES);
         byte[] bytes = new byte[Vector128.BYTES];
         unsafe.copyMemory(null, startAddress + address, bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET, Vector128.BYTES);
-        return new Vector128(bytes);
+        // Use ByteVector.fromMemorySegment after adopting FFM
+        return Vector128Ops.SINGLETON_IMPLEMENTATION.fromArray(bytes);
     }
 
     @ExportMessage
@@ -345,9 +356,10 @@ public final class NativeWasmMemory extends WasmMemory {
     }
 
     @ExportMessage
-    public void store_i128(Node node, long address, Vector128 value) {
+    public void store_i128(Node node, long address, Object value) {
         validateAddress(node, address, 16);
-        unsafe.copyMemory(value.getBytes(), Unsafe.ARRAY_BYTE_BASE_OFFSET, null, startAddress + address, 16);
+        // Use intoMemorySegment after adopting the FFM API
+        unsafe.copyMemory(Vector128Ops.SINGLETON_IMPLEMENTATION.toArray(Vector128Ops.cast(value)), Unsafe.ARRAY_BYTE_BASE_OFFSET, null, startAddress + address, 16);
     }
 
     @ExportMessage

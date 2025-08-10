@@ -26,10 +26,8 @@ package com.oracle.svm.core.reflect.proxy;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
@@ -191,12 +189,8 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
 
     @Override
     public Class<?> getProxyClass(ClassLoader loader, Class<?>... interfaces) {
-        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
-            List<String> interfaceNames = new ArrayList<>(interfaces.length);
-            for (Class<?> iface : interfaces) {
-                interfaceNames.add(iface.getName());
-            }
-            MetadataTracer.singleton().traceProxyType(interfaceNames);
+        if (MetadataTracer.enabled()) {
+            MetadataTracer.singleton().traceProxyType(interfaces);
         }
 
         ProxyCacheKey key = new ProxyCacheKey(interfaces);

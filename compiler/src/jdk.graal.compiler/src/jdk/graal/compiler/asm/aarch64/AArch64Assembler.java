@@ -134,6 +134,7 @@ import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.ORN;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.ORR;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.RBIT;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.RET;
+import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.REV16;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.REVW;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.REVX;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.RORV;
@@ -982,6 +983,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         CLS(0x00001400),
         CLZ(0x00001000),
         RBIT(0x00000000),
+        REV16(0x00000400),
         REVX(0x00000C00),
         REVW(0x00000800),
 
@@ -3039,6 +3041,18 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         }
     }
 
+    /**
+     * C6.2.223 Reverse bytes in 16-bit halfwords.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or the stackpointer.
+     * @param src source register. May not be null or the stackpointer.
+     */
+    public void rev16(int size, Register dst, Register src) {
+        assert verifySizeAndRegistersRR(size, dst, src);
+        dataProcessing1SourceOp(REV16, dst, src, generalFromSize(size));
+    }
+
     /* Conditional Data Processing (5.5.6) */
 
     /**
@@ -4082,7 +4096,9 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * C6.2.230 Speculation barrier.
      */
     public void sb() {
-        emitInt(SB.encoding | BarrierOp);
+        if (supports(CPUFeature.SB)) {
+            emitInt(SB.encoding | BarrierOp);
+        }
     }
 
     public void annotatePatchingImmediate(int pos, Instruction instruction, int operandSizeBits, int offsetBits, int shift) {

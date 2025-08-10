@@ -934,7 +934,7 @@ public class ErrorTests {
     }
 
     @GenerateBytecode(languageClass = ErrorLanguage.class)
-    @ExpectError({"At least one operation must be declared using @Operation, @OperationProxy, or @ShortCircuitOperation."})
+    @ExpectWarning("No custom operations were declared. Custom operations can be declared using @Operation, @OperationProxy, or @ShortCircuitOperation.")
     public abstract static class NoOperationsTest extends RootNode implements BytecodeRootNode {
         protected NoOperationsTest(ErrorLanguage language, FrameDescriptor builder) {
             super(language, builder);

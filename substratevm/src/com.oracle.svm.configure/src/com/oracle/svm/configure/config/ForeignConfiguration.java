@@ -270,7 +270,7 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
                         "upcalls", upcallStubs,
                         "directUpcalls", directUpcallStubs);
 
-        writer.appendObjectStart().indent();
+        writer.appendObjectStart();
         boolean first = true;
         for (String sectionName : stubSets.keySet()) {
             Collection<? extends JsonPrintable> stubs = stubSets.get(sectionName);
@@ -278,13 +278,13 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
                 if (!first) {
                     writer.appendSeparator();
                 }
-                writer.newline().quote(sectionName).appendFieldSeparator().appendArrayStart().indent().newline();
+                writer.quote(sectionName).appendFieldSeparator().appendArrayStart();
                 printStubs(writer, stubs);
-                writer.unindent().newline().appendArrayEnd();
+                writer.appendArrayEnd();
                 first = false;
             }
         }
-        writer.unindent().newline().appendObjectEnd();
+        writer.appendObjectEnd();
     }
 
     private static void printStubs(JsonWriter writer, Collection<? extends JsonPrintable> stubs) throws IOException {
@@ -293,7 +293,7 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
             if (first) {
                 first = false;
             } else {
-                writer.appendSeparator().newline();
+                writer.appendSeparator();
             }
             stubDesc.printJson(writer);
         }
@@ -301,8 +301,8 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
 
     @Override
     public ConfigurationParser createParser(boolean combinedFileSchema, EnumSet<ConfigurationParserOption> parserOptions) {
-        if (combinedFileSchema) {
-            throw new IllegalArgumentException("Foreign configuration is only supported with the legacy metadata schema");
+        if (!combinedFileSchema) {
+            throw new IllegalArgumentException("Foreign configuration is only supported with reachability-metadata.json");
         }
         return new UnresolvedForeignConfigurationParser(parserOptions);
     }
@@ -314,7 +314,7 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
 
     @Override
     public boolean supportsCombinedFile() {
-        return false;
+        return true;
     }
 
     public interface Predicate {

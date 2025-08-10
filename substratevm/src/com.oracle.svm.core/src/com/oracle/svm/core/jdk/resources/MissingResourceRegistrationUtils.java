@@ -29,6 +29,7 @@ import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Map;
+import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.Set;
 
@@ -61,16 +62,18 @@ public final class MissingResourceRegistrationUtils extends MissingRegistrationU
         report(exception);
     }
 
-    public static void reportResourceBundleAccess(String baseName) {
-        var bundleConfig = new ResourceConfiguration.BundleConfiguration(UnresolvedConfigurationCondition.alwaysTrue(), baseName);
+    public static void reportResourceBundleAccess(Module module, String baseName) {
+        Objects.requireNonNull(module);
+        var bundleConfig = new ResourceConfiguration.BundleConfiguration(UnresolvedConfigurationCondition.alwaysTrue(), module.getName(), baseName);
         StringWriter json = new StringWriter();
         try {
             ResourceConfiguration.printResourceBundle(bundleConfig, getJSONWriter(json), true);
         } catch (IOException e) {
             throw VMError.shouldNotReachHere("In memory JSON printing should not fail");
         }
+        String moduleMessage = module.isNamed() ? " from module " + quote(module.getName()) : "";
         MissingResourceRegistrationError exception = new MissingResourceRegistrationError(
-                        resourceError("resource bundle with name " + quote(baseName), json.toString(), "resource-bundles"),
+                        resourceError("resource bundle" + moduleMessage + " with name " + quote(baseName), json.toString(), "resource-bundles"),
                         baseName);
         report(exception);
     }

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.code;
 
-import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -49,6 +48,7 @@ import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.core.reflect.target.ReflectionObjectFactory;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Executable;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.ByteArrayReader;
 
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeReader;
@@ -695,7 +695,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         if (isErrorIndex(length)) {
             decodeAndThrowError(length, layerId);
         }
-        T[] result = (T[]) Array.newInstance(elementType, length);
+        T[] result = (T[]) KnownIntrinsics.unvalidatedNewArray(elementType, length);
         int valueCount = 0;
         for (int i = 0; i < length; ++i) {
             T element = elementDecoder.apply(i);

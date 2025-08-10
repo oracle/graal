@@ -26,7 +26,6 @@ package com.oracle.svm.hosted;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -46,8 +45,14 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -259,7 +264,8 @@ public class OpenTypeWorldFeature implements InternalFeature {
     record TypeCheckInfo(boolean installed, int typeID, int numClassTypes, int numInterfaceTypes, int[] typecheckSlots) {
     }
 
-    private static final class LayerTypeCheckInfo implements LayeredImageSingleton {
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    private static final class LayerTypeCheckInfo {
         final int maxTypeID;
 
         LayerTypeCheckInfo(int maxTypeID) {
@@ -277,21 +283,30 @@ public class OpenTypeWorldFeature implements InternalFeature {
 
             return maxTypeID;
         }
+    }
 
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
-        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-            return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
-        }
+        public SingletonTrait getLayeredCallbacksTrait() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks() {
+                @Override
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+                    writer.writeInt("maxTypeID", DynamicHubSupport.currentLayer().getMaxTypeId());
 
+                    return LayeredImageSingleton.PersistFlags.CREATE;
+                }
+
+                @Override
+                public Class<? extends LayeredSingletonInstantiator> getSingletonInstantiator() {
+                    return SingletonInstantiator.class;
+                }
+            });
+        }
+    }
+
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator {
         @Override
-        public PersistFlags preparePersist(ImageSingletonWriter writer) {
-            writer.writeInt("maxTypeID", DynamicHubSupport.currentLayer().getMaxTypeId());
-
-            return PersistFlags.CREATE;
-        }
-
-        @SuppressWarnings("unused")
-        public static Object createFromLoader(ImageSingletonLoader loader) {
+        public Object createFromLoader(ImageSingletonLoader loader) {
             return new LayerTypeCheckInfo(loader.readInt("maxTypeID"));
         }
     }

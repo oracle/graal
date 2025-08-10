@@ -1058,7 +1058,7 @@ public class SnippetTemplate {
     /**
      * Creates a snippet template.
      */
-    @SuppressWarnings("try")
+    @SuppressWarnings({"try", "this-escape"})
     protected SnippetTemplate(OptionValues options,
                     DebugContext debug,
                     CoreProviders providers,
@@ -1070,6 +1070,8 @@ public class SnippetTemplate {
                     PhaseSuite<CoreProviders> midTierPostLoweringPhases) {
         this.snippetReflection = snippetReflection;
         this.info = args.info;
+
+        assert replacee.graph() != null : Assertions.errorMessage("Cannot snippet lower without a caller graph", replacee, this);
 
         Object[] constantArgs = getConstantArgs(args);
         BitSet nonNullParameters = getNonNullParameters(args);
@@ -1272,7 +1274,8 @@ public class SnippetTemplate {
                     // (3)
                     assert !guardsStage.allowsFloatingGuards() : guardsStage;
                     // only create memory map nodes if we need the memory graph
-                    new FloatingReadPhase(true, canonicalizer).apply(snippetCopy, providers);
+                    new FloatingReadPhase(true, false, canonicalizer).apply(snippetCopy, providers);
+
                     if (!snippetCopy.getGraphState().isExplicitExceptionsNoDeopt()) {
                         new GuardLoweringPhase().apply(snippetCopy, providers);
                     }
@@ -1954,46 +1957,50 @@ public class SnippetTemplate {
 
     private void rewireMemoryGraph(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
         verifyWithExceptionNode(replacee);
-        if (replacee.graph().isAfterStage(StageFlag.FLOATING_READS)) {
-            // rewire outgoing memory edges
-            if (returnNode != null) {
-                // outgoing memory edges are always attached to the replacee
-                replaceMemoryUsages(replacee, new MemoryOutputMap(replacee, returnNode.getMemoryMap(), duplicates));
-                ReturnNode ret = (ReturnNode) duplicates.get(returnNode);
-                if (ret != null) {
-                    MemoryMapNode memoryMap = ret.getMemoryMap();
-                    if (memoryMap != null) {
-                        ret.setMemoryMap(null);
-                        memoryMap.safeDelete();
-                    }
-                }
-            }
-            // rewire exceptional memory edges
-            if (unwindPath != null) {
-                // exceptional memory edges are attached to the exception edge
-                replaceMemoryUsages(((WithExceptionNode) replacee).exceptionEdge(), new MemoryOutputMap(replacee, unwindPath.getMemoryMap(), duplicates));
-                UnwindNode unwind = (UnwindNode) duplicates.get(unwindPath);
-                if (unwind != null) {
-                    MemoryMapNode memoryMap = unwind.getMemoryMap();
-                    if (memoryMap != null) {
-                        unwind.setMemoryMap(null);
-                        memoryMap.safeDelete();
-                    }
-                }
-            }
-            if (memoryAnchor != null) {
-                // rewire incoming memory edges
-                MemoryAnchorNode memoryDuplicate = (MemoryAnchorNode) duplicates.get(memoryAnchor);
-                replaceMemoryUsages(memoryDuplicate, new MemoryInputMap(replacee));
+        final StructuredGraph replaceeGraph = replacee.graph();
+        final boolean hasMemoryGraph = replaceeGraph.isAfterStage(StageFlag.FLOATING_READS) && !replaceeGraph.isAfterStage(StageFlag.FIXED_READS);
+        if (!hasMemoryGraph) {
+            return;
+        }
 
-                if (memoryDuplicate.hasNoUsages()) {
-                    if (memoryDuplicate.next() != null) {
-                        memoryDuplicate.graph().removeFixed(memoryDuplicate);
-                    } else {
-                        // this was a dummy memory node used when instantiating pure data-flow
-                        // snippets: it was not attached to the control flow.
-                        memoryDuplicate.safeDelete();
-                    }
+        // rewire outgoing memory edges
+        if (returnNode != null) {
+            // outgoing memory edges are always attached to the replacee
+            replaceMemoryUsages(replacee, new MemoryOutputMap(replacee, returnNode.getMemoryMap(), duplicates));
+            ReturnNode ret = (ReturnNode) duplicates.get(returnNode);
+            if (ret != null) {
+                MemoryMapNode memoryMap = ret.getMemoryMap();
+                if (memoryMap != null) {
+                    ret.setMemoryMap(null);
+                    memoryMap.safeDelete();
+                }
+            }
+        }
+        // rewire exceptional memory edges
+        if (unwindPath != null) {
+            // exceptional memory edges are attached to the exception edge
+            replaceMemoryUsages(((WithExceptionNode) replacee).exceptionEdge(), new MemoryOutputMap(replacee, unwindPath.getMemoryMap(), duplicates));
+            UnwindNode unwind = (UnwindNode) duplicates.get(unwindPath);
+            if (unwind != null) {
+                MemoryMapNode memoryMap = unwind.getMemoryMap();
+                if (memoryMap != null) {
+                    unwind.setMemoryMap(null);
+                    memoryMap.safeDelete();
+                }
+            }
+        }
+        if (memoryAnchor != null) {
+            // rewire incoming memory edges
+            MemoryAnchorNode memoryDuplicate = (MemoryAnchorNode) duplicates.get(memoryAnchor);
+            replaceMemoryUsages(memoryDuplicate, new MemoryInputMap(replacee));
+
+            if (memoryDuplicate.hasNoUsages()) {
+                if (memoryDuplicate.next() != null) {
+                    memoryDuplicate.graph().removeFixed(memoryDuplicate);
+                } else {
+                    // this was a dummy memory node used when instantiating pure data-flow
+                    // snippets: it was not attached to the control flow.
+                    memoryDuplicate.safeDelete();
                 }
             }
         }
@@ -2917,19 +2924,34 @@ public class SnippetTemplate {
         return buf.append(')').toString();
     }
 
+    /**
+     * {@code true} if encoded snippets are in use in a hosted context. This is needed to disable
+     * assertions that are not supported with encoded snippets. {@code EncodedSnippets} is not
+     * referencable from this context, so this is the only way to check this fact.
+     */
+    private static volatile boolean hostedEncodedSnippets = false;
+
+    /**
+     * Notifies snippet templates whether snippets are encoded in a hosted context. If {@code true},
+     * this call disables assertions that are not supported with encoded snippets.
+     *
+     * @param value whether snippets are encoded in a hosted context
+     */
+    public static void setHostedEncodedSnippets(boolean value) {
+        hostedEncodedSnippets = value;
+    }
+
     private static boolean checkTemplate(MetaAccessProvider metaAccess, Arguments args, ResolvedJavaMethod method) {
         Signature signature = method.getSignature();
         int offset = args.info.hasReceiver() ? 1 : 0;
         for (int i = offset; i < args.info.getParameterCount(); i++) {
             if (args.info.isConstantParameter(i)) {
                 JavaKind kind = signature.getParameterKind(i - offset);
-                assert inRuntimeCode() || checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
-
+                assert inRuntimeCode() || hostedEncodedSnippets || checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
             } else if (args.info.isVarargsParameter(i)) {
                 assert args.values[i] instanceof Varargs : Assertions.errorMessage(args.values[i], args, method);
                 Varargs varargs = (Varargs) args.values[i];
-                assert inRuntimeCode() || checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
-
+                assert inRuntimeCode() || hostedEncodedSnippets || checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
             } else if (args.info.isNonNullParameter(i)) {
                 assert checkNonNull(method, args.info.getParameterName(i), args.values[i]);
             }

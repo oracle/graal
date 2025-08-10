@@ -80,11 +80,6 @@ public class SubstrateLLVMLoweringProvider extends SubstrateBasicLoweringProvide
     }
 
     @Override
-    public boolean supportsRounding() {
-        return false;
-    }
-
-    @Override
     public boolean writesStronglyOrdered() {
         return false;
     }

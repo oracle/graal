@@ -47,7 +47,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.ClassNameSupport;
-import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -244,6 +243,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
 
     private void addKnownClass(String name, Consumer<EconomicMap<String, ConditionalRuntimeValue<Object>>> callback, ConditionalRuntimeValue<Object> cond) {
         Boolean previousLayerData = previousLayerClasses.get(name);
+        /* GR-66387: The runtime condition should be combined across layers. */
         if (previousLayerData == null || (!previousLayerData && cond.getValueUnconditionally() != NEGATIVE_QUERY)) {
             callback.accept(knownClasses);
         }
@@ -357,18 +357,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
         if (className == null) {
             return null;
         }
-        Object result = null;
-        for (var singleton : layeredSingletons()) {
-            Object newResult = singleton.forName0(className, classLoader);
-            result = newResult != null ? newResult : result;
-            /*
-             * The class might have been registered in a shared layer but was not yet available. In
-             * that case, the extension layers need to be checked too.
-             */
-            if (result != null && result != NEGATIVE_QUERY) {
-                break;
-            }
-        }
+        Object result = queryResultFor(className, classLoader);
         // Note: for non-predefined classes, we (currently) don't need to check the provided loader
         // TODO rewrite stack traces (GR-42813)
         if (result instanceof Class<?>) {
@@ -397,6 +386,22 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
         throw VMError.shouldNotReachHere("Class.forName result should be Class, ClassNotFoundException or Error: " + result);
     }
 
+    private static Object queryResultFor(String className, ClassLoader classLoader) {
+        Object result = null;
+        for (var singleton : layeredSingletons()) {
+            Object newResult = singleton.forName0(className, classLoader);
+            result = newResult != null ? newResult : result;
+            /*
+             * The class might have been registered in a shared layer but was not yet available. In
+             * that case, the extension layers need to be checked too.
+             */
+            if (result != null && result != NEGATIVE_QUERY) {
+                break;
+            }
+        }
+        return result;
+    }
+
     private Object forName0(String className, ClassLoader classLoader) {
         if (className.endsWith("[]")) {
             /* Querying array classes with their "TypeName[]" name always throws */
@@ -411,9 +416,9 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
             /* Invalid class names always throw, no need for reflection data */
             return new ClassNotFoundException(className);
         }
-        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+        if (MetadataTracer.enabled()) {
             // NB: the early returns above ensure we do not trace calls with bad type args.
-            MetadataTracer.singleton().traceReflectionType(className);
+            MetadataTracer.singleton().traceReflectionType(ClassNameSupport.reflectionNameToTypeName(className));
         }
         return result == NEGATIVE_QUERY ? new ClassNotFoundException(className) : result;
     }
@@ -451,12 +456,15 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
     }
 
     public static boolean isRegisteredClass(String className) {
-        assert respectClassLoader();
-        RuntimeConditionSet conditionSet = getConditionForName(className);
-        if (conditionSet == null) {
-            return false;
+        if (respectClassLoader()) {
+            RuntimeConditionSet conditionSet = getConditionForName(className);
+            if (conditionSet == null) {
+                return false;
+            }
+            return conditionSet.satisfied();
+        } else {
+            return queryResultFor(className, null) != null;
         }
-        return conditionSet.satisfied();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -500,6 +508,9 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
      */
     public static boolean canUnsafeInstantiateAsInstance(DynamicHub hub) {
         Class<?> clazz = DynamicHub.toClass(hub);
+        if (MetadataTracer.enabled()) {
+            MetadataTracer.singleton().traceUnsafeAllocatedType(clazz);
+        }
         RuntimeConditionSet conditionSet = null;
         for (var singleton : layeredSingletons()) {
             conditionSet = singleton.unsafeInstantiatedClasses.get(clazz);
@@ -508,12 +519,6 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
             }
         }
         if (conditionSet != null) {
-            if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
-                ConfigurationType type = MetadataTracer.singleton().traceReflectionType(clazz.getName());
-                if (type != null) {
-                    type.setUnsafeAllocated();
-                }
-            }
             return conditionSet.satisfied();
         }
         return false;

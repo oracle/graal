@@ -59,7 +59,7 @@ You can configure the logging for the JFR system with a separate flag `-XX:Fligh
 The usage is: `-XX:FlightRecorderLogging=[tag1[+tag2...][*][=level][,...]]`. 
 For example:
 ```shell
--XX:FlightRecorderLogging=jfr,system=debug
+-XX:FlightRecorderLogging=jfr+system=debug
 -XX:FlightRecorderLogging=all=trace
 -XX:FlightRecorderLogging=jfr*=error
 ```

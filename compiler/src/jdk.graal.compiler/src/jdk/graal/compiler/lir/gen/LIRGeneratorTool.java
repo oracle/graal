@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -234,7 +234,7 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
     }
 
     @SuppressWarnings("unused")
-    default void emitArrayFill(JavaKind commonElementKind, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value arrayBaseOffset, Value length, Value value) {
+    default void emitArrayFill(JavaKind commonElementKind, Value array, Value arrayBaseOffset, Value length, Value value) {
         throw GraalError.unimplemented("Arrays.fill substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
@@ -271,13 +271,24 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
     @SuppressWarnings("unused")
     default void emitArrayCopyWithConversion(Stride strideSrc, Stride strideDst, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length) {
-        throw GraalError.unimplemented("Array.copy with variable stride substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplemented("Array.copy with conversion substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default void emitArrayCopyWithConversion(EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value dynamicStrides) {
         throw GraalError.unimplemented("Array.copy with variable stride substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    /**
+     * Variant of
+     * {@link #emitArrayCopyWithConversion(Stride, Stride, EnumSet, Value, Value, Value, Value, Value)}
+     * that also reverses the byte order of values in the destination region.
+     */
+    @SuppressWarnings("unused")
+    default void emitArrayCopyWithReverseBytes(Stride stride, EnumSet<?> runtimeCheckedCPUFeatures,
+                    Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length) {
+        throw GraalError.unimplemented("Array.copy with byte swap substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     /**

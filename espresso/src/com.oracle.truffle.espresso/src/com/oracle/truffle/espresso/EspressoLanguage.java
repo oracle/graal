@@ -146,6 +146,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     @CompilationFinal private boolean internalJvmciEnabled;
     @CompilationFinal private boolean useEspressoLibs;
     @CompilationFinal private boolean continuum;
+    @CompilationFinal private boolean useTRegex;
+    @CompilationFinal private int maxStackTraceDepth;
     // endregion Options
 
     // region Allocation
@@ -245,6 +247,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         whiteBoxEnabled = env.getOptions().get(EspressoOptions.WhiteBoxAPI);
         internalJvmciEnabled = env.getOptions().get(EspressoOptions.EnableJVMCI);
         continuum = env.getOptions().get(EspressoOptions.Continuum);
+        maxStackTraceDepth = env.getOptions().get(EspressoOptions.MaxJavaStackTraceDepth);
+
+        useTRegex = env.getOptions().get(EspressoOptions.UseTRegex);
+        if (useTRegex && !env.getInternalLanguages().containsKey("regex")) {
+            throw EspressoError.fatal("UseTRegex is set to true but the 'regex' language is not available.");
+        }
 
         EspressoOptions.GuestFieldOffsetStrategyEnum strategy = env.getOptions().get(EspressoOptions.GuestFieldOffsetStrategy);
         guestFieldOffsetStrategy = switch (strategy) {
@@ -343,8 +351,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.WhiteBoxAPI) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnableJVMCI) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.Continuum) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseTRegex) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.GuestFieldOffsetStrategy) &&
-                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseEspressoLibs);
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseEspressoLibs) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.MaxJavaStackTraceDepth);
     }
 
     private static boolean isOptionCompatible(OptionValues oldOptions, OptionValues newOptions, OptionKey<?> option) {
@@ -582,6 +592,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         return internalJvmciEnabled;
     }
 
+    public boolean useTRegex() {
+        return useTRegex;
+    }
+
     public boolean useEspressoLibs() {
         return useEspressoLibs;
     }
@@ -618,6 +632,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                 if (ref == null) {
                     if (!getGuestFieldOffsetStrategy().isAllowed(version)) {
                         throw EspressoError.fatal("This guest field offset strategy (" + getGuestFieldOffsetStrategy().name() + ") is not allowed with this Java version (" + version + ")");
+                    }
+                    if (useTRegex && !version.java21OrLater()) {
+                        throw EspressoError.fatal("UseTRegex is not available for context running Java version < 21.");
                     }
                     this.javaVersion = ref = version;
                 }
@@ -732,6 +749,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     public DisableSingleStepping disableStepping() {
         return new DisableSingleStepping();
+    }
+
+    public int getMaxStackTraceDepth() {
+        return maxStackTraceDepth;
     }
 
     public final class DisableSingleStepping implements AutoCloseable {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,6 @@ import java.util.Set;
 import java.util.function.BiFunction;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -61,6 +60,7 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
+import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.hotspot.stubs.AbstractForeignCallStub;
 import jdk.graal.compiler.hotspot.stubs.ForeignCallStub;
 import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
@@ -88,6 +88,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.ConditionalInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.nodes.java.AccessFieldNode;
@@ -206,8 +207,6 @@ public class SymbolicSnippetEncoder {
 
     private final EconomicMap<String, SnippetParameterInfo> snippetParameterInfos = EconomicMap.create();
 
-    private final EconomicSet<InvocationPlugin> conditionalPlugins = EconomicSet.create();
-
     /**
      * The invocation plugins which were delayed during graph preparation.
      */
@@ -264,10 +263,6 @@ public class SymbolicSnippetEncoder {
 
     SymbolicSnippetEncoder(HotSpotReplacementsImpl replacements) {
         this.originalReplacements = replacements;
-    }
-
-    synchronized void registerConditionalPlugin(InvocationPlugin plugin) {
-        conditionalPlugins.add(plugin);
     }
 
     @SuppressWarnings("try")
@@ -362,7 +357,7 @@ public class SymbolicSnippetEncoder {
                         originalProvider.getConstantFieldProvider(), originalProvider.getForeignCalls(), originalProvider.getLowerer(), null, originalProvider.getSuites(),
                         originalProvider.getRegisters(), originalProvider.getSnippetReflection(), originalProvider.getWordTypes(), originalProvider.getStampProvider(),
                         originalProvider.getPlatformConfigurationProvider(), originalProvider.getMetaAccessExtensionProvider(), originalProvider.getLoopsDataProvider(), originalProvider.getConfig(),
-                        originalProvider.getIdentityHashCodeProvider());
+                        originalProvider.getIdentityHashCodeProvider(), originalProvider.getReplayCompilationSupport());
         HotSpotSnippetReplacementsImpl filteringReplacements = new HotSpotSnippetReplacementsImpl(newProviders,
                         originalProvider.getReplacements().getDefaultReplacementBytecodeProvider(), originalProvider.getCodeCache().getTarget());
         filteringReplacements.setGraphBuilderPlugins(originalProvider.getReplacements().getGraphBuilderPlugins());
@@ -373,7 +368,7 @@ public class SymbolicSnippetEncoder {
             }
             StructuredGraph snippet = filteringReplacements.makeGraph(debug, filteringReplacements.getDefaultReplacementBytecodeProvider(), method, args, null, original,
                             trackNodeSourcePosition, null);
-            EncodedSnippets.SymbolicEncodedGraph symbolicGraph = new EncodedSnippets.SymbolicEncodedGraph(encodedGraph, method.getDeclaringClass(), null);
+            EncodedSnippets.SymbolicEncodedGraph symbolicGraph = new EncodedSnippets.SymbolicEncodedGraph(encodedGraph, method.getDeclaringClass(), null, false);
             StructuredGraph decodedSnippet = EncodedSnippets.decodeSnippetGraph(symbolicGraph, original != null ? original : method, original, originalReplacements, null,
                             StructuredGraph.AllowAssumptions.ifNonNull(graph.getAssumptions()), graph.getOptions(), false);
             String snippetString = getCanonicalGraphString(snippet, true, false);
@@ -430,6 +425,9 @@ public class SymbolicSnippetEncoder {
 
     synchronized void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition) {
         if (HotSpotReplacementsImpl.snippetsAreEncoded()) {
+            if (ReplayCompilationSupport.isReplayingLibgraalInJargraal()) {
+                return;
+            }
             throw new GraalError("Snippet encoding has already been done");
         }
 
@@ -1053,7 +1051,7 @@ public class SymbolicSnippetEncoder {
             }
 
             InvocationPlugin plugin = graphBuilderConfig.getPlugins().getInvocationPlugins().lookupInvocation(targetMethod, options);
-            if (plugin != null && conditionalPlugins.contains(plugin)) {
+            if (plugin instanceof ConditionalInvocationPlugin) {
                 // Because supporting arbitrary plugins in the context of encoded graphs is complex
                 // we disallow it. This limitation can be worked around through the use of method
                 // substitutions.

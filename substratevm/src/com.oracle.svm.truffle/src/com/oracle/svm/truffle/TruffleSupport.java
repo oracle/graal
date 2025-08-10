@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.deopt.DeoptimizationRuntime;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
@@ -112,12 +111,12 @@ public class TruffleSupport {
         SubstrateKnownTruffleTypes types = new SubstrateKnownTruffleTypes(runtime, providers.getMetaAccess(), providers.getConstantReflection());
         final TruffleTierConfiguration firstTier = new TruffleTierConfiguration(new EconomyPartialEvaluatorConfiguration(), substrateBackend,
                         TruffleRuntimeCompilationSupport.getFirstTierProviders(), TruffleRuntimeCompilationSupport.getFirstTierSuites(), TruffleRuntimeCompilationSupport.getFirstTierLirSuites(),
-                        types, DeoptimizationRuntime.DEOPTIMIZE);
+                        types);
 
         PartialEvaluatorConfiguration peConfig = TruffleCompilerImpl.createPartialEvaluatorConfiguration(compilerConfigurationName);
         final TruffleTierConfiguration lastTier = new TruffleTierConfiguration(peConfig, substrateBackend,
                         TruffleRuntimeCompilationSupport.getRuntimeConfig().getProviders(), TruffleRuntimeCompilationSupport.getFullOptSuites(), TruffleRuntimeCompilationSupport.getLIRSuites(),
-                        types, DeoptimizationRuntime.DEOPTIMIZE);
+                        types);
         return new TruffleCompilerConfiguration(runtime, graphBuilderPlugins, runtimeCompilationFeature.getHostedProviders().getSnippetReflection(), firstTier, lastTier, types,
                         TruffleRuntimeCompilationSupport.getFullOptSuites(), null);
     }
