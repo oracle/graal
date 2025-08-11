@@ -63,20 +63,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class CSourceCodeWriter {
-
     private static final String INDENT4 = "    ";
-    public static final String C_SOURCE_FILE_EXTENSION = ".c";
 
-    private final List<String> lines;
-    private final StringBuilder currentLine;
-
+    private final List<String> lines = new ArrayList<>();
+    private final StringBuilder currentLine = new StringBuilder(100);
+    private final Path tempDirectory;
     private int indentLevel = 0;
-    protected final Path tempDirectory;
 
     public CSourceCodeWriter(Path tempDirectory) {
         this.tempDirectory = tempDirectory;
-        this.lines = new ArrayList<>();
-        this.currentLine = new StringBuilder(100);
     }
 
     public void writeCStandardHeaders() {
@@ -262,8 +257,7 @@ public class CSourceCodeWriter {
 
     private static boolean isFunctionPointer(MetaAccessProvider metaAccess, ResolvedJavaType type) {
         boolean functionPointer = metaAccess.lookupJavaType(CFunctionPointer.class).isAssignableFrom(type);
-        return functionPointer &&
-                        Arrays.stream(type.getDeclaredMethods(false)).anyMatch(v -> v.getDeclaredAnnotation(InvokeCFunctionPointer.class) != null);
+        return functionPointer && Arrays.stream(type.getDeclaredMethods(false)).anyMatch(v -> v.getDeclaredAnnotation(InvokeCFunctionPointer.class) != null);
     }
 
     /**
