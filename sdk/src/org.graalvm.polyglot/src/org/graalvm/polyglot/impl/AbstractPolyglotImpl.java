@@ -1130,6 +1130,8 @@ public abstract class AbstractPolyglotImpl {
             return allowsPublicAccess();
         }
 
+        public abstract Exception materializeHostException();
+
     }
 
     public abstract static class AbstractValueDispatch extends AbstractDispatchClass {

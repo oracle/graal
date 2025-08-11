@@ -908,7 +908,7 @@ public abstract class Accessor {
 
         public abstract boolean isTruffleStackTrace(Throwable t);
 
-        public abstract StackTraceElement[] getInternalStackTraceElements(Throwable t);
+        public abstract StackTraceElement[] getInternalStackTraceElements(Throwable t, boolean reserveElementsForLazyFrames);
 
         public abstract Throwable getOrCreateLazyStackTrace(Throwable t);
 
@@ -973,6 +973,8 @@ public abstract class Accessor {
         public abstract OptionDescriptors createOptionDescriptorsUnion(OptionDescriptors... descriptors);
 
         public abstract InternalResource.Env createInternalResourceEnv(InternalResource resource, BooleanSupplier contextPreinitializationCheck);
+
+        public abstract void fillInForeignException(Throwable truffleException, StackTraceElement[] hostStack);
     }
 
     public abstract static class InstrumentSupport extends Support {
