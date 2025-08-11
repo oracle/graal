@@ -427,7 +427,8 @@ def svm_gate_body(args, tasks):
         if t:
             if mx.is_windows():
                 mx.warn('layereddebuginfotest does not work on Windows')
-            else:
+            # Running debuginfotest with layers does not work for static builds
+            elif '--static' not in args.extra_image_builder_arguments:
                 with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                     layereddebuginfotest(['--output-path', svmbuild_dir()] + args.extra_image_builder_arguments)
 
